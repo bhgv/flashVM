@@ -61,6 +61,40 @@ C-хост может вызвать его после установки дес
 что они не вызываются; затем проверяет формы чисел, запятую/мусор, границы и %.
 Это детерминированный тест зависимостей/грамматики, а не новый запуск установленной
 чужой locale или каждого возможного floating-point процессора.
+## Подробности C-интерфейса и пример (v0.666)
+
+[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L90) получает контекст владельца, заимствованные полные
+FWS/CWS-байты и точную длину, имя клипа, флаги и обязательный указатель результата.
+Сначала установите стандартную модель объектов. Вход/имя нужны только до возврата;
+импортированное хранилище принадлежит контексту. Объект — заимствованная управляемая
+память, хост обязан укоренить его до сборки. Вызов синхронный в потоке владельца,
+вне GC/teardown; скриптовых/device callback нет, канонический SWF не меняется.
+Нулевые флаги сохраняют строгий режим прежнего API.
+
+[FVM_OK](../include/flashvm/flashvm.h#L42) выдаёт клип; неверный вход, другой канонический источник или неизвестные
+флаги дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); неподдержанные scene features, включая sprite
+streams, — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46); отказ памяти — [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). Если out=null,
+очищать нечего; иначе любой отказ оставляет *out=null. Сжатые блоки семантически
+не декодируются и не сертифицируются. Владение event-sound callback и timing прежние.
+
+[Исполняемый C89/GC и SWF8 пример](../examples/player/muted_stream/README.ru.md)
+показывает setup, точный источник, освобождение входа, pin/GC/advance и cleanup.
+Ожидается `streams=1 advanced=1 muted=1`. C-хост собирается без SDL, отдельная
+команда player показывает сцену с visible/dummy video. Генератор автономен.
+
+Проверки используют Linux x86-64/GCC 13.3 и внешний SDL2 2.30.12. Запускаются
+затронутые проверки player и выбранные sound/scene/stream тесты, не полный core
+или sanitizer suite. Полный AGG/JIT player с отдельными целевыми SDL SDK слинкован
+для Linux ARM64, Linux RISC-V64 и Windows x64 прежней документированной оболочкой
+Zig. Это cross-сборки, не запуск на чужих ОС/устройствах. Android/macOS, слышимый
+потоковый звук, A/V sync, физические устройства, длительная нагрузка и все девять
+стадий ещё открыты. [Сборка](../../BUILDING.ru.md),
+[происхождение SDK](PLAYER_RECOVERY.ru.md#проверки-серии).
+Пройдены 59 выбранных нативных тестов: 44 frontend/player и 15 sound/scene/stream.
+Новый импорт проверяется на каждом отказе new/new[]; collector/release/teardown
+отвергают вход до временных выделений декодера.
+Автономный C89-хост muted import также слинкован для всех трёх целей; проверены
+ELF/PE machine headers. Исполнялся он только на нативном Linux.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -71,9 +105,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:90](../include/flashvm/movieclip.h#L90) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
 | `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:82](../include/flashvm/movieclip.h#L82) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -64,6 +64,43 @@ The standalone options fixture poisons strtod and setlocale and verifies neither
 is called, then checks decimal/exponent forms, comma/garbage rejection, bounds
 and the speed suffix. It is a deterministic dependency/grammar test, not a fresh
 runtime validation of an installed foreign locale or every floating-point target.
+## C interface details and tutorial (v0.666)
+
+[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L90) receives the owning context, borrowed complete FWS/CWS
+bytes and exact size, a borrowed clip name, flags, and mandatory object-output
+pointer. Install the standard object model first. The byte/name inputs need only
+outlive the call; imported storage is owned by the context. The returned object
+is borrowed managed storage, so the host must pin/root it before collection.
+The function runs synchronously on the owner thread outside collection/teardown,
+performs no script/device callbacks, and does not change the canonical loaded SWF.
+Zero flags delegate to the same strict import behavior as the original API.
+
+[FVM_OK](../include/flashvm/flashvm.h#L42) returns a clip; malformed input, mismatched canonical source or unknown
+flags return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); remaining unsupported scene features (including
+sprite streams) return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46); allocation failure returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44).
+If out itself is null there is no output to clear; otherwise every failure leaves
+*out null. Opaque compressed stream bytes are not semantically decoded or certified.
+Event-sound callback ownership and timing are unchanged.
+
+[Runnable C89/GC and SWF8 tutorial](../examples/player/muted_stream/README.md)
+shows complete setup, exact-source import, input release, pin/GC/advance and cleanup.
+Its expected scalar output is `streams=1 advanced=1 muted=1`. It builds without
+SDL; the separate player command demonstrates visible/dummy scene playback.
+The source generator reproduces the small SWF without sibling implementation paths.
+
+Validation uses Linux x86-64/GCC 13.3 and external SDL2 2.30.12. The affected player
+suite plus targeted sound/scene/stream tests are run; no full core/sanitizer suite
+is claimed. Full AGG/JIT player builds link with separately built target SDL SDKs
+for Linux ARM64, Linux RISC-V64 and Windows x64 under the existing documented Zig
+host-wrapper adaptation. These are cross builds, not foreign OS/device execution.
+Android/macOS, audible streaming, A/V sync, physical devices, endurance and all
+nine roadmap stages remain open. [Build guide](../../BUILDING.md),
+[SDK provenance](PLAYER_RECOVERY.md#validation-of-this-series).
+All 59 selected native tests pass (44 frontend/player plus 15 sound/scene/stream).
+The new import is also checked at every injected new/new[] boundary; collector,
+release and teardown states reject entry before temporary decoding allocations.
+The standalone C89 muted-import host also cross-links for all three targets;
+its ELF/PE machine headers were verified. It was executed only on native Linux.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -74,9 +111,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:90](../include/flashvm/movieclip.h#L90) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
 | `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:82](../include/flashvm/movieclip.h#L82) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -926,7 +926,9 @@ extern "C" FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *c, const void *inpu
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!c || !name || !input || (flags & ~FVM_SWF_IMPORT_MUTE_ROOT_STREAMS))
+    /* [GC:] Reject terminal/collector entry before even temporary decoder allocation. */
+    if (!c || c->destroying || c->gc_collecting || c->gc_releasing ||
+        !name || !input || (flags & ~FVM_SWF_IMPORT_MUTE_ROOT_STREAMS))
         return FVM_INVALID_ARGUMENT;
     try
     {

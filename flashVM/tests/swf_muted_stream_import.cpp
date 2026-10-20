@@ -15,7 +15,9 @@ static Bytes source(bool malformed, bool sprite)
     {
         Bytes nested,controls;word(nested,7);word(nested,1);
         tag(controls,45,h);tag(controls,19,pcm);tag(controls,1,empty);tag(controls,0,empty);
-        for(size_t i=0;i<controls.size();++i)nested.push_back(controls[i]);tag(tags,39,nested);
+        for(size_t i=0;i<controls.size();++i)
+            nested.push_back(controls[i]);
+        tag(tags,39,nested);
     }
     return movie(tags,8);
 }

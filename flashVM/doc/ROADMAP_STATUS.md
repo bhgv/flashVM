@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.665
+# FlashVM stage status / Состояние стадий — v0.666
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,17 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.666 legacy cursor and muted streams / Старый курсор и muted streams
+
+The player installs the SWF5 cursor subset while retaining SWF6 listener gates.
+An additive exact-source import flag permits validated root stream controls only
+when explicitly muted; the strict API and sprite-stream rejection remain.
+File reading detects measured-length changes/EOF failures, and numeric CLI options
+avoid process-global locale conversion. A C89/GC tutorial and SWF8 fixture are
+included. [Contracts/tests EN](PLAYER_PREFLIGHT.md) / [RU](PLAYER_PREFLIGHT.ru.md).
+No streaming output decoder/clock or complete physical/foreign acceptance is claimed.
+All nine stages remain open. Все девять стадий остаются открытыми.
 
 ## v0.661 queued input fairness / Очередь и границы ввода
 

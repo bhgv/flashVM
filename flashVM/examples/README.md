@@ -152,6 +152,7 @@
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
@@ -1694,6 +1695,18 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 CLI проверяет 120 кадров каждого в interpreter/JIT.
 [Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
 
+<a id="example-player-muted_stream"></a>
+### muted_stream
+
+Готовый SWF8 с корневым PCM stream, автономный генератор и исполняемый C89-хост.
+[README EN](player/muted_stream/README.md) / [RU](player/muted_stream/README.ru.md),
+[C89](player/muted_stream/main.c), [границы](player/muted_stream/bounds.h),
+[генератор](player/muted_stream/make_movie.py), [фильм](player/muted_stream/muted-stream.swf).
+Пример показывает точное совпадение источника при явном отключении root stream,
+владение входом, pin/GC/advance и cleanup. SDL player играет сцену только с --mute;
+без него сообщает о неподдержанном потоковом звуке. Нативного аудиовыхода, MP3 decode
+и A/V sync пример не добавляет.
+
 <a id="example-player-wheel_cursor"></a>
 ### wheel_cursor
 
@@ -1798,6 +1811,7 @@ Source line links describe the current checkout, including in historical notes.
 - [mouse_wheel — embedding/mouse_wheel](#example-embedding-mouse_wheel)
 - [movieclip — embedding/movieclip](#example-embedding-movieclip)
 - [movieclip — extending/movieclip](#example-extending-movieclip)
+- [muted_stream — player/muted_stream](#example-player-muted_stream)
 - [native_functions — extending/native_functions](#example-extending-native_functions)
 - [network — embedding/network](#example-embedding-network)
 - [network — extending/network](#example-extending-network)
