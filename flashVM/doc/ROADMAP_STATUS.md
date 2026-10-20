@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.672
+# FlashVM stage status / Состояние стадий — v0.673
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -31,6 +31,9 @@ The muted-stream tutorial CTest now supplies its required SWF argument.
 Current v0.672 validation: 65 selected native checks pass. Full players and the
 new configured-host example cross-link for ARM64/RISC-V64 Linux and x86-64
 Windows; target executables are not run. This does not close stage 9.
+
+v0.673 adds exact borrowed memory playback and a linked-resource C89 example.
+[Sources EN](PLAYER_SOURCES.md) / [RU](PLAYER_SOURCES.ru.md). All nine stages remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

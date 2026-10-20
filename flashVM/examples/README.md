@@ -153,6 +153,7 @@
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
+  - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
@@ -1706,6 +1707,14 @@ CLI проверяет 120 кадров каждого в interpreter/JIT.
 [контракт C/C++98 API](../doc/PLAYER_CONFIGURATION.ru.md),
 [объявления](../frontend/common/player.h). Не требует разбора CLI; это не widget API.
 
+<a id="example-player-embedded_movie"></a>
+### embedded_movie
+
+Построчно пояснённый C89-хост играет слинкованный массив SWF без файла/аргументов.
+[README EN](player/embedded_movie/README.md) / [RU](player/embedded_movie/README.ru.md),
+[main.c](player/embedded_movie/main.c), [байты](player/embedded_movie/movie.h),
+[контракт](../doc/PLAYER_SOURCES.ru.md), [API](../frontend/common/player.h).
+
 <a id="example-player-muted_stream"></a>
 ### muted_stream
 
@@ -1779,6 +1788,7 @@ Source line links describe the current checkout, including in historical notes.
 - [cycle_collection — embedding/cycle_collection](#example-embedding-cycle_collection)
 - [drawing — embedding/drawing](#example-embedding-drawing)
 - [drawing — extending/drawing](#example-extending-drawing)
+- [embedded_movie — player/embedded_movie](#example-player-embedded_movie)
 - [error.as — actionscript/error.as](#example-actionscript-error-as)
 - [event_work_budget — embedding/event_work_budget](#example-embedding-event_work_budget)
 - [execution_modes — embedding/execution_modes](#example-embedding-execution_modes)

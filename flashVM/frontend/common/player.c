@@ -209,8 +209,9 @@ static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ord
     return FVM_OK;
 }
 
-/* Play one file. All VM/SDL objects belong to this thread; no background worker touches them. */
-static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
+/* Play borrowed binary input. VM/SDL objects stay on this thread; source bytes are never freed. */
+static int play_bytes(const FVM_DesktopOptions *options, const char *path, const void *bytes,
+                      size_t length, int *quit)
 {
     FVM_Config config;
     FVM_Runtime *runtime = 0;
@@ -226,8 +227,6 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     FVM_RasterSurface surface;
     FVM_Affine viewport;
     FVM_ExecutionMode mode;
-    unsigned char *bytes = 0;
-    size_t length = 0;
     size_t stream_count = 0; /* Detect unsupported root streaming playback before native setup. */
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
@@ -243,9 +242,6 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     memset(&input, 0, sizeof(input));
     memset(&audio, 0, sizeof(audio));
     memset(&surface, 0, sizeof(surface));
-    bytes = read_movie(path, &length);
-    if (!bytes)
-        goto cleanup;
     if (!checked(fvm_config_init(&config), "config", path))
         goto cleanup;
     if (!checked(fvm_runtime_create(&config, &runtime), "runtime", path))
@@ -329,8 +325,6 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     host_value.object = host_input;
     if (!checked(fvm_set_global(context, "HostInput", &host_value), "HostInput binding", path))
         goto cleanup;
-    free(bytes);
-    bytes = 0;
     mode = options->mode;
     if (mode == FVM_DESKTOP_MODE_AUTO)
         mode = fvm_jit_available() ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER;
@@ -521,7 +515,6 @@ cleanup:
     fvm_desktop_audio_close(&audio);
     fvm_desktop_window_close(window);
     free(surface.pixels);
-    free(bytes);
     /* [GC:] End the host root before destroying its context; no borrowed pointer escapes. */
     if (input_pinned)
         fvm_gc_unpin(context, host_input);
@@ -531,6 +524,61 @@ cleanup:
         fvm_context_destroy(context);
     if (runtime)
         fvm_runtime_destroy(runtime);
+    return status;
+}
+
+/* File adapter owns its temporary bytes; buffer playback never assumes ownership. */
+static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
+{
+    size_t length = 0;
+    unsigned char *bytes = read_movie(path, &length);
+    int status;
+    if (!bytes)
+        return FVM_DESKTOP_EXIT_PLAYBACK;
+    status = play_bytes(options, path, bytes, length, quit);
+    free(bytes);
+    return status;
+}
+
+/* Validate shared scalar settings without requiring a filesystem playlist. */
+static int memory_options(const FVM_DesktopOptions *options, const char *name,
+                          FVM_DesktopOptions *value, const char **error)
+{
+    if (!options)
+    {
+        if (error)
+            *error = "null player options";
+        return 0;
+    }
+    *value = *options;
+    value->files = &name;
+    value->file_count = 1;
+    if (!fvm_desktop_options_validate(value, error))
+        return 0;
+    /* The temporary validation path array must never escape this helper. */
+    value->files = 0;
+    return 1;
+}
+
+/* Borrow exact binary bytes, including NUL, for the duration of synchronous playback. */
+int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes, size_t length,
+                           const char *name, const char **error)
+{
+    FVM_DesktopOptions value;
+    int quit = 0, status;
+    if (error)
+        *error = 0;
+    if (!bytes || !length || length > FVM_SWF_DEFAULT_LIMIT || !name || !*name)
+    {
+        if (error)
+            *error = "invalid movie buffer, size or source name";
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    }
+    if (!memory_options(options, name, &value, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    status = play_bytes(&value, name, bytes, length, &quit);
+    if (status && error)
+        *error = "player buffer playback failed";
     return status;
 }
 

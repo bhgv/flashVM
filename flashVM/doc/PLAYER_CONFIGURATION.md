@@ -92,3 +92,5 @@ Full players and the new C89 configured-host example also linked for ARM64 Linux
 SDL SDKs and the existing sandbox-adapted Zig 0.13 toolchain. ELF/PE machine types
 were checked. Foreign executables were not run; this does not certify a stock SDK,
 physical devices, macOS or Android acceptance. All nine roadmap stages remain open.
+
+[SWF sources / Источники SWF](PLAYER_SOURCES.md).
