@@ -1,6 +1,6 @@
 # Native release evidence
 
-v0.643. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
+v0.644. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
 
 [validate_platform.py](../scripts/validate_platform.py) now writes schema 2
 platform-evidence.json. Each profile retains commands, compiler identities,
@@ -90,3 +90,32 @@ it does not replace trusted CI/native execution.
 Eleven tests cover missing platforms, relocation, wrong ABI/version/commit,
 skips, altered JUnit, duplicates, escaping symlinks and replacing previous success
 with blocked/invalid output. These fixtures are not foreign-platform runs.
+
+## Portable evidence archive — v0.644
+
+[release_bundle.py](../scripts/release_bundle.py) exports only the report,
+two CTest inventories and JUnit per profile, plus manifest.json with sizes/SHA-256.
+No binaries, arbitrary logs, sources or Git history are included. A staged
+snapshot is validated before writing, so edits between initial validation and
+copying cannot publish inconsistent evidence. Fixed member order, 1980 timestamps,
+0644 permissions and ZIP_STORED make repeated exports of identical input bytes
+identical. Independent native runs naturally differ in times and recorded paths.
+
+```sh
+python3 scripts/release_bundle.py --commit FULL_COMMIT_ID --version 0.644 \
+  --report /evidence/linux/platform-evidence.json \
+  --output /exports/native-linux-v0.644.zip
+```
+
+Actual skips require the same exact --allow-skip rules as matrix evaluation.
+Output must be outside the input folder. Publication is atomic; a failed export
+preserves any old archive, so checking exit status is mandatory. Extract your
+trusted producer archive into a separate folder and pass platform-evidence.json
+to the matrix tool. Manifest hashes provide integrity, not signatures/OS attestation.
+
+Five tests cover byte determinism, manifest contents, relocation, omission of
+unrelated files, concurrent edits and old-archive preservation after errors.
+A separate actual CMake/C89/C++98/CTest miniature pipeline demonstrates rejection
+of zero-exit CTest with an unacknowledged skip, successful retry, matrix audit,
+export and recovery after another failure. It tests tooling with a small fixture,
+not the complete VM suite.

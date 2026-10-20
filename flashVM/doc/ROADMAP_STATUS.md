@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.643
+# FlashVM stage status / Состояние стадий — v0.644
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,14 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.644 reproducible evidence bundles / Переносимые доказательства
+
+Validated staged snapshots produce deterministic, manifest-indexed evidence ZIPs.
+Five export tests cover relocation, tampering and atomic publication. A real
+miniature C89/C++98/CMake/CTest pipeline covers report/matrix/export integration;
+it is not a complete VM run. [EN](RELEASE_EVIDENCE.md) / [RU](RELEASE_EVIDENCE.ru.md).
+Foreign runtime/device acceptance and all nine roadmap stages remain open.
 
 ## v0.643 portable native matrix / Сводная матрица платформ
 

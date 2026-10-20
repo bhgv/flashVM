@@ -73,6 +73,10 @@ def artifact(bundle, profile, name):
 
 def report_cells(path, commit, version, acknowledgements):
     """Verify a schema-2 native report and recompute its exact CTest evidence."""
+    if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", commit):
+        raise ValueError("commit must be a full Git object ID")
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", version):
+        raise ValueError("invalid release version")
     path = Path(path).resolve()
     data = read_bounded(path)
     report = json.loads(data)

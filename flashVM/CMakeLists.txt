@@ -359,6 +359,12 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_ctest_evidence_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_ctest_evidence.py
             --ctest ${CMAKE_CTEST_COMMAND})
+  add_test(NAME flashvm_platform_native_integration_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_platform_native_integration.py
+            --cmake ${CMAKE_COMMAND} --ctest ${CMAKE_CTEST_COMMAND} --generator "${CMAKE_GENERATOR}")
+  set_tests_properties(flashvm_platform_native_integration_host PROPERTIES TIMEOUT 180)
+  add_test(NAME flashvm_release_bundle_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_release_bundle.py)
   add_test(NAME flashvm_release_matrix_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_release_matrix.py)
   add_test(NAME flashvm_native_target_host
