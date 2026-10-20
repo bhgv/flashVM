@@ -1,6 +1,6 @@
 # C99 compiler projects
 
-Version 0.1.1. [Русский](README.ru.md).
+Version 0.2.0. [Русский](README.ru.md).
 
 | Project | Current component |
 | --- | --- |

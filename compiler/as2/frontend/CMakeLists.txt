@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(as2_frontend VERSION 0.1.1 LANGUAGES C)
+project(as2_frontend VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -31,9 +31,13 @@ add_custom_command(
     "${COCOR_ROOT}/frames/parser_c.frm"
     "${COCOR_ROOT}/frames/parser_h.frm"
   VERBATIM)
-add_executable(as2_parse main.c "${generated}/as2p.c"
-    "${generated}/as2s.c")
-target_include_directories(as2_parse PRIVATE "${generated}")
+set_source_files_properties("${generated}/as2p.c" "${generated}/as2s.c" PROPERTIES HEADER_FILE_ONLY TRUE)
+add_library(as2_frontend api.c parser.c scanner.c "${generated}/as2p.c" "${generated}/as2s.c")
+target_include_directories(as2_frontend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(as2_frontend PRIVATE "${generated}")
+target_compile_definitions(as2_frontend PRIVATE CUSTOM_BUFF Custom_Error=as2_Custom_Error GenError=as2_GenError Parse=as2_Parse SemError=as2_SemError Successful=as2_Successful SynError=as2_SynError S_Col=as2_S_Col S_CurrLine=as2_S_CurrLine S_CurrentCh=as2_S_CurrentCh S_Get=as2_S_Get S_GetName=as2_S_GetName S_GetString=as2_S_GetString S_Len=as2_S_Len S_Line=as2_S_Line S_LineStart=as2_S_LineStart S_NextCol=as2_S_NextCol S_NextLen=as2_S_NextLen S_NextLine=as2_S_NextLine S_NextPos=as2_S_NextPos S_Pos=as2_S_Pos S_Reset=as2_S_Reset S_src=as2_S_src)
+add_executable(as2_parse main.c)
+target_link_libraries(as2_parse PRIVATE as2_frontend)
 # Each executable owns its generator globals; do not link different parsers together.
 include(CTest)
 if(BUILD_TESTING)
@@ -41,4 +45,10 @@ if(BUILD_TESTING)
   add_test(NAME as2_syntax
     COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tests/check.py"
       $<TARGET_FILE:as2_parse>)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(as2_embed tests/embed.c)
+  target_link_libraries(as2_embed PRIVATE as2_frontend)
+  add_test(NAME as2_embedding COMMAND as2_embed)
 endif()

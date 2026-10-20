@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.1.1
+# AS3 syntax frontend 0.2.0
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -26,3 +26,14 @@ include file, byte-based line/column and generated Coco/R error number. Status:
 before scanning. A detached renamed `as3` directory builds without siblings.
 
 CLI: `--help`, `--version` (no source file required; status 0).
+
+## C API
+
+`frontend/frontend.h`: `as3_check(bytes, size, diagnostic)` and
+`as3_read(FILE*, diagnostic)` return 1 accepted / 0 rejected. The caller owns
+the input buffer/stream; the library prints nothing, closes no input and never
+exits. Diagnostic fields: code, line/column, byte offset, message. NULL diagnostics
+are allowed. Maximum input: 2 MiB. CMake target: `as3_frontend`. Generated global
+symbols have a language prefix; multiple libraries can link into one IDE. State
+resets before every call, but each parser requires external serialization (not
+reentrant). `tests/embed.c` checks in-process recovery after invalid input.
