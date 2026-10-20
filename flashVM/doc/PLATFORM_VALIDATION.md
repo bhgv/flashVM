@@ -322,3 +322,5 @@ build tools; no claim of native VM execution):
 ```sh
 python3 scripts/test_platform_source.py
 ```
+
+Schema 2 and v0.641–0.645 tooling: [release evidence](RELEASE_EVIDENCE.md). Historical schema-1 notes are not new acceptance evidence.

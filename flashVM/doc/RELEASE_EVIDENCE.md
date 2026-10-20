@@ -1,6 +1,6 @@
 # Native release evidence
 
-v0.644. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
+v0.645. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
 
 [validate_platform.py](../scripts/validate_platform.py) now writes schema 2
 platform-evidence.json. Each profile retains commands, compiler identities,
@@ -119,3 +119,31 @@ A separate actual CMake/C89/C++98/CTest miniature pipeline demonstrates rejectio
 of zero-exit CTest with an unacknowledged skip, successful retry, matrix audit,
 export and recovery after another failure. It tests tooling with a small fixture,
 not the complete VM suite.
+
+## Timeout and encoding — v0.645
+
+`validate_platform.py --test-timeout 300` sets the CTest default timeout for
+tests without an explicit TIMEOUT property; positive seconds are required.
+This is not a total build/run deadline and does not replace explicit timeouts
+on endurance tests. The value is recorded per profile. A real sleeping child
+was terminated by CTest at a one-second default, leaving a failed report.
+JUnit is UTF-8 only: UTF-16/32 cannot hide forbidden DTD/entity declarations
+behind zero bytes. An alternate-encoding test extends the original nine checks.
+
+This series changes acceptance infrastructure, not VM semantics. It does not
+claim a complete run of every registered VM test, new ASan/UBSan coverage,
+physical devices, Windows/macOS/Android runs or closure of any roadmap stage.
+Use explicit CMake/CTest paths outside PATH and a writable TMPDIR where needed.
+Keep generated results/logs outside commits.
+
+## Final v0.641–0.645 series validation
+
+Linux minimal Release: the entire core built in C89/C++98; three selected runtime
+checks (AVM1 number text, execution conversions, JIT numbers) passed against the
+final core. All 15 selected CTests passed: three runtime, ten tooling and two
+documentation/tutorial contracts. Five new CTest groups contain 34 checks,
+including a real native miniature project and actual timeout. The remainder of
+the VM suite was not rerun. All 812 relative links in modified documents resolved,
+and generated source links passed freshness checks. An initial parallel build
+encountered an assembler CFI error; retry with two jobs and final target rebuilds
+succeeded. This was not a VM runtime failure.

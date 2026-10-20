@@ -283,3 +283,5 @@ only; real foreign OS/CPU acceptance and all nine stages remain open.
 ```sh
 python3 scripts/test_platform_source.py
 ```
+
+Актуальная схема 2 и инструменты серии v0.641–0.645: [доказательства приёмки](RELEASE_EVIDENCE.ru.md). Исторические записи schema 1 ниже не являются новой приёмкой.

@@ -51,10 +51,15 @@ def results(path, expected, allowed_skips=()):
     Disabled tests, failures, unknown statuses and zero executed cases fail.
     """
     data = read_bounded(path)
-    if b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
+    # CTest emits UTF-8. Reject alternate encodings rather than letting UTF-16
+    # hide forbidden declarations behind interleaved zero bytes.
+    text = data.decode('utf-8-sig')
+    if '\x00' in text:
+        raise ValueError('CTest JUnit must be UTF-8 without NUL')
+    if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
         raise ValueError('XML document types/entities are forbidden')
     try:
-        suite = ET.fromstring(data)
+        suite = ET.fromstring(text)
     except ET.ParseError as error:
         raise ValueError('malformed CTest JUnit: ' + str(error)) from error
     if suite.tag != 'testsuite':

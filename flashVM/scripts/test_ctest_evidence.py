@@ -96,6 +96,15 @@ class CTestEvidenceTests(unittest.TestCase):
         with patch.object(evidence, 'MAX_EVIDENCE_BYTES', 99), self.assertRaises(ValueError):
             evidence.read_bounded(path)
 
+    def test_alternate_encoding_cannot_hide_entity_declarations(self):
+        expected = self.inventory()
+        path = self.root / 'encoded.xml'
+        xml = '<!DOCTYPE x [<!ENTITY hidden "expanded">]><testsuite/>'
+        for encoding in ('utf-16', 'utf-16-le', 'utf-16-be', 'utf-32'):
+            path.write_bytes(xml.encode(encoding))
+            with self.subTest(encoding=encoding), self.assertRaises(ValueError):
+                evidence.results(path, expected)
+
     def real_ctest(self, extra=(), disabled=False):
         python = Path(sys.executable).as_posix()
         (self.root / 'CTestTestfile.cmake').write_text(

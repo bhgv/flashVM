@@ -87,6 +87,19 @@ set_tests_properties(fixture_skip PROPERTIES SKIP_RETURN_CODE 77)
             (root / 'build-platform' / 'minimal' / 'ctest-results.xml').unlink()
             self.assertEqual(run([]), 1)
             self.assertEqual(json.loads(report_path.read_text())['status'], 'failed')
+            # Exercise the production timeout with an actual sleeping child.
+            with (root / 'CMakeLists.txt').open('a') as stream:
+                stream.write('add_test(NAME fixture_timeout COMMAND "' + python +
+                             '" -c "import time; time.sleep(30)")\n')
+            git('add', 'CMakeLists.txt')
+            git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                'commit', '-qm', 'timeout fixture')
+            self.assertEqual(run(['--allow-skip', 'fixture_skip', '--test-timeout', '1']), 1)
+            timed_out = json.loads(report_path.read_text())
+            self.assertEqual(timed_out['status'], 'failed')
+            self.assertEqual(timed_out['profiles'][0]['test_timeout_default_seconds'], 1)
+            log = (root / 'build-platform' / 'minimal' / 'test.log').read_text()
+            self.assertIn('Timeout', log)
 
 
 if __name__ == '__main__':

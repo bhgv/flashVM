@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.644
+# FlashVM stage status / Состояние стадий — v0.645
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,14 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.645 bounded tests and UTF-8 evidence / Таймаут и UTF-8
+
+The native runner records a positive default per-test timeout. A real sleeping
+CTest child fails within its configured one-second limit. Alternate XML encodings
+cannot bypass forbidden declaration checks. No runtime VM semantic change or new
+foreign-platform acceptance is claimed. [EN](RELEASE_EVIDENCE.md) /
+[RU](RELEASE_EVIDENCE.ru.md). Все девять стадий остаются открытыми.
 
 ## v0.644 reproducible evidence bundles / Переносимые доказательства
 

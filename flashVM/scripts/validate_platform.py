@@ -183,9 +183,13 @@ def main():
     parser.add_argument('--readelf', default='readelf', help='GNU readelf executable for ELF audit')
     parser.add_argument('--allow-skip', action='append', default=[], metavar='TEST_NAME',
                         help='acknowledge one exact skipped test name; never counts as passed')
+    parser.add_argument('--test-timeout', type=int, default=300, metavar='SECONDS',
+                        help='CTest default timeout for tests without an explicit TIMEOUT property')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
+    if args.test_timeout < 1:
+        parser.error('--test-timeout must be positive')
     root = Path(__file__).resolve().parents[1]
     output = (args.build_root or root / 'build-platform').resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -207,7 +211,8 @@ def main():
         for name in (['agg', 'cairo', 'minimal', 'minimal-jit'] if args.profile == 'all' else [args.profile]):
             build = output / name
             build.mkdir(exist_ok=True)
-            record = {'name': name, 'commands': [], 'status': 'failed'}
+            record = {'name': name, 'commands': [], 'status': 'failed',
+                      'test_timeout_default_seconds': args.test_timeout}
             report['profiles'].append(record)
 
             def execute(label, command):
@@ -255,6 +260,7 @@ def main():
             junit.unlink(missing_ok=True)
             execute('test', [args.ctest, '--test-dir', str(build), '-C', 'Release',
                              '--output-on-failure', '--no-tests=error', '--parallel', str(args.jobs),
+                             '--timeout', str(args.test_timeout),
                              '--output-junit', str(junit)])
             record['tests'] = results(junit, expected, args.allow_skip)
             execute('test-inventory-after', [args.ctest, '--test-dir', str(build), '-C', 'Release',
