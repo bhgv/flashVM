@@ -84,6 +84,7 @@ loader lifecycle events are not implemented by this child-only integration.
 Actual PNG/GIF/JPEG SWFs test local/waiting/async delivery, opaque MIME and `.bin`
 URLs, dimensions, child removal, identity/own data, unload then SWF reload, malformed
 reply and TLS with an explicit CA. Codec-disabled builds do not silently accept images.
+[Core C89 tutorial](../examples/embedding/image_codecs_loading/README.md) / [RU](../examples/embedding/image_codecs_loading/README.ru.md); [player C/AS/SWF tutorial](../examples/player/image_loading/README.md) / [RU](../examples/player/image_loading/README.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

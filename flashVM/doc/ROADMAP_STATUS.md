@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.701
+# FlashVM stage status / Состояние стадий — v0.702
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,10 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.702 adds executable core C89 and standalone player C/AS/SWF image tutorials,
+with reproducible PNG/GIF/JPEG assets, URL/linked-memory startup, API/ownership
+manuals, indexed documentation and native/cross build instructions. All stages open.
 
 v0.701 connects child image bytes to the existing owner queue for local/network,
 waiting/async and socket/curl transport. Actual image SWFs check identity, dimensions,

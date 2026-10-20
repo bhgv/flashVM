@@ -67,6 +67,7 @@ import и публикация выполняются владельцем VM. �
 Реальные PNG/GIF/JPEG проверяют local/waiting/async, opaque MIME и .bin URL,
 размеры, удаление детей, идентичность/свойства, unload затем SWF reload, повреждённый
 ответ и TLS с явным CA. Сборка без codecs не выдаёт принятие изображения за успех.
+[Core C89 tutorial](../examples/embedding/image_codecs_loading/README.md) / [RU](../examples/embedding/image_codecs_loading/README.ru.md); [player C/AS/SWF tutorial](../examples/player/image_loading/README.md) / [RU](../examples/player/image_loading/README.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

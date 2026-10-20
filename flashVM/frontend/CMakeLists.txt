@@ -892,3 +892,16 @@ if(FVM_ENABLE_IMAGE_CODECS AND FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CRO
     endif()
   endforeach()
 endif()
+
+if(FVM_ENABLE_IMAGE_CODECS AND (FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_image_loading ../examples/player/image_loading/main.c)
+  target_link_libraries(flashvm_example_image_loading PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_image_loading PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+endif()
+
+if(TARGET flashvm_example_image_loading AND FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_image_loading COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/image_example.py $<TARGET_FILE:flashvm_example_image_loading>
+    ${PROJECT_SOURCE_DIR}/examples/player/image_loading)
+  set_tests_properties(flashvm_example_image_loading PROPERTIES TIMEOUT 25 SKIP_RETURN_CODE 77)
+endif()

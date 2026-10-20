@@ -53,6 +53,7 @@
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
     - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
+    - [image_codecs_loading](#example-embedding-image_codecs_loading) — <small><em>C89: атомарная замена PNG, GC, RGBA и очистка без SDL</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
     - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall/init, глубины и отрисовка</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
@@ -156,6 +157,7 @@
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
+  - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
@@ -690,6 +692,14 @@ AS2-исходник использует Point, Matrix и Rectangle: перен
 **Файлы:** [main.c](embedding/image_codecs/main.c).
 
 [К оглавлению](#оглавление).
+
+<a id="example-embedding-image_codecs_loading"></a>
+#### image_codecs_loading
+
+Исполняемый C89 без SDL/сети: immutable PNG, image/resource API, pin/GC, RGBA pixel
+check, unload и сохранение own data. [README EN](embedding/image_codecs_loading/README.md) /
+[RU](embedding/image_codecs_loading/README.ru.md), [C](embedding/image_codecs_loading/main.c),
+[PNG payload](embedding/image_codecs_loading/picture.inc), [генератор](embedding/image_codecs_loading/make_picture.py).
 
 <a id="example-embedding-media"></a>
 #### media
@@ -1743,6 +1753,15 @@ Timeline при fetch ждёт; это не полная async Flash loading sem
 [обычный хост](player/embedded_movie/module_host.c),
 [контракт](../doc/PLAYER_SOURCES.ru.md), [API](../frontend/common/player.h).
 
+<a id="example-player-image_loading"></a>
+### image_loading
+
+C89/AS/SWF пример загрузки PNG/GIF/JPEG в тот же экземпляр клипа, затем unload и
+SWF reload. URL/linked-memory startup, bounded async ожидание и самостоятельные assets.
+[README EN](player/image_loading/README.md) / [RU](player/image_loading/README.ru.md),
+[C](player/image_loading/main.c), [AS](player/image_loading/png-start.as),
+[генератор](player/image_loading/make_movies.py). Ограничения GIF/root/events указаны явно.
+
 <a id="example-player-loading"></a>
 ### loading
 
@@ -1887,6 +1906,8 @@ Source line links describe the current checkout, including in historical notes.
 - [gtk3 — frontends/gtk3](#example-frontends-gtk3)
 - [headless — frontends/headless](#example-frontends-headless)
 - [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
+- [image_codecs_loading — embedding/image_codecs_loading](#example-embedding-image_codecs_loading)
+- [image_loading — player/image_loading](#example-player-image_loading)
 - [input — embedding/input](#example-embedding-input)
 - [input_queue — embedding/input_queue](#example-embedding-input_queue)
 - [jit — embedding/jit](#example-embedding-jit)

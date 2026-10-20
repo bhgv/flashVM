@@ -67,6 +67,21 @@ def check():
         manual = (tutorial / ("README" + language + ".md")).read_text()
         for api in set(re.findall(r"\b(fvm_desktop_\w+)\s*\(", source)):
             assert re.search(r"\|.*" + api + r".*\|", manual), (language, api)
+    for relative, anchor in (("embedding/image_codecs_loading", "embedding-image_codecs_loading"),
+                             ("player/image_loading", "player-image_loading")):
+        tutorial = ROOT / "examples" / relative
+        source = (tutorial / "main.c").read_text()
+        for file in [tutorial / "main.c"] + list(tutorial.glob("*.inc")):
+            for number, line in enumerate(file.read_text().splitlines(), 1):
+                assert not line.strip() or "/*" in line or "*/" in line, (file, number)
+        for file in tutorial.glob("*.as"):
+            for number, line in enumerate(file.read_text().splitlines(), 1):
+                assert not line.strip() or "//" in line, (file, number)
+        assert catalog.count("example-" + anchor) == 3
+        for language in ("", ".ru"):
+            manual = (tutorial / ("README" + language + ".md")).read_text()
+            for api in set(re.findall(r"\b(fvm_\w+)\s*\(", source)):
+                assert re.search(r"\|.*" + api + r".*\|", manual), (relative, language, api)
     # Every local Markdown file/anchor source target must still exist after the move.
     for readme in FRONTENDS.rglob("*.md"):
         for target in re.findall(r"\]\(([^)]+)\)", readme.read_text()):
