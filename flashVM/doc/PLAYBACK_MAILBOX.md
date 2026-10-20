@@ -50,7 +50,7 @@ the per-root/per-run meanings from PLAYBACK_CONTROL.md.
 without consuming intent. Returns 1 for STOP, null or mutex failure, otherwise 0.
 It works before the first snapshot, including during startup fetching.
 
-[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L59)()` returns the live native-handle count without
+[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` returns the live native-handle count without
 SDK startup. [fvm_desktop_shutdown](../frontend/common/player.h#L53)()` returns ERROR while any mailbox remains, even
 without a window/transfer, leaving the active SDK untouched.
 
@@ -68,3 +68,54 @@ coalescing, source bounds, untouched outputs, quota and shutdown protection.
 Separate `playback_mailbox_allocation.c` injects native memory/mutex failures and
 checks quota rollback. This is bounded protocol testing, not endurance/real GUI
 acceptance. Foreign OS/device execution and all nine roadmap stages remain open.
+
+## Runner adapters since v0.714
+
+[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L62)(state, userdata)` is an owner callback for
+control.notify, with userdata equal to the mailbox. It publishes the copied
+observation and returns pending intent without storing or dereferencing the
+borrowed context/root pointers. Invalid snapshot/handle/source fails closed with
+STOP. Normal callbacks return KEEP when no command is waiting. Owner publication
+consumes nonterminal intent; STOP remains latched for subsequent observations.
+
+[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L66)(event, userdata)` is the owner-only load
+monitor callback. It returns the same nonconsuming terminal latch, including
+before READY and during blocking safe-point fetch waits; null event/userdata or
+lock failure stops. PAUSE/RESUME/STEP wait for playback notification and do not
+pause provider work. Load-monitor terminal return values retain their ordinary
+ignored-return convention. Use an explicit background provider and bind both
+callbacks to stop startup I/O, rather than expecting a playback READY callback
+before import.
+
+```c
+fvm_desktop_playback_control_init(&control);
+control.initially_paused = 1;
+control.notify = fvm_desktop_playback_mailbox_notify;
+control.userdata = mailbox;
+fvm_desktop_load_monitor_init(&monitor);
+monitor.notify = fvm_desktop_playback_mailbox_load_notify;
+monitor.userdata = mailbox;
+/* Pass control/monitor and explicit provider to the controlled background runner. */
+```
+
+This is a binding sketch; the executable tutorial documents complete cleanup.
+post returning OK acknowledges native handoff, not completion of a VM tick. A
+snapshot records the state immediately before its callback command is applied;
+only later observations acknowledge the new pause state/completed tick. STOP is
+cooperative: it does not preempt an executing instruction/native callback, DNS,
+or a provider that does not cooperate. With the existing owner loop it is polled
+through paused/slow-frame waits, including final-frame visibility waits.
+
+A mailbox does not own the runner or know that the synchronous call returned.
+On every exit (success, early source error, window close, cancellation), the host
+must signal its own controller-completion flag and join its worker before release.
+Otherwise a worker awaiting first READY after an import failure could wait forever.
+A retained snapshot is historical, not proof that its former VM is still alive.
+
+The live interpreter/JIT tests use a real controller OS thread, FILE/MEMORY/HTTP
+origins, owner-only GC/querying, exact confirmed steps and resume/pause, timer-free
+slow stop, stop before startup I/O, response-body cancellation at startup and in
+both async/blocking child modes, and runtime/early-import failure cleanup. Network
+subcases are explicitly omitted when no provider is compiled. Native foreign-OS,
+physical display/audio, race-detector/endurance and full debugger acceptance remain
+open; no additional roadmap stage is declared complete.

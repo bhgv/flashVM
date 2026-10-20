@@ -156,3 +156,17 @@ fvm_desktop_playback_mailbox_publish(FVM_DesktopPlaybackMailbox *mailbox,
     SDL_UnlockMutex(mailbox->mutex);
     return command;
 }
+
+/* Publish only on the native owner; controller threads see the independent copy through poll. */
+FVM_DesktopPlaybackCommand
+fvm_desktop_playback_mailbox_notify(const FVM_DesktopPlaybackState *state, void *userdata)
+{
+    return fvm_desktop_playback_mailbox_publish((FVM_DesktopPlaybackMailbox *)userdata, state);
+}
+/* Cancellation is available even before READY and during a cooperative blocking fetch wait. */
+int fvm_desktop_playback_mailbox_load_notify(const FVM_DesktopLoadEvent *event, void *userdata)
+{
+    if (!event)
+        return 1;
+    return fvm_desktop_playback_mailbox_stop_requested((FVM_DesktopPlaybackMailbox *)userdata);
+}

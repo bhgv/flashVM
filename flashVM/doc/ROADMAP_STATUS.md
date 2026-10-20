@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.713
+# FlashVM stage status / Состояние стадий — v0.714
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.714 binds native mailbox intent to owner playback/load-monitor callbacks.
+Real controller-thread interpreter/JIT fixtures pass for file/memory/HTTP,
+confirmed steps/resume/pause, startup and async/blocking child cancellation after
+body receipt, paused completion and early/runtime-error joined cleanup. C++98
+host linkage and native mailbox/failure fixtures pass. All stages remain open.
 
 v0.713 adds a bounded C89 native playback mailbox with latest-intent coalescing,
 terminal STOP precedence, mutex-protected scalar/text copies and explicit lifetime.

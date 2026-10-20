@@ -54,6 +54,19 @@ int main()
     control.initially_paused = 1;
     if (fvm_desktop_run_source_controlled(0, 0, 0, &control, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
+    FVM_DesktopPlaybackMailbox *mailbox = 0;
+    FVM_DesktopPlaybackSnapshot snapshot;
+    if (!fvm_desktop_playback_snapshot_init(&snapshot) ||
+        fvm_desktop_playback_mailbox_create(&mailbox) != FVM_OK ||
+        fvm_desktop_playback_mailbox_poll(mailbox, &snapshot) != FVM_NOT_FOUND ||
+        fvm_desktop_playback_mailbox_active() != 1 ||
+        fvm_desktop_playback_mailbox_notify(0, mailbox) != FVM_DESKTOP_PLAYBACK_STOP ||
+        !fvm_desktop_playback_mailbox_load_notify(0, mailbox) ||
+        fvm_desktop_playback_mailbox_post(mailbox, FVM_DESKTOP_PLAYBACK_STOP) != FVM_OK ||
+        !fvm_desktop_playback_mailbox_stop_requested(mailbox) ||
+        fvm_desktop_shutdown() != FVM_ERROR ||
+        fvm_desktop_playback_mailbox_release(mailbox) != FVM_OK)
+        return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;
     FVM_DesktopBuildInfo info;

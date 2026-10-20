@@ -55,6 +55,16 @@ extern "C"
      * Reading does not consume STOP. Safe on provider/controller threads; no VM calls. */
     FVM_DESKTOP_API int
     fvm_desktop_playback_mailbox_stop_requested(FVM_DesktopPlaybackMailbox *mailbox);
+    /* Owner-thread adapter for control.notify; userdata is this mailbox. Copies bounded native
+     * observations then returns latest intent. Never stores/dereferences context/root. Null or
+     * malformed input fails closed with STOP. Bind one mailbox to one synchronous source run. */
+    FVM_DESKTOP_API FVM_DesktopPlaybackCommand
+    fvm_desktop_playback_mailbox_notify(const FVM_DesktopPlaybackState *state, void *userdata);
+    /* Owner-only load-monitor adapter: return terminal cancellation without consuming STOP.
+     * Use the same mailbox as control.notify to stop startup and blocking provider waits too.
+     * PAUSE/RESUME/STEP stay pending until a playback notification; no VM work occurs here. */
+    FVM_DESKTOP_API int fvm_desktop_playback_mailbox_load_notify(const FVM_DesktopLoadEvent *event,
+                                                                 void *userdata);
     /* Live native handles protect SDK shutdown, independently of active transfer jobs. */
     FVM_DESKTOP_API unsigned int fvm_desktop_playback_mailbox_active(void);
 #ifdef __cplusplus

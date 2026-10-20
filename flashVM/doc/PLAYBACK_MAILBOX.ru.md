@@ -51,7 +51,7 @@ native mutex, не ждёт кадра/сети и не входит в VM. Ск
 без потребления команды. Возвращает 1 для STOP, null или ошибки mutex; иначе 0.
 Доступен до появления первого снимка, в том числе при начальной загрузке.
 
-[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L59)()` возвращает число живых native-объектов без
+[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` возвращает число живых native-объектов без
 запуска SDK. [fvm_desktop_shutdown](../frontend/common/player.h#L53)()` возвращает ERROR, пока остаётся хотя бы один
 ящик, даже без открытого окна/задания; активный SDK при этом не изменяется.
 
@@ -69,3 +69,51 @@ native mutex, не ждёт кадра/сети и не входит в VM. Ск
 `playback_mailbox_allocation.c` инжектирует отказы native-памяти/mutex и проверяет
 откат квоты. Это bounded-протокол, не длительное stress/реальное GUI-тестирование.
 Нативные запуски остальных ОС/устройств и все девять стадий плана остаются открытыми.
+
+## Адаптеры запуска с v0.714
+
+[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L62)(state, userdata)` — callback владельца для
+control.notify; userdata равен ящику. Копирует наблюдение и возвращает намерение,
+не сохраняя и не разыменовывая заимствованные context/root. Неверный снимок/
+handle/source приводит к STOP. Без ожидающей команды возвращается KEEP.
+Публикация потребляет неокончательную команду; STOP остаётся для следующих вызовов.
+
+[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L66)(event, userdata)` — callback владельца
+для load monitor. Возвращает ту же непотребляемую отмену, включая время до READY
+и блокирующее ожидание provider; null event/userdata или ошибка lock останавливают.
+PAUSE/RESUME/STEP ждут playback-уведомления и не приостанавливают provider.
+Возвращаемое значение на terminal-событиях, как прежде, игнорируется. Чтобы отменять
+старт до импорта, задайте явный background provider и оба callback, а не ждите
+playback READY до загрузки.
+
+```c
+fvm_desktop_playback_control_init(&control);
+control.initially_paused = 1;
+control.notify = fvm_desktop_playback_mailbox_notify;
+control.userdata = mailbox;
+fvm_desktop_load_monitor_init(&monitor);
+monitor.notify = fvm_desktop_playback_mailbox_load_notify;
+monitor.userdata = mailbox;
+/* Передайте control/monitor и явный provider управляемому фоновому запуску. */
+```
+
+Это эскиз привязки; исполняемый пример описывает полную очистку. OK от post означает
+передачу native-намерения, не завершение такта VM. Снимок содержит состояние до
+применения возвращённой команды; подтверждение новой паузы/такта появляется позже.
+STOP кооперативен: не прерывает выполняющуюся инструкцию/native callback, DNS или
+некооперативный provider. Существующий owner-loop опрашивает его на паузе и при
+ожидании медленных/последнего кадров.
+
+Ящик не владеет runner и сам не узнаёт о возврате синхронной функции. При любом
+выходе (успех, ранняя ошибка источника, закрытие окна, отмена) хост обязан выставить
+свой признак завершения контроллеру и дождаться его до release. Иначе worker,
+ожидающий первый READY после ошибки импорта, может ждать бесконечно. Сохранённый
+снимок — история наблюдения, а не доказательство, что прежняя VM ещё существует.
+
+Live-тесты интерпретатора/JIT используют настоящий OS-поток контроллера, источники
+FILE/MEMORY/HTTP, GC/запросы только у владельца, подтверждённые шаги, продолжение/
+паузу, остановку медленного фильма без таймеров, STOP до startup I/O, отмену после
+начала тела стартового ответа и дочернего запроса в async/blocking режимах,
+очистку после runtime/ранней ошибки импорта. Без provider явно опускаются только
+сетевые подслучаи. Нативная приёмка других ОС, физических устройств, race-detector/
+endurance и полного отладчика остаётся открытой; стадии плана не закрываются.
