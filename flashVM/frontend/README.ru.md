@@ -122,3 +122,5 @@ Escape/Android back остаются зарезервированы для за�
 [Восстановление изображения](../doc/PLAYER_RECOVERY.ru.md).
 
 [Колесо и курсор](../doc/PLAYER_WHEEL_CURSOR.ru.md).
+
+[Ограниченная обработка событий](../doc/PLAYER_EVENT_FAIRNESS.ru.md).

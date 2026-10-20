@@ -123,3 +123,5 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 [Presentation recovery](../doc/PLAYER_RECOVERY.md).
 
 [Wheel and cursor bridge](../doc/PLAYER_WHEEL_CURSOR.md).
+
+[Bounded event processing](../doc/PLAYER_EVENT_FAIRNESS.md).

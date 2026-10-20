@@ -544,9 +544,15 @@ FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *view, FVM_Context
 int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
 {
     SDL_Event event;
-    while (SDL_PollEvent(&event))
+    unsigned int handled = 0;
+    while (handled < FVM_DESKTOP_EVENT_BATCH && SDL_PollEvent(&event))
+    {
+        ++handled;
         if (!handle_event(view, &event))
             return 0;
+    }
+    if (handled == FVM_DESKTOP_EVENT_BATCH)
+        return 1; /* Yield to input delivery/timers/GC; do not block behind queued records. */
     if (timeout_ms > 0 && SDL_WaitEventTimeout(&event, timeout_ms))
         return handle_event(view, &event);
     return 1;

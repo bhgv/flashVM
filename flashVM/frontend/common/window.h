@@ -7,6 +7,7 @@
 #include "flashvm/input.h"
 #define FVM_DESKTOP_PENDING_EVENTS                                                                 \
     128U /* Fixed main-thread FIFO capacity; overflow is an explicit error. */
+#define FVM_DESKTOP_EVENT_BATCH 64U /* Maximum SDL records handled by one owner-thread poll. */
 #define FVM_DESKTOP_TOUCH_MOUSE_HINT                                                               \
     "SDL_TOUCH_MOUSE_EVENTS" /* Disable generated mouse duplicates. */
 #define FVM_DESKTOP_MOUSE_TOUCH_HINT                                                               \
@@ -52,7 +53,8 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned 
 /* Upload/present and retain one owned packed RGBA snapshot; source bytes are borrowed
  * only during this call. Closing the window releases the native copy. */
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);
-/* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
+/* Handle at most EVENT_BATCH records. Wait only after draining below that budget;
+ * return zero on close/Escape. Remaining events stay queued for the next VM turn. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
 /* Apply the VM visibility request on the SDL owner thread. Background calls defer
  * application; close restores the visibility captured when this host opened. */
