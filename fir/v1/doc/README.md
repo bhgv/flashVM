@@ -9,3 +9,5 @@
 - [Tutorials](../examples/README.md), [build/viewer](../README.md).
 
 [Build and complete workflow](PIPELINE.md).
+
+[Working source syntax](SOURCE_SYNTAX.md).

@@ -123,7 +123,7 @@ with tempfile.TemporaryDirectory() as directory:
         exercise((folder / 'variables.fir').read_text(), expected)
     for program in ('var x = x + 1;', 'x = 1;', 'var x = 1; var x = 2;',
                     'var x:String = 1;', 'var x = 1; trace(y);',
-                    'var x;', 'var x = 1; x += 2;',
+                    'var x;',
                     'var ' + 'x' * 256 + ' = 1;',
                     ' '.join(f'var x{i} = {i};' for i in range(257))):
         inp.write_text(program)
@@ -135,6 +135,30 @@ with tempfile.TemporaryDirectory() as directory:
     inp.write_text('trace(1e2 - 2 * 3);')
     call(SOURCE, 'as3', '--input', inp, opt)
     exercise(opt.read_text(), '94\n')
+
+    for language in ('as1','as2','as3'):
+        inp.write_text((ROOT/'examples'/language/'syntax.as').read_text())
+        call(SOURCE,language,'--input',inp,opt)
+        exercise(opt.read_text(),(ROOT/'examples'/language/'syntax.txt').read_text())
+    inp.write_text('const rate:Number=2, base:Number=0x10; var x=-(base + .5); x *= rate; trace(x);')
+    call(SOURCE,'as3','--input',inp,opt)
+    exercise(opt.read_text(),'-33\n')
+    inp.write_text('# Native Limbo comment\nimplement V; V: module { value: fn(): int; }; value(): int { x:=2r1010; y:int=16r20; x+=y; x *= -1; return -(x); }')
+    call(SOURCE,'limbo','--input',inp,opt)
+    exercise(opt.read_text(),'42\n')
+    for expression,expected in [('-16r80000000','-2147483648\n'),('36r10','36\n')]:
+        inp.write_text('implement V; V: module { value: fn(): int; }; value(): int { return '+expression+'; }')
+        call(SOURCE,'limbo','--input',inp,opt);exercise(opt.read_text(),expected)
+    for language,program in [('as1','const x=1;'),('as2','const x=1;'),
+        ('as3','const x=1; x+=2;'),('as3','const x=1; x=2;'),
+        ('as2','# wrong profile\ntrace(1);'),('as2','trace(16r20);'),
+        ('as2','var x=1; trace(++x);'),('as2','trace(--1);'),
+        ('as2','trace('+'+ '*100+'1);')]:
+        inp.write_text(program);opt.write_bytes(b'keep')
+        call(SOURCE,language,'--input',inp,opt,good=False);assert opt.read_bytes()==b'keep'
+    for literal in ['1r0','37r1','2r2','16r80000000','1.0','0xff']:
+        inp.write_text('implement V; V: module { value: fn(): int; }; value(): int { return '+literal+'; }')
+        call(SOURCE,'limbo','--input',inp,opt,good=False)
 
     # Full-width integer products catch double precision loss and shift mistakes.
     random.seed(611)

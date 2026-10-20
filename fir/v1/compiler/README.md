@@ -33,3 +33,5 @@ task, streams and options; `fir_optimise` operates directly on a module;
 a stable binary ABI is not promised. CLI: 0 success, 1 pipeline/output failure,
 2 usage/initial opening failure. Validation failures preserve existing output;
 write failures may leave a partial file.
+
+[Working source syntax](../doc/SOURCE_SYNTAX.md).

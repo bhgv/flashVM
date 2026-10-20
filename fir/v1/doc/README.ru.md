@@ -9,3 +9,5 @@
 - [Примеры](../examples/README.ru.md), [сборка/просмотр](../README.ru.md).
 
 [Сборка и полный цикл](PIPELINE.ru.md).
+
+[Рабочий source-синтаксис](SOURCE_SYNTAX.ru.md).

@@ -11,11 +11,33 @@ static void capture(void)
     source_token(text, S_Line, S_Len >= 256);
 }
 static int depth;
+/* Signed literals need a direct path for the i32 minimum; general unary
+ * expressions share the bounded group/unary depth counter. */
+static int LiteralAhead(void)
+{
+    long pos=S_NextPos+S_NextLen;
+    for(;;) {
+        int ch=S_CurrentCh(pos),next=S_CurrentCh(pos+1);
+        if(ch==' ' || ch==9 || ch==10 || ch==13) ++pos;
+        else if(ch=='#' || (ch=='/' && next=='/')) {
+            while(S_CurrentCh(pos) && S_CurrentCh(pos)!=10) ++pos;
+        } else if(ch=='/' && next=='*') {
+            pos+=2;
+            while(S_CurrentCh(pos) && !(S_CurrentCh(pos)=='*' && S_CurrentCh(pos+1)=='/')) ++pos;
+            if(!S_CurrentCh(pos)) return 0;
+            pos+=2;
+        } else return (ch>='0' && ch<='9') || (ch=='.' && next>='0' && next<='9');
+    }
+}
 CHARACTERS
   /* Portable module identifiers. */
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" .
   /* Decimal literals with exponent; division is outside this subset. */
   digit = "0123456789" .
+  /* Hexadecimal digits for ActionScript literals. */
+  hex = digit + "abcdefABCDEF" .
+  /* Radix digits are checked against the selected base by C99 lowering. */
+  alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
   /* Comment bytes excluding EOF and line delimiters. */
   linebyte = ANY - CHR(0) - CHR(10) - CHR(13) .
   /* Non-nesting block comment components. */
@@ -25,9 +47,17 @@ TOKENS
   /* Module name; keywords are distinguished by the generated scanner. */
   ident = letter {letter | digit} .
   /* Nonnegative number; unary minus belongs to Primary. */
-  numeral = digit {digit} ["." digit {digit}]
+  numeral = (digit {digit} ["." {digit}] | "." digit {digit})
             [("e" | "E") ["+" | "-"] digit {digit}] .
+  /* Hex belongs to AS; explicit radix belongs to Limbo. Semantic checks reject
+   * the wrong language rather than silently choosing different arithmetic. */
+  hexnum = "0" ("x" | "X") hex {hex} .
+  radix = digit {digit} ("r" | "R") (digit | alpha) {digit | alpha} .
+  /* Prevent ++/-- from being silently read as two unary operators. */
+  increment = "++" | "--" .
 PRAGMAS
+  /* Native Limbo comments; their use in AS profiles is a semantic error. */
+  hashcomment = "#" {linebyte} . (. source_hash_comment(); .)
   /* Human-readable tutorial comments are ignored by parsing. */
   linecomment = "//" {linebyte} .
   /* Closing delimiter is required, including at EOF. */
@@ -36,14 +66,25 @@ IGNORE CHR(9) + CHR(10) + CHR(13)
 PRODUCTIONS
   /* Entire input must match exactly one supported tutorial profile. */
   Src1 = ( TraceProgram | LimboProgram ) EOF .
-  /* Numeric statements have one function-wide binding environment. */
+  /* Empty statements emit no instruction; at least one statement is required. */
   TraceProgram = (. source_language(0); .) Statement {Statement} .
-  /* Initialized declaration, assignment or trace. No implicit globals. */
-  Statement = (. int name = 0, value = 0; .)
+  /* Declarations bind left-to-right; assignment is a statement, not an expression. */
+  Statement = (. int name=0,value=0,op=0; .)
       ( "trace" "(" Expression<&value> ")" ";" (. source_trace(value); .)
-      | "var" Name<&name> [ ":" ident (. capture(); source_annotation(); .) ]
-        "=" Expression<&value> ";" (. source_bind(name, value, 1); .)
-      | Name<&name> "=" Expression<&value> ";" (. source_bind(name, value, 0); .) ) .
+      | ASDeclaration ";"
+      | Name<&name> AssignmentOperator<&op> Expression<&value> ";"
+        (. source_assign(name,value,op); .)
+      | ";" ) .
+  /* AS3 const is enforced by the binding table, not merely accepted as spelling. */
+  ASDeclaration = (. int constant=0; .)
+    ("var" | "const" (. constant=1; .)) Binding<constant> { "," Binding<constant> } .
+  /* Every numeric binding needs an initializer in this restricted profile. */
+  Binding<int constant> = (. int name=0,value=0; .)
+    Name<&name> [ ":" ident (. capture(); source_annotation(); .) ]
+    "=" Expression<&value> (. source_declare(name,value,constant); .) .
+  /* Only supported compound arithmetic is admitted; /= is not a fallback. */
+  AssignmentOperator<int *op> = "=" (. *op=0; .) | "+=" (. *op='+'; .)
+    | "-=" (. *op='-'; .) | "*=" (. *op='*'; .) .
   /* Intern a source identifier separately from reading its current binding. */
   Name<int *name> = ident (. capture(); *name = source_name(); .) .
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
@@ -53,11 +94,13 @@ PRODUCTIONS
       ":" "module" "{" "value" ":" "fn" "(" ")" ":" "int" ";" "}" ";"
       "value" "(" ")" ":" "int" "{" {LimboStatement}
       "return" Expression<&value> ";" "}" (. source_trace(value); .) .
-  /* Explicit initialized int declarations and reassignment, in source order. */
-  LimboStatement = (. int name = 0, value = 0; .)
-      Name<&name>
-      ( ":" "int" "=" Expression<&value> ";" (. source_bind(name, value, 1); .)
-      | "=" Expression<&value> ";" (. source_bind(name, value, 0); .) ) .
+  /* Limbo inferred declarations and initialized int declarations stay distinct
+   * from reassignment. No arbitrary module loader ABI is implied. */
+  LimboStatement = (. int name=0,value=0,op=0; .)
+    ";" | Name<&name>
+    ( ":" "int" "=" Expression<&value> ";" (. source_bind(name,value,1); .)
+    | ":=" Expression<&value> ";" (. source_bind(name,value,1); .)
+    | AssignmentOperator<&op> Expression<&value> ";" (. source_assign(name,value,op); .) ) .
   /* Addition/subtraction bind less tightly than multiplication, left to right. */
   Expression<int *result> = (. int right = 0, op = 0; .)
       Product<result>
@@ -65,12 +108,21 @@ PRODUCTIONS
         (. *result = source_binary(*result, right, op); .) } .
   /* Multiplication is left associative. */
   Product<int *result> = (. int right = 0; .)
-      Primary<result> { "*" Primary<&right> (. *result = source_binary(*result, right, '*'); .) } .
-  /* Parentheses recurse only within the documented 64-level limit.
-   * The resolver tests depth without consuming tokens. Minus applies to a
-   * literal, not an arbitrary subexpression, in this first subset. */
-  Primary<int *result> = (. int negative = 0, name = 0; .)
-      ( IF(Sym == LparenSym && depth < 64) "(" (. ++depth; .) Expression<result> ")" (. --depth; .)
-      | Name<&name> (. *result = source_read(name); .)
-      | ["-" (. negative = 1; .)] numeral (. capture(); *result = source_constant(negative); .) ) .
+      Unary<result> { "*" Unary<&right> (. *result = source_binary(*result, right, '*'); .) } .
+  /* Signed literal branches preserve INT32_MIN; other unary chains are bounded. */
+  Unary<int *result> = (. int negative=0; .)
+      IF(Sym==MinusSym && LiteralAhead()) "-" Literal<result,1>
+    | IF(Sym==PlusSym && LiteralAhead()) "+" Literal<result,0>
+    | IF((Sym==PlusSym || Sym==MinusSym) && depth<64)
+      ("+" | "-" (. negative=1; .)) (. ++depth; .) Unary<result>
+      (. --depth; if(negative) *result=source_negate(*result); .)
+    | Primary<result> .
+  /* The shared literal path always captures the complete consumed token. */
+  Literal<int *result,int negative> = (numeral | hexnum | radix)
+    (. capture(); *result=source_constant(negative); .) .
+  /* Groups and unary operators share a maximum nesting of 64. */
+  Primary<int *result> = (. int name=0; .)
+      IF(Sym==LparenSym && depth<64) "(" (. ++depth; .) Expression<result> ")" (. --depth; .)
+    | Name<&name> (. *result=source_read(name); .)
+    | Literal<result,0> .
 END Src1.

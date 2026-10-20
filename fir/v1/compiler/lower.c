@@ -12,7 +12,7 @@ static char token[256];
 static int integer_mode, serial, failed, profile;
 static char module_name[256];
 static char names[256][256];
-static int bindings[256], name_count, source_line;
+static int bindings[256], immutable[256], name_count, source_line;
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language, char *error, size_t capacity)
 {
@@ -34,24 +34,52 @@ static void spelling(char *out)
 {
     strcpy(out, token);
 }
-/* Emit a finite literal with explicit language arithmetic semantics. */
+/* Checked radix conversion for the i32 tutorial profile, including INT32_MIN. */
+static int32_t integer_literal(const char *text, int negative)
+{
+    const char *digits=text,*r=strchr(text,'r');
+    uint32_t value=0,limit=negative ? UINT32_C(2147483648) : UINT32_C(2147483647);
+    unsigned base=10,digit;
+    if(!r) r=strchr(text,'R');
+    if(r) {
+        base=0;
+        while(digits<r) {
+            if(*digits<'0' || *digits>'9' || base>36) { reject("invalid Limbo radix"); return 0; }
+            base=base*10+(unsigned)(*digits++-'0');
+        }
+        if(base<2 || base>36) { reject("Limbo radix must be 2..36"); return 0; }
+        digits=r+1;
+    }
+    if(!*digits) { reject("missing integer digits"); return 0; }
+    for(;*digits;++digits) {
+        unsigned ch=(unsigned char)*digits;
+        if(ch>='0' && ch<='9') digit=ch-'0';
+        else if(ch>='a' && ch<='z') digit=ch-'a'+10;
+        else if(ch>='A' && ch<='Z') digit=ch-'A'+10;
+        else { reject("Limbo requires an integer literal"); return 0; }
+        if(digit>=base || value>(limit-digit)/base) { reject("invalid digit or literal outside i32 profile"); return 0; }
+        value=value*base+digit;
+    }
+    return negative ? value==UINT32_C(2147483648) ? INT32_MIN : -(int32_t)value : (int32_t)value;
+}
+/* AS numeric literals are binary64; Limbo retains checked i32 spellings. */
 int source_constant(int negative)
 {
-    char text[256], *end;
-    double value;
-    int result = serial++;
-    spelling(text); errno = 0; value = strtod(text, &end);
-    if (negative) value = -value;
-    if (!text[0] || *end || errno || !isfinite(value)) reject("invalid literal");
-    if (integer_mode && strpbrk(text, ".eE")) reject("Limbo int literal requires a decimal integer spelling");
-    if (integer_mode && (value < INT32_MIN || value > INT32_MAX || value != (double)(int32_t)value))
-        reject("Limbo literal outside i32 range");
-    if (serial > 1000) reject("expression size limit exceeded");
-    if (failed) return result;
-    fprintf(destination, "    %%v%d: %s = const.%s ", result,
-            integer_mode ? "i32" : "f64", integer_mode ? "i32" : "f64");
-    if (integer_mode) fprintf(destination, "%ld\n", (long)(int32_t)value);
-    else fprintf(destination, "%.17g\n", value);
+    char text[256],*end; double value=0; int32_t integer=0;
+    int result=serial++;
+    spelling(text);
+    if(integer_mode) integer=integer_literal(text,negative);
+    else {
+        errno=0; value=strtod(text,&end);
+        if(negative) value=-value;
+        if(!text[0] || *end || errno || !isfinite(value)) reject("invalid finite AS numeric literal");
+    }
+    if(serial>1000) reject("expression size limit exceeded");
+    if(!failed) {
+        fprintf(destination,"    %%v%d: %s = const.%s ",result,integer_mode ? "i32" : "f64",integer_mode ? "i32" : "f64");
+        if(integer_mode) fprintf(destination,"%ld\n",(long)integer);
+        else fprintf(destination,"%.17g\n",value);
+    }
     return result;
 }
 /* Emit a three-address instruction; source operators are left associative. */
@@ -77,7 +105,7 @@ int source_name(void)
     int i;
     for (i = 0; i < name_count; ++i) if (!strcmp(names[i], token)) return i;
     if (name_count == 256) { reject("variable limit exceeded"); return 0; }
-    strcpy(names[name_count], token); bindings[name_count] = -1;
+    strcpy(names[name_count], token); bindings[name_count] = -1; immutable[name_count]=0;
     return name_count++;
 }
 int source_read(int name)
@@ -88,6 +116,7 @@ int source_read(int name)
 void source_bind(int name, int value, int declaration)
 {
     if (declaration && bindings[name] >= 0) reject("duplicate declaration");
+    if (!declaration && immutable[name]) reject("assignment to const binding");
     if (!declaration && bindings[name] < 0) reject("assignment before declaration");
     bindings[name] = value;
 }
@@ -108,4 +137,26 @@ void source_module(int first)
 void source_language(int limbo)
 {
     if (integer_mode != limbo) reject("source does not match selected language");
+}
+/* Unary minus is multiplication by -1: unlike 0-x this preserves AS -0. */
+int source_negate(int value)
+{
+    int minus=serial++;
+    if(serial>1000) reject("expression size limit exceeded");
+    if(!failed) fprintf(destination,"    %%v%d: %s = const.%s -1\n",minus,integer_mode ? "i32" : "f64",integer_mode ? "i32" : "f64");
+    return source_binary(value,minus,'*');
+}
+void source_declare(int name,int value,int constant)
+{
+    if(constant && profile!=3) reject("const declaration requires AS3 profile");
+    source_bind(name,value,1); immutable[name]=constant;
+}
+void source_assign(int name,int value,int op)
+{
+    if(op) value=source_binary(source_read(name),value,op);
+    source_bind(name,value,0);
+}
+void source_hash_comment(void)
+{
+    if(!integer_mode) reject("# comments require Limbo profile");
 }

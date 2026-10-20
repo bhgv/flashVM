@@ -14,4 +14,8 @@ void source_annotation(void);
 void source_trace(int);
 void source_module(int);
 void source_language(int);
+int source_negate(int);
+void source_declare(int,int,int);
+void source_assign(int,int,int);
+void source_hash_comment(void);
 #endif
