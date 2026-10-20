@@ -1,6 +1,6 @@
 # Native release evidence
 
-v0.641. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
+v0.642. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
 
 [validate_platform.py](../scripts/validate_platform.py) now writes schema 2
 platform-evidence.json. Each profile retains commands, compiler identities,
@@ -38,3 +38,18 @@ Regression evidence: nine CTest-evidence tests include actual filtered, skipped
 and disabled CTest runs; seven source-identity tests verify source drift and
 failure replacing an earlier successful report. These are Linux tool tests,
 not native Windows/macOS/Android acceptance or full Flash conformance.
+
+## Native target and ABI — v0.642
+
+[native_target.py](../scripts/native_target.py) reads only the active CMake
+version directory; stale CMakeSystem.cmake files cannot replace or invalidate it.
+Literal complete nonconflicting host/target fields and FALSE cross mode are
+required. OS, normalized architecture and both compiler pointer widths must
+match the running reporter. An Android or ARM target on Linux x64 is rejected
+before build/test. A 32-bit target from 64-bit Python requires a separate matching
+validation environment. The native reporter covers Linux/Windows/macOS; Android
+requires separate device acceptance.
+
+Seven tests validate metadata policy; Windows/macOS/RISC-V cases are fixtures,
+not foreign-platform executions. The actual active Linux x86-64 GNU C/C++
+configuration separately passed the identity check.

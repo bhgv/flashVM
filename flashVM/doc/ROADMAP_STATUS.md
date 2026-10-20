@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.641
+# FlashVM stage status / Состояние стадий — v0.642
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,14 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.642 active native target / Нативная цель и ABI
+
+The native reporter validates active CMake OS/architecture, non-cross mode and
+C/C++ pointer ABI against the executing process. Stale metadata is ignored.
+Seven policy tests and the real Linux x86-64 configuration pass; foreign OS
+fixture branches do not certify those platforms. [EN](RELEASE_EVIDENCE.md) /
+[RU](RELEASE_EVIDENCE.ru.md). Все девять стадий остаются открытыми.
 
 ## v0.641 complete CTest execution evidence / Полнота CTest
 

@@ -19,6 +19,7 @@ import sys
 import tempfile
 from elf_dependencies import validate_elf_dependencies
 from ctest_evidence import inventory, results
+from native_target import validate_native_target
 
 
 def source_identity(root):
@@ -237,14 +238,10 @@ def main():
                 command += ['-G', args.generator]
             execute('configure', command)
             cache = cache_values(build / 'CMakeCache.txt')
-            # CMAKE_CROSSCOMPILING is not a cache variable. The generated system
-            # description is authoritative even for an existing build directory.
-            systems = list((build / 'CMakeFiles').glob('*/CMakeSystem.cmake'))
-            if not systems or any('set(CMAKE_CROSSCOMPILING "TRUE")' in p.read_text() for p in systems):
-                raise RuntimeError('native validation requires a native CMake target')
             record['compiler'] = {key: cache.get(key) for key in
                                   ['CMAKE_C_COMPILER', 'CMAKE_CXX_COMPILER', 'CMAKE_GENERATOR']}
             record['toolchains'] = compiler_identities(build, cache)
+            record['native_target'] = validate_native_target(build, cache, record['toolchains'])
             execute('build', [args.cmake, '--build', str(build), '--config', 'Release',
                               '--parallel', str(args.jobs)])
             # Isolate CTest from inherited filters that could silently reduce evidence.

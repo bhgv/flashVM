@@ -117,6 +117,7 @@ class SourceEvidenceTests(unittest.TestCase):
                 patch.object(runner, 'tool_version', return_value='fixture 4.0.0'), \
                 patch.object(runner, 'cache_values', return_value={}), \
                 patch.object(runner, 'compiler_identities', return_value={}), \
+                patch.object(runner, 'validate_native_target', return_value={}), \
                 patch.object(runner.subprocess, 'run', side_effect=execute), \
                 patch.object(runner.sys, 'argv', ['validate_platform.py', '--profile', 'minimal']), \
                 patch.dict(os.environ, {}, clear=True), \
