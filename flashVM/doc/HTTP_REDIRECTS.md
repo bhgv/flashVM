@@ -1,4 +1,4 @@
-# Bounded HTTP GET redirects (v0.689)
+# Bounded HTTP GET redirects (v0.690)
 
 [Русский](HTTP_REDIRECTS.ru.md) · [Socket transport](SOCKET_TRANSPORT.md) ·
 [Load monitoring](LOAD_MONITOR.md).
@@ -9,7 +9,7 @@
 policy as required userdata. The worker adapter additionally borrows [FVM_NetControl](../ports/network/socket.h#L21).
 Existing socket options, controlled requests and callbacks keep their ABI/behavior.
 
-Choose max_redirects=0..FVM_HTTP_REDIRECT_MAX (8), connect_ms>0 and <=total_ms,
+Choose max_redirects=0..[FVM_HTTP_REDIRECT_MAX](../frontend/common/http_policy.h#L6) (8), connect_ms>0 and <=total_ms,
 total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L8) (120s), optional ca_file. Invalid policy starts no I/O.
 The total budget spans every connection/header/body, including elapsed DNS, with
 monotonic rollover-safe samples. DNS/CA/user callbacks remain non-preemptible.
@@ -64,7 +64,7 @@ provider. Old source/options/loader/monitor layouts remain unchanged. Invalid
 policy/monitor fails before I/O/callback/window. Provider-less local/memory playback
 remains available; network input is unsupported. Observer stop ends the playlist.
 
-`--redirects N` accepts strict integer0..8 and requires --async-loads or
+`--redirects N` accepts strict integer 0..8 and requires --async-loads or
 --background-loads. Missing/duplicate/negative/fractional/out-of-range input fails
 before startup; after -- the spelling is a literal filename. It selects the same
 C policy runner, preserving optional --load-timeout/--load-progress. Existing CLI
@@ -77,6 +77,44 @@ exercises four logical resources/eight HTTP requests with moved root/child/form
 bases. Actual player regressions cover interpreter/JIT, waiting/async, native HTTPS,
 C source/memory entrypoints, stop-before-I/O, malformed policy and old no-redirect
 negative controls. This remains bounded GET loading, not full Flash network APIs.
+
+## Explicit console trust files (v0.690)
+
+`--http-ca-file PATH` selects the same network-policy runner and borrows a nonempty
+bounded PEM path. It requires --async-loads or --background-loads; duplicate/missing/
+empty paths are argument errors. No redirects are enabled implicitly. A supplied
+PEM applies independently to every TLS connection, with peer/hostname checks still
+required. Missing/unreadable/untrusted files fail playback before importing bytes.
+Local sources do not open trust files until they actually request HTTPS.
+
+```sh
+./build-redirect/frontend/flashvm_player --async-loads --redirects 3 --http-ca-file /path/to/ca.pem --loads 4 --frames 700 --fps 1000 --mute https://example.test/start.swf
+```
+
+C/IDE callers set policy.ca_file directly. The tutorial alone reads FLASHVM_CA_FILE
+before runner entry; the SDK does not read that custom environment variable or
+install global trust state. Keep the path and provider SDK alive/immutable through
+joined return. Native and libcurl tests use the explicit file instead of relying
+on ambient system CA variables. They cover full redirected HTTP/HTTPS playback,
+HTTPS without redirects, missing trust, C/memory origins and CLI argument failures.
+A curl SDK without HTTPS explicitly skips TLS-only tests; it is not certified for TLS.
+
+## Validation of this series
+
+The selected native run has 99 checks: 98 pass directly, and the loading example
+passes after restoring an executable permission lost on its build artifact.
+Four redirect HTTP/TLS/player tests pass again on the final sources. Shared
+native-TLS passes 24 checks; shared libcurl passes 20 plus the final four redirect
+reruns. Three provider-less ABI/metadata/job checks also pass. C-only UBSan covers player/transfer, native HTTP framing, URI/redirect and
+clock modules with actual HTTP/TLS, interpreter/JIT, C/memory playback fixtures.
+The VM, SDL, native socket/TLS primitives and OpenSSL remain ordinary dependencies
+in that sanitizer probe; no whole-process leak/ThreadSanitizer claim is made.
+
+Player and the new C example cross-link for Linux ARM64/RISC-V64 and Windows
+x86_64. Windows DLL and C/C++98 ABI/source-policy consumers link. Foreign binaries
+are not executed. Tutorial comments/API tables, source links and sorted catalog
+pass. These are bounded transport/player results; full Flash semantics and all
+nine roadmap stages, including stage9 native platform/device acceptance, stay open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

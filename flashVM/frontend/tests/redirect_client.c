@@ -34,6 +34,14 @@ int main(int argc, char **argv)
     FVM_Result result;
     unsigned long started;
     char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+    if (argc == 2 && !strcmp(argv[1], "--capabilities")) {
+#ifdef FVM_DESKTOP_HTTP
+        printf("%u\n", fvm_desktop_http_capabilities());
+#else
+        printf("%u\n", fvm_desktop_socket_capabilities());
+#endif
+        return 0;
+    }
     if (argc != 5 && argc != 6) return 2;
 #ifdef _WIN32
     _setmode(_fileno(stdout), _O_BINARY);

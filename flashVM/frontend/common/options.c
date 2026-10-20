@@ -345,6 +345,7 @@ void fvm_desktop_help(const char *program)
     puts(
         "  --async-loads           Keep timeline/timers running during network child/form fetches");
     puts("  --background-loads      Fetch network bytes on joined workers; pump the active window");
+    puts("  --http-ca-file PATH     Explicit PEM trust for every TLS hop; requires a worker load mode");
     puts("  --redirects N           Explicit HTTP GET redirect profile, 0..8 transitions per load");
     puts("                          Requires --async-loads or --background-loads; default disabled");
     puts("  --load-timeout MS       Total cooperative job budget, 0..2147483647 (0 disables)");

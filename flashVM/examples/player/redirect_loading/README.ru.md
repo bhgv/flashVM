@@ -33,8 +33,8 @@ python3 flashVM/examples/player/redirect_loading/serve.py 8000
 ./build-redirect/frontend/flashvm_player --async-loads --redirects 3 --loads 4 --load-progress --frames 700 --fps 1000 --mute http://127.0.0.1:8000/start.swf
 ```
 
-Обычный запуск: пустая assertion stage, восемь запросов, четыре load ID, exit0.
-Stop-пример: BEGIN/CANCELLED без HTTP запросов и player view, exit0. max_loads=4
+Обычный запуск: пустая assertion stage, восемь запросов, четыре load ID, exit 0.
+Stop-пример: BEGIN/CANCELLED без HTTP запросов и player view, exit 0. max_loads=4
 и per-resource max_redirects=3 независимы. Короткий loopback-пример использует
 700 тиков/1000FPS; для фильмов выберите обычный FPS и свою stop/frame policy.
 Сервер слушает только loopback, Ctrl-C завершает его.
@@ -58,3 +58,14 @@ policy.ca_file для явного PEM trust. Static/shared SDK, target CPU/tool
 | [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Async delivery and caller-owned observer policy. |
 | [fvm_desktop_run_source_network](../../../frontend/common/network_loader.h#L22) | Whole-player source call; default provider honors HTTP policy on every logical resource. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | Cleanup after workers join and owner disposes the active view. |
+
+Для внешнего HTTPS сервера пример принимает явный PEM через FLASHVM_CA_FILE:
+это настройка example host, не глобальная настройка SDK.
+
+```sh
+FLASHVM_CA_FILE=/path/to/ca.pem ./build-redirect/frontend/flashvm_example_redirect_loading https://example.test/start.swf
+```
+
+CLI использует --http-ca-file PATH, C/IDE — policy.ca_file. Локальный serve.py намеренно
+plain HTTP, TLS termination в нём нет. Trust settings неизменны/заимствованы до возврата;
+каждый новый redirect destination проверяет сертификат заново.

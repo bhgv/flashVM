@@ -1772,7 +1772,7 @@ int fvm_desktop_main(int argc, char **argv)
     FVM_DesktopLoadMonitor monitor;
     FVM_DesktopHTTPPolicy network;
     unsigned long redirects;
-    int redirects_selected = 0;
+    int redirects_selected = 0, ca_selected = 0;
     FVM_DesktopCLIProgress progress;
     int timeout_selected = 0, progress_selected = 0;
     const char *error = 0;
@@ -1800,7 +1800,17 @@ int fvm_desktop_main(int argc, char **argv)
     arguments[0] = argv[0];
     for (i = 1; i < argc; ++i)
     {
-        if (!literal && !strcmp(argv[i], "--redirects"))
+        if (!literal && !strcmp(argv[i], "--http-ca-file"))
+        {
+            if (ca_selected || i + 1 >= argc || !location_size(argv[i + 1]))
+            {
+                error = "invalid or duplicate --http-ca-file";
+                goto argument_failure;
+            }
+            ca_selected = 1;
+            network.ca_file = argv[++i];
+        }
+        else if (!literal && !strcmp(argv[i], "--redirects"))
         {
             if (redirects_selected || i + 1 >= argc || !cli_load_timeout(argv[i + 1], &redirects) ||
                 redirects > FVM_HTTP_REDIRECT_MAX)
@@ -1853,10 +1863,11 @@ int fvm_desktop_main(int argc, char **argv)
             arguments[count++] = argv[i];
         }
     }
-    if ((timeout_selected || progress_selected || redirects_selected) && !background)
+    if ((timeout_selected || progress_selected || redirects_selected || ca_selected) && !background)
     {
-        error = "--load-timeout/--load-progress/--redirects requires --async-loads or "
-                "--background-loads";
+        error =
+            "--load-timeout/--load-progress/--redirects/--http-ca-file requires --async-loads or "
+            "--background-loads";
         goto argument_failure;
     }
     monitor.asynchronous = background == 2;
@@ -1872,7 +1883,8 @@ int fvm_desktop_main(int argc, char **argv)
     }
     else
     {
-        status = redirects_selected ? fvm_desktop_run_network(&options, &network, &monitor, &error)
+        status = (redirects_selected || ca_selected)
+                     ? fvm_desktop_run_network(&options, &network, &monitor, &error)
                  : (timeout_selected || progress_selected)
                      ? fvm_desktop_run_monitored(&options, &monitor, &error)
                  : background == 2 ? fvm_desktop_run_async(&options, &error)

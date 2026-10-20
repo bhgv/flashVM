@@ -26,6 +26,7 @@ class Handler(socketserver.BaseRequestHandler):
         elif path == '/self': location = '/self'
         elif path == '/loopa': location = '/loopb'
         elif path == '/loopb': location = '/loopa'
+        elif path == '/fold': extra = b' Location: /ignored\r\n'
         elif path == '/duplicate': extra = b'Location: /second\r\n'
         elif path == '/missing': location = None
         elif path == '/space': location = '/bad space'
@@ -72,8 +73,9 @@ def main():
             for code in (301,302,303,307,308): probe('/r%d' % code)
             for path in ('/dir/relative','/query?old=1','/scheme','/otherhost'): probe(path)
             for path in ('/self','/loopa','/duplicate','/missing','/space','/userinfo','/file',
-                         '/percent','/backslash','/long','/r300','/r304'):
-                probe(path, expected=1); assert len(Handler.paths) <= 4
+                         '/percent','/backslash','/long','/fold','/r101','/r300','/r304'):
+                result = probe(path, expected=1); assert len(Handler.paths) <= 4
+                assert result.stdout == b'', (path, result.stdout)
             probe('/r302', hops=0, expected=1); assert Handler.paths == ['/r302']
             probe('/r302', hops=9, expected=1); assert not Handler.paths
             probe('/r302', mode='reject', expected=4)

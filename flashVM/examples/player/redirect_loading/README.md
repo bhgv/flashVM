@@ -34,9 +34,9 @@ In another terminal:
 ```
 
 Expected normal run: blank assertion stage, eight requests, four logical load IDs,
-exit0. The stop example emits BEGIN/CANCELLED with no HTTP requests or player view,
-exit0. Logical max_loads=4 and per-resource max_redirects=3 are independent. This
-short loopback tutorial uses700 ticks/1000FPS; choose normal FPS and your own frame/
+exit 0. The stop example emits BEGIN/CANCELLED with no HTTP requests or player view,
+exit 0. Logical max_loads=4 and per-resource max_redirects=3 are independent. This
+short loopback tutorial uses 700 ticks/1000FPS; choose normal FPS and your own frame/
 stop policy for real films. Server binds loopback only and stops with Ctrl-C.
 
 All descriptors, ca_file and observer userdata remain immutable/borrowed until the
@@ -58,3 +58,14 @@ Cross-linking is not foreign execution; dummy SDL is protocol coverage only.
 | [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Async delivery and caller-owned observer policy. |
 | [fvm_desktop_run_source_network](../../../frontend/common/network_loader.h#L22) | Whole-player source call; default provider honors HTTP policy on every logical resource. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | Cleanup after workers join and owner disposes the active view. |
+
+For an external HTTPS server, the tutorial host accepts an explicit PEM via
+FLASHVM_CA_FILE; this is an example-host setting, not SDK global configuration:
+
+```sh
+FLASHVM_CA_FILE=/path/to/ca.pem ./build-redirect/frontend/flashvm_example_redirect_loading https://example.test/start.swf
+```
+
+CLI callers use --http-ca-file PATH; C/IDE callers assign policy.ca_file. The local
+serve.py is deliberately plain HTTP and does not terminate TLS. Keep trust settings
+borrowed/immutable through return; redirects reverify each destination certificate.

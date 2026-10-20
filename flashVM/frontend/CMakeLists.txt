@@ -16,6 +16,9 @@ else()
 endif()
 option(FVM_PLAYER_HTTP "Enable the optional libcurl HTTP(S) player transport" OFF)
 if(FVM_PLAYER_HTTP)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    find_program(FVM_OPENSSL_PROGRAM openssl)
+  endif()
   find_package(CURL 7.62 REQUIRED)
   add_library(flashvm_http_transport STATIC common/http.c common/http_redirect.c common/socket_url.c
     ../ports/network/clock.c)
@@ -754,7 +757,7 @@ if((FVM_PLAYER_SOCKET_HTTP OR FVM_PLAYER_HTTP) AND FVM_BUILD_TESTS AND NOT ANDRO
       add_test(NAME flashvm_redirect_tls COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/redirect_tls.py $<TARGET_FILE:flashvm_redirect_client>
         ${FVM_OPENSSL_PROGRAM})
-      set_tests_properties(flashvm_redirect_tls PROPERTIES TIMEOUT 25)
+      set_tests_properties(flashvm_redirect_tls PROPERTIES TIMEOUT 25 SKIP_RETURN_CODE 77)
     endif()
   endif()
 endif()
@@ -771,7 +774,7 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT AN
         $<TARGET_FILE:flashvm_network_source> $<TARGET_FILE:flashvm_example_redirect_loading>
         ${PROJECT_SOURCE_DIR}/examples/player/redirect_loading)
       set_tests_properties(flashvm_redirect_player PROPERTIES TIMEOUT 35 SKIP_RETURN_CODE 77)
-      if(FVM_PLAYER_SOCKET_TLS AND FVM_OPENSSL_PROGRAM)
+      if((FVM_PLAYER_SOCKET_TLS OR FVM_PLAYER_HTTP) AND FVM_OPENSSL_PROGRAM)
         add_test(NAME flashvm_redirect_player_tls COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tests/redirect_player.py $<TARGET_FILE:flashvm_player>
           $<TARGET_FILE:flashvm_network_source> $<TARGET_FILE:flashvm_example_redirect_loading>

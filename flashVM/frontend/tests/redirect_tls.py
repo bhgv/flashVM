@@ -31,6 +31,7 @@ class Handler(RawHandler):
 
 def main():
     client, openssl = sys.argv[1:]
+    if not int(subprocess.check_output([client,"--capabilities"])) & 2: raise SystemExit(77)
     with tempfile.TemporaryDirectory() as temporary:
         folder = Path(temporary); ca, key = certificates(folder, openssl)
         servers, threads = [], []

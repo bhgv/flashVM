@@ -1,5 +1,6 @@
 /* Follow bounded redirects and keep per-movie final origins through the C host API. */
 #include "player.h" /* Public C89 host, monitor and policy declarations. */
+#include <stdlib.h> /* Read the example host's optional immutable trust-file setting. */
 #include <stdio.h> /* Print bounded diagnostic metadata outside the worker. */
 #include <string.h> /* Compare the optional example-only stop selector. */
 /* The caller owns this state until the synchronous whole-player call returns. */
@@ -54,6 +55,8 @@ int main(int argc, char **argv) /* Ordinary application entrypoint, independent 
     options.fps = 1000; /* Exercise continuing frames/timers while resources arrive. */
     options.mute = 1; /* No audio device is needed for these silent example movies. */
     options.max_loads = 4; /* Four logical resources; intermediate HTTP hops do not consume this. */
+    network.ca_file = /* Optional host setting, borrowed until the runner returns. */
+        getenv("FLASHVM_CA_FILE"); /* The SDK itself reads no custom environment variable. */
     network.max_redirects = 3; /* Bound transitions independently for each resource. */
     monitor.timeout_ms = 5000; /* Total per-network-job budget, with cooperative final join. */
     monitor.notify = progress; /* Callback stays on the owner thread. */

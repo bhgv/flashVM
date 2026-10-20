@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.689
+# FlashVM stage status / Состояние стадий — v0.690
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,16 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.690 adds --http-ca-file without implicit redirects and verifies complete
+HTTP/HTTPS redirected playback with explicit trust on both native and libcurl
+providers, including single HTTPS sources without redirects and missing-trust errors.
+C/IDE uses the same borrowed ca_file policy. 99 selected native checks pass with
+one build-artifact execute-permission rerun, then four final focused redirect checks.
+Shared native-TLS: 24; shared curl: 20 plus final redirect reruns; three no-provider checks. C-only UBSan passes
+HTTP/TLS/player/URI/redirect/clock probes with ordinary VM/SDL/socket/TLS libraries.
+Three foreign player/example builds and Windows DLL C/C++98 consumers cross-link,
+without target execution. All stages remain open.
 
 v0.689 exposes explicit network-policy source/playlist C APIs and --redirects.
 Actual SWFs verify final root/child/form bases, memory origins, waiting/async and

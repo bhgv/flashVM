@@ -3,6 +3,7 @@
 #include "player.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 static unsigned int events, stopped;
 static int notice(const FVM_DesktopLoadEvent *event, void *userdata)
@@ -28,6 +29,7 @@ int main(int argc, char **argv)
     fvm_desktop_load_monitor_init(&monitor);
     fvm_desktop_options_init(&options); options.frames = 700; options.fps = 1000;
     options.mute = 1; options.mode = FVM_EXECUTION_INTERPRETER; options.max_loads = 4;
+    policy.ca_file = getenv("FLASHVM_CA_FILE");
     policy.max_redirects = 3; monitor.notify = notice;
     source.location = argv[1]; source.kind = FVM_DESKTOP_SOURCE_URL;
     source.bytes = 0; source.size = 0;

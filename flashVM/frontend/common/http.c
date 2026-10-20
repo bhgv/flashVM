@@ -32,7 +32,8 @@ static size_t http_write(char *bytes, size_t width, size_t count, void *userdata
         return 0;
     }
     size = width * count;
-    if (state->response && state->response->status >= FVM_DESKTOP_HTTP_SUCCESS_END)
+    if (state->response && (state->response->status < FVM_DESKTOP_HTTP_SUCCESS_MIN ||
+                            state->response->status >= FVM_DESKTOP_HTTP_SUCCESS_END))
         return size; /* Failed/redirect representations are never resource payloads. */
     if (state->status != FVM_OK)
         return 0;

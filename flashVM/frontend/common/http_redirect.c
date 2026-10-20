@@ -73,8 +73,10 @@ int fvm_http_redirect_header(FVM_HTTPResponse *response, const char *bytes, size
     if (size >= 12 && !memcmp(bytes, "HTTP/", 5))
     {
         const char *space = (const char *)memchr(bytes, ' ', size - 2);
-        if (!space || space + 4 > bytes + size - 2 || space[1] < '1' || space[1] > '5' ||
-            space[2] < '0' || space[2] > '9' || space[3] < '0' || space[3] > '9')
+        size_t remaining = space ? (size_t)(bytes + size - 2 - space) : 0;
+        if (!space || remaining < 4 || space[1] < '1' || space[1] > '5' || space[2] < '0' ||
+            space[2] > '9' || space[3] < '0' || space[3] > '9' ||
+            (remaining > 4 && space[4] != ' '))
             return 0;
         response->status = (space[1] - '0') * 100 + (space[2] - '0') * 10 + space[3] - '0';
         response->location_seen = 0;
