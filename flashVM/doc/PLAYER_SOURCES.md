@@ -8,8 +8,8 @@ Current v0.683 supports child movies and loadVariables; it supersedes the histor
 
 ## Memory input since v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L42) in [player.h](../frontend/common/player.h) accepts scalar
-[FVM_DesktopOptions](../frontend/common/options.h#L29), a const void pointer, the exact size_t byte count, a nonempty
+[fvm_desktop_run_memory](../frontend/common/player.h#L43) in [player.h](../frontend/common/player.h) accepts scalar
+[FVM_DesktopOptions](../frontend/common/load_monitor.h#L55), a const void pointer, the exact size_t byte count, a nonempty
 source name and optional static error output. char buf[] and read-only linked
 arrays both work; binary NUL is ordinary data. No temporary file, strlen(data),
 source mutation or ownership transfer occurs. Keep source bytes and name immutable
@@ -45,7 +45,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Roadmap status](ROADMAP_STATUS.md)
 ## Host transport and root loading since v0.674
 
-[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
+[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/load_monitor.h#L56) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 and [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
@@ -221,7 +221,7 @@ and a host-supplied callback; see [native transport](SOCKET_TRANSPORT.md).
 [HTTP/embedded tests](../frontend/tests/child_loading.py)
 ### Opaque session cleanup and Windows exports
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L49) in player.h explicitly ends the matching library's SDL
+[fvm_desktop_shutdown](../frontend/common/player.h#L50) in player.h explicitly ends the matching library's SDL
 session on its UI owner thread after playback returns. If SDL_WasInit reports any
 active subsystem, it returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) without touching it; otherwise it calls
 SDL_Quit and returns [FVM_OK](../include/flashvm/flashvm.h#L42), including repeated shutdown of an unused session.

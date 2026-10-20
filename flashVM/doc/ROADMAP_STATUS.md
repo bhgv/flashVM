@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.684
+# FlashVM stage status / Состояние стадий — v0.685
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.685 adds owner-thread source load monitoring, startup stop before I/O,
+per-network-job deadlines and explicit result/cancellation notices. HTTP/HTTPS
+fixtures cover16 scenarios each; observer state never enters a worker. Annotated
+C host and RU/EN guides: [EN](LOAD_MONITOR.md) / [RU](LOAD_MONITOR.ru.md).
+This is host integration, not full Flash loader lifecycle; all stages remain open.
 
 v0.684 adds additive cooperative total job deadlines with timeout-specific terminal
 views, retained partial progress, immutable publication and joined lifetime. Native

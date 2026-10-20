@@ -706,6 +706,34 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT AN
   endif()
 endif()
 
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_load_monitor tests/load_monitor.c)
+  target_link_libraries(flashvm_load_monitor PRIVATE flashvm_player_host)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_load_monitor COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/load_monitor.py $<TARGET_FILE:flashvm_load_monitor>
+      ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
+    set_tests_properties(flashvm_load_monitor PROPERTIES TIMEOUT 35 SKIP_RETURN_CODE 77)
+    if(FVM_PLAYER_SOCKET_TLS AND FVM_OPENSSL_PROGRAM)
+      add_test(NAME flashvm_load_monitor_tls COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/load_monitor.py $<TARGET_FILE:flashvm_load_monitor>
+        ${PROJECT_SOURCE_DIR}/examples/player/async_loading ${FVM_OPENSSL_PROGRAM})
+      set_tests_properties(flashvm_load_monitor_tls PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+    endif()
+  endif()
+endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_monitored_loading ../examples/player/monitored_loading/main.c)
+  target_link_libraries(flashvm_example_monitored_loading PRIVATE flashvm_player_host)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_example_monitored_loading COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/async_example.py $<TARGET_FILE:flashvm_example_monitored_loading>
+      ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
+    set_tests_properties(flashvm_example_monitored_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+  endif()
+endif()
+
 # Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
 # Keep production RPATH relocatable; supply only the build-tree test environment here.
 if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)

@@ -158,6 +158,7 @@
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
+  - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
   - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
@@ -1762,6 +1763,14 @@ Timeline при fetch ждёт; это не полная async Flash loading sem
 без него сообщает о неподдержанном потоковом звуке. Нативного аудиовыхода, MP3 decode
 и A/V sync пример не добавляет.
 
+<a id="example-player-monitored_loading"></a>
+### monitored_loading
+
+C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до startup I/O.
+Использует самостоятельные ресурсы async_loading, все C строки пояснены.
+[README EN](player/monitored_loading/README.md) / [RU](player/monitored_loading/README.ru.md),
+[C](player/monitored_loading/main.c), [контракт](../doc/LOAD_MONITOR.ru.md).
+
 <a id="example-player-socket_loading"></a>
 ### socket_loading
 
@@ -1875,6 +1884,7 @@ Source line links describe the current checkout, including in historical notes.
 - [meta_call — extending/meta_call](#example-extending-meta_call)
 - [mixed_input — embedding/mixed_input](#example-embedding-mixed_input)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
+- [monitored_loading — player/monitored_loading](#example-player-monitored_loading)
 - [mouse_cursor — embedding/mouse_cursor](#example-embedding-mouse_cursor)
 - [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
 - [mouse_wheel — embedding/mouse_wheel](#example-embedding-mouse_wheel)

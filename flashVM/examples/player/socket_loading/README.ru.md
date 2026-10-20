@@ -43,7 +43,7 @@ runner освобождает временные байты и GC pins. Зате
 | [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L35) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
 | [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L42) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Работа UI/VM-потока с заимствованными дескрипторами до возврата; запросы на безопасных границах. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L49) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
 
 Подробные аргументы/коды/время жизни каждого API — в [контракте транспорта](../../../doc/SOCKET_TRANSPORT.ru.md#c-api)
 и [руководстве источников](../../../doc/PLAYER_SOURCES.ru.md). Пример задаёт 2 с

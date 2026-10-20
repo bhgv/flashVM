@@ -65,7 +65,7 @@ with poll/cancel or unload a library while its worker is alive. All argument and
 callback storage remains live until release returns.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) reports live handles, including terminal handles not
-yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L49) refuses cleanup while any remain, even when
+yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L50) refuses cleanup while any remain, even when
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
 
@@ -93,7 +93,7 @@ for it. An IDE calls the explicit background runner or the lower-level job API.
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L13):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L57):
 transfer defaults/no provider, one resource load, 1 success or 0 null, no startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) takes ordinary options/source, a required
 background loader and optional static error output. Provide a worker-safe fetch,
@@ -191,13 +191,13 @@ SDL, core VM and crypto dependencies were not instrumented by that probe.
 
 [fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L62) adds a total elapsed-millisecond budget without
 changing existing options/view layouts or the unlimited begin API. Zero disables
-the budget; the maximum is FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS. Invalid values
+the budget; the maximum is [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L13). Invalid values
 preserve *out and start no worker. Unsigned SDL tick subtraction tolerates rollover.
 The budget includes provider work from launch, not just each socket operation.
 
 Expiry requests cooperative cancellation; it is checked by polling, sink writes,
 provider cancellation queries and final publication. A late successful provider
-cannot publish bytes. The terminal FVM_DESKTOP_TRANSFER_TIMED_OUT view has [FVM_ERROR](../include/flashvm/flashvm.h#L43),
+cannot publish bytes. The terminal [FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) view has [FVM_ERROR](../include/flashvm/flashvm.h#L43),
 no payload/provenance and retained received progress. First latched explicit
 cancel/deadline wins; completed views remain immutable. A pending view may persist
 past the budget while DNS/noncooperative code runs. Release always joins, so this
@@ -206,6 +206,8 @@ is not hard preemption and never authorizes unloading borrowed provider storage.
 Native worker tests cover partial received bytes, a late ignored-success provider,
 explicit cancellation winning first, invalid timeout and all previous job cases.
 This does not change default player or provider-specific I/O deadlines.
+
+[Owner monitoring and startup stop](LOAD_MONITOR.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

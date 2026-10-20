@@ -65,7 +65,7 @@ poll/cancel или выгружать библиотеку с активным w
 сохраняются до возврата release.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) считает живые handles, включая готовые до release.
-[fvm_desktop_shutdown](../frontend/common/player.h#L49) отказывает, пока хотя бы один жив, даже без video/audio.
+[fvm_desktop_shutdown](../frontend/common/player.h#L50) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L64) принимает native options либо
 null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L34) требует null userdata и libcurl с флагом
@@ -88,7 +88,7 @@ parser не имеет поля для него. IDE вызывает background
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L13):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L57):
 transfer defaults без провайдера, одну загрузку, 1 — успех, 0 — null, без startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) принимает обычные options/source, обязательный
 background loader и необязательный static error out. Нужны worker-safe fetch,
@@ -181,13 +181,13 @@ C-код player/transfer прошёл UBSan на настоящем async HTTP �
 
 [fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L62) добавляет общий бюджет в миллисекундах без
 изменения существующих options/view и прежнего begin без дедлайна. Ноль отключает
-бюджет; максимум — FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS. Неверный бюджет сохраняет
+бюджет; максимум — [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L13). Неверный бюджет сохраняет
 *out и не запускает worker. Беззнаковое вычитание SDL ticks учитывает переполнение.
 Бюджет включает работу провайдера со старта, а не только отдельные socket операции.
 
 Истечение запрашивает кооперативную отмену: проверяется poll, sink, cancellation
 callback и итоговая публикация. Поздний успешный ответ не публикует байты.
-FVM_DESKTOP_TRANSFER_TIMED_OUT содержит [FVM_ERROR](../include/flashvm/flashvm.h#L43), без данных/адреса, с сохранением
+[FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) содержит [FVM_ERROR](../include/flashvm/flashvm.h#L43), без данных/адреса, с сохранением
 received. Побеждает первая зафиксированная причина cancel/deadline; готовый view
 не меняется. Pending может сохраняться после дедлайна, пока DNS или пользовательский
 код не вернулся. Release всегда делает join: это не принудительное прерывание
@@ -196,6 +196,8 @@ received. Побеждает первая зафиксированная при�
 Нативные тесты проверяют частичные байты, поздний игнорируемый успех, приоритет
 ранней явной отмены, неверный timeout и прежние случаи заданий. Штатное поведение
 плеера и отдельные I/O дедлайны провайдера не меняются.
+
+[Наблюдение хоста и отмена старта](LOAD_MONITOR.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

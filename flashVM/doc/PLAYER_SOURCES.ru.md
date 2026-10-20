@@ -8,8 +8,8 @@
 
 ## Вход из памяти с v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L42) из [player.h](../frontend/common/player.h) принимает
-скалярные [FVM_DesktopOptions](../frontend/common/options.h#L29), const void указатель, точное число байтов size_t,
+[fvm_desktop_run_memory](../frontend/common/player.h#L43) из [player.h](../frontend/common/player.h) принимает
+скалярные [FVM_DesktopOptions](../frontend/common/load_monitor.h#L55), const void указатель, точное число байтов size_t,
 непустое имя источника и необязательный указатель на статическую ошибку.
 Подходят char buf[] и read-only массивы в исполняемом файле. NUL — обычный байт,
 не конец данных. Нет временного файла, strlen(data), изменения источника или
@@ -45,7 +45,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Этапы](ROADMAP_STATUS.md)
 ## Транспорт хоста и корневая загрузка с v0.674
 
-[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
+[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/load_monitor.h#L56) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 и [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
@@ -219,7 +219,7 @@ target против GET/POST аргументов. Полная историче
 [HTTP/embedded тесты](../frontend/tests/child_loading.py)
 ### Непрозрачное завершение сеанса и экспорт Windows
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L49) из player.h явно завершает SDL именно этой библиотеки на
+[fvm_desktop_shutdown](../frontend/common/player.h#L50) из player.h явно завершает SDL именно этой библиотеки на
 её UI-потоке после возврата playback. Если SDL_WasInit видит активную подсистему,
 возвращается [FVM_ERROR](../include/flashvm/flashvm.h#L43) без изменений; иначе вызывается SDL_Quit и возвращается
 [FVM_OK](../include/flashvm/flashvm.h#L42), в том числе при повторном завершении неиспользуемого сеанса. Операция

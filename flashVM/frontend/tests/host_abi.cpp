@@ -28,6 +28,11 @@ int main()
     if (fvm_desktop_run_source_async(0, 0, &background, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
         fvm_desktop_run_async(0, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
+    FVM_DesktopLoadMonitor monitor;
+    if (!fvm_desktop_load_monitor_init(&monitor) || monitor.asynchronous != 1 ||
+        monitor.timeout_ms || monitor.notify || monitor.userdata ||
+        fvm_desktop_run_source_monitored(0, 0, &background, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;
     FVM_DesktopBuildInfo info;
