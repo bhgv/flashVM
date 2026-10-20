@@ -52,6 +52,22 @@ motion then two ordered wheel events, and verifies script-originated show before
 the next wait. The second frame checks wheel accumulation and exactly one move
 callback. Wrong-value controls must fail. Ordinary player builds inject nothing.
 This is native Linux dummy-video/SDL state evidence, not a physical cursor test.
+## Tutorial and validation (v0.656)
+
+[Runnable stopped SWF8 tutorial](../examples/player/wheel_cursor/README.md), with
+commented ActionScript equivalent and an independent deterministic Python fixture
+writer. It traces wheel lines and hides/shows on primary press/release. It is not
+a new ActionScript backend; FIR still emits SWO for the linker.
+
+The selected Linux x86-64 AGG/JIT frontend suite contains 35 tests, including the
+new C wheel/cursor fixtures and six valid/six deliberately wrong SWF executions.
+The tutorial also loads/runs for three bounded ticks in both modes. SDL is the
+same externally built release-2.30.12 SDK described in [recovery validation](PLAYER_RECOVERY.md).
+Full player/AGG/JIT builds with separate target SDL SDKs link for Linux ARM64,
+Linux RISC-V64 and Windows x64, using the existing documented Zig host wrapper.
+These are cross builds, not foreign runtime tests; native audible audio, GPUs,
+Android/macOS, endurance, full Flash compatibility and stage 9 remain open.
+No new full-core or sanitizer run is claimed.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

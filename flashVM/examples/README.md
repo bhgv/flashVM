@@ -152,6 +152,7 @@
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 
@@ -1693,6 +1694,19 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 CLI проверяет 120 кадров каждого в interpreter/JIT.
 [Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
 
+<a id="example-player-wheel_cursor"></a>
+### wheel_cursor
+
+Готовый SWF8 с остановленным timeline продолжает принимать wheel и primary button.
+Колесо печатает нормализованные строки, нажатие/отпускание скрывает/показывает
+нативный курсор. [README EN](player/wheel_cursor/README.md) /
+[RU](player/wheel_cursor/README.ru.md), [фильм](player/wheel_cursor/wheel-cursor.swf),
+[комментированный AS](player/wheel_cursor/wheel_cursor.as),
+[автономный Python-генератор](player/wheel_cursor/make_movie.py).
+Фикстура не является новым AS backend: числовой FIR-профиль пока не поддерживает
+такой объектный скрипт. Есть реальные SDL dummy/VM тесты, а физический ввод и
+чужие ОС требуют отдельного нативного запуска.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -1832,6 +1846,7 @@ Source line links describe the current checkout, including in historical notes.
 - [text_layout — embedding/text_layout](#example-embedding-text_layout)
 - [timers — embedding/timers](#example-embedding-timers)
 - [url_encoding — embedding/url_encoding](#example-embedding-url_encoding)
+- [wheel_cursor — player/wheel_cursor](#example-player-wheel_cursor)
 - [worker_channels — embedding/worker_channels](#example-embedding-worker_channels)
 - [worker_lifecycle — embedding/worker_lifecycle](#example-embedding-worker_lifecycle)
 - [worker_stop — embedding/worker_stop](#example-embedding-worker_stop)

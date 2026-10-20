@@ -2,7 +2,7 @@
 
 [Русский](PLAYER_RECOVERY.ru.md). The optional SDL player keeps one owned packed
 RGBA copy of the last successfully uploaded frame. The source surface is borrowed
-only during [`fvm_desktop_window_present`](../frontend/common/window.h#L51); it may be reused or freed immediately
+only during [`fvm_desktop_window_present`](../frontend/common/window.h#L54); it may be reused or freed immediately
 on return. Row padding is excluded from the retained copy. No VM value or GC root
 is stored in the window adapter. Closing the window frees the snapshot before
 SDL shutdown. Allocation failures are reported, rather than retaining caller data.
@@ -27,8 +27,8 @@ before the first frame creates empty storage without presenting undefined pixels
 No timeline advance, script/timer callback or additional VM rendering occurs.
 Exposure/resize also redraw the uploaded texture.
 
-[`fvm_desktop_window_status`](../frontend/common/window.h#L55) reports persistent presentation/input failures
-separately from the normal close result of [`fvm_desktop_window_events`](../frontend/common/window.h#L53). The player
+[`fvm_desktop_window_status`](../frontend/common/window.h#L61) reports persistent presentation/input failures
+separately from the normal close result of [`fvm_desktop_window_events`](../frontend/common/window.h#L56). The player
 checks it in active, background and final-frame waits; failed restoration is not
 reported as successful user cancellation. Repaint errors are latched as well.
 The SDL test injects both reset events and reads actual restored texture pixels

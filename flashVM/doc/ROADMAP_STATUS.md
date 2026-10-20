@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.655
+# FlashVM stage status / Состояние стадий — v0.656
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,17 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.656 player wheel and cursor / Колесо и курсор проигрывателя
+
+The SDL player routes vertical/precise wheel entries through its bounded shared
+input FIFO, maps modern event positions through the logical viewport and applies
+script cursor requests at owner-thread safe points. Native cursor visibility is
+restored across playlist teardown. SWF6–8 interpreter/JIT fixtures use real SDL
+dummy queues and wrong-value controls; a stopped SWF8 tutorial is included.
+[Contract EN](PLAYER_WHEEL_CURSOR.md) / [RU](PLAYER_WHEEL_CURSOR.ru.md).
+This is not physical/foreign-platform acceptance. All nine stages remain open.
+Все девять стадий остаются открытыми.
 
 ## v0.651 player lifecycle recovery / Восстановление проигрывателя
 
