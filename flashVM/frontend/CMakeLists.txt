@@ -1040,3 +1040,12 @@ if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpre
       "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
   endif()
 endif()
+
+# Timer-only adapter must work with an unavailable native video backend.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_offscreen_window tests/offscreen_window.c)
+  target_link_libraries(flashvm_frontend_offscreen_window PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_offscreen_window PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_frontend_offscreen_window COMMAND flashvm_frontend_offscreen_window)
+  set_tests_properties(flashvm_frontend_offscreen_window PROPERTIES TIMEOUT 15)
+endif()

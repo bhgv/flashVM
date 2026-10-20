@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.718
+# FlashVM stage status / Состояние стадий — v0.719
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.719 introduces a timer-only presentation adapter with checked raster extents,
+no video initialization, no cursor mutation and no SDL event-queue consumption.
+The focused native test checks a deliberately unavailable video driver and host
+subsystem/event ownership. This is infrastructure for windowless player output;
+all roadmap stages and foreign native device acceptance remain open.
 
 v0.718 adds a standalone annotated C89/AS/SWF capture tutorial: copy a selected
 completed host tick, stop normally, and encode PPM only after SDK teardown.

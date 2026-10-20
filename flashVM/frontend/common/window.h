@@ -51,6 +51,9 @@ typedef struct FVM_DesktopWindow FVM_DesktopWindow;
 /* Acquire private timer/video SDL references on the main thread and own presentation objects.
  * Host subsystem references survive success, failed initialization and close. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned int);
+/* Acquire only a private SDL timer reference: no video, events, cursor or native window.
+ * Geometry must be nonzero and bounded by MAX_PIXELS. Owner-thread use only. */
+FVM_DesktopWindow *fvm_desktop_window_open_offscreen(unsigned int width, unsigned int height);
 /* Upload/present and retain one owned packed RGBA snapshot; source bytes are borrowed
  * only during this call. Closing the window releases the native copy. */
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);

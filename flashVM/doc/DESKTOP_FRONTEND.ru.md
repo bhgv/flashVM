@@ -182,6 +182,7 @@ CTest в сеансе display. Для cross-build они не регистрир
 
 
 [Logical RGBA frames / RGBA-кадры сцены](FRAME_CAPTURE.ru.md).
+Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

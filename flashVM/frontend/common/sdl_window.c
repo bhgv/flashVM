@@ -21,8 +21,9 @@ typedef struct FVM_DesktopEvent
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
 struct FVM_DesktopWindow
 {
-    Uint32 subsystems;      /* SDL subsystem references acquired by this view only. */
-    SDL_Window *window;     /* Native OS window, owned until close. */
+    int offscreen;      /* Timer-only raster sink; never poll another application's SDL events. */
+    Uint32 subsystems;  /* SDL subsystem references acquired by this view only. */
+    SDL_Window *window; /* Native OS window, owned until close. */
     SDL_Renderer *renderer; /* SDL software/accelerated presenter selected by SDL. */
     SDL_Texture *texture;   /* Streaming byte-order-independent RGBA texture. */
     unsigned int logical_width, logical_height; /* Fixed stage extent for SDL normalized touches. */
@@ -117,6 +118,36 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
     return view;
 }
 
+/* Own scheduling resources without a video driver, cursor change or event subscription. */
+FVM_DesktopWindow *fvm_desktop_window_open_offscreen(unsigned int width, unsigned int height)
+{
+    FVM_DesktopWindow *view;
+    if (!width || !height || width > FVM_DESKTOP_MAX_PIXELS || height > FVM_DESKTOP_MAX_PIXELS)
+    {
+        SDL_SetError("FlashVM offscreen stage extent is invalid");
+        return 0;
+    }
+    view = (FVM_DesktopWindow *)calloc(1, sizeof(*view));
+    if (!view)
+    {
+        SDL_SetError("FlashVM offscreen adapter allocation failed");
+        return 0;
+    }
+    view->offscreen = 1;
+    view->cursor_initial = view->cursor_applied = FVM_DESKTOP_CURSOR_UNSET;
+    view->logical_width = width;
+    view->logical_height = height;
+    view->input.keyboard.struct_size = sizeof(view->input.keyboard);
+    SDL_SetMainReady();
+    if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0)
+    {
+        fvm_desktop_window_close(view);
+        return 0;
+    }
+    view->subsystems = SDL_INIT_TIMER;
+    return view;
+}
+
 /* Present the already uploaded image, preserving aspect and clearing letterbox margins. */
 static int draw_texture(FVM_DesktopWindow *view)
 {
@@ -180,6 +211,9 @@ static FVM_Result present_sdl(const FVM_RasterSurface *surface, void *userdata)
         SDL_SetError("FlashVM frame does not match the texture extent or pitch");
         return FVM_INVALID_ARGUMENT;
     }
+    /* Offscreen delivery borrows the completed raster; the observer owns any desired copy. */
+    if (view->offscreen)
+        return FVM_OK;
     /* fvm_host_present already bounds dimensions and source extent. Keep a packed
      * native copy so an SDL device reset cannot depend on expired caller memory. */
     row_bytes = (size_t)surface->width * FVM_DESKTOP_RGBA_BYTES;
@@ -595,6 +629,15 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
 {
     SDL_Event event;
     unsigned int handled = 0;
+    if (!view)
+        return 0;
+    if (view->offscreen)
+    {
+        /* Scheduling still waits in real time, but never pumps or removes host events. */
+        if (timeout_ms > 0)
+            SDL_Delay((Uint32)timeout_ms);
+        return 1;
+    }
     while (handled < FVM_DESKTOP_EVENT_BATCH && SDL_PollEvent(&event))
     {
         ++handled;
@@ -613,8 +656,10 @@ FVM_Result fvm_desktop_window_sync_cursor(FVM_DesktopWindow *view, FVM_Context *
 {
     int visible;
     FVM_Result result;
-    if (!view)
+    if (!view || !context)
         return FVM_INVALID_ARGUMENT;
+    if (view->offscreen)
+        return FVM_OK;
     result = fvm_input_get_cursor_visible(context, &visible);
     if (result != FVM_OK)
         return result;
