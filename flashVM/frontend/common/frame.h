@@ -65,6 +65,25 @@ extern "C"
     FVM_DESKTOP_API FVM_Result fvm_desktop_frame_copy(const FVM_DesktopFrame *frame,
                                                       void *destination, size_t capacity,
                                                       size_t destination_stride);
+    /* Synchronous FILE/MEMORY/URL observation on the native UI owner, without console parsing.
+     * options/source/observer required; loader/control optional (null control means running).
+     * Validate descriptors before startup; borrow inputs/callbacks/userdata through return.
+     * Return 0 on completion/close/STOP, 1 on VM/provider/presentation/callback failure, 2 on
+     * malformed arguments. Optional error borrows static text. Native SDL presentation remains;
+     * captures exclude window scaling/chrome and cached resize swaps. No reentrant/concurrent run.
+     */
+    FVM_DESKTOP_API int
+    fvm_desktop_run_source_observed(const FVM_DesktopOptions *, const FVM_DesktopSource *,
+                                    const FVM_DesktopLoader *, const FVM_DesktopPlaybackControl *,
+                                    const FVM_DesktopFrameObserver *, const char **error);
+    /* Same owner observation with required explicit background provider and load monitor.
+     * monitor.asynchronous selects continuing owner turns or blocking safe-point resource waits.
+     * Callback errors discard/join pending jobs before releasing native buffers and managed roots.
+     */
+    FVM_DESKTOP_API int fvm_desktop_run_source_background_observed(
+        const FVM_DesktopOptions *, const FVM_DesktopSource *, const FVM_DesktopBackgroundLoader *,
+        const FVM_DesktopLoadMonitor *, const FVM_DesktopPlaybackControl *,
+        const FVM_DesktopFrameObserver *, const char **error);
 #ifdef __cplusplus
 }
 #endif

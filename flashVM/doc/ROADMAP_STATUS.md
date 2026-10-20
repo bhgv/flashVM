@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.716
+# FlashVM stage status / Состояние стадий — v0.717
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.717 integrates C frame observers with FILE/MEMORY/URL runners, pause redraws,
+whole-root counters and background loading. Actual interpreter/JIT pixels and
+callback ordering pass, including source navigation, null control and joined
+active-transfer cleanup on observer failure. C++98 host ABI checks pass. All
+roadmap stages remain open.
 
 v0.716 adds C89 frame-observer contracts and allocation-free checked RGBA row
 copying. Independent raw-byte tests verify padding, complete source/destination

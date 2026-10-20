@@ -55,6 +55,46 @@ null указателя, без выделения памяти и старта 
 и неизменность памяти при ошибке. Тест C89 не запускает VM/SDL. v0.716 вводит
 контракт и безопасное копирование; runner-интеграция описывается при добавлении.
 Это не windowless widget, не новое управление GPU и не завершение стадий плана.
+## Наблюдаемые запуски с v0.717
+
+[fvm_desktop_run_source_observed](../frontend/common/frame.h#L76)(options, source, loader, control, observer, error)`
+требует options/source/observer. loader необязателен и подчиняется прежней политике
+ресурсов (по умолчанию разрешён только старт); control необязателен, default —
+непрерывный запуск. Явный initially_paused control позволяет сочетать наблюдение
+с шагами владельца или ящиком контроллера. Политики/байты/строки/userdata живут
+до синхронного возврата; observer-дескриптор копируется поверхностно.
+
+[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L83)(options, source, loader, monitor,
+control, observer, error)` дополнительно требует явный background provider и
+monitor. monitor.asynchronous выбирает продолжающиеся owner-такты или блокирующее
+ожидание ресурсов. Обе функции возвращают 0 при завершении/закрытии окна/STOP,
+1 при source/VM/presentation/observer-ошибке, 2 при неверных дескрипторах до старта.
+error необязателен, получает заимствованный статический текст и не освобождается.
+Более точный статус callback можно сохранить в собственном userdata. Запуск
+владеет/очищает VM/окно/задания; окончательный SDK shutdown отдельно решает хост.
+
+Callback вызывается ровно один раз на завершённый logical-stage raster/native
+показ. Начальная/dirty-перерисовка на паузе — REFRESH, без прибавления host tick.
+Показ такта — TICK; этот advance уже включён в movie_ticks/total_ticks.
+presentations обнуляется при смене корня, total_presentations/total_ticks
+продолжаются. Frame callback предшествует следующему owner TICK и отложенному
+post-draw обслуживанию ресурсов. Копируйте до возврата: удерживаемая SDL копия
+окна не является буфером observer и не продлевает его borrow.
+
+Ошибка observer не откатывает выполненные скрипты или уже показанные пиксели.
+Она завершает запуск с ошибкой, отменяет публикацию ресурсов и дожидается активных
+заданий до очистки native-буфера/корней. Callback отсутствует при неверных
+аргументах, ошибке импорта/растра/native-показа и стартовом ожидании. Искусственные
+кадры для progress не создаются. Cached native swaps при resize/letterbox не имеют
+нового logical raster и не вызывают observer.
+
+Native fixtures интерпретатора/JIT проверяют реальные RGBA и стирание старой
+геометрии; точный порядок REFRESH/TICK и копии при pause/redraw/step; счётчики
+корня/запуска и источник при навигации; null control/default running;
+FILE/MEMORY/HTTP provenance; неверные аргументы и отмену активного HTTP при ошибке
+callback. Копии проверяются после SDK teardown. Приёмка других ОС/устройств,
+полной графики/эталона и windowless widget остаётся открытой. Старые запуски не
+передают observer и сохраняют прежний путь.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

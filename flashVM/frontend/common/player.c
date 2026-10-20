@@ -8,6 +8,7 @@
 #define SDL_MAIN_HANDLED
 #include "player.h"
 #include "playback_internal.h"
+#include "frame_internal.h"
 #include "desktop_build_version.h"
 #include "audio.h"
 #include "flashvm/gc.h"
@@ -218,6 +219,41 @@ static int checked(FVM_Result status, const char *operation, const char *path)
         return 1;
     fprintf(stderr, "%s: %s failed (VM status %d)\n", path, operation, (int)status);
     return 0;
+}
+
+/* One copied native observer policy and run-wide presentation count, shared across roots. */
+typedef struct FVM_DesktopFrameSession
+{
+    FVM_DesktopFrameObserver policy; /* Shallow immutable copy; host userdata remains borrowed. */
+    unsigned long
+        total_presentations; /* Successful raster/native presentations for this source run. */
+} FVM_DesktopFrameSession;
+
+/* Notify after a completed draw, never while renderer callbacks or native presentation are active.
+ */
+static int frame_observe(FVM_DesktopFrameSession *frames, const FVM_RasterSurface *surface,
+                         const char *source, unsigned long ticks, unsigned long total_ticks,
+                         unsigned long presentations, unsigned int reason)
+{
+    FVM_DesktopFrame frame;
+    if (!frames)
+        return 1;
+    memset(&frame, 0, sizeof(frame));
+    frame.struct_size = sizeof(frame);
+    frame.format = FVM_DESKTOP_FRAME_RGBA8;
+    frame.reason = reason;
+    frame.width = surface->width;
+    frame.height = surface->height;
+    frame.stride = surface->stride;
+    frame.byte_count = surface->stride * surface->height;
+    frame.pixels = surface->pixels;
+    frame.source = source;
+    frame.movie_ticks = ticks;
+    frame.total_ticks = total_ticks;
+    frame.presentations = presentations;
+    frame.total_presentations = ++frames->total_presentations;
+    return checked(frames->policy.notify(&frame, frames->policy.userdata), "frame observer",
+                   source);
 }
 
 /* Clear every stage pixel before rendering so old frames cannot leave trails. */
@@ -498,6 +534,8 @@ typedef struct FVM_DesktopNavigation
     const FVM_DesktopLoader *policy;          /* Borrowed for the entire source run. */
     FVM_DesktopBackgroundSession *background; /* Optional borrowed owner-thread transfer session. */
     FVM_DesktopPlaybackSession *control; /* Borrowed state shared across whole-root navigation. */
+    FVM_DesktopFrameSession
+        *frames;             /* Borrowed native observer, independent of managed scene owners. */
     unsigned long remaining; /* Remaining requests, including child and variable fetches. */
 } FVM_DesktopNavigation;
 
@@ -1069,6 +1107,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     FVM_DesktopInput input;
     FVM_DesktopAudio audio;
     FVM_DesktopPlaybackSession *control = navigation ? navigation->control : 0;
+    FVM_DesktopFrameSession *frames = navigation ? navigation->frames : 0;
     FVM_DesktopWindow *window = 0;
     FVM_SWFInfo info;
     FVM_SWFStageBounds bounds;
@@ -1317,6 +1356,10 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                     goto cleanup;
                 ++presentations;
                 ++refreshes;
+                if (!frame_observe(frames, &surface, path, ticks,
+                                   control ? control->total_ticks : ticks, presentations,
+                                   FVM_DESKTOP_FRAME_REFRESH))
+                    goto cleanup;
             }
             if (!checked(fvm_timers_next_delay(context, FVM_DESKTOP_PLAYBACK_WAIT_MS, &timer_wait,
                                                &timers_pending),
@@ -1341,6 +1384,10 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                     goto cleanup;
                 ++presentations;
                 ++refreshes;
+                if (!frame_observe(frames, &surface, path, ticks,
+                                   control ? control->total_ticks : ticks, presentations,
+                                   FVM_DESKTOP_FRAME_REFRESH))
+                    goto cleanup;
                 /* A new request made during rendering must not be lost behind a long frame wait. */
                 if (!checked(fvm_stage_get_update(context, &update_requested), "redraw state",
                              path))
@@ -1397,6 +1444,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         ++ticks;
         if (control)
             ++control->total_ticks;
+        if (!frame_observe(frames, &surface, path, ticks, control ? control->total_ticks : ticks,
+                           presentations, FVM_DESKTOP_FRAME_TICK))
+            goto cleanup;
         if (navigation &&
             !checked(service_requests(context, navigation), "frame resource load", path))
             goto cleanup;
@@ -1794,7 +1844,8 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
  */
 static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                       const FVM_DesktopLoader *loader, const char **error, int *closed,
-                      FVM_DesktopBackgroundSession *background, FVM_DesktopPlaybackSession *control)
+                      FVM_DesktopBackgroundSession *background, FVM_DesktopPlaybackSession *control,
+                      FVM_DesktopFrameSession *frames)
 {
     FVM_DesktopOptions value;
     FVM_DesktopLoader policy;
@@ -1829,6 +1880,7 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
         return status;
     navigation.background = background;
     navigation.control = control;
+    navigation.frames = frames;
     navigation.policy = &policy;
     navigation.remaining = policy.max_loads - 1;
     kind = source->kind;
@@ -1922,7 +1974,7 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
 int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                            const FVM_DesktopLoader *loader, const char **error)
 {
-    return run_source(options, source, loader, error, 0, 0, 0);
+    return run_source(options, source, loader, error, 0, 0, 0, 0);
 }
 
 /* Initialize an explicitly selected worker provider without native startup. */
@@ -1938,7 +1990,7 @@ int fvm_desktop_background_loader_init(FVM_DesktopBackgroundLoader *out)
 static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                           const FVM_DesktopBackgroundLoader *loader, const char **error,
                           int *closed, int asynchronous, const FVM_DesktopLoadMonitor *monitor,
-                          FVM_DesktopPlaybackSession *control)
+                          FVM_DesktopPlaybackSession *control, FVM_DesktopFrameSession *frames)
 {
     FVM_DesktopBackgroundSession session;
     FVM_DesktopLoader policy;
@@ -1957,14 +2009,14 @@ static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSo
     policy.fetch = background_fetch;
     policy.userdata = &session;
     policy.max_loads = loader->max_loads;
-    return run_source(options, source, &policy, error, closed, &session, control);
+    return run_source(options, source, &policy, error, closed, &session, control, frames);
 }
 /* Native app/IDE entrypoint keeps provider opt-in explicit instead of moving old callbacks. */
 int fvm_desktop_run_source_background(const FVM_DesktopOptions *options,
                                       const FVM_DesktopSource *source,
                                       const FVM_DesktopBackgroundLoader *loader, const char **error)
 {
-    return run_background(options, source, loader, error, 0, 0, 0, 0);
+    return run_background(options, source, loader, error, 0, 0, 0, 0, 0);
 }
 /* Default-provider playlist shares the same import/GC/render/cleanup implementation. */
 static int run_background_playlist(const FVM_DesktopOptions *options, const char **error,
@@ -1996,7 +2048,8 @@ static int run_background_playlist(const FVM_DesktopOptions *options, const char
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_background(&value, &source, &loader, error, &closed, asynchronous, monitor, 0);
+        status =
+            run_background(&value, &source, &loader, error, &closed, asynchronous, monitor, 0, 0);
         if (status || closed)
             break;
     }
@@ -2012,7 +2065,7 @@ int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **e
 int fvm_desktop_run_source_async(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                                  const FVM_DesktopBackgroundLoader *loader, const char **error)
 {
-    return run_background(options, source, loader, error, 0, 1, 0, 0);
+    return run_background(options, source, loader, error, 0, 1, 0, 0, 0);
 }
 /* Async playlist adapter retains ordinary whole-root replacement and close semantics. */
 int fvm_desktop_run_async(const FVM_DesktopOptions *options, const char **error)
@@ -2051,7 +2104,7 @@ int fvm_desktop_run_source_monitored(const FVM_DesktopOptions *options,
 {
     if (!load_monitor_valid(monitor, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
-    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
+    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor, 0,
                           0);
 }
 
@@ -2077,7 +2130,7 @@ int fvm_desktop_run_source_controlled(const FVM_DesktopOptions *options,
             *error = "invalid playback control policy";
         return FVM_DESKTOP_EXIT_ARGUMENT;
     }
-    return run_source(options, source, loader, error, 0, 0, &session);
+    return run_source(options, source, loader, error, 0, 0, &session, 0);
 }
 
 /* Preserve explicit worker/monitor policy; callbacks and all VM work remain on the owner. */
@@ -2098,7 +2151,68 @@ int fvm_desktop_run_source_background_controlled(const FVM_DesktopOptions *optio
     if (!load_monitor_valid(monitor, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
     return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
-                          &session);
+                          &session, 0);
+}
+
+/* Validate both additive policies before any source/provider/native/VM resource is acquired. */
+static int observed_sessions(const FVM_DesktopPlaybackControl *control,
+                             const FVM_DesktopFrameObserver *observer,
+                             FVM_DesktopPlaybackSession *playback, FVM_DesktopFrameSession *frames,
+                             const char **error)
+{
+    FVM_DesktopPlaybackControl defaults;
+    if (!fvm_desktop_frame_observer_valid(observer))
+    {
+        if (error)
+            *error = "invalid frame observer policy";
+        return 0;
+    }
+    if (!control)
+    {
+        fvm_desktop_playback_control_init(&defaults);
+        control = &defaults;
+    }
+    if (!fvm_desktop_playback_session_init(playback, control))
+    {
+        if (error)
+            *error = "invalid playback control policy";
+        return 0;
+    }
+    memset(frames, 0, sizeof(*frames));
+    frames->policy = *observer;
+    return 1;
+}
+
+/* Native C host receives borrowed logical stage rasters without changing old runner behavior. */
+int fvm_desktop_run_source_observed(const FVM_DesktopOptions *options,
+                                    const FVM_DesktopSource *source,
+                                    const FVM_DesktopLoader *loader,
+                                    const FVM_DesktopPlaybackControl *control,
+                                    const FVM_DesktopFrameObserver *observer, const char **error)
+{
+    FVM_DesktopPlaybackSession playback;
+    FVM_DesktopFrameSession frames;
+    if (!observed_sessions(control, observer, &playback, &frames, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_source(options, source, loader, error, 0, 0, &playback, &frames);
+}
+
+/* Combine explicit background loading/monitoring with the same owner frame/control callbacks. */
+int fvm_desktop_run_source_background_observed(const FVM_DesktopOptions *options,
+                                               const FVM_DesktopSource *source,
+                                               const FVM_DesktopBackgroundLoader *loader,
+                                               const FVM_DesktopLoadMonitor *monitor,
+                                               const FVM_DesktopPlaybackControl *control,
+                                               const FVM_DesktopFrameObserver *observer,
+                                               const char **error)
+{
+    FVM_DesktopPlaybackSession playback;
+    FVM_DesktopFrameSession frames;
+    if (!observed_sessions(control, observer, &playback, &frames, error) ||
+        !load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
+                          &playback, &frames);
 }
 
 /* This host initializer stays linkable in SDKs with no HTTP provider. */
@@ -2141,14 +2255,14 @@ static int run_network_source(const FVM_DesktopOptions *options, const FVM_Deskt
     loader.transfer.userdata = (void *)policy; /* Provider only borrows the const descriptor. */
     loader.max_loads = options ? options->max_loads : 1;
     return run_background(options, source, &loader, error, closed, (int)monitor->asynchronous,
-                          monitor, 0);
+                          monitor, 0, 0);
 #else
     FVM_DesktopLoader loader;
     (void)policy;
     (void)monitor;
     fvm_desktop_loader_init(&loader);
     loader.max_loads = options ? options->max_loads : 1;
-    return run_source(options, source, &loader, error, closed, 0, 0);
+    return run_source(options, source, &loader, error, closed, 0, 0, 0);
 #endif
 }
 /* IDE entrypoint uses the same resource FIFO and owner-thread monitor as CLI policy playback. */
@@ -2216,7 +2330,7 @@ int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_source(&value, &source, &loader, error, &closed, 0, 0);
+        status = run_source(&value, &source, &loader, error, &closed, 0, 0, 0);
         if (status || closed)
             break;
     }

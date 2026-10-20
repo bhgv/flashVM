@@ -53,6 +53,47 @@ preserved padding, truncated source/destination, unknown format, overflow and
 untouched error output. The C89 test starts neither VM nor SDL. v0.716 introduces
 the contract/copy utility; runner integration is documented as it is added. This
 is not a windowless widget, new GPU control or completion of roadmap stages.
+## Observed runners since v0.717
+
+[fvm_desktop_run_source_observed](../frontend/common/frame.h#L76)(options, source, loader, control, observer, error)`
+requires options/source/observer. loader is optional under existing resource policy
+(default permits startup only); control is optional and defaults to continuous
+running. An explicit initially_paused control can combine frame observations with
+owner steps or a controller mailbox. All policies/bytes/strings/userdata remain
+borrowed until synchronous return; the observer descriptor is shallow-copied.
+
+[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L83)(options, source, loader, monitor,
+control, observer, error)` also requires an explicit background provider and monitor.
+monitor.asynchronous chooses continuing owner turns or blocking resource waits.
+Both runners return 0 on completion/window close/STOP, 1 on source/VM/presentation/
+observer failure, 2 for malformed descriptors before startup. error is optional,
+receives borrowed static text and must not be freed. Callback code may retain its
+own more specific failure status in userdata. These calls own/clean VM/window/jobs;
+final process SDK shutdown remains the host's separate decision.
+
+There is one frame callback for each completed logical-stage raster/native
+presentation. Initial/dirty redraws while paused are REFRESH and do not increment
+host tick counts. Successful tick draws are TICK, with that advance already
+included in movie_ticks/total_ticks. presentations resets with a replaced root;
+total_presentations and total_ticks continue across whole-root navigation. The
+frame callback precedes the subsequent owner TICK notification and deferred
+post-draw resource servicing. Copy before returning; SDL's retained window copy
+is not the observer's buffer and never extends its borrow.
+
+A failed observer does not roll back executed scripts or already presented pixels.
+It ends the run with failure, discards resource publication and cancels/joins active
+jobs before native-buffer/root cleanup. There is no callback on invalid arguments,
+failed import, failed raster/native presentation, or startup waiting. No synthetic
+frame is produced solely to provide progress. Cached native resize/letterbox swaps
+have no new logical raster and therefore do not notify the observer.
+
+The native interpreter/JIT fixtures verify actual RGBA pixels and erased old
+geometry; exact REFRESH/TICK order and copies across pause/redraw/step; per-root/
+run counters and changed sources across navigation; null control/default running;
+FILE/MEMORY/HTTP provenance; argument rejection and active HTTP cancellation on
+callback failure. Copied buffers are inspected after SDK teardown. Foreign runtime,
+physical display/audio, full graphics/reference and windowless-widget acceptance
+remain open. Existing runners pass no observer and keep their previous path.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
