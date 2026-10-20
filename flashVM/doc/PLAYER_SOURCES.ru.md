@@ -242,6 +242,7 @@ GET в этой серии — получение ресурса по задан
 [Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.ru.md), v0.680–0.683.
 [Наблюдение загрузок, дедлайны и отмена старта](LOAD_MONITOR.ru.md).
 [Native content unloading / Очистка содержимого](MOVIE_UNLOAD.ru.md).
+[Linked-memory startup with child unload/reload / Встроенный старт и очистка](../examples/player/unload_loading/README.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

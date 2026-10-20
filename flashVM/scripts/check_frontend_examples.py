@@ -56,6 +56,8 @@ def check():
     source = (tutorial / "main.c").read_text()
     for number, line in enumerate(source.splitlines(), 1):
         assert not line.strip() or "/*" in line or "*/" in line, (tutorial, number)
+    for number, line in enumerate((tutorial / "movie.inc").read_text().splitlines(), 1):
+        assert not line.strip() or "/*" in line, (tutorial, number)
     for number, line in enumerate((tutorial / "start.as").read_text().splitlines(), 1):
         assert not line.strip() or "//" in line, (tutorial, number)
     assert catalog.count("example-player-unload_loading") == 3

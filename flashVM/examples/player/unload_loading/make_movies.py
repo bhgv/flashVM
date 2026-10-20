@@ -124,7 +124,15 @@ def movie(network=True, object_form=False):
 def main():
     """Write reproducible bytecode and form files without a compiler or test imports."""
     folder = Path(__file__).resolve().parent
-    (folder / 'start.swf').write_bytes(movie())
+    data = movie()
+    (folder / 'start.swf').write_bytes(data)
+    lines = ['/* Generated immutable SWF bytes; regenerate with make_movies.py. */',
+             'static const unsigned char embedded_movie[] = { /* Linked startup data, never mutated. */']
+    for offset in range(0, len(data), 12):
+        lines.append('    ' + ', '.join('0x%02x' % byte for byte in data[offset:offset+12]) +
+                     ', /* Counted binary payload; NUL is ordinary data. */')
+    lines.append('}; /* sizeof(embedded_movie) is the exact SWF byte count. */')
+    (folder / 'movie.inc').write_text('\n'.join(lines) + '\n', encoding='ascii')
     for name, body in {'slow.txt': 'poison=1', 'never.txt': 'poison=1',
                        'peer.txt': 'answer=peer', 'fresh.txt': 'answer=fresh'}.items():
         (folder / name).write_text(body, encoding='ascii')

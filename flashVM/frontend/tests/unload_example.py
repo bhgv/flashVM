@@ -27,14 +27,20 @@ def main():
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     try:
-        result = subprocess.run([executable, 'http://127.0.0.1:%d/start.swf' % server.server_port],
-                                env=dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software'),
-                                capture_output=True, timeout=10)
-        if b'background provider unavailable' in result.stderr:
-            raise SystemExit(77)
-        assert result.returncode == 0, result.stderr
-        assert '/never.txt' not in Handler.paths, Handler.paths
-        assert [x for x in Handler.paths if x != '/slow.txt'] == ['/start.swf', '/peer.txt', '/fresh.txt'], Handler.paths
+        for embedded in (False, True):
+            Handler.paths.clear()
+            command = [executable] + (['--embedded'] if embedded else [])
+            command += ['http://127.0.0.1:%d/start.swf' % server.server_port]
+            result = subprocess.run(command,
+                                    env=dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software'),
+                                    capture_output=True, timeout=10)
+            if b'background provider unavailable' in result.stderr:
+                raise SystemExit(77)
+            assert result.returncode == 0, result.stderr
+            assert '/never.txt' not in Handler.paths, Handler.paths
+            expected = ([] if embedded else ['/start.swf']) + ['/peer.txt', '/fresh.txt']
+            assert [x for x in Handler.paths if x != '/slow.txt'] == expected, Handler.paths
+
     finally:
         server.shutdown()
         server.server_close()

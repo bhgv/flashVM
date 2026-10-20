@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.694
+# FlashVM stage status / Состояние стадий — v0.695
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,15 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.695 extends that C tutorial with immutable SWF bytes linked into the executable.
+Explicit network provenance survives unload and resolves relative form reloads;
+URL/memory fixtures prove memory startup does not fetch a startup SWF. No temporary
+movie file or binary strlen. Final series: 35 selected native tests, 11 shared
+native-TLS, nine shared curl and three no-provider tests pass. C-only player/transfer
+UBSan passes interpreter/JIT and URL/linked-memory tutorial fixtures; VM/SDL/transport
+libraries are not instrumented. Player/tutorial cross-link for Linux ARM64/RISC-V64
+and Windows x86_64 without target execution. All nine stages remain open.
 
 v0.694 adds an independent annotated C89/AS/SWF unload tutorial with its own
 bytecode generator, delayed loopback server, native/cross instructions and RU/EN

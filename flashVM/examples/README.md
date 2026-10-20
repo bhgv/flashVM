@@ -1796,7 +1796,8 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 
 Самодостаточный C89/AS/SWF8 пример очистки дочернего клипа: медленный активный
 запрос отменяется, ожидающий запрос потомка не начинается, peer сохраняется,
-новая загрузка доставляется в тот же экземпляр. Подробности и владение:
+новая загрузка доставляется в тот же экземпляр. Старт может идти из URL или
+из массива SWF, слинкованного с C-программой, с явной сетевой базой. Подробности и владение:
 [README EN](player/unload_loading/README.md) / [RU](player/unload_loading/README.ru.md).
 [C](player/unload_loading/main.c), [AS-эскиз](player/unload_loading/start.as),
 [генератор](player/unload_loading/make_movies.py), [SWF](player/unload_loading/start.swf),

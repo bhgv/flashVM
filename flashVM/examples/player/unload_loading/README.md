@@ -84,3 +84,21 @@ Root/_level0 unloading and synthetic onUnload/MovieClipLoader events remain
 unsupported. Independent audio-device lifetime and uninterruptible DNS remain
 host/provider concerns. Close/error joins native jobs; no worker is forcibly killed.
 Dummy SDL verifies protocol/state behavior, not a physical window or remote OS.
+
+## Linked startup bytes since v0.695
+
+The same executable can skip fetching its startup SWF:
+
+```sh
+./build-unload/frontend/flashvm_example_unload_loading --embedded http://127.0.0.1:8000/start.swf
+```
+
+The generator also emits [movie.inc](movie.inc): immutable counted SWF bytes linked
+into the C program. `source.kind` selects [FVM_DESKTOP_SOURCE_MEMORY](../../../frontend/common/source.h#L5), `source.bytes`
+borrows that array, and `source.size` uses sizeof rather than strlen. The supplied
+URL is provenance, not a fetched startup resource. Relative slow/peer/fresh URLs
+still resolve under its network directory, including after content unloading.
+The origin is explicit; it does not silently become the process working directory.
+No temporary SWF file is created. The array lives throughout synchronous playback.
+The same automated C-host fixture checks URL and linked-memory startup and asserts
+that memory startup performs no `/start.swf` HTTP request.

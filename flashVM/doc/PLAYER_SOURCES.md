@@ -245,6 +245,7 @@ GET here means retrieving the supplied URL. Automatic serialization of current-c
 [Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.683.
 [Owner load progress, deadlines and startup stop](LOAD_MONITOR.md).
 [Native content unloading / Очистка содержимого](MOVIE_UNLOAD.md).
+[Linked-memory startup with child unload/reload / Встроенный старт и очистка](../examples/player/unload_loading/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
