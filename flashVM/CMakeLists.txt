@@ -230,7 +230,7 @@ function(fvm_add_program source)
   if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
     return() # This contract requires actual target Windows SDK declarations.
   endif()
-  if(relative MATCHES "^examples/player/(configured_host|embedded_movie|loading)/main.c$")
+  if(relative MATCHES "^examples/player/(configured_host|embedded_movie|loading|socket_loading)/main.c$")
     return() # Requires the optional player's generated metadata and SDL SDK.
   endif()
   if(relative MATCHES "^examples/frontends/(sdl|clutter3d|gtk3|qt5|linux_fb)/")

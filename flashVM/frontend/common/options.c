@@ -349,8 +349,7 @@ void fvm_desktop_help(const char *program)
     puts(
         "  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
-    puts("HTTP(S) input requires the optional libcurl provider; no redirects, POST or "
-         "loadVariables.");
+    puts("Network input requires an optional CURL or SOCKET_HTTP provider; no redirects or POST.");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.676
+# FlashVM stage status / Состояние стадий — v0.677
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -49,6 +49,12 @@ focused checks after source-origin changes. Static cross-builds cover Linux ARM6
 Linux RISC-V64 and Windows x86_64; Windows DLL exports and C/C++98 consumers link.
 Foreign executables were not run. Full historical loading and actual foreign runtime
 acceptance remain open; none of the nine stages is declared complete.
+
+v0.677 adds optional native POSIX/Winsock HTTP GET, bounded URI resolution,
+strict response framing and monotonic TCP/I/O deadlines without libcurl.
+Six native tests cover URI/raw TCP and interpreter/JIT root/child/form loading.
+Linux ARM64/RISC-V64 and Windows x86_64 player cross-builds link; not executed.
+[EN](SOCKET_TRANSPORT.md) / [RU](SOCKET_TRANSPORT.ru.md). TLS and async DNS remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

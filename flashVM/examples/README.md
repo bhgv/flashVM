@@ -156,6 +156,7 @@
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
+  - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
@@ -1740,6 +1741,15 @@ CLI проверяет 120 кадров каждого в interpreter/JIT.
 без него сообщает о неподдержанном потоковом звуке. Нативного аудиовыхода, MP3 decode
 и A/V sync пример не добавляет.
 
+<a id="example-player-socket_loading"></a>
+### socket_loading
+
+Исполняемый C89-хост с явным транспортом POSIX/Winsock: сетевой старт,
+дочерние SWF, loadVariables и настройки deadline без libcurl.
+[README EN](player/socket_loading/README.md) / [RU](player/socket_loading/README.ru.md),
+[исходник](player/socket_loading/main.c), [контракт](../doc/SOCKET_TRANSPORT.ru.md).
+Сборка требует FVM_PLAYER_SOCKET_HTTP; DNS синхронный, foreign runtime не подтверждён.
+
 <a id="example-player-wheel_cursor"></a>
 ### wheel_cursor
 
@@ -1871,6 +1881,7 @@ Source line links describe the current checkout, including in historical notes.
 - [shared_mutex — embedding/shared_mutex](#example-embedding-shared_mutex)
 - [shared_mutex.as — actionscript/shared_mutex.as](#example-actionscript-shared_mutex-as)
 - [source_breakpoints — debugger/source_breakpoints](#example-debugger-source_breakpoints)
+- [socket_loading — player/socket_loading](#example-player-socket_loading)
 - [speech_android — multimedia/speech_android](#example-multimedia-speech_android)
 - [speech_macos — multimedia/speech_macos](#example-multimedia-speech_macos)
 - [speech_stt — multimedia/speech_stt](#example-multimedia-speech_stt)

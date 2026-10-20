@@ -26,6 +26,9 @@
 #ifdef FVM_DESKTOP_HTTP
 #include "http.h"
 #endif
+#ifdef FVM_DESKTOP_SOCKET_HTTP
+#include "socket_http.h"
+#endif
 #include <SDL.h>
 #include <limits.h>
 #include <stdio.h>
@@ -38,6 +41,7 @@
 #include <unistd.h>
 #endif
 
+#ifndef FVM_DESKTOP_EXECUTABLE_BASE
 /* Return an SDL-allocated executable directory, never a Cocoa Resources directory or CWD. */
 static char *executable_base_path(void)
 {
@@ -68,7 +72,6 @@ static char *executable_base_path(void)
     return SDL_GetBasePath();
 #endif
 }
-#ifndef FVM_DESKTOP_EXECUTABLE_BASE
 #define FVM_DESKTOP_EXECUTABLE_BASE                                                                \
     executable_base_path /* Isolate OS discovery in protocol tests. */
 #endif
@@ -880,6 +883,8 @@ int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes,
         loader.max_loads = options->max_loads;
 #ifdef FVM_DESKTOP_HTTP
     loader.fetch = fvm_desktop_http_fetch;
+#elif defined(FVM_DESKTOP_SOCKET_HTTP)
+    loader.fetch = fvm_desktop_socket_fetch;
 #endif
     return fvm_desktop_run_source(options, &source, &loader, error);
 }
@@ -1176,6 +1181,8 @@ int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
     loader.max_loads = value.max_loads;
 #ifdef FVM_DESKTOP_HTTP
     loader.fetch = fvm_desktop_http_fetch;
+#elif defined(FVM_DESKTOP_SOCKET_HTTP)
+    loader.fetch = fvm_desktop_socket_fetch;
 #endif
     if (value.file_count > 1 && !value.frames)
         value.once = 1;

@@ -2,12 +2,14 @@
 
 [English](PLAYER_SOURCES.md).
 
-Текущая v0.676 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
+Текущая v0.677 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
+
+[Встроенный транспорт POSIX/Winsock без libcurl](SOCKET_TRANSPORT.ru.md) доступен с v0.677.
 
 ## Вход из памяти с v0.673
 
 [fvm_desktop_run_memory](../frontend/common/player.h#L39) из [player.h](../frontend/common/player.h) принимает
-скалярные [FVM_DesktopOptions](../frontend/common/options.h#L61), const void указатель, точное число байтов size_t,
+скалярные [FVM_DesktopOptions](../frontend/common/options.h#L29), const void указатель, точное число байтов size_t,
 непустое имя источника и необязательный указатель на статическую ошибку.
 Подходят char buf[] и read-only массивы в исполняемом файле. NUL — обычный байт,
 не конец данных. Нет временного файла, strlen(data), изменения источника или
@@ -43,9 +45,9 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Этапы](ROADMAP_STATUS.md)
 ## Транспорт хоста и корневая загрузка с v0.674
 
-[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/source.h#L61) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L62) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L41)
-и [FVM_DesktopFetch](../frontend/common/source.h#L46). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
+[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/source.h#L27) (kind, bytes,
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L35)
+и [FVM_DesktopFetch](../frontend/common/source.h#L40). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают
 с memory run. Для FILE/URL bytes=null и size=0. Имя — 1..4096 байтов;
@@ -88,7 +90,7 @@ GetURL2 LOAD_TARGET к _root или _level0 с GET/без метода копи�
 FVM_PLAYER_HTTP=ON подключает отдельный SDK libcurl 7.62+ только к необязательному
 frontend. По умолчанию OFF: память, файлы и пользовательский транспорт остаются
 доступны без curl. fvm_desktop_http_fetch из [http.h](../frontend/common/http.h)
-соответствует [FVM_DesktopFetch](../frontend/common/source.h#L46): присвойте loader.fetch, userdata оставьте null.
+соответствует [FVM_DesktopFetch](../frontend/common/source.h#L40): присвойте loader.fetch, userdata оставьте null.
 URL API curl разрешает reference/base и возвращает canonical provenance.
 HTTP(S) GET проверяет TLS peer/hostname, полное завершение передачи и код 2xx.
 Редиректы отклоняются. POST, настройка авторизации, progressive loading и отмена
@@ -103,7 +105,7 @@ CLI и структурированный плейлист распознают 
 --loads N задаёт бюджет корневых загрузок для каждого стартового фильма,
 включая сам старт: 1..1024, по умолчанию 1. Поле [FVM_DesktopOptions.max_loads](../frontend/common/options.h#L35)
 задаёт ту же политику CLI/плейлиста; прямой run_source использует явный
-[FVM_DesktopLoader](../frontend/common/source.h#L62). Закрытие заканчивает весь плейлист. Несколько файлов по
+[FVM_DesktopLoader](../frontend/common/source.h#L44). Закрытие заканчивает весь плейлист. Несколько файлов по
 умолчанию играются по одному авторскому проходу. Неподдержанные targets/POST
 дают ошибку, не превращаются молча в корневую навигацию.
 
