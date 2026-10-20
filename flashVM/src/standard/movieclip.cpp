@@ -3,6 +3,7 @@
  */
 #include "movieclip_quality.hpp"
 #include "movieclip_dimensions.hpp"
+#include "movieclip_location.hpp"
 #include "../swf/clip_action_policy.hpp"
 #include "flashvm/clip_actions.h"
 #include "stage_update.hpp"
@@ -3194,6 +3195,8 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
     }
     if (index == FVM_AVM1_PROPERTY_HIGH_QUALITY || index == FVM_AVM1_PROPERTY_QUALITY)
         return fvm_movieclip_quality_read(c, index == FVM_AVM1_PROPERTY_HIGH_QUALITY, out);
+    if (index == FVM_AVM1_PROPERTY_URL)
+        return fvm_movieclip_url_read(c, clip, out);
     if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_TARGET)
@@ -3254,6 +3257,8 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
     }
     if (index == FVM_AVM1_PROPERTY_HIGH_QUALITY || index == FVM_AVM1_PROPERTY_QUALITY)
         return fvm_movieclip_quality_write(c, index == FVM_AVM1_PROPERTY_HIGH_QUALITY, input);
+    if (index == FVM_AVM1_PROPERTY_URL)
+        return FVM_OK; /* Location is read-only; writing never changes provenance. */
     if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_CURRENT_FRAME || index == FVM_AVM1_PROPERTY_TOTAL_FRAMES ||
@@ -3994,6 +3999,12 @@ fvm_movieclip_stage(FVM_Context *c,
     proto->attributes["_quality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
     proto->attributes["_highquality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
 
+    /* Location is a readonly view of private source provenance, never an own URL scalar. */
+    FVM_AccessorEntry url;
+    url.getter = fvm_movieclip_url_get;
+    proto->accessors["_url"] = url;
+    proto->attributes["_url"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+
     /* Named dimensions reuse intrinsic geometry; they do not create stale own scalar fields. */
     FVM_AccessorEntry width, height;
     width.getter = fvm_movieclip_width_get;
@@ -4134,6 +4145,8 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET;
     if (cb == fvm_movieclip_highquality_set)
         return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET;
+    if (cb == fvm_movieclip_url_get)
+        return FVM_MOVIECLIP_CALLBACK_URL_GET;
     if (cb == fvm_movieclip_width_get)
         return FVM_MOVIECLIP_CALLBACK_WIDTH_GET;
     if (cb == fvm_movieclip_width_set)
@@ -4179,6 +4192,8 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return fvm_movieclip_highquality_get;
     if (id == FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET)
         return fvm_movieclip_highquality_set;
+    if (id == FVM_MOVIECLIP_CALLBACK_URL_GET)
+        return fvm_movieclip_url_get;
     if (id == FVM_MOVIECLIP_CALLBACK_WIDTH_GET)
         return fvm_movieclip_width_get;
     if (id == FVM_MOVIECLIP_CALLBACK_WIDTH_SET)

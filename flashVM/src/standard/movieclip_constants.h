@@ -72,6 +72,7 @@
 #define FVM_MOVIECLIP_CALLBACK_WIDTH_SET 1211UL /* Stable named width setter. */
 #define FVM_MOVIECLIP_CALLBACK_HEIGHT_GET 1212UL /* Stable named height getter. */
 #define FVM_MOVIECLIP_CALLBACK_HEIGHT_SET 1213UL /* Stable named height setter. */
+#define FVM_MOVIECLIP_CALLBACK_URL_GET 1214UL /* Stable readonly content source getter. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \
     "$classPrototype" /* Private Boolean marking the builtin prototype, not a live display         \

@@ -60,6 +60,32 @@ ctest --test-dir build-named -R '^flashvm_tests_movieclip_named_dimensions$' --o
 The test runs without SDL, networking or image codecs. See the linked image
 examples for the optional desktop image profile and native/cross build commands.
 
+## Content location since v0.705
+
+The getter-only `_url` property reads the nearest retained native source origin,
+shared with ActionGetProperty index 15. The desktop loader records an absolute
+local path or the final network URL after redirects. Memory startup uses the host's
+explicit provenance; a native clip without any source returns an empty string.
+The builtin class prototype returns undefined. This is source metadata, not a new
+network request, and it does not reinterpret `_lockroot` as a source boundary.
+
+Source strings are copied by [`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L103). The getter returns managed
+borrowed storage using the ordinary object API lifetime. Unloading retains the
+origin, detached children retain their old origin, and successful content
+replacement publishes its new origin atomically. Failed replacement preserves it.
+Serialization retains origins and restores the getter in the receiving context.
+
+Named writes and ActionSetProperty index 15 are ignored without converting the
+assigned value. They never modify the loader's private base. Explicit user data
+shadows affect named access only; numeric access continues to read private
+provenance. Invalid, foreign or malformed native ancestry returns the existing
+source-query error. No complete historical `_url` spelling/escaping conformance
+or all source providers is implied.
+
+`tests/movieclip_location.cpp` checks SWF5–8 interpreter/JIT, actual GetMember,
+readonly coercion guards, inherited and detached origins, unload/reload failure,
+independent serialized contexts, GC and named-shadow/numeric separation.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -70,6 +96,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:103](../include/flashvm/movieclip.h#L103) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 <!-- source-links:end -->
