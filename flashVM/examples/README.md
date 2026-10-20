@@ -161,6 +161,7 @@
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
   - [redirect_loading](#example-player-redirect_loading) — <small><em>Ограниченные redirects и конечные root/child/form origin через C API</em></small>
   - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
+  - [unload_loading](#example-player-unload_loading) — <small><em>Очистка child, отмена поддерева, сохранение peer и новая загрузка</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
@@ -1790,6 +1791,17 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [исходник](player/socket_loading/main.c), [контракт](../doc/SOCKET_TRANSPORT.ru.md).
 Сборка требует FVM_PLAYER_SOCKET_HTTP; DNS синхронный, foreign runtime не подтверждён.
 
+<a id="example-player-unload_loading"></a>
+### unload_loading
+
+Самодостаточный C89/AS/SWF8 пример очистки дочернего клипа: медленный активный
+запрос отменяется, ожидающий запрос потомка не начинается, peer сохраняется,
+новая загрузка доставляется в тот же экземпляр. Подробности и владение:
+[README EN](player/unload_loading/README.md) / [RU](player/unload_loading/README.ru.md).
+[C](player/unload_loading/main.c), [AS-эскиз](player/unload_loading/start.as),
+[генератор](player/unload_loading/make_movies.py), [SWF](player/unload_loading/start.swf),
+[сервер](player/unload_loading/serve.py). Корень и unload events не реализованы.
+
 <a id="example-player-wheel_cursor"></a>
 ### wheel_cursor
 
@@ -1950,6 +1962,7 @@ Source line links describe the current checkout, including in historical notes.
 - [text — embedding/text](#example-embedding-text)
 - [text_layout — embedding/text_layout](#example-embedding-text_layout)
 - [timers — embedding/timers](#example-embedding-timers)
+- [unload_loading — player/unload_loading](#example-player-unload_loading)
 - [url_encoding — embedding/url_encoding](#example-embedding-url_encoding)
 - [wheel_cursor — player/wheel_cursor](#example-player-wheel_cursor)
 - [worker_channels — embedding/worker_channels](#example-embedding-worker_channels)

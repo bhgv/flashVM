@@ -807,3 +807,15 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
     endif()
   endforeach()
 endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_unload_loading ../examples/player/unload_loading/main.c)
+  target_link_libraries(flashvm_example_unload_loading PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_unload_loading PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_example_unload_loading COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/unload_example.py $<TARGET_FILE:flashvm_example_unload_loading>
+      ${PROJECT_SOURCE_DIR}/examples/player/unload_loading)
+    set_tests_properties(flashvm_example_unload_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+  endif()
+endif()

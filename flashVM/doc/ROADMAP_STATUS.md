@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.693
+# FlashVM stage status / Состояние стадий — v0.694
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.694 adds an independent annotated C89/AS/SWF unload tutorial with its own
+bytecode generator, delayed loopback server, native/cross instructions and RU/EN
+ownership/API guides. Its real C-host fixture verifies cancelled subtree I/O,
+retained peer delivery and reload. All stages remain open.
 
 v0.693 rejects active/queued destinations under removed ancestors, keeping exact
 identity when the same script path is reused. It also drains onData-generated

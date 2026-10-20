@@ -104,6 +104,7 @@ starting the next fetch. This applies to synchronous, background-waiting and asy
 transport. Thus an onData handler may clear its subtree without the next queued
 request racing ahead and delivering to an obsolete child. Same-instance own
 properties and handlers remain subject to the earlier content-clear contract.
+[Standalone C/AS/SWF tutorial / Самостоятельный пример](../examples/player/unload_loading/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
