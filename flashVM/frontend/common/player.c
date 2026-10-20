@@ -358,8 +358,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         /* Input may register timers; deliver due work even between timeline frames. */
         if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
-        /* [GC:] Reclaim callback activations at a safe host boundary even before a slow frame. */
-        if (timer_callbacks && !checked(fvm_gc_step(context, 0), "timer GC step", path))
+        /* [GC:] Input listeners and HostInput publication also allocate without timers.
+         * Step once per foreground turn after all callbacks return; roots stay pinned.
+         * The collector threshold decides whether this safe point actually collects. */
+        if (!checked(fvm_gc_step(context, 0), "event GC step", path))
             goto cleanup;
         if (!checked(fvm_desktop_window_sync_cursor(window, context), "cursor visibility", path))
             goto cleanup;

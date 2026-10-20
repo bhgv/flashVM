@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.666
+# FlashVM stage status / Состояние стадий — v0.667
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,10 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.667 adds a foreground event-loop GC safe point independent of fired timers.
+[Contract and regression](PLAYER_EVENT_GC.md) / [Контракт и проверка](PLAYER_EVENT_GC.ru.md).
+This is bounded progress on stages 3/7; all nine stages remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

@@ -126,3 +126,5 @@ Escape/Android back остаются зарезервированы для за�
 [Ограниченная обработка событий](../doc/PLAYER_EVENT_FAIRNESS.ru.md).
 
 [Совместимость и проверка входа](../doc/PLAYER_PREFLIGHT.ru.md).
+
+[Сборка мусора между кадрами](../doc/PLAYER_EVENT_GC.ru.md).

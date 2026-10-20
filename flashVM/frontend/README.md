@@ -127,3 +127,5 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 [Bounded event processing](../doc/PLAYER_EVENT_FAIRNESS.md).
 
 [Compatibility and input preflight](../doc/PLAYER_PREFLIGHT.md).
+
+[Collection between frames](../doc/PLAYER_EVENT_GC.md).

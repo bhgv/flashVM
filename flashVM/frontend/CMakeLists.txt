@@ -333,3 +333,20 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
   endif()
   add_test(NAME flashvm_frontend_options_locale COMMAND flashvm_frontend_options_locale)
 endif()
+
+# Real collector safe points between slow frames; no native-window acceptance claim.
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_event_gc ${frontend_os}/main.c tests/event_gc.c
+    common/options.c common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_event_gc PRIVATE flashvm SDL2::SDL2)
+  if(WIN32)
+    target_link_libraries(flashvm_frontend_event_gc PRIVATE shell32)
+  endif()
+  set_target_properties(flashvm_frontend_event_gc PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_player_event_gc_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/event_gc.py $<TARGET_FILE:flashvm_frontend_event_gc> --${mode})
+    set_tests_properties(flashvm_player_event_gc_${mode} PROPERTIES TIMEOUT 20)
+  endforeach()
+  set_tests_properties(flashvm_player_event_gc_jit PROPERTIES SKIP_RETURN_CODE 77)
+endif()
