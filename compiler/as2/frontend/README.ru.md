@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS2
 
-Версия 0.2.2. [English](README.md).
+Версия 0.2.3. [English](README.md).
 
 Читаемый файл [as2.atg](as2.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -88,7 +88,7 @@ interface, extends, implements, модификаторы, методы и фор
 
 ## Указатель правил грамматики
 
-[As2](as2.atg#L84) | [Item](as2.atg#L89) | [Block](as2.atg#L97) | [Statement](as2.atg#L104) | [IfStatement](as2.atg#L123) | [WhileStatement](as2.atg#L129) | [ForStatement](as2.atg#L136) | [SwitchStatement](as2.atg#L145) | [TryStatement](as2.atg#L150) | [SwitchPart](as2.atg#L159) | [Variables](as2.atg#L164) | [Variable](as2.atg#L169) | [FunctionTail](as2.atg#L174) | [Parameter](as2.atg#L179) | [Expression](as2.atg#L184) | [Assignment](as2.atg#L190) | [AssignOp](as2.atg#L195) | [Conditional](as2.atg#L212) | [LogicalOr](as2.atg#L217) | [LogicalAnd](as2.atg#L222) | [BitOr](as2.atg#L227) | [BitXor](as2.atg#L232) | [BitAnd](as2.atg#L237) | [Equality](as2.atg#L242) | [Relational](as2.atg#L247) | [Shift](as2.atg#L252) | [Additive](as2.atg#L257) | [Product](as2.atg#L262) | [Unary](as2.atg#L267) | [Postfix](as2.atg#L273) | [Arguments](as2.atg#L278) | [Primary](as2.atg#L283) | [Property](as2.atg#L301) | [TypeName](as2.atg#L306) | [Import](as2.atg#L311) | [Class](as2.atg#L316) | [Interface](as2.atg#L322) | [Modifier](as2.atg#L327) | [Member](as2.atg#L336) | [Signature](as2.atg#L341)
+[As2](as2.atg#L225) | [Item](as2.atg#L233) | [Block](as2.atg#L241) | [Statement](as2.atg#L252) | [IfStatement](as2.atg#L287) | [WhileStatement](as2.atg#L295) | [ForStatement](as2.atg#L302) | [SwitchStatement](as2.atg#L325) | [TryStatement](as2.atg#L334) | [SwitchPart](as2.atg#L350) | [Variables](as2.atg#L361) | [Variable](as2.atg#L369) | [FunctionTail](as2.atg#L380) | [Parameter](as2.atg#L398) | [Expression](as2.atg#L406) | [Assignment](as2.atg#L415) | [AssignOp](as2.atg#L427) | [Conditional](as2.atg#L444) | [LogicalOr](as2.atg#L456) | [LogicalAnd](as2.atg#L464) | [BitOr](as2.atg#L472) | [BitXor](as2.atg#L480) | [BitAnd](as2.atg#L488) | [Equality](as2.atg#L496) | [Relational](as2.atg#L512) | [Shift](as2.atg#L533) | [Additive](as2.atg#L546) | [Product](as2.atg#L559) | [Unary](as2.atg#L572) | [Postfix](as2.atg#L594) | [Arguments](as2.atg#L608) | [Primary](as2.atg#L621) | [Property](as2.atg#L690) | [TypeName](as2.atg#L700) | [Import](as2.atg#L708) | [Class](as2.atg#L721) | [Interface](as2.atg#L743) | [Modifier](as2.atg#L759) | [Member](as2.atg#L768) | [Signature](as2.atg#L784)
 
 ## Описание языка
 

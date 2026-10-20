@@ -98,3 +98,5 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 ## FIR v1
 
 [Формат, C99/Coco-R инструменты и примеры](fir/v1/README.ru.md).
+
+[Стиль ATG и проверка оформления](tools/README.ru.md).

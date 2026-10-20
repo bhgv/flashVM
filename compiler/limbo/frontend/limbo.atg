@@ -22,28 +22,46 @@ static int AheadArrow(void)
     int depth = 0; /* Parenthesis/subscript nesting hides inner arrows. */
     int quote = 0; /* Zero outside a string, otherwise the opening quote. */
     int ch;
-    while ((ch = S_CurrentCh(pos)) != 0) {
+    while ((ch = S_CurrentCh(pos)) != 0)
+    {
         int next = S_CurrentCh(pos + 1);
-        if (quote) {
+        if (quote)
+        {
             /* Skip the escaped byte so an escaped quote cannot end the string. */
-            if (ch == 92 && next) ++pos;
-            else if (ch == quote) quote = 0;
-        } else if (ch == 34 || ch == 39) {
+            if (ch == 92 && next)
+                ++pos;
+            else if (ch == quote)
+                quote = 0;
+        }
+        else if (ch == 34 || ch == 39)
+        {
             quote = ch;
-        } else if (ch == '#') {
+        }
+        else if (ch == '#')
+        {
             /* A comment may contain an arrow that is not a grammar separator. */
-            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10) ++pos;
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+                ++pos;
             continue;
-        } else if (ch == '(' || ch == '[') {
+        }
+        else if (ch == '(' || ch == '[')
+        {
             ++depth;
-        } else if (ch == ')' || ch == ']') {
-            if (!depth) return 0;
+        }
+        else if (ch == ')' || ch == ']')
+        {
+            if (!depth)
+                return 0;
             --depth;
-        } else if (!depth) {
+        }
+        else if (!depth)
+        {
             /* Only an outer => starts a new case/alt/pick arm. */
-            if (ch == '=' && next == '>') return 1;
+            if (ch == '=' && next == '>')
+                return 1;
             /* An ordinary statement ends or opens a block before any arm. */
-            if (ch == ';' || ch == '{' || ch == '}') return 0;
+            if (ch == ';' || ch == '{' || ch == '}')
+                return 0;
         }
         ++pos;
     }
@@ -53,377 +71,856 @@ static int AheadArrow(void)
 /* Whitespace and # comments are transparent to contextual lookahead. */
 static long Trivia(long pos)
 {
-    for(;;) {
-        int ch=S_CurrentCh(pos);
-        if(ch==' ' || ch==9 || ch==10 || ch==13) ++pos;
-        else if(ch=='#') while(S_CurrentCh(pos) && S_CurrentCh(pos)!=10) ++pos;
-        else return pos;
+    for (;;)
+    {
+        int ch = S_CurrentCh(pos);
+        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+            ++pos;
+        else if (ch == '#')
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+                ++pos;
+        else
+            return pos;
     }
 }
 /* Match a whole keyword after a candidate label without reading a token. */
 static int WordAt(long pos, const char *word)
 {
     int ch;
-    while(*word) if(S_CurrentCh(pos++)!=(unsigned char)*word++) return 0;
-    ch=S_CurrentCh(pos);
-    return !((ch>='A' && ch<='Z') || (ch>='a' && ch<='z') ||
-        (ch>='0' && ch<='9') || ch=='_' || ch>=128);
+    while (*word)
+        if (S_CurrentCh(pos++) != (unsigned char)*word++)
+            return 0;
+    ch = S_CurrentCh(pos);
+    return !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+             (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128);
 }
 /* A colon before a type is a declaration, not a control-statement label. */
 static int LabelAhead(void)
 {
-    long pos=Trivia(S_NextPos+S_NextLen);
-    if(S_CurrentCh(pos)!=':') return 0;
-    pos=Trivia(pos+1);
-    return WordAt(pos,"while") || WordAt(pos,"do") || WordAt(pos,"for") ||
-        WordAt(pos,"case") || WordAt(pos,"alt") || WordAt(pos,"pick");
+    long pos = Trivia(S_NextPos + S_NextLen);
+    if (S_CurrentCh(pos) != ':')
+        return 0;
+    pos = Trivia(pos + 1);
+    return WordAt(pos, "while") || WordAt(pos, "do") || WordAt(pos, "for") ||
+           WordAt(pos, "case") || WordAt(pos, "alt") || WordAt(pos, "pick");
 }
 /* Repetition resolver includes comma FIRST explicitly to guarantee progress. */
 static int InitializerAfterComma(void)
 {
-    int ch=S_CurrentCh(Trivia(S_NextPos+S_NextLen));
-    return ch && ch!='}';
+    int ch = S_CurrentCh(Trivia(S_NextPos + S_NextLen));
+    return ch && ch != '}';
 }
 
 /* Distinguish wildcard * from unary dereference by its following separator. */
 static int WildcardAhead(void)
 {
-    long pos=Trivia(S_NextPos+S_NextLen);
-    return (S_CurrentCh(pos)=='=' && S_CurrentCh(pos+1)=='>') || WordAt(pos,"or");
+    long pos = Trivia(S_NextPos + S_NextLen);
+    return (S_CurrentCh(pos) == '=' && S_CurrentCh(pos + 1) == '>') ||
+           WordAt(pos, "or");
 }
 
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
-  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" + CHR(128)..CHR(255) .
+  letter =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" +
+    CHR(128) .. CHR(255)
+  .
+
   /* Продолжение последовательности UTF-8. */
-  trail = CHR(128)..CHR(191) .
+  trail =
+    CHR(128) .. CHR(191)
+  .
+
   /* Начальный байт двухбайтового UTF-8. */
-  lead2 = CHR(194)..CHR(223) .
+  lead2 =
+    CHR(194) .. CHR(223)
+  .
+
   /* Начальный байт трёхбайтового UTF-8. */
-  lead3 = CHR(224)..CHR(239) .
+  lead3 =
+    CHR(224) .. CHR(239)
+  .
+
   /* Начальный байт четырёхбайтового UTF-8. */
-  lead4 = CHR(240)..CHR(244) .
+  lead4 =
+    CHR(240) .. CHR(244)
+  .
+
   /* Один ASCII-символ для символьного литерала Limbo. */
-  ascii = CHR(1)..CHR(127) - "'" - "\\" - CHR(10) - CHR(13) .
+  ascii =
+    CHR(1) .. CHR(127) - "'" - "\\" - CHR(10) - CHR(13)
+  .
+
   /* Шестнадцатеричные цифры. */
-  hex = "0123456789abcdefABCDEF" .
+  hex =
+    "0123456789abcdefABCDEF"
+  .
+
   /* Десятичные цифры. */
-  digit = "0123456789" .
+  digit =
+    "0123456789"
+  .
+
   /* Латинские буквы для записи чисел с явным основанием. */
-  alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  alpha =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+  .
+
   /* Содержимое двойных кавычек без переводов строки и обратной косой черты. */
-  dq = ANY - '"' - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  dq =
+    ANY - '"' - "\\" - CHR(10) - CHR(13) - CHR(0)
+  .
+
   /* Содержимое одинарных кавычек без разделителей и переводов строки. */
-  sq = ANY - "'" - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  sq =
+    ANY - "'" - "\\" - CHR(10) - CHR(13) - CHR(0)
+  .
+
   /* Байты однострочного комментария; исключён EOF, поэтому допустим конец без LF. */
-  linechar = ANY - CHR(10) - CHR(13) - CHR(0) .
+  linechar =
+    ANY - CHR(10) - CHR(13) - CHR(0)
+  .
+
   /* Байт после обратной косой черты; интерпретация escape — будущий проход. */
-  escaped = ANY - CHR(0) - CHR(10) - CHR(13) .
+  escaped =
+    ANY - CHR(0) - CHR(10) - CHR(13)
+  .
+
 TOKENS
   /* Идентификатор. Ключевые слова выделяются таблицей литералов Coco/R. */
-  ident = letter {letter | digit} .
+  ident =
+    letter
+    {
+        letter
+        | digit
+    }
+  .
+
   /* Десятичное число с необязательной дробной частью и экспонентой. */
-  number = digit {digit} [ "." {digit} ] [ ("e" | "E") ["+" | "-"] digit {digit} ] .
+  number =
+    digit
+    {
+        digit
+    }
+    [
+        "."
+        {
+            digit
+        }
+    ]
+    [
+        (
+            "e"
+            | "E"
+        )
+        [
+            "+"
+            | "-"
+        ]
+        digit
+        {
+            digit
+        }
+    ]
+  .
+
   /* Целое Limbo: основание r цифры; допустимость цифр проверяется семантически. */
-  radix = digit {digit} ("r" | "R") (digit | alpha) {digit | alpha} .
+  radix =
+    digit
+    {
+        digit
+    }
+    (
+        "r"
+        | "R"
+    )
+    (
+        digit
+        | alpha
+    )
+    {
+        digit
+        | alpha
+    }
+  .
+
   /* Строковый литерал; кавычки и обратная косая черта не поглощаются как текст. */
-  text = '"' {dq | "\\" escaped} '"' .
+  text =
+    '"'
+    {
+        dq
+        | "\\" escaped
+    }
+    '"'
+  .
+
   /* Один символ Limbo: ASCII, UTF-8 либо поддерживаемая escape-последовательность. */
-  character = "'" ( ascii | lead2 trail | lead3 trail trail | lead4 trail trail trail
-    | "\\" ( "u" hex hex hex hex | "'" | '"' | "\\" | "n" | "r" | "t" | "a" | "b" | "v" | "0" ) ) "'" .
+  character =
+    "'"
+    (
+        ascii
+        | lead2 trail
+        | lead3 trail trail
+        | lead4 trail trail trail
+        | "\\"
+        (
+            "u" hex hex hex hex
+            | "'"
+            | '"'
+            | "\\"
+            | "n"
+            | "r"
+            | "t"
+            | "a"
+            | "b"
+            | "v"
+            | "0"
+        )
+    )
+    "'"
+  .
+
 PRAGMAS
   /* Комментарий пропускается как pragma и не попадает в правила синтаксиса. */
-  linecomment = "#" {linechar} .
-IGNORE CHR(9) + CHR(10) + CHR(13)
-PRODUCTIONS
+  linecomment =
+    "#"
+    {
+        linechar
+    }
+  .
 
+IGNORE
+  CHR(9) + CHR(10) + CHR(13)
+
+PRODUCTIONS
   /* Единица Limbo: необязательный implement позволяет разбирать также интерфейсы .m. */
   Limbo =
-    [ "implement" ident ";" ] { Top } EOF
-    .
+    [
+        "implement" ident ";"
+    ]
+    {
+        Top
+    }
+    EOF
+  .
 
   /* Верхний уровень Limbo: include, объявление/функция или распаковка кортежа. */
   Top =
     "include" text ";"
     | ident NamedTop
     | "(" Names ")" ":=" Expression ";"
-    .
+  .
 
   /* После общего имени различаются определение функции и объявление данных. */
   NamedTop =
-    { "." ident } FunctionTail
-    | { "," ident } DeclarationTail
-    .
+    {
+        "." ident
+    }
+    FunctionTail
+    |
+    {
+        "," ident
+    }
+    DeclarationTail
+  .
 
   /* Объявление с типом, выводом типа := либо инициализацией =. */
   DeclarationTail =
     ":" DeclType ";"
-    | ( ":=" | "=" ) Expression ";"
-    .
+    |
+    (
+        ":="
+        | "="
+    )
+    Expression ";"
+  .
 
   /* Категории объявлений Limbo: константа, импорт, псевдоним, module, adt или тип. */
-  DeclType = (. limbo_syntax_enter(); .) (
-    "con" Expression
-    | "import" ident
-    | "type" Type
-    | "module" "{" { Top } "}"
-    | "adt" "{" { AdtMember } "}"
-    | [ "cyclic" ] Type [ "=" Expression ]
-     ) (. limbo_syntax_leave(); .) .
+  DeclType =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        "con" Expression
+        | "import" ident
+        | "type" Type
+        | "module" "{"
+        {
+            Top
+        }
+        "}"
+        | "adt" "{"
+        {
+            AdtMember
+        }
+        "}"
+        |
+        [
+            "cyclic"
+        ]
+        Type
+        [
+            "=" Expression
+        ]
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* Члены ADT, включая размеченные варианты pick.
-     Предпросмотр => не позволяет принять имя следующего варианта за поле. */
+  Предпросмотр => не позволяет принять имя следующего варианта за поле. */
   AdtMember =
     Names ":" DeclType ";"
-    | "pick" "{" { Tags "=>" { IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym )
-      Names ":" DeclType ";" } } "}"
-    .
+    | "pick" "{"
+    {
+        Tags "=>"
+        {
+            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym )
+            Names ":" DeclType ";"
+        }
+    }
+    "}"
+  .
 
   /* Группа имён, разделённых запятыми; используется в объявлениях и параметрах. */
   /* Метки вариантов ADT соединяются ключевым словом or. */
   Tags =
-    ident { "or" ident }
-    .
+    ident
+    {
+        "or" ident
+    }
+  .
 
   Names =
-    Name { "," Name }
-    .
+    Name
+    {
+        "," Name
+    }
+  .
 
   /* Имя либо nil для безымянного параметра; проверка контекста — семантическая. */
   Name =
     ident
     | "nil"
-    .
+  .
 
   /* Базовые, составные и именованные типы Limbo. ref и контейнеры
-     рекурсивно охватывают внутренний тип; fn содержит отдельную сигнатуру. */
-  Type = (. limbo_syntax_enter(); .) (
-    "byte"
-    | "int"
-    | "big"
-    | "real"
-    | "string"
-    | ( "array" | "list" | "chan" ) "of" Type
-    | "ref" Type
-    | "fn" Parameters [ IF(Sym == ColonSym ) ":" Type ]
-    | "(" Type { "," Type } ")"
-    | ident { "->" ident | "." ident }
-     ) (. limbo_syntax_leave(); .) .
+  рекурсивно охватывают внутренний тип; fn содержит отдельную сигнатуру. */
+  Type =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        "byte"
+        | "int"
+        | "big"
+        | "real"
+        | "string"
+        |
+        (
+            "array"
+            | "list"
+            | "chan"
+        )
+        "of" Type
+        | "ref" Type
+        | "fn" Parameters
+        [
+            IF(Sym == ColonSym ) ":" Type
+        ]
+        | "(" Type
+        {
+            "," Type
+        }
+        ")"
+        | ident
+        {
+            "->" ident
+            | "." ident
+        }
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* Скобки вокруг необязательного списка формальных параметров Limbo. */
   Parameters =
-    "(" [ Formal { "," Formal } ] ")"
-    .
+    "("
+    [
+        Formal
+        {
+            "," Formal
+        }
+    ]
+    ")"
+  .
 
   /* Формальный параметр: группа имён и тип, self-параметр либо вариативная звёздочка. */
   Formal =
     "*"
-    | Names ":" ( "self" [ "ref" ] ident | Type )
-    .
+    | Names ":"
+    (
+        "self"
+        [
+            "ref"
+        ]
+        ident
+        | Type
+    )
+  .
 
   /* Сигнатура определения Limbo и тело: возвращаемый тип необязателен. */
   FunctionTail =
-    Parameters [ IF(Sym == ColonSym ) ":" Type ] Block
-    .
+    Parameters
+    [
+        IF(Sym == ColonSym ) ":" Type
+    ]
+    Block
+  .
 
   /* Блок ограничивает последовательность элементов фигурными скобками. */
   Block =
-    "{" { Statement } "}"
-    .
+    "{"
+    {
+        Statement
+    }
+    "}"
+  .
 
   /* Инструкции Limbo. Декларация локальной переменной использует общий
-     префикс выражения; после двоеточия разбирается DeclType.
-     Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
-  Statement = (. limbo_syntax_enter(); .) (
-      IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
-    | Block
-    | ";"
-    | "include" text ";"
-    | IfStatement
-    | LabeledStatement
-    | "return" [ Expression ] ";"
-    | ( "break" | "continue" ) [ ident ] ";"
-    | "exit" ";"
-    | "spawn" Expression ";"
-    | Expression [ ":" DeclType ] ";"
-     ) (. limbo_syntax_leave(); .) .
+  префикс выражения; после двоеточия разбирается DeclType.
+  Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
+  Statement =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
+        | Block
+        | ";"
+        | "include" text ";"
+        | IfStatement
+        | LabeledStatement
+        | "return"
+        [
+            Expression
+        ]
+        ";"
+        |
+        (
+            "break"
+            | "continue"
+        )
+        [
+            ident
+        ]
+        ";"
+        | "exit" ";"
+        | "spawn" Expression ";"
+        | Expression
+        [
+            ":" DeclType
+        ]
+        ";"
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* Only the six labelable control statements admit a leading label. */
-  LabeledStatement = WhileStatement | ForStatement | CaseStatement | AltStatement | PickStatement .
+  LabeledStatement =
+    WhileStatement
+    | ForStatement
+    | CaseStatement
+    | AltStatement
+    | PickStatement
+  .
 
   /* Ближайший незавершённый if получает else; вход проверяется без Get(). */
   IfStatement =
     "if" "(" Expression ")" Statement
-    [ IF(Sym == elseSym) "else" Statement ]
-    .
+    [
+        IF(Sym == elseSym) "else" Statement
+    ]
+  .
 
   /* В Limbo условие while может отсутствовать: такой цикл бесконечен. */
   WhileStatement =
-      "while" "(" [ Expression ] ")" Statement
-    | "do" Statement "while" "(" [ Expression ] ")" ";"
-    .
+    "while" "("
+    [
+        Expression
+    ]
+    ")" Statement
+    | "do" Statement "while" "("
+    [
+        Expression
+    ]
+    ")" ";"
+  .
 
   /* Три части for разделены точками с запятой; каждая может отсутствовать. */
   ForStatement =
-    "for" "(" [ Expression ] ";" [ Expression ] ";" [ Expression ] ")" Statement
-    .
+    "for" "("
+    [
+        Expression
+    ]
+    ";"
+    [
+        Expression
+    ]
+    ";"
+    [
+        Expression
+    ]
+    ")" Statement
+  .
 
   /* case сравнивает выражение с условиями; alt выбирает доступную операцию
-     канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
+  канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
   CaseStatement =
-    "case" Expression "{" { CaseArm } "}"
-    .
+    "case" Expression "{"
+    {
+        CaseArm
+    }
+    "}"
+  .
 
   /* Выбор готовой операции канала; выражение после alt не требуется. */
   AltStatement =
-    "alt" "{" { CaseArm } "}"
-    .
+    "alt" "{"
+    {
+        CaseArm
+    }
+    "}"
+  .
 
   /* Тело ветви может быть пустым. Предикат отличает следующую метку =>
-     от начала инструкции; закрывающая скобка и EOF явно исключены. */
+  от начала инструкции; закрывающая скобка и EOF явно исключены. */
   CaseArm =
     Qualifiers "=>"
-    [ IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) ArmBody ]
-    .
+    [
+        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+        ArmBody
+    ]
+  .
 
   /* pick связывает имя с выбранным вариантом ADT; типовая корректность
-     значения и существование перечисленных тегов здесь не проверяются. */
+  значения и существование перечисленных тегов здесь не проверяются. */
   PickStatement =
-    "pick" ident ":=" Expression "{" { PickArm } "}"
-    .
+    "pick" ident ":=" Expression "{"
+    {
+        PickArm
+    }
+    "}"
+  .
 
   /* Теги варианта соединяются or; звёздочка задаёт запасной вариант. */
   PickArm =
-    ( Tags | "*" ) "=>"
-    [ IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) ArmBody ]
-    .
+    (
+        Tags
+        | "*"
+    )
+    "=>"
+    [
+        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+        ArmBody
+    ]
+  .
 
   /* Первая инструкция обязательна: пустота разрешена в вызывающем правиле.
-     Продолжение не поглощает следующую метку или конец блока. */
+  Продолжение не поглощает следующую метку или конец блока. */
   ArmBody =
     Statement
-    { IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) Statement }
-    .
+    {
+        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+        Statement
+    }
+  .
 
   /* Условия case/alt: выражение, диапазон to, объединение or либо звёздочка. */
-  Qualifiers = Qualifier { "or" Qualifier } .
+  Qualifiers =
+    Qualifier
+    {
+        "or" Qualifier
+    }
+  .
+
   /* Wildcards end at or/=>; *p is instead an ordinary dereference expression. */
-  Qualifier = IF(Sym==StarSym && WildcardAhead()) "*"
-    | Expression [ "to" Expression ] .
+  Qualifier =
+    IF(Sym==StarSym && WildcardAhead()) "*"
+    | Expression
+    [
+        "to" Expression
+    ]
+  .
 
   /* Самый низкий приоритет: последовательность выражений через запятую. */
   Expression =
-    Assignment { "," Assignment }
-    .
+    Assignment
+    {
+        "," Assignment
+    }
+  .
 
   /* Присваивание разбирается рекурсией справа: a = b = c.
-     Проверка допустимости левой части относится к будущему семантическому проходу. */
-  Assignment = (. limbo_syntax_enter(); .) (
-    Cons [ ( "=" | ":=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>="
-      | "<-=" | "<-" "=" ) Assignment ]
-     ) (. limbo_syntax_leave(); .) .
+  Проверка допустимости левой части относится к будущему семантическому проходу. */
+  Assignment =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        Cons
+        [
+            (
+                "="
+                | ":="
+                | "+="
+                | "-="
+                | "*="
+                | "/="
+                | "%="
+                | "&="
+                | "|="
+                | "^="
+                | "<<="
+                | ">>="
+                | "<-="
+                | "<-" "="
+            )
+            Assignment
+        ]
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
-  Cons = (. limbo_syntax_enter(); .) (
-    LogicalOr [ "::" Cons ]
-     ) (. limbo_syntax_leave(); .) .
+  Cons =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        LogicalOr
+        [
+            "::" Cons
+        ]
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
   LogicalOr =
-    LogicalAnd { "||" LogicalAnd }
-    .
+    LogicalAnd
+    {
+        "||" LogicalAnd
+    }
+  .
 
   /* Логическое И; следующий уровень — побитовое ИЛИ. */
   LogicalAnd =
-    BitOr { "&&" BitOr }
-    .
+    BitOr
+    {
+        "&&" BitOr
+    }
+  .
 
   /* Побитовое ИЛИ. Повторение задаёт левую ассоциативность этого уровня. */
   BitOr =
-    BitXor { "|" BitXor }
-    .
+    BitXor
+    {
+        "|" BitXor
+    }
+  .
 
   /* Побитовое исключающее ИЛИ; операнды имеют более высокий приоритет. */
   BitXor =
-    BitAnd { "^" BitAnd }
-    .
+    BitAnd
+    {
+        "^" BitAnd
+    }
+  .
 
   /* Побитовое И; сравнения равенства связываются сильнее. */
   BitAnd =
-    Equality { "&" Equality }
-    .
+    Equality
+    {
+        "&" Equality
+    }
+  .
 
   /* Сравнения равенства; каждый операнд сначала проходит относительные сравнения. */
   Equality =
-    Relational { ( "==" | "!=" ) Relational }
-    .
+    Relational
+    {
+        (
+            "=="
+            | "!="
+        )
+        Relational
+    }
+  .
 
   /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
   Relational =
-    Shift { ( "<" | ">" | "<=" | ">=" ) Shift }
-    .
+    Shift
+    {
+        (
+            "<"
+            | ">"
+            | "<="
+            | ">="
+        )
+        Shift
+    }
+  .
 
   /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
   Shift =
-    Additive { ( "<<" | ">>" ) Additive }
-    .
+    Additive
+    {
+        (
+            "<<"
+            | ">>"
+        )
+        Additive
+    }
+  .
 
   /* Сложение/вычитание: повторение — левая ассоциативность, Product — сильнее. */
   Additive =
-    Product { ( "+" | "-" ) Product }
-    .
+    Product
+    {
+        (
+            "+"
+            | "-"
+        )
+        Product
+    }
+  .
 
   /* Умножение, деление и остаток: операнды разбираются как унарные выражения. */
   Product =
-    Unary { ( "*" | "/" | "%" ) Unary }
-    .
+    Unary
+    {
+        (
+            "*"
+            | "/"
+            | "%"
+        )
+        Unary
+    }
+  .
 
   /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
   /* chan/array создают составные значения; ref, <- и преобразования типов
-     являются префиксами. load содержит имя типа загружаемого модуля. */
-  Unary = (. limbo_syntax_enter(); .) (
-    ( "!" | "~" | "+" | "-" | "++" | "--" | "<-" | "hd" | "tl" | "len" | "tagof" | "ref" |
-      "byte" | "int" | "big" | "real" | "string" | "*" ) Unary
-    | "load" ident Unary
-    | "chan" [ "[" Expression "]" ] "of" Type
-    | ArrayCreation
-    | "list" "of" "{" Expression "}"
-    | Postfix
-     ) (. limbo_syntax_leave(); .) .
+  являются префиксами. load содержит имя типа загружаемого модуля. */
+  Unary =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        (
+            "!"
+            | "~"
+            | "+"
+            | "-"
+            | "++"
+            | "--"
+            | "<-"
+            | "hd"
+            | "tl"
+            | "len"
+            | "tagof"
+            | "ref"
+            | "byte"
+            | "int"
+            | "big"
+            | "real"
+            | "string"
+            | "*"
+        )
+        Unary
+        | "load" ident Unary
+        | "chan"
+        [
+            "[" Expression "]"
+        ]
+        "of" Type
+        | ArrayCreation
+        | "list" "of" "{" Expression "}"
+        | Postfix
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
   /* An omitted size is legal only when initializer values determine it. */
-  ArrayCreation = (. int sized = 0; .)
-    "array" "[" [ Expression (. sized=1; .) ] "]" "of"
-    ( Type (. if(!sized) SemError(1301); .)
-    | "{" InitializerList "}" ) .
+  ArrayCreation =
+                                                                        (. int sized = 0; .)
+    "array" "["
+    [
+        Expression                                                      (. sized = 1; .)
+    ]
+    "]" "of"
+    (
+        Type                                                            (.
+                                                                            if (!sized)
+                                                                                SemError(1301);
+                                                                        .)
+        | "{" InitializerList "}"
+    )
+  .
+
   /* A single trailing comma is allowed; an empty initializer list is not. */
-  InitializerList = Initializer
-    { IF(Sym==CommaSym && InitializerAfterComma()) "," Initializer } [ "," ] .
+  InitializerList =
+    Initializer
+    {
+        IF(Sym==CommaSym && InitializerAfterComma()) "," Initializer
+    }
+    [
+        ","
+    ]
+  .
 
   /* Элемент array initializer либо индекс => значение, включая * => значение. */
   Initializer =
     IF(Sym==StarSym && WildcardAhead()) "*" "=>" Assignment
-    | Assignment [ "=>" Assignment ]
-    .
+    | Assignment
+    [
+        "=>" Assignment
+    ]
+  .
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
-    Primary { "." ident | "->" ident | Subscript | "(" [
-      Expression ] ")" } [ "++" | "--" ]
-    .
+    Primary
+    {
+        "." ident
+        | "->" ident
+        | Subscript
+        | "("
+        [
+            Expression
+        ]
+        ")"
+    }
+    [
+        "++"
+        | "--"
+    ]
+  .
 
   /* Index or slice: lower bound is mandatory, upper bound may be omitted. */
-  Subscript = "[" Expression [ ":" [ Expression ] ] "]" .
+  Subscript =
+    "[" Expression
+    [
+        ":"
+        [
+            Expression
+        ]
+    ]
+    "]"
+  .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
-  Primary = (. limbo_syntax_enter(); .) (
-    ident
-    | number
-    | radix
-    | text
-    | character
-    | "nil"
-    | "(" Expression ")"
-     ) (. limbo_syntax_leave(); .) .
+  Primary =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        ident
+        | number
+        | radix
+        | text
+        | character
+        | "nil"
+        | "(" Expression ")"
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
 
-END Limbo.
+END
+  Limbo
+  .
+

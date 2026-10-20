@@ -9,7 +9,7 @@ int main(int argc, char **argv)
     if(argc==2 && !strcmp(argv[1],"--help")) {
         puts("usage: fir1_opt INPUT.fir OUTPUT.fir\nC API: fir_run(FIR_OPT, ...), fir_optimise(...); no SWF output."); return 0;
     }
-    if(argc==2 && !strcmp(argv[1],"--version")) { puts("fir1_opt 0.4.1 (FIR 1.0)"); return 0; }
+    if(argc==2 && !strcmp(argv[1],"--version")) { puts("fir1_opt 0.4.2 (FIR 1.0)"); return 0; }
     if(argc!=3 || !strcmp(argv[1],argv[2])) return 2;
     in=fopen(argv[1],"rb"); if(!in) return 2;
     staged=fir_temporary(); if(!staged) { fclose(in); return 2; }

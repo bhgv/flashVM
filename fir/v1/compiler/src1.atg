@@ -7,7 +7,8 @@ COMPILER Src1
 static void capture(void)
 {
     char text[256] = "";
-    if (S_Len < 256) S_GetString(S_Pos, S_Len, text, 255);
+    if (S_Len < 256)
+        S_GetString(S_Pos, S_Len, text, 255);
     source_token(text, S_Line, S_Len >= 256);
 }
 static int depth;
@@ -15,115 +16,366 @@ static int depth;
  * expressions share the bounded group/unary depth counter. */
 static int LiteralAhead(void)
 {
-    long pos=S_NextPos+S_NextLen;
-    for(;;) {
-        int ch=S_CurrentCh(pos),next=S_CurrentCh(pos+1);
-        if(ch==' ' || ch==9 || ch==10 || ch==13) ++pos;
-        else if(ch=='#' || (ch=='/' && next=='/')) {
-            while(S_CurrentCh(pos) && S_CurrentCh(pos)!=10) ++pos;
-        } else if(ch=='/' && next=='*') {
-            pos+=2;
-            while(S_CurrentCh(pos) && !(S_CurrentCh(pos)=='*' && S_CurrentCh(pos+1)=='/')) ++pos;
-            if(!S_CurrentCh(pos)) return 0;
-            pos+=2;
-        } else return (ch>='0' && ch<='9') || (ch=='.' && next>='0' && next<='9');
+    long pos = S_NextPos + S_NextLen;
+    for (;;)
+    {
+        int ch = S_CurrentCh(pos), next = S_CurrentCh(pos + 1);
+        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+            ++pos;
+        else if (ch == '#' || (ch == '/' && next == '/'))
+        {
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+                ++pos;
+        }
+        else if (ch == '/' && next == '*')
+        {
+            pos += 2;
+            while (S_CurrentCh(pos) &&
+                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+                ++pos;
+            if (!S_CurrentCh(pos))
+                return 0;
+            pos += 2;
+        }
+        else
+            return (ch >= '0' && ch <= '9') ||
+                   (ch == '.' && next >= '0' && next <= '9');
     }
 }
+
 CHARACTERS
   /* Portable module identifiers. */
-  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" .
+  letter =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+  .
+
   /* Decimal digits for literals with optional fraction and exponent. */
-  digit = "0123456789" .
+  digit =
+    "0123456789"
+  .
+
   /* Hexadecimal digits for ActionScript literals. */
-  hex = digit + "abcdefABCDEF" .
+  hex =
+    digit + "abcdefABCDEF"
+  .
+
   /* Radix digits are checked against the selected base by C99 lowering. */
-  alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  alpha =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+  .
+
   /* Comment bytes excluding EOF and line delimiters. */
-  linebyte = ANY - CHR(0) - CHR(10) - CHR(13) .
+  linebyte =
+    ANY - CHR(0) - CHR(10) - CHR(13)
+  .
+
   /* Non-nesting block comment components. */
-  nonstar = ANY - "*" - CHR(0) .
-  nonstarslash = ANY - "*" - "/" - CHR(0) .
+  nonstar =
+    ANY - "*" - CHR(0)
+  .
+
+  nonstarslash =
+    ANY - "*" - "/" - CHR(0)
+  .
+
 TOKENS
   /* Module name; keywords are distinguished by the generated scanner. */
-  ident = letter {letter | digit} .
+  ident =
+    letter
+    {
+        letter
+        | digit
+    }
+  .
+
   /* Nonnegative number; unary minus belongs to Primary. */
-  numeral = (digit {digit} ["." {digit}] | "." digit {digit})
-            [("e" | "E") ["+" | "-"] digit {digit}] .
+  numeral =
+    (
+        digit
+        {
+            digit
+        }
+        [
+            "."
+            {
+                digit
+            }
+        ]
+        | "." digit
+        {
+            digit
+        }
+    )
+    [
+        (
+            "e"
+            | "E"
+        )
+        [
+            "+"
+            | "-"
+        ]
+        digit
+        {
+            digit
+        }
+    ]
+  .
+
   /* Hex belongs to AS; explicit radix belongs to Limbo. Semantic checks reject
-   * the wrong language rather than silently choosing different arithmetic. */
-  hexnum = "0" ("x" | "X") hex {hex} .
-  radix = digit {digit} ("r" | "R") (digit | alpha) {digit | alpha} .
+  * the wrong language rather than silently choosing different arithmetic. */
+  hexnum =
+    "0"
+    (
+        "x"
+        | "X"
+    )
+    hex
+    {
+        hex
+    }
+  .
+
+  radix =
+    digit
+    {
+        digit
+    }
+    (
+        "r"
+        | "R"
+    )
+    (
+        digit
+        | alpha
+    )
+    {
+        digit
+        | alpha
+    }
+  .
+
   /* Prevent ++/-- from being silently read as two unary operators. */
-  increment = "++" | "--" .
+  increment =
+    "++"
+    | "--"
+  .
+
 PRAGMAS
   /* Native Limbo comments; their use in AS profiles is a semantic error. */
-  hashcomment = "#" {linebyte} . (. source_hash_comment(); .)
+  hashcomment =
+    "#"
+    {
+        linebyte
+    }
+  .
+
+                                                                        (. source_hash_comment(); .)
   /* Human-readable tutorial comments are ignored by parsing. */
-  linecomment = "//" {linebyte} .
+  linecomment =
+    "//"
+    {
+        linebyte
+    }
+  .
+
   /* Closing delimiter is required, including at EOF. */
-  blockcomment = "/*" {nonstar | "*" {"*"} nonstarslash} "*" {"*"} "/" .
-IGNORE CHR(9) + CHR(10) + CHR(13)
+  blockcomment =
+    "/*"
+    {
+        nonstar
+        | "*"
+        {
+            "*"
+        }
+        nonstarslash
+    }
+    "*"
+    {
+        "*"
+    }
+    "/"
+  .
+
+IGNORE
+  CHR(9) + CHR(10) + CHR(13)
+
 PRODUCTIONS
   /* Entire input must match exactly one supported tutorial profile. */
-  Src1 = ( TraceProgram | LimboProgram ) EOF .
+  Src1 =
+    (
+        TraceProgram
+        | LimboProgram
+    )
+    EOF
+  .
+
   /* Empty statements emit no instruction; at least one statement is required. */
-  TraceProgram = (. source_language(0); .) Statement {Statement} .
+  TraceProgram =
+                                                                        (. source_language(0); .)
+    Statement
+    {
+        Statement
+    }
+  .
+
   /* Declarations bind left-to-right; assignment is a statement, not an expression. */
-  Statement = (. int name=0,value=0,op=0; .)
-      ( "trace" "(" Expression<&value> ")" ";" (. source_trace(value); .)
-      | ASDeclaration ";"
-      | Name<&name> AssignmentOperator<&op> Expression<&value> ";"
-        (. source_assign(name,value,op); .)
-      | ";" ) .
+  Statement =
+                                                                        (. int name = 0, value = 0, op = 0; .)
+    (
+        "trace" "(" Expression<&value> ")" ";"                          (. source_trace(value); .)
+        | ASDeclaration ";"
+        | Name<&name> AssignmentOperator<&op> Expression<&value> ";"    (. source_assign(name, value, op); .)
+        | ";"
+    )
+  .
+
   /* AS3 const is enforced by the binding table, not merely accepted as spelling. */
-  ASDeclaration = (. int constant=0; .)
-    ("var" | "const" (. constant=1; .)) Binding<constant> { "," Binding<constant> } .
+  ASDeclaration =
+                                                                        (. int constant = 0; .)
+    (
+        "var"
+        | "const"                                                       (. constant = 1; .)
+    )
+    Binding<constant>
+    {
+        "," Binding<constant>
+    }
+  .
+
   /* Every numeric binding needs an initializer in this restricted profile. */
-  Binding<int constant> = (. int name=0,value=0; .)
-    Name<&name> [ ":" ident (. capture(); source_annotation(); .) ]
-    "=" Expression<&value> (. source_declare(name,value,constant); .) .
+  Binding<int constant> =
+                                                                        (. int name = 0, value = 0; .)
+    Name<&name>
+    [
+        ":" ident                                                       (.
+                                                                            capture();
+                                                                            source_annotation();
+                                                                        .)
+    ]
+    "=" Expression<&value>                                              (. source_declare(name, value, constant); .)
+  .
+
   /* Compound arithmetic is explicit; C lowering rejects /= in the i32 profile. */
-  AssignmentOperator<int *op> = "=" (. *op=0; .) | "+=" (. *op='+'; .)
-    | "-=" (. *op='-'; .) | "*=" (. *op='*'; .) | "/=" (. *op='/'; .) .
+  AssignmentOperator<int *op> =
+    "="                                                                 (. *op = 0; .)
+    | "+="                                                              (. *op = '+'; .)
+    | "-="                                                              (. *op = '-'; .)
+    | "*="                                                              (. *op = '*'; .)
+    | "/="                                                              (. *op = '/'; .)
+  .
+
   /* Intern a source identifier separately from reading its current binding. */
-  Name<int *name> = ident (. capture(); *name = source_name(); .) .
+  Name<int *name> =
+    ident                                                               (.
+                                                                            capture();
+                                                                            *name = source_name();
+                                                                        .)
+  .
+
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
-  LimboProgram = (. int value = 0; source_language(1); .)
-      "implement" ident (. capture(); source_module(1); .) ";"
-      ident (. capture(); source_module(0); .)
-      ":" "module" "{" "value" ":" "fn" "(" ")" ":" "int" ";" "}" ";"
-      "value" "(" ")" ":" "int" "{" {LimboStatement}
-      "return" Expression<&value> ";" "}" (. source_trace(value); .) .
+  LimboProgram =
+                                                                        (.
+                                                                            int value = 0;
+                                                                            source_language(1);
+                                                                        .)
+    "implement" ident                                                   (.
+                                                                            capture();
+                                                                            source_module(1);
+                                                                        .)
+    ";" ident                                                           (.
+                                                                            capture();
+                                                                            source_module(0);
+                                                                        .)
+    ":" "module" "{" "value" ":" "fn" "(" ")" ":" "int" ";" "}" ";"
+    "value" "(" ")" ":" "int" "{"
+    {
+        LimboStatement
+    }
+    "return" Expression<&value> ";" "}"                                 (. source_trace(value); .)
+  .
+
   /* Limbo inferred declarations and initialized int declarations stay distinct
-   * from reassignment. No arbitrary module loader ABI is implied. */
-  LimboStatement = (. int name=0,value=0,op=0; .)
-    ";" | Name<&name>
-    ( ":" "int" "=" Expression<&value> ";" (. source_bind(name,value,1); .)
-    | ":=" Expression<&value> ";" (. source_bind(name,value,1); .)
-    | AssignmentOperator<&op> Expression<&value> ";" (. source_assign(name,value,op); .) ) .
+  * from reassignment. No arbitrary module loader ABI is implied. */
+  LimboStatement =
+                                                                        (. int name = 0, value = 0, op = 0; .)
+    ";"
+    | Name<&name>
+    (
+        ":" "int" "=" Expression<&value> ";"                            (. source_bind(name, value, 1); .)
+        | ":=" Expression<&value> ";"                                   (. source_bind(name, value, 1); .)
+        | AssignmentOperator<&op> Expression<&value> ";"                (. source_assign(name, value, op); .)
+    )
+  .
+
   /* Addition/subtraction bind less tightly than multiplication, left to right. */
-  Expression<int *result> = (. int right = 0, op = 0; .)
-      Product<result>
-      { ("+" (. op = '+'; .) | "-" (. op = '-'; .)) Product<&right>
-        (. *result = source_binary(*result, right, op); .) } .
+  Expression<int *result> =
+                                                                        (. int right = 0, op = 0; .)
+    Product<result>
+    {
+        (
+            "+"                                                         (. op = '+'; .)
+            | "-"                                                       (. op = '-'; .)
+        )
+        Product<&right>                                                 (. *result = source_binary(*result, right, op); .)
+    }
+  .
+
   /* Multiplication and division associate left; division is AS-only. */
-  Product<int *result> = (. int right = 0, op = 0; .)
-      Unary<result> { ("*" (. op='*'; .) | "/" (. op='/'; .)) Unary<&right>
-        (. *result = source_binary(*result, right, op); .) } .
+  Product<int *result> =
+                                                                        (. int right = 0, op = 0; .)
+    Unary<result>
+    {
+        (
+            "*"                                                         (. op = '*'; .)
+            | "/"                                                       (. op = '/'; .)
+        )
+        Unary<&right>                                                   (. *result = source_binary(*result, right, op); .)
+    }
+  .
+
   /* Signed literal branches preserve INT32_MIN; other unary chains are bounded. */
-  Unary<int *result> = (. int negative=0; .)
-      IF(Sym==MinusSym && LiteralAhead()) "-" Literal<result,1>
+  Unary<int *result> =
+                                                                        (. int negative = 0; .)
+    IF(Sym==MinusSym && LiteralAhead()) "-" Literal<result,1>
     | IF(Sym==PlusSym && LiteralAhead()) "+" Literal<result,0>
     | IF((Sym==PlusSym || Sym==MinusSym) && depth<64)
-      ("+" | "-" (. negative=1; .)) (. ++depth; .) Unary<result>
-      (. --depth; if(negative) *result=source_negate(*result); .)
-    | Primary<result> .
+    (
+        "+"
+        | "-"                                                           (. negative = 1; .)
+    )
+                                                                        (. ++depth; .)
+    Unary<result>                                                       (.
+                                                                            --depth;
+                                                                            if (negative)
+                                                                                *result = source_negate(*result);
+                                                                        .)
+    | Primary<result>
+  .
+
   /* The shared literal path always captures the complete consumed token. */
-  Literal<int *result,int negative> = (numeral | hexnum | radix)
-    (. capture(); *result=source_constant(negative); .) .
+  Literal<int *result,int negative> =
+    (
+        numeral
+        | hexnum
+        | radix
+    )
+                                                                        (.
+                                                                            capture();
+                                                                            *result = source_constant(negative);
+                                                                        .)
+  .
+
   /* Groups and unary operators share a maximum nesting of 64. */
-  Primary<int *result> = (. int name=0; .)
-      IF(Sym==LparenSym && depth<64) "(" (. ++depth; .) Expression<result> ")" (. --depth; .)
-    | Name<&name> (. *result=source_read(name); .)
-    | Literal<result,0> .
-END Src1.
+  Primary<int *result> =
+                                                                        (. int name = 0; .)
+    IF(Sym==LparenSym && depth<64) "("                                  (. ++depth; .)
+    Expression<result> ")"                                              (. --depth; .)
+    | Name<&name>                                                       (. *result = source_read(name); .)
+    | Literal<result,0>
+  .
+
+END
+  Src1
+  .
+

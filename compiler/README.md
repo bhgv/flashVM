@@ -1,6 +1,6 @@
 # C99 compiler projects
 
-Version 0.3.1. [Русский](README.ru.md).
+Version 0.3.2. [Русский](README.ru.md).
 
 | Project | Current component |
 | --- | --- |
@@ -25,3 +25,5 @@ upstream notices. Root workspace orchestration and Git history are optional.
 [Source-to-SWF workflow and help](../fir/v1/doc/PIPELINE.md).
 
 [Syntax series, examples and API](SYNTAX.md).
+
+[ATG layout and style checks](../tools/README.md).

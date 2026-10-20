@@ -1,6 +1,6 @@
 # AS1 syntax frontend
 
-Version 0.2.2. [Русская версия](README.ru.md).
+Version 0.2.3. [Русская версия](README.ru.md).
 
 The readable [as1.atg](as1.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -82,7 +82,7 @@ with `-pedantic-errors`.
 
 ## Grammar rule index
 
-[letter](as1.atg#L70) | [digit](as1.atg#L72) | [hex](as1.atg#L74) | [dq](as1.atg#L76) | [sq](as1.atg#L78) | [linechar](as1.atg#L80) | [escaped](as1.atg#L82) | [nonstar](as1.atg#L85) | [nonstarslash](as1.atg#L86) | [ident](as1.atg#L89) | [number](as1.atg#L91) | [hexnum](as1.atg#L95) | [text](as1.atg#L97) | [blockcomment](as1.atg#L100) | [linecomment](as1.atg#L102) | [As1](as1.atg#L109) | [Item](as1.atg#L114) | [Block](as1.atg#L119) | [Statement](as1.atg#L126) | [IfStatement](as1.atg#L145) | [WhileStatement](as1.atg#L151) | [ForStatement](as1.atg#L158) | [SwitchStatement](as1.atg#L165) | [TryStatement](as1.atg#L170) | [SwitchPart](as1.atg#L179) | [Variables](as1.atg#L184) | [Variable](as1.atg#L189) | [FunctionTail](as1.atg#L194) | [Parameter](as1.atg#L199) | [Expression](as1.atg#L204) | [Assignment](as1.atg#L210) | [AssignOp](as1.atg#L215) | [Conditional](as1.atg#L232) | [LogicalOr](as1.atg#L237) | [LogicalAnd](as1.atg#L242) | [BitOr](as1.atg#L247) | [BitXor](as1.atg#L252) | [BitAnd](as1.atg#L257) | [Equality](as1.atg#L262) | [Relational](as1.atg#L267) | [Shift](as1.atg#L272) | [Additive](as1.atg#L277) | [Product](as1.atg#L282) | [Unary](as1.atg#L287) | [Postfix](as1.atg#L293) | [Arguments](as1.atg#L298) | [Primary](as1.atg#L303) | [Subscript](as1.atg#L321) | [ArrayLiteral](as1.atg#L324) | [ObjectLiteral](as1.atg#L328) | [GroupedExpression](as1.atg#L332) | [Property](as1.atg#L336)
+[letter](as1.atg#L74) | [digit](as1.atg#L80) | [hex](as1.atg#L85) | [dq](as1.atg#L90) | [sq](as1.atg#L95) | [linechar](as1.atg#L100) | [escaped](as1.atg#L105) | [nonstar](as1.atg#L111) | [nonstarslash](as1.atg#L115) | [ident](as1.atg#L121) | [number](as1.atg#L130) | [hexnum](as1.atg#L164) | [text](as1.atg#L177) | [blockcomment](as1.atg#L194) | [linecomment](as1.atg#L212) | [As1](as1.atg#L225) | [Item](as1.atg#L233) | [Block](as1.atg#L238) | [Statement](as1.atg#L249) | [IfStatement](as1.atg#L284) | [WhileStatement](as1.atg#L292) | [ForStatement](as1.atg#L299) | [SwitchStatement](as1.atg#L322) | [TryStatement](as1.atg#L331) | [SwitchPart](as1.atg#L343) | [Variables](as1.atg#L354) | [Variable](as1.atg#L362) | [FunctionTail](as1.atg#L370) | [Parameter](as1.atg#L384) | [Expression](as1.atg#L389) | [Assignment](as1.atg#L398) | [AssignOp](as1.atg#L410) | [Conditional](as1.atg#L427) | [LogicalOr](as1.atg#L439) | [LogicalAnd](as1.atg#L447) | [BitOr](as1.atg#L455) | [BitXor](as1.atg#L463) | [BitAnd](as1.atg#L471) | [Equality](as1.atg#L479) | [Relational](as1.atg#L495) | [Shift](as1.atg#L516) | [Additive](as1.atg#L529) | [Product](as1.atg#L542) | [Unary](as1.atg#L555) | [Postfix](as1.atg#L577) | [Arguments](as1.atg#L591) | [Primary](as1.atg#L604) | [Subscript](as1.atg#L630) | [ArrayLiteral](as1.atg#L637) | [ObjectLiteral](as1.atg#L653) | [GroupedExpression](as1.atg#L666) | [Property](as1.atg#L673)
 
 ## Language reference
 

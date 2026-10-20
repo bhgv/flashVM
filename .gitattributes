@@ -1,0 +1,2 @@
+# ATG rules end with a standalone period and an intentional blank line.
+*.atg whitespace=-blank-at-eof

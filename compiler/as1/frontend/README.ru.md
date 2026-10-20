@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS1
 
-Версия 0.2.2. [English](README.md).
+Версия 0.2.3. [English](README.md).
 
 Читаемый файл [as1.atg](as1.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -84,7 +84,7 @@ LabelAhead распознаёт метку через пробелы/комме�
 
 ## Указатель правил грамматики
 
-[As1](as1.atg#L84) | [Item](as1.atg#L89) | [Block](as1.atg#L94) | [Statement](as1.atg#L101) | [IfStatement](as1.atg#L120) | [WhileStatement](as1.atg#L126) | [ForStatement](as1.atg#L133) | [SwitchStatement](as1.atg#L142) | [TryStatement](as1.atg#L147) | [SwitchPart](as1.atg#L156) | [Variables](as1.atg#L161) | [Variable](as1.atg#L166) | [FunctionTail](as1.atg#L171) | [Parameter](as1.atg#L176) | [Expression](as1.atg#L181) | [Assignment](as1.atg#L187) | [AssignOp](as1.atg#L192) | [Conditional](as1.atg#L209) | [LogicalOr](as1.atg#L214) | [LogicalAnd](as1.atg#L219) | [BitOr](as1.atg#L224) | [BitXor](as1.atg#L229) | [BitAnd](as1.atg#L234) | [Equality](as1.atg#L239) | [Relational](as1.atg#L244) | [Shift](as1.atg#L249) | [Additive](as1.atg#L254) | [Product](as1.atg#L259) | [Unary](as1.atg#L264) | [Postfix](as1.atg#L270) | [Arguments](as1.atg#L275) | [Primary](as1.atg#L280) | [Property](as1.atg#L298)
+[As1](as1.atg#L225) | [Item](as1.atg#L233) | [Block](as1.atg#L238) | [Statement](as1.atg#L249) | [IfStatement](as1.atg#L284) | [WhileStatement](as1.atg#L292) | [ForStatement](as1.atg#L299) | [SwitchStatement](as1.atg#L322) | [TryStatement](as1.atg#L331) | [SwitchPart](as1.atg#L343) | [Variables](as1.atg#L354) | [Variable](as1.atg#L362) | [FunctionTail](as1.atg#L370) | [Parameter](as1.atg#L384) | [Expression](as1.atg#L389) | [Assignment](as1.atg#L398) | [AssignOp](as1.atg#L410) | [Conditional](as1.atg#L427) | [LogicalOr](as1.atg#L439) | [LogicalAnd](as1.atg#L447) | [BitOr](as1.atg#L455) | [BitXor](as1.atg#L463) | [BitAnd](as1.atg#L471) | [Equality](as1.atg#L479) | [Relational](as1.atg#L495) | [Shift](as1.atg#L516) | [Additive](as1.atg#L529) | [Product](as1.atg#L542) | [Unary](as1.atg#L555) | [Postfix](as1.atg#L577) | [Arguments](as1.atg#L591) | [Primary](as1.atg#L604) | [Property](as1.atg#L673)
 
 ## Описание языка
 

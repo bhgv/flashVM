@@ -1,6 +1,6 @@
 # Синтаксический фронтенд LIMBO
 
-Версия 0.3.1. [English](README.md).
+Версия 0.3.2. [English](README.md).
 
 Читаемый файл [limbo.atg](limbo.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -83,7 +83,7 @@ pick, определения функций, группы параметров, 
 
 ## Указатель правил грамматики
 
-[Limbo](limbo.atg#L94) | [Top](limbo.atg#L99) | [NamedTop](limbo.atg#L106) | [DeclarationTail](limbo.atg#L112) | [DeclType](limbo.atg#L118) | [AdtMember](limbo.atg#L129) | [Tags](limbo.atg#L137) | [Names](limbo.atg#L141) | [Name](limbo.atg#L146) | [Type](limbo.atg#L153) | [Parameters](limbo.atg#L167) | [Formal](limbo.atg#L172) | [FunctionTail](limbo.atg#L178) | [Block](limbo.atg#L183) | [Statement](limbo.atg#L190) | [IfStatement](limbo.atg#L208) | [WhileStatement](limbo.atg#L214) | [ForStatement](limbo.atg#L220) | [CaseStatement](limbo.atg#L226) | [AltStatement](limbo.atg#L231) | [CaseArm](limbo.atg#L237) | [PickStatement](limbo.atg#L244) | [PickArm](limbo.atg#L249) | [ArmBody](limbo.atg#L256) | [Qualifiers](limbo.atg#L262) | [Expression](limbo.atg#L267) | [Assignment](limbo.atg#L273) | [Cons](limbo.atg#L279) | [LogicalOr](limbo.atg#L284) | [LogicalAnd](limbo.atg#L289) | [BitOr](limbo.atg#L294) | [BitXor](limbo.atg#L299) | [BitAnd](limbo.atg#L304) | [Equality](limbo.atg#L309) | [Relational](limbo.atg#L314) | [Shift](limbo.atg#L319) | [Additive](limbo.atg#L324) | [Product](limbo.atg#L329) | [Unary](limbo.atg#L336) | [Initializer](limbo.atg#L346) | [Postfix](limbo.atg#L352) | [Primary](limbo.atg#L358)
+[Limbo](limbo.atg#L297) | [Top](limbo.atg#L308) | [NamedTop](limbo.atg#L315) | [DeclarationTail](limbo.atg#L328) | [DeclType](limbo.atg#L339) | [AdtMember](limbo.atg#L369) | [Tags](limbo.atg#L384) | [Names](limbo.atg#L391) | [Name](limbo.atg#L399) | [Type](limbo.atg#L406) | [Parameters](limbo.atg#L441) | [Formal](limbo.atg#L453) | [FunctionTail](limbo.atg#L467) | [Block](limbo.atg#L476) | [Statement](limbo.atg#L487) | [IfStatement](limbo.atg#L531) | [WhileStatement](limbo.atg#L539) | [ForStatement](limbo.atg#L553) | [CaseStatement](limbo.atg#L571) | [AltStatement](limbo.atg#L580) | [CaseArm](limbo.atg#L590) | [PickStatement](limbo.atg#L600) | [PickArm](limbo.atg#L609) | [ArmBody](limbo.atg#L623) | [Qualifiers](limbo.atg#L632) | [Expression](limbo.atg#L649) | [Assignment](limbo.atg#L658) | [Cons](limbo.atg#L686) | [LogicalOr](limbo.atg#L698) | [LogicalAnd](limbo.atg#L706) | [BitOr](limbo.atg#L714) | [BitXor](limbo.atg#L722) | [BitAnd](limbo.atg#L730) | [Equality](limbo.atg#L738) | [Relational](limbo.atg#L750) | [Shift](limbo.atg#L764) | [Additive](limbo.atg#L776) | [Product](limbo.atg#L788) | [Unary](limbo.atg#L803) | [Initializer](limbo.atg#L869) | [Postfix](limbo.atg#L878) | [Primary](limbo.atg#L909)
 
 ## Описание языка
 
