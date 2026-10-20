@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.2.0
+# AS3 syntax frontend 0.2.1
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -37,3 +37,13 @@ are allowed. Maximum input: 2 MiB. CMake target: `as3_frontend`. Generated globa
 symbols have a language prefix; multiple libraries can link into one IDE. State
 resets before every call, but each parser requires external serialization (not
 reentrant). `tests/embed.c` checks in-process recovery after invalid input.
+
+### in operator
+
+Relational `in` and for-in/classic-for disambiguation are supported. The initial
+for clause uses NoIn; groups, arguments, subscripts and literals locally restore
+ordinary expressions. Function bodies own their expression context. Productions:
+Relational, ForStatement, GroupedExpression, Arguments, Subscript. This is syntax
+recognition, not property enumeration or FIR lowering.
+
+[Grammar](frontend/as3.atg): Relational/ForStatement. [Example](examples/in.as).

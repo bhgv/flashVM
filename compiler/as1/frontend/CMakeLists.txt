@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(as1_frontend VERSION 0.2.0 LANGUAGES C)
+project(as1_frontend VERSION 0.2.1 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -51,4 +51,8 @@ if(BUILD_TESTING)
   add_executable(as1_embed tests/embed.c)
   target_link_libraries(as1_embed PRIVATE as1_frontend)
   add_test(NAME as1_embedding COMMAND as1_embed)
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME as1_in_syntax COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/in_check.py $<TARGET_FILE:as1_parse>)
 endif()

@@ -10,6 +10,8 @@ int main(void)
         if(!as3_check(valid,strlen(valid),&diagnostic)) return 2;
         if(as3_check("\xff",1,&diagnostic) || !strstr(diagnostic.message,"UTF-8")) return 3;
         if(!as3_check(valid,strlen(valid),NULL)) return 4;
+        if(as3_check("for(var x in)",13,&diagnostic)) return 5;
+        if(!as3_check("trace(x in obj);",strlen("trace(x in obj);"),&diagnostic)) return 6;
     }
     return 0;
 }

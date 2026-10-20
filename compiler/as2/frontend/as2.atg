@@ -39,6 +39,26 @@ static int LabelAhead(void)
     }
 }
 
+/* NoIn applies only to an unparenthesized for initializer. Parentheses and
+ * nested function bodies restore ordinary expression grammar locally. */
+static int allow_in = 1;
+/* A Coco/R repetition resolver replaces FIRST, so include the complete
+ * operator set to guarantee progress on delimiters and invalid input. */
+static int RelationalAhead(int token)
+{
+    return token == LessSym ||
+        token == GreaterSym ||
+        token == LessEqualSym ||
+        token == GreaterEqualSym ||
+        token == instanceofSym ||
+        token == ltSym ||
+        token == gtSym ||
+        token == leSym ||
+        token == geSym ||
+        (token == inSym && allow_in);
+}
+
+
 /* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
@@ -131,15 +151,13 @@ PRODUCTIONS
     | "do" Statement "while" "(" Expression ")" ";"
     .
 
-  /* Общий префикс for; in отличает перебор свойств от трёхчастного цикла.
-     Оператор in внутри произвольных выражений здесь пока не поддержан. */
-  ForStatement =
-    "for" "(" [ "var" Variables | Expression ]
-    (
-      "in" Expression ")" Statement
-    | ";" [ Expression ] ";" [ Expression ] ")" Statement
-    )
-    .
+  /* Suppress relational in until the for-in separator is decided. The saved
+   * mode makes nested for/function/group parses independent of their caller. */
+  ForStatement = (. int outer = allow_in; .)
+    "for" "(" (. allow_in = 0; .) [ "var" Variables | Expression ]
+    (. allow_in = outer; .)
+    ( "in" Expression ")" Statement
+    | ";" [ Expression ] ";" [ Expression ] ")" Statement ) .
 
   /* Метки и тела ветвей вынесены в SwitchPart для читаемости. */
   SwitchStatement =
@@ -171,8 +189,8 @@ PRODUCTIONS
     .
 
   /* Параметры, необязательный возвращаемый тип AS2 и тело функции. */
-  FunctionTail =
-    "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] Block
+  FunctionTail = (. int outer = allow_in; .)
+    "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] (. allow_in = 1; .) Block (. allow_in = outer; .)
     .
 
   /* Один формальный параметр; в AS2 после имени допускается аннотация типа. */
@@ -245,7 +263,7 @@ PRODUCTIONS
 
   /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
   Relational =
-    Shift { ( "<" | ">" | "<=" | ">=" | "instanceof" | "lt" | "gt" | "le" | "ge" ) Shift }
+    Shift { IF(RelationalAhead(Sym)) ( "<" | ">" | "<=" | ">=" | "instanceof" | "lt" | "gt" | "le" | "ge" | "in" ) Shift }
     .
 
   /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
@@ -271,12 +289,12 @@ PRODUCTIONS
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
-    Primary { "." ident | "[" Expression "]" | Arguments } [ "++" | "--" ]
+    Primary { "." ident | Subscript | Arguments } [ "++" | "--" ]
     .
 
   /* Аргументы разделены запятыми; запятая внутри аргумента требует скобок. */
-  Arguments =
-    "(" [ Assignment { "," Assignment } ] ")"
+  Arguments = (. int outer = allow_in; .)
+    "(" (. allow_in = 1; .) [ Assignment { "," Assignment } ] ")" (. allow_in = outer; .)
     .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
@@ -291,11 +309,26 @@ PRODUCTIONS
     | "undefined"
     | "this"
     | "super"
-    | "(" Expression ")"
-    | "[" [ Assignment ] { "," [ Assignment ] } "]"
-    | "{" [ Property { "," Property } ] "}"
+    | GroupedExpression
+    | ArrayLiteral
+    | ObjectLiteral
     | "function" [ ident ] FunctionTail
     .
+
+  /* Subscripts and literal contents use ordinary expressions, even in NoIn. */
+  Subscript = (. int outer = allow_in; .)
+    "[" (. allow_in = 1; .) Expression "]" (. allow_in = outer; .) .
+  /* Array holes remain allowed; commas do not become expression operators. */
+  ArrayLiteral = (. int outer = allow_in; .)
+    "[" (. allow_in = 1; .) [ Assignment ] { "," [ Assignment ] } "]"
+    (. allow_in = outer; .) .
+  /* Object property initializers restore the surrounding NoIn mode afterwards. */
+  ObjectLiteral = (. int outer = allow_in; .)
+    "{" (. allow_in = 1; .) [ Property { "," Property } ] "}" (. allow_in = outer; .) .
+
+  /* Parentheses admit in even inside a NoIn initializer. */
+  GroupedExpression = (. int outer = allow_in; .)
+    "(" (. allow_in = 1; .) Expression ")" (. allow_in = outer; .) .
 
   /* Ключ и значение свойства object literal; разделитель — двоеточие. */
   Property =
