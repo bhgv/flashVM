@@ -11,7 +11,7 @@
 /* Plain copied transition; contains no borrowed VM/SDL pointers. */
 typedef struct FVM_DesktopEvent
 {
-    unsigned int kind;       /* Select a key or primary-pointer transition. */
+    unsigned int kind;             /* Select a key or primary-pointer transition. */
     FVM_MouseEventType mouse_type; /* Down/move/up when kind is the pointer variant. */
     double x, y;             /* Logical coordinates captured at this event, before stage origin. */
     FVM_KeyboardState state; /* Complete post-transition polling state. */
@@ -25,18 +25,21 @@ struct FVM_DesktopWindow
     SDL_Texture *texture;   /* Streaming byte-order-independent RGBA texture. */
     unsigned int logical_width, logical_height; /* Fixed stage extent for SDL normalized touches. */
     int touch_active; /* One selected primary contact; additional fingers do not replace it. */
-    SDL_TouchID touch_device; /* Borrowed numeric identity of the selected touch device. */
+    SDL_TouchID touch_device;  /* Borrowed numeric identity of the selected touch device. */
     SDL_FingerID touch_finger; /* Borrowed numeric identity of the selected contact. */
-    int background;         /* Suspend timeline/audio while Android activity is not foreground. */
+    int background; /* Suspend timeline/audio while Android activity is not foreground. */
     FVM_DesktopInput
         input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
     FVM_DesktopEvent
         pending_events[FVM_DESKTOP_PENDING_EVENTS]; /* Native bounded transition FIFO. */
-    unsigned long event_epoch; /* Focus reset cancels an active entry batch, including reentrant changes. */
+    unsigned long
+        event_epoch; /* Focus reset cancels an active entry batch, including reentrant changes. */
     size_t event_head, event_count; /* First pending transition and number of occupied slots. */
     FVM_Result event_error; /* Latched overflow, never silently reported as successful delivery. */
     int pumping_events;     /* Reject recursive host pumping from a script/native handler. */
     int ready; /* Nonzero after a complete upload; permits repaint without another VM tick. */
+    unsigned char *last_frame; /* Owned packed RGBA snapshot; never a borrowed VM/raster pointer. */
+    size_t last_frame_size;    /* Allocated snapshot bytes, logical width * height * RGBA bytes. */
 };
 
 /* Create a fixed logical stage and an independently resizable OS window. */
@@ -103,31 +106,56 @@ static int draw_texture(FVM_DesktopWindow *view)
 static FVM_Result present_sdl(const FVM_RasterSurface *surface, void *userdata)
 {
     FVM_DesktopWindow *view = (FVM_DesktopWindow *)userdata;
+    size_t row_bytes, frame_bytes;
+    unsigned int row;
+    unsigned char *snapshot;
     if (surface->width != view->logical_width || surface->height != view->logical_height ||
         surface->stride > INT_MAX)
     {
         SDL_SetError("FlashVM frame does not match the texture extent or pitch");
         return FVM_INVALID_ARGUMENT;
     }
+    /* fvm_host_present already bounds dimensions and source extent. Keep a packed
+     * native copy so an SDL device reset cannot depend on expired caller memory. */
+    row_bytes = (size_t)surface->width * FVM_DESKTOP_RGBA_BYTES;
+    frame_bytes = row_bytes * surface->height;
+    if (view->last_frame_size != frame_bytes)
+    {
+        snapshot = (unsigned char *)malloc(frame_bytes);
+        if (!snapshot)
+        {
+            SDL_SetError("FlashVM retained frame allocation failed");
+            return FVM_OUT_OF_MEMORY;
+        }
+        free(view->last_frame);
+        view->last_frame = snapshot;
+        view->last_frame_size = frame_bytes;
+    }
     if (SDL_UpdateTexture(view->texture, 0, surface->pixels, (int)surface->stride) != 0)
         return FVM_ERROR;
+    for (row = 0; row < surface->height; ++row)
+        memcpy(view->last_frame + row * row_bytes, surface->pixels + row * surface->stride,
+               row_bytes);
     view->ready = 1;
     return draw_texture(view) ? FVM_OK : FVM_ERROR;
 }
 
 /* Share the bounded frame contract with non-SDL hosts; retain no source storage. */
 int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface *surface,
-                                size_t byte_count)
+                               size_t byte_count)
 {
-    if (!view) return 0;
-    if (fvm_host_present(surface, byte_count, present_sdl, view) == FVM_OK) return 1;
-    if (!SDL_GetError()[0]) SDL_SetError("FlashVM frame presentation failed");
+    if (!view)
+        return 0;
+    if (fvm_host_present(surface, byte_count, present_sdl, view) == FVM_OK)
+        return 1;
+    if (!SDL_GetError()[0])
+        SDL_SetError("FlashVM frame presentation failed");
     return 0;
 }
 
 /* Queue one copied event in shared key/pointer order; overflow is latched until close. */
-static void queue_input(FVM_DesktopWindow *view, unsigned int kind,
-                         FVM_MouseEventType mouse_type, int pressed)
+static void queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEventType mouse_type,
+                        int pressed)
 {
     size_t slot;
     FVM_DesktopEvent *queued;
@@ -233,9 +261,9 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         if (event->button.which == SDL_TOUCH_MOUSEID || view->touch_active)
             return 1;
         bit = event->button.button == SDL_BUTTON_LEFT     ? FVM_DESKTOP_BUTTON_LEFT
-                           : event->button.button == SDL_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE
-                           : event->button.button == SDL_BUTTON_RIGHT  ? FVM_DESKTOP_BUTTON_RIGHT
-                                                                       : 0;
+              : event->button.button == SDL_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE
+              : event->button.button == SDL_BUTTON_RIGHT  ? FVM_DESKTOP_BUTTON_RIGHT
+                                                          : 0;
         view->input.x = event->button.x;
         view->input.y = event->button.y;
         if (event->type == SDL_MOUSEBUTTONDOWN)
@@ -246,9 +274,9 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         else
             view->input.buttons &= ~bit;
         if (bit == FVM_DESKTOP_BUTTON_LEFT)
-            queue_input(view, FVM_DESKTOP_EVENT_MOUSE,
-                         event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN
-                                                            : FVM_MOUSE_EVENT_UP, 0);
+            queue_input(
+                view, FVM_DESKTOP_EVENT_MOUSE,
+                event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP, 0);
     }
     if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION ||
         event->type == SDL_FINGERUP)
@@ -299,15 +327,15 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 
 /* Dispatch only the entry batch; callbacks may enqueue later work without an unbounded loop. */
 FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Context *context,
-                                               FVM_Object *root, double origin_x, double origin_y)
+                                              FVM_Object *root, double origin_x, double origin_y)
 {
     size_t remaining;
     unsigned long epoch;
     FVM_Result result = FVM_OK;
     FVM_Affine world_to_event = {1, 0, 0, 1, 0, 0};
     if (!view || !context || view->pumping_events ||
-        !(origin_x >= -DBL_MAX && origin_x <= DBL_MAX &&
-          origin_y >= -DBL_MAX && origin_y <= DBL_MAX))
+        !(origin_x >= -DBL_MAX && origin_x <= DBL_MAX && origin_y >= -DBL_MAX &&
+          origin_y <= DBL_MAX))
         return FVM_INVALID_ARGUMENT;
     if (view->event_error != FVM_OK)
         return view->event_error;
@@ -330,19 +358,20 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
         {
             result = fvm_input_set_pointer(context, world_x, world_y);
             if (result == FVM_OK)
-                result = root ? fvm_input_dispatch_key_listeners(context, &event.state, event.pressed)
-                              : fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
+                result =
+                    root ? fvm_input_dispatch_key_listeners(context, &event.state, event.pressed)
+                         : fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
         }
         else
-            result = fvm_input_dispatch_mouse(context, event.mouse_type,
-                                               world_x, world_y);
+            result = fvm_input_dispatch_mouse(context, event.mouse_type, world_x, world_y);
         if (result == FVM_OK && root && epoch == view->event_epoch)
         {
-            unsigned long clip_event = event.kind == FVM_DESKTOP_EVENT_KEY
-                ? (event.pressed ? FVM_CLIP_EVENT_KEY_DOWN : FVM_CLIP_EVENT_KEY_UP)
+            unsigned long clip_event =
+                event.kind == FVM_DESKTOP_EVENT_KEY
+                    ? (event.pressed ? FVM_CLIP_EVENT_KEY_DOWN : FVM_CLIP_EVENT_KEY_UP)
                 : event.mouse_type == FVM_MOUSE_EVENT_MOVE ? FVM_CLIP_EVENT_MOUSE_MOVE
                 : event.mouse_type == FVM_MOUSE_EVENT_DOWN ? FVM_CLIP_EVENT_MOUSE_DOWN
-                                                         : FVM_CLIP_EVENT_MOUSE_UP;
+                                                           : FVM_CLIP_EVENT_MOUSE_UP;
             result = fvm_movieclip_dispatch_input(context, root, clip_event);
             if (result == FVM_OK && event.kind == FVM_DESKTOP_EVENT_KEY && event.pressed &&
                 epoch == view->event_epoch)
@@ -361,9 +390,10 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
     return result == FVM_OK ? view->event_error : result;
 }
 
-/* Keep existing hosts on namespace-only delivery unless they explicitly supply a pinned scene root. */
+/* Keep existing hosts on namespace-only delivery unless they explicitly supply a pinned scene root.
+ */
 FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *context,
-                                          double origin_x, double origin_y)
+                                         double origin_x, double origin_y)
 {
     return fvm_desktop_window_pump_clip_input(view, context, 0, origin_x, origin_y);
 }
@@ -416,6 +446,7 @@ void fvm_desktop_window_close(FVM_DesktopWindow *view)
 {
     if (!view)
         return;
+    free(view->last_frame);
     if (view->texture)
         SDL_DestroyTexture(view->texture);
     if (view->renderer)

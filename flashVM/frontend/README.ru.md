@@ -118,3 +118,5 @@ unmapped не рассылаются, autorepeat рассылается. Epoch r
 Escape/Android back остаются зарезервированы для закрытия. [Контракт](../doc/CLIP_KEYPRESS.ru.md).
 Новые тесты flashvm_frontend_clip_keypress и flashvm_player_clip_keypress_interpreter/jit
 проверяют настоящий SDL adapter/host с synthetic input, не физическое устройство.
+
+[Восстановление изображения](../doc/PLAYER_RECOVERY.ru.md).

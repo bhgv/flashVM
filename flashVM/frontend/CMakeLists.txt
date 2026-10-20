@@ -238,3 +238,16 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_trace_storage.py $<TARGET_FILE:flashvm_frontend_audio_trace_storage>)
   set_tests_properties(flashvm_frontend_audio_trace_storage PROPERTIES TIMEOUT 10)
 endif()
+
+# Real SDL renderer fixtures remain explicit host tests, never foreign/device certification.
+if(FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_frontend_retained_frame tests/retained_frame.c)
+  target_link_libraries(flashvm_frontend_retained_frame PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_retained_frame PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_retained_frame PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_retained_frame PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_retained_frame COMMAND flashvm_frontend_retained_frame)
+endif()

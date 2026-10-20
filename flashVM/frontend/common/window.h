@@ -5,12 +5,14 @@
 #include "flashvm/keyboard.h"
 #include "flashvm/mouse.h"
 #include "flashvm/input.h"
-#define FVM_DESKTOP_PENDING_EVENTS                                                                   \
+#define FVM_DESKTOP_PENDING_EVENTS                                                                 \
     128U /* Fixed main-thread FIFO capacity; overflow is an explicit error. */
-#define FVM_DESKTOP_TOUCH_MOUSE_HINT "SDL_TOUCH_MOUSE_EVENTS" /* Disable generated mouse duplicates. */
-#define FVM_DESKTOP_MOUSE_TOUCH_HINT "SDL_MOUSE_TOUCH_EVENTS" /* Disable generated finger duplicates. */
-#define FVM_DESKTOP_EVENT_KEY 1U /* Shared FIFO keyboard variant. */
-#define FVM_DESKTOP_EVENT_MOUSE 2U /* Shared FIFO primary-pointer variant. */
+#define FVM_DESKTOP_TOUCH_MOUSE_HINT                                                               \
+    "SDL_TOUCH_MOUSE_EVENTS" /* Disable generated mouse duplicates. */
+#define FVM_DESKTOP_MOUSE_TOUCH_HINT                                                               \
+    "SDL_MOUSE_TOUCH_EVENTS"            /* Disable generated finger duplicates. */
+#define FVM_DESKTOP_EVENT_KEY 1U        /* Shared FIFO keyboard variant. */
+#define FVM_DESKTOP_EVENT_MOUSE 2U      /* Shared FIFO primary-pointer variant. */
 #define FVM_DESKTOP_MAX_PIXELS 4096U    /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U              /* Red offset in a packed RGBA pixel. */
 #define FVM_DESKTOP_GREEN 1U            /* Green offset in a packed RGBA pixel. */
@@ -44,7 +46,8 @@ typedef struct FVM_DesktopInput
 typedef struct FVM_DesktopWindow FVM_DesktopWindow;
 /* Initialize SDL/video on the calling main thread and own window/renderer/texture. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned int);
-/* Upload an RGBA frame and present it; source bytes are borrowed only during this call. */
+/* Upload/present and retain one owned packed RGBA snapshot; source bytes are borrowed
+ * only during this call. Closing the window releases the native copy. */
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);
 /* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
@@ -58,8 +61,8 @@ void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
  * Keyboard observers precede scene methods without an extra implicit focused-clip call. */
 FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *, FVM_Context *, FVM_Object *,
                                               double origin_x, double origin_y);
-FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *, FVM_Context *,
-                                          double origin_x, double origin_y);
+FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *, FVM_Context *, double origin_x,
+                                         double origin_y);
 /* Compatibility internal entrypoint: deliver the same shared FIFO with zero stage origin. */
 FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *, FVM_Context *);
 /* Read whether the Android application is foreground; ordinary desktop focus loss only clears held

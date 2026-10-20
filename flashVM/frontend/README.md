@@ -119,3 +119,5 @@ earlier errors suppress the stage; a KeyPress error leaves later FIFO transition
 Escape/Android back keep their close policy. [Contract](../doc/CLIP_KEYPRESS.md).
 New flashvm_frontend_clip_keypress and flashvm_player_clip_keypress_interpreter/jit
 checks use actual SDL adapter/host with synthetic input, not physical-device evidence.
+
+[Presentation recovery](../doc/PLAYER_RECOVERY.md).
