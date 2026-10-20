@@ -2,7 +2,7 @@
 
 [Русский](PLAYER_SOURCES.ru.md).
 
-Current v0.677 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
+Current v0.678 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
 
 [Native POSIX/Winsock transport without libcurl](SOCKET_TRANSPORT.md) is available since v0.677.
 
@@ -210,9 +210,8 @@ resolve an unqualified name through a clip prototype before global fallback; the
 facade selects the shape from target versus GET/POST arguments. Full historical
 lookup/shadowing/method-coercion conformance remains open. POST, browser navigation,
 progressive/cancellable transport, full MovieClipLoader events and independent child sound dictionaries
-(event/stream) remain unsupported. The current transport is optional libcurl or a host
-provider; a native socket backend can implement the same provider contract but
-is not implemented by this series.
+(event/stream) remain unsupported. Available transports are optional libcurl, the native POSIX/Winsock HTTP(S) provider
+and a host-supplied callback; see [native transport](SOCKET_TRANSPORT.md).
 
 [Runnable loading example](../examples/player/loading/README.md) ·
 [Core APIs](../include/flashvm/movieclip.h) ·

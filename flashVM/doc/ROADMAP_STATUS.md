@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.677
+# FlashVM stage status / Состояние стадий — v0.678
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -55,6 +55,12 @@ strict response framing and monotonic TCP/I/O deadlines without libcurl.
 Six native tests cover URI/raw TCP and interpreter/JIT root/child/form loading.
 Linux ARM64/RISC-V64 and Windows x86_64 player cross-builds link; not executed.
 [EN](SOCKET_TRANSPORT.md) / [RU](SOCKET_TRANSPORT.ru.md). TLS and async DNS remain open.
+
+v0.678 adds optional verified OpenSSL TLS over the same native TCP deadline adapter,
+with per-request trust configuration, DNS/IP identity and SNI. Seven native tests
+pass, including TLS1.2/1.3, bad trust/name/expiry, EOF/deadlines, interpreter/JIT
+HTTPS child/forms and the C host. The transport probe passes UBSan; OpenSSL/VM
+are not instrumented by that probe. Foreign TLS SDK/runtime acceptance remains open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

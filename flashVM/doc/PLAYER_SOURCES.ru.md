@@ -2,7 +2,7 @@
 
 [English](PLAYER_SOURCES.md).
 
-Текущая v0.677 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
+Текущая v0.678 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
 
 [Встроенный транспорт POSIX/Winsock без libcurl](SOCKET_TRANSPORT.ru.md) доступен с v0.677.
 
@@ -210,7 +210,7 @@ target против GET/POST аргументов. Полная историче
 совместимость остаётся открытой. POST, browser navigation, progressive/cancellable
 транспорт, полный набор MovieClipLoader events и независимые child sound dictionaries (event/stream) не поддержаны.
 Транспорт этой серии — необязательный libcurl либо провайдер приложения. Собственный
-сокетный backend может реализовать тот же контракт, но этой серией ещё не реализован.
+сокетный backend теперь реализован: [POSIX/Winsock HTTP(S)](SOCKET_TRANSPORT.ru.md).
 
 [Исполняемый пример](../examples/player/loading/README.ru.md) ·
 [API ядра](../include/flashvm/movieclip.h) ·

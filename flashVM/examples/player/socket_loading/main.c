@@ -16,14 +16,15 @@ int main(int argc, char **argv) /* Supply one absolute HTTP URL, including the m
     FVM_SocketHTTPOptions network; /* No hidden process-global timeout configuration. */
     const char *error = 0; /* Playback may return a static, non-owned explanation. */
     int status; /* Preserve the player exit code for a calling shell/application. */
-    if (argc != 2) /* The tutorial needs one source, not a player CLI argument list. */
+    if (argc != 2 && argc != 3) /* The tutorial needs one source, not a player CLI argument list. */
     { /* Reject an absent or ambiguous source before opening any platform resource. */
-        fprintf(stderr, "Usage: %s http://host/path/start.swf\n", argv[0]); /* Show URL syntax. */
+        fprintf(stderr, "Usage: %s http[s]://host/path/start.swf [ca.pem]\n", argv[0]); /* Show URL syntax. */
         return 2; /* Match the player's argument-error convention. */
     } /* Valid command-line shape; URI validation belongs to the provider. */
     fvm_desktop_options_init(&options); /* Initialize every option using the shared C API. */
     fvm_desktop_loader_init(&loader); /* Initialize callbacks and the load budget. */
     fvm_desktop_socket_options_init(&network); /* Install documented TCP/time defaults. */
+    network.ca_file = argc > 2 ? argv[2] : 0; /* Optional private CA; never disables verification. */
     network.connect_ms = EXAMPLE_SOCKET_CONNECT; /* DNS may still block inside the OS resolver. */
     network.total_ms = EXAMPLE_SOCKET_TOTAL; /* One deadline covers partial headers and body. */
     options.mode = FVM_EXECUTION_INTERPRETER; /* Work without a compiled native JIT backend. */

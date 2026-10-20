@@ -55,3 +55,5 @@ provider supports a conservative HTTP/1.x subset; no redirects, proxies, POST or
 automatic outgoing variable serialization. HTTPS requires a separate verified TLS
 build. Cross-compilation requires a matching target SDL SDK; see the transport
 build guide. Foreign runtime acceptance remains separate.
+
+For verified HTTPS enable FVM_PLAYER_SOCKET_TLS with a target OpenSSL SDK. The optional second argument supplies a PEM CA file; omission uses OpenSSL default trust. See the [TLS contract](../../../doc/SOCKET_TRANSPORT.md#verified-https-since-v0678).

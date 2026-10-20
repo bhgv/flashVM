@@ -1,7 +1,6 @@
 /* Bounded RFC3986-style HTTP reference resolution, without URI-library or locale dependencies. */
 #include "socket_url.h"
 #include <string.h>
-#include <stdio.h>
 
 /* ASCII case folding is independent of the process locale. */
 static char url_lower(char c)
@@ -110,6 +109,20 @@ static void url_normalize(char *path)
     }
     strcpy(path, output);
 }
+/* Format a previously bounded TCP port without printf width or integer-range assumptions. */
+static void url_port(char *out, unsigned long number)
+{
+    char digits[FVM_SOCKET_PORT_TEXT];
+    size_t count = 0, i;
+    do
+    {
+        digits[count++] = (char)('0' + number % FVM_SOCKET_DECIMAL_RADIX);
+        number /= FVM_SOCKET_DECIMAL_RADIX;
+    } while (number);
+    for (i = 0; i < count; ++i)
+        out[i] = digits[count - i - 1];
+    out[count] = 0;
+}
 /* Parse an absolute URL into validated host/service/path fields; caller resolves relative input. */
 static int url_absolute(const char *input, FVM_SocketURL *out)
 {
@@ -194,7 +207,7 @@ static int url_absolute(const char *input, FVM_SocketURL *out)
         if (!number)
             return 0;
     }
-    sprintf(out->port, "%lu", number);
+    url_port(out->port, number);
     out->authority[0] = 0;
     if (out->numeric && strchr(out->host, ':'))
         url_append(out->authority, "[", 1);

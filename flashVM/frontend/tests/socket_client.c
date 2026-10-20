@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     FVM_Result result;
     char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
     unsigned long timeout;
-    if (argc < 2 || argc > 4)
+    if (argc < 2 || argc > 5)
         return 2;
 #ifdef _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
@@ -31,9 +31,12 @@ int main(int argc, char **argv)
         options.connect_ms = timeout;
         options.total_ms = timeout;
     }
+    if (argc > 4)
+        options.ca_file = argv[4];
     strcpy(resolved, "unpublished");
-    result = fvm_desktop_socket_fetch(argv[1], 0, sink, argc > 3 ? &options : 0, resolved,
-                                      sizeof(resolved), &options);
+    result = fvm_desktop_socket_fetch(argv[1], 0, sink,
+                                      argc > 3 && !strcmp(argv[3], "reject") ? &options : 0,
+                                      resolved, sizeof(resolved), &options);
     if (result == FVM_OK)
     {
         fprintf(stderr, "canonical=%s\n", resolved);

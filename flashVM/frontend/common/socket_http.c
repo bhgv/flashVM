@@ -3,11 +3,17 @@
 #include "socket_url.h"
 #include <string.h>
 #include <stdlib.h>
+#ifdef FVM_DESKTOP_SOCKET_TLS
+#include "../../ports/network/tls.h"
+#endif
 
 /* One request owns the socket and bounded parsing storage until cleanup. */
 typedef struct FVM_SocketReader
 {
-    FVM_NetSocket *socket;                  /* Owned TCP connection, closed by the provider. */
+    FVM_NetSocket *socket; /* Owned TCP connection, closed by the provider. */
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    FVM_NetTLS *tls; /* Owned optional TLS layer, released before the TCP handle. */
+#endif
     unsigned char bytes[FVM_SOCKET_BUFFER]; /* Unconsumed native read bytes. */
     size_t position;                        /* First unconsumed buffered byte. */
     size_t size;                            /* Valid buffered byte count. */
@@ -44,13 +50,31 @@ static int http_token(char c)
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
            (c && strchr("!#$%&'*+-.^_`|~", c));
 }
+/* Route one read through the verified TLS layer when present, otherwise native TCP. */
+static int http_receive(FVM_SocketReader *r, void *bytes, size_t size, size_t *received)
+{
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    if (r->tls)
+        return fvm_net_tls_read(r->tls, bytes, size, received);
+#endif
+    return fvm_net_read(r->socket, bytes, size, received);
+}
+/* Route one counted write without exposing platform or TLS handles to protocol parsing. */
+static int http_send(FVM_SocketReader *r, const void *bytes, size_t size, size_t *sent)
+{
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    if (r->tls)
+        return fvm_net_tls_write(r->tls, bytes, size, sent);
+#endif
+    return fvm_net_write(r->socket, bytes, size, sent);
+}
 /* Refill only after consuming the previous chunk; distinguish clean EOF from native error. */
 static int http_fill(FVM_SocketReader *r)
 {
     if (r->position < r->size)
         return 1;
     r->position = 0;
-    if (!fvm_net_read(r->socket, r->bytes, sizeof(r->bytes), &r->size))
+    if (!http_receive(r, r->bytes, sizeof(r->bytes), &r->size))
         return -1;
     return r->size ? 1 : 0;
 }
@@ -311,7 +335,7 @@ static FVM_Result http_chunked(FVM_SocketReader *r, FVM_SocketFraming *framing)
     }
 }
 /* Send the complete bounded request despite arbitrary partial native writes. */
-static int http_request(FVM_NetSocket *socket, const FVM_SocketURL *url)
+static int http_request(FVM_SocketReader *reader, const FVM_SocketURL *url)
 {
     char text[FVM_DESKTOP_MAX_LOCATION * 2 + FVM_SOCKET_REQUEST_OVERHEAD];
     size_t remaining, sent;
@@ -325,7 +349,7 @@ static int http_request(FVM_NetSocket *socket, const FVM_SocketURL *url)
     remaining = strlen(text);
     while (remaining)
     {
-        if (!fvm_net_write(socket, p, remaining, &sent) || !sent)
+        if (!http_send(reader, p, remaining, &sent) || !sent)
             return 0;
         p += sent;
         remaining -= sent;
@@ -339,6 +363,7 @@ int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out)
         return 0;
     out->connect_ms = FVM_NET_CONNECT_MS;
     out->total_ms = FVM_NET_TOTAL_MS;
+    out->ca_file = 0;
     return 1;
 }
 /* Resolve, fetch, validate framing, deliver bounded bytes, then publish canonical provenance. */
@@ -368,8 +393,10 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
         return result;
     if (strlen(url.canonical) >= capacity)
         return FVM_INVALID_ARGUMENT;
+#ifndef FVM_DESKTOP_SOCKET_TLS
     if (url.tls)
         return FVM_UNSUPPORTED;
+#endif
     memset(&reader, 0, sizeof(reader));
     reader.write = write;
     reader.userdata = write_userdata;
@@ -377,7 +404,15 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
     if (!reader.socket)
         return FVM_ERROR;
     result = FVM_ERROR;
-    if (!http_request(reader.socket, &url) || !http_headers(&reader, &framing, &status) ||
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    if (url.tls)
+    {
+        reader.tls = fvm_net_tls_open(reader.socket, url.host, url.numeric, options->ca_file);
+        if (!reader.tls)
+            goto cleanup;
+    }
+#endif
+    if (!http_request(&reader, &url) || !http_headers(&reader, &framing, &status) ||
         status < FVM_SOCKET_STATUS_MIN || status >= FVM_SOCKET_STATUS_END)
         goto cleanup;
     if (status == FVM_SOCKET_STATUS_EMPTY || status == FVM_SOCKET_STATUS_RESET)
@@ -411,6 +446,9 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
     if (result == FVM_OK)
         memcpy(resolved, url.canonical, strlen(url.canonical) + 1);
 cleanup:
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    fvm_net_tls_close(reader.tls);
+#endif
     fvm_net_close(reader.socket);
     return result;
 }

@@ -27,6 +27,7 @@ extern "C"
         unsigned long
             connect_ms;         /* TCP budget; DNS itself remains a synchronous OS resolver call. */
         unsigned long total_ms; /* One monotonic budget across connection, headers and body. */
+        const char *ca_file;    /* Borrowed PEM CA file for HTTPS; null selects OpenSSL defaults. */
     } FVM_SocketHTTPOptions;
     /* Initialize defaults without starting sockets; null returns zero. */
     int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out);

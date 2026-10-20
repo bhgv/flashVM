@@ -24,6 +24,8 @@ extern "C"
      * Positive requested size and nonnull arguments required. Never deliver VM callbacks here. */
     int fvm_net_read(FVM_NetSocket *socket, void *bytes, size_t size, size_t *received);
     int fvm_net_write(FVM_NetSocket *socket, const void *bytes, size_t size, size_t *sent);
+    /* Return 1 while the original total deadline remains; useful for buffered TLS operations. */
+    int fvm_net_active(FVM_NetSocket *socket);
     /* Close the owned socket and release its platform state; null is harmless. */
     void fvm_net_close(FVM_NetSocket *socket);
 #ifdef __cplusplus

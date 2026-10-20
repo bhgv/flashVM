@@ -124,8 +124,66 @@ ctest --test-dir build-socket -R 'socket_|player_http|player_child_loading' --ou
 
 Native dummy-display loopback success is not remote Internet, native foreign OS,
 physical window or complete Flash compatibility acceptance. The nine roadmap
-stages remain open. TLS, system DNS interruption and asynchronous loading need
-separate implementation/acceptance evidence.
+stages remain open. System DNS interruption and asynchronous loading still need separate implementation/acceptance evidence.
+## Verified HTTPS since v0.678
+
+Enable FVM_PLAYER_SOCKET_TLS in addition to FVM_PLAYER_SOCKET_HTTP. Supply an
+OpenSSL SDK version 1.1.1 or later (tested with 3.0). SSL_VERIFY_PEER, chain
+verification, DNS/IP identity, DNS SNI and minimum TLS1.2 are always enabled.
+No option disables verification. A custom BIO routes every encrypted read/write
+through the same native TCP adapter, preserving total deadline and local SIGPIPE
+suppression. TLS1.2 and TLS1.3 loopback tests are distinct.
+
+```sh
+cmake -S flashVM -B build-socket -DFVM_PLAYER_SOCKET_HTTP=ON \
+  -DFVM_PLAYER_HTTP=OFF -DFVM_PLAYER_SOCKET_TLS=ON -DOPENSSL_USE_STATIC_LIBS=TRUE
+cmake --build build-socket --target flashvm_player flashvm_example_socket_loading
+./build-socket/frontend/flashvm_example_socket_loading https://localhost:8443/start.swf /absolute/test-ca.pem
+```
+
+This assumes the player/SDL/render options from the initial build command.
+OPENSSL_USE_STATIC_LIBS selects target static OpenSSL archives; it does not make
+the entire OS executable fully static. Set OPENSSL_ROOT_DIR and CMake's target
+find-root/sysroot for a foreign SDK. Never mix host OpenSSL with a cross target.
+With TLS OFF no OpenSSL headers/libraries are required; HTTPS returns
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
+
+FVM_SocketHTTPOptions now includes ca_file, borrowed until fetch returns. Always
+initialize the structure with fvm_desktop_socket_options_init, which sets ca_file
+to null. Null selects OpenSSL default trust paths, including its standard
+SSL_CERT_FILE/SSL_CERT_DIR environment configuration. A nonnull filename selects
+only that PEM CA bundle for this request; missing/empty/unreadable/invalid trust
+or verification failure returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) before HTTP payload delivery. Trust
+paths use the OpenSSL SDK path encoding, not SDL's UTF-8 file adapter. CA paths
+belong to the native host filesystem, not the movie URL base. Do not accept a
+trust override from untrusted movie content. No mutable global setter exists.
+Android/Windows apps may need a deployed PEM bundle: OpenSSL default paths do not
+automatically mean the Android/Windows native certificate store.
+
+TLS setup/CA reads, like DNS and sink code, cannot be preempted by this synchronous
+API. Elapsed time is checked before/after handshake and by all underlying native
+I/O. Independent context/session/BIO objects are released before their socket.
+The provider never calls OPENSSL_cleanup or changes global trust. OpenSSL's
+calling-thread error queue is cleared for each TLS operation and may contain
+transport errors afterwards; consume host errors before invoking this provider.
+Other threads' queues are untouched.
+
+Known-length/chunked HTTPS finishes at its framed boundary without waiting for
+TLS shutdown. EOF-framed HTTPS requires authenticated close_notify; abrupt TCP
+EOF fails, including with OpenSSL versions exposing it as SSL_ERROR_SYSCALL.
+Cleanup closes the one-use connection without an extra blocking SSL_shutdown.
+No session cache, client certificates, proxies, revocation fetching, pinning API
+or HTTP/2 is added. Verification follows the selected OpenSSL trust/policy setup.
+
+Tests create a temporary CA and valid, wrong-name and expired certificates. They
+check DNS/IP identity, SNI, custom/default trust, untrusted rejection, TLS1.2/1.3,
+clean/truncated EOF, slow-body/handshake deadlines, exact sink errors,
+interpreter/JIT HTTPS child/form origins and the executable C host. Temporary
+private keys are deleted and never committed. CMake registers this integration
+test when a host openssl executable, examples and native tests are available.
+The transport probe also passes UBSan in Linux; OpenSSL and the rest of the VM
+are not instrumented by that probe. Foreign TLS SDK builds/runs remain unverified;
+plain HTTP cross-build evidence is not foreign TLS acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -110,8 +110,61 @@ ctest --test-dir build-socket -R 'socket_|player_http|player_child_loading' --ou
 ```
 
 Loopback/dummy-display не подтверждают Internet, foreign OS, физическое окно или
-полную совместимость Flash. Девять этапов остаются открытыми. TLS, прерывание DNS
-и асинхронность требуют отдельной реализации/приёмки.
+полную совместимость Flash. Девять этапов остаются открытыми. Прерывание DNS и асинхронность требуют отдельной реализации/приёмки.
+## Проверяемый HTTPS с v0.678
+
+Включите FVM_PLAYER_SOCKET_TLS вместе с FVM_PLAYER_SOCKET_HTTP. Нужен SDK
+OpenSSL 1.1.1+ (проверен 3.0). Всегда включены SSL_VERIFY_PEER, проверка цепочки,
+DNS/IP, DNS SNI и минимум TLS1.2; выключить проверку нельзя. Custom BIO направляет
+все зашифрованные данные через тот же TCP-адаптер с общим deadline и локальным
+подавлением SIGPIPE. TLS1.2 и TLS1.3 проверяются отдельно.
+
+```sh
+cmake -S flashVM -B build-socket -DFVM_PLAYER_SOCKET_HTTP=ON \
+  -DFVM_PLAYER_HTTP=OFF -DFVM_PLAYER_SOCKET_TLS=ON -DOPENSSL_USE_STATIC_LIBS=TRUE
+cmake --build build-socket --target flashvm_player flashvm_example_socket_loading
+./build-socket/frontend/flashvm_example_socket_loading https://localhost:8443/start.swf /absolute/test-ca.pem
+```
+
+Предполагается исходная конфигурация player/SDL/render из первой команды сборки.
+OPENSSL_USE_STATIC_LIBS выбирает статические архивы целевого OpenSSL, но не делает
+весь executable полностью статическим. Для cross-build задайте OPENSSL_ROOT_DIR,
+целевые find-root/sysroot CMake. Нельзя подключать host OpenSSL к другой платформе.
+При TLS OFF OpenSSL не нужен; HTTPS даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) до DNS/TCP. TLS ON без
+SOCKET_HTTP — ошибка конфигурации.
+
+В FVM_SocketHTTPOptions добавлен ca_file, заимствованный до возврата fetch.
+Всегда используйте fvm_desktop_socket_options_init: он записывает null.
+Null выбирает default trust OpenSSL, включая SSL_CERT_FILE/SSL_CERT_DIR.
+Ненулевой путь выбирает только указанный PEM CA bundle для данного запроса.
+Ошибочный/пустой/нечитаемый CA и отказ проверки дают [FVM_ERROR](../include/flashvm/flashvm.h#L43) до HTTP payload.
+Кодировка пути определяется SDK OpenSSL, а не SDL UTF-8 adapter. CA относится
+к файловой системе хоста, не к URL фильма. Не принимайте CA override от
+недоверенного SWF. Глобального setter нет. Windows/Android-приложению может
+понадобиться поставляемый PEM bundle: default OpenSSL paths не означают
+автоматическое использование native certificate store.
+
+Настройку TLS/чтение CA нельзя прервать синхронным API, как DNS/sink. Elapsed
+проверяется до/после handshake и во всех native I/O. Контекст, сеанс и BIO
+независимы для запроса и освобождаются перед сокетом. Нет OPENSSL_cleanup и
+глобальной смены trust. Очередь ошибок OpenSSL вызывающего потока очищается перед
+TLS-операциями и может содержать транспортную диагностику после возврата;
+свои ошибки хост должен обработать заранее. Другие потоки не затрагиваются.
+
+Known-length/chunked HTTPS завершается на границе сообщения без ожидания shutdown.
+EOF-framed HTTPS требует close_notify; голый TCP EOF — ошибка, в том числе при
+SSL_ERROR_SYSCALL старого OpenSSL. Очистка не выполняет дополнительный блокирующий
+SSL_shutdown. Нет session cache, client certificates, proxy, загрузки revocation,
+pinning API и HTTP/2. Проверки следуют trust/policy выбранного OpenSSL SDK.
+
+Тесты создают временный CA и valid/wrong-name/expired сертификаты: DNS/IP/SNI,
+private/default trust, отказ недоверенному серверу, TLS1.2/1.3, чистый/оборванный
+EOF, медленный body/handshake, точная ошибка sink, HTTPS child/form в interpreter/JIT
+и исполняемый C-хост. Закрытые ключи удаляются и не коммитятся. CMake регистрирует
+тест при наличии executable openssl хоста, native tests и examples.
+Transport probe дополнительно проверен UBSan в Linux; OpenSSL и остальная VM
+этим не инструментированы. TLS с foreign SDK ещё не проверен сборкой/запуском;
+успех cross-build обычного HTTP не означает foreign TLS-приёмку.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

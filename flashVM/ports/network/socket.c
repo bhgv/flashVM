@@ -266,6 +266,11 @@ int fvm_net_write(FVM_NetSocket *s, const void *bytes, size_t size, size_t *sent
             return 0;
     }
 }
+/* Check a deadline without restarting it or touching socket readiness. */
+int fvm_net_active(FVM_NetSocket *s)
+{
+    return s && s->handle != FVM_NET_INVALID && net_remaining(s, s->total) > 0;
+}
 /* Balance exactly this request's resources; never call process-wide socket cleanup otherwise. */
 void fvm_net_close(FVM_NetSocket *s)
 {
