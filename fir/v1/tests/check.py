@@ -160,6 +160,23 @@ with tempfile.TemporaryDirectory() as directory:
         inp.write_text('implement V; V: module { value: fn(): int; }; value(): int { return '+literal+'; }')
         call(SOURCE,'limbo','--input',inp,opt,good=False)
 
+    for language in ('as1','as2','as3'):
+        inp.write_text('var x=12; x/=2; trace(x/2); trace(1 / -0); trace(1 / -(0)); trace(0/0);')
+        call(SOURCE,language,'--input',inp,opt)
+        assert 'source_language '+language in opt.read_text() and 'source_semantics avm1_numeric' in opt.read_text()
+        exercise(opt.read_text(),'3\n-Infinity\n-Infinity\nNaN\n')
+        assert 'source_language '+language in opt.read_text() and 'f64.div' in opt.read_text()
+    exercise(module('%a: i32 = const.i32 +0x2a\n%b: i32 = const.i32 -0x80000000\ntrace %a\ntrace %b\nreturn'), '42\n-2147483648\n')
+    exercise(module('%a: f64 = const.f64 +0x10\n%b: f64 = const.f64 +.5\n%x: f64 = f64.div %a, %b\ntrace %x\nreturn'), '32\n')
+    for extra in ['source_language as2\nsource_semantics limbo_i32\n',
+                  'source_language limbo\nsource_semantics avm1_numeric\n',
+                  'source_language as4\nsource_semantics avm1_numeric\n',
+                  'source_language as3\n', 'source_semantics avm1_numeric\n']:
+        inp.write_text(module('return',extra));call(TOOL,'check',inp,good=False)
+    inp.write_text(module('%x: i32 = const.i32 0x80000000\nreturn'));call(TOOL,'check',inp,good=False)
+    inp.write_text('implement V; V: module { value: fn(): int; }; value(): int { return 4/2; }')
+    call(SOURCE,'limbo','--input',inp,opt,good=False)
+
     # Full-width integer products catch double precision loss and shift mistakes.
     random.seed(611)
     pairs = [(2147483647, 2147483647), (-2147483648, -1), (-65537, 65539), (0, -1)]
@@ -220,7 +237,7 @@ with tempfile.TemporaryDirectory() as directory:
     for data in (b'FIR 1.0\n\x00', b'FIR 1.0\n//\xff', b'FIR 1.0\n//\xed\xa0\x80'):
         inp.write_bytes(data)
         call(TOOL, 'check', inp, good=False)
-    for text in ('trace(name);', 'trace(1 / 2);', 'trace(1); trailing', 'trace(' + '(' * 100 + '1' + ')' * 100 + ');', 'trace(1); /*'):
+    for text in ('trace(name);', 'trace(1 % 2);', 'trace(1); trailing', 'trace(' + '(' * 100 + '1' + ')' * 100 + ');', 'trace(1); /*'):
         inp.write_text(text)
         call(SOURCE, 'as2', '--input', inp, opt, good=False)
     inp.write_text('implement Answer; Answer: module { value: fn(): int; }; value(): int { return 1.0; }')

@@ -1,4 +1,4 @@
-# Working numeric source profile 0.4.0
+# Working numeric source profile 0.4.1
 
 This profile actually lowers into FIR, separately from the broader syntax
 frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
@@ -31,3 +31,9 @@ AS2/AS3 allow only Number annotations. No strings, objects, AS if/loops/function
 Limbo channels or general module ABI. // and /* */ in Limbo remain compatible
 with old tutorials; # is the native comment. Limits: 64 KiB, 256 names, 1000 SSA
 values, 64 group/unary levels, 255-byte tokens.
+
+AS additionally supports / and /=, with multiplication precedence and left
+associativity. The Limbo i32 profile explicitly rejects them. Tests cover -0
+divisors, NaN and preservation through optimization. Source compilation writes
+matched source_language/source_semantics fields, retained across round trips and
+optimization. Division requires SWL >=0.3.2.

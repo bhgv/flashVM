@@ -23,3 +23,5 @@ SWA1: four bytes `SWA1`, u32 version=1, u32 count (1..1024), then count records
 `[u32 SWO1 size][SWO1 bytes]`. Trailing bytes fail. Module names identify v1
 initializers; function-call relocations are not defined yet. SWF8 contains one
 DoAction per object, then ShowFrame and End. Intra-object jumps need no changes.
+
+SWL 0.3.2 also accepts AVM1 Divide (0x0d), used by FIR f64.div.

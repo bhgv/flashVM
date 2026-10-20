@@ -89,7 +89,9 @@ static void literal(const char *text, int line)
         in->text[n] = 0;
     } else if (in->op == O_BOOL) in->integer = !strcmp(text, "true");
     else if (in->op == O_I32) {
-        long value = strtol(text, &end, 10);
+        const char *digits = text + (*text == '-' || *text == '+');
+        int base = digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X') ? 16 : 10;
+        long value = strtol(text, &end, base);
         if (*end || errno || value < INT32_MIN || value > INT32_MAX) fir_build_error("invalid i32 literal", line);
         else in->integer = (int32_t)value;
     } else {
@@ -114,6 +116,15 @@ void fir_build_token(int role, const char *text, int line)
         return;
     }
     if (role == B_MODULE) { strcpy(m->module, text); return; }
+    if (role == B_LANGUAGE) {
+        m->source_language = !strcmp(text,"as1") ? FIR_AS1 : !strcmp(text,"as2") ? FIR_AS2 :
+            !strcmp(text,"as3") ? FIR_AS3 : FIR_LIMBO;
+        return;
+    }
+    if (role == B_SEMANTICS) {
+        m->source_semantics = !strcmp(text,"avm1_numeric") ? FIR_AVM1_NUMERIC : FIR_LIMBO_I32;
+        return;
+    }
     if (role == B_LITERAL) { literal(text, line); return; }
     if (role == B_TYPE) {
         for (index = T_I32; index <= T_CHANNEL; ++index) if (!strcmp(types[index], text)) break;

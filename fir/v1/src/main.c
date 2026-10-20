@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     char error[512] = "operation failed";
     int ok, check, optimise, compile;
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1 0.4.0 (FIR 1.0; SWO1)"); return 0;
+        puts("fir1 0.4.1 (FIR 1.0; SWO1)"); return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("fir1 - FIR 1.0 compiler and verifier\n"

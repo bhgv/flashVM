@@ -11,7 +11,7 @@ int main(void)
     rewind(in);
     if(!fir_parse(in,base,error,sizeof(error)) || !fir_verify(base,error,sizeof(error))) return 2;
     fclose(in);
-    for(i=0;i<12;++i) {
+    for(i=0;i<13;++i) {
         memcpy(m,base,sizeof(*m));
         switch(i) {
         case 0: m->count=FIR_LIMIT+1; break;
@@ -25,6 +25,7 @@ int main(void)
         case 8: m->instructions[2].yes=0; break;
         case 9: m->instructions[0].op=(FirOp)999; break;
         case 10: m->instructions[1].b=0; break;
+        case 12: m->source_language=FIR_AS3; m->source_semantics=FIR_LIMBO_I32; break;
         case 11: strcpy(m->module,"@bad-name"); break;
         }
         if(fir_verify(m,error,sizeof(error))) return 10+i;

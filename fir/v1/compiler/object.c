@@ -103,11 +103,11 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
         case O_COPY: load(&actions, m, in->a); break;
         case O_MUL: multiply(&actions, m, in->a, in->b); break;
         case O_ADD: case O_SUB: case O_LT: case O_EQ:
-        case O_FADD: case O_FSUB: case O_FMUL: case O_ASADD:
+        case O_FADD: case O_FSUB: case O_FMUL: case O_FDIV: case O_ASADD:
             load(&actions, m, in->a); load(&actions, m, in->b);
             byte(&actions, in->op == O_ADD || in->op == O_FADD ? 0x0a :
                 in->op == O_SUB || in->op == O_FSUB ? 0x0b :
-                in->op == O_FMUL ? 0x0c : in->op == O_LT ? 0x48 :
+                in->op == O_FMUL ? 0x0c : in->op == O_FDIV ? 0x0d : in->op == O_LT ? 0x48 :
                 in->op == O_EQ ? 0x49 : 0x47);
             if (in->op == O_ADD || in->op == O_SUB) { integer(&actions, 0); byte(&actions, 0x61); }
             break;

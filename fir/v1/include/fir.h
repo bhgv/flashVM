@@ -11,11 +11,14 @@ extern "C" {
 #define FIR_BLOCKS 256
 #define FIR_TEXT 256
 
+/* Optional source provenance; this is not a claim of complete language support. */
+typedef enum { FIR_SOURCE_UNSPECIFIED=0, FIR_AS1, FIR_AS2, FIR_AS3, FIR_LIMBO } FirLanguage;
+typedef enum { FIR_SEM_UNSPECIFIED=0, FIR_AVM1_NUMERIC, FIR_LIMBO_I32 } FirSemantics;
 typedef enum { T_VOID, T_I32, T_F64, T_BOOL, T_STRING, T_ANY, T_CHANNEL } FirType;
 typedef enum {
     O_I32, O_F64, O_BOOL, O_STRING, O_COPY,
     O_ADD, O_SUB, O_MUL, O_LT, O_EQ,
-    O_FADD, O_FSUB, O_FMUL, O_ASADD, O_NUMBER,
+    O_FADD, O_FSUB, O_FMUL, O_FDIV, O_ASADD, O_NUMBER,
     O_CHANNEL, O_RECEIVE, O_TRACE, O_SEND, O_CLOSE, O_IF, O_JUMP, O_RETURN
 } FirOp;
 /* Conservative operation effects. Unknown opcodes have every flag set. */
@@ -51,6 +54,8 @@ typedef struct {
     FirValue values[FIR_LIMIT];
     FirBlock blocks[FIR_BLOCKS];
     int count, value_count, block_count, channels;
+    FirLanguage source_language;
+    FirSemantics source_semantics;
     char module[FIR_TEXT];
 } FirModule;
 /* All functions return 1 on success and 0 with a diagnostic on failure.
@@ -70,7 +75,7 @@ int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 FILE *fir_temporary(void);
 /* Non-console entry points; caller owns every stream and diagnostic buffer.
  * Parser calls must be serialized; sequential calls reset state after errors. */
-typedef enum { FIR_AS1=1, FIR_AS2, FIR_AS3, FIR_LIMBO } FirLanguage;
+
 typedef enum { FIR_CHECK, FIR_PRINT, FIR_OPT, FIR_OBJECT } FirTask;
 typedef int (*FirSnapshot)(void *user, const char *phase, const FirModule *module);
 typedef struct { int optimise; FirSnapshot snapshot; void *user; } FirRunOptions;

@@ -34,7 +34,9 @@ int fir_source(FILE *input, FILE *output, FirLanguage language, const char *name
     if (!ok) { if(error && capacity) snprintf(error,capacity,"read error, invalid UTF-8/NUL or source exceeds 64 KiB"); goto done; }
     active_error=error; active_capacity=capacity;
     source_config(temporary,(int)language,error,capacity); Custom_Error=report;
-    fprintf(temporary,"FIR 1.0\nmodule @%s\nfunc @main() -> void {\n^entry:\n",name);
+    fprintf(temporary,"FIR 1.0\nmodule @%s\nsource_language %s\nsource_semantics %s\nfunc @main() -> void {\n^entry:\n",name,
+        language==FIR_AS1 ? "as1" : language==FIR_AS2 ? "as2" : language==FIR_AS3 ? "as3" : "limbo",
+        language==FIR_LIMBO ? "limbo_i32" : "avm1_numeric");
     ok=source_parser_run(text,(int)length);
     if(!ok && error && capacity) snprintf(error,capacity,"scanner allocation failure");
     fputs("    return\n}\n",temporary);

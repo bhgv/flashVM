@@ -60,6 +60,12 @@ with tempfile.TemporaryDirectory() as tmp:
         call('link',out,a,b)
         run=subprocess.run([os.environ['FIR_FLASHVM_RUNNER'],str(out)],capture_output=True,check=True)
         assert run.stdout==b'first\nsecond\n'
+    # The object profile admits AVM1 Divide used by FIR f64.div.
+    divide=b'\x96\x05\0\x07'+struct.pack('<i',6)+b'\x96\x05\0\x07'+struct.pack('<i',2)+b'\x0d\x26\0'
+    a.write_bytes(object('divide',divide));call('link',out,a)
+    if os.environ.get('FIR_FLASHVM_RUNNER'):
+        run=subprocess.run([os.environ['FIR_FLASHVM_RUNNER'],str(out)],capture_output=True,check=True)
+        assert run.stdout==b'3\n'
 print(f'{checks} linker subprocess checks')
 
 # Resource imports are checked independently of the linker bit writer.

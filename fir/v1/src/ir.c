@@ -29,7 +29,7 @@ static const char *const types[] = {"void", "i32", "f64", "bool", "string", "any
 static const char *const ops[] = {
     "const.i32", "const.f64", "const.bool", "const.string", "copy",
     "i32.add.wrap", "i32.sub.wrap", "i32.mul.wrap", "i32.lt.signed", "i32.eq",
-    "f64.add", "f64.sub", "f64.mul", "as.add", "as.to_number",
+    "f64.add", "f64.sub", "f64.mul", "f64.div", "as.add", "as.to_number",
     "limbo.chan_create", "limbo.chan_receive", "trace", "limbo.chan_send", "limbo.chan_close", "if", "jump", "return"
 };
 /* All blocks must be reachable and terminated. Requiring reachability keeps
@@ -46,6 +46,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     if (!m || m->count < 1 || m->count > FIR_LIMIT || m->value_count < 0 ||
         m->value_count > FIR_LIMIT || m->block_count < 1 || m->block_count > FIR_BLOCKS)
         return fail(error, cap, "invalid IR table counts");
+    if ((unsigned)m->source_language > FIR_LIMBO || (unsigned)m->source_semantics > FIR_LIMBO_I32 ||
+        (!m->source_language != !m->source_semantics) ||
+        (m->source_language && m->source_semantics != (m->source_language == FIR_LIMBO ? FIR_LIMBO_I32 : FIR_AVM1_NUMERIC)))
+        return fail(error, cap, "incompatible source language/semantics profile");
     if (!symbol_name(m->module, '@')) return fail(error, cap, "invalid module spelling");
     for (b = 0; b < m->block_count; ++b)
         if (!symbol_name(m->blocks[b].name, '^')) return fail(error, cap, "unterminated block name");
@@ -142,7 +146,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         case O_ADD: case O_SUB: case O_MUL: case O_LT: case O_EQ:
             if (a != T_I32 || c != T_I32) goto bad_type;
             expected = in->op >= O_LT ? T_BOOL : T_I32; break;
-        case O_FADD: case O_FSUB: case O_FMUL:
+        case O_FADD: case O_FSUB: case O_FMUL: case O_FDIV:
             if (a != T_F64 || c != T_F64) goto bad_type;
             expected = T_F64; break;
         case O_ASADD:
@@ -192,6 +196,11 @@ int fir_print(FILE *out, const FirModule *m)
 {
     int i, previous = -1;
     fprintf(out, "FIR 1.0\nmodule %s\n", m->module);
+    if (m->source_language) {
+        static const char *const languages[] = {"", "as1", "as2", "as3", "limbo"};
+        fprintf(out,"source_language %s\nsource_semantics %s\n",languages[m->source_language],
+                m->source_semantics == FIR_LIMBO_I32 ? "limbo_i32" : "avm1_numeric");
+    }
     if (m->channels) fputs("requires flashvm.channels\n", out);
     fputs("func @main() -> void {\n", out);
     for (i = 0; i < m->count; ++i) {

@@ -86,10 +86,11 @@ int source_constant(int negative)
 int source_binary(int left, int right, int op)
 {
     int result = serial++;
+    if(integer_mode && op=='/') reject("division is not available in the i32 source profile");
     if (serial > 1000) reject("expression size limit exceeded");
     if (!failed) fprintf(destination, "    %%v%d: %s = %s.%s%s %%v%d, %%v%d\n", result,
         integer_mode ? "i32" : "f64", integer_mode ? "i32" : "f64",
-        op == '+' ? "add" : op == '-' ? "sub" : "mul", integer_mode ? ".wrap" : "", left, right);
+        op == '+' ? "add" : op == '-' ? "sub" : op == '/' ? "div" : "mul", integer_mode ? ".wrap" : "", left, right);
     return result;
 }
 /* Scanner bridge rejects complete oversized tokens before any spelling copy. */

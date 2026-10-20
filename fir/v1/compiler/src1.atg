@@ -84,7 +84,7 @@ PRODUCTIONS
     "=" Expression<&value> (. source_declare(name,value,constant); .) .
   /* Only supported compound arithmetic is admitted; /= is not a fallback. */
   AssignmentOperator<int *op> = "=" (. *op=0; .) | "+=" (. *op='+'; .)
-    | "-=" (. *op='-'; .) | "*=" (. *op='*'; .) .
+    | "-=" (. *op='-'; .) | "*=" (. *op='*'; .) | "/=" (. *op='/'; .) .
   /* Intern a source identifier separately from reading its current binding. */
   Name<int *name> = ident (. capture(); *name = source_name(); .) .
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
@@ -107,8 +107,9 @@ PRODUCTIONS
       { ("+" (. op = '+'; .) | "-" (. op = '-'; .)) Product<&right>
         (. *result = source_binary(*result, right, op); .) } .
   /* Multiplication is left associative. */
-  Product<int *result> = (. int right = 0; .)
-      Unary<result> { "*" Unary<&right> (. *result = source_binary(*result, right, '*'); .) } .
+  Product<int *result> = (. int right = 0, op = 0; .)
+      Unary<result> { ("*" (. op='*'; .) | "/" (. op='/'; .)) Unary<&right>
+        (. *result = source_binary(*result, right, op); .) } .
   /* Signed literal branches preserve INT32_MIN; other unary chains are bounded. */
   Unary<int *result> = (. int negative=0; .)
       IF(Sym==MinusSym && LiteralAhead()) "-" Literal<result,1>

@@ -85,7 +85,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             /* Reuse identical typed calculations only inside one block.
              * Operand order is preserved, including strict floating arithmetic. */
-            if (in->op >= O_ADD && in->op <= O_FMUL && !fir_effects(in->op)) {
+            if (in->op >= O_ADD && in->op <= O_FDIV && !fir_effects(in->op)) {
                 for (j = 0; j < i; ++j) {
                     FirInstruction *old = &m->instructions[j];
                     if (!old->removed && old->block == in->block &&

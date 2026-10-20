@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     int ok;
     char error[512] = "source operation failed";
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1_source 0.4.0 (numeric tutorial profiles)"); return 0;
+        puts("fir1_source 0.4.1 (numeric tutorial profiles)"); return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"

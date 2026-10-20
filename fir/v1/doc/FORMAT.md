@@ -11,7 +11,7 @@ blank line or comment precedes it. The file suffix is `.fir`; directory `v1`
 denotes the major family, while header `1.0` identifies this exact grammar.
 Unknown versions are rejected before parsing. A new accepted grammar requires
 an explicit reader change; silently interpreting future minor versions is forbidden.
-Implementation version 0.3.2 and FlashVM development version are independent.
+Implementation version 0.4.1 and FlashVM development version are independent.
 
 UTF-8 is validated, including comments; embedded NUL and malformed UTF-8 fail.
 `//` runs to newline/EOF. `/* ... */` is non-nesting and must terminate.
@@ -69,7 +69,7 @@ every use; a same-block definition must precede its use. Forward labels are allo
 | `i32.mul.wrap %a, %b` | i32,i32 → i32 | Exact low 32 product bits, including large operands |
 | `i32.lt.signed %a, %b` | i32,i32 → bool | Signed comparison |
 | `i32.eq %a, %b` | i32,i32 → bool | Equality |
-| `f64.add/sub/mul %a, %b` | f64,f64 → f64 | Strict floating arithmetic; three separate opcodes |
+| `f64.add/sub/mul/div %a, %b` | f64,f64 → f64 | Strict floating arithmetic; four separate opcodes |
 | `as.add %a, %b` | scalar,scalar → any | SWF8 AVM1 Add2 coercion/concatenation |
 | `as.to_number %a` | scalar → f64 | SWF8 AVM1 ToNumber |
 | `trace %a` | scalar → void | ActionTrace string conversion and delivery to host sink |
@@ -133,3 +133,19 @@ The effect table lives in `optimiser/effects.c`: `FIR_READS_MEMORY`,
 `FIR_MAY_SUSPEND`. C API `fir_effects(op)` returns the mask; an unknown opcode
 receives `FIR_ALL_EFFECTS`. Control instructions have no result and are not
 removed by DCE even with a zero effect mask.
+
+## Additional syntax in 0.4.1
+
+After module, an optional pair declares `source_language as1|as2|as3|limbo` and
+`source_semantics avm1_numeric|limbo_i32`. AS requires avm1_numeric, Limbo requires
+limbo_i32. Missing partners, unknown values and mismatched pairs fail. Old FIR
+without these fields remains valid; printer/optimizer preserve them. This is
+provenance and frontend profile, not source reconstruction or an opcode-semantics
+switch. C API: `FirModule.source_language/source_semantics`; 0 means unspecified.
+Rebuild both clients and libraries after C structure changes.
+
+Numeric literals admit explicit +, .5/2. for f64 and 0x/0X. i32 is still signed:
++0x7fffffff and -0x80000000 work, 0x80000000 fails. Decimal leading zeroes are not
+octal. f64.div uses IEEE binary64 without compiler constant folding; ±0, Infinity
+and NaN are not replaced by integer identities. [Example](../examples/profiles/main.fir).
+The compiler emits SWO1 only; Divide needs SWL >=0.3.2. First line remains FIR 1.0.

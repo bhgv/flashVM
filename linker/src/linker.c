@@ -58,7 +58,7 @@ static int actions(const unsigned char *p, size_t n)
             i+=length;
         } else {
             switch(op) {
-            case 0x1c: case 0x1d: case 0x0c: case 0x60: case 0x64:
+            case 0x1c: case 0x1d: case 0x0c: case 0x0d: case 0x60: case 0x64:
             case 0x0a: case 0x63: case 0x61: case 0x0b: case 0x48:
             case 0x49: case 0x47: case 0x4a: case 0x52: case 0x17: case 0x26: break;
             default: goto done;

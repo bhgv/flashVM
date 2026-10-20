@@ -20,6 +20,8 @@ CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" .
   /* Decimal digits for integer and floating-point constants. */
   digit = "0123456789" .
+  /* Hexadecimal constant digits. */
+  hex = digit + "abcdefABCDEF" .
   /* Bytes inside UTF-8 strings, excluding quote, escape, NUL and newlines. */
   quotedbyte = ANY - '"' - "\\" - CHR(0) - CHR(10) - CHR(13) .
   /* Only these escape letters have FIR 1.0 meanings. */
@@ -35,8 +37,10 @@ TOKENS
   global = "@" letter { letter | digit | "." } .
   label = "^" letter { letter | digit | "." } .
   /* One decimal numeric token; semantic actions distinguish i32/f64 ranges. */
-  number = ["-"] digit {digit} ["." digit {digit}]
+  number = ["+" | "-"] (digit {digit} ["." {digit}] | "." digit {digit})
            [("e" | "E") ["+" | "-"] digit {digit}] .
+  /* Explicit hexadecimal spelling; overflow is checked by the C99 builder. */
+  hexnum = ["+" | "-"] "0" ("x" | "X") hex {hex} .
   /* UTF-8 string; byte validity is checked before the generated scanner. */
   textlit = '"' { quotedbyte | "\\" escaped } '"' .
 PRAGMAS
@@ -48,6 +52,8 @@ IGNORE CHR(9) + CHR(10) + CHR(13)
 PRODUCTIONS
   /* Version spelling is fixed; the driver also enforces physical first line. */
   Fir1 = "FIR" number (. capture(B_VERSION); .) "module" global (. capture(B_MODULE); .)
+         [ "source_language" ("as1" | "as2" | "as3" | "limbo") (. capture(B_LANGUAGE); .)
+           "source_semantics" ("avm1_numeric" | "limbo_i32") (. capture(B_SEMANTICS); .) ]
          [ "requires" "flashvm.channels" (. fir_build_channels(); .) ]
          "func" global (. capture(B_FUNCTION); .) "(" ")" "->" "void" "{"
          Block {Block} "}" EOF .
@@ -63,8 +69,8 @@ PRODUCTIONS
          (. capture(B_TYPE); .) .
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-      "const.i32" (. fir_build_op(O_I32); .) number (. capture(B_LITERAL); .)
-    | "const.f64" (. fir_build_op(O_F64); .) number (. capture(B_LITERAL); .)
+      "const.i32" (. fir_build_op(O_I32); .) (number | hexnum) (. capture(B_LITERAL); .)
+    | "const.f64" (. fir_build_op(O_F64); .) (number | hexnum) (. capture(B_LITERAL); .)
     | "const.bool" (. fir_build_op(O_BOOL); .) ("true" | "false") (. capture(B_LITERAL); .)
     | "const.string" (. fir_build_op(O_STRING); .) textlit (. capture(B_LITERAL); .)
     | "copy" (. fir_build_op(O_COPY); .) A
@@ -85,7 +91,8 @@ PRODUCTIONS
   FloatingBinary =
       "f64.add" (. fir_build_op(O_FADD); .)
     | "f64.sub" (. fir_build_op(O_FSUB); .)
-    | "f64.mul" (. fir_build_op(O_FMUL); .) .
+    | "f64.mul" (. fir_build_op(O_FMUL); .)
+    | "f64.div" (. fir_build_op(O_FDIV); .) .
   /* First operand role. */
   A = value (. capture(B_A); .) .
   /* Second operand role. */
