@@ -191,6 +191,7 @@ binaries не запускались. Дополнительно 10000 generated
 под ASan/UBSan. LeakSanitizer выключен в harness из-за отсутствия /proc task
 access; это не проверка утечек. TLS/raw-HTTP probe прошёл UBSan, без
 инструментирования OpenSSL SDK и VM.
+[Controlled cancellation / Управляемая отмена](BACKGROUND_TRANSFER.ru.md), v0.680.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

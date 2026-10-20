@@ -2,6 +2,7 @@
 #ifndef FVM_DESKTOP_HTTP_H
 #define FVM_DESKTOP_HTTP_H
 #include "source.h"
+#include "../../ports/network/socket.h"
 #include "network.h"
 #define FVM_DESKTOP_HTTP_CONNECT_MS 10000L /* Bound connection setup. */
 #define FVM_DESKTOP_HTTP_TOTAL_MS 30000L   /* Bound the synchronous transfer. */
@@ -21,6 +22,12 @@ extern "C"
                                       size_t capacity, void *userdata);
     /* Linked libcurl protocol bits; no easy handle, connection or global-init reference. */
     unsigned int fvm_desktop_http_capabilities(void);
+    /* Controlled counterpart: userdata is null or a borrowed FVM_NetControl pointer.
+     * Cancellation is cooperative through libcurl progress and sink callbacks; resolver
+     * implementations may still block. ERROR and unchanged provenance on cancellation. */
+    FVM_Result fvm_desktop_http_fetch_controlled(const char *reference, const char *base,
+                                                 FVM_DesktopWrite write, void *write_userdata,
+                                                 char *resolved, size_t capacity, void *userdata);
 #ifdef __cplusplus
 }
 #endif

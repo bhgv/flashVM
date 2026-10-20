@@ -71,6 +71,8 @@ static int http_send(FVM_SocketReader *r, const void *bytes, size_t size, size_t
 /* Refill only after consuming the previous chunk; distinguish clean EOF from native error. */
 static int http_fill(FVM_SocketReader *r)
 {
+    if (!fvm_net_active(r->socket))
+        return -1;
     if (r->position < r->size)
         return 1;
     r->position = 0;
@@ -367,13 +369,12 @@ int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out)
     return 1;
 }
 /* Resolve, fetch, validate framing, deliver bounded bytes, then publish canonical provenance. */
-FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
-                                    void *write_userdata, char *resolved, size_t capacity,
-                                    void *userdata)
+static FVM_Result socket_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
+                               void *write_userdata, char *resolved, size_t capacity,
+                               const FVM_SocketHTTPOptions *options, const FVM_NetControl *control)
 {
     FVM_SocketURL url;
     FVM_SocketHTTPOptions defaults;
-    const FVM_SocketHTTPOptions *options = (const FVM_SocketHTTPOptions *)userdata;
     FVM_SocketReader reader;
     FVM_SocketFraming framing;
     FVM_Result result;
@@ -400,7 +401,8 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
     memset(&reader, 0, sizeof(reader));
     reader.write = write;
     reader.userdata = write_userdata;
-    reader.socket = fvm_net_open(url.host, url.port, options->connect_ms, options->total_ms);
+    reader.socket = fvm_net_open_controlled(url.host, url.port, options->connect_ms,
+                                            options->total_ms, control);
     if (!reader.socket)
         return FVM_ERROR;
     result = FVM_ERROR;
@@ -443,6 +445,8 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
             result = FVM_ERROR;
         }
     }
+    if (result == FVM_OK && !fvm_net_active(reader.socket))
+        result = FVM_ERROR;
     if (result == FVM_OK)
         memcpy(resolved, url.canonical, strlen(url.canonical) + 1);
 cleanup:
@@ -461,4 +465,32 @@ unsigned int fvm_desktop_socket_capabilities(void)
     flags |= FVM_DESKTOP_NETWORK_HTTPS;
 #endif
     return flags;
+}
+
+/* Original callback uses the unchanged options layout and no cancellation hook. */
+FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
+                                    void *write_userdata, char *resolved, size_t capacity,
+                                    void *userdata)
+{
+    return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
+                        (const FVM_SocketHTTPOptions *)userdata, 0);
+}
+/* Initialize all fields of the additive controlled policy without native startup. */
+int fvm_desktop_socket_request_init(FVM_SocketHTTPRequest *out)
+{
+    if (!out)
+        return 0;
+    fvm_desktop_socket_options_init(&out->options);
+    out->control.cancelled = 0;
+    out->control.userdata = 0;
+    return 1;
+}
+/* Controlled callback remains synchronous; the owner can also run it on an explicit worker. */
+FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char *base,
+                                               FVM_DesktopWrite write, void *write_userdata,
+                                               char *resolved, size_t capacity, void *userdata)
+{
+    const FVM_SocketHTTPRequest *request = (const FVM_SocketHTTPRequest *)userdata;
+    return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
+                        request ? &request->options : 0, request ? &request->control : 0);
 }

@@ -43,6 +43,21 @@ extern "C"
                                         char *resolved, size_t capacity, void *userdata);
     /* Native provider build bits, without connection, DNS, trust file access or TLS startup. */
     unsigned int fvm_desktop_socket_capabilities(void);
+    /* Additive controlled policy keeps the original options structure ABI unchanged. */
+    typedef struct FVM_SocketHTTPRequest
+    {
+        FVM_SocketHTTPOptions options; /* Initialized scalar deadlines and borrowed CA filename. */
+        FVM_NetControl
+            control; /* Copied cancellation callback; caller owns its thread-safe state. */
+    } FVM_SocketHTTPRequest;
+    /* Initialize the whole controlled request; null returns zero, no startup occurs. */
+    int fvm_desktop_socket_request_init(FVM_SocketHTTPRequest *out);
+    /* Same fetch/partial-data rules as socket_fetch. userdata is null for defaults or
+     * points to FVM_SocketHTTPRequest. Cancellation returns ERROR and never publishes
+     * provenance; DNS/CA/sink code itself cannot be forcibly interrupted. */
+    FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char *base,
+                                                   FVM_DesktopWrite write, void *write_userdata,
+                                                   char *resolved, size_t capacity, void *userdata);
 #ifdef __cplusplus
 }
 #endif

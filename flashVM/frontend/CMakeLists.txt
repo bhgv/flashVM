@@ -602,7 +602,7 @@ if(FVM_PLAYER_SOCKET_TLS AND FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND NOT ANDR
   if(FVM_OPENSSL_PROGRAM)
     add_test(NAME flashvm_socket_tls COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/socket_tls.py $<TARGET_FILE:flashvm_socket_client>
-      $<TARGET_FILE:flashvm_player> $<TARGET_FILE:flashvm_example_socket_loading> ${FVM_OPENSSL_PROGRAM})
+      $<TARGET_FILE:flashvm_player> $<TARGET_FILE:flashvm_example_socket_loading> ${FVM_OPENSSL_PROGRAM} $<TARGET_FILE:flashvm_cancel_client>)
     set_tests_properties(flashvm_socket_tls PROPERTIES TIMEOUT 60)
   endif()
 endif()
@@ -615,4 +615,24 @@ if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMA
     set_property(TEST ${host_test} APPEND PROPERTY ENVIRONMENT
       "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
   endforeach()
+endif()
+
+if(FVM_PLAYER_SOCKET_HTTP AND FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_cancel_client tests/cancel_client.c)
+  target_link_libraries(flashvm_cancel_client PRIVATE flashvm_socket_transport SDL2::SDL2)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_cancel_http COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/cancel_http.py $<TARGET_FILE:flashvm_cancel_client>)
+    set_tests_properties(flashvm_cancel_http PROPERTIES TIMEOUT 15)
+  endif()
+endif()
+
+if(FVM_PLAYER_HTTP AND FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_cancel_curl_client tests/cancel_client.c)
+  target_link_libraries(flashvm_cancel_curl_client PRIVATE flashvm_http_transport SDL2::SDL2)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_cancel_curl COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/cancel_http.py $<TARGET_FILE:flashvm_cancel_curl_client>)
+    set_tests_properties(flashvm_cancel_curl PROPERTIES TIMEOUT 15)
+  endif()
 endif()

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.679
+# FlashVM stage status / Состояние стадий — v0.680
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -69,6 +69,11 @@ fixes; shared TLS 12, libcurl 9, no-provider metadata/ABI 2. Generated URI tests
 ASan/UBSan (LSan disabled: unavailable /proc task inventory); transport probes pass
 UBSan. Three plain HTTP cross targets and Windows DLL/C/C++98 consumers link;
 foreign execution/TLS SDK acceptance and full stage 9 remain open.
+
+v0.680 adds cooperative native HTTP/TLS and libcurl cancellation through additive
+C89 APIs, preserving options/loader layouts. Native waits check at 50ms intervals;
+DNS/CA/user code is not forcibly interrupted. Silent/drip HTTP/TLS and libcurl
+cancellation probes pass. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md).
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

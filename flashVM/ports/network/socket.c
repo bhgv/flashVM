@@ -34,6 +34,7 @@ struct FVM_NetSocket
 {
     FVM_NativeSocket handle; /* Owned descriptor, invalid while trying the next address. */
     double start;            /* Monotonic milliseconds at request entry. */
+    FVM_NetControl control;  /* Copied policy; userdata remains borrowed through close. */
     unsigned long total;     /* Caller-selected total I/O deadline interval. */
 #ifdef _WIN32
     int initialized; /* This handle owns a WSAStartup reference. */
@@ -58,7 +59,7 @@ static int net_now(double *out)
 static double net_remaining(FVM_NetSocket *s, unsigned long budget)
 {
     double now, elapsed;
-    if (!net_now(&now))
+    if ((s->control.cancelled && s->control.cancelled(s->control.userdata)) || !net_now(&now))
         return 0;
     elapsed = now - s->start;
 #ifdef _WIN32
@@ -95,6 +96,8 @@ static int net_wait(FVM_NetSocket *s, int writing, unsigned long budget)
         remaining = net_remaining(s, budget);
         if (remaining <= 0)
             return 0;
+        if (s->control.cancelled && remaining > FVM_NET_POLL_MS)
+            remaining = FVM_NET_POLL_MS;
         time.tv_sec = (long)(remaining / FVM_NET_MILLISECONDS);
         time.tv_usec =
             (long)((remaining - time.tv_sec * FVM_NET_MILLISECONDS) * FVM_NET_MICROSECONDS);
@@ -113,7 +116,9 @@ static int net_wait(FVM_NetSocket *s, int writing, unsigned long budget)
 #endif
         if (status > 0)
             return 1;
-        if (status == 0 || !net_retry())
+        if (status == 0)
+            continue;
+        if (!net_retry())
             return 0;
     }
 }
@@ -149,8 +154,8 @@ static int net_configure(FVM_NetSocket *s)
 #endif
 }
 /* Resolve each request independently; no global socket manager or cached host pointers. */
-FVM_NetSocket *fvm_net_open(const char *host, const char *port, unsigned long connect_ms,
-                            unsigned long total_ms)
+FVM_NetSocket *fvm_net_open_controlled(const char *host, const char *port, unsigned long connect_ms,
+                                       unsigned long total_ms, const FVM_NetControl *control)
 {
     FVM_NetSocket *s;
     struct addrinfo hints, *addresses = 0, *address;
@@ -170,6 +175,13 @@ FVM_NetSocket *fvm_net_open(const char *host, const char *port, unsigned long co
         return 0;
     s->handle = FVM_NET_INVALID;
     s->total = total_ms;
+    if (control)
+        s->control = *control;
+    if (s->control.cancelled && s->control.cancelled(s->control.userdata))
+    {
+        free(s);
+        return 0;
+    }
 #ifdef _WIN32
     if (WSAStartup(FVM_NET_WINSOCK_VERSION, &data))
     {
@@ -218,6 +230,12 @@ failed:
         freeaddrinfo(addresses);
     fvm_net_close(s);
     return 0;
+}
+/* Preserve the original non-cancellable adapter ABI and its default behavior. */
+FVM_NetSocket *fvm_net_open(const char *host, const char *port, unsigned long connect_ms,
+                            unsigned long total_ms)
+{
+    return fvm_net_open_controlled(host, port, connect_ms, total_ms, 0);
 }
 /* Deliver only bytes actually received, with EOF distinct from socket failure. */
 int fvm_net_read(FVM_NetSocket *s, void *bytes, size_t size, size_t *received)

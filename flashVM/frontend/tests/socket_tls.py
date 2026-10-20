@@ -100,7 +100,8 @@ def server(context, handler=RawHandler, child=False):
 
 
 def main():
-    client, player, example, openssl = sys.argv[1:]
+    client, player, example, openssl, *extra = sys.argv[1:]
+    cancel_client = extra[0] if extra else None
     assert int(subprocess.check_output([client, '--capabilities'])) == 1 | 2 | 4
     metadata = subprocess.check_output([player, '--version'], env=dict(os.environ,
                                       SDL_VIDEODRIVER='nonexistent', SDL_AUDIODRIVER='nonexistent'))
@@ -141,6 +142,11 @@ def main():
             assert time.monotonic() - start < 1.5
             probe('https://localhost:%d/length' % port, 4, reject=True)
             probe('https://localhost:%d/length' % port, 1, pem=folder / 'missing.pem')
+            if cancel_client:
+                start = time.monotonic()
+                result = subprocess.run([cancel_client, 'https://localhost:%d/slow' % port,
+                                         '150', str(ca)], capture_output=True, timeout=4)
+                assert result.returncode == 0 and time.monotonic() - start < 2, result
             # Trust defaults obey the host's explicit OpenSSL CA environment; no insecure mode.
             result = subprocess.run([client, 'https://localhost:%d/length' % port], env=env,
                                     capture_output=True, timeout=5)

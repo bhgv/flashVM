@@ -213,6 +213,7 @@ Ten thousand generated URI references additionally pass canonical round-trip
 checks under ASan/UBSan. LeakSanitizer is disabled in that harness because the
 sandbox lacks /proc task access; this is not a leak-check claim. TLS/raw-HTTP
 transport probes pass UBSan, without instrumenting the OpenSSL SDK or VM.
+[Controlled cancellation / Управляемая отмена](BACKGROUND_TRANSFER.md), v0.680.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
