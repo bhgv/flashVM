@@ -245,6 +245,8 @@ GET в этой серии — получение ресурса по задан
 [Linked-memory startup with child unload/reload / Встроенный старт и очистка](../examples/player/unload_loading/README.ru.md).
 [Standalone image replacement / Изображения в клипе](IMAGE_LOADING.ru.md).
 
+[Named MovieClip dimensions / Именованные размеры](MOVIECLIP_NAMED_PROPERTIES.md) / [RU](MOVIECLIP_NAMED_PROPERTIES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

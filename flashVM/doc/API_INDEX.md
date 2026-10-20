@@ -209,6 +209,8 @@ special/printable selectors without allocation or state mutation.
 [Atomic native MovieClip unloading and attachment query](MOVIE_UNLOAD.md) / [RU](MOVIE_UNLOAD.ru.md).
 [Standalone image replacement / Изображения в клипе](IMAGE_LOADING.md).
 
+[Named MovieClip dimensions / Именованные размеры](MOVIECLIP_NAMED_PROPERTIES.md) / [RU](MOVIECLIP_NAMED_PROPERTIES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

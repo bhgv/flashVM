@@ -248,6 +248,8 @@ GET here means retrieving the supplied URL. Automatic serialization of current-c
 [Linked-memory startup with child unload/reload / Встроенный старт и очистка](../examples/player/unload_loading/README.md).
 [Standalone image replacement / Изображения в клипе](IMAGE_LOADING.md).
 
+[Named MovieClip dimensions / Именованные размеры](MOVIECLIP_NAMED_PROPERTIES.md) / [RU](MOVIECLIP_NAMED_PROPERTIES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

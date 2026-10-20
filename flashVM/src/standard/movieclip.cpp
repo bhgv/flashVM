@@ -2,6 +2,7 @@
  * File: src/standard/movieclip.cpp.
  */
 #include "movieclip_quality.hpp"
+#include "movieclip_dimensions.hpp"
 #include "../swf/clip_action_policy.hpp"
 #include "flashvm/clip_actions.h"
 #include "stage_update.hpp"
@@ -3993,6 +3994,17 @@ fvm_movieclip_stage(FVM_Context *c,
     proto->attributes["_quality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
     proto->attributes["_highquality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
 
+    /* Named dimensions reuse intrinsic geometry; they do not create stale own scalar fields. */
+    FVM_AccessorEntry width, height;
+    width.getter = fvm_movieclip_width_get;
+    width.setter = fvm_movieclip_width_set;
+    height.getter = fvm_movieclip_height_get;
+    height.setter = fvm_movieclip_height_set;
+    proto->accessors["_width"] = width;
+    proto->accessors["_height"] = height;
+    proto->attributes["_width"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+    proto->attributes["_height"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+
     /* _lockroot is a nonenumerable, nondeletable instance property, independent of _parent. */
     FVM_AccessorEntry lockroot;
     lockroot.getter = fvm_movieclip_lockroot_get;
@@ -4122,6 +4134,14 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET;
     if (cb == fvm_movieclip_highquality_set)
         return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET;
+    if (cb == fvm_movieclip_width_get)
+        return FVM_MOVIECLIP_CALLBACK_WIDTH_GET;
+    if (cb == fvm_movieclip_width_set)
+        return FVM_MOVIECLIP_CALLBACK_WIDTH_SET;
+    if (cb == fvm_movieclip_height_get)
+        return FVM_MOVIECLIP_CALLBACK_HEIGHT_GET;
+    if (cb == fvm_movieclip_height_set)
+        return FVM_MOVIECLIP_CALLBACK_HEIGHT_SET;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
             return FVM_MOVIECLIP_CALLBACK_METHOD_BASE + (unsigned long)i;
@@ -4159,6 +4179,14 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return fvm_movieclip_highquality_get;
     if (id == FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET)
         return fvm_movieclip_highquality_set;
+    if (id == FVM_MOVIECLIP_CALLBACK_WIDTH_GET)
+        return fvm_movieclip_width_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_WIDTH_SET)
+        return fvm_movieclip_width_set;
+    if (id == FVM_MOVIECLIP_CALLBACK_HEIGHT_GET)
+        return fvm_movieclip_height_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_HEIGHT_SET)
+        return fvm_movieclip_height_set;
     return id >= FVM_MOVIECLIP_CALLBACK_METHOD_BASE &&
                    id < FVM_MOVIECLIP_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
                ? methods[id - FVM_MOVIECLIP_CALLBACK_METHOD_BASE].callback

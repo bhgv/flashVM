@@ -68,6 +68,10 @@
 #define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET 1202UL /* Stable quality accessor identity. */
 #define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET 1203UL /* Stable quality accessor identity. */
 /* Ordered method callbacks occupy consecutive IDs beginning here. */
+#define FVM_MOVIECLIP_CALLBACK_WIDTH_GET 1210UL /* Stable named width getter. */
+#define FVM_MOVIECLIP_CALLBACK_WIDTH_SET 1211UL /* Stable named width setter. */
+#define FVM_MOVIECLIP_CALLBACK_HEIGHT_GET 1212UL /* Stable named height getter. */
+#define FVM_MOVIECLIP_CALLBACK_HEIGHT_SET 1213UL /* Stable named height setter. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \
     "$classPrototype" /* Private Boolean marking the builtin prototype, not a live display         \
