@@ -62,8 +62,7 @@ for до разделителя действует NoIn; скобки, аргу�
 [Грамматика](frontend/as3.atg): Declaration, Parameters, ParameterItem,
 MethodName, NamespaceDeclaration, UseNamespace, CatchClause.
 [Пример](examples/Functions.as). Проверки имён/типов, допустимости модификаторов,
-константности default и выполнения namespace ещё нет. Vector, metadata, E4X и
-ABC остаются за границей этой серии; числовое понижение AS3 не получает эти
+константности default и выполнения namespace ещё нет. Генерация ABC остаётся за границей этой серии; числовое понижение AS3 не получает эти
 конструкции автоматически.
 
 ### Ограничения разбора для C API

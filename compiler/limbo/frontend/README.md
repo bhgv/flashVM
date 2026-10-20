@@ -1,6 +1,6 @@
 # LIMBO syntax frontend
 
-Version 0.3.5. [Русская версия](README.ru.md).
+Version 0.4.0. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -66,8 +66,7 @@ before the next outer qualifier without consuming input; strings, comments and
 parenthesis/subscript nesting are skipped. Empty branch bodies are intentional.
 
 This is an initial profile of the classic language, not a complete Inferno compiler.
-Newer polymorphism/exception syntax and all type/context checks are
-not implemented. Qualifier lookahead is not a general semantic disambiguator;
+Polymorphism/exception syntax is supported in 0.4.0; type/context checks are not implemented. Qualifier lookahead is not a general semantic disambiguator;
 complex brace-containing qualifier expressions need additional work. Include files
 are recognized as directives and are not opened or expanded. Numeric range/base
 validation and Unicode identifier categories require later semantic validation.
@@ -81,11 +80,27 @@ with `-pedantic-errors`.
 
 ## Grammar rule index
 
-[letter](limbo.atg#L124) | [trail](limbo.atg#L130) | [lead2](limbo.atg#L135) | [lead3](limbo.atg#L140) | [lead4](limbo.atg#L145) | [ascii](limbo.atg#L150) | [hex](limbo.atg#L155) | [digit](limbo.atg#L160) | [alpha](limbo.atg#L165) | [dq](limbo.atg#L170) | [sq](limbo.atg#L175) | [linechar](limbo.atg#L180) | [escaped](limbo.atg#L185) | [ident](limbo.atg#L191) | [number](limbo.atg#L200) | [radix](limbo.atg#L228) | [text](limbo.atg#L248) | [character](limbo.atg#L258) | [linecomment](limbo.atg#L285) | [Limbo](limbo.atg#L297) | [Top](limbo.atg#L308) | [NamedTop](limbo.atg#L315) | [DeclarationTail](limbo.atg#L328) | [DeclType](limbo.atg#L339) | [AdtMember](limbo.atg#L369) | [Tags](limbo.atg#L384) | [Names](limbo.atg#L391) | [Name](limbo.atg#L399) | [Type](limbo.atg#L406) | [Parameters](limbo.atg#L441) | [Formal](limbo.atg#L453) | [FunctionTail](limbo.atg#L467) | [Block](limbo.atg#L476) | [Statement](limbo.atg#L487) | [LabeledStatement](limbo.atg#L522) | [IfStatement](limbo.atg#L531) | [WhileStatement](limbo.atg#L539) | [ForStatement](limbo.atg#L553) | [CaseStatement](limbo.atg#L571) | [AltStatement](limbo.atg#L580) | [CaseArm](limbo.atg#L590) | [PickStatement](limbo.atg#L600) | [PickArm](limbo.atg#L609) | [ArmBody](limbo.atg#L623) | [Qualifiers](limbo.atg#L632) | [Qualifier](limbo.atg#L640) | [Expression](limbo.atg#L649) | [Assignment](limbo.atg#L658) | [Cons](limbo.atg#L686) | [LogicalOr](limbo.atg#L698) | [LogicalAnd](limbo.atg#L706) | [BitOr](limbo.atg#L714) | [BitXor](limbo.atg#L722) | [BitAnd](limbo.atg#L730) | [Equality](limbo.atg#L738) | [Relational](limbo.atg#L750) | [Shift](limbo.atg#L764) | [Additive](limbo.atg#L776) | [Product](limbo.atg#L788) | [Unary](limbo.atg#L803) | [ArrayCreation](limbo.atg#L841) | [InitializerList](limbo.atg#L858) | [Initializer](limbo.atg#L869) | [Postfix](limbo.atg#L878) | [Subscript](limbo.atg#L897) | [Primary](limbo.atg#L909)
+[letter](limbo.atg#L124) | [trail](limbo.atg#L130) | [lead2](limbo.atg#L135) | [lead3](limbo.atg#L140) | [lead4](limbo.atg#L145) | [ascii](limbo.atg#L150) | [hex](limbo.atg#L155) | [digit](limbo.atg#L160) | [alpha](limbo.atg#L165) | [dq](limbo.atg#L170) | [sq](limbo.atg#L175) | [linechar](limbo.atg#L180) | [escaped](limbo.atg#L185) | [ident](limbo.atg#L191) | [number](limbo.atg#L200) | [radix](limbo.atg#L228) | [text](limbo.atg#L248) | [character](limbo.atg#L258) | [linecomment](limbo.atg#L285) | [Limbo](limbo.atg#L297) | [Top](limbo.atg#L308) | [NamedTop](limbo.atg#L315) | [DeclarationTail](limbo.atg#L329) | [DeclType](limbo.atg#L340) | [AdtMember](limbo.atg#L374) | [Tags](limbo.atg#L389) | [Names](limbo.atg#L396) | [Name](limbo.atg#L404) | [Type](limbo.atg#L411) | [Parameters](limbo.atg#L440) | [Formal](limbo.atg#L459) | [FunctionTail](limbo.atg#L473) | [Block](limbo.atg#L482) | [Statement](limbo.atg#L493) | [LabeledStatement](limbo.atg#L544) | [IfStatement](limbo.atg#L553) | [WhileStatement](limbo.atg#L561) | [ForStatement](limbo.atg#L575) | [CaseStatement](limbo.atg#L593) | [AltStatement](limbo.atg#L602) | [CaseArm](limbo.atg#L612) | [PickStatement](limbo.atg#L622) | [PickArm](limbo.atg#L631) | [ArmBody](limbo.atg#L645) | [Qualifiers](limbo.atg#L654) | [Qualifier](limbo.atg#L662) | [Expression](limbo.atg#L671) | [Assignment](limbo.atg#L680) | [Cons](limbo.atg#L712) | [LogicalOr](limbo.atg#L722) | [LogicalAnd](limbo.atg#L730) | [BitOr](limbo.atg#L738) | [BitXor](limbo.atg#L746) | [BitAnd](limbo.atg#L754) | [Equality](limbo.atg#L762) | [Relational](limbo.atg#L774) | [Shift](limbo.atg#L788) | [Additive](limbo.atg#L800) | [Product](limbo.atg#L812) | [Unary](limbo.atg#L827) | [ArrayCreation](limbo.atg#L865) | [InitializerList](limbo.atg#L894) | [Initializer](limbo.atg#L905) | [Postfix](limbo.atg#L914) | [Subscript](limbo.atg#L933) | [Primary](limbo.atg#L956)
 
 ## Language reference
 
 [Limbo language reference, syntax summary](https://www.inferno-os.org/inferno/papers/limbo.html).
 
 Added labels for while/do/for/case/alt/pick, list of, unary *, checked
-array forms and slices with a lower bound. See [coverage](../README.md).
+array forms and slices with optional bounds. See [coverage](../README.md).
+
+## Syntax 0.4.0
+
+Adds multiple implement modules, polymorphic function/ADT/type parameters and
+for constraints, exception declarations/raises/raise/block handlers, fixed types
+and conversions, **/**=, array of byte conversion, trailing list comma and omitted
+slice bounds. Variadic * must be last (E1302); empty case/alt/pick and empty for
+constraints are rejected. Comparison with current Inferno corrected the former
+lower-bound restriction: a[:n] and a[:] are legal.
+Includes are not expanded. Symbols/types, named-type casts and complete type/value
+disambiguation in polymorphic arguments still need work. This is not a complete
+Inferno compiler or Dis generator.
+
+[Polymorphic example](../examples/Polymorphic.b), [upstream grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).
+
+New rules / [PolyParameters](limbo.atg#L971) | [ForPoly](limbo.atg#L1012) | [Raises](limbo.atg#L1036) | [FixedType](limbo.atg#L1066) | [Export](limbo.atg#L1105)

@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     }
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("limbo_parse 0.3.5 (C99 syntax API)");
+        puts("limbo_parse 0.4.0 (C99 syntax API)");
         return 0;
     }
     if (argc != 2)

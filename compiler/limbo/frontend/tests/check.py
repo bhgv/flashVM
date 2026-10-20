@@ -13,7 +13,7 @@ CASES = [
  ('array-comment-comma','implement L; f() { a := array[] of {1, # tail\n}; }',True),
  ('deref-slices','implement L; f() { x := *p; y := a[1:]; z := a[0:2]; a[1:] = b; }',True),
  ('bad-slice-empty','implement L; f() { x := a[]; }',False),
- ('bad-slice-lower','implement L; f() { x := a[:2]; }',False),
+ ('slice-lower-omitted','implement L; f() { x := a[:2]; }',True),
  ('bad-array-empty','implement L; f() { x := array[] of {}; }',False),
  ('bad-array-size','implement L; f() { x := array[] of int; }',False),
  ('bad-list-empty','implement L; f() { x := list of {}; }',False),
@@ -55,6 +55,23 @@ CASES = [
   'implement T; f(x:string) { case x { "=>" => x="# =>"; * => return; } }',
   True),
  ('utf8-bom', '\ufeffimplement T; x: con "中";', True)]
+
+CASES += [
+ ('exceptions','implement A,B; E: exception; E2: exception(int,string); f() raises(E,E2) { { raise E; } exception e { E => raise; * => exit; } }',True),
+ ('polymorphic','Pair: adt[T] { x:T; }; f[T](x:T):T { return x; }',True),
+ ('constraints','f[T](x:T):T for { T => show:fn(x:T); } raises(E) { return x; }',True),
+ ('extended-expressions','f(){ x:=a[:2]; y:=a[:]; z:=2**3**4; z**=2; a:=array of byte "hello"; xs:=list of {1,2,}; g[int,array of int](1); }',True),
+ ('fixed','T:type fixed(16,8); f(x:fixed(16)){ y:=fixed(16,8) x; }',True),
+ ('bad-poly-empty','f[](x:int){}',False),
+ ('bad-poly-type','Pair:adt[T]{x:T;}; p:Pair[];',False),
+ ('bad-exception','f(){ { x(); } exception e { "x" return; } }',False),
+ ('bad-raise','f(){raise 1+;}',False),
+ ('bad-power','f(){x:=2**;}',False),
+ ('bad-varargs','f(*,x:int){}',False),
+ ('bad-for-constraint','f[T](x:T) for {} {}',False),
+ ('bad-empty-case','f(){case x {}}',False),
+ ('bad-fixed','x:fixed();',False),
+]
 
 
 CASES += [('syntax-example', (Path(__file__).resolve().parents[2]/'examples/Syntax.b').read_text(), True)]

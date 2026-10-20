@@ -296,7 +296,7 @@ PRODUCTIONS
   /* Единица Limbo: необязательный implement позволяет разбирать также интерфейсы .m. */
   Limbo =
     [
-        "implement" ident ";"
+        "implement" Names ";"
     ]
     {
         Top
@@ -313,8 +313,9 @@ PRODUCTIONS
 
   /* После общего имени различаются определение функции и объявление данных. */
   NamedTop =
+    PolyParameters
     {
-        "." ident
+        "." ident PolyParameters
     }
     FunctionTail
     |
@@ -340,18 +341,22 @@ PRODUCTIONS
                                                                         (. limbo_syntax_enter(); .)
     (
         "con" Expression
-        | "import" ident
+        | "import" Expression
         | "type" Type
         | "module" "{"
         {
             Top
         }
         "}"
-        | "adt" "{"
+        | "exception"
+        [
+            "(" TypeList ")"
+        ]
+        | "adt" PolyParameters ForPoly "{"
         {
             AdtMember
         }
-        "}"
+        "}" ForPoly
         |
         [
             "cyclic"
@@ -411,6 +416,7 @@ PRODUCTIONS
         | "big"
         | "real"
         | "string"
+        | FixedType
         |
         (
             "array"
@@ -419,31 +425,31 @@ PRODUCTIONS
         )
         "of" Type
         | "ref" Type
-        | "fn" Parameters
+        | "fn" PolyParameters Parameters
         [
-            IF(Sym == ColonSym ) ":" Type
+            IF(Sym == ColonSym) ":" Type
         ]
-        | "(" Type
-        {
-            "," Type
-        }
-        ")"
-        | ident
-        {
-            "->" ident
-            | "." ident
-        }
+        ForPoly Raises
+        | "(" TypeList ")"
+        | NamedType
     )
                                                                         (. limbo_syntax_leave(); .)
   .
 
   /* Скобки вокруг необязательного списка формальных параметров Limbo. */
   Parameters =
+                                                                        (. int variadic = 0; .)
     "("
     [
+                                                                        (. variadic = Sym == StarSym; .)
         Formal
         {
-            "," Formal
+            ","                                                         (.
+                                                                            if (variadic)
+                                                                                SemError(1302);
+                                                                            variadic = Sym == StarSym;
+                                                                        .)
+            Formal
         }
     ]
     ")"
@@ -458,7 +464,7 @@ PRODUCTIONS
         [
             "ref"
         ]
-        ident
+        NamedType
         | Type
     )
   .
@@ -467,9 +473,9 @@ PRODUCTIONS
   FunctionTail =
     Parameters
     [
-        IF(Sym == ColonSym ) ":" Type
+        IF(Sym == ColonSym) ":" Type
     ]
-    Block
+    ForPoly Raises Block
   .
 
   /* Блок ограничивает последовательность элементов фигурными скобками. */
@@ -489,6 +495,17 @@ PRODUCTIONS
     (
         IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
         | Block
+        [
+            IF(Sym == exceptionSym) "exception"
+            [
+                ident
+            ]
+            "{"
+            {
+                CaseArm
+            }
+            "}"
+        ]
         | ";"
         | "include" text ";"
         | IfStatement
@@ -505,6 +522,11 @@ PRODUCTIONS
         )
         [
             ident
+        ]
+        ";"
+        | "raise"
+        [
+            Expression
         ]
         ";"
         | "exit" ";"
@@ -569,7 +591,7 @@ PRODUCTIONS
   /* case сравнивает выражение с условиями; alt выбирает доступную операцию
   канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
   CaseStatement =
-    "case" Expression "{"
+    "case" Expression "{" CaseArm
     {
         CaseArm
     }
@@ -578,7 +600,7 @@ PRODUCTIONS
 
   /* Выбор готовой операции канала; выражение после alt не требуется. */
   AltStatement =
-    "alt" "{"
+    "alt" "{" CaseArm
     {
         CaseArm
     }
@@ -598,7 +620,7 @@ PRODUCTIONS
   /* pick связывает имя с выбранным вариантом ADT; типовая корректность
   значения и существование перечисленных тегов здесь не проверяются. */
   PickStatement =
-    "pick" ident ":=" Expression "{"
+    "pick" ident ":=" Expression "{" PickArm
     {
         PickArm
     }
@@ -658,7 +680,7 @@ PRODUCTIONS
   Assignment =
                                                                         (. limbo_syntax_enter(); .)
     (
-        Cons
+        LoadExpression
         [
             (
                 "="
@@ -668,13 +690,17 @@ PRODUCTIONS
                 | "*="
                 | "/="
                 | "%="
+                | "**="
                 | "&="
                 | "|="
                 | "^="
                 | "<<="
                 | ">>="
+                | "<-"
+                [
+                    "="
+                ]
                 | "<-="
-                | "<-" "="
             )
             Assignment
         ]
@@ -685,12 +711,10 @@ PRODUCTIONS
   /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
   Cons =
                                                                         (. limbo_syntax_enter(); .)
-    (
-        LogicalOr
-        [
-            "::" Cons
-        ]
-    )
+    BitOr
+    [
+        "::" Cons
+    ]
                                                                         (. limbo_syntax_leave(); .)
   .
 
@@ -704,9 +728,9 @@ PRODUCTIONS
 
   /* Логическое И; следующий уровень — побитовое ИЛИ. */
   LogicalAnd =
-    BitOr
+    Cons
     {
-        "&&" BitOr
+        "&&" Cons
     }
   .
 
@@ -824,15 +848,15 @@ PRODUCTIONS
             | "*"
         )
         Unary
-        | "load" ident Unary
+        | FixedType Unary
         | "chan"
         [
             "[" Expression "]"
         ]
         "of" Type
         | ArrayCreation
-        | "list" "of" "{" Expression "}"
-        | Postfix
+        | "list" "of" "{" ListElements "}"
+        | Power
     )
                                                                         (. limbo_syntax_leave(); .)
   .
@@ -840,17 +864,29 @@ PRODUCTIONS
   /* An omitted size is legal only when initializer values determine it. */
   ArrayCreation =
                                                                         (. int sized = 0; .)
-    "array" "["
-    [
-        Expression                                                      (. sized = 1; .)
-    ]
-    "]" "of"
+    "array"
     (
-        Type                                                            (.
+        "["
+        [
+            Expression                                                  (. sized = 1; .)
+        ]
+        "]" "of"
+        (
+            Type                                                        (.
                                                                             if (!sized)
                                                                                 SemError(1301);
                                                                         .)
-        | "{" InitializerList "}"
+            | "{" InitializerList "}"
+        )
+        | "of"
+        (
+            "byte"
+            | "int"
+            | "big"
+            | "real"
+            | "string"
+        )
+        Unary
     )
   .
 
@@ -895,13 +931,24 @@ PRODUCTIONS
 
   /* Index or slice: lower bound is mandatory, upper bound may be omitted. */
   Subscript =
-    "[" Expression
-    [
+    "["
+    (
         ":"
         [
             Expression
         ]
-    ]
+        | Export
+        (
+            ":"
+            [
+                Expression
+            ]
+            |
+            {
+                "," Export
+            }
+        )
+    )
     "]"
   .
 
@@ -918,6 +965,152 @@ PRODUCTIONS
         | "(" Expression ")"
     )
                                                                         (. limbo_syntax_leave(); .)
+  .
+
+  /* Polymorphic declaration variables, not instantiation types. */
+  PolyParameters =
+    [
+        "[" Names "]"
+    ]
+  .
+
+  /* Named types can be instantiated at each module/ADT qualification level. */
+  NamedType =
+    ident TypeArguments
+    {
+        (
+            "->"
+            | "."
+        )
+        ident TypeArguments
+    }
+  .
+
+  /* Concrete type arguments; empty instantiations are not legal. */
+  TypeArguments =
+    [
+        "[" TypeList "]"
+    ]
+  .
+
+  /* Tuple/instantiation types retain optional cyclic qualifiers per element. */
+  TypeList =
+    [
+        "cyclic"
+    ]
+    Type
+    {
+        ","
+        [
+            "cyclic"
+        ]
+        Type
+    }
+  .
+
+  /* Constraint groups name one or more polymorphic variables, followed by their required fields. */
+  ForPoly =
+    [
+        IF(Sym == forSym) "for" "{" ConstraintGroup
+        {
+            ConstraintGroup
+        }
+        "}"
+    ]
+  .
+
+  /* A constraint group can have zero fields, but for {} cannot omit all variable groups. */
+  ConstraintGroup =
+    Names "=>"
+    {
+        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+        Names ":"
+        [
+            "cyclic"
+        ]
+        Type ";"
+    }
+  .
+
+  /* Declared exception names are identifiers or identifier tuples, never arbitrary expressions. */
+  Raises =
+    [
+        IF(Sym == raisesSym) "raises"
+        (
+            "(" ExceptionNames ")"
+            | ident
+        )
+    ]
+  .
+
+  /* Nested exception-name tuples use the same source spelling as the reference grammar. */
+  ExceptionNames =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        ident
+        | "nil"
+        | "(" ExceptionNames ")"
+    )
+    {
+        ","
+        (
+            ident
+            | "nil"
+            | "(" ExceptionNames ")"
+        )
+    }
+                                                                        (. limbo_syntax_leave(); .)
+  .
+
+  /* Fixed-point type/conversion has one or two scale expressions. */
+  FixedType =
+    "fixed" "(" Assignment
+    [
+        "," Assignment
+    ]
+    ")"
+  .
+
+  /* Load binds less strongly than logical operators and more strongly than assignment. */
+  LoadExpression =
+                                                                        (. limbo_syntax_enter(); .)
+    (
+        "load" ident LoadExpression
+        | LogicalOr
+    )
+                                                                        (. limbo_syntax_leave(); .)
+  .
+
+  /* Exponentiation associates right; postfix operations bind before it. */
+  Power =
+    Postfix
+    [
+        "**" Unary
+    ]
+  .
+
+  /* A single trailing comma is permitted in nonempty list literals. */
+  ListElements =
+    Assignment
+    {
+        IF(Sym == CommaSym && InitializerAfterComma()) ","
+        Assignment
+    }
+    [
+        ","
+    ]
+  .
+
+  /* Index arguments can export builtin/composite types to a polymorphic operation. */
+  Export =
+    IF(Sym == byteSym || Sym == intSym || Sym == bigSym || Sym == realSym ||
+       Sym == stringSym || Sym == cyclicSym || Sym == listSym ||
+       (Sym == arraySym && S_CurrentCh(Trivia(S_NextPos + S_NextLen)) != '['))
+    [
+        "cyclic"
+    ]
+    Type
+    | Assignment
   .
 
 END

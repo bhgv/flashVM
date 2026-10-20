@@ -5,7 +5,7 @@
  * Квадратные скобки — необязательная часть, фигурные — повторение.
  * IF(...) проверяет выбор без потребления входного токена.
  */
-/* AS3 core syntax subset. No E4X, vectors, metadata or ABC emission. */
+/* AS3 syntax with E4X, vectors, metadata and parser-selected lexical goals; no ABC emission. */
 COMPILER As3
 #include <string.h>
 

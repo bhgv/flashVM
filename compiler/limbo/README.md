@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.3.5. [Русский](README.ru.md).
+Version 0.4.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -33,8 +33,7 @@ reentrant). `tests/embed.c` checks in-process recovery after invalid input.
 
 Added list-of literals, trailing array-initializer commas, unary dereference `*`
 and labels on while/do/for/case/alt/pick. Typed declarations after a colon do
-not become labels. `a[lo:hi]`/`a[lo:]` require a lower bound; `a[]` and `a[:hi]`
-fail. `array[] of Type` reports E1301: omitted size needs a nonempty initializer.
+not become labels. `a[]` fails; v0.4.0 additionally accepts `a[:hi]` and `a[:]`. `array[] of Type` reports E1301: omitted size needs a nonempty initializer.
 Use nil for an empty list, not `list of {}`. Explicit lookahead distinguishes
 wildcard `* =>` from dereference `*p`.
 
@@ -55,3 +54,17 @@ bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
 are C99.
 
 [Detailed examples](examples/README.md).
+
+## Syntax 0.4.0
+
+Adds multiple implement modules, polymorphic function/ADT/type parameters and
+for constraints, exception declarations/raises/raise/block handlers, fixed types
+and conversions, **/**=, array of byte conversion, trailing list comma and omitted
+slice bounds. Variadic * must be last (E1302); empty case/alt/pick and empty for
+constraints are rejected. Comparison with current Inferno corrected the former
+lower-bound restriction: a[:n] and a[:] are legal.
+Includes are not expanded. Symbols/types, named-type casts and complete type/value
+disambiguation in polymorphic arguments still need work. This is not a complete
+Inferno compiler or Dis generator.
+
+[Polymorphic example](examples/Polymorphic.b), [upstream grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).

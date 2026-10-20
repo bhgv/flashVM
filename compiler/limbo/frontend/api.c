@@ -17,6 +17,11 @@ static void report(int code, int line, int column, long offset)
     active->line = line;
     active->column = column;
     active->offset = offset;
+    if (code == 1302)
+    {
+        snprintf(active->message, sizeof(active->message), "variadic parameter must be last");
+        return;
+    }
     if (code == 1301)
     {
         snprintf(active->message, sizeof(active->message),
