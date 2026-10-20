@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.673
+# FlashVM stage status / Состояние стадий — v0.674
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -34,6 +34,9 @@ Windows; target executables are not run. This does not close stage 9.
 
 v0.673 adds exact borrowed memory playback and a linked-resource C89 example.
 [Sources EN](PLAYER_SOURCES.md) / [RU](PLAYER_SOURCES.ru.md). All nine stages remain open.
+
+v0.674 adds bounded host-provider input and deferred GetURL2 root replacement.
+Child-clip/progressive loading and full loadMovie semantics remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

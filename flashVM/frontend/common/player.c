@@ -4,6 +4,7 @@
 #include "desktop_build_version.h"
 #include "audio.h"
 #include "flashvm/gc.h"
+#include "flashvm/avm1.h"
 #include "flashvm/broadcaster.h"
 #include "flashvm/input.h"
 #include "flashvm/keyboard.h"
@@ -209,9 +210,53 @@ static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ord
     return FVM_OK;
 }
 
+/* Owned pending request; copied out of counted VM operands before callback return. */
+typedef struct FVM_DesktopNavigation
+{
+    char *pending; /* Owned reference; at most one outstanding root replacement. */
+} FVM_DesktopNavigation;
+
+/* Copy root-load requests only; actual fetching/replacement occurs after VM destruction. */
+static FVM_Result request_movie(FVM_Context *context, FVM_Object *receiver, unsigned int argc,
+                                const FVM_Value *args, FVM_Value *result, void *userdata)
+{
+    FVM_DesktopNavigation *navigation = (FVM_DesktopNavigation *)userdata;
+    const FVM_Value *url, *target;
+    size_t size, target_size;
+    unsigned int flags;
+    (void)context;
+    (void)receiver;
+    (void)result;
+    if (argc != FVM_DESKTOP_URL_ARGUMENTS || !args || !navigation)
+        return FVM_INVALID_ARGUMENT;
+    url = args + FVM_DESKTOP_URL_URL;
+    target = args + FVM_DESKTOP_URL_TARGET;
+    if (url->type != FVM_VALUE_STRING || target->type != FVM_VALUE_STRING ||
+        args[FVM_DESKTOP_URL_FLAGS].type != FVM_VALUE_NUMBER)
+        return FVM_INVALID_ARGUMENT;
+    size = fvm_value_string_size(url);
+    target_size = fvm_value_string_size(target);
+    flags = (unsigned int)args[FVM_DESKTOP_URL_FLAGS].number;
+    if ((flags != FVM_AVM1_URL_LOAD_TARGET &&
+         flags != (FVM_AVM1_URL_LOAD_TARGET | FVM_AVM1_URL_METHOD_GET)) ||
+        !((target_size == strlen("_root") && !memcmp(target->string, "_root", target_size)) ||
+          (target_size == strlen("_level0") && !memcmp(target->string, "_level0", target_size))))
+        return FVM_UNSUPPORTED;
+    if (!size || size > FVM_DESKTOP_MAX_LOCATION || memchr(url->string, 0, size))
+        return FVM_INVALID_ARGUMENT;
+    if (navigation->pending)
+        return FVM_UNSUPPORTED;
+    navigation->pending = (char *)malloc(size + 1);
+    if (!navigation->pending)
+        return FVM_OUT_OF_MEMORY;
+    memcpy(navigation->pending, url->string, size);
+    navigation->pending[size] = 0;
+    return FVM_OK;
+}
+
 /* Play borrowed binary input. VM/SDL objects stay on this thread; source bytes are never freed. */
 static int play_bytes(const FVM_DesktopOptions *options, const char *path, const void *bytes,
-                      size_t length, int *quit)
+                      size_t length, int *quit, FVM_DesktopNavigation *navigation)
 {
     FVM_Config config;
     FVM_Runtime *runtime = 0;
@@ -247,6 +292,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (!checked(fvm_runtime_create(&config, &runtime), "runtime", path))
         goto cleanup;
     if (!checked(fvm_context_create(runtime, &context), "context", path))
+        goto cleanup;
+    if (navigation && !checked(fvm_avm1_set_url_rooted(context, request_movie, navigation, 0),
+                               "movie loader", path))
         goto cleanup;
     if (!checked(fvm_load_memory(context, bytes, length), "SWF load", path))
         goto cleanup;
@@ -359,7 +407,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             surface.width, surface.height, authored, rate);
     period = FVM_DESKTOP_MILLISECONDS / rate;
     next = fvm_desktop_now();
-    while (!limit || ticks < limit)
+    while ((!limit || ticks < limit) && !(navigation && navigation->pending))
     {
         double now;
         if (!fvm_desktop_window_events(window, 0))
@@ -398,6 +446,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         /* Input may register timers; deliver due work even between timeline frames. */
         if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
+        if (navigation && navigation->pending)
+            break; /* Callback has returned; dispose this VM before executing its request. */
         /* [GC:] Input listeners and HostInput publication also allocate without timers.
          * Step once per foreground turn after all callbacks return; roots stay pinned.
          * The collector threshold decides whether this safe point actually collects. */
@@ -472,7 +522,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             next = now;
     }
     /* Keep the last bounded frame visible for its scheduled duration, with responsive close. */
-    while (!*quit && fvm_desktop_now() < next)
+    while (!*quit && !(navigation && navigation->pending) && fvm_desktop_now() < next)
     {
         int wait = (int)(next - fvm_desktop_now());
         if (!fvm_desktop_window_active(window))
@@ -535,7 +585,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     int status;
     if (!bytes)
         return FVM_DESKTOP_EXIT_PLAYBACK;
-    status = play_bytes(options, path, bytes, length, quit);
+    status = play_bytes(options, path, bytes, length, quit, 0);
     free(bytes);
     return status;
 }
@@ -576,9 +626,182 @@ int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes,
     }
     if (!memory_options(options, name, &value, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
-    status = play_bytes(&value, name, bytes, length, &quit);
+    status = play_bytes(&value, name, bytes, length, &quit, 0);
     if (status && error)
         *error = "player buffer playback failed";
+    return status;
+}
+
+/* Accumulator owns only transport bytes; sink errors remain latched even if ignored by a provider.
+ */
+typedef struct FVM_DesktopDownload
+{
+    unsigned char *bytes;  /* Owned contiguous binary input. */
+    size_t size, capacity; /* Used bytes and actual allocation, both bounded. */
+    FVM_Result status;     /* First write failure. */
+} FVM_DesktopDownload;
+
+/* Consume chunks with checked arithmetic; a failing transport never exposes a partial movie. */
+static FVM_Result collect_movie(const void *bytes, size_t size, void *userdata)
+{
+    FVM_DesktopDownload *download = (FVM_DesktopDownload *)userdata;
+    size_t needed, capacity;
+    unsigned char *grown;
+    if (download->status != FVM_OK)
+        return download->status;
+    if ((!bytes && size) || size > FVM_SWF_DEFAULT_LIMIT - download->size)
+        return download->status = FVM_INVALID_ARGUMENT;
+    needed = download->size + size;
+    if (needed > download->capacity)
+    {
+        capacity = download->capacity ? download->capacity : FVM_DESKTOP_FETCH_INITIAL;
+        while (capacity < needed)
+            capacity = capacity > FVM_SWF_DEFAULT_LIMIT / 2 ? FVM_SWF_DEFAULT_LIMIT : capacity * 2;
+        grown = (unsigned char *)realloc(download->bytes, capacity);
+        if (!grown)
+            return download->status = FVM_OUT_OF_MEMORY;
+        download->bytes = grown;
+        download->capacity = capacity;
+    }
+    if (size)
+        memcpy(download->bytes + download->size, bytes, size);
+    download->size = needed;
+    return FVM_OK;
+}
+
+/* Count only accessible, terminated location text within the explicit protocol bound. */
+static size_t location_size(const char *text)
+{
+    size_t length = 0;
+    if (!text)
+        return 0;
+    while (length <= FVM_DESKTOP_MAX_LOCATION && text[length])
+        ++length;
+    return length <= FVM_DESKTOP_MAX_LOCATION ? length : 0;
+}
+
+/* Default to startup only; the host explicitly opts in to deferred SWF root loading. */
+int fvm_desktop_loader_init(FVM_DesktopLoader *out)
+{
+    if (!out)
+        return 0;
+    memset(out, 0, sizeof(*out));
+    out->max_loads = 1;
+    return 1;
+}
+
+/* Join local-file references. URL resolution belongs to the supplied transport. */
+static int local_location(const char *reference, const char *base, char *out)
+{
+    size_t length = location_size(reference), prefix = 0, i;
+    if (!length)
+        return 0;
+    if (base && reference[0] != '/' && reference[0] != '\\' && !(length > 1 && reference[1] == ':'))
+        for (i = 0; base[i]; ++i)
+            if (base[i] == '/' || base[i] == '\\')
+                prefix = i + 1;
+    if (prefix > FVM_DESKTOP_MAX_LOCATION - length)
+        return 0;
+    if (prefix)
+        memcpy(out, base, prefix);
+    memcpy(out + prefix, reference, length + 1);
+    return 1;
+}
+
+/* Keep transport and successive VM lifetimes disjoint; this is root replacement, not child import.
+ */
+int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                           const FVM_DesktopLoader *loader, const char **error)
+{
+    FVM_DesktopOptions value;
+    FVM_DesktopLoader policy;
+    FVM_DesktopNavigation navigation;
+    FVM_DesktopDownload download;
+    char location[FVM_DESKTOP_MAX_LOCATION + 1], resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+    const char *reference, *base = 0;
+    const void *bytes;
+    unsigned char *file_bytes;
+    size_t size;
+    unsigned int kind;
+    unsigned long loads = 0;
+    int quit = 0, status = FVM_DESKTOP_EXIT_ARGUMENT;
+    FVM_Result fetched;
+    memset(&navigation, 0, sizeof(navigation));
+    if (error)
+        *error = "invalid source or loader policy";
+    if (!source || !location_size(source->location) ||
+        (source->kind != FVM_DESKTOP_SOURCE_MEMORY && source->kind != FVM_DESKTOP_SOURCE_FILE &&
+         source->kind != FVM_DESKTOP_SOURCE_URL) ||
+        (source->kind == FVM_DESKTOP_SOURCE_MEMORY &&
+         (!source->bytes || !source->size || source->size > FVM_SWF_DEFAULT_LIMIT)) ||
+        (source->kind != FVM_DESKTOP_SOURCE_MEMORY && (source->bytes || source->size)))
+        return status;
+    fvm_desktop_loader_init(&policy);
+    if (loader)
+        policy = *loader;
+    if (!policy.max_loads || policy.max_loads > FVM_DESKTOP_MAX_LOADS)
+        return status;
+    if (!memory_options(options, source->location, &value, error))
+        return status;
+    kind = source->kind;
+    reference = source->location;
+    for (;;)
+    {
+        file_bytes = 0;
+        memset(&download, 0, sizeof(download));
+        download.status = FVM_OK;
+        bytes = source->bytes;
+        size = source->size;
+        status = FVM_DESKTOP_EXIT_PLAYBACK;
+        if (kind == FVM_DESKTOP_SOURCE_URL)
+        {
+            memset(resolved, 0, sizeof(resolved));
+            fetched = policy.fetch ? policy.fetch(reference, base, collect_movie, &download,
+                                                  resolved, sizeof(resolved), policy.userdata)
+                                   : FVM_UNSUPPORTED;
+            if (fetched != FVM_OK || download.status != FVM_OK || !download.size ||
+                !memchr(resolved, 0, sizeof(resolved)) || !location_size(resolved))
+            {
+                free(download.bytes);
+                break;
+            }
+            bytes = download.bytes;
+            size = download.size;
+        }
+        else if (!local_location(reference, kind == FVM_DESKTOP_SOURCE_FILE ? base : 0, resolved))
+            break;
+        if (kind == FVM_DESKTOP_SOURCE_FILE)
+        {
+            file_bytes = read_movie(resolved, &size);
+            if (!file_bytes)
+                break;
+            bytes = file_bytes;
+        }
+        memcpy(location, resolved, strlen(resolved) + 1);
+        /* The pending reference belongs to the previous VM and is no longer needed. */
+        free(navigation.pending);
+        navigation.pending = 0;
+        status = play_bytes(&value, location, bytes, size, &quit,
+                            policy.max_loads > 1 ? &navigation : 0);
+        free(file_bytes);
+        free(download.bytes);
+        ++loads;
+        if (status || quit || !navigation.pending)
+            break;
+        if (loads >= policy.max_loads)
+        {
+            status = FVM_DESKTOP_EXIT_PLAYBACK;
+            break;
+        }
+        reference = navigation.pending;
+        base = location;
+        kind = strstr(reference, "://") || kind != FVM_DESKTOP_SOURCE_FILE
+                   ? FVM_DESKTOP_SOURCE_URL
+                   : FVM_DESKTOP_SOURCE_FILE;
+    }
+    free(navigation.pending);
+    if (error)
+        *error = status ? "source fetch, import, navigation limit or playback failed" : 0;
     return status;
 }
 

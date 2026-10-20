@@ -39,6 +39,48 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Build/native/cross guide](DESKTOP_FRONTEND.md) ·
 [Structured host](PLAYER_CONFIGURATION.md) · [Implementation](../frontend/common/player.c) ·
 [Roadmap status](ROADMAP_STATUS.md)
+## Host transport and root loading since v0.674
+
+[source.h](../frontend/common/source.h) defines FVM_DesktopSource (kind, bytes,
+size, location), FVM_DesktopLoader (fetch, userdata, max_loads), FVM_DesktopWrite
+and FVM_DesktopFetch. fvm_desktop_loader_init selects no transport and max_loads=1.
+fvm_desktop_run_source accepts MEMORY, FILE or URL input with the same scalar
+validation, ignored playlist, return/error and main-thread rules as memory run.
+Non-memory sources must have null bytes and zero size. Names are 1..4096 bytes;
+max_loads must be 1..1024 and includes startup. Source/policy/array storage remains
+borrowed through synchronous return. FILE uses the SDL Unicode file adapter.
+URL without a fetch callback fails explicitly; core VM acquires no network dependency.
+
+Fetch receives a reference, optional previous canonical base, a write callback and
+its userdata, a canonical-location output buffer/capacity, and host userdata.
+Resolve relative references, deliver binary chunks synchronously, then write a
+nonempty terminated effective absolute location within capacity. It becomes the
+next movie's base. Do not retain any pointers, call VM/SDL, recurse playback or
+throw C++ exceptions across the C boundary. Return the real transport status.
+Stop on any write error. The sink bounds accumulation to 64 MiB, checks arithmetic,
+latches the first error and discards partial/empty responses on failure, even if
+a provider incorrectly ignores a write error. The host owns transport sessions,
+authentication, cancellation and scheduling; this synchronous callback can block UI.
+
+With max_loads>1 the runner installs the existing rooted AVM1 URL sink.
+GetURL2 LOAD_TARGET requests to _root or _level0 with no method/GET copy the
+counted reference into native storage. The old script may finish its current
+callback/frame; no transport or recursive playback runs inside it. At the next
+safe boundary the runner destroys the old VM/audio/window, fetches the next
+movie, and starts a fresh VM. No managed pointer survives. One outstanding request
+is accepted; a second is unsupported. The total load bound stops loops with
+playback status 1; close stops the chain. A failed later load does not roll back
+the already closed movie. Child/other-level targets, POST, loadVariables and browser
+navigation are unsupported. This is bounded root replacement, not full Flash
+loadMovie semantics or asynchronous progressive loading.
+
+For FILE chains relative paths join the previous file directory; absolute paths
+remain absolute. URL chains resolve through the provider. A memory movie may use
+its location as the URL-provider base; absolute requests work independently of it.
+Transport callbacks occur on the owner thread only after old VM cleanup.
+[source_movie.c](../frontend/tests/source_movie.c) tests chunking, canonical bases,
+partial failure, ignored overflow, malformed canonical output, root/level0 loads,
+unsupported requests and loop limits in both interpreter and JIT.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
