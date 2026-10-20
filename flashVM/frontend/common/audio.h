@@ -51,6 +51,9 @@ extern "C"
     /* Copy queue observation under the same native mutex; useful for diagnostics and regression
      * tests. */
     FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *, FVM_SWFSoundOutputInfo *);
+    /* Owner safe point: detach sound delivery and join/release old root audio while keeping
+     * cumulative counters. Context/window remain alive. Repeated clearing is safe. */
+    FVM_Result fvm_desktop_audio_clear(FVM_Context *, FVM_DesktopAudio *);
     /* Detach, signal/join, stop/free native dependencies and destroy the mutex before SDL_Quit. */
     void fvm_desktop_audio_close(FVM_DesktopAudio *);
 #ifdef __cplusplus

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.695
+# FlashVM stage status / Состояние стадий — v0.696
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.696 enables root/_level0 content clearing without ending context/window.
+The owner detaches sound delivery and joins/releases native PCM before network
+cancellation, preserving cumulative counters. Actual root SWFs test retained
+handlers, obsolete frames, subtree cancellation, relative forms and looping PCM
+with dummy SDL audio enabled. No synthetic unload events; all stages remain open.
 
 v0.695 extends that C tutorial with immutable SWF bytes linked into the executable.
 Explicit network provenance survives unload and resolves relative form reloads;

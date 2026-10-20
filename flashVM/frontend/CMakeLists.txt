@@ -819,3 +819,12 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT AN
     set_tests_properties(flashvm_example_unload_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
   endif()
 endif()
+
+# Root unload fixtures exercise real callbacks and optional dummy-device PCM ownership.
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_root_unload_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/root_unload.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_root_unload_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+  endforeach()
+endif()

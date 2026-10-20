@@ -69,9 +69,8 @@ foreign linking is not evidence of execution on that processor or operating syst
 
 The optional player accepts `unloadMovie("child")`, `unloadMovie(child)` and
 `child.unloadMovie()`. String targets resolve in the calling AVM1 scope; object
-arguments retain the exact native identity. Only attached child instances are
-supported. Root/_level0 unloading returns UNSUPPORTED: its audio, source and window
-lifecycle is not implemented by this child operation. No onUnload event is generated.
+arguments retain the exact native identity. Attached child instances are supported; v0.696 also supports root/_level0 as
+described below. No onUnload event is generated.
 
 The script callback pins and queues the operation. The next owner safe point
 clears contents before it polls an active transfer. An earlier active child/form
@@ -105,6 +104,34 @@ transport. Thus an onData handler may clear its subtree without the next queued
 request racing ahead and delivering to an obsolete child. Same-instance own
 properties and handlers remain subject to the earlier content-clear contract.
 [Standalone C/AS/SWF tutorial / Самостоятельный пример](../examples/player/unload_loading/README.md).
+## Root content and native audio since v0.696
+
+`unloadMovie("_level0")`, `unloadMovie(_root)` and `_root.unloadMovie()` now use
+the same staged clear and subtree cancellation as children. The root instance,
+context, window, original stage geometry/frame rate, own properties and retained
+handlers remain alive. The root becomes a stopped one-frame empty clip. Retained
+onEnterFrame callbacks can still run; this operation is not application shutdown.
+Root source provenance remains available to later relative form or movie requests.
+
+After successful content publication, the owner detaches root sound delivery and
+joins/releases the old PCM worker, mixer, queue and device. This happens before a
+possibly slow network cancellation join. Audio event/stop/underrun counters stay
+cumulative. Close is still safe afterwards. A muted source needs no audio device.
+The helper [fvm_desktop_audio_clear](../frontend/common/audio.h#L56) is private player
+integration, not a new exported host ABI or a change to independent C API unload.
+
+Core allocation failure leaves contents and native producers unchanged. An error
+after committed publication follows normal playback-error cleanup; it does not
+roll the old content back. This controls the player's root event-audio producer,
+not arbitrary independent application media devices. Root streaming playback
+remains unsupported except explicit mute import. No unload/loader events are
+synthesized, and no multi-level display stack is implied.
+
+The root SWF fixture keeps an onEnterFrame handler across the clear, rejects old
+frame actions, checks identity state/children and relative fresh form delivery,
+and rejects a wrong reply. With SDL audio enabled it starts a looping PCM sound,
+then verifies the device has closed and the event counter remains one. Dummy SDL
+is a native ownership/protocol test, not audible hardware or foreign-OS acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

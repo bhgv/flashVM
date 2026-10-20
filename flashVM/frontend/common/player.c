@@ -481,6 +481,7 @@ typedef struct FVM_DesktopNavigation
     FVM_DesktopTransfer *transfer; /* Owned in-flight native-byte job, joined before GC unpin. */
     FVM_DesktopRequest *active_request; /* [GC:] Keeps its target pinned across VM turns. */
     FVM_Object *root;                   /* Borrowed active root, pinned by play_bytes. */
+    FVM_DesktopAudio *audio;            /* Borrowed owner-thread audio until play_bytes cleanup. */
     const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
     const FVM_DesktopLoader *policy;          /* Borrowed for the entire source run. */
     FVM_DesktopBackgroundSession *background; /* Optional borrowed owner-thread transfer session. */
@@ -610,9 +611,6 @@ static FVM_Result unload_builtin(FVM_Context *context, FVM_Object *receiver, uns
         return FVM_INVALID_ARGUMENT;
     if (target.type != FVM_VALUE_OBJECT || !target.object)
         return FVM_NOT_FOUND;
-    /* Root audio/window/source teardown still requires a distinct owner lifecycle. */
-    if (target.object == navigation->root)
-        return FVM_UNSUPPORTED;
     status = fvm_movieclip_attached_to(context, target.object, navigation->root, &attached);
     if (status != FVM_OK || !attached)
         return status != FVM_OK ? status : FVM_NOT_FOUND;
@@ -678,6 +676,14 @@ static FVM_Result service_unloads(FVM_Context *context, FVM_DesktopNavigation *n
             status = fvm_movieclip_unload(context, unload->target);
             if (status != FVM_OK)
                 return status; /* No cancellation or old-content mutation on allocation failure. */
+            if (unload->target == navigation->root)
+            {
+                /* Silence PCM before cancellation joins a potentially slow network provider. */
+                status = fvm_desktop_audio_clear(context, navigation->audio);
+                if (status != FVM_OK)
+                    return status; /* Content is committed; owner error cleanup completes teardown.
+                                    */
+            }
         }
         if (cancel_active)
             abandon_active(context, navigation);
@@ -1011,6 +1017,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (navigation)
     {
         navigation->root = clip;
+        navigation->audio = &audio;
         if (!checked(fvm_movieclip_set_source(context, clip, navigation->initial_base,
                                               strlen(navigation->initial_base)),
                      "source base", path))
@@ -1247,6 +1254,8 @@ cleanup:
     }
     if (context)
         discard_requests(context, navigation);
+    if (navigation)
+        navigation->audio = 0; /* Never retain a pointer to this play_bytes stack frame. */
     /* Release both real-output and explicit-mute registrations before audio userdata cleanup. */
     if (context && clip)
         fvm_movieclip_set_sound_callback(context, 0, 0);

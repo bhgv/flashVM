@@ -245,6 +245,29 @@ FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *audio, FVM_SWFSoundOutputInf
     return result;
 }
 
+/* Root content removal must silence the old native producer without ending the VM/window.
+ * Detach the VM callback first; close joins the native-only worker before freeing PCM ownership. */
+FVM_Result fvm_desktop_audio_clear(FVM_Context *context, FVM_DesktopAudio *audio)
+{
+    FVM_Result result;
+    unsigned long events, stops;
+    int underruns;
+    if (!context || !audio)
+        return FVM_INVALID_ARGUMENT;
+    result = fvm_movieclip_set_sound_callback(context, 0, 0);
+    if (result != FVM_OK)
+        return result;
+    events = audio->events;
+    stops = audio->stops;
+    underruns = SDL_AtomicGet(&audio->underruns);
+    fvm_desktop_audio_close(audio);
+    /* Keep run diagnostics cumulative even though device ownership has ended. */
+    audio->events = events;
+    audio->stops = stops;
+    SDL_AtomicSet(&audio->underruns, underruns);
+    return FVM_OK;
+}
+
 /* Release context registration before userdata; quiesce the worker before native cleanup. */
 void fvm_desktop_audio_close(FVM_DesktopAudio *audio)
 {

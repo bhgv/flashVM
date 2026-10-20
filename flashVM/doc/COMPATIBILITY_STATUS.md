@@ -4978,6 +4978,14 @@ only pending ordinals are captured under the shared work limit. Bound/owner chec
 monotonic failure progress and transferred-library reset remain explicit.
 [EN](INITIALIZER_PROGRESS.md) / [RU](INITIALIZER_PROGRESS.ru.md). Все стадии открыты.
 
+## v0.696 root unload / Очистка корня
+
+Implemented and verified subset: retained root identity/handlers, one empty stopped
+frame, source base, cancelled earlier subtree fetches and joined native root event
+audio. Interpreter/JIT SWFs and dummy SDL audio fixtures: [EN](MOVIE_UNLOAD.md) /
+[RU](MOVIE_UNLOAD.ru.md). Full event lifecycle, streaming playback and foreign
+runtime acceptance remain open; this does not close a roadmap stage.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

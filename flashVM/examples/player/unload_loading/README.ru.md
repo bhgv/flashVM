@@ -61,7 +61,8 @@ Linux ARM64/RISC-V64 и Windows x86_64 не означает исполнени�
 Для curl отключается SOCKET_HTTP и включается FVM_PLAYER_HTTP с thread-safe target
 SDK. HTTPS требует target TLS SDK и доверия сертификатам; этот сервер использует HTTP.
 
-Корень/_level0 и синтетические onUnload/MovieClipLoader events не реализованы.
+Синтетические onUnload/MovieClipLoader events не реализованы. Корень/_level0
+поддержан с v0.696 по контракту очистки.
 Независимое аудио и непрерываемый DNS остаются обязанностью host/provider. При
 close/error выполняется join, принудительного уничтожения worker нет. Dummy SDL
 подтверждает протокол и состояние, а не физическое окно или приёмку другой ОС.

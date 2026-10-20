@@ -80,8 +80,8 @@ Libcurl builds disable SOCKET_HTTP and enable FVM_PLAYER_HTTP with a thread-safe
 static target SDK. HTTPS additionally requires explicit target TLS libraries/trust;
 the supplied server intentionally uses HTTP loopback.
 
-Root/_level0 unloading and synthetic onUnload/MovieClipLoader events remain
-unsupported. Independent audio-device lifetime and uninterruptible DNS remain
+Synthetic onUnload/MovieClipLoader events remain unsupported; root/_level0
+unloading is available since v0.696 (see the lifecycle contract). Independent audio-device lifetime and uninterruptible DNS remain
 host/provider concerns. Close/error joins native jobs; no worker is forcibly killed.
 Dummy SDL verifies protocol/state behavior, not a physical window or remote OS.
 
