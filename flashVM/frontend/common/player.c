@@ -1604,6 +1604,94 @@ int fvm_desktop_run_monitored(const FVM_DesktopOptions *options,
     return run_background_playlist(options, error, (int)monitor->asynchronous, monitor);
 }
 
+/* This host initializer stays linkable in SDKs with no HTTP provider. */
+int fvm_desktop_network_policy_init(FVM_DesktopHTTPPolicy *out)
+{
+    if (!out)
+        return 0;
+    out->max_redirects = 0;
+    out->connect_ms = FVM_NET_CONNECT_MS;
+    out->total_ms = FVM_NET_TOTAL_MS;
+    out->ca_file = 0;
+    return 1;
+}
+/* Reject malformed limits before a callback, worker, window or input source can be opened. */
+static int network_policy_valid(const FVM_DesktopHTTPPolicy *policy, const char **error)
+{
+    if (!policy || policy->max_redirects > FVM_HTTP_REDIRECT_MAX || !policy->connect_ms ||
+        policy->connect_ms > policy->total_ms || policy->total_ms > FVM_NET_MAX_MS)
+    {
+        if (error)
+            *error = "invalid HTTP network policy";
+        return 0;
+    }
+    return 1;
+}
+/* Keep close propagation private so a stopped source also ends the outer playlist. */
+static int run_network_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                              const FVM_DesktopHTTPPolicy *policy,
+                              const FVM_DesktopLoadMonitor *monitor, const char **error,
+                              int *closed)
+{
+#if defined(FVM_DESKTOP_SOCKET_HTTP) || defined(FVM_DESKTOP_HTTP)
+    FVM_DesktopBackgroundLoader loader;
+    fvm_desktop_background_loader_init(&loader);
+#ifdef FVM_DESKTOP_SOCKET_HTTP
+    loader.transfer.fetch = fvm_desktop_socket_transfer_policy;
+#else
+    loader.transfer.fetch = fvm_desktop_http_transfer_policy;
+#endif
+    loader.transfer.userdata = (void *)policy; /* Provider only borrows the const descriptor. */
+    loader.max_loads = options ? options->max_loads : 1;
+    return run_background(options, source, &loader, error, closed, (int)monitor->asynchronous,
+                          monitor);
+#else
+    FVM_DesktopLoader loader;
+    (void)policy;
+    (void)monitor;
+    fvm_desktop_loader_init(&loader);
+    loader.max_loads = options ? options->max_loads : 1;
+    return run_source(options, source, &loader, error, closed, 0);
+#endif
+}
+/* IDE entrypoint uses the same resource FIFO and owner-thread monitor as CLI policy playback. */
+int fvm_desktop_run_source_network(const FVM_DesktopOptions *options,
+                                   const FVM_DesktopSource *source,
+                                   const FVM_DesktopHTTPPolicy *policy,
+                                   const FVM_DesktopLoadMonitor *monitor, const char **error)
+{
+    if (!network_policy_valid(policy, error) || !load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_network_source(options, source, policy, monitor, error, 0);
+}
+/* Logical-resource budgets and optional once semantics are shared across each source run. */
+int fvm_desktop_run_network(const FVM_DesktopOptions *options, const FVM_DesktopHTTPPolicy *policy,
+                            const FVM_DesktopLoadMonitor *monitor, const char **error)
+{
+    FVM_DesktopOptions value;
+    FVM_DesktopSource source;
+    size_t i;
+    int status = FVM_DESKTOP_EXIT_OK, closed = 0;
+    if (!network_policy_valid(policy, error) || !load_monitor_valid(monitor, error) ||
+        !fvm_desktop_options_validate(options, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    value = *options;
+    if (value.file_count > 1 && !value.frames)
+        value.once = 1;
+    source.bytes = 0;
+    source.size = 0;
+    for (i = 0; i < value.file_count; ++i)
+    {
+        source.location = value.files[i];
+        source.kind =
+            strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
+        status = run_network_source(&value, &source, policy, monitor, error, &closed);
+        if (status || closed)
+            break;
+    }
+    return status;
+}
+
 /* Shared synchronous runner; the CLI translates arguments into this same contract. */
 int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
 {
@@ -1682,6 +1770,9 @@ int fvm_desktop_main(int argc, char **argv)
 {
     FVM_DesktopOptions options;
     FVM_DesktopLoadMonitor monitor;
+    FVM_DesktopHTTPPolicy network;
+    unsigned long redirects;
+    int redirects_selected = 0;
     FVM_DesktopCLIProgress progress;
     int timeout_selected = 0, progress_selected = 0;
     const char *error = 0;
@@ -1704,11 +1795,24 @@ int fvm_desktop_main(int argc, char **argv)
         return FVM_DESKTOP_EXIT_PLAYBACK;
     }
     fvm_desktop_load_monitor_init(&monitor);
+    fvm_desktop_network_policy_init(&network);
     memset(&progress, 0, sizeof(progress));
     arguments[0] = argv[0];
     for (i = 1; i < argc; ++i)
     {
-        if (!literal && !strcmp(argv[i], "--load-timeout"))
+        if (!literal && !strcmp(argv[i], "--redirects"))
+        {
+            if (redirects_selected || i + 1 >= argc || !cli_load_timeout(argv[i + 1], &redirects) ||
+                redirects > FVM_HTTP_REDIRECT_MAX)
+            {
+                error = "invalid or duplicate --redirects (0..8 integer hops)";
+                goto argument_failure;
+            }
+            redirects_selected = 1;
+            network.max_redirects = (unsigned int)redirects;
+            ++i;
+        }
+        else if (!literal && !strcmp(argv[i], "--load-timeout"))
         {
             if (timeout_selected || i + 1 >= argc ||
                 !cli_load_timeout(argv[i + 1], &monitor.timeout_ms))
@@ -1749,9 +1853,10 @@ int fvm_desktop_main(int argc, char **argv)
             arguments[count++] = argv[i];
         }
     }
-    if ((timeout_selected || progress_selected) && !background)
+    if ((timeout_selected || progress_selected || redirects_selected) && !background)
     {
-        error = "--load-timeout/--load-progress requires --async-loads or --background-loads";
+        error = "--load-timeout/--load-progress/--redirects requires --async-loads or "
+                "--background-loads";
         goto argument_failure;
     }
     monitor.asynchronous = background == 2;
@@ -1767,7 +1872,8 @@ int fvm_desktop_main(int argc, char **argv)
     }
     else
     {
-        status = (timeout_selected || progress_selected)
+        status = redirects_selected ? fvm_desktop_run_network(&options, &network, &monitor, &error)
+                 : (timeout_selected || progress_selected)
                      ? fvm_desktop_run_monitored(&options, &monitor, &error)
                  : background == 2 ? fvm_desktop_run_async(&options, &error)
                  : background == 1 ? fvm_desktop_run_background(&options, &error)

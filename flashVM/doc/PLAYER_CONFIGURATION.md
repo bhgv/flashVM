@@ -3,10 +3,10 @@
 [Русский](PLAYER_CONFIGURATION.ru.md).
 
 A C89/C++98 application can link the optional CMake target `flashvm_player_host`
-and call [fvm_desktop_run](../frontend/common/player.h#L35) without constructing a command line. This static target
+and call [fvm_desktop_run](../frontend/common/player.h#L36) without constructing a command line. This static target
 contains the shared scheduler, scene/VM integration, input, renderer and audio
 adapters. It links FlashVM and the selected SDL SDK transitively. The console
-entrypoint [fvm_desktop_main](../frontend/common/player.h#L57) parses arguments and invokes the same runner.
+entrypoint [fvm_desktop_main](../frontend/common/player.h#L58) parses arguments and invokes the same runner.
 This is an internal frontend contract, not a new stable VM ABI or an installed SDK.
 
 ## API and lifetime
@@ -29,12 +29,12 @@ remain 100 when explicit FPS is selected. Enum values outside the declared
 choices and flags other than zero/one are rejected. Counts must describe actual
 accessible storage; C cannot validate arbitrary addresses or determine its size.
 
-[fvm_desktop_run](../frontend/common/player.h#L35) returns [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L13) (2) for malformed configuration
+[fvm_desktop_run](../frontend/common/player.h#L36) returns [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L14) (2) for malformed configuration
 before opening even the first file. It copies scalar settings and borrows the
 playlist array and NUL-terminated path strings until synchronous return; keep
 all of them immutable and accessible. Empty/null later paths reject the entire
-playlist before startup. It returns [FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L11) (0) on normal completion
-or user close, and [FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L12) (1) for file, VM or device failure.
+playlist before startup. It returns [FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L12) (0) on normal completion
+or user close, and [FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L13) (1) for file, VM or device failure.
 The optional error is null on success, a detailed static validation diagnostic
 on invalid input, or a generic playback diagnostic; existing playback errors,
 trace and stats still use standard streams. This is not a diagnostic callback API.

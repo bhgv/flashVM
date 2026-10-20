@@ -159,6 +159,7 @@
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
+  - [redirect_loading](#example-player-redirect_loading) — <small><em>Ограниченные redirects и конечные root/child/form origin через C API</em></small>
   - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
@@ -1771,6 +1772,15 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [README EN](player/monitored_loading/README.md) / [RU](player/monitored_loading/README.ru.md),
 [C](player/monitored_loading/main.c), [контракт](../doc/LOAD_MONITOR.ru.md).
 
+<a id="example-player-redirect_loading"></a>
+### redirect_loading
+
+Пояснённый C89-хост и самостоятельный Python server: moved root/child/form,
+восемь HTTP запросов, четыре логических ресурса, frame/timer assertions.
+[README EN](player/redirect_loading/README.md) / [RU](player/redirect_loading/README.ru.md),
+[C](player/redirect_loading/main.c), [server](player/redirect_loading/serve.py),
+[контракт](../doc/HTTP_REDIRECTS.ru.md).
+
 <a id="example-player-socket_loading"></a>
 ### socket_loading
 
@@ -1903,6 +1913,7 @@ Source line links describe the current checkout, including in historical notes.
 - [prototypes — embedding/prototypes](#example-embedding-prototypes)
 - [prototypes — extending/prototypes](#example-extending-prototypes)
 - [qt5 — frontends/qt5](#example-frontends-qt5)
+- [redirect_loading — player/redirect_loading](#example-player-redirect_loading)
 - [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
 - [resource_exceptions.as — actionscript/resource_exceptions.as](#example-actionscript-resource_exceptions-as)
 - [resource_snapshots — debugger/resource_snapshots](#example-debugger-resource_snapshots)

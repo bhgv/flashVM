@@ -345,6 +345,8 @@ void fvm_desktop_help(const char *program)
     puts(
         "  --async-loads           Keep timeline/timers running during network child/form fetches");
     puts("  --background-loads      Fetch network bytes on joined workers; pump the active window");
+    puts("  --redirects N           Explicit HTTP GET redirect profile, 0..8 transitions per load");
+    puts("                          Requires --async-loads or --background-loads; default disabled");
     puts("  --load-timeout MS       Total cooperative job budget, 0..2147483647 (0 disables)");
     puts("  --load-progress         Log owner-thread network request phases and body bytes");
     puts("                          Both require --async-loads or --background-loads");
@@ -355,7 +357,7 @@ void fvm_desktop_help(const char *program)
     puts(
         "  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
-    puts("Network input requires an optional CURL or SOCKET_HTTP provider; no redirects or POST.");
+    puts("Network input requires an optional CURL or SOCKET_HTTP provider; redirects require explicit policy; no POST.");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");

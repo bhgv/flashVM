@@ -64,10 +64,10 @@ SDL_RENDER_DRIVER=software.
 | API | Назначение |
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация скалярных параметров приложения |
-| [fvm_desktop_run_memory](../../../frontend/common/player.h#L43) | Заимствование точных байтов и имени старта до возврата |
+| [fvm_desktop_run_memory](../../../frontend/common/player.h#L44) | Заимствование точных байтов и имени старта до возврата |
 | [FVM_DesktopOptions.max_loads](../../../frontend/common/options.h#L35) | Бюджет старта и всех запросов фильмов/переменных |
 | loadMovie / MovieClip.loadVariables | Очередь скопированных запросов без сети внутри callback |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Завершение собственного глобального сеанса после очистки плеера |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | Завершение собственного глобального сеанса после очистки плеера |
 
 [GC:] Runner удерживает queued targets до доставки, сохраняет объект и положение
 дочернего клипа при замене, освобождает корни запросов при ошибке/закрытии.

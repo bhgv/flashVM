@@ -759,6 +759,29 @@ if((FVM_PLAYER_SOCKET_HTTP OR FVM_PLAYER_HTTP) AND FVM_BUILD_TESTS AND NOT ANDRO
   endif()
 endif()
 
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_redirect_loading ../examples/player/redirect_loading/main.c)
+  target_link_libraries(flashvm_example_redirect_loading PRIVATE flashvm_player_host)
+  if(FVM_BUILD_TESTS)
+    add_executable(flashvm_network_source tests/network_source.c)
+    target_link_libraries(flashvm_network_source PRIVATE flashvm_player_host)
+    if(NOT CMAKE_CROSSCOMPILING)
+      add_test(NAME flashvm_redirect_player COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/redirect_player.py $<TARGET_FILE:flashvm_player>
+        $<TARGET_FILE:flashvm_network_source> $<TARGET_FILE:flashvm_example_redirect_loading>
+        ${PROJECT_SOURCE_DIR}/examples/player/redirect_loading)
+      set_tests_properties(flashvm_redirect_player PROPERTIES TIMEOUT 35 SKIP_RETURN_CODE 77)
+      if(FVM_PLAYER_SOCKET_TLS AND FVM_OPENSSL_PROGRAM)
+        add_test(NAME flashvm_redirect_player_tls COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tests/redirect_player.py $<TARGET_FILE:flashvm_player>
+          $<TARGET_FILE:flashvm_network_source> $<TARGET_FILE:flashvm_example_redirect_loading>
+          ${PROJECT_SOURCE_DIR}/examples/player/redirect_loading ${FVM_OPENSSL_PROGRAM})
+        set_tests_properties(flashvm_redirect_player_tls PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+      endif()
+    endif()
+  endif()
+endif()
+
 # Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
 # Keep production RPATH relocatable; supply only the build-tree test environment here.
 if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)

@@ -65,7 +65,7 @@ with poll/cancel or unload a library while its worker is alive. All argument and
 callback storage remains live until release returns.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) reports live handles, including terminal handles not
-yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L50) refuses cleanup while any remain, even when
+yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L51) refuses cleanup while any remain, even when
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
 

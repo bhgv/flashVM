@@ -26,8 +26,8 @@ cmake --build build-player --target flashvm_example_embedded_movie
 | API | Назначение |
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Общие значения по умолчанию; структура принадлежит приложению |
-| [fvm_desktop_run_memory](../../../frontend/common/player.h#L43) | Заимствует двоичные байты и имя до возврата; точный sizeof, не strlen |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Хост завершает свой полный сеанс SDL после освобождения ресурсов плеера |
+| [fvm_desktop_run_memory](../../../frontend/common/player.h#L44) | Заимствует двоичные байты и имя до возврата; точный sizeof, не strlen |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | Хост завершает свой полный сеанс SDL после освобождения ресурсов плеера |
 
 [main.c](main.c) выбирает mute, поскольку фильм содержит root stream controls.
 [movie.h](movie.h) принадлежит исполняемому файлу, освобождать его нельзя.
@@ -44,7 +44,7 @@ cmake --build build-player --target flashvm_example_embedded_movie
 [module.h](module.h), [module.c](module.c) и [module_host.c](module_host.c) также
 пояснены построчно. Библиотека владеет слинкованным фильмом и экспортирует C89/C++98
 embedded_movie_play. Хосту не нужны путь к фильму и внутренние заголовки VM.
-Он вызывает функцию на UI-потоке и владеет финальным [fvm_desktop_shutdown](../../../frontend/common/player.h#L50): библиотека не
+Он вызывает функцию на UI-потоке и владеет финальным [fvm_desktop_shutdown](../../../frontend/common/player.h#L51): библиотека не
 должна завершать SDL другого приложения. Указатели хоста и управляемые объекты
 после возврата не сохраняются. Возвращается обычный статус плеера. Это пример
 интерфейса, а не стабильный универсальный ABI VM.

@@ -65,7 +65,7 @@ poll/cancel или выгружать библиотеку с активным w
 сохраняются до возврата release.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) считает живые handles, включая готовые до release.
-[fvm_desktop_shutdown](../frontend/common/player.h#L50) отказывает, пока хотя бы один жив, даже без video/audio.
+[fvm_desktop_shutdown](../frontend/common/player.h#L51) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L65) принимает native options либо
 null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L35) требует null userdata и libcurl с флагом

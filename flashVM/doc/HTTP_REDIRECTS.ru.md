@@ -1,9 +1,9 @@
-# Ограниченные HTTP GET перенаправления (v0.688)
+# Ограниченные HTTP GET перенаправления (v0.689)
 
 [English](HTTP_REDIRECTS.md) · [Socket-транспорт](SOCKET_TRANSPORT.ru.md) ·
 [Наблюдение загрузок](LOAD_MONITOR.ru.md).
 
-[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) инициализирует [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L21): без redirects,
+[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) инициализирует [FVM_DesktopHTTPPolicy](../frontend/common/network_loader.h#L13): без redirects,
 connect10с/total30с, штатный trust. Явные native callbacks [fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L72)
 и [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L76) требуют policy в userdata; worker-вариант также
 заимствует [FVM_NetControl](../ports/network/socket.h#L21). Старые socket options/controlled requests/callbacks сохранены.
@@ -50,6 +50,28 @@ hop и запрет HTTPS→HTTP до обращения к plain-server. Оба
 raw HTTP regression и TLS chain tests. Старые callbacks по-прежнему отвергают
 redirects. DNS/CA/provider code могут задержать cleanup; hard preemption и полная
 Flash/browser policy не заявляются.
+
+## Player/IDE и консоль (v0.689)
+
+[fvm_desktop_network_policy_init](../frontend/common/network_loader.h#L13) доступен в host SDK даже без провайдера.
+[fvm_desktop_run_source_network](../frontend/common/network_loader.h#L22) и [fvm_desktop_run_network](../frontend/common/network_loader.h#L28) объединяют обязательные
+HTTP policy и load monitor со штатным worker-провайдером. Layout старых options/
+source/loader/monitor сохранён. Неверные policy/monitor отклоняются до I/O/callback/
+window. Без провайдера local/memory работают, network input не поддержан.
+Observer stop завершает весь playlist.
+
+`--redirects N` принимает строгий integer0..8, требует --async-loads либо
+--background-loads. Missing/duplicate/negative/fractional/out-of-range дают отказ до
+запуска; после -- это буквальное имя файла. CLI выбирает тот же C policy runner,
+сохраняя --load-timeout/--load-progress. Без opt-in redirects по-прежнему запрещены.
+Конечный URL становится source base фильма, включая потомков memory-root и root
+replacement. max_loads считает логические ресурсы; у HTTP hops отдельный лимит.
+
+[Пояснённый C/server пример](../examples/player/redirect_loading/README.ru.md)
+проверяет четыре ресурса/восемь запросов, перенесённые root/child/forms. Реальный
+плеер проверен interpreter/JIT, waiting/async, native HTTPS, C source/memory,
+stop-before-I/O, неверная policy и прежний no-redirect negative control.
+Это ограниченные GET загрузки, не полные Flash network APIs.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

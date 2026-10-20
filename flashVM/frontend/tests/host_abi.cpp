@@ -37,6 +37,12 @@ int main()
         return 1;
     if (fvm_desktop_run_monitored(0, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
+    FVM_DesktopHTTPPolicy policy;
+    if (!fvm_desktop_network_policy_init(&policy) || policy.max_redirects || !policy.connect_ms ||
+        policy.connect_ms > policy.total_ms || policy.ca_file ||
+        fvm_desktop_run_source_network(0, 0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
+        fvm_desktop_run_network(0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;
     FVM_DesktopBuildInfo info;
