@@ -15,6 +15,8 @@ int main(void)
     char *null_file[] = {"player", 0};
     char *null_operand[] = {"player", "--fps", 0, "a.swf"};
     char *null_after_help[] = {"player", "--help", 0};
+    char *version[] = {"player", "--version"};
+    char *version_file[] = {"player", "--", "--version"};
     char *help[] = {"player", "--help"};
     char *dash[] = {"player", "--", "--help"};
     char *conflict[] = {"player", "--jit", "--no-jit", "a.swf"};
@@ -46,6 +48,9 @@ int main(void)
     assert(fvm_desktop_parse(6, fps, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
     assert(options.frames == 2 && fvm_desktop_rate(&options, 0, &rate) && rate == 30);
     assert(fvm_desktop_parse(3, mute, files, &options, &error) == FVM_DESKTOP_PARSE_OK && options.mute);
+    assert(fvm_desktop_parse(2, version, files, &options, &error) == FVM_DESKTOP_PARSE_VERSION);
+    assert(fvm_desktop_parse(3, version_file, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
+           !strcmp(files[0], "--version"));
     assert(fvm_desktop_parse(2, help, files, &options, &error) == FVM_DESKTOP_PARSE_HELP);
     assert(fvm_desktop_parse(3, dash, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
            !strcmp(files[0], "--help"));

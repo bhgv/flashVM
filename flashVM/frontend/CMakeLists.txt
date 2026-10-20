@@ -1,5 +1,8 @@
 # Optional VM host application. SDL is a host presentation SDK, not a bundled VM dependency.
 find_package(SDL2 2.0.9 CONFIG REQUIRED)
+configure_file(common/build_version.h.in generated/desktop_build_version.h @ONLY)
+# Player.c is also compiled by protocol fixtures; share the generated metadata with each host.
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/generated")
 if(ANDROID)
   set(frontend_os android)
 elseif(WIN32)
@@ -349,4 +352,15 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
     set_tests_properties(flashvm_player_event_gc_${mode} PROPERTIES TIMEOUT 20)
   endforeach()
   set_tests_properties(flashvm_player_event_gc_jit PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
+# C++ IDE consumers must link the C player boundary without initializing a device.
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_build_info tests/build_info.cpp common/player.c
+    common/options.c common/sdl_window.c common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_build_info PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_build_info PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_frontend_build_info COMMAND flashvm_frontend_build_info)
+  set_tests_properties(flashvm_frontend_build_info PROPERTIES TIMEOUT 10
+    ENVIRONMENT "SDL_VIDEODRIVER=flashvm-no-video-driver;SDL_AUDIODRIVER=flashvm-no-audio-driver")
 endif()

@@ -21,7 +21,7 @@ int fvm_desktop_window_events(FVM_DesktopWindow *window, int timeout)
 /* [GC:] Model transient listener objects without retaining a raw pointer across collection.
  * Root and HostInput preservation are exercised by subsequent real frames/publication. */
 FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *window, FVM_Context *context,
-                                             FVM_Object *root, double x, double y)
+                                              FVM_Object *root, double x, double y)
 {
     unsigned long threshold, i;
     FVM_Object *temporary;

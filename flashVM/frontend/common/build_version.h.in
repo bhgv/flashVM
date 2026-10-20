@@ -1,0 +1,5 @@
+/* Generated build metadata: refreshes when VERSION.txt changes; never edit generated output. */
+#ifndef FVM_DESKTOP_BUILD_VERSION_H
+#define FVM_DESKTOP_BUILD_VERSION_H
+#define FVM_DESKTOP_BUILD_VERSION "@FVM_VERSION@" /* Development version, independent of C ABI. */
+#endif

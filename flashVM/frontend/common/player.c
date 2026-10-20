@@ -1,6 +1,7 @@
 /* Host-owned desktop playback: load, root, advance, rasterize, present, release. */
 #define SDL_MAIN_HANDLED
 #include "player.h"
+#include "desktop_build_version.h"
 #include "audio.h"
 #include "flashvm/gc.h"
 #include "flashvm/broadcaster.h"
@@ -15,9 +16,45 @@
 #include "options.h"
 #include "window.h"
 #include <SDL.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Query linked/build metadata without creating runtime state or probing native devices. */
+FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    out->version = FVM_DESKTOP_BUILD_VERSION;
+    out->abi_version = fvm_abi_version();
+    out->pointer_bits = (unsigned int)(sizeof(void *) * CHAR_BIT);
+    out->jit_available = fvm_jit_available() != 0;
+#ifdef FVM_HAS_SDL_AUDIO
+    out->sdl_audio_compiled = 1;
+#else
+    out->sdl_audio_compiled = 0;
+#endif
+    return FVM_OK;
+}
+
+/* Console adapter for the same metadata available to a C host; no SDL_Init call. */
+static void print_build_info(void)
+{
+    FVM_DesktopBuildInfo info;
+    SDL_version linked;
+    fvm_desktop_build_info(&info);
+    SDL_GetVersion(&linked);
+    printf("FlashVM player %s\n", info.version);
+    printf("abi=%lu pointer_bits=%u jit_backend=%s sdl_audio_compiled=%s\n",
+           info.abi_version, info.pointer_bits, info.jit_available ? "available" : "unavailable",
+           info.sdl_audio_compiled ? "yes" : "no");
+    printf("sdl_headers=%u.%u.%u sdl_linked=%u.%u.%u\n",
+           (unsigned int)SDL_MAJOR_VERSION, (unsigned int)SDL_MINOR_VERSION,
+           (unsigned int)SDL_PATCHLEVEL, (unsigned int)linked.major,
+           (unsigned int)linked.minor, (unsigned int)linked.patch);
+    puts("Build metadata only; no device or target-runtime acceptance is implied.");
+}
 
 /* Read one bounded UTF-8 path with SDL's platform file adapter, including Unicode Windows paths. */
 static unsigned char *read_movie(const char *path, size_t *size)
@@ -503,6 +540,8 @@ int fvm_desktop_main(int argc, char **argv)
     parsed = fvm_desktop_parse(argc, argv, files, &options, &error);
     if (parsed == FVM_DESKTOP_PARSE_HELP)
         fvm_desktop_help(argv[0]);
+    else if (parsed == FVM_DESKTOP_PARSE_VERSION)
+        print_build_info();
     else if (parsed == FVM_DESKTOP_PARSE_ERROR)
     {
         fprintf(stderr, "%s\nUse --help for options.\n", error ? error : "invalid arguments");

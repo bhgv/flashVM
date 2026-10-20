@@ -102,6 +102,13 @@ def main():
         for option in ('--jit', '--no-jit', '--quality', '--fps', '--speed'):
             if option not in help_result.stdout:
                 raise RuntimeError('Incomplete command-line help')
+    version_result = run(executable, '--version', environment=no_display)
+    expected = (Path(__file__).resolve().parents[2] / 'VERSION.txt').read_text().strip()
+    assert version_result.stdout.startswith('FlashVM player ' + expected + '\n'), version_result
+    assert re.search(r'abi=\d+ pointer_bits=\d+ jit_backend=(available|unavailable) '
+                     r'sdl_audio_compiled=(yes|no)', version_result.stdout), version_result.stdout
+    assert 'sdl_headers=' in version_result.stdout and 'sdl_linked=' in version_result.stdout
+    assert not version_result.stderr, version_result.stderr
     for arguments in ([], ['--fps', 'nan', 'missing.swf'], ['--quality', 'bad', 'missing.swf'],
                       ['--fps', '20', '--speed', '100', 'missing.swf']):
         run(executable, *arguments, environment=no_display, valid=False)

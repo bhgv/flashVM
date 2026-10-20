@@ -129,3 +129,5 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 [Compatibility and input preflight](../doc/PLAYER_PREFLIGHT.md).
 
 [Collection between frames](../doc/PLAYER_EVENT_GC.md).
+
+[Build metadata and C host interface](../doc/PLAYER_BUILD_INFO.md).

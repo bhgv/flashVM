@@ -128,3 +128,5 @@ Escape/Android back остаются зарезервированы для за�
 [Совместимость и проверка входа](../doc/PLAYER_PREFLIGHT.ru.md).
 
 [Сборка мусора между кадрами](../doc/PLAYER_EVENT_GC.ru.md).
+
+[Метаданные сборки и C-интерфейс](../doc/PLAYER_BUILD_INFO.ru.md).

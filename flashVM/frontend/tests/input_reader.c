@@ -41,9 +41,14 @@ static void check(int success)
 }
 int main(void)
 {
+    FVM_DesktopBuildInfo build_info;
     char *null_program[] = {NULL, "--help"};
     char *null_file[] = {"player", NULL};
     char *null_operand[] = {"player", "--fps", NULL};
+    assert(fvm_desktop_build_info(NULL) == FVM_INVALID_ARGUMENT);
+    assert(fvm_desktop_build_info(&build_info) == FVM_OK);
+    assert(build_info.version && build_info.abi_version == fvm_abi_version());
+    assert(build_info.pointer_bits == sizeof(void *) * CHAR_BIT);
     assert(fvm_desktop_main(-1, NULL) == 2);
     assert(fvm_desktop_main(0, NULL) == 2);
     assert(fvm_desktop_main(1, NULL) == 2);

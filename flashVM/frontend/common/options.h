@@ -14,6 +14,7 @@
     FVM_EXECUTION_MANUAL                /* CLI-only sentinel; resolves before VM execution. */
 #define FVM_DESKTOP_PARSE_ERROR 0       /* Malformed option or missing movie. */
 #define FVM_DESKTOP_PARSE_OK 1          /* Ready to load the requested playlist. */
+#define FVM_DESKTOP_PARSE_VERSION 3 /* Print build metadata without movie/device startup. */
 #define FVM_DESKTOP_PARSE_HELP 2        /* Print help and exit successfully. */
 #define FVM_DESKTOP_MAX_FPS 1000.0      /* Bound scheduler work and timer resolution demands. */
 #define FVM_DESKTOP_MIN_RATE 0.1        /* Smallest positive FPS/percentage argument. */
@@ -39,7 +40,7 @@ typedef struct FVM_DesktopOptions
  * A trailing argv[argc] sentinel is not read; strings remain borrowed. */
 int fvm_desktop_arguments_valid(int argc, char **argv);
 /* Parse atomically into out; files is scratch storage with at least argc elements.
- * Return PARSE_HELP without opening files or touching the graphics subsystem. */
+ * Return PARSE_HELP/PARSE_VERSION without opening files or touching graphics. */
 int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOptions *out,
                       const char **error);
 /* Validate authored/effective rate; output is unchanged on failure. */

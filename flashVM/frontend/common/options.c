@@ -139,6 +139,8 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
         const char *arg = argv[i];
         if (!paths_only && (!strcmp(arg, "-h") || !strcmp(arg, "--help")))
             return FVM_DESKTOP_PARSE_HELP;
+        if (!paths_only && !strcmp(arg, "--version"))
+            return FVM_DESKTOP_PARSE_VERSION;
         if (!paths_only && !strcmp(arg, "--"))
         {
             paths_only = 1;
@@ -270,6 +272,7 @@ void fvm_desktop_help(const char *program)
 {
     printf("Usage: %s [options] FILE.swf [FILE.swf ...]\n", program);
     puts("  -h, --help              Show this help; no files/display are opened");
+    puts("  --version               Show build metadata without opening files/devices");
     puts("  --jit                   Automatic JIT with per-body interpreter fallback");
     puts("  --no-jit, --interpreter  Force interpreter execution");
     puts("  --quality LEVEL         low | medium | high | best (default: high)");
@@ -278,7 +281,7 @@ void fvm_desktop_help(const char *program)
     puts("                          --fps and --speed cannot be combined");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
-    puts("  --mute                  Disable event-sound device opening/playback");
+    puts("  --mute                  Mute event sound and validated root streams; no device");
     puts(
         "  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");

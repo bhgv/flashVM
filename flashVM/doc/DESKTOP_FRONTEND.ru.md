@@ -42,6 +42,7 @@ origin указывает на GitHub.
 | Ключ | Действие |
 | --- | --- |
 | `-h`, `--help` | Справка и успешный выход без открытия файла, display или VM |
+| `--version` | Версия, ABI и метаданные сборки без открытия файлов и устройств |
 | `--jit` | Автоматическая JIT-компиляция; отсутствие backend — ошибка до открытия окна. Неподдержанные тела могут исполняться интерпретатором |
 | `--no-jit`, `--interpreter` | Принудительный интерпретатор, обход автоматического и прикреплённого JIT |
 | `--quality low\|medium\|high\|best` | Начальное качество сцены, по умолчанию high; SWF впоследствии может его изменить |
@@ -49,6 +50,7 @@ origin указывает на GitHub.
 | `--speed N` или `--speed N%` | 0.1..10000 процентов от FPS файла; по умолчанию 100 |
 | `--once` | Ограничение числом тиков, равным объявленному числу кадров SWF |
 | `--frames N` | Положительный целый предел тиков для каждого файла |
+| `--mute` | Отключение событийного звука и проверенных корневых потоков без открытия устройства |
 | `--stats` | Число тиков и реальные счётчики native/interpreter/fallback |
 
 Противоречащие JIT/interpreter, сочетания --fps с --speed и --frames с --once —
@@ -142,9 +144,9 @@ Native guard блокирует collection/release во время callbacks. В
 
 | Файл | Функции и ответственность |
 | --- | --- |
-| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L9)/frame_limit проверяют числа; [`fvm_desktop_parse`](../frontend/common/options.c#L49) публикует параметры атомарно, используя caller-owned scratch array путей; [`fvm_desktop_rate`](../frontend/common/options.c#L180) проверяет итоговую частоту; [`fvm_desktop_help`](../frontend/common/options.c#L193) выводит справку |
-| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L16) читает ограниченный UTF-8 файл; [`checked`](../frontend/common/player.c#L58) сообщает статус операции; [`clear_stage`](../frontend/common/player.c#L67) очищает фон; [`play`](../frontend/common/player.c#L90) владеет VM/окном и deadline; [`fvm_desktop_main`](../frontend/common/player.c#L263) разбирает CLI и список файлов |
-| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/sdl_window.c#L16) / [`fvm_desktop_window_present`](../frontend/common/sdl_window.c#L70) / [`fvm_desktop_window_events`](../frontend/common/sdl_window.c#L93) / [`fvm_desktop_window_close`](../frontend/common/sdl_window.c#L118) — граница ресурсов; [`draw_texture`](../frontend/common/sdl_window.c#L57)/[`handle_event`](../frontend/common/sdl_window.c#L79) — повторный показ и закрытие; [`fvm_desktop_now`](../frontend/common/sdl_window.c#L105) — монотонное время; [`fvm_desktop_window_error`](../frontend/common/sdl_window.c#L112) — borrowed сообщение |
+| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L11)/frame_limit проверяют числа; [`fvm_desktop_parse`](../frontend/common/options.c#L121) публикует параметры атомарно, используя caller-owned scratch array путей; [`fvm_desktop_rate`](../frontend/common/options.c#L258) проверяет итоговую частоту; [`fvm_desktop_help`](../frontend/common/options.c#L271) выводит справку |
+| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L60) читает ограниченный UTF-8 файл; [`checked`](../frontend/common/player.c#L111) сообщает статус операции; [`clear_stage`](../frontend/common/player.c#L120) очищает фон; [`play`](../frontend/common/player.c#L211) владеет VM/окном и deadline; [`fvm_desktop_main`](../frontend/common/player.c#L525) разбирает CLI и список файлов |
+| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/sdl_window.c#L51) / [`fvm_desktop_window_present`](../frontend/common/sdl_window.c#L199) / [`fvm_desktop_window_events`](../frontend/common/sdl_window.c#L582) / [`fvm_desktop_window_close`](../frontend/common/sdl_window.c#L654) — граница ресурсов; [`draw_texture`](../frontend/common/sdl_window.c#L109)/[`handle_event`](../frontend/common/sdl_window.c#L331) — повторный показ и закрытие; [`fvm_desktop_now`](../frontend/common/sdl_window.c#L641) — монотонное время; [`fvm_desktop_window_error`](../frontend/common/sdl_window.c#L648) — borrowed сообщение |
 | [options.h](../frontend/common/options.h), [window.h](../frontend/common/window.h) | Внутренние структуры/константы и контракты, не стабильный публичный ABI VM |
 
 ## Проверки и незавершённое
@@ -169,6 +171,7 @@ CTest в сеансе display. Для cross-build они не регистрир
 
 Текущая ограниченная рассылка Key/Mouse и адаптер первичного касания описаны
 во [вводе плеера](PLAYER_POINTER.ru.md). Полная scene/button рассылка ещё открыта.
+[Текущие метаданные сборки](PLAYER_BUILD_INFO.ru.md) · [GC и аргументы C-хоста](PLAYER_EVENT_GC.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

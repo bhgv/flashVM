@@ -41,6 +41,7 @@ paths that begin with a dash. Input paths are local files, not URLs.
 | Option | Behavior |
 | --- | --- |
 | `-h`, `--help` | Prints help successfully without opening a file, display or VM |
+| `--version` | Version, ABI and build metadata without opening files or devices |
 | `--jit` | Requests automatic JIT; unavailable backend is an error before window creation. Unsupported bodies may still use the interpreter |
 | `--no-jit`, `--interpreter` | Forces interpreter mode and bypasses automatic/attached JIT |
 | `--quality low\|medium\|high\|best` | Selects starting stage quality; default high. SWF can later change it |
@@ -48,7 +49,7 @@ paths that begin with a dash. Input paths are local files, not URLs.
 | `--speed N` or `--speed N%` | Decimal 0.1..10000 percent of authored FPS; default 100 |
 | `--once` | Runs the authored frame count worth of ticks, then closes the current movie |
 | `--frames N` | Positive integer per-file tick limit; useful for bounded launches/tests |
-| `--mute` | Skips event audio/device opening |
+| `--mute` | Mutes event audio and validated root streams; skips device opening |
 | `--stats` | Reports tick count and actual native/interpreter/fallback counters |
 
 Conflicting interpreter/JIT options, `--fps` with `--speed`, and `--frames` with
@@ -144,9 +145,9 @@ render callbacks; invoke only on the owning VM thread outside terminal GC phases
 
 | Source | Functions and role |
 | --- | --- |
-| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L9), [`frame_limit`](../frontend/common/options.c#L30): checked numeric syntax; [`fvm_desktop_parse`](../frontend/common/options.c#L49): atomic option publication with caller-owned file scratch array; [`fvm_desktop_rate`](../frontend/common/options.c#L180): checked timing; [`fvm_desktop_help`](../frontend/common/options.c#L193): complete help |
-| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L16): bounded UTF-8 file adapter; [`checked`](../frontend/common/player.c#L58): operation/status diagnostics; [`clear_stage`](../frontend/common/player.c#L67): background initialization; [`play`](../frontend/common/player.c#L90): VM/window lifecycle and deadlines; [`fvm_desktop_main`](../frontend/common/player.c#L263): parser and playlist entry |
-| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/sdl_window.c#L16) / [`fvm_desktop_window_present`](../frontend/common/sdl_window.c#L70) / [`fvm_desktop_window_events`](../frontend/common/sdl_window.c#L93) / [`fvm_desktop_window_close`](../frontend/common/sdl_window.c#L118): native resource boundary; [`draw_texture`](../frontend/common/sdl_window.c#L57)/[`handle_event`](../frontend/common/sdl_window.c#L79): retained repaint and close processing; [`fvm_desktop_now`](../frontend/common/sdl_window.c#L105): monotonic time; [`fvm_desktop_window_error`](../frontend/common/sdl_window.c#L112): borrowed diagnostic |
+| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L11), [`frame_limit`](../frontend/common/options.c#L88): checked numeric syntax; [`fvm_desktop_parse`](../frontend/common/options.c#L121): atomic option publication with caller-owned file scratch array; [`fvm_desktop_rate`](../frontend/common/options.c#L258): checked timing; [`fvm_desktop_help`](../frontend/common/options.c#L271): complete help |
+| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L60): bounded UTF-8 file adapter; [`checked`](../frontend/common/player.c#L111): operation/status diagnostics; [`clear_stage`](../frontend/common/player.c#L120): background initialization; [`play`](../frontend/common/player.c#L211): VM/window lifecycle and deadlines; [`fvm_desktop_main`](../frontend/common/player.c#L525): parser and playlist entry |
+| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/sdl_window.c#L51) / [`fvm_desktop_window_present`](../frontend/common/sdl_window.c#L199) / [`fvm_desktop_window_events`](../frontend/common/sdl_window.c#L582) / [`fvm_desktop_window_close`](../frontend/common/sdl_window.c#L654): native resource boundary; [`draw_texture`](../frontend/common/sdl_window.c#L109)/[`handle_event`](../frontend/common/sdl_window.c#L331): retained repaint and close processing; [`fvm_desktop_now`](../frontend/common/sdl_window.c#L641): monotonic time; [`fvm_desktop_window_error`](../frontend/common/sdl_window.c#L648): borrowed diagnostic |
 | [options.h](../frontend/common/options.h), [window.h](../frontend/common/window.h) | Internal structures, timing/format constants and ownership contracts; not a stable public VM ABI |
 
 ## Checks and remaining work
@@ -173,6 +174,7 @@ Four Cairo core rendering/RECT tests and eight viewer tests also pass.
 
 The current bounded Key/Mouse listener routing and primary touch adapter are
 described in [player input](PLAYER_POINTER.md). Full scene/button routing remains open.
+[Current build metadata](PLAYER_BUILD_INFO.md) · [GC and C host arguments](PLAYER_EVENT_GC.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

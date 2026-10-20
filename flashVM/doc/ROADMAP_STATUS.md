@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.668
+# FlashVM stage status / Состояние стадий — v0.669
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -12,6 +12,10 @@ counts are historical unless explicitly rerun for this revision.
 v0.667 adds a foreground event-loop GC safe point independent of fired timers.
 [Contract and regression](PLAYER_EVENT_GC.md) / [Контракт и проверка](PLAYER_EVENT_GC.ru.md).
 v0.668 validates embedded player argument vectors before allocation/startup.
+v0.669 adds device-free version/build metadata and a C/C++98 host query.
+[Metadata contract](PLAYER_BUILD_INFO.md) / [Контракт метаданных](PLAYER_BUILD_INFO.ru.md).
+Current v0.669 validation: 62 selected native tests pass; full players cross-link
+for ARM64/RISC-V64 Linux and x86-64 Windows without target execution.
 This is bounded progress on stages 3/7/9; all nine stages remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
