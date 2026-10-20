@@ -12,6 +12,7 @@
 #define FVM_DESKTOP_MOUSE_TOUCH_HINT                                                               \
     "SDL_MOUSE_TOUCH_EVENTS"                 /* Disable generated finger duplicates. */
 #define FVM_DESKTOP_EVENT_KEY 1U             /* Shared FIFO keyboard variant. */
+#define FVM_DESKTOP_CURSOR_UNSET (-1)        /* No native cursor state captured/applied yet. */
 #define FVM_DESKTOP_EVENT_WHEEL 3U           /* Vertical wheel entry in the shared native FIFO. */
 #define FVM_DESKTOP_WHEEL_LINES_PER_UNIT 3.0 /* Explicit host scroll-line policy per SDL unit. */
 #define FVM_DESKTOP_EVENT_MOUSE 2U           /* Shared FIFO primary-pointer variant. */
@@ -53,6 +54,9 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned 
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);
 /* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
+/* Apply the VM visibility request on the SDL owner thread. Background calls defer
+ * application; close restores the visibility captured when this host opened. */
+FVM_Result fvm_desktop_window_sync_cursor(FVM_DesktopWindow *, FVM_Context *);
 /* Read a latched input/presentation failure; independent of the events close result. */
 FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *);
 /* Copy current input state without retaining caller storage or entering the VM. */

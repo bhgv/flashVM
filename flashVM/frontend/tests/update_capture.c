@@ -46,3 +46,7 @@ void fvm_desktop_window_close(FVM_DesktopWindow *window) { (void)window; }
 /* Protocol presenter has no SDL storage failures; keep the host status contract explicit. */
 FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *window)
 { return window == &view ? FVM_OK : FVM_INVALID_ARGUMENT; }
+
+/* This protocol host has no native cursor; still validate the owning VM query. */
+FVM_Result fvm_desktop_window_sync_cursor(FVM_DesktopWindow *window, FVM_Context *context)
+{ int visible; return window == &view ? fvm_input_get_cursor_visible(context, &visible) : FVM_INVALID_ARGUMENT; }

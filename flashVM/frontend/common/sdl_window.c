@@ -28,6 +28,8 @@ struct FVM_DesktopWindow
     int touch_active; /* One selected primary contact; additional fingers do not replace it. */
     SDL_TouchID touch_device;  /* Borrowed numeric identity of the selected touch device. */
     SDL_FingerID touch_finger; /* Borrowed numeric identity of the selected contact. */
+    int cursor_initial;        /* Saved SDL-global visibility restored before this host closes. */
+    int cursor_applied;        /* Last issued visibility, avoiding redundant SDK calls. */
     int background; /* Suspend timeline/audio while Android activity is not foreground. */
     FVM_DesktopInput
         input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
@@ -61,6 +63,16 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
         SDL_Quit();
         return 0;
     }
+    view->cursor_initial = FVM_DESKTOP_CURSOR_UNSET;
+    view->cursor_applied = FVM_DESKTOP_CURSOR_UNSET;
+    view->cursor_initial = SDL_ShowCursor(SDL_QUERY);
+    if (view->cursor_initial < 0)
+    {
+        SDL_Log("FlashVM cursor query: %s", SDL_GetError());
+        fvm_desktop_window_close(view);
+        return 0;
+    }
+    view->cursor_applied = view->cursor_initial;
     view->logical_width = width;
     view->logical_height = height;
     view->input.keyboard.struct_size = sizeof(view->input.keyboard);
@@ -549,6 +561,25 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
     return 1;
 }
 
+/* Cursor changes are native presentation policy, never performed inside AVM1. */
+FVM_Result fvm_desktop_window_sync_cursor(FVM_DesktopWindow *view, FVM_Context *context)
+{
+    int visible;
+    FVM_Result result;
+    if (!view)
+        return FVM_INVALID_ARGUMENT;
+    result = fvm_input_get_cursor_visible(context, &visible);
+    if (result != FVM_OK || view->background || visible == view->cursor_applied)
+        return result;
+    if (SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE) < 0)
+    {
+        view->event_error = FVM_ERROR;
+        return FVM_ERROR;
+    }
+    view->cursor_applied = visible;
+    return FVM_OK;
+}
+
 /* Read persistent input/presentation failure separately from normal window close. */
 FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *view)
 {
@@ -585,6 +616,8 @@ void fvm_desktop_window_close(FVM_DesktopWindow *view)
 {
     if (!view)
         return;
+    if (view->cursor_initial != FVM_DESKTOP_CURSOR_UNSET)
+        SDL_ShowCursor(view->cursor_initial); /* Best effort; close has no error return. */
     free(view->last_frame);
     if (view->texture)
         SDL_DestroyTexture(view->texture);

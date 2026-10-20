@@ -342,6 +342,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         /* [GC:] Reclaim callback activations at a safe host boundary even before a slow frame. */
         if (timer_callbacks && !checked(fvm_gc_step(context, 0), "timer GC step", path))
             goto cleanup;
+        if (!checked(fvm_desktop_window_sync_cursor(window, context), "cursor visibility", path))
+            goto cleanup;
         now = fvm_desktop_now();
         if (now < next)
         {
@@ -390,6 +392,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
             goto cleanup;
         if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request", path))
+            goto cleanup;
+        if (!checked(fvm_desktop_window_sync_cursor(window, context), "frame cursor visibility", path))
             goto cleanup;
         if (!present_stage(context, clip, window, &surface, &viewport, path))
             goto cleanup;

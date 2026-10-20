@@ -27,6 +27,22 @@ logical pointer position; no global pointer query races queued events. The test
 checks a 64×32 window containing a centered 32×32 logical stage: window (26,20)
 becomes logical (10,20), then the authored origin is applied at delivery.
 Fractional wheel units are checked independently (0.5 becomes 1.5 lines).
+## Cursor visibility (v0.654)
+
+The player now queries the existing VM cursor request after input/timers and after
+frame execution, before rendering or waiting. Mouse.hide/show therefore reach
+SDL_ShowCursor without requiring a later timeline tick. Repeated unchanged
+requests do not repeat the native operation. Background calls defer application
+until foreground. This SDL host owns its SDL session and cursor policy; the SDL
+visibility switch is global to that session, not an independently scoped cursor
+for every possible foreign SDL window.
+
+Opening saves native visibility; closing restores it before destroying the window
+and shutting down SDL, so a hidden movie does not contaminate the next playlist
+entry. Teardown restoration is best effort because close returns void. Active
+query/application failures propagate; a failed SDL application is also latched.
+No physical cursor is guaranteed on touch-only systems. The C fixture checks
+actual SDL state, redundant-call suppression, deferral and the cleanup operation.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -241,7 +241,7 @@ endif()
 
 # Real SDL renderer fixtures remain explicit host tests, never foreign/device certification.
 if(FVM_BUILD_TESTS AND NOT ANDROID)
-  foreach(fixture retained_frame lifecycle wheel)
+  foreach(fixture retained_frame lifecycle wheel cursor)
   add_executable(flashvm_frontend_${fixture} tests/${fixture}.c)
   target_link_libraries(flashvm_frontend_${fixture} PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_${fixture} PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
