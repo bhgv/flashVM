@@ -52,6 +52,17 @@ all statically referenced root MP3, including later or otherwise unreached frame
 Muted playback and metadata inspection do not decode the sound. Playback-time
 voice preparation remains separately bounded and outside the native worker mutex.
 
+
+## Actual player oracle (v0.817)
+
+The independent mpg123 oracle compares every S16 value accepted by dummy SDL for
+128 protected-stream and MP3/PCM/ADPCM mixed-event cases: eight encodings, grouped
+packets, FWS/CWS and interpreter/native JIT. All pass within three S16 units.
+Another 128 first/last-checksum failures are rejected before audio acquisition
+and leave a preexisting trace destination unchanged. Sixty-four muted cases pass
+without opening an audio device. These are native software/queue checks, not
+physical-device acceptance. Header/side CRC does not cover audio main data.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

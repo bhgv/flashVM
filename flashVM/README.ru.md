@@ -1,4 +1,4 @@
-Версия разработки: **0.816** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.817** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.817: [Независимые оракулы защищённого MP3 и отказов до открытия аудио](doc/MP3_CRC.ru.md).
 
 v0.816: [Проверка корневых MP3 до открытия настольного аудио](doc/MP3_CRC.ru.md).
 

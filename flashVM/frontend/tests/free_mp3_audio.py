@@ -45,7 +45,7 @@ def compare(actual, expected):
     assert error <= 3, error
 
 
-def main():
+def main(cases_fixtures=None, label='free-format'):
     """Exercise packet grouping, header compression, both engines and independent event onset."""
     try:
         reference = Reference()
@@ -55,7 +55,7 @@ def main():
     cases = 0
     with tempfile.TemporaryDirectory(prefix='flashvm-free-sdl-') as directory:
         root = Path(directory)
-        for fixture in fixtures():
+        for fixture in (fixtures() if cases_fixtures is None else cases_fixtures):
             samples = reference.decode(root, fixture)
             rate = fixture[1]
             mp3 = list(struct.iter_unpack('<hh', converted([samples], rate)))
@@ -86,7 +86,7 @@ def main():
                     expected = [(max(-32768, min(32767, p[0])), max(-32768, min(32767, p[1]))) for p in expected]
                     compare(actual, expected)
                     cases += 1
-    print('PASS free-format real SDL audio:', cases, 'stream/event FWS/CWS interpreter/JIT cases')
+    print('PASS', label, 'real SDL audio:', cases, 'stream/event FWS/CWS interpreter/JIT cases')
     return 0
 
 

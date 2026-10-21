@@ -9,15 +9,17 @@ import tempfile
 import zlib
 
 
-def fixtures():
+def fixtures(filename='swf_free_mp3_fixture.hpp'):
     """Read checked-in original encoder bytes and independent S16 golden values, never VM output."""
-    text = (Path(__file__).resolve().parents[1] / 'tests/swf_free_mp3_fixture.hpp').read_text()
+    text = (Path(__file__).resolve().parents[1] / 'tests' / filename).read_text()
     def array(name):
         return list(map(int, re.findall(r'-?\d+', re.search(r'\b'+name+r'\[\] = \{(.*?)\};', text, re.S)[1])))
     positions = array('positions')
-    configs = [(44100, 2, 128), (44100, 1, 400), (48000, 2, 640), (22050, 1, 80)]
-    return [(bytes(array('encoded'+str(i))), rate, channels, kbps, positions,
-             array('golden'+str(i))) for i, (rate, channels, kbps) in enumerate(configs)]
+    rows = re.findall(r'\{encoded(\d+),sizeof\(encoded\d+\),(\d+),(\d+),(\d+),(\d+),golden\d+\}', text)
+    assert rows, 'No analytical fixture descriptors'
+    return [(bytes(array('encoded'+index)), int(rate), int(channels), int(kbps), positions,
+             array('golden'+index)) for index, rate, channels, kbps, _ in rows]
+
 
 
 def tag(code, body=b''):
