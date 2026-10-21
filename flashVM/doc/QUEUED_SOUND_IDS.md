@@ -120,6 +120,19 @@ storage, adoption and stop-ID APIs with live caller-owned arguments: each return
 INVALID_ARGUMENT without changing outputs or ownership. External serialization
 is still required; reentry rejection is not a cross-thread lock.
 
+## v0.800: allocation rollback and failure ownership
+
+`swf_sound_output_identity_allocation` isolates the optional table's sole native
+allocation at allowances zero and one. Failure preserves preexisting output
+storage; enable succeeds with one allocation. With all further new/new[] calls
+forbidden it adopts native owners, handles pending write rejection/exact retry,
+suppresses duplicates, observes IDs, preserves a failed-clear registration,
+clears/releases/disables storage and closes native owners after VM teardown.
+`swf_sound_output_identity_exceptions` verifies backend bad_alloc/other exceptions
+map to OOM/ERROR without consuming an incoming handle or publishing query output;
+storage and stop-ID controls do not call that backend. Source/mixer/queue owners
+still require explicit external serialization.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

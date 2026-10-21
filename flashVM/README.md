@@ -1,10 +1,12 @@
-Development version: **0.799** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.799 ` and an English description. Increase the subversion before each
+Development version: **0.800** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.800 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.800: [Verify identity allocation rollback and native backend failure ownership](doc/QUEUED_SOUND_IDS.md).
 
 v0.799: [Validate C89 identity controls and reject backend callback reentry](doc/QUEUED_SOUND_IDS.md).
 
