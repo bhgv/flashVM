@@ -1,4 +1,4 @@
-Версия разработки: **0.783** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.784** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.784: [Копирование подготовленных голосов без повторного декодирования](doc/NATIVE_VOICES.ru.md).
 
 v0.783: [Ограничение подготовки голосов и точный учёт памяти](doc/NATIVE_VOICES.ru.md).
 

@@ -22,6 +22,23 @@ six independently generated MPEG geometries and mono/stereo PCM, output lifetime
 null/wrong-size arguments and unchanged query output. These focused checks do
 not certify complete SWF sound, reference timing or physical device behavior.
 
+## v0.784: reusable prepared PCM
+
+[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L111) makes a deep independent copy of a prepared voice,
+including its current cursor, repetition and envelope segment, or EOF. It never
+re-enters a context or decoder. The explicit budget includes the object and exact
+arrays. On failure the source is unchanged and output is null. Keep source and
+output ownership storage disjoint and serialize the source through return.
+After success the two owners share nothing mutable; distinct workers may read
+and close them independently. This deliberately copies PCM rather than adding a
+shared cross-thread reference count. A host can keep a template after VM teardown
+and clone it for overlap without repeating MP3/ADPCM decode. Memory is not free:
+charge every template and clone. Close each untransferred result separately.
+
+`swf_sound_voice_clone` compares original/copy after partial reads, repeats,
+envelope changes and EOF, then destroys the original and continues the copy.
+Exact/short budgets and argument preservation are exercised after source teardown.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -31,6 +48,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |

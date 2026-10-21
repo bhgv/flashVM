@@ -4,7 +4,7 @@
 
 The C89 API in [swf_sound_mixer.h](../include/flashvm/swf_sound_mixer.h) combines
 independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) snapshots into one native signed-16 stream. Unlike
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L132), it keeps voices playing across successive reads and
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L142), it keeps voices playing across successive reads and
 mixes overlapping voices into the same buffer. Events are delivered explicitly by
 the host. Neither MovieClip frame progression nor an OS audio callback invokes it
 automatically. The [tutorial](../examples/multimedia/swf_event_mixer/README.md)
@@ -173,7 +173,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:132](../include/flashvm/swf_sound.h#L132) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../include/flashvm/swf_sound_mixer.h#L91) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:87](../include/flashvm/swf_sound_mixer.h#L87) |

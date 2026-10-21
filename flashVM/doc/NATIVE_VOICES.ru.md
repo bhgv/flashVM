@@ -23,6 +23,22 @@
 неверный размер структуры и сохранение результата запроса при ошибке.
 Это не подтверждает полноту SWF-звука, эталонное время и работу физических устройств.
 
+## v0.784: повторное использование подготовленного PCM
+
+[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L111) создаёт независимую глубокую копию голоса вместе с
+текущей позицией, повтором, сегментом огибающей или EOF. Контекст и декодер не
+вызываются. Бюджет включает объект и точные массивы; ошибка сохраняет источник
+и обнуляет выход. Память выходного указателя не должна пересекаться с владением
+источника; до возврата сериализуйте источник. Затем общих изменяемых данных нет:
+копии можно читать и закрывать на разных нативных потоках. PCM копируется явно,
+без общего межпоточного счётчика ссылок. Шаблон после уничтожения VM позволяет
+создавать перекрывающиеся голоса без повторного декодирования MP3/ADPCM.
+Учитывайте память каждого шаблона и копии; отдельно закрывайте непереданные голоса.
+
+`swf_sound_voice_clone` сравнивает исходный голос и копию после частичных чтений,
+повторов, изменений огибающей и EOF, затем продолжает копию после освобождения
+оригинала. Проверяются точный/недостаточный бюджеты и ошибки после teardown VM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -32,6 +48,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |

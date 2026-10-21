@@ -4,7 +4,7 @@
 
 C89 API [swf_sound_mixer.h](../include/flashvm/swf_sound_mixer.h) объединяет
 независимые снимки [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) в один native signed-16 PCM поток. В отличие
-от [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L132), голоса продолжают играть между чтениями и
+от [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L142), голоса продолжают играть между чтениями и
 смешиваются в одном выходном буфере. События явно передаёт хост. MovieClip и
 системный аудиовыход автоматически этого не делают.
 [Исполняемый пример](../examples/multimedia/swf_event_mixer/README.md) показывает
@@ -163,7 +163,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:132](../include/flashvm/swf_sound.h#L132) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../include/flashvm/swf_sound_mixer.h#L91) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:87](../include/flashvm/swf_sound_mixer.h#L87) |

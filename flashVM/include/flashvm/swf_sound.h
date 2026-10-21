@@ -100,6 +100,16 @@ extern "C"
      * Retain and externally serialize the native voice until return. */
     FVM_API FVM_Result fvm_swf_sound_voice_storage_info(const FVM_SWFSoundVoice *,
                                                         FVM_SWFSoundVoiceStorageInfo *);
+    /* Deep-copy a prepared voice at its CURRENT progress, including envelope segment and EOF.
+     * No decode, source VM/GC, device or callbacks. May allocate exact independent object/arrays;
+     * budget is the same native charge as storage_info, including empty-object ownership.
+     * Zero/insufficient budget or allocation failure OUT_OF_MEMORY; null source/out
+     * INVALID_ARGUMENT. Clear *out first; errors preserve source. Output pointer storage must
+     * be disjoint from source ownership. Keep source live and externally serialized until return.
+     * Success has no shared mutable storage/reference count: either voice may then be used,
+     * transferred or closed independently, including on distinct native workers. */
+    FVM_API FVM_Result fvm_swf_sound_voice_clone(const FVM_SWFSoundVoice *, size_t budget_bytes,
+                                                 FVM_SWFSoundVoice **out);
     /* Copy geometry/progress without allocations, callbacks or VM access. */
     FVM_API FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *, FVM_SWFSoundVoiceInfo *);
     /* Read at most requested frames as native S16, advancing only after argument validation; EOF is NOT_FOUND. */

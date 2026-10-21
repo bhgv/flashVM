@@ -105,19 +105,19 @@ Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia
 [static ALSA provider contracts](ALSA_AUDIO_OUTPUT.md).
 
 Loaded SWF audio resource/StartSound inspection and explicit PCM output: [`FVM_SWFSoundInfo`](../include/flashvm/swf_sound.h#L14),
-[`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L110), [`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L112), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L114),
-[`fvm_swf_sound_read_pcm`](../include/flashvm/swf_sound.h#L128), [`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L135) —
+[`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L120), [`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L122), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L124),
+[`fvm_swf_sound_read_pcm`](../include/flashvm/swf_sound.h#L138), [`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L145) —
 [SWF_SOUND_RESOURCES.md](SWF_SOUND_RESOURCES.md), [public header](../include/flashvm/swf_sound.h).
 Copied timeline metadata: [`FVM_SWFSoundEvent`](../include/flashvm/swf_sound.h#L37), [`FVM_SWFSoundEnvelope`](../include/flashvm/swf_sound.h#L49),
 [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60), [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62), [`fvm_swf_sound_event_envelope`](../include/flashvm/swf_sound.h#L64) —
 [StartSound contracts](SWF_SOUND_RESOURCES.md#root-startsound-records--события-startsound).
 These inspect controls without automatically scheduling playback.
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L132) applies one bounded styled voice to a dedicated
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L142) applies one bounded styled voice to a dedicated
 channel: [playback contract](SWF_SOUND_PLAYBACK.md).
 
 Prepared independent sequential voices: [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9), [`FVM_SWFSoundVoiceInfo`](../include/flashvm/swf_sound.h#L67),
-[`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_read`](../include/flashvm/swf_sound.h#L106), [`fvm_swf_sound_voice_info`](../include/flashvm/swf_sound.h#L104),
-[`fvm_swf_sound_voice_close`](../include/flashvm/swf_sound.h#L108) — [incremental voice contracts](SWF_SOUND_VOICES.md).
+[`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_read`](../include/flashvm/swf_sound.h#L116), [`fvm_swf_sound_voice_info`](../include/flashvm/swf_sound.h#L114),
+[`fvm_swf_sound_voice_close`](../include/flashvm/swf_sound.h#L118) — [incremental voice contracts](SWF_SOUND_VOICES.md).
 Source PCM is retained once; snapshot reads allocate nothing and outlive the VM.
 
 Portable bounded S16 summing: [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L131), [`FVM_MEDIA_AUDIO_MIX_MAX_INPUTS`](../include/flashvm/multimedia.h#L19) —
@@ -296,13 +296,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:103](../include/flashvm/keyboard.h#L103) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:110](../include/flashvm/swf_sound.h#L110) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:122](../include/flashvm/swf_sound.h#L122) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:120](../include/flashvm/swf_sound.h#L120) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 | `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:132](../include/flashvm/swf_sound.h#L132) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:124](../include/flashvm/swf_sound.h#L124) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../include/flashvm/swf_sound_mixer.h#L91) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
@@ -321,12 +321,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:63](../include/flashvm/swf_sound_output.h#L63) |
 | `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:67](../include/flashvm/swf_sound_output.h#L67) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:128](../include/flashvm/swf_sound.h#L128) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:135](../include/flashvm/swf_sound.h#L135) |
-| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
-| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:104](../include/flashvm/swf_sound.h#L104) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:138](../include/flashvm/swf_sound.h#L138) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:145](../include/flashvm/swf_sound.h#L145) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:118](../include/flashvm/swf_sound.h#L118) |
+| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:106](../include/flashvm/swf_sound.h#L106) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:116](../include/flashvm/swf_sound.h#L116) |
 | `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
 | `FVM_SWFSoundEvent` | struct | [include/flashvm/swf_sound.h:37](../include/flashvm/swf_sound.h#L37) |

@@ -151,6 +151,43 @@ extern "C" FVM_Result fvm_swf_sound_voice_storage_info(const FVM_SWFSoundVoice *
     return FVM_OK;
 }
 
+/* Duplicate immutable PCM/envelopes and current playback progress without entering a source VM. */
+extern "C" FVM_Result fvm_swf_sound_voice_clone(const FVM_SWFSoundVoice *source, size_t budget,
+                                                 FVM_SWFSoundVoice **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!source)
+        return FVM_INVALID_ARGUMENT;
+    size_t bytes = 0;
+    FVM_Result result = voice_charge(source->samples.size() / source->info.channels,
+                                      source->info.channels, source->points.size(), &bytes);
+    if (result != FVM_OK || bytes > budget)
+        return FVM_OUT_OF_MEMORY;
+    FVM_SWFSoundVoice *copy = 0;
+    try
+    {
+        copy = new FVM_SWFSoundVoice;
+        copy->points.resize(source->points.size());
+        for (size_t i = 0; i < source->points.size(); ++i)
+            copy->points[i] = source->points[i];
+        copy->samples.resize(source->samples.size());
+        if (!source->samples.empty())
+            std::memcpy(copy->samples.begin(), source->samples.begin(),
+                        source->samples.size() * sizeof(short));
+        copy->info = source->info;
+        copy->segment = source->segment;
+        *out = copy;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        delete copy;
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 /* Copy progress transactionally; snapshot state remains independent of the originating VM. */
 extern "C" FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *voice, FVM_SWFSoundVoiceInfo *out)
 {
