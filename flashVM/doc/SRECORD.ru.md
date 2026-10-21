@@ -146,6 +146,26 @@ Descriptor/slots/input/output не перекрываются. Скрытых в
 декларации схем: float/objects/audio/video требуют собственных реализаций схем
 и dispatcher с полномочиями/исполнением у владельца. Native-ресурсы и живые
 VM-объекты автоматически не сериализуются и не перемещаются.
+## Поступление порциями (v0.724)
+
+[sstream.h](../include/flashvm/sstream.h) добавляет необязательный потоковый reader.
+Он заимствует буфер хоста, без I/O/выделений. До принятия длины body проверяются
+ограниченные канонические заголовки. Порции payload копируются один раз;
+полный CRC проверяется до публикации view. Допустимы любые фрагменты сокета/
+файла/канала. Если в одном буфере две записи, reader останавливается перед второй.
+
+| API | Контракт |
+| --- | --- |
+| [`fvm_sstream_init`](../include/flashvm/sstream.h#L24) | Заполняет state и параметры буфера, не меняя байты. Capacity >=3, body limit 1..BODY_MAX. Меньший буфер задаёт дополнительное ограничение всей записи. |
+| [`fvm_sstream_push`](../include/flashvm/sstream.h#L33) | Used сообщает потреблённый вход при MORE/OK/ошибке данных; view меняется только при OK и живёт до reset/disposal. После завершения push возвращает INVALID/used=0. Ошибка данных сохраняется до reset. |
+| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L38) | Явно сбрасывает префикс/ошибку/заимствование без очистки байтов. Сначала остановить пользователей view. Reset не синхронизирует поток и не отменяет удалённые команды. |
+
+В отличие от полного record_read, MORE здесь уже сохраняет потреблённые байты.
+Повторно подаются только непотреблённые. При OK обработать view, сбросить state,
+подать остаток входа. Буфер нельзя подавать самому себе; state/storage/input/
+output не пересекаются. Общий доступ push/reset/view синхронизируется хостом.
+Нулевой вход для незавершённой записи даёт MORE, не EOF. Транспорт решает,
+считать ли EOF с неполной записью ошибкой truncation. Скрытого чтения/таймера нет.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -165,4 +185,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_sinteger_write` | function | [include/flashvm/srecord.h:50](../include/flashvm/srecord.h#L50) |
 | `fvm_srecord_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
 | `fvm_srecord_write` | function | [include/flashvm/srecord.h:60](../include/flashvm/srecord.h#L60) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../include/flashvm/sstream.h#L38) |
 <!-- source-links:end -->

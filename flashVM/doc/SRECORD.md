@@ -148,6 +148,28 @@ The implementation uses bounded two-pass validation, not a record-sized stack.
 This declares schema identities only: floats/objects/audio/video still need
 schema implementations and permission-aware owner-thread dispatch. It does not
 automatically serialize native resources or migrate live VM objects.
+## Fragmented transport input (v0.724)
+
+[sstream.h](../include/flashvm/sstream.h) supplies an optional incremental reader.
+It borrows caller storage and performs no I/O or allocation. Header bytes are
+bounded/canonical before the body extent is accepted; payload fragments are
+copied once and the complete CRC is calculated before publishing a view. It
+accepts arbitrary socket/file/channel fragments and stops before a coalesced
+second record, reporting exactly how much input was consumed.
+
+| API | Contract |
+| --- | --- |
+| [`fvm_sstream_init`](../include/flashvm/sstream.h#L24) | Initialize caller state and receive storage without touching storage bytes. Capacity >=3; body limit 1..BODY_MAX. A smaller buffer enforces an additional frame bound. |
+| [`fvm_sstream_push`](../include/flashvm/sstream.h#L33) | Consume input into caller storage. used reports consumed input on MORE/OK/data error; view changes only on OK. A completed view stays valid until reset/disposal. Push after completion is INVALID/used=0; data errors latch until reset. |
+| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L38) | Explicitly discard prefix/error/completed borrow without wiping bytes. Quiesce view users first; reset neither resynchronizes transport bytes nor cancels remote commands. |
+
+These consumption semantics intentionally differ from complete-record read:
+MORE bytes have already been retained by the stream. Resubmit only unconsumed
+bytes. On OK use the view, reset, then submit any trailing input. Do not feed a
+buffer into itself; state/storage/input/output must be disjoint. No concurrent
+push/reset/use of a view without external synchronization. Zero input is MORE
+for an incomplete prefix, not an EOF indication. The transport decides whether
+EOF with retained bytes is truncation. There is no timer or hidden blocking read.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -167,4 +189,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_sinteger_write` | function | [include/flashvm/srecord.h:50](../include/flashvm/srecord.h#L50) |
 | `fvm_srecord_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
 | `fvm_srecord_write` | function | [include/flashvm/srecord.h:60](../include/flashvm/srecord.h#L60) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../include/flashvm/sstream.h#L38) |
 <!-- source-links:end -->

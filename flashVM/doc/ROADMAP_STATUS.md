@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.723
+# FlashVM stage status / Состояние стадий — v0.724
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.724 adds caller-buffered incremental S-record reception. Fragment/coalescing
+oracles verify exact consumption, header quotas, sticky data errors and stable
+verified views through explicit reset. No transport reads/allocations/VM calls
+are hidden. All stages remain open. [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 
 v0.723 adds immutable direction-local tag-zero schema declarations with bounded
 caller-owned registries. Opposite tag-3 identities, idempotence, copied metadata,
