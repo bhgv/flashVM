@@ -77,14 +77,14 @@ Each function below is used in [main.c](main.c); detailed count/range semantics:
 | [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Allocate the source runtime on owner; release after native preparation |
 | [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Allocate a source context borrowing runtime; destroy before runtime |
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Validate/copy the literal SWF into source context; may allocate, no playback loop |
-| [fvm_swf_stream_sound_snapshot_open_adpcm_counted](../../../include/flashvm/swf_stream_sound.h#L111) | Decode exact per-block lengths under peak ceiling; publish independent immutable PCM, allocate on owner |
+| [fvm_swf_stream_sound_snapshot_open_adpcm_counted](../../../include/flashvm/swf_stream_sound.h#L117) | Decode exact per-block lengths under peak ceiling; publish independent immutable PCM, allocate on owner |
 | [fvm_swf_stream_sound_snapshot_open_bounded](../../../include/flashvm/swf_stream_sound.h#L72) | Copy encoded root ADPCM/index under peak ceiling without codec decoding; retain no VM pointer |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release managed source after native ownership succeeds; no native snapshot invalidation |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source runtime after its context; export continues with native storage only |
 | [fvm_swf_stream_pcm_reader_init](../../../include/flashvm/swf_stream_pcm.h#L40) | Initialize caller cursor borrowing normalized snapshot; no allocation/callback/VM |
 | [fvm_swf_stream_pcm_reader_next](../../../include/flashvm/swf_stream_pcm.h#L48) | Copy bounded native PCM and exact chunk metadata; written counts values, NOT_FOUND is EOF |
-| [fvm_swf_stream_sound_snapshot_read_adpcm](../../../include/flashvm/swf_stream_sound.h#L150) | Validate full encoded block, decode explicit range into caller buffer; no allocation/callback, repeated block-length work |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L154) | Null-safe release after every reader/range call ends; no device close or source VM required |
+| [fvm_swf_stream_sound_snapshot_read_adpcm](../../../include/flashvm/swf_stream_sound.h#L156) | Validate full encoded block, decode explicit range into caller buffer; no allocation/callback, repeated block-length work |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Null-safe release after every reader/range call ends; no device close or source VM required |
 
 ## Limits / Ограничения
 
@@ -112,8 +112,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../../../include/flashvm/swf_stream_sound.h#L154) |
-| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:111](../../../include/flashvm/swf_stream_sound.h#L111) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
+| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:117](../../../include/flashvm/swf_stream_sound.h#L117) |
 | `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../../../include/flashvm/swf_stream_sound.h#L72) |
-| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:150](../../../include/flashvm/swf_stream_sound.h#L150) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:156](../../../include/flashvm/swf_stream_sound.h#L156) |
 <!-- source-links:end -->

@@ -80,6 +80,37 @@ stereo mixer проверяется независимыми рациональ�
 MPEG samples, полные интервалы и native lifetime. Decoder/public-read checks
 продолжают проходить. Общий stream/event timeline и reference seek clock не добавлены.
 
+## v0.779 bounded continuous MP3 snapshots
+
+[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L87) и bounded-вариант теперь нормализуют root
+MP3 в immutable PCM_NATIVE/S16. Полные Layer-III packets идут в порядке блоков;
+один reservoir/filter state проходит через все блоки, включая пустые markers.
+Wire SampleCount обязан совпасть с полным decoded MPEG count блока. Фактические
+rate/channels заменяют advisory flags. Неотрицательная header latency снимается
+один раз через необходимое число начальных packets; SeekSamples первого блока
+должен ей соответствовать. Последующие SeekSamples не обрезают continuous PCM.
+Отрицательная initial latency и free-format остаются unsupported.
+
+Peak budget включает object/index, encoded bytes и весь decoded PCM. До единственного
+PCM allocation проверяется точная длина каждого нормализованного блока; новый
+native decoder заполняет ещё не опубликованный результат. При успехе encoded
+storage освобождается, при ошибке закрывается всё временное владение. Native stack
+state/scratch, allocator bookkeeping и caller buffers не входят в эти charges.
+Одновременно действуют runtime payload limit и явный peak ceiling. Reader/converter
+работают после VM teardown; live/raw MP3 остаётся encoded. Пустые блоки сохраняют
+frame/ordinal identity.
+
+Матрица шести geometries проверяет CBR/VBR, latency 0/1105 с multi-packet trim,
+независимые golden values, empty markers, неверные counts, укороченные packets,
+точный peak и нехватку одного байта. Бюджеты 0–4 покрывают каждое приобретение и
+чтение без allocation после teardown. Прежние counted ADPCM/storage fixtures проходят.
+
+Discontinuous frame seek сохраняет прежнюю prefix-discard PCM policy: исходные
+per-block MP3 seek corrections и reference Flash read-ahead/A/V sync ещё не
+реализованы. Успешный decode не снимает этих ограничений. Источник формата:
+[Adobe SWF specification, sound chapter](https://open-flash.github.io/mirrors/swf-spec-19.pdf).
+Указанная приёмка уже полной Flash playback semantics.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -92,5 +123,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

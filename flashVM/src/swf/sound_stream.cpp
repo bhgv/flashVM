@@ -8,23 +8,7 @@
 #include <cstring>
 #include <new>
 
-/* Owned encoded block plus its offset into the immutable byte store. */
-struct FVM_SWFStreamSoundEntry
-{
-    FVM_SWFStreamSoundBlock block; /* Copied wire metadata; data is reconstructed on lookup. */
-    size_t offset;                 /* Payload offset in the owned byte store. */
-};
-/* [GC:] Native independent snapshot; no VM pointer or managed value is retained. */
-struct FVM_SWFStreamSoundSnapshot
-{
-    FVM_SWFStreamSoundInfo info;                        /* Copied source and playback header. */
-    fvm_detail::vector<FVM_SWFStreamSoundEntry> blocks; /* Exact segment block index. */
-    fvm_detail::vector<unsigned char> bytes; /* Original wire bytes, not expanded samples. */
-    fvm_detail::vector<short> pcm; /* Optional expanded native-S16 storage, aligned for decoding. */
-    size_t retained_bytes; /* Snapshot object plus its current payload/index allocation sizes. */
-    size_t peak_bytes;     /* Maximum simultaneous raw/decoded ownership during preparation. */
-    unsigned char empty;   /* Valid address for an entirely empty payload store. */
-};
+#include "sound_stream_internal.hpp"
 
 namespace
 {
@@ -515,6 +499,12 @@ static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const s
     {
         *out = snapshot;
         return FVM_OK;
+    }
+    if (snapshot->info.format == FVM_SWF_SOUND_STREAM_MP3)
+    {
+        size_t limit = context->runtime->config.memory_limit_bytes
+                           ? context->runtime->config.memory_limit_bytes : FVM_SWF_DEFAULT_LIMIT;
+        return fvm_swf_stream_prepare_mp3(snapshot, limit, budget, out);
     }
     if (snapshot->info.format != FVM_SWF_SOUND_ADPCM || sizeof(short) != FVM_SWF_SOUND_PCM_BYTES ||
         SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX || SHRT_MIN != FVM_SWF_SOUND_SHORT_MIN)

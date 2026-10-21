@@ -89,7 +89,7 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Acquire source runtime; release after independent preparation. |
 | [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Own canonical loaded SWF on the preparation thread. |
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Copy and validate the literal SWF before snapshots. |
-| [fvm_swf_stream_sound_snapshot_open_pcm_bounded](../../../include/flashvm/swf_stream_sound.h#L96) | Clear output first; prepare supported PCM/ADPCM under explicit peak ceiling, return allocation/source statuses without leaking ownership. |
+| [fvm_swf_stream_sound_snapshot_open_pcm_bounded](../../../include/flashvm/swf_stream_sound.h#L102) | Clear output first; prepare supported PCM/ADPCM under explicit peak ceiling, return allocation/source statuses without leaking ownership. |
 | [fvm_swf_sound_mixer_create_configured](../../../include/flashvm/swf_sound_mixer.h#L39) | Copy output geometry and reserve two native voice slots; failure publishes no mixer. |
 | [fvm_swf_sound_mixer_submit](../../../include/flashvm/swf_sound_mixer.h#L50) | Owner snapshots each explicit event; allocation/control errors preserve existing voices. |
 | [fvm_swf_stream_converter_init](../../../include/flashvm/swf_stream_convert.h#L47) | Borrow prepared source without allocation, with explicit rate/channels. |
@@ -101,7 +101,7 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L36) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
 | [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L40) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L74) | Release native voices after all serial reads finish; null allowed. |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L154) | Release stream storage after converter use; null allowed. |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Release stream storage after converter use; null allowed. |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -127,6 +127,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../../../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../../../include/flashvm/swf_stream_sound.h#L154) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:96](../../../include/flashvm/swf_stream_sound.h#L96) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->

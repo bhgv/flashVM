@@ -82,6 +82,39 @@ without a context. Golden MPEG samples, full declared intervals and exhausted
 native voice lifetime are checked. Decoder/public-read tests remain passing.
 This does not implement a general stream/event timeline or reference seek clock.
 
+## v0.779 bounded continuous MP3 snapshots
+
+[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L87) and its bounded counterpart now normalize
+root MP3 segments to immutable PCM_NATIVE/S16. Complete Layer-III packets stay in
+source block order and one reservoir/filter state spans all blocks, including
+explicit empty markers. Each wire SampleCount must equal that block's complete
+decoded MPEG sample count. Stable effective rate/channels replace advisory flags.
+A nonnegative header latency is skipped once across as many initial packets as
+needed; the first block SeekSamples must match it. Later SeekSamples values do not
+trim continuous playback. Negative initial latency and free-format remain unsupported.
+
+The existing snapshot budget includes object/index, encoded bytes and all decoded
+PCM at peak. Validation computes exact normalized per-block lengths before the
+single PCM allocation; a fresh native decoder writes the unpublished result.
+Source bytes are released on success; every failure closes temporary ownership.
+Native stack decoder/scratch, allocator bookkeeping and caller buffers are excluded
+from these byte charges. Runtime payload limits and explicit peak ceilings both
+apply. Existing immutable reader/converter APIs work after VM teardown; live/raw
+MP3 inspection stays encoded. Empty blocks retain frame and ordinal identity.
+
+The six-geometry matrix checks CBR/VBR, latency 0/1105 (including multi-packet
+trimming), all selected independent golden values, empty markers, incorrect counts,
+truncated packets and exact/one-byte-short peak ceilings. Allocation budgets 0–4
+exercise every acquisition and prove allocation-free native reads after source
+teardown. The prior counted ADPCM and storage fixtures still pass.
+
+Discontinuous frame seeks retain the existing prefix-discard PCM policy: this
+checkpoint does not retain/reapply original per-block MP3 seek corrections or
+implement reference Flash read-ahead/A/V synchronization. Those limitations are
+not removed by successful native decoding. MP3 is described by Adobe's
+[SWF specification, sound chapter](https://open-flash.github.io/mirrors/swf-spec-19.pdf);
+the implementation acceptance above is deliberately narrower than full Flash playback.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -94,5 +127,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

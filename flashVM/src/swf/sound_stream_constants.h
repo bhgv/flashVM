@@ -9,7 +9,7 @@
 #define FVM_SWF_SOUND_STREAM_MP3_PREFIX_BYTES 4U /* UI16 declared count followed by SI16 block seek. */
 #define FVM_SWF_SOUND_STREAM_RESERVED_MASK 240U /* Playback header high nibble must be zero. */
 #define FVM_SWF_SOUND_STREAM_HEAD2_VERSION 3U /* First SWF version permitting tag 45. */
-#define FVM_SWF_SOUND_STREAM_MP3 2U /* MP3 compression identity; decoding remains unsupported here. */
+#define FVM_SWF_SOUND_STREAM_MP3 2U /* MP3 compression identity, opaque until explicit PCM preparation. */
 #define FVM_SWF_SOUND_STREAM_MP3_VERSION 4U /* First version permitting MP3 stream headers. */
 #define FVM_SWF_STREAM_ADPCM_INITIAL_BITS 22U /* Signed initial sample and six-bit index. */
 #define FVM_SWF_STREAM_ADPCM_WIDTH_SHIFT 6U /* Two MSB code-width bits in a block. */

@@ -36,7 +36,7 @@ padding могут допускать несколько длин: четыре 
 live и encoded snapshot API по-прежнему выдают непрозрачный ADPCM. Массив counts
 можно освободить сразу после возврата. Snapshot живёт независимо от context/runtime;
 после завершения всех readers/converters освобождается через
-[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L154).
+[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L160).
 
 INVALID_ARGUMENT: неверные/null аргументы, несовпадение размера таблицы, длина выше
 ULONG_MAX, укороченные/лишние байты и ненулевой padding. Ошибки исходного SWF и
@@ -53,7 +53,7 @@ real-time audio callback. Нет device/backend callback, исполнения V
 завершения. Managed pointers и GC roots не сохраняются.
 
 Бюджет как у bounded open_pcm: encoded и decoded одновременно живут при подготовке;
-encoded освобождается при успехе. [fvm_swf_stream_sound_snapshot_storage_info](../include/flashvm/swf_stream_sound.h#L117) сообщает
+encoded освобождается при успехе. [fvm_swf_stream_sound_snapshot_storage_info](../include/flashvm/swf_stream_sound.h#L123) сообщает
 retained/peak без allocator bookkeeping, VM, counts, стека и caller buffers.
 При подготовке нескольких сегментов хост вычитает retained из общего бюджета;
 сам API не ограничивает память всего процесса.
@@ -105,9 +105,9 @@ foreign-platform приёмка не заявляется.
 
 ## Диапазоны без выделения памяти (v0.774)
 
-[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L146)(context, stream, block, samples, first, frames,
+[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L152)(context, stream, block, samples, first, frames,
 out, capacity_values, written_values) читает один live root ADPCM block на owner
-контекста. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L150)(snapshot, block, samples,
+контекста. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L156)(snapshot, block, samples,
 first, frames, out, capacity_values, written_values) читает **закодированный**
 неизменяемый snapshot, в том числе после уничтожения VM. Нормализованный PCM
 snapshot возвращает UNSUPPORTED; для него остаётся обычный PCM reader.
@@ -181,9 +181,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:146](../include/flashvm/swf_stream_sound.h#L146) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../include/flashvm/swf_stream_sound.h#L154) |
-| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:111](../include/flashvm/swf_stream_sound.h#L111) |
-| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:150](../include/flashvm/swf_stream_sound.h#L150) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
+| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:152](../include/flashvm/swf_stream_sound.h#L152) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../include/flashvm/swf_stream_sound.h#L160) |
+| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:156](../include/flashvm/swf_stream_sound.h#L156) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:123](../include/flashvm/swf_stream_sound.h#L123) |
 <!-- source-links:end -->

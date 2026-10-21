@@ -71,10 +71,16 @@ extern "C"
      * Immutable result survives source teardown; use existing block/MP3 views and close. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_bounded(
         FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **);
-    /* Owner-only preparation: copy PCM unchanged or expand whole 4096-frame ADPCM packets.
+    /* Owner-only preparation: copy PCM or expand whole ADPCM packets / continuous MP3 data.
      * ADPCM output is normalized PCM_NATIVE/S16 with exact per-block counts; source/frame/header
      * identity and advisory playback fields persist. Zero-byte/width-only empty blocks allowed.
-     * Partial ADPCM packets and other codecs UNSUPPORTED; nonzero padding INVALID_ARGUMENT.
+     * MP3: retain one MPEG reservoir across complete packets/blocks; require exact per-block
+     * declared sample counts and stable effective geometry, trim header latency exactly once.
+     * First block seek must match header latency; later seek fields do not trim continuous PCM.
+     * Negative initial latency/free-format MPEG/other codecs and partial inferred ADPCM
+     * UNSUPPORTED; malformed/truncated MPEG, count/geometry mismatch or padding INVALID_ARGUMENT.
+     * MP3 normalized block counts describe post-latency PCM; frame identities persist. This
+     * does not add reference Flash discontinuous MP3 seek or decoder-read-ahead scheduling.
      * Output cleared first; encoded+decoded payload/index must fit runtime memory limit.
      * May allocate/decode; failure releases temporary ownership. No callback or device/VM execution.
      * Returned immutable snapshot uses existing reader/converter/close APIs after VM teardown. */
