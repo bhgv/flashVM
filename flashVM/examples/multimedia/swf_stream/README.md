@@ -218,8 +218,8 @@ codec, audible-device and reference-platform acceptance remains open.
 
 | API | Conversion ownership / Владение преобразованием |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../../../include/flashvm/swf_stream_convert.h#L47) | Borrow immutable snapshot and copy explicit output rate/channels without allocation. Snapshot lives until caller quiesces conversion. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
-| [`fvm_swf_stream_converter_next`](../../../include/flashvm/swf_stream_convert.h#L58) | Produce bounded S16 in caller storage; rational phase survives blocks, no VM/I/O. Error/EOF preserves output and state. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
+| [`fvm_swf_stream_converter_init`](../../../include/flashvm/swf_stream_convert.h#L48) | Borrow immutable snapshot and copy explicit output rate/channels without allocation. Snapshot lives until caller quiesces conversion. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
+| [`fvm_swf_stream_converter_next`](../../../include/flashvm/swf_stream_convert.h#L67) | Produce bounded S16 in caller storage; rational phase survives blocks, no VM/I/O. Error/EOF preserves output and state. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
 
 ## Explicit conversion / Явное преобразование
 
@@ -380,8 +380,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../../../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../../../include/flashvm/swf_stream_output.h#L44) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../../../include/flashvm/swf_stream_output.h#L57) |

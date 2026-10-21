@@ -19,7 +19,7 @@ static long reference(long a,long b,unsigned long phase,unsigned long rate)
     if(r && delta>=0 && value<0)++value;
     return value;
 }
-/* Compare continuous rational sample positions and per-block clamping with one-frame/native chunks. */
+/* Compare continuous rational sample positions and legacy clamping and continuous neighbors with one-frame/native chunks. */
 int main()
 {
     FVM_Config config;FVM_Runtime *rt=0;FVM_Context *c=0;
@@ -41,10 +41,10 @@ int main()
         load(c,stream_movie(tags,8,5));FVM_SWFStreamSoundSnapshot *snapshot=0;
         assert(fvm_swf_stream_sound_snapshot_open(c,0,&snapshot)==FVM_OK);
         load(c,movie(empty));
-        for(unsigned rate_index=0;rate_index<7;++rate_index)for(unsigned channels=1;channels<=2;++channels)for(unsigned chunk_size=1;chunk_size<=11;chunk_size+=10) {
+        for(unsigned rate_index=0;rate_index<7;++rate_index)for(unsigned channels=1;channels<=2;++channels)for(unsigned continuous=0;continuous<2;++continuous)for(unsigned chunk_size=1;chunk_size<=11;chunk_size+=10) {
             unsigned long rate=rates[rate_index];
             FVM_SWFStreamConverter state;
-            assert(fvm_swf_stream_converter_init(&state,snapshot,rate,channels)==FVM_OK);
+            assert((continuous ? fvm_swf_stream_converter_init_continuous(&state,snapshot,rate,channels) : fvm_swf_stream_converter_init(&state,snapshot,rate,channels))==FVM_OK);
             FVM_SWFStreamConvertedChunk chunk;std::memset(&chunk,0,sizeof(chunk));chunk.struct_size=sizeof(chunk);
             short output[22];size_t written=999;
             FVM_SWFStreamConverter saved=state;FVM_SWFStreamConvertedChunk old=chunk;output[0]=42;
@@ -60,7 +60,8 @@ int main()
                     size_t absolute=(number*source_rate)/rate;
                     unsigned long phase=(number*source_rate)%rate;
                     assert(absolute>=base && absolute<base+sizes[ordinal]);
-                    size_t right=absolute+1<base+sizes[ordinal]?absolute+1:absolute;
+                    size_t limit=continuous?7:base+sizes[ordinal];
+                    size_t right=absolute+1<limit?absolute+1:absolute;
                     for(unsigned channel=0;channel<channels;++channel) {
                         long a,b;
                         if(channels==1 && source_channels==2) {
@@ -81,6 +82,8 @@ int main()
             saved=state;old=chunk;written=999;
             assert(fvm_swf_stream_converter_next(&state,1,output,22,&chunk,&written)==FVM_NOT_FOUND && written==999);
             assert(!std::memcmp(&state,&saved,sizeof(state)) && !std::memcmp(&chunk,&old,sizeof(chunk)));
+            assert(fvm_swf_stream_converter_seek(&state,2,1)==FVM_OK && state.phase==0 && state.continuous==(int)continuous);
+            assert(fvm_swf_stream_converter_next(&state,1,output,22,&chunk,&written)==FVM_OK && chunk.block_index==2 && chunk.first_source==1 && written==channels);
             assert(fvm_swf_stream_converter_seek(&state,0,0)==FVM_OK && state.phase==0);
             assert(fvm_swf_stream_converter_seek(&state,5,1)==FVM_INVALID_ARGUMENT);
         }

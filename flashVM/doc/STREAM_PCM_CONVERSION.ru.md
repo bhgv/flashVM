@@ -40,9 +40,9 @@ block position; EOF — NOT_FOUND с сохранением выходов.
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L47) | Проверяет output rate/channels, заимствует native PCM snapshot, копирует source metadata/count. INVALID_ARGUMENT при неверных args, UNSUPPORTED при другом codec/host representation. Без allocation, ошибка сохраняет state. |
-| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L58) | Положительный max_frames, точный chunk.struct_size, ёмкость в значениях каналов и PCM pointer для непустого результата. Ограниченный planning проверяет capacity до записи. EOF/ошибка сохраняют PCM/chunk/written/state. Нет VM, I/O, allocation, callbacks и неявных повторов. |
-| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L64) | Задаёт block/source offset <= sample_count; block_count/0 — EOF. Новая сетка начинается с phase zero. Ошибка сохраняет state. Уже сыгранный/отправленный output не перематывается. |
+| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L48) | Проверяет output rate/channels, заимствует native PCM snapshot, копирует source metadata/count. INVALID_ARGUMENT при неверных args, UNSUPPORTED при другом codec/host representation. Без allocation, ошибка сохраняет state. |
+| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L67) | Положительный max_frames, точный chunk.struct_size, ёмкость в значениях каналов и PCM pointer для непустого результата. Ограниченный planning проверяет capacity до записи. EOF/ошибка сохраняют PCM/chunk/written/state. Нет VM, I/O, allocation, callbacks и неявных повторов. |
+| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L73) | Задаёт block/source offset <= sample_count; block_count/0 — EOF. Новая сетка начинается с phase zero. Ошибка сохраняет state. Уже сыгранный/отправленный output не перематывается. |
 
 Хост владеет snapshot до завершения всех converter/reader. Исходные runtime/context
 после подготовки можно уничтожить. Один converter используется последовательно;
@@ -94,6 +94,25 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 Проверка v0.752: прошли 73 выбранные native проверки (два resource-player запуска повторены после восстановления права исполнения собранного файла), а также 14 shared-host. Новые converter/reader/snapshot пути, native worker и все file-export режимы прошли ASan/UBSan; вся VM не инструментирована, leak detection отключён хостом. Новый implementation и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign binaries и полный cross-player не запускались. Все девять стадий открыты.
 [Bounded queue producer / Ограниченный producer очереди](STREAM_PCM_OUTPUT.ru.md).
 
+
+## Непрерывная интерполяция сегмента (v0.803)
+
+[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L56) принимает те же аргументы и статусы,
+заимствует снимок на тех же условиях времени жизни и единственного владельца, что init.
+Правый отсчёт берётся из следующего непустого блока; последнее значение удерживается
+только в конце сегмента. Пустые блоки и пропуски кадров не добавляют тишину.
+Нет выделений, callbacks, обращения к VM или дополнительного PCM-хранилища.
+Поиск соседа один раз за next проходит промежуточные пустые дескрипторы: кроме
+ограниченных 1024 выходных кадров возможен обход оставшегося индекса блоков.
+Выход сохраняет идентичность блока левого отсчёта; чтение соседа не разрешает
+воспроизведение будущего блока. Seek сбрасывает фазу, сохраняя политику.
+Обычный init сохраняет прежнее ограничение интерполяции одним блоком.
+В структуру состояния добавлено поле: нативные потребители нужно пересобрать.
+
+Целочисленный оракул проверяет обе политики, четыре исходные и семь выходных частот,
+моно/стерео, порции 1/11 кадров, пустые блоки, конец сегмента и seek. Это проверка
+нативного преобразования, а не приёмка слышимого звука на устройствах или полного SWF.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -103,7 +122,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../include/flashvm/swf_stream_convert.h#L47) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../include/flashvm/swf_stream_convert.h#L58) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:64](../include/flashvm/swf_stream_convert.h#L64) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../include/flashvm/swf_stream_convert.h#L48) |
+| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../include/flashvm/swf_stream_convert.h#L56) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../include/flashvm/swf_stream_convert.h#L67) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
 <!-- source-links:end -->

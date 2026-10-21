@@ -34,6 +34,40 @@ extern "C" FVM_Result fvm_swf_stream_converter_init(FVM_SWFStreamConverter *out,
     *out = next;
     return FVM_OK;
 }
+/* Select continuous segment interpolation while preserving legacy initialization semantics. */
+extern "C" FVM_Result fvm_swf_stream_converter_init_continuous(
+    FVM_SWFStreamConverter *out, const FVM_SWFStreamSoundSnapshot *snapshot,
+    unsigned long rate, unsigned int channels)
+{
+    FVM_Result result = fvm_swf_stream_converter_init(out, snapshot, rate, channels);
+    if (result == FVM_OK)
+        out->continuous = 1;
+    return result;
+}
+/* Resolve the next source frame once per call, skipping empty metadata without advancing state. */
+static FVM_Result convert_neighbor(const FVM_SWFStreamConverter &s, short *raw, bool *found)
+{
+    *found = false;
+    for (size_t ordinal = s.block_index + 1; ordinal < s.block_count; ++ordinal)
+    {
+        FVM_SWFStreamSoundBlock block;
+        block.struct_size = sizeof(block);
+        FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(s.snapshot, ordinal, &block);
+        if (result != FVM_OK)
+            return result;
+        if (!block.sample_count_known)
+            return FVM_UNSUPPORTED;
+        if (!block.sample_count)
+            continue;
+        size_t written;
+        result = fvm_swf_stream_sound_snapshot_read_pcm(s.snapshot, ordinal, 0, 1, raw,
+                                                       FVM_SWF_SOUND_STEREO_CHANNELS, &written);
+        if (result == FVM_OK)
+            *found = true;
+        return result;
+    }
+    return FVM_OK;
+}
 /* Advance one exact rational output step without multiplying source lengths by output rates. */
 static bool convert_step(FVM_SWFStreamConverter &s, size_t total)
 {
@@ -119,6 +153,16 @@ extern "C" FVM_Result fvm_swf_stream_converter_next(FVM_SWFStreamConverter *s, s
         chunk.flags |= FVM_STREAM_CONVERT_END;
     if (!block.sample_count)
         chunk.flags |= FVM_STREAM_CONVERT_EMPTY;
+    short neighbor[FVM_SWF_SOUND_STEREO_CHANNELS];
+    bool have_neighbor = false;
+    /* Resolve before writing any output, and only when this chunk reaches the final interval. */
+    if (count && s->continuous &&
+        (end || next.first == block.sample_count - 1))
+    {
+        result = convert_neighbor(*s, neighbor, &have_neighbor);
+        if (result != FVM_OK)
+            return result;
+    }
     FVM_SWFStreamConverter position = *s;
     for (size_t i = 0; i < count; ++i)
     {
@@ -133,9 +177,9 @@ extern "C" FVM_Result fvm_swf_stream_converter_next(FVM_SWFStreamConverter *s, s
         for (unsigned int channel = 0; channel < s->output_channels; ++channel)
         {
             long a = convert_channel(raw, s->info.channels, s->output_channels, channel);
-            long b = frames == 1 ? a
-                                 : convert_channel(raw + s->info.channels, s->info.channels,
-                                                   s->output_channels, channel);
+            const short *after = frames == 1 ? (have_neighbor ? neighbor : raw)
+                                              : raw + s->info.channels;
+            long b = convert_channel(after, s->info.channels, s->output_channels, channel);
             /* Products are exact below 2^53; avoid overflowing 32-bit long on LLP64/ILP32. */
             double value =
                 ((double)a * (s->output_rate - position.phase) + (double)b * position.phase) /

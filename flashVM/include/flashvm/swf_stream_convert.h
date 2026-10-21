@@ -40,6 +40,7 @@ extern "C"
         unsigned long phase;       /* Rational fractional position, always less than output_rate. */
         unsigned long output_rate; /* Chosen output Hz, MIN_RATE..MAX_RATE. */
         unsigned int output_channels; /* One or two scalar values per output frame. */
+        int continuous; /* Nonzero selects adjacent samples across prepared block boundaries. */
         int started; /* Whether a chunk of the current block has already been returned. */
     } FVM_SWFStreamConverter;
     /* Borrow a PCM snapshot without allocation; init rejects other codecs/host representations
@@ -48,10 +49,18 @@ extern "C"
                                                      const FVM_SWFStreamSoundSnapshot *,
                                                      unsigned long output_rate,
                                                      unsigned int channels);
+    /* Like init, but interpolate across nonempty blocks of this immutable segment. Empty
+     * blocks and movie-frame gaps add no samples. Only segment EOF holds the final sample.
+     * No allocation or VM access; snapshot lifetime and single-owner restrictions match init.
+     * Errors preserve state. Rebuild callers: the state descriptor has gained a policy field. */
+    FVM_API FVM_Result fvm_swf_stream_converter_init_continuous(FVM_SWFStreamConverter *,
+                                                     const FVM_SWFStreamSoundSnapshot *,
+                                                     unsigned long output_rate,
+                                                     unsigned int channels);
     /* Read at most min(max_frames,MAX_FRAMES) without crossing an encoded block. Positive max
      * required; capacity/written count scalar S16 values. Errors/EOF preserve all outputs/state.
      * Linear interpolation holds the last sample inside each block; it never borrows the next
-     * block's value. Rational phase and downsampling carry survive block boundaries/empty blocks.
+     * block's value unless initialized with init_continuous. Rational phase and downsampling carry survive block boundaries/empty blocks.
      * Mono duplicates; stereo->mono averages toward zero before interpolation/truncation toward
      * zero. Empty/skipped blocks return OK zero-value markers and advance. No allocation, VM,
      * callback, device, clock, anti-alias filter or gap synthesis; all buffers/state disjoint. */

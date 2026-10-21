@@ -92,10 +92,10 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [fvm_swf_stream_sound_snapshot_open_pcm_bounded](../../../include/flashvm/swf_stream_sound.h#L102) | Clear output first; prepare supported PCM/ADPCM under explicit peak ceiling, return allocation/source statuses without leaking ownership. |
 | [fvm_swf_sound_mixer_create_configured](../../../include/flashvm/swf_sound_mixer.h#L48) | Copy output geometry and reserve two native voice slots; failure publishes no mixer. |
 | [fvm_swf_sound_mixer_submit](../../../include/flashvm/swf_sound_mixer.h#L66) | Owner snapshots each explicit event; allocation/control errors preserve existing voices. |
-| [fvm_swf_stream_converter_init](../../../include/flashvm/swf_stream_convert.h#L47) | Borrow prepared source without allocation, with explicit rate/channels. |
+| [fvm_swf_stream_converter_init](../../../include/flashvm/swf_stream_convert.h#L48) | Borrow prepared source without allocation, with explicit rate/channels. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release source canonical/managed ownership before native export. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source VM lifetime; native snapshots remain retained. |
-| [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L58) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
+| [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L67) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
 | [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L126) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
 | [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L30) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L36) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
@@ -125,8 +125,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../../../include/flashvm/swf_sound_mixer.h#L66) |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->

@@ -41,9 +41,9 @@ Every OK advances output or block position. EOF is NOT_FOUND, preserving outputs
 
 | API | Contract |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L47) | Validate explicit output rate/channels and borrow a prepared native PCM snapshot; copy source metadata/count. INVALID_ARGUMENT for bad args, UNSUPPORTED for codecs/host representation. No allocation; errors preserve state. |
-| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L58) | Positive max_frames; exact chunk.struct_size; enough scalar capacity and nonnull PCM for nonempty results. Bounded planning validates capacity before output. EOF/errors preserve PCM/chunk/written/state. No VM, I/O, allocation, callbacks or implicit retry. |
-| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L64) | Set a valid block/source offset <= actual sample_count; block_count/0 is EOF. Start a new grid with phase zero. Invalid positions preserve state. Already queued/played output is not rewound. |
+| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L48) | Validate explicit output rate/channels and borrow a prepared native PCM snapshot; copy source metadata/count. INVALID_ARGUMENT for bad args, UNSUPPORTED for codecs/host representation. No allocation; errors preserve state. |
+| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L67) | Positive max_frames; exact chunk.struct_size; enough scalar capacity and nonnull PCM for nonempty results. Bounded planning validates capacity before output. EOF/errors preserve PCM/chunk/written/state. No VM, I/O, allocation, callbacks or implicit retry. |
+| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L73) | Set a valid block/source offset <= actual sample_count; block_count/0 is EOF. Start a new grid with phase zero. Invalid positions preserve state. Already queued/played output is not rewound. |
 
 Snapshot ownership stays with the host until every converter/reader is quiesced.
 Source runtime/context may be destroyed after snapshot preparation. Serialize each
@@ -97,6 +97,24 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 Validation at v0.752: 73 selected native regression checks pass (two resource-player launches were rerun after restoring the built executable permission), plus 14 shared-host checks. New converter/reader/snapshot paths, native worker tests and all file-export modes pass ASan/UBSan; whole-VM instrumentation and leak detection are not claimed (host disables leak detection). New implementation and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; foreign binaries and full cross-player builds are not executed. All nine roadmap stages remain open.
 [Bounded queue producer / Ограниченный producer очереди](STREAM_PCM_OUTPUT.md).
 
+
+## Continuous segment interpolation (v0.803)
+
+[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L56) has the same arguments, statuses, borrowed
+snapshot lifetime and single-owner/native-thread contract as init. It selects linear
+interpolation against the first sample of the next nonempty block. Only segment EOF
+holds the final value. Movie-frame gaps and empty blocks contain no implicit silence.
+No allocation, callbacks, VM access or additional PCM storage is needed. A boundary
+lookup visits intervening empty descriptors once per next call; worst-case work includes
+the remaining block index, in addition to the bounded 1024 output frames. Output chunks
+retain the left sample's block identity; lookahead does not authorize or emit a future
+block. Seek resets phase and retains the selected policy. Legacy init retains clamping.
+The caller-owned converter descriptor gained a field: rebuild all native callers.
+
+The integer oracle covers both policies, all four SWF PCM rates, seven output rates,
+mono/stereo mapping, one/eleven-frame chunks, empty blocks, final clamping and seek.
+This is native deterministic evidence, not audible device acceptance or full SWF support.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -106,7 +124,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../include/flashvm/swf_stream_convert.h#L47) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../include/flashvm/swf_stream_convert.h#L58) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:64](../include/flashvm/swf_stream_convert.h#L64) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../include/flashvm/swf_stream_convert.h#L48) |
+| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../include/flashvm/swf_stream_convert.h#L56) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../include/flashvm/swf_stream_convert.h#L67) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
 <!-- source-links:end -->
