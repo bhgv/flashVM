@@ -371,5 +371,6 @@ void fvm_desktop_help(const char *program)
            (unsigned long)FVM_DESKTOP_AUDIO_PREPARED_BYTES);
     printf("Prepared event sources: %lu-byte aggregate mixer/slot/voice budget; source decode stays outside the worker mutex.\n",
            (unsigned long)FVM_DESKTOP_AUDIO_EVENT_BYTES);
+    puts("Event SyncNoMultiple includes unplayed queued PCM; native identity/output buffers are separate from source budgets.");
     puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM/supported MP3 segments without StartSound; other codecs/mixing unsupported.");
 }

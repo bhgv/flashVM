@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+Desktop SyncNoMultiple учитывает ID до конца очереди, включая короткие голоса, уже освобождённые микшером. Таблица ID выхода учитывается отдельно от бюджета источников. [Контракт очереди/управления](../doc/QUEUED_SOUND_IDS.ru.md).
+
 Подготовка событийных источников выполняется вне mutex аудиопотока; отдельный бюджет микшера/голосов по умолчанию — 64 MiB. VM/очереди/trace учитываются отдельно. [Владение и ограничения](../doc/NATIVE_VOICES.ru.md).
 
 v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency, free-format и reference MP3 seek/A/V остаются открытыми. [Текущий контракт](../doc/MP3_AUDIO.ru.md).

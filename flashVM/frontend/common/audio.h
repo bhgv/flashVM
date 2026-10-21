@@ -81,7 +81,8 @@ extern "C"
     FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Acquire native ownership for root events or supported prepared root streams; never both.
      * Event preparation runs on owner outside worker mutex; aggregate native mixer/voice storage
-     * obeys EVENT_BYTES. Native output/device/trace storage and VM memory are separate budgets. */
+     * obeys EVENT_BYTES. SyncNoMultiple includes queued/pending identity time until dequeue end.
+     * Native output/ID/device/trace storage and VM memory are separate budgets. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
     FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);

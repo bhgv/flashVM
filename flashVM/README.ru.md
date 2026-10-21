@@ -1,4 +1,4 @@
-Версия разработки: **0.796** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.797** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.797: [Удержание desktop SyncNoMultiple до конца отсчётов очереди](doc/QUEUED_SOUND_IDS.ru.md).
 
 v0.796: [Отмена идентичностей после подтверждённой остановки очереди](doc/QUEUED_SOUND_IDS.ru.md).
 

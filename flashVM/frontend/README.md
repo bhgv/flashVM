@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+Desktop event SyncNoMultiple now uses queued identity deadlines, including short voices already retired by the mixer. Output identity storage is separate from the source budget. [Queue/control contract](../doc/QUEUED_SOUND_IDS.md).
+
 Event source preparation uses a separate 64 MiB default mixer/voice budget and runs outside the audio worker mutex. Queue/trace/VM memory is separate. [Ownership and limits](../doc/NATIVE_VOICES.md).
 
 v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency, free-format and reference MP3 seek/A/V remain open. [Current MP3 contract](../doc/MP3_AUDIO.md).

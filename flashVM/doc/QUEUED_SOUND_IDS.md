@@ -82,6 +82,21 @@ new registered voices begin after its exact pending frame count. No retry remixe
 it. `swf_sound_output_identity_stop` exercises those failure boundaries, explicit
 same-ID restart, missing/invalid IDs and unchanged accepted PCM.
 
+## v0.797: desktop event scheduling
+
+The desktop event output enables fixed identity tracking before worker startup.
+Owner-side NoMultiple prechecks and final prepared adoption use that output's
+FIFO identity clock, while decode remains outside the worker mutex. Stop-by-ID
+uses the output's tracked control; StopSounds retains the acknowledged-clear
+policy. Root event-only playback gains this behavior; stream-only production is
+unchanged, and root stream-plus-StartSound remains unsupported.
+
+All device/output/mixer operations stay under the existing native mutex. No VM
+or managed pointer enters the worker. Identity/output buffers are separate from
+EVENT_BYTES source/mixer accounting and are visible through native storage_info.
+This fixes premature NoMultiple release at software retirement; it does not add
+hardware audibility, sub-frame authored timing or reference Flash A/V clocks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

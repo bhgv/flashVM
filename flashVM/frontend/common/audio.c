@@ -141,12 +141,12 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
         return FVM_ERROR;
     if (event.flags & FVM_SWF_SOUND_EVENT_STOP)
     {
-        result = fvm_swf_sound_mixer_stop_id(audio->mixer, event.sound_id);
+        result = fvm_swf_sound_output_stop_id(audio->output, event.sound_id);
         handled = 1;
     }
     else if (event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE)
     {
-        result = fvm_swf_sound_mixer_sound_active(audio->mixer, event.sound_id, &active);
+        result = fvm_swf_sound_output_sound_active(audio->output, event.sound_id, &active);
         handled = result != FVM_OK || active;
     }
     if (!handled && result == FVM_OK)
@@ -167,8 +167,8 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
         return FVM_ERROR;
     }
     if (!handled && result == FVM_OK)
-        result = fvm_swf_sound_mixer_submit_prepared_bounded(
-            audio->mixer, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES);
+        result = fvm_swf_sound_output_submit_prepared_bounded(
+            audio->output, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES);
     fvm_desktop_trace_event(audio->trace, "event", (unsigned long)ordinal, result);
     if (result == FVM_OK)
         ++audio->events;
@@ -490,6 +490,9 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     {
         result = fvm_swf_sound_output_create(audio->mixer, &backend, FVM_DESKTOP_AUDIO_BLOCK,
                                              audio->target_frames, &audio->output);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_swf_sound_output_set_identity_tracking(audio->output, 1);
         if (result != FVM_OK)
             return result;
         result = fvm_swf_sound_output_set_release(
