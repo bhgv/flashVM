@@ -31,9 +31,9 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp src/jit/*.cpp
                                  src/multimedia/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
-add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c)
+add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c)
 target_include_directories(flashvm_srecord PUBLIC ${PROJECT_SOURCE_DIR}/include)
-add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
+add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
@@ -552,7 +552,7 @@ endif()
 
 # Standalone wire-format oracle needs no VM, SDL, devices or socket provider.
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
-  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c)
+  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c)
   target_include_directories(flashvm_srecord_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_srecord_oracle PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS YES)
   add_test(NAME flashvm_srecord_wire_oracle COMMAND ${Python3_EXECUTABLE}
@@ -590,4 +590,11 @@ if(TARGET flashvm_examples_embedding_srecords_main AND FVM_BUILD_TESTS AND Pytho
   add_test(NAME flashvm_srecord_tutorial_file COMMAND ${Python3_EXECUTABLE}
     ${PROJECT_SOURCE_DIR}/tests/protocol/srecord_example.py $<TARGET_FILE:flashvm_examples_embedding_srecords_main>)
   set_tests_properties(flashvm_srecord_tutorial_file PROPERTIES TIMEOUT 20)
+endif()
+
+# Native dispatcher contracts do not need VM startup or presentation SDKs.
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_rdispatch_contract tests/resources/dispatch.c)
+  target_include_directories(flashvm_rdispatch_contract PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  add_test(NAME flashvm_rdispatch_contract COMMAND flashvm_rdispatch_contract)
 endif()

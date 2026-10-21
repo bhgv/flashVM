@@ -40,6 +40,7 @@ special/printable selectors без allocation/мутации. Отдельный
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
 Binary S-record codec / Двоичный codec: [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 Accepted resource/filesystem design / Принятый план ФС ресурсов: [EN](RESOURCE_NAMESPACE.md) / [RU](RESOURCE_NAMESPACE.ru.md).
+Resource dispatcher / Диспетчер: [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

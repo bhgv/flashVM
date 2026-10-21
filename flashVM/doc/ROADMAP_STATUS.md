@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.725
+# FlashVM stage status / Состояние стадий — v0.726
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,13 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.726 adds a bounded native owner dispatcher with copied FIFO control requests,
+server-defined rights, session grants, generation-safe resource release, queued
+cancellation and retained replies. Allocation failure, reentry, capacity, revoke
+and stale-generation contracts are checked without VM/device calls. No native
+filesystem mount or automatic VM-class conversion is claimed. All stages remain
+open. [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
 v0.725 adds an annotated standalone C89 duplex/file tutorial, C++98 ABI client,
 independent transcript checks and bounded malformed-input stress. The accepted
