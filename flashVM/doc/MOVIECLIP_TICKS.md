@@ -1,6 +1,6 @@
 # MovieClip ticks and optional handlers — v0.624
 
-[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L99) drives synchronous owner-thread
+[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L116) drives synchronous owner-thread
 MovieClip ticks. It advances eligible timelines, runs retained initializers and frame
 scripts, delivers onEnterFrame, then visits a depth-ordered child snapshot. Stopped
 and single-frame clips still receive the handler. No timer poll, rendering or device
@@ -123,7 +123,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:31](../src/standard/movieclip_constants.h#L31) |
 | `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:39](../src/standard/movieclip_constants.h#L39) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |

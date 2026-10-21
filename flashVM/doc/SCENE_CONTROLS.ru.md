@@ -1,6 +1,6 @@
 # Снимки управляющих записей сцены — v0.634
 
-[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99) размещение символа SWF
+[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) размещение символа SWF
 может вызвать зарегистрированный конструктор. Раньше он мог заменить будущий
 элемент списка, изменить его скалярные поля, очистить список или добавить новое
 размещение прямо в текущий обход. Теперь значимые поля управляющих записей кадра
@@ -130,7 +130,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
 | `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2898](../src/standard/movieclip.cpp#L2898) |

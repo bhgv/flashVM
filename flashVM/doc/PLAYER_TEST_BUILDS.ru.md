@@ -48,7 +48,7 @@ PCM8/PCM16/ADPCM и ограничения фигур: [учебник](../examp
 ## HostInput
 
 [player.c](../frontend/common/player.c) создаёт и закрепляет global HostInput;
-перед каждым [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99) копирует в него снимок
+перед каждым [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) копирует в него снимок
 [SDL state](../frontend/common/sdl_window.c). Это расширение плеера, не полная
 реализация стандартных Flash Key/Mouse/broadcasters или button handlers.
 Все VM/input/render операции сериализованы SDL-потоком приложения. Root/Input
@@ -161,7 +161,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |

@@ -87,7 +87,7 @@ callback клавиатуры допускает их. Уничтожение к
 
 [Исполняемый C89-пример](../examples/embedding/keyboard_listeners/README.md)
 сравнивает слушателя Key и явный выбор клипа, без окна и устройств. После
-установки стандартных объектов он вызывает [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L69) и сразу
+установки стандартных объектов он вызывает [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L86) и сразу
 выбирает возвращённый заимствованный клип, защищая его до выделений памяти при
 назначении обработчиков. При любой ошибке освобождение завершает контекст.
 
@@ -119,7 +119,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:86](../include/flashvm/movieclip.h#L86) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:87](../src/standard/movieclip_constants.h#L87) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

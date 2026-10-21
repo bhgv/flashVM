@@ -195,6 +195,13 @@ The actual interpreter/native-JIT integration test uses this helper for gotoAndS
 
 Validation at v0.756: 77 selected native checks pass (one previously built MP3 test was rerun after restoring its executable permission), plus 14 shared-host checks. Updated frame-seek/gating/C89 contracts also pass the focused final suite. ASan/UBSan covers native output/reader/snapshot paths and actual MovieClip authorization with interpreter/native-JIT actions; whole-VM instrumentation and leak detection are not claimed (host disables leak checks). All six export modes compare exact PCM; the minimal build works without desktop frontend/device. New C++98/C89 implementation/consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; no foreign execution/full cross-player acceptance. All nine roadmap stages remain open.
 
+
+## Intrinsic timeline observation (v0.757)
+
+`fvm_movieclip_get_playback_info(context, clip, &info)` reads private local timeline state rather than replaceable `_currentframe` properties. Set `info.struct_size = sizeof(info)` first. The [`FVM_MovieClipPlaybackInfo`](../include/flashvm/movieclip.h#L69) result contains positive `frame` and `total_frames`, plus `playing` and `entered` flags. Construction and goto select a frame with `entered=0`; the first subsequent actual entry changes it to one. Selection alone must not authorize a stream block. A stopped clip still receives onEnterFrame on later ticks. Host pause is a separate policy.
+
+Call only on the VM owner thread, outside collection/teardown, retaining the same-context native clip for the call. No allocation, callback, script lookup, tick or managed pointer escapes; copied scalars need no root. Null/wrong-sized/foreign/prototype/corrupt input returns INVALID_ARGUMENT and preserves the entire descriptor. The query is not a navigation event log: multiple changes between observations may be invisible. The host still owns source identity, queue discontinuity and synchronization policy. `movieclip_playback_info.cpp` verifies invalid-output atomicity, zero-allocation observation, stopped ticks, seek/entry distinction, looping, replaced script property and GC-safe retained ownership.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -205,6 +212,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
+| `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
+| `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../include/flashvm/swf_stream_output.h#L57) |

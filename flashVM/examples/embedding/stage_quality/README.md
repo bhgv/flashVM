@@ -51,7 +51,7 @@ JIT-helper; этот пример по-прежнему вызывает root [f
 
 - [`fvm_stage_set_quality`](../../../include/flashvm/stage.h#L22), [`fvm_stage_get_quality`](../../../include/flashvm/stage.h#L19) — настройка и чтение политики: [STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#fvm_stage_set_quality), [getter](../../../doc/STAGE_QUALITY.md#fvm_stage_get_quality).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий ToggleQuality и переход к LOW: [контракт действия](../../../doc/STAGE_QUALITY.md#contract).
-- [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L69), [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L109) — host clip и RGBA-рендер: [renderer integration](../../../doc/STAGE_QUALITY.md#renderer-integration-and-limits).
+- [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L86), [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L126) — host clip и RGBA-рендер: [renderer integration](../../../doc/STAGE_QUALITY.md#renderer-integration-and-limits).
 - [`fvm_standard_install`](../../../include/flashvm/standard.h#L20), [`fvm_object_call`](../../../include/flashvm/value.h#L126), [`fvm_value_number`](../../../include/flashvm/value.h#L42) — drawing API через обычные native-методы: [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md#movieclip-model).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — ownership и порядок очистки: [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context).
 
@@ -86,8 +86,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../../../include/flashvm/movieclip.h#L69) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:109](../../../include/flashvm/movieclip.h#L109) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:86](../../../include/flashvm/movieclip.h#L86) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:126](../../../include/flashvm/movieclip.h#L126) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |

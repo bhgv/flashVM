@@ -18,9 +18,9 @@ video checks script/runtime behavior, not a physical cursor or complete Flash AP
 
 Root streaming sound is validated before window/device setup. Unmuted movies
 with root streams report unsupported playback instead of silently omitting audio.
-With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L125) API and
-[FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L115). It validates and omits only root stream controls
-from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L76) remains strict.
+With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L142) API and
+[FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L132). It validates and omits only root stream controls
+from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L93) remains strict.
 
 The opt-in requires its decoded input to match the current [fvm_load_memory](../include/flashvm/flashvm.h#L72) source
 byte-for-byte. Validation therefore covers the exact imported root: stream header
@@ -66,7 +66,7 @@ and the speed suffix. It is a deterministic dependency/grammar test, not a fresh
 runtime validation of an installed foreign locale or every floating-point target.
 ## C interface details and tutorial (v0.666)
 
-[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L125) receives the owning context, borrowed complete FWS/CWS
+[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L142) receives the owning context, borrowed complete FWS/CWS
 bytes and exact size, a borrowed clip name, flags, and mandatory object-output
 pointer. Install the standard object model first. The byte/name inputs need only
 outlive the call; imported storage is owned by the context. The returned object
@@ -113,11 +113,11 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:76](../include/flashvm/movieclip.h#L76) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:142](../include/flashvm/movieclip.h#L142) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
-| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:115](../include/flashvm/movieclip.h#L115) |
+| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:132](../include/flashvm/movieclip.h#L132) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

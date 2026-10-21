@@ -69,7 +69,7 @@ explicit provenance; a native clip without any source returns an empty string.
 The builtin class prototype returns undefined. This is source metadata, not a new
 network request, and it does not reinterpret `_lockroot` as a source boundary.
 
-Source strings are copied by [`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L136). The getter returns managed
+Source strings are copied by [`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L153). The getter returns managed
 borrowed storage using the ordinary object API lifetime. Unloading retains the
 origin, detached children retain their old origin, and successful content
 replacement publishes its new origin atomically. Failed replacement preserves it.
@@ -111,7 +111,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:136](../include/flashvm/movieclip.h#L136) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:153](../include/flashvm/movieclip.h#L153) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 <!-- source-links:end -->

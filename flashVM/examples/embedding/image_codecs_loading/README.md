@@ -42,16 +42,16 @@ specified in IMAGE_LOADING.md. This small example does not certify every codec.
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Create enclosing owner, released last; API_INDEX.md. |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Create managed object owner; API_INDEX.md. |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install trusted native classes; API_INDEX.md. |
-| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L69) | Return borrowed native instance; MOVIECLIP_TICKS.md. |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L86) | Return borrowed native instance; MOVIECLIP_TICKS.md. |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain graph across later calls; GC.md. |
 | [`fvm_value_string_size`](../../../include/flashvm/value.h#L51) | Read counted borrowed source length without allocation or ownership transfer; API_INDEX.md. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Initialize a scalar with no managed storage; API_INDEX.md. |
 | [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Copy own data or invoke a named dimension setter synchronously; API_INDEX.md. |
-| [`fvm_movieclip_replace_image`](../../../include/flashvm/movieclip.h#L158) | Borrow image/source during atomic owner-safe replacement; IMAGE_LOADING.md. |
-| [`fvm_movieclip_replace_resource`](../../../include/flashvm/movieclip.h#L162) | Select SWF/image by bytes with the same transaction; IMAGE_LOADING.md. |
+| [`fvm_movieclip_replace_image`](../../../include/flashvm/movieclip.h#L175) | Borrow image/source during atomic owner-safe replacement; IMAGE_LOADING.md. |
+| [`fvm_movieclip_replace_resource`](../../../include/flashvm/movieclip.h#L179) | Select SWF/image by bytes with the same transaction; IMAGE_LOADING.md. |
 | [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | Collect while pin retains the clip; GC.md. |
-| [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L109) | Borrow caller RGBA during synchronous native rendering; IMAGE_LOADING.md. |
-| [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L181) | Clear content, retain identity/data; MOVIE_UNLOAD.md. |
+| [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L126) | Borrow caller RGBA during synchronous native rendering; IMAGE_LOADING.md. |
+| [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L198) | Clear content, retain identity/data; MOVIE_UNLOAD.md. |
 | [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read scalars or a borrowed managed source string; API_INDEX.md. |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release graph/pin before runtime; API_INDEX.md. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release enclosing runtime after context; API_INDEX.md. |
@@ -83,12 +83,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../../../include/flashvm/gc.h#L44) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_movieclip_content_info_init` | function | [include/flashvm/movieclip.h:57](../../../include/flashvm/movieclip.h#L57) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../../../include/flashvm/movieclip.h#L69) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:86](../../../include/flashvm/movieclip.h#L86) |
 | `fvm_movieclip_get_content_info` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:109](../../../include/flashvm/movieclip.h#L109) |
-| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:158](../../../include/flashvm/movieclip.h#L158) |
-| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:162](../../../include/flashvm/movieclip.h#L162) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:181](../../../include/flashvm/movieclip.h#L181) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:126](../../../include/flashvm/movieclip.h#L126) |
+| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:175](../../../include/flashvm/movieclip.h#L175) |
+| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:179](../../../include/flashvm/movieclip.h#L179) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:198](../../../include/flashvm/movieclip.h#L198) |
 | `FVM_MovieClipContentInfo` | struct | [include/flashvm/movieclip.h:46](../../../include/flashvm/movieclip.h#L46) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |

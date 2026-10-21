@@ -1,6 +1,6 @@
 # Снимки глубин при отрисовке — v0.630
 
-[`fvm_movieclip_render`](../include/flashvm/movieclip.h#L109) и [`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L112) синхронно рисуют выбранный
+[`fvm_movieclip_render`](../include/flashvm/movieclip.h#L126) и [`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L129) синхронно рисуют выбранный
 MovieClip в потоке владельца контекста. Они не двигают timeline, не опрашивают
 таймеры и не посылают события ввода. Вызывающий сохраняет контекст, клип и доступную
 для записи память [`FVM_RasterSurface`](../include/flashvm/raster.h#L16) на весь вызов. Вариант viewport копирует
@@ -89,10 +89,10 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:109](../include/flashvm/movieclip.h#L109) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:126](../include/flashvm/movieclip.h#L126) |
 | `FVM_MOVIECLIP_RENDER_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:35](../src/standard/movieclip_constants.h#L35) |
 | `FVM_MOVIECLIP_RENDER_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:34](../src/standard/movieclip_constants.h#L34) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:112](../include/flashvm/movieclip.h#L112) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |

@@ -46,9 +46,9 @@ its once-only lifecycle policy. This API does not call a native onLoad method.
 | [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Copy configuration and acquire the outer owner; no worker or device is opened. |
 | [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Acquire the managed heap; use its owner thread for all later calls. |
 | [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Install classes and methods before constructing the loaded scene. |
-| [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L76) | Copy/inspect the embedded SWF and retain private handlers; returned root is borrowed, no script runs while loading. |
+| [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L93) | Copy/inspect the embedded SWF and retain private handlers; returned root is borrowed, no script runs while loading. |
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Keep the complete root/actor/library graph reachable between host calls; this example releases its pin by destroying the context. |
-| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L99) | Perform one tick, place the actor and deliver its EnterFrame record; does not automatically deliver Load. |
+| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L116) | Perform one tick, place the actor and deliver its EnterFrame record; does not automatically deliver Load. |
 | [fvm_object_get](../../../include/flashvm/value.h#L72) | Read authored actor and scalar marker synchronously; object results are borrowed and kept reachable through root. |
 | [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L55) | Execute matching retained Load bytecode with the actor receiver and key_code zero; no target selection, native onX call, timeline advance or presentation. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release graph/registration/pin after calls return; managed pointers become unusable. |
@@ -111,12 +111,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
 | `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../../../include/flashvm/keyboard.h#L69) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../../../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../../../include/flashvm/movieclip.h#L116) |
 | `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../../../include/flashvm/clip_actions.h#L55) |
 | `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../../../include/flashvm/clip_actions.h#L71) |
 | `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../../../include/flashvm/clip_actions.h#L86) |
 | `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../../../include/flashvm/clip_actions.h#L97) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:93](../../../include/flashvm/movieclip.h#L93) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |

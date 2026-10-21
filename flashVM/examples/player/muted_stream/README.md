@@ -47,13 +47,13 @@ SDK must match target OS/CPU, and the resulting host must run there.
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Copies canonical source into the context before flagged import; input remains caller-owned. |
 | [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Prepares the standard MovieClip model; no audio device. |
 | [fvm_swf_stream_sound_count](../../../include/flashvm/swf_stream_sound.h#L53) | Validates root streams and returns a copied scalar count. |
-| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L125) | Uses explicit [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L115); requires matching decoded canonical source, clears output on failure. |
+| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L142) | Uses explicit [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L132); requires matching decoded canonical source, clears output on failure. |
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L48) / [fvm_gc_unpin](../../../include/flashvm/gc.h#L54) | Host retains/releases the managed clip/library across collection; neither transfers allocation ownership. |
 | [fvm_gc_step](../../../include/flashvm/gc.h#L90) | Owner-thread safe-point collection, outside callbacks. |
-| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L99) | Executes supported root frame behavior while stream controls remain muted. |
+| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L116) | Executes supported root frame behavior while stream controls remain muted. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) / [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Release managed/native ownership in context-before-runtime order. |
 
-Strict [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L76) still rejects stream controls. Unknown flags, source
+Strict [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L93) still rejects stream controls. Unknown flags, source
 mismatch, malformed root records and sprite streams are not silently ignored.
 Compressed stream bytes remain opaque; this example does not add MP3 decoding,
 stream mixing, A/V sync, video codecs or complete Flash sound semantics. Event
@@ -75,12 +75,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../../../include/flashvm/gc.h#L90) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../../../include/flashvm/movieclip.h#L99) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:125](../../../include/flashvm/movieclip.h#L125) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../../../include/flashvm/movieclip.h#L116) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:93](../../../include/flashvm/movieclip.h#L93) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:142](../../../include/flashvm/movieclip.h#L142) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:115](../../../include/flashvm/movieclip.h#L115) |
+| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:132](../../../include/flashvm/movieclip.h#L132) |
 | `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:53](../../../include/flashvm/swf_stream_sound.h#L53) |
 <!-- source-links:end -->

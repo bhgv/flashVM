@@ -198,8 +198,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:112](../include/flashvm/movieclip.h#L112) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
 | `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:27](../include/flashvm/swf.h#L27) |

@@ -56,7 +56,7 @@ Host requests are independent of the global's SWF version/event restrictions.
 ## Common desktop player
 
 The active loop consumes a request before rendering the current scene between
-frames. [clear_stage](../frontend/common/player.c#L73) and [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L112) feed the same presenter as normal
+frames. [clear_stage](../frontend/common/player.c#L73) and [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L129) feed the same presenter as normal
 frames; no timeline step, frame-script rerun or authored deadline increment occurs.
 A request coinciding with an ordinary frame is satisfied by that frame. A request
 made during presentation stays pending and prevents sleeping past another draw.
@@ -117,7 +117,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:112](../include/flashvm/movieclip.h#L112) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
 | `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../include/flashvm/stage.h#L41) |
 | `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../include/flashvm/stage.h#L38) |
 | `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |

@@ -193,6 +193,13 @@ helper для gotoAndStop.
 
 Проверка v0.756: прошли 77 выбранных native проверок (один ранее собранный MP3 тест повторён после восстановления права исполнения), а также 14 shared-host. Обновлённые frame-seek/gating/C89 контракты прошли финальный focused набор. ASan/UBSan проверяет native output/reader/snapshot и настоящую MovieClip authorization с interpreter/native-JIT actions; вся VM не инструментирована, leak detection отключён хостом. Все шесть export режимов совпадают по PCM; minimal build работает без desktop frontend/device. Новые C++98/C89 implementation/consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution/full cross-player не заявляются. Все девять стадий открыты.
 
+
+## Нативное наблюдение таймлайна (v0.757)
+
+`fvm_movieclip_get_playback_info(context, clip, &info)` читает приватное состояние локального таймлайна, обходя заменяемое свойство `_currentframe`. Сначала установите `info.struct_size = sizeof(info)`. Снимок [`FVM_MovieClipPlaybackInfo`](../include/flashvm/movieclip.h#L69) содержит положительные `frame`, `total_frames` и флаги `playing`, `entered`. После создания и goto кадр выбран, но `entered=0`; реальный последующий вход устанавливает единицу. Один выбор кадра не разрешает его потоковый звук. Остановленный клип продолжает получать onEnterFrame при последующих ticks; пауза хоста — отдельная политика.
+
+Вызывайте только из потока-владельца VM вне GC/teardown, удерживая клип того же контекста. Нет выделений памяти, callbacks, поиска script-свойств или продвижения кадров; наружу копируются скаляры, которым не нужен root. Null, неверный размер, чужой контекст, прототип и повреждённое состояние дают INVALID_ARGUMENT, сохраняя весь выходной дескриптор. Это не журнал навигации: несколько изменений между наблюдениями могут быть не видны. Идентичность источника, очистка очереди при переходах и синхронизация остаются обязанностью хоста. Тест movieclip_playback_info.cpp проверяет атомарность ошибок, отсутствие выделений, stopped ticks, различие выбора/входа, цикл, заменённое script-свойство и удержание через GC.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -203,6 +210,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
+| `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
+| `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../include/flashvm/swf_stream_output.h#L57) |

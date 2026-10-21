@@ -65,6 +65,23 @@ extern "C"
      * Counts fit CONTENT_MAX_BYTES, not process memory usage or progressive transfer progress. */
     FVM_API FVM_Result fvm_movieclip_get_content_info(FVM_Context *, FVM_Object *,
                                                        FVM_MovieClipContentInfo *);
+    /* Copied intrinsic playhead; independent of replaceable ActionScript properties. */
+    typedef struct FVM_MovieClipPlaybackInfo
+    {
+        size_t struct_size;         /* Exact sizeof required; caller initializes before query. */
+        unsigned int frame;        /* Selected one-based local frame, including pending seeks. */
+        unsigned int total_frames; /* Positive intrinsic local timeline length. */
+        int playing;               /* Native play flag; unrelated to host/session suspension. */
+        int entered;               /* Selected frame controls/actions entered since last seek. */
+    } FVM_MovieClipPlaybackInfo;
+    /* Read scalar native state without getters, script calls, allocation or timeline advancement.
+     * Same-context native instance, owner thread outside GC/teardown; caller retains the clip.
+     * INVALID_ARGUMENT for null/wrong-size/foreign/prototype/malformed state; preserve output.
+     * No pointers escape. entered=0 after construction/seek: frame selection alone does not
+     * authorize frame-entry media. playing=0 still allows onEnterFrame delivery on later ticks.
+     * This is an observation, not a navigation event log or source-content identity token. */
+    FVM_API FVM_Result fvm_movieclip_get_playback_info(FVM_Context *, FVM_Object *,
+                                                        FVM_MovieClipPlaybackInfo *);
     /* Create movieclip. */
     FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
                                             FVM_Object **);

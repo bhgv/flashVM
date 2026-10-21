@@ -1,6 +1,6 @@
 # Native timeline depth snapshots — v0.629
 
-[Русский](TIMELINE_DEPTH_ORDER.ru.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99) now actually visits
+[Русский](TIMELINE_DEPTH_ORDER.ru.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) now actually visits
 children in ascending native depth order. Earlier tick documentation promised
 that order, but the copied native hash table iterated in insertion order. This
 revision corrects the traversal and checks pending descendant detachment.
@@ -140,6 +140,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 <!-- source-links:end -->
