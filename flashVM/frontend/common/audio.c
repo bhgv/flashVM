@@ -64,7 +64,7 @@ static FVM_Result validate_headers(FVM_Context *context, int decode)
         if (result != FVM_OK)
             return result;
         if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE &&
-            info.format != FVM_SWF_SOUND_ADPCM)
+            info.format != FVM_SWF_SOUND_ADPCM && info.format != FVM_SWF_SOUND_MP3)
             return FVM_UNSUPPORTED;
         if (decode)
         {

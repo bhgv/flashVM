@@ -81,7 +81,7 @@ AS1/AS2 API, таймлайн, JIT, конкурентность, GC и отла
 
 | Направление | Оставшаяся приёмка |
 | --- | --- |
-| Аудиокодеки | MP3, автоматические длины неполных ADPCM-пакетов (явный C-путь: [EN](STREAM_ADPCM_COUNTED.md) / [RU](STREAM_ADPCM_COUNTED.ru.md)), корректные задержки/seek и независимые эталонные отсчёты. |
+| Аудиокодеки | MP3: поддержанный bounded decoder/player [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md), остаются free-format/negative latency/reference seek; автоматические длины неполных ADPCM-пакетов (явный C-путь: [EN](STREAM_ADPCM_COUNTED.md) / [RU](STREAM_ADPCM_COUNTED.ru.md)), корректные задержки/seek и независимые эталонные отсчёты. |
 | Смешивание | Stream PCM и событийные голоса с одним насыщением, точный retry, хвосты и управление в общем плеере. Первый ограниченный C-путь: [EN](STREAM_EVENT_MIX.md) / [RU](STREAM_EVENT_MIX.ru.md); адаптер точного retry очереди: [EN](MIX_QUEUE.md) / [RU](MIX_QUEUE.ru.md). Desktop mixing ещё не закрыт. |
 | Дочерние потоки | Отдельное состояние каждого клипа, загрузка/удаление, остановка, навигация и общий микшер. |
 | A/V и перемотка | Согласованные часы, дрейф, pause/seek/loop и взаимодействие потоковых звука/видео. |

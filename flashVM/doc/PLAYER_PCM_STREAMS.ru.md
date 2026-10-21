@@ -1,5 +1,7 @@
 # Последовательность root PCM-заголовков в SDL-плеере
 
+v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency, free-format и reference MP3 seek/A/V остаются открытыми. [Текущий контракт](MP3_AUDIO.ru.md).
+
 С v0.758 реальный desktop player принимает один проверенный сегмент SoundStreamHead/Head2
 формата PCM_NATIVE или PCM_LE без корневых StartSound. Источник преобразуется в 48000 Гц
 stereo S16 и передаётся настоящей SDL-очереди. Другие кодеки, несколько заголовков и смесь

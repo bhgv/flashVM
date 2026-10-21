@@ -387,6 +387,13 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
   set_tests_properties(flashvm_frontend_audio_trace_storage PROPERTIES TIMEOUT 10)
 endif()
 
+# Optional independent MPEG oracle inspects PCM actually accepted by the real SDL queue.
+if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_test(NAME flashvm_frontend_mp3_streams COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/mp3_streams.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_frontend_mp3_streams PROPERTIES TIMEOUT 120 SKIP_RETURN_CODE 77)
+endif()
+
 # Real SDL renderer fixtures remain explicit host tests, never foreign/device certification.
 if(FVM_BUILD_TESTS AND NOT ANDROID)
   foreach(fixture retained_frame lifecycle wheel cursor event_budget sdl_ownership)

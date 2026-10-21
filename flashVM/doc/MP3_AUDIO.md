@@ -115,6 +115,36 @@ not removed by successful native decoding. MP3 is described by Adobe's
 [SWF specification, sound chapter](https://open-flash.github.io/mirrors/swf-spec-19.pdf);
 the implementation acceptance above is deliberately narrower than full Flash playback.
 
+## v0.780 SDL player integration
+
+The desktop root-stream preflight now accepts the supported MP3 subset alongside
+PCM and whole-packet ADPCM. Every segment is completely decoded under the existing
+aggregate preparation ceiling before window/device startup. The worker receives
+immutable native PCM, not a VM or MPEG decoder. Root StartSound mixed with streams
+is still rejected; event-only MP3 uses the existing native event output path.
+Help and source contracts list both routes and their limits.
+
+The real SDL queue trace is checked against independent FFmpeg/ffprobe packet
+boundaries and decoded samples, followed by an independent rational 48000-Hz
+stereo conversion. Six rates/channel combinations, CBR/VBR, FWS/CWS, latency 0/529,
+actual interpreter/native-JIT action counters and MP3-to-PCM header transitions
+pass. Maximum accepted-output deviation is three S16 units; output lengths must
+match exactly. A finite one-frame run excludes all unauthorized future blocks.
+The optional CTest oracle explicitly skips with 77 if FFmpeg/ffprobe or native JIT
+are unavailable; no such skip occurred on this Linux x64 validation host.
+
+The existing real native worker fixture now includes MP3: slow owner work, frame
+gates, clip stop/play, GC safe points, StopSounds cancellation, host pause,
+same-frame navigation tokens, cross-header seeks and joined clear are exercised
+in interpreter/JIT modes. Six worker/preparation/budget/refill checks pass. SDL
+uses its dummy audio/video drivers: this is real queue/runtime evidence, not
+physical listening, a DAC clock or foreign OS/device acceptance.
+
+Initial latency trimming and prefix-discard seeks are exactly the native snapshot
+policy above. Full reference MP3 seek/read-ahead, negative initial latency,
+free-format bitrate, child streams, stream/event composition and A/V synchronization
+remain open. No roadmap stage is marked complete.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

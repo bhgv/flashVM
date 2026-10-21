@@ -364,10 +364,10 @@ void fvm_desktop_help(const char *program)
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");
     puts("Touch: the first contact drives the pointer; additional contacts are ignored.");
-    puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM StartSound uses "
+    puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM/MP3 StartSound uses "
          "optional SDL audio.");
     puts("Finite stream playback finishes authorized PCM and drains the queue, with a 2000 ms extra deadline.");
     printf("Prepared streaming sources: %lu-byte aggregate snapshot/index/table and expansion budget.\n",
            (unsigned long)FVM_DESKTOP_AUDIO_PREPARED_BYTES);
-    puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM segments without StartSound; other codecs/mixing unsupported.");
+    puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM/supported MP3 segments without StartSound; other codecs/mixing unsupported.");
 }

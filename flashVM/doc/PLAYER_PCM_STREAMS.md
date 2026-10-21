@@ -1,5 +1,7 @@
 # Root PCM header sequences in the SDL player
 
+v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency, free-format and reference MP3 seek/A/V remain open. [Current MP3 contract](MP3_AUDIO.md).
+
 Since v0.758 the actual desktop player accepts the original single validated root
 SoundStreamHead/Head2
 segment in PCM_NATIVE or PCM_LE format, with no root StartSound events. It converts native

@@ -111,6 +111,34 @@ per-block MP3 seek corrections и reference Flash read-ahead/A/V sync ещё н�
 [Adobe SWF specification, sound chapter](https://open-flash.github.io/mirrors/swf-spec-19.pdf).
 Указанная приёмка уже полной Flash playback semantics.
 
+## v0.780 интеграция SDL-плеера
+
+Desktop preflight принимает поддержанный MP3 subset вместе с PCM и целым ADPCM.
+Каждый сегмент полностью декодируется под прежним aggregate preparation ceiling
+до window/device startup. Worker получает immutable native PCM, не VM и не MPEG
+decoder. Root StartSound вместе со streams по-прежнему отвергается; event-only MP3
+идёт через существующий native event output. Help и source contracts перечисляют
+оба пути с ограничениями.
+
+PCM, действительно принятый SDL queue, сравнивается с независимыми FFmpeg/ffprobe
+packet boundaries/samples и отдельным рациональным преобразованием в stereo 48000 Hz.
+Проходят шесть сочетаний rate/channels, CBR/VBR, FWS/CWS, latency 0/529, настоящие
+interpreter/native-JIT action counters и переход MP3→PCM header. Максимальное
+отклонение — три S16 единицы, длина обязана совпасть точно. Однокадровый finite run
+не включает будущие неразрешённые блоки. Необязательный CTest oracle возвращает
+skip 77 без FFmpeg/ffprobe либо native JIT; на этом Linux x64 таких skips не было.
+
+Прежний real worker fixture расширен MP3: медленный owner, frame gate, clip
+stop/play, GC safe points, StopSounds, host pause, same-frame navigation token,
+cross-header seek и joined clear проверяются в interpreter/JIT modes. Проходят
+шесть worker/preparation/budget/refill checks. SDL использует dummy audio/video:
+это настоящая queue/runtime проверка, но не прослушивание, DAC clock или foreign
+OS/device приёмка.
+
+Latency trim и prefix-discard seek сохраняют описанную native policy. Reference
+MP3 seek/read-ahead, negative initial latency, free-format, child streams,
+stream/event composition и A/V sync остаются открытыми. Ни одна стадия не закрыта.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

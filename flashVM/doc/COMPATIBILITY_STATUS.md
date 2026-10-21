@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Root MP3 player v0.780: bounded native preparation, retained decoder history and one initial latency trim; actual SDL accepted PCM within three S16 units of independent FFmpeg/rational output, FWS/CWS and interpreter/JIT. MP3 worker stop/play/GC/seek/cancellation checks pass; dummy drivers are not physical/foreign acceptance. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
+
 DefineSound MP3 v0.777: effective MPEG geometry, nonnegative initial latency, allocation-free full validation and selected PCM reads; SWF4–8 golden/edge checks. Negative latency/free-format, stream/player and full reference timing remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
 
 MP3 decoder foundation v0.776: pinned scalar Layer III, MPEG-1/2/2.5 analytical golden samples and framing checks; public resource/player integration remains open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).

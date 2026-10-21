@@ -1,6 +1,7 @@
 /* Real SDL dummy queue receives only native PCM authorized by actual MovieClip entry. */
 #include "../common/audio.h"
 #include "../../tests/swf_sound_fixture.hpp"
+#include "../../tests/swf_mp3_fixture.hpp"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
 #include "flashvm/gc.h"
@@ -34,7 +35,7 @@ static void wait_frames(FVM_DesktopAudio *audio, double count)
 int main()
 {
     for (unsigned mode = 0; mode < 2; ++mode)
-        for (unsigned layout = 0; layout < 3; ++layout)
+        for (unsigned layout = 0; layout < 4; ++layout)
         {
             if (mode && !fvm_jit_available())
                 continue;
@@ -49,7 +50,16 @@ int main()
             head.push_back(0x3e);
             word(head, 4410);
             tag(tags, 45, head);
-            if (layout == 2)
+            if (layout == 3)
+            {
+                const mp3_fixture::Fixture &fixture = mp3_fixture::fixtures[0];
+                tags.clear(); head.clear();
+                head.push_back(0x0e); head.push_back(0x2e); word(head, 1); word(head, 529);
+                tag(tags, 18, head);
+                word(pcm, (unsigned)fixture.frames); word(pcm, 529);
+                for (size_t byte = 0; byte < fixture.size; ++byte) pcm.push_back(fixture.data[byte]);
+            }
+            else if (layout == 2)
             {
                 tags.clear();
                 head.clear();
@@ -75,6 +85,11 @@ int main()
             tag(tags, 19, pcm);
             tag(tags, 1, empty);
             double first_count = layout == 2 ? 4459 : 4800;
+            if (layout == 3)
+            {
+                const mp3_fixture::Fixture &fixture = mp3_fixture::fixtures[0];
+                first_count = (double)(((fixture.frames - 529) * 48000 + fixture.rate - 1) / fixture.rate);
+            }
             if (layout)
             {
                 head.clear();

@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency, free-format and reference MP3 seek/A/V remain open. [Current MP3 contract](../doc/MP3_AUDIO.md).
+
 [Русская версия](README.ru.md). This is an optional C89 desktop host for the VM,
 not a dependency of the core library or compiler projects.
 

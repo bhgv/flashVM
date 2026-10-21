@@ -1,5 +1,7 @@
 # Desktop SWF application — v0.577
 
+v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency, free-format and reference MP3 seek/A/V remain open. [Current MP3 contract](MP3_AUDIO.md).
+
 v0.582 update: [test builds, HostInput, event audio and Android APK](PLAYER_TEST_BUILDS.md).
 
 
