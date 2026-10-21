@@ -95,6 +95,7 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 ```
 
 Validation at v0.752: 73 selected native regression checks pass (two resource-player launches were rerun after restoring the built executable permission), plus 14 shared-host checks. New converter/reader/snapshot paths, native worker tests and all file-export modes pass ASan/UBSan; whole-VM instrumentation and leak detection are not claimed (host disables leak detection). New implementation and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; foreign binaries and full cross-player builds are not executed. All nine roadmap stages remain open.
+[Bounded queue producer / Ограниченный producer очереди](STREAM_PCM_OUTPUT.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -1,0 +1,88 @@
+# Вывод подготовленного потока с caller-буфером
+
+[English](STREAM_PCM_OUTPUT.md), [conversion](STREAM_PCM_CONVERSION.ru.md).
+`swf_stream_output.h` соединяет native converter с существующим
+[FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L16). Producer, retry buffer и converter принадлежат caller;
+init/pump/pause/info/seek не выделяют память и не обращаются к VM. Это
+ограниченная FIFO подача, а не готовое desktop SWF stream playback.
+
+## Владение, обратное давление, повторы
+
+Привяжите converter в текущей позиции, эксклюзивную пустую backend queue и
+неперекрывающийся S16 buffer. Block — 1..1024 output frames, target не меньше
+block и не больше SOUND_OUTPUT_MAX_QUEUE. Capacity считает значения каналов,
+не меньше block*output_channels. Геометрия converter/backend должна совпасть.
+Init копирует backend table, заимствует userdata, проверяет пустую очередь и
+ставит pause при успехе. Ошибка сохраняет state/converter/PCM; init reentry
+запрещён. Backend статусы передаются, C++ исключения превращаются в ERROR.
+
+Хост сохраняет snapshot/converter/buffer/backend до завершения операций и
+callbacks. Нельзя отдельно seek/read заимствованного converter, менять retry PCM
+или писать/очищать backend. Все вызовы сериализуются; busy guard отклоняет
+callback reentry, но не заменяет mutex. После quiescence хост явно чистит/закрывает
+queue/device; скрытого close или деструктора producer нет.
+
+Pump готовит не больше одного converted chunk по свободному target budget.
+Неудачная write сохраняет точный pending PCM/chunk: converter продвинут один
+раз, retry не декодирует его повторно. Backend write копирует все frames до OK,
+не принимает ни одного при ошибке/исключении. Частично записанный файл этому
+контракту не соответствует: перед необратимым I/O нужна собственная FIFO.
+Пустые/skipped markers дают OK/accepted=0 и обновляют chunk metadata.
+NOT_FOUND — backpressure или замеченный EOF, различаются по info.eof.
+Необязательный accepted обнуляется первым, включая ошибки аргументов.
+
+## Счётчик очереди и явный seek
+
+Info проверяет exclusive backlog: queued <= target/submitted, submitted-queued
+не регрессирует. Нарушение даёт ERROR с сохранением caller output.
+submitted_frames/played_frames точны в double до MAX_CLOCK, seconds равен
+played_frames/output_rate. Это dequeue accounting, не DAC и не movie/A/V clock.
+EOF может быть true, пока последние принятые frames ещё в очереди.
+Pause/resume меняет только backend, без priming/clear/advance.
+
+Seek проверяет абсолютный source block/offset на копии converter до callbacks.
+Затем pause и clear. Только успешный clear публикует новую position/phase zero,
+отбрасывает pending и сбрасывает epoch счётчиков. Если pause успешен, а clear
+нет, pause остаётся подтверждённым; pending/source и старая epoch сохраняются
+для retry. Успешный seek оставляет pause: хост явно готовит backlog и resume.
+Уже услышанный звук вернуть невозможно.
+
+| API | Контракт |
+| --- | --- |
+| [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L44) | Копирует backend и заимствует native объекты; нужны пустая queue/совпадающая геометрия. INVALID_ARGUMENT при неверных descriptor/bounds, UNSUPPORTED при недостаточной точности double, backend статусы передаются. Без allocation/advance. |
+| [`fvm_swf_stream_output_pump`](../include/flashvm/swf_stream_output.h#L53) | Проверяет budget, готовит/повторяет один блок, отдаёт backend. Ошибка write сохраняет pending; пустые markers OK/0; EOF/backpressure NOT_FOUND. Accepted обнуляется первым; новая pending подготовка намеренно сохраняется при write error. |
+| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L55) | Подтверждает pause 0/1, без clear/priming. Ошибка сохраняет подтверждённый pause. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L59) | Копирует clock/chunk лишь после корректного queued observation. Точный struct_size, ошибка сохраняет output. Без source read/allocation. |
+| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L64) | Проверяет source position, pause/clear, затем reset source grid/pending/epoch. Поэтапный контракт ошибки выше; неверная позиция не вызывает backend side effects. |
+
+## Сборка и проверка
+
+```sh
+cmake -S flashVM -B build-stream-output -DFVM_BUILD_TESTS=ON
+cmake --build build-stream-output --target flashvm_tests_swf_stream_output \
+  flashvm_tests_swf_stream_output_allocation flashvm_tests_swf_stream_pcm_reader_api
+ctest --test-dir build-stream-output -R 'swf_stream_(output.*|pcm_reader_api)$' --output-on-failure
+```
+
+Native тест проверяет ошибки/исключения write, точный retry, callback reentry,
+backpressure, consumed clocks, невозможный backlog/регрессию, empty/EOF markers,
+seek/clear failure и отмену pending. Allocation injection запрещает новые
+выделения после уничтожения source VM/runtime. Model backend проверяет контракт,
+не слышимое устройство или полную player/platform приёмку.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:59](../include/flashvm/swf_stream_output.h#L59) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:55](../include/flashvm/swf_stream_output.h#L55) |
+| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:53](../include/flashvm/swf_stream_output.h#L53) |
+| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
+<!-- source-links:end -->

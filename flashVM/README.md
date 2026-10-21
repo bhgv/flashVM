@@ -1,10 +1,12 @@
-Development version: **0.752** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.752 ` and an English description. Increase the subversion before each
+Development version: **0.753** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.753 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.753: [Caller-buffered prepared stream queue producer](doc/STREAM_PCM_OUTPUT.md).
 
 v0.752: [Export converted native stream PCM after source teardown](doc/STREAM_PCM_CONVERSION.md).
 

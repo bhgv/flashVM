@@ -92,6 +92,7 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 ```
 
 Проверка v0.752: прошли 73 выбранные native проверки (два resource-player запуска повторены после восстановления права исполнения собранного файла), а также 14 shared-host. Новые converter/reader/snapshot пути, native worker и все file-export режимы прошли ASan/UBSan; вся VM не инструментирована, leak detection отключён хостом. Новый implementation и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign binaries и полный cross-player не запускались. Все девять стадий открыты.
+[Bounded queue producer / Ограниченный producer очереди](STREAM_PCM_OUTPUT.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
