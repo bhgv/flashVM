@@ -53,7 +53,7 @@ def main():
         values = []
         for n in range(4):
             left,phase = divmod(n*44100,48000)
-            right = min(left+1,1) if left<2 else left  # Hold within the encoded block.
+            right = min(left+1,len(source)-1)  # Adjacent samples across the prepared segment.
             for channel in range(2):
                 numerator = source[left][channel]*(48000-phase)+source[right][channel]*phase
                 values.append((-1 if numerator<0 else 1)*(abs(numerator)//48000))

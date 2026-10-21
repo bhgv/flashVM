@@ -55,7 +55,7 @@ static FVM_Result export_cursor(const FVM_SWFStreamSoundSnapshot *snapshot, Stre
     FVM_MediaFrame frame; /* Borrow decoded scalar values only through synchronous write_pcm. */
     short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Fixed one-stereo-frame output. */
     size_t written; FVM_Result result; /* Publish only acknowledged caller-buffer values. */
-    result = convert ? fvm_swf_stream_converter_init(&converter, snapshot, TUTORIAL_STREAM_OUTPUT_RATE, TUTORIAL_STREAM_CHANNELS) : fvm_swf_stream_pcm_reader_init(&reader, snapshot); /* Borrow independent immutable native bytes. */
+    result = convert ? fvm_swf_stream_converter_init_continuous(&converter, snapshot, TUTORIAL_STREAM_OUTPUT_RATE, TUTORIAL_STREAM_CHANNELS) : fvm_swf_stream_pcm_reader_init(&reader, snapshot); /* Borrow independent immutable native bytes. */
     if (result != FVM_OK) return result; /* No output has been opened yet. */
     for (;;) { /* Successful reads always advance, including explicit empty blocks. */
         chunk.struct_size = sizeof(chunk); /* Supply the exact native metadata ABI. */

@@ -5050,6 +5050,22 @@ Not completed: automatic adaptation, production network service, video/audio
 codec playback, arbitrary-size image containers and full native platform acceptance.
 All nine roadmap stages remain open.
 
+
+## v0.803–0.805 continuous prepared-stream interpolation
+
+The C89 converter adds an explicit continuous initializer while retaining legacy
+block clamping. The desktop root-stream player and export tutorial select it.
+Empty blocks preserve markers but do not break sample adjacency; header boundaries
+and EOF clamp independently. Integer PCM and FFmpeg MP3 queue oracles check actual
+dummy-SDL submissions. Rebuild native callers for the extended state descriptor.
+No device/platform acceptance, anti-alias filter, child stream, stream/event
+player mixing or full SWF completion is claimed.
+
+Новый явный режим соединяет соседние отсчёты подготовленного сегмента через пустые
+блоки. Старый режим сохранён. Плеер и учебный экспорт выбирают непрерывный режим;
+нативные потребители требуют пересборки. Оракулы проверяют расчёты и dummy SDL,
+но не заменяют приёмку устройств и всей спецификации SWF.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

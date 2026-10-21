@@ -127,6 +127,13 @@ The SDL queue oracle flattens each segment and derives every sample position fro
 its absolute output index; MP3 expected source samples still come from FFmpeg.
 Dummy SDL verifies submitted bytes, not physical speaker quality or device latency.
 
+
+The v0.805 C89 file-export tutorial selects continuous interpolation. A dedicated
+zero-allocation regression crosses 32 empty blocks after runtime teardown, checks
+midpoint/final values and retry atomicity, and seeks directly to the final block.
+Four OS workers independently exercise continuous converter cursors over shared
+immutable storage. These workers do not establish race-free host destruction.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

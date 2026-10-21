@@ -218,7 +218,7 @@ codec, audible-device and reference-platform acceptance remains open.
 
 | API | Conversion ownership / Владение преобразованием |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../../../include/flashvm/swf_stream_convert.h#L48) | Borrow immutable snapshot and copy explicit output rate/channels without allocation. Snapshot lives until caller quiesces conversion. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
+| [`fvm_swf_stream_converter_init_continuous`](../../../include/flashvm/swf_stream_convert.h#L56) | Borrow immutable snapshot and copy explicit output rate/channels without allocation. Snapshot lives until caller quiesces conversion. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
 | [`fvm_swf_stream_converter_next`](../../../include/flashvm/swf_stream_convert.h#L67) | Produce bounded S16 in caller storage; rational phase survives blocks, no VM/I/O. Error/EOF preserves output and state. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
 
 ## Explicit conversion / Явное преобразование
@@ -229,15 +229,15 @@ block marker. It exports four stereo pairs (16 raw native-endian bytes), without
 filling the missing movie frame. Per-block report lines retain source lengths;
 final stdout is `Exported 4 sample frames from 3 blocks.` Caller owns the file,
 source snapshot and converter until completion. No device or real-time scheduling.
-The converter holds each block's final value; linear interpolation has no
+The converter interpolates across nonempty blocks and holds only at segment EOF; it has no
 anti-alias filter. [Full EN contract](../../../doc/STREAM_PCM_CONVERSION.md).
 
 `OUTPUT.pcm --convert` после уничтожения source VM выдаёт 48000 Hz stereo:
 четыре стереопары, 16 raw native-endian байт. Фаза переносится между блоками;
 пропуск movie frame не заполняется. Строки по блокам показывают source lengths,
 итог — четыре output frames из трёх блоков. Caller владеет FILE/snapshot/converter
-до завершения. Устройства и real-time scheduling нет; на конце блока значение
-удерживается, anti-alias filter отсутствует. [RU контракт](../../../doc/STREAM_PCM_CONVERSION.ru.md).
+до завершения. Интерполяция соединяет непустые блоки, удерживая значение только
+на конце сегмента. Устройства, real-time scheduling и anti-alias filter отсутствуют. [RU контракт](../../../doc/STREAM_PCM_CONVERSION.ru.md).
 
 ```sh
 ./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --convert
@@ -352,6 +352,10 @@ The fixture is already PCM. This raw bounded preparation preserves its represent
 use the separate normalization API when preparing supported ADPCM for a native worker.
 Пример уже содержит PCM: raw-вход сохраняет исходные байты; для ADPCM перед worker
 применяется отдельная нормализация. [Full ownership contract / контракт](../../../doc/STREAM_STORAGE.md#encoded-copies-without-decoding-v0768).
+Conversion now uses adjacent samples across nonempty blocks within a prepared segment;
+empty blocks add no silence and segment EOF holds its last sample. Rebuild native callers
+after the converter state layout change. See [EN](../../../doc/STREAM_PCM_CONVERSION.md) /
+[RU](../../../doc/STREAM_PCM_CONVERSION.ru.md) for ownership and boundary contracts.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -380,7 +384,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
+| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../../../include/flashvm/swf_stream_convert.h#L56) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../../../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../../../include/flashvm/swf_stream_output.h#L44) |

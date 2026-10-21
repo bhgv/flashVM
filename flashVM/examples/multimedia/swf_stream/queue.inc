@@ -49,7 +49,7 @@ static FVM_Result export_queue(const FVM_SWFStreamSoundSnapshot *snapshot, Strea
     backend.sample_rate = (unsigned int)TUTORIAL_STREAM_OUTPUT_RATE; backend.channels = TUTORIAL_STREAM_CHANNELS; /* Match converter geometry. */
     backend.userdata = &queue; backend.write = queue_write; backend.queued = queue_count; /* All-or-none bounded native FIFO. */
     backend.pause = queue_pause; backend.clear = queue_clear; /* Explicit host operations, no hidden device. */
-    result = fvm_swf_stream_converter_init(&converter, snapshot, TUTORIAL_STREAM_OUTPUT_RATE, TUTORIAL_STREAM_CHANNELS); /* Borrow native snapshot. */
+    result = fvm_swf_stream_converter_init_continuous(&converter, snapshot, TUTORIAL_STREAM_OUTPUT_RATE, TUTORIAL_STREAM_CHANNELS); /* Borrow native snapshot. */
     if (result != FVM_OK) return result; /* No file side effects before validated source geometry. */
     result = fvm_swf_stream_output_init(&output, &converter, &backend, retry, sizeof(retry) / sizeof(retry[0]), TUTORIAL_STREAM_CHUNK_FRAMES, TUTORIAL_STREAM_QUEUE_FRAMES); /* Empty queue becomes paused. */
     if (result != FVM_OK) return result; /* Caller still owns every object and buffer. */

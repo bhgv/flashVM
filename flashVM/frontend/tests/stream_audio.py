@@ -29,6 +29,17 @@ def movie(compressed):
     return header + (zlib.compress(body) if compressed else body)
 
 
+def converted(source):
+    """Absolute output clock over the full immutable segment, independent of native cursors."""
+    output = bytearray()
+    for number in range((len(source) * 48000 + 44099) // 44100):
+        first, phase = divmod(number * 44100, 48000)
+        value = source[first] * (48000 - phase) + source[min(first + 1, len(source) - 1)] * phase
+        value = (abs(value) // 48000) * (-1 if value < 0 else 1)
+        output += struct.pack('<hh', value, value)
+    return output
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='flashvm-stream-device-') as directory:
         root = Path(directory)
@@ -48,8 +59,8 @@ def main():
                 with wave.open(str(base) + '.wav') as audio:
                     assert (audio.getnchannels(), audio.getframerate(), audio.getsampwidth()) == (2, 48000, 2)
                     raw = audio.readframes(audio.getnframes())
-                # Constant-block conversion has no rounding ambiguity: exactly 4800 frames per block.
-                expected = struct.pack('<hh', 1000, 1000) * 4800 + struct.pack('<hh', -2000, -2000) * 4800
+                # The last fractional position of block one interpolates toward block three.
+                expected = converted([1000] * 4410 + [-2000] * 4410)
                 assert raw == expected, (mode, compressed, len(raw), len(expected))
                 report = Path(str(base) + '.txt').read_text()
                 assert 'truncated=0 dropped_events=0' in report, report
@@ -64,7 +75,7 @@ def main():
         assert generator.movie() == movie_bytes
         bits = movie_bytes[8] >> 3
         cursor = 8 + (5 + bits * 4 + 7) // 8 + 4
-        expected = bytearray()
+        source_samples = []
         blocks = 0
         while cursor < len(movie_bytes):
             code, = struct.unpack_from('<H', movie_bytes, cursor)
@@ -79,12 +90,9 @@ def main():
                 continue
             source = [v[0] for v in struct.iter_unpack('<h', payload)]
             assert len(source) == 4410
-            for frame in range(4800):
-                first, phase = divmod(frame * 44100, 48000)
-                value = source[first] * (48000 - phase) + source[min(first + 1, len(source) - 1)] * phase
-                value = (abs(value) // 48000) * (-1 if value < 0 else 1)
-                expected += struct.pack('<hh', value, value)
+            source_samples.extend(source)
             blocks += 1
+        expected = converted(source_samples)
         assert blocks == 20
         base = root / 'tutorial'
         env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software',

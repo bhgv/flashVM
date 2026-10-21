@@ -29,7 +29,7 @@ static void read_worker(void *raw)
         if(count!=3) { job->failed=1;return; }
     }
     FVM_SWFStreamConverter converter;
-    if(fvm_swf_stream_converter_init(&converter,job->snapshot,job->rate,2)!=FVM_OK) { job->failed=1;return; }
+    if(fvm_swf_stream_converter_init_continuous(&converter,job->snapshot,job->rate,2)!=FVM_OK) { job->failed=1;return; }
     for(unsigned pass=0;pass<READER_PASSES;++pass) {
         if(fvm_swf_stream_converter_seek(&converter,0,0)!=FVM_OK) { job->failed=1;return; }
         size_t count=0;

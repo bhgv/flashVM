@@ -29,7 +29,8 @@ int main(void)
         fvm_movieclip_get_navigation(0, 0, &navigation) != FVM_INVALID_ARGUMENT || navigation != 91)
         return 1;
 
-    if (fvm_swf_stream_converter_init(&converter, 0, 48000, 2) != FVM_INVALID_ARGUMENT ||
+    if (fvm_swf_stream_converter_init_continuous(&converter, 0, 48000, 2) != FVM_INVALID_ARGUMENT ||
+        fvm_swf_stream_converter_init(&converter, 0, 48000, 2) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_converter_next(0, 1, 0, 0, 0, 0) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_converter_seek(0, 0, 0) != FVM_INVALID_ARGUMENT) return 1;
     if (fvm_swf_stream_output_init(0,0,0,0,0,0,0) != FVM_INVALID_ARGUMENT ||
