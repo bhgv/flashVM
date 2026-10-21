@@ -66,6 +66,22 @@ repository-wide vendor checker stops on a pre-existing AGG agg_array.h hash
 mismatch; that file is byte-identical to the published v0.775 base and is not
 changed by this series. A global vendor-manifest pass is not claimed.
 
+## v0.778 MP3 event styles and native voices
+
+SOUNDINFO fixed-44100-Hz in/out positions now use checked integer decomposition
+for effective MPEG rates, including 32/48 kHz. Overflow returns INVALID_ARGUMENT
+before source extraction or voice publication instead of wrapping on a native
+32-bit unsigned long. Both whole-event channel rendering and incremental voices
+use the same checked conversion; ordinary nominal PCM behavior is unchanged.
+
+The fixture matrix now includes six MPEG geometries, 8000–48000 Hz, CBR and VBR.
+Native voices apply in/out intervals, two repeats and quarter-gain envelopes after
+initial MP3 latency. Converted stereo mixing uses independent rational sample
+positions. Actual GC runs before source teardown; voices/mixers then continue
+without a context. Golden MPEG samples, full declared intervals and exhausted
+native voice lifetime are checked. Decoder/public-read tests remain passing.
+This does not implement a general stream/event timeline or reference seek clock.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

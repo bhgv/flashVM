@@ -1,10 +1,12 @@
-Development version: **0.777** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.777 ` and an English description. Increase the subversion before each
+Development version: **0.778** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.778 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.778: [Apply MP3 event styles with checked effective-rate positions](doc/MP3_AUDIO.md).
 
 v0.777: [Decode MP3 DefineSound ranges with explicit latency and effective geometry](doc/MP3_AUDIO.md).
 

@@ -10,12 +10,20 @@
 FVM_Result fvm_swf_sound_render(FVM_Context *context, size_t ordinal, const FVM_SWFSoundEvent &event,
                                 const FVM_SWFSoundInfo &info, fvm_detail::vector<short> &output)
 {
-    unsigned long first =
-        event.flags & FVM_SWF_SOUND_EVENT_IN_POINT ? fvm_swf_sound_position(event.in_point, info.sample_rate) : 0;
+    unsigned long first = 0;
+    if (event.flags & FVM_SWF_SOUND_EVENT_IN_POINT)
+    {
+        FVM_Result position_result = fvm_swf_sound_position(event.in_point, info.sample_rate, &first);
+        if (position_result != FVM_OK)
+            return position_result;
+    }
     unsigned long end = info.sample_count;
     if (event.flags & FVM_SWF_SOUND_EVENT_OUT_POINT)
     {
-        unsigned long last = fvm_swf_sound_position(event.out_point, info.sample_rate);
+        unsigned long last = 0;
+        FVM_Result position_result = fvm_swf_sound_position(event.out_point, info.sample_rate, &last);
+        if (position_result != FVM_OK)
+            return position_result;
         if (last >= info.sample_count)
             return FVM_INVALID_ARGUMENT;
         end = last + 1;

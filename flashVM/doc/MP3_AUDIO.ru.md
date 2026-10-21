@@ -65,6 +65,21 @@ PCM/event edge checks проходят без изменения ожидани�
 совпадает с опубликованной v0.775 и не меняется этой серией. Общий vendor pass
 не заявляется.
 
+## v0.778 стили MP3 events и native voices
+
+SOUNDINFO позиции в clock 44100 Hz теперь пересчитываются проверяемым целочисленным
+разложением для фактических MPEG rates, включая 32/48 kHz. Переполнение возвращает
+INVALID_ARGUMENT до extraction/публикации voice вместо wrap на 32-bit unsigned long.
+Один helper используется whole-event channel renderer и incremental voices;
+обычное поведение nominal PCM сохраняется.
+
+Матрица содержит шесть MPEG geometries 8000–48000 Hz, CBR/VBR. Native voice применяет
+in/out interval, два повтора и quarter-gain envelope после MP3 latency. Converted
+stereo mixer проверяется независимыми рациональными позициями. До source teardown
+выполняется настоящий GC; затем voice/mixer работают без context. Проверены golden
+MPEG samples, полные интервалы и native lifetime. Decoder/public-read checks
+продолжают проходить. Общий stream/event timeline и reference seek clock не добавлены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

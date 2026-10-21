@@ -3,11 +3,22 @@
 #define FVM_SWF_SOUND_STYLE_HPP /* Guard shared allocation-free sound style arithmetic. */
 #include "../details/vector.hpp"
 #include "sound_constants.h"
+#include <climits>
 /* Convert fixed-clock UI32 control positions without overflowing a 32-bit unsigned long. */
-inline unsigned long fvm_swf_sound_position(unsigned long position, unsigned int rate)
+inline FVM_Result fvm_swf_sound_position(unsigned long position, unsigned int rate,
+                                         unsigned long *out)
 {
-    return (position / FVM_SWF_SOUND_CONTROL_RATE) * rate +
-           ((position % FVM_SWF_SOUND_CONTROL_RATE) * rate) / FVM_SWF_SOUND_CONTROL_RATE;
+    if (!out || !rate)
+        return FVM_INVALID_ARGUMENT;
+    unsigned long whole = position / FVM_SWF_SOUND_CONTROL_RATE;
+    unsigned long remainder = position % FVM_SWF_SOUND_CONTROL_RATE;
+    /* Split both operands: each fractional product is below the native unsigned-long bound. */
+    unsigned long fraction = remainder * (rate / FVM_SWF_SOUND_CONTROL_RATE) +
+        remainder * (rate % FVM_SWF_SOUND_CONTROL_RATE) / FVM_SWF_SOUND_CONTROL_RATE;
+    if (whole > ULONG_MAX / rate || whole * rate > ULONG_MAX - fraction)
+        return FVM_INVALID_ARGUMENT;
+    *out = whole * rate + fraction;
+    return FVM_OK;
 }
 
 /* Interpolate one channel's unity-scaled gain at elapsed voice time in the fixed envelope clock. */

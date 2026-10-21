@@ -22,7 +22,7 @@ int main()
             assert(decoder.decode(fixture.data + at, fixture.size - at, &packet) == FVM_OK);
             assert(packet.rate == fixture.rate && packet.channels == fixture.channels);
             assert(packet.bytes <= fixture.size - at);
-            assert(packet.samples == (fixture.rate == 44100 ? 1152U : 576U));
+            assert(packet.samples == (fixture.rate >= 32000 ? 1152U : 576U));
             for (size_t p = 0; p < sizeof(positions) / sizeof(positions[0]); ++p)
                 if (positions[p] >= frames && positions[p] - frames < packet.samples)
                     for (unsigned ch = 0; ch < fixture.channels; ++ch)

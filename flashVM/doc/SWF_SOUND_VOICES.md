@@ -177,7 +177,7 @@ The [swf_audio tutorial](../examples/multimedia/swf_audio/README.md) adds
 chunks, submit them through actual host stdio and stop the output explicitly.
 A SyncStop control is rejected by this mode; use --event to apply synchronization.
 
-[`fvm_swf_sound_gain`](../src/swf/sound_style.hpp#L14) and [`fvm_swf_sound_position`](../src/swf/sound_style.hpp#L7) share arithmetic between the
+[`fvm_swf_sound_gain`](../src/swf/sound_style.hpp#L25) and [`fvm_swf_sound_position`](../src/swf/sound_style.hpp#L8) share arithmetic between the
 full renderer and snapshots. Tests compare five chunk partitions over SWF1–8
 PCM and all four ADPCM code widths, including block transitions. Native allocation
 failure tests drain 65535 plays after VM destruction with allocations disabled.
@@ -205,8 +205,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
-| `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:14](../src/swf/sound_style.hpp#L14) |
-| `fvm_swf_sound_position` | function | [src/swf/sound_style.hpp:7](../src/swf/sound_style.hpp#L7) |
+| `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:25](../src/swf/sound_style.hpp#L25) |
+| `fvm_swf_sound_position` | function | [src/swf/sound_style.hpp:8](../src/swf/sound_style.hpp#L8) |
 | `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:88](../include/flashvm/swf_sound.h#L88) |
 | `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:84](../include/flashvm/swf_sound.h#L84) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
