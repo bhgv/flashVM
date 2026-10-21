@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.726
+# FlashVM stage status / Состояние стадий — v0.727
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.727 adds direction-bound binary request/reply envelopes without a wire session
+claim. CRC/schema validation precedes queue effects; independent vectors check
+trusted identity, prefixes and rejection. Four real POSIX producer threads deliver
+200 copied jobs to one owner with host-mutex backpressure. No transport/mount or
+distributed atomicity is implied. All stages remain open.
 
 v0.726 adds a bounded native owner dispatcher with copied FIFO control requests,
 server-defined rights, session grants, generation-safe resource release, queued

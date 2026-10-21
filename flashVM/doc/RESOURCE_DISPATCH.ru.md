@@ -86,6 +86,40 @@ ctest --test-dir build-resource -R '^flashvm_rdispatch_' --output-on-failure
 
 SDL/network SDK не требуется. Cross задаёт target toolchain/libc; тесты запускаются
 на target. Native OS/device/VM/GUI integration и Inferno/9P conformance открыты.
+## Двоичные конверты и реальные producers (v0.727)
+
+[rwire.h](../include/flashvm/rwire.h) соединяет очередь с S-записями, не копируя
+native structs. Сначала тег направления объявляется как flashvm.resource.request/
+version 1 либо flashvm.resource.reply/version 1. Все числа — канонические
+big-endian S integers; payload остаётся непрозрачным, максимум 512 bytes.
+
+```text
+request: version, request-id, target-slot, generation, operation-id, size, bytes
+reply:   version, request-id, handler-result, size, bytes
+```
+
+**Session ID на wire нет:** post_record получает проверенную идентичность от
+адаптера отдельно. Дополнительное поле пакета не позволяет выбрать чужую сессию.
+Operation ID ресурса не является номером S-тега. CRC, имя типа и версия схемы
+проверяются до queue post. Неизвестная привязка даёт UNKNOWN, неверные metadata/
+CRC — INVALID, неполный префикс — PENDING; handler не вызывается. Автоматического
+принятия деклараций типов нет.
+
+| API | Назначение и владение |
+| --- | --- |
+| [`fvm_rrequest_record_write`](../include/flashvm/rwire.h#L20) | Пишет ограниченный request в буфер с выбранным тегом; session намеренно не кодирует. Очередь не меняется; S status и атомарный output. |
+| [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L28) | Проверяет запись/тип/body, затем копирует с authenticated session. Consumed меняется только при принятом post. После отказа транспорта требуется явный discard/ответ, не бесконечный повтор. |
+| [`fvm_rreply_record_write`](../include/flashvm/rwire.h#L33) | Сериализует свою native-копию reply; результат очереди сам не забирает. Копию сохраняют для повторов output/I/O. |
+| [`fvm_rreply_record_read`](../include/flashvm/rwire.h#L39) | Проверяет reply binding/schema, копирует id/result/bytes только при OK. На ошибке все выходы прежние, callback/queue не затрагиваются. |
+
+Socket/auth/reconnect dedup/subscriptions/cancel packets/9P ещё не реализованы.
+Native cancellation остаётся явным доверенным C-вызовом. Транспорт владеет
+framing/consumption полной записи и временем жизни направленных таблиц.
+
+Отдельный POSIX-тест запускает четыре настоящих producer threads и owner loop:
+200 copied requests, host mutex, явный backpressure/ack. Workers не могут pump.
+Handler повторно берёт nonrecursive mutex, проверяя освобождение lock перед
+вызовом. Это native Linux threading, не проверка foreign OS/distributed mutex.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -102,8 +136,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../include/flashvm/rdispatch.h#L108) |
 | `fvm_rdispatch_lookup` | function | [include/flashvm/rdispatch.h:111](../include/flashvm/rdispatch.h#L111) |
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:28](../include/flashvm/rwire.h#L28) |
 | `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../include/flashvm/rdispatch.h#L119) |
 | `fvm_rdispatch_register` | function | [include/flashvm/rdispatch.h:99](../include/flashvm/rdispatch.h#L99) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../include/flashvm/rdispatch.h#L126) |
 | `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../include/flashvm/rdispatch.h#L105) |
+| `fvm_rreply_record_read` | function | [include/flashvm/rwire.h:39](../include/flashvm/rwire.h#L39) |
+| `fvm_rreply_record_write` | function | [include/flashvm/rwire.h:33](../include/flashvm/rwire.h#L33) |
+| `fvm_rrequest_record_write` | function | [include/flashvm/rwire.h:20](../include/flashvm/rwire.h#L20) |
 <!-- source-links:end -->

@@ -96,6 +96,42 @@ ctest --test-dir build-resource -R '^flashvm_rdispatch_' --output-on-failure
 No SDL/network SDK is needed. Cross builds supply the target toolchain and libc;
 tests execute natively on their target. Native platform/device/VM/GUI integration
 and full Inferno/9P conformance remain open.
+## Binary envelopes and real producers (v0.727)
+
+[rwire.h](../include/flashvm/rwire.h) connects the native queue to S-records without
+serializing C structs. First declare a direction-local tag as
+flashvm.resource.request/version 1 or flashvm.resource.reply/version 1. Numbers
+are canonical big-endian S integers; payload bytes are opaque and bounded to 512.
+
+```text
+request payload: version, request-id, target-slot, generation, operation-id, size, bytes
+reply payload:   version, request-id, handler-result, size, bytes
+```
+
+There is **no session ID on wire**: post_record takes the authenticated identity
+from a trusted adapter argument. A client cannot select another session by
+encoding extra fields. A resource operation ID is not the S-record tag. CRC and
+type-name/schema-version checks complete before any request is enqueued. Unknown
+bindings are UNKNOWN, invalid metadata/CRC INVALID and incomplete prefixes PENDING;
+none call handlers. No type declaration is automatically accepted by this helper.
+
+| API | Contract |
+| --- | --- |
+| [`fvm_rrequest_record_write`](../include/flashvm/rwire.h#L20) | Encode a bounded native request into caller output using its chosen bound tag; deliberately ignores native session field. No queue effects. S status/atomic output. |
+| [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L28) | Verify the incoming record/binding/payload, then copy to queue with authenticated session. consumed changes only on accepted post. On a framed rejection, transport must discard/respond explicitly rather than retry forever. |
+| [`fvm_rreply_record_write`](../include/flashvm/rwire.h#L33) | Serialize an owned native reply without taking a result; preserve that native copy for output/I/O retries. No automatic queue acknowledgement. |
+| [`fvm_rreply_record_read`](../include/flashvm/rwire.h#L39) | Verify incoming reply binding/schema and copy id/result/bytes only on OK. No callback or queue effect; all outputs unchanged on failure. |
+
+These helpers do not implement sockets, authentication, reconnect deduplication,
+subscription routing, request cancellation packets or 9P. Native cancellation
+remains an explicit trusted C operation. Transport code owns complete-record
+framing/consumption and directional table lifetime.
+
+A separate POSIX test uses four real producer threads and an owner loop, 200
+copied requests, native mutex policy, explicit backpressure and acknowledged
+replies. Workers are denied owner pump. The handler reacquires the nonrecursive
+mutex to prove pump released it. This is native Linux thread evidence, not a
+claim of tested foreign OS threads or a distributed mutex implementation.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -112,8 +148,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../include/flashvm/rdispatch.h#L108) |
 | `fvm_rdispatch_lookup` | function | [include/flashvm/rdispatch.h:111](../include/flashvm/rdispatch.h#L111) |
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:28](../include/flashvm/rwire.h#L28) |
 | `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../include/flashvm/rdispatch.h#L119) |
 | `fvm_rdispatch_register` | function | [include/flashvm/rdispatch.h:99](../include/flashvm/rdispatch.h#L99) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../include/flashvm/rdispatch.h#L126) |
 | `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../include/flashvm/rdispatch.h#L105) |
+| `fvm_rreply_record_read` | function | [include/flashvm/rwire.h:39](../include/flashvm/rwire.h#L39) |
+| `fvm_rreply_record_write` | function | [include/flashvm/rwire.h:33](../include/flashvm/rwire.h#L33) |
+| `fvm_rrequest_record_write` | function | [include/flashvm/rwire.h:20](../include/flashvm/rwire.h#L20) |
 <!-- source-links:end -->
