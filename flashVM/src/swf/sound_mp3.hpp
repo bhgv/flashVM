@@ -1,7 +1,7 @@
 /* Stack-only scalar MPEG Layer-III decoding with exact contiguous-frame validation. */
 #ifndef FVM_SWF_SOUND_MP3_HPP
 #define FVM_SWF_SOUND_MP3_HPP /* Guard private native decoder state. */
-#include "flashvm/flashvm.h"
+#include "flashvm/swf_sound.h"
 #include "sound_mp3_constants.h"
 #define mp3dec_init fvm_minimp3_init /* Match the private static upstream implementation. */
 #define mp3dec_decode_frame fvm_minimp3_decode_frame /* Keep host decoder symbols independent. */
@@ -18,6 +18,10 @@ struct FVM_SWFMP3Frame
 };
 /* Reject skipped bytes, reserved fields, truncation and unsupported free-format/layer policy. */
 FVM_Result fvm_swf_mp3_probe(const unsigned char *, size_t, FVM_SWFMP3Frame *);
+/* Validate complete event MPEG data before decoding the selected latency-trimmed range.
+ * Stack-only two-pass extraction; metadata and output storage remain caller-owned. */
+FVM_Result fvm_swf_mp3_read(const FVM_SWFSoundInfo &, unsigned long first, size_t frames,
+                            short *, size_t capacity_values, size_t *written_values);
 /* Native decoder ownership is entirely stack-local; retain between packets of the same stream. */
 struct FVM_SWFMP3Decoder
 {

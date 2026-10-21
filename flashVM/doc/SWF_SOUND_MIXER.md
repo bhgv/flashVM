@@ -4,7 +4,7 @@
 
 The C89 API in [swf_sound_mixer.h](../include/flashvm/swf_sound_mixer.h) combines
 independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) snapshots into one native signed-16 stream. Unlike
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L100), it keeps voices playing across successive reads and
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L112), it keeps voices playing across successive reads and
 mixes overlapping voices into the same buffer. Events are delivered explicitly by
 the host. Neither MovieClip frame progression nor an OS audio callback invokes it
 automatically. The [tutorial](../examples/multimedia/swf_event_mixer/README.md)
@@ -53,7 +53,7 @@ mixing scratch is bounded independently of requested output block length.
 ### fvm_swf_sound_mixer_submit
 
 `fvm_swf_sound_mixer_submit(mixer, context, event_index)` resolves one zero-based
-root StartSound using [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L61). Null/terminal/unloaded contexts,
+root StartSound using [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62). Null/terminal/unloaded contexts,
 missing events, malformed resources and unsupported decoders propagate the source
 API statuses. Missing ordinal is NOT_FOUND. Existing voices and their progress
 remain unchanged on failure.
@@ -67,7 +67,7 @@ Controls execute in host submission order:
    snapshot. Ordinary starts permit multiple copies of the same resource.
 3. A new voice in strict mode requires equal source rate/channels (otherwise UNSUPPORTED).
    Preparation applies range, repetitions and envelope using
-   [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L81). Each copy has independent playback/envelope state.
+   [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82). Each copy has independent playback/envelope state.
 4. An empty interval or explicit zero loop count consumes no slot. Otherwise a
    full mixer returns OUT_OF_MEMORY without voice stealing or replacement.
 
@@ -172,8 +172,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:61](../include/flashvm/swf_sound.h#L61) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:74](../include/flashvm/swf_sound_mixer.h#L74) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:70](../include/flashvm/swf_sound_mixer.h#L70) |
@@ -181,7 +181,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
 | `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:81](../include/flashvm/swf_sound.h#L81) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
 <!-- source-links:end -->

@@ -5,7 +5,7 @@
 Импортируются корневые DefineSound (14) и StartSound (15). Перед advance звукового
 кадра зарегистрируйте [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21). Callback типа
 [`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L18) получает `(context, clip, event_index, userdata)`
-при реальном входе в кадр. Нулевой индекс подходит для [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L61)
+при реальном входе в кадр. Нулевой индекс подходит для [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62)
 и [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L50) того же загруженного SWF. Хост выбирает микшер,
 геометрию PCM и очередь устройства. Скрытых устройств/потоков нет.
 [Микшер](SWF_SOUND_MIXER.ru.md), [исполняемый C89 пример](../examples/multimedia/swf_event_mixer/README.md).
@@ -106,6 +106,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:61](../include/flashvm/swf_sound.h#L61) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 <!-- source-links:end -->

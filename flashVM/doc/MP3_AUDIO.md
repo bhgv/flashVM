@@ -14,7 +14,7 @@ This first checkpoint does not yet route public SWF resource reads to the decode
 before exposing its exact bytes/rate/channels/576-or-1152 frame count. It rejects
 reserved fields, short packets and synchronization gaps; Layer I/II and free-format
 bitrate return UNSUPPORTED. CBR and variable standard bitrate indices are allowed.
-[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L22) retains reservoir/filter history across packets and publishes PCM
+[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L26) retains reservoir/filter history across packets and publishes PCM
 only after matching exact geometry. A failed decode is terminal for that decoder;
 no search over junk bytes or missing-reservoir concealment is presented as success.
 CRC verification, free-format bitrate inference and complete corrupt-Huffman
@@ -36,6 +36,36 @@ python3 scripts/check_vendor_sources.py
 MP3 integration, event/stream scheduling, seeking and native device/platform
 acceptance are separate from this decoder checkpoint. All roadmap stages remain open.
 
+
+## v0.777 DefineSound decoding
+
+[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L108) now decodes MP3 in SWF4–8 without allocations or callbacks.
+Its range is relative to the declared source after a nonnegative SI16 initial
+SeekSamples prefix. Every complete packet is validated before any output changes;
+then a fresh stack decoder copies only the requested range. Declared frames must
+fit decoded data after latency; complete encoder tail packets are validated but
+not exposed beyond that count. No hidden LAME/Xing gapless adjustment is applied.
+Zero-length reads still validate the complete source. Source changes/teardown and
+output buffers need owner serialization; no managed pointer survives return.
+
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L94) uses effective first-packet MPEG rate/channels for supported
+MP3 when that packet validates, preserving the original encoded bytes and source
+count. Advisory SWF flags cannot silently resample the data. Opaque malformed
+metadata remains inspectable, but decode rejects it. Negative latency, free-format
+bitrate and other MPEG layers remain UNSUPPORTED. Missing/truncated packets,
+changed geometry and too-large declared count are INVALID_ARGUMENT; bit/ownership
+arithmetic overflow is OUT_OF_MEMORY. Native S16 representation restrictions still
+apply. Repeated small reads redo full-source work: prepare a voice for playback.
+
+The public fixture checks all versions 4–8, three MPEG generations, exact golden
+positions before/after latency, wrong capacity, missing tail, preserved output and
+SWF3 rejection. Existing PCM/event edge checks remain unchanged and pass.
+
+Vendor validation: the new minimp3 header/LICENSE hashes match their pin. The
+repository-wide vendor checker stops on a pre-existing AGG agg_array.h hash
+mismatch; that file is byte-identical to the published v0.775 base and is not
+changed by this series. A global vendor-manifest pass is not claimed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -46,5 +76,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
-| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:22](../src/swf/sound_mp3.hpp#L22) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

@@ -15,7 +15,7 @@ clocking and synchronous output through their bridge.
 [GC:] A successful snapshot contains no context/runtime pointer, managed value,
 root, borrowed SWF bytes or output userdata. It remains valid after GC, successful
 or failed reload, context/runtime destruction. Closing the originating VM does
-not close a snapshot: the host must call [fvm_swf_sound_voice_close](../include/flashvm/swf_sound.h#L87) exactly once.
+not close a snapshot: the host must call [fvm_swf_sound_voice_close](../include/flashvm/swf_sound.h#L88) exactly once.
 A null close succeeds; double close, stale pointers and concurrent access are
 invalid usage. Closing enters no VM, collector or host output callback.
 
@@ -30,7 +30,7 @@ SWF bytes or the written-count output.
 
 ## FVM_SWFSoundVoiceInfo
 
-Set `struct_size` to sizeof([FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L66)). The getter copies every field:
+Set `struct_size` to sizeof([FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L67)). The getter copies every field:
 
 | Field | Meaning |
 | --- | --- |
@@ -65,7 +65,7 @@ must strictly increase. Unsupported codecs stay UNSUPPORTED even for zero plays
 or empty intervals. ADPCM preflight validates the full declared compressed stream.
 Zero plays retain geometry but allocate no source PCM and finish immediately.
 
-The combined source PCM and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L48) payload must fit the
+The combined source PCM and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L49) payload must fit the
 runtime's memory_limit_bytes, or [FVM_SWF_DEFAULT_LIMIT](../include/flashvm/swf.h#L15) when unset. Repeated output
 is not reserved. The fixed handle allocation, allocator bookkeeping, canonical
 input and caller output buffers are separate. The source interval itself still
@@ -111,7 +111,7 @@ that chunk to retry explicitly or abandon the voice.
 
 ## fvm_swf_sound_voice_info
 
-Arguments: live snapshot and required [FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L66)* with exact
+Arguments: live snapshot and required [FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L67)* with exact
 struct_size. OK copies geometry/progress without allocation, callbacks, GC or
 advancement. INVALID_ARGUMENT rejects null handle/output or incorrect size;
 output remains unchanged. Info remains available after the originating VM dies.
@@ -204,14 +204,14 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
 | `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:14](../src/swf/sound_style.hpp#L14) |
 | `fvm_swf_sound_position` | function | [src/swf/sound_style.hpp:7](../src/swf/sound_style.hpp#L7) |
-| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:87](../include/flashvm/swf_sound.h#L87) |
-| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:83](../include/flashvm/swf_sound.h#L83) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:81](../include/flashvm/swf_sound.h#L81) |
-| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:85](../include/flashvm/swf_sound.h#L85) |
-| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:48](../include/flashvm/swf_sound.h#L48) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:88](../include/flashvm/swf_sound.h#L88) |
+| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:84](../include/flashvm/swf_sound.h#L84) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:86](../include/flashvm/swf_sound.h#L86) |
+| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
-| `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:66](../include/flashvm/swf_sound.h#L66) |
+| `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:67](../include/flashvm/swf_sound.h#L67) |
 <!-- source-links:end -->

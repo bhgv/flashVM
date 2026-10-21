@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+DefineSound MP3 v0.777: effective MPEG geometry, nonnegative initial latency, allocation-free full validation and selected PCM reads; SWF4–8 golden/edge checks. Negative latency/free-format, stream/player and full reference timing remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
+
 MP3 decoder foundation v0.776: pinned scalar Layer III, MPEG-1/2/2.5 analytical golden samples and framing checks; public resource/player integration remains open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
 
 Counted ADPCM tutorial v0.775: actual strict-C89 partial-block export with two independent native ownership modes after VM teardown; eight hand-calculated samples, empty block, CLI/file checks. [Example RU/EN](../examples/multimedia/swf_stream_adpcm/README.md). No device/timeline acceptance implied.
@@ -4534,7 +4536,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L100) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L112) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -5063,7 +5065,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
 <!-- source-links:end -->

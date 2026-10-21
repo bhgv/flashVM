@@ -14,7 +14,7 @@
 публикации bytes/rate/channels и числа кадров 576 либо 1152. Reserved поля,
 укороченный packet и мусор перед sync отвергаются; Layer I/II и free-format bitrate
 возвращают UNSUPPORTED. Поддержаны CBR и переменные стандартные bitrate indices.
-[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L22) сохраняет reservoir/filter history между пакетами и публикует
+[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L26) сохраняет reservoir/filter history между пакетами и публикует
 PCM после проверки точной геометрии. Decode failure терминален для этого decoder;
 поиск sync через мусор и concealment отсутствующего reservoir не выдаются за успех.
 Проверка CRC, определение free-format bitrate и полная верификация corrupt Huffman
@@ -36,6 +36,35 @@ python3 scripts/check_vendor_sources.py
 Интеграция MP3, event/stream scheduling, seek и native device/platform приёмка —
 отдельные условия. Этот decoder checkpoint не закрывает ни одной стадии roadmap.
 
+
+## v0.777 декодирование DefineSound
+
+[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L108) теперь читает MP3 в SWF4–8 без allocation/callback. Диапазон
+отсчитывается после неотрицательного SI16 SeekSamples. Сначала проверяются все
+полные packets; затем новый stack decoder копирует только выбранные кадры.
+Объявленная длина должна помещаться после latency; полный encoder tail проверяется,
+но не выдаётся сверх sample_count. Скрытой коррекции LAME/Xing gapless нет.
+Даже нулевое чтение проверяет весь источник. Изменение/teardown и output buffers
+сериализуются owner; managed pointers после возврата не остаются.
+
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L94) выдаёт фактические MPEG rate/channels из первого корректного
+packet, сохраняя исходные байты и объявленную длину. Advisory SWF flags не вызывают
+скрытый resampling. Неверные opaque metadata остаются доступны для анализа, но
+decode отвергает данные. Отрицательная latency, free-format и другие MPEG layers
+пока UNSUPPORTED. Укороченные/отсутствующие packets, смена geometry и завышенная
+длина — INVALID_ARGUMENT; переполнение — OUT_OF_MEMORY. Сохраняются native S16
+ограничения. Мелкие повторные чтения заново проверяют источник; для playback нужен
+однократно подготовленный voice.
+
+Public fixture проверяет SWF4–8, три MPEG поколения, golden samples до/после
+latency, capacity, обрезанный хвост и неизменность выхода, отказ SWF3. Прежние
+PCM/event edge checks проходят без изменения ожиданий.
+
+Проверка vendor: новые minimp3 header/LICENSE совпадают с pin. Общий checker
+останавливается на прежнем несовпадении AGG agg_array.h с manifest; файл байтово
+совпадает с опубликованной v0.775 и не меняется этой серией. Общий vendor pass
+не заявляется.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -46,5 +75,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
-| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:22](../src/swf/sound_mp3.hpp#L22) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

@@ -121,8 +121,8 @@ Markdown-ссылки внутри `id`, `href` и `title` ломают якор
 ## Deterministic source table order / стабильный порядок
 
 Generated declaration rows sort by casefolded name and then original spelling.
-The second key distinguishes a macro such as [FVM_SWF_SOUND_EVENT_ENVELOPE](../include/flashvm/swf_sound.h#L32) from
-[fvm_swf_sound_event_envelope](../include/flashvm/swf_sound.h#L63) without depending on Python hash iteration order.
+The second key distinguishes a macro such as [FVM_SWF_SOUND_EVENT_ENVELOPE](../include/flashvm/swf_sound.h#L33) from
+[fvm_swf_sound_event_envelope](../include/flashvm/swf_sound.h#L64) without depending on Python hash iteration order.
 `scripts/test_documentation_source_links.py` checks six hash seeds and repeated
 refresh; it is registered in native CTest. The fixture stays in ignored build
 output on the source drive so Windows temporary-drive differences do not alter
@@ -147,6 +147,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_crash_configure` | function | [include/flashvm/crash.h:55](../include/flashvm/crash.h#L55) |
 | `FVM_CRASH_DEBUGGER` | enum constant | [include/flashvm/crash.h:16](../include/flashvm/crash.h#L16) |
 | `FVM_CrashFrame` | struct | [include/flashvm/crash.h:32](../include/flashvm/crash.h#L32) |
-| `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:32](../include/flashvm/swf_sound.h#L32) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:63](../include/flashvm/swf_sound.h#L63) |
+| `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:33](../include/flashvm/swf_sound.h#L33) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
 <!-- source-links:end -->

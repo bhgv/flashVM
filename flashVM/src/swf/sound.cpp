@@ -39,6 +39,17 @@ FVM_Result sound_header(const unsigned char *bytes, size_t size, unsigned int ve
     info.sample_count = sound_integer(bytes + FVM_SWF_SOUND_COUNT_OFFSET, FVM_SWF_SOUND_UI32_BYTES);
     info.data = bytes + FVM_SWF_SOUND_HEADER_BYTES;
     info.data_size = size - FVM_SWF_SOUND_HEADER_BYTES;
+    if (info.format == FVM_SWF_SOUND_MP3 && info.data_size >= FVM_MP3_SEEK_BYTES)
+    {
+        FVM_SWFMP3Frame packet;
+        if (fvm_swf_mp3_probe(info.data + FVM_MP3_SEEK_BYTES,
+                               info.data_size - FVM_MP3_SEEK_BYTES, &packet) == FVM_OK)
+        {
+            info.sample_rate = packet.rate;
+            info.channels = packet.channels;
+            info.bits_per_sample = FVM_SWF_SOUND_BITS_16;
+        }
+    }
     if (info.format == FVM_SWF_SOUND_FORMAT_LE && version < FVM_SWF_SOUND_LE_MIN_VERSION)
         return FVM_INVALID_ARGUMENT;
     if (info.format == FVM_SWF_SOUND_FORMAT_NATIVE || info.format == FVM_SWF_SOUND_FORMAT_LE)
@@ -187,5 +198,7 @@ extern "C" FVM_Result fvm_swf_sound_read_pcm(FVM_Context *context, unsigned int 
     FVM_Result result = fvm_swf_sound_info(context, id, &info);
     if (result != FVM_OK)
         return result;
+    if (info.format == FVM_SWF_SOUND_MP3 && context->swf_info.version < FVM_MP3_MIN_SWF_VERSION)
+        return FVM_UNSUPPORTED;
     return fvm_swf_sound_decode_pcm(info, first, frames, destination, capacity, written);
 }

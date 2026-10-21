@@ -4,7 +4,7 @@
 
 C89 API [swf_sound_mixer.h](../include/flashvm/swf_sound_mixer.h) объединяет
 независимые снимки [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) в один native signed-16 PCM поток. В отличие
-от [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L100), голоса продолжают играть между чтениями и
+от [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L112), голоса продолжают играть между чтениями и
 смешиваются в одном выходном буфере. События явно передаёт хост. MovieClip и
 системный аудиовыход автоматически этого не делают.
 [Исполняемый пример](../examples/multimedia/swf_event_mixer/README.md) показывает
@@ -50,7 +50,7 @@ handle не публикуется. После OK хост владеет handle
 ### fvm_swf_sound_mixer_submit
 
 `fvm_swf_sound_mixer_submit(mixer, context, event_index)` разрешает корневой
-StartSound по нулевому индексу через [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L61). Ошибки context,
+StartSound по нулевому индексу через [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62). Ошибки context,
 незагруженной VM, повреждённых ресурсов и кодеков передаются из исходных API;
 отсутствующий индекс даёт NOT_FOUND. На ошибке прежние голоса и позиции сохраняются.
 Порядок управления определяется порядком вызовов хоста:
@@ -61,7 +61,7 @@ StartSound по нулевому индексу через [`fvm_swf_sound_event
 2. NO_MULTIPLE при активном совпадающем ID даёт OK без подготовки нового голоса.
    Обычный start разрешает несколько копий одного ресурса.
 3. В strict режиме новый голос требует совпадения source rate/channels, иначе UNSUPPORTED.
-   [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L81) применяет диапазон, повторы и огибающую. Каждая
+   [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82) применяет диапазон, повторы и огибающую. Каждая
    копия получает независимую позицию чтения и огибающей.
 4. Пустой диапазон/явно нулевое число повторов не занимают слот. Иначе заполнение
    всех слотов даёт OUT_OF_MEMORY без кражи или замены прежнего голоса.
@@ -162,8 +162,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:61](../include/flashvm/swf_sound.h#L61) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:74](../include/flashvm/swf_sound_mixer.h#L74) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:70](../include/flashvm/swf_sound_mixer.h#L70) |
@@ -171,7 +171,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
 | `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:81](../include/flashvm/swf_sound.h#L81) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
 <!-- source-links:end -->

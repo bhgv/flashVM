@@ -74,9 +74,9 @@ not audio playback or original-Player scheduling evidence.
 
 ## Metadata work (v0.639)
 
-The allocation-free read-only queries [`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L89), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L93),
-[`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L91), [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L59), [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L61) and
-[`fvm_swf_sound_event_envelope`](../include/flashvm/swf_sound.h#L63) now share native work and worker stops with their
+The allocation-free read-only queries [`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L90), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L94),
+[`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L92), [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60), [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62) and
+[`fvm_swf_sound_event_envelope`](../include/flashvm/swf_sound.h#L64) now share native work and worker stops with their
 caller. `sound_at` keeps both scans in one scope; an event lookup keeps its event
 scan and selected dictionary resolution in one scope. Host calls start a fresh
 query budget; queries inside the sound callback inherit the delivery budget.
@@ -198,14 +198,14 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS` | macro / define | [src/standard/movieclip_sound_constants.h:8](../src/standard/movieclip_sound_constants.h#L8) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:91](../include/flashvm/swf_sound.h#L91) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:89](../include/flashvm/swf_sound.h#L89) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:61](../include/flashvm/swf_sound.h#L61) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:63](../include/flashvm/swf_sound.h#L63) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:92](../include/flashvm/swf_sound.h#L92) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:90](../include/flashvm/swf_sound.h#L90) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
 | `fvm_swf_sound_frame_ordinals` | function | [src/swf/sound_event_index.hpp:8](../src/swf/sound_event_index.hpp#L8) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:93](../include/flashvm/swf_sound.h#L93) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
 | `FVM_SWF_SOUND_MAX_FRAME_ORDINALS` | macro / define | [src/swf/sound_event_constants.h:12](../src/swf/sound_event_constants.h#L12) |
-| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |
+| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:14](../include/flashvm/swf_sound.h#L14) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

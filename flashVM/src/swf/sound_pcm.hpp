@@ -2,6 +2,7 @@
 #ifndef FVM_SWF_SOUND_PCM_HPP
 #define FVM_SWF_SOUND_PCM_HPP /* Guard shared allocation-free decoding. */
 #include "sound_adpcm.hpp"
+#include "sound_mp3.hpp"
 #include <climits>
 #include <cstring>
 /* Decode a prevalidated source view after checking host representation and caller range/capacity. */
@@ -11,13 +12,15 @@ static inline FVM_Result fvm_swf_sound_decode_pcm(const FVM_SWFSoundInfo &info, 
     if (!written)
         return FVM_INVALID_ARGUMENT;
     *written = 0;
-    if ((info.format != FVM_SWF_SOUND_ADPCM &&
+    if ((info.format != FVM_SWF_SOUND_ADPCM && info.format != FVM_SWF_SOUND_MP3 &&
          (info.format != FVM_SWF_SOUND_FORMAT_NATIVE && info.format != FVM_SWF_SOUND_FORMAT_LE)) ||
         sizeof(short) != FVM_SWF_SOUND_PCM_BYTES || SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX || SHRT_MIN != FVM_SWF_SOUND_SHORT_MIN)
         return FVM_UNSUPPORTED;
     if (first > info.sample_count || frames > info.sample_count - first || frames > capacity / info.channels ||
         (frames && !destination))
         return FVM_INVALID_ARGUMENT;
+    if (info.format == FVM_SWF_SOUND_MP3)
+        return fvm_swf_mp3_read(info, first, frames, destination, capacity, written);
     size_t values = frames * info.channels;
     if (info.format == FVM_SWF_SOUND_ADPCM)
     {

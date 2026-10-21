@@ -8,6 +8,7 @@ extern "C"
 #endif
 #define FVM_SWF_SOUND_PCM_NATIVE 0U /* Legacy uncompressed PCM follows the playback host byte order. */
 #define FVM_SWF_SOUND_ADPCM 1U /* SWF differential PCM with two through five bits per code. */
+#define FVM_SWF_SOUND_MP3 2U /* SWF4+ MPEG Layer III with a signed initial-seek prefix. */
 #define FVM_SWF_SOUND_PCM_LE 3U /* SWF4+ uncompressed little-endian PCM. */
     /* Borrowed nominal metadata and complete SoundData for one root dictionary definition. */
     typedef struct FVM_SWFSoundInfo
@@ -15,9 +16,9 @@ extern "C"
         unsigned long struct_size; /* Required sizeof(FVM_SWFSoundInfo), preserved on successful publication. */
         unsigned int sound_id; /* Root-dictionary UI16 identifier, not a display-list depth. */
         unsigned int format; /* Raw SoundFormat nibble; unsupported codecs remain opaque. */
-        unsigned int sample_rate; /* Nominal header rate: 5512, 11025, 22050 or 44100 Hz. */
+        unsigned int sample_rate; /* Nominal PCM rate; supported MP3 uses effective first-packet MPEG rate. */
         unsigned int bits_per_sample; /* Header 8/16-bit flag; compressed codecs can ignore it. */
-        unsigned int channels; /* Header mono/stereo count; compressed codecs can override it. */
+        unsigned int channels; /* Header mono/stereo count; supported MP3 uses effective MPEG channels. */
         unsigned long sample_count; /* Declared sample frames, including both channels of each stereo pair. */
         const unsigned char
             *data; /* Borrowed complete SoundData bytes, valid until successful reload or context destruction. */
@@ -91,8 +92,19 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_at(FVM_Context *, size_t, FVM_SWFSoundInfo *);
     /* Inspect a unique root DefineSound in canonical loaded bytes; no allocations or callbacks. */
     FVM_API FVM_Result fvm_swf_sound_info(FVM_Context *, unsigned int, FVM_SWFSoundInfo *);
-    /* Decode an explicit frame range of native/little-endian 8/16-bit PCM or SWF ADPCM into caller shorts.
-     * capacity/written count channel values, not frames; failure writes no samples. */
+    /* Decode an explicit native/little-endian PCM, ADPCM or MP3 frame range into caller S16.
+     * MP3 requires SWF4+, standard-bitrate Layer III, stable effective rate/channels and a
+     * nonnegative initial SeekSamples prefix. Skip that latency once; require at least the
+     * complete declared sample_count after it. Validate every complete MPEG packet, even for
+     * zero/early reads; trailing junk/truncation, changed geometry or missing reservoir is
+     * INVALID_ARGUMENT. Negative latency/free-format/other layers UNSUPPORTED.
+     * MP3 metadata reports effective first-packet geometry when a valid packet is available;
+     * malformed/unknown metadata can remain opaque until decode. No implicit gapless tags or
+     * extra encoder-delay correction. Range is relative to latency-trimmed declared frames.
+     * capacity/written count channel values, not frames; written cleared first, no PCM change
+     * on failure. No allocation/callback/VM execution. Whole-source validation is repeated on
+     * every MP3 read; prepare a voice once for repeated playback. Retain/serialize source and
+     * caller buffers until return; input/output/count storage must be disjoint. */
     FVM_API FVM_Result fvm_swf_sound_read_pcm(FVM_Context *, unsigned int, unsigned long, size_t, short *, size_t,
                                               size_t *);
     /* Apply one root StartSound to a dedicated single-voice channel; render bounded styles before output.

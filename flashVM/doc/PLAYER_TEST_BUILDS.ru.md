@@ -71,7 +71,7 @@ catch-up burst. Activity/Surface/native thread принадлежат SDLActivit
 
 ## Звук и владение в v0.582 (изменения v0.583 ниже)
 
-[audio.c](../frontend/common/audio.c) проверяет [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L59). Для root
+[audio.c](../frontend/common/audio.c) проверяет [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60). Для root
 событий без --mute создаёт SDL device 48000 Hz stereo, configured mixer на 32
 голоса и output producer block512/target2048 frames. Callback
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) доставляет ordinal до DoAction;
@@ -163,6 +163,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 <!-- source-links:end -->

@@ -68,3 +68,69 @@ FVM_Result FVM_SWFMP3Decoder::decode(const unsigned char *data, size_t size, FVM
     *out = packet;
     return FVM_OK;
 }
+
+/* Decode one complete event pass, optionally copying only the selected declared source interval. */
+static FVM_Result event_pass(const FVM_SWFSoundInfo &source, size_t skip,
+                              unsigned long first, size_t frames, short *out)
+{
+    FVM_SWFMP3Decoder decoder;
+    size_t at = FVM_MP3_SEEK_BYTES, total = 0;
+    if (source.sample_count > (size_t)-1 - skip)
+        return FVM_OUT_OF_MEMORY;
+    size_t required = skip + (size_t)source.sample_count;
+    size_t begin = skip + (size_t)first;
+    size_t end = begin + frames;
+    while (at < source.data_size)
+    {
+        FVM_SWFMP3Frame packet;
+        FVM_Result result = decoder.decode(source.data + at, source.data_size - at, &packet);
+        if (result != FVM_OK)
+            return result;
+        if (packet.rate != source.sample_rate || packet.channels != source.channels)
+            return FVM_INVALID_ARGUMENT;
+        if (packet.samples > (size_t)-1 - total)
+            return FVM_OUT_OF_MEMORY;
+        size_t next = total + packet.samples;
+        if (out && begin < next && end > total)
+        {
+            size_t left = begin > total ? begin : total;
+            size_t right = end < next ? end : next;
+            std::memcpy(out + (left - begin) * packet.channels,
+                        decoder.pcm + (left - total) * packet.channels,
+                        (right - left) * packet.channels * sizeof(short));
+        }
+        at += packet.bytes;
+        total = next;
+    }
+    return total >= required ? FVM_OK : FVM_INVALID_ARGUMENT;
+}
+/* Validate complete source first so malformed suffixes cannot partially overwrite a range. */
+FVM_Result fvm_swf_mp3_read(const FVM_SWFSoundInfo &source, unsigned long first, size_t frames,
+                            short *out, size_t capacity, size_t *written)
+{
+    if (!written)
+        return FVM_INVALID_ARGUMENT;
+    *written = 0;
+    if (source.format != FVM_SWF_SOUND_MP3)
+        return FVM_UNSUPPORTED;
+    if (!source.data || source.data_size < FVM_MP3_SEEK_BYTES ||
+        source.channels < FVM_SWF_SOUND_MONO_CHANNELS || source.channels > FVM_SWF_SOUND_STEREO_CHANNELS ||
+        first > source.sample_count || frames > source.sample_count - first ||
+        frames > capacity / source.channels || (frames && !out))
+        return FVM_INVALID_ARGUMENT;
+    unsigned long raw = (unsigned long)source.data[0] |
+                        ((unsigned long)source.data[1] << FVM_SWF_SOUND_BYTE_BITS);
+    if (raw >= FVM_SWF_SOUND_SIGN_BIT)
+        return FVM_UNSUPPORTED;
+    FVM_Result result = event_pass(source, (size_t)raw, first, frames, 0);
+    if (result != FVM_OK)
+        return result;
+    if (frames)
+    {
+        result = event_pass(source, (size_t)raw, first, frames, out);
+        if (result != FVM_OK)
+            return result;
+    }
+    *written = frames * source.channels;
+    return FVM_OK;
+}

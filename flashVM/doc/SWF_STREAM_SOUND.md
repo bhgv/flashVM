@@ -126,7 +126,7 @@ return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). All other context/he
 [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) as described above. There is no state advancement, source
 resampling, advisory playback conversion, gain, timestamp or output registration.
 
-The implementation shares [fvm_swf_sound_decode_pcm](../src/swf/sound_pcm.hpp#L8) with DefineSound, including
+The implementation shares [fvm_swf_sound_decode_pcm](../src/swf/sound_pcm.hpp#L9) with DefineSound, including
 its complete-range preflight. DefineSound ADPCM support is unchanged; it does
 not imply ADPCM streaming support. Use bounded reads followed by
 [fvm_audio_channel_write](../include/flashvm/multimedia.h#L84) to your explicitly owned output; handle real-time clock,
@@ -303,7 +303,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_swf_sound_decode_pcm` | function | [src/swf/sound_pcm.hpp:8](../src/swf/sound_pcm.hpp#L8) |
+| `fvm_swf_sound_decode_pcm` | function | [src/swf/sound_pcm.hpp:9](../src/swf/sound_pcm.hpp#L9) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../include/flashvm/swf_stream_sound.h#L55) |
 | `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:59](../include/flashvm/swf_stream_sound.h#L59) |
 | `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:57](../include/flashvm/swf_stream_sound.h#L57) |
