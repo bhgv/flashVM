@@ -533,6 +533,10 @@ endif()
 
 # Check the bounded C89 MP3 exporter using native voices and normalized streams after VM teardown.
 if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_swf_queued_identity_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_queued_identity_example.py
+            $<TARGET_FILE:flashvm_examples_multimedia_swf_queued_identity_main>)
+  set_tests_properties(flashvm_swf_queued_identity_tutorial PROPERTIES TIMEOUT 15)
   add_test(NAME flashvm_swf_voice_reuse_tutorial
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_voice_reuse_example.py
             $<TARGET_FILE:flashvm_examples_multimedia_swf_voice_reuse_main>)

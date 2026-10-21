@@ -157,6 +157,7 @@
     - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline, 48 kHz stereo и stop</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
+    - [swf_queued_identity](#example-multimedia-swf_queued_identity) — <small><em>NoMultiple до конца FIFO, write retry и управление после VM teardown</em></small>
     - [swf_voice_reuse](#example-multimedia-swf_voice_reuse) — <small><em>Шаблон PCM, clone/seek и два воспроизведения после VM teardown</em></small>
   - [speech](#group-multimedia-speech)
     - [speech_android](#example-multimedia-speech_android) — <small><em>Android: Context, permissions, JNI и речевые службы</em></small>
@@ -1784,6 +1785,19 @@ context-wide no-multiple и остановка всех голосов по soun
 Stop-by-ID закрывает два совпадения, stop_all закрывает оставшееся. NO_MEDIA
 достаточен; это stdio/синхронизация, не слышимое смешивание/автоматический clock.
 
+<a id="example-multimedia-swf_queued_identity"></a>
+#### swf_queued_identity
+
+Исполняемый strict-C89 пример: [README](multimedia/swf_queued_identity/README.md),
+[main.c](multimedia/swf_queued_identity/main.c), [политика](multimedia/swf_queued_identity/example_constants.h),
+[исходный SWF](multimedia/swf_queued_identity/sample_movie.h).
+После уничтожения VM короткий голос уже retired в микшере, но сохраняет NoMultiple
+до точного конца FIFO. Явные dequeue, повторный старт, один failed write/exact retry,
+stop-ID и общий clear; отдельные владельцы/бюджеты, необязательный файл из ровно
+32 принятых стереокадров. Каждая строка подписана, assertions нет. NO_MEDIA достаточен;
+FIFO моделируется вызывающим и не выдаётся за аудиоустройство.
+[EN](../doc/QUEUED_SOUND_IDS.md) / [RU](../doc/QUEUED_SOUND_IDS.ru.md).
+
 <a id="example-multimedia-swf_voice_reuse"></a>
 #### swf_voice_reuse
 
@@ -2225,6 +2239,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_mp3 — multimedia/swf_mp3](#example-multimedia-swf_mp3)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
+- [swf_queued_identity — multimedia/swf_queued_identity](#example-multimedia-swf_queued_identity)
 - [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)
 - [swf_stream_adpcm — multimedia/swf_stream_adpcm](#example-multimedia-swf_stream_adpcm)
 - [swf_stream_mix — multimedia/swf_stream_mix](#example-multimedia-swf_stream_mix)

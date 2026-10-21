@@ -133,6 +133,18 @@ map to OOM/ERROR without consuming an incoming handle or publishing query output
 storage and stop-ID controls do not call that backend. Source/mixer/queue owners
 still require explicit external serialization.
 
+## v0.801: annotated C89 FIFO host
+
+The runnable [swf_queued_identity tutorial](../examples/multimedia/swf_queued_identity/README.md)
+prepares an original seven-sample SWF, destroys the VM, then demonstrates short
+software retirement versus queued identity lifetime on an explicitly modeled
+FIFO. It checks the exact eighth-frame endpoint, NoMultiple restart, one failed
+write/exact retry, ID cancellation and acknowledged output clear. Optional file
+export contains exactly two identical 16-frame accepted stereo blocks; an
+independent integer oracle checks every S16 value and CLI/output errors. The
+model is caller-owned and deterministic; it does not open or certify a device.
+Each native owner/budget and every nonempty C/header line is documented.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
