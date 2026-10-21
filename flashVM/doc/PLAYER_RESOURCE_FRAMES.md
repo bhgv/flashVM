@@ -240,6 +240,9 @@ New region code and the live 9P fixture passed AddressSanitizer/UBSan with
 leak enumeration disabled in this restricted host. The C89 region contract
 cross-linked and the sized client cross-compiled for ARM64 Linux, RISC-V64
 Linux and Windows x64; foreign binaries were not executed.
+Negotiated native bulk export of existing frame leases: [player frame parts](PLAYER_FRAME_PARTS.md),
+with [runnable host](../examples/player/frame_parts/README.md). CHUNK/REGION and
+their bounded resource replies remain unchanged.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

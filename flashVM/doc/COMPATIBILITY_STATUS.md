@@ -5008,6 +5008,16 @@ loadMovie/loadVariables object references and receiver identities; URL coercion
 callbacks, removed/reused paths, actual local/HTTP/async delivery and standalone
 numbered SWFs. [EN](MOVIE_UNLOAD.md) / [RU](MOVIE_UNLOAD.ru.md). Other levels,
 POST and the full loader event lifecycle remain open. No stage is closed.
+## Player frame bulk bridge v0.743–v0.744
+
+Implemented/checked: authorized immutable frame leases encode real RGBA parts
+using committed tag-zero geometry and capture-sequence boundaries. The standalone
+offscreen host and two live 9P clients cover shrinking/growing profiles, exact
+pixels, retained old/final frames, FILE repair and LIVE omission. See
+[contracts and evidence](PLAYER_FRAME_PARTS.md) / [контракты](PLAYER_FRAME_PARTS.ru.md).
+Not completed: automatic adaptation, production network service, video/audio
+codec playback, arbitrary-size image containers and full native platform acceptance.
+All nine roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

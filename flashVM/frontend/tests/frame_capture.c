@@ -13,6 +13,7 @@
 #ifdef FVM_TEST_RESOURCE_9P
 #include "../common/resource_state.h"
 #include "../common/resource_frame.h"
+#include "flashvm/smedia.h"
 #include "resource_9p_client.h"
 #endif
 #endif
@@ -42,6 +43,7 @@ typedef struct Capture
     FVM_DesktopResourceFrame *frame_adapter;
     FVM_RHandle frame_target;
     FVM_DesktopResourceFrameInfo frame_info[2];
+    FVM_SControlExchange media_sender[2], media_receiver[2];
     unsigned char held_pixels[2][32 * 32 * 4];
     Test9PClient clients[2];
     unsigned long epochs[2], state_events[2], ticks_seen[2];
@@ -64,6 +66,77 @@ static size_t frame_number(unsigned char *out, unsigned long value)
     if (fvm_sinteger_write(&number, out, FVM_SRECORD_INTEGER_MAX, &used) != FVM_S_OK)
         return 0;
     return used;
+}
+/* Each independent reader owns a direction-local exchange with real bounded native capacity. */
+static int frame_profiles(Capture *test)
+{
+    FVM_SControlLimits ceiling = {19, 4064, 4096, 4000};
+    size_t i;
+    for (i = 0; i < 2; ++i)
+        if (fvm_scontrol_init(test->media_sender + i, &ceiling) != FVM_S_OK ||
+            fvm_scontrol_init(test->media_receiver + i, &ceiling) != FVM_S_OK)
+            return 0;
+    return 1;
+}
+/* Negotiate a new profile only after the previous pinned image has finished its reads. */
+static int frame_agree(Capture *test, size_t client)
+{
+    FVM_SControlLimits limits;
+    FVM_SControlBoundary boundary;
+    FVM_SControlMessage offer, ack, decoded;
+    unsigned char wire[128];
+    size_t size, used;
+    unsigned long sequence = test->frame_info[client].sequence;
+    limits.tag = 19;
+    limits.slot_bytes = sequence % 3 == 1 ? 1024 : sequence % 3 == 2 ? 512 : 4096;
+    limits.part_bytes = sequence % 3 == 1 ? 768 : sequence % 3 == 2 ? 400 : 4000;
+    limits.record_limit = limits.slot_bytes - FVM_SCONTROL_FRAMING;
+    boundary.stream = (unsigned long)client + 7;
+    boundary.epoch = 1;
+    boundary.object = sequence;
+    if (fvm_scontrol_propose_at(test->media_sender + client, sequence, &limits, &boundary,
+                                &offer) != FVM_S_OK ||
+        fvm_scontrol_write(&offer, wire, sizeof(wire), &size) != FVM_S_OK ||
+        fvm_scontrol_read(wire, size, &decoded, &used) != FVM_S_OK || used != size ||
+        fvm_scontrol_respond(test->media_receiver + client, &decoded, &ack) != FVM_S_OK ||
+        fvm_scontrol_write(&ack, wire, sizeof(wire), &size) != FVM_S_OK ||
+        fvm_scontrol_read(wire, size, &decoded, &used) != FVM_S_OK || used != size)
+        return 0;
+    return fvm_scontrol_commit(test->media_receiver + client, &ack) == FVM_S_OK &&
+           fvm_scontrol_commit(test->media_sender + client, &decoded) == FVM_S_OK;
+}
+/* Reassemble exported actual retained pixels, including old/final leases after runner teardown. */
+static int frame_parts(Capture *test, size_t client, const unsigned char *expected)
+{
+    FVM_SControlLimits limits;
+    FVM_SControlBoundary boundary;
+    FVM_SMediaInfo info;
+    FVM_SMediaReceiver receiver;
+    unsigned char slot[4096], pixels[32 * 32 * 4];
+    size_t used;
+    unsigned long count, part;
+    int complete = 0;
+    if (fvm_scontrol_active(test->media_sender + client, &limits, &boundary) != FVM_S_OK)
+        return 0;
+    info.mode = client ? FVM_SMEDIA_LIVE : FVM_SMEDIA_FILE;
+    info.stream = boundary.stream;
+    info.epoch = boundary.epoch;
+    info.object = test->frame_info[client].sequence;
+    info.time_ms = info.object * 40;
+    info.total = sizeof(pixels);
+    if (fvm_smedia_receiver_init_agreed(&receiver, test->media_sender + client, &info, pixels,
+                                        sizeof(pixels)) != FVM_S_OK)
+        return 0;
+    count = (info.total - 1) / limits.part_bytes + 1;
+    for (part = count; part > 0; --part)
+        if (fvm_desktop_resource_frame_write_part(
+                test->frame_adapter, (unsigned long)client + 7, test->frame_info[client].lease,
+                test->media_sender + client, info.mode, info.time_ms, part - 1, slot, sizeof(slot),
+                &used) != FVM_R_OK ||
+            used != limits.slot_bytes ||
+            fvm_smedia_accept(&receiver, slot, used, &complete) != FVM_S_OK)
+            return 0;
+    return complete && !memcmp(pixels, expected, sizeof(pixels));
 }
 /* Reassemble a whole leased image from bounded 9P operation replies and compare every RGBA byte. */
 static int frame_pixels(Capture *test, size_t client, const unsigned char *expected)
@@ -101,7 +174,7 @@ static int frame_pixels(Capture *test, size_t client, const unsigned char *expec
     for (offset = 0; offset < 8; ++offset)
         if (memcmp(reply.data + offset * 64, expected + ((offset + 5) * 32 + 7) * 4, 64))
             return 0;
-    return 1;
+    return frame_parts(test, client, expected);
 }
 /* Keep each previous image pinned while the next frame publishes, then independently reacquire. */
 static int frame_export(Capture *test, const FVM_DesktopFrame *frame)
@@ -136,7 +209,7 @@ static int frame_export(Capture *test, const FVM_DesktopFrame *frame)
             info->total_ticks != frame->total_ticks ||
             info->presentations != frame->presentations ||
             info->total_presentations != frame->total_presentations || info->flags ||
-            info->dropped || strcmp(info->source, frame->source) ||
+            info->dropped || strcmp(info->source, frame->source) || !frame_agree(test, i) ||
             !frame_pixels(test, i, test->copy))
             return 0;
         memcpy(test->held_pixels[i], test->copy, sizeof(test->copy));
@@ -274,7 +347,8 @@ static int resource_setup(Capture *test)
 #ifdef FVM_TEST_RESOURCE_9P
     if (!ok)
         return 0;
-    return fvm_desktop_resource_state_create(test->dispatch, "/timeline/state",
+    return frame_profiles(test) &&
+           fvm_desktop_resource_state_create(test->dispatch, "/timeline/state",
                                              &test->state_adapter,
                                              &test->state_target) == FVM_R_OK &&
            fvm_rdispatch_grant(test->dispatch, test->state_target, 7,

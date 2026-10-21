@@ -33,8 +33,6 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
 target_include_directories(flashvm_srecord PUBLIC ${PROJECT_SOURCE_DIR}/include)
-# The standalone protocol archive also backs shared C ABI oracle/embedding adapters.
-set_target_properties(flashvm_srecord PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
@@ -237,7 +235,7 @@ function(fvm_add_program source)
   if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
     return() # This contract requires actual target Windows SDK declarations.
   endif()
-  if(relative MATCHES "^examples/player/(frame_capture|playback_mailbox|playback_control|image_loading|unload_loading|redirect_loading|monitored_loading|async_loading|background_loading|configured_host|embedded_movie|loading|socket_loading)/main.c$")
+  if(relative MATCHES "^examples/player/(frame_parts|frame_capture|playback_mailbox|playback_control|image_loading|unload_loading|redirect_loading|monitored_loading|async_loading|background_loading|configured_host|embedded_movie|loading|socket_loading)/main.c$")
     return() # Requires the optional player's generated metadata and SDL SDK.
   endif()
   if(relative MATCHES "^examples/frontends/(sdl|clutter3d|gtk3|qt5|linux_fb)/")

@@ -166,6 +166,7 @@
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, bounded кадры ресурсов и owner control</em></small>
+  - [frame_parts](#example-player-frame_parts) — <small><em>Кадры SWF в согласованные части, FILE/LIVE и смена размера</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1862,6 +1863,20 @@ window chrome/letterbox. Флаг --offscreen отключает собстве�
 Флаг --resource-control доставляет STOP через native очередь с явным CONTROL grant.
 Это не готовый GUI widget/input adapter.
 
+<a id="example-player-frame_parts"></a>
+### frame_parts
+
+**Тип:** C89, реальный offscreen-плеер и native cache, без видеоустройства/аудио.
+**README:** [EN](player/frame_parts/README.md) / [RU](player/frame_parts/README.ru.md).
+Запускает встроенный SWF, экспортирует RGBA через lease и согласованные
+1024/512/4096-байтовые слоты. Раздельные tag-zero службы привязывают типы и
+согласуют размеры; FILE/LIVE выбирает политику повторов. Финальный кадр
+остаётся читаемым после SDK teardown. [C](player/frame_parts/main.c),
+[limits.h](player/frame_parts/limits.h), [общий SWF fixture](player/frame_capture/movie.inc),
+[контракт](../doc/PLAYER_FRAME_PARTS.ru.md).
+
+[К оглавлению](#оглавление).
+
 <a id="example-player-image_loading"></a>
 ### image_loading
 
@@ -2032,6 +2047,7 @@ Source line links describe the current checkout, including in historical notes.
 - [file_channels.as — actionscript/file_channels.as](#example-actionscript-file_channels-as)
 - [font_libraries — embedding/font_libraries](#example-embedding-font_libraries)
 - [frame_capture — player/frame_capture](#example-player-frame_capture)
+- [frame_parts — player/frame_parts](#example-player-frame_parts)
 - [function_parameters — embedding/function_parameters](#example-embedding-function_parameters)
 - [function_rpc — embedding/function_rpc](#example-embedding-function_rpc)
 - [gc — embedding/gc](#example-embedding-gc)

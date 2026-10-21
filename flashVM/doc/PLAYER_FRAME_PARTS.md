@@ -82,8 +82,61 @@ slot from original packed pixels and verifies atomic failures.
 Build the optional host with its matching static SDL SDK as documented in
 [desktop builds](DESKTOP_FRONTEND.md). Relevant targets are
 flashvm_player_host, flashvm_frontend_resource_frame and
-flashvm_resource_frame_oracle. The frame oracle links the standalone position-
-independent protocol archive; it still performs no VM/device startup.
+flashvm_resource_frame_oracle. The frame oracle compiles the detached protocol C modules directly so its C
+symbols are available to DLL/shared-object clients; it performs no VM/device startup.
+## Real player and transport evidence v0.744
+
+The [annotated frame_parts host](../examples/player/frame_parts/README.md) runs
+three real linked-SWF frames offscreen and emits compact type declarations,
+frame metadata and OFFER_AT/ACCEPT_AT records before the negotiated data slots.
+It exercises 1024/768 -> 512/400 -> 4096/4000, then repeats a retained-slot export
+after SDK shutdown. FILE and LIVE output policies are separately selectable.
+The library stays independent of its replaceable file adapter and CLI.
+
+An independent integer/zlib Python reader verifies exact wire bytes, identities,
+zero padding and every RGBA byte against the authored SWF squares. Actual exported
+slots are then sent via IPv4 UDP loopback with reordering, duplicates, a wholly
+damaged slot and an omitted slot. The native receiver lists FILE holes; only those
+parts are requested/repeated over TCP. LIVE never requests repair. These sockets
+are test harnesses, not a production network service or automatic path-MTU policy.
+
+Two live 9P reader fixtures also export their own authenticated leases using the
+native bulk API. Their independent direction exchanges shrink/grow between images;
+old frames are reassembled while the next image is already published, and final
+frames after runner teardown. Interpreter and actual native JIT, local files,
+linked memory, HTTP root navigation and callback-error/STOP cancellation retain
+their existing pixel and lifetime checks. 9P msize remains independently 256/384;
+the larger bulk slots are explicit host output, not oversized operation replies.
+
+54 selected native checks passed (one old executable needed its host-lost execute
+bit restored and then passed); all 14 shared-host checks passed. The native frame
+contract, changed protocol/cache/client modules with the real interpreter/JIT
+player, and the full example passed AddressSanitizer/UBSan. Leak enumeration is
+disabled by this restricted host; the complete VM/SDL is not instrumented, so no
+whole-program memory-safety claim is made.
+
+The C89 frame contract cross-linked and the tutorial C89/public-header C++98
+consumers compiled for ARM64 Linux, RISC-V64 Linux and Windows x64. Foreign
+binaries were not executed and the complete foreign player was not linked.
+Standalone contract cross-link from repository root:
+
+```sh
+zig cc -target aarch64-linux-musl -std=c89 -pedantic-errors -IflashVM/include \
+  flashVM/frontend/tests/resource_frame.c flashVM/frontend/common/frame.c \
+  flashVM/src/protocol/srecord.c flashVM/src/protocol/rdispatch.c \
+  flashVM/src/protocol/sslot.c flashVM/src/protocol/scontrol.c \
+  flashVM/src/protocol/smedia.c -o frame-parts-contract-arm64
+```
+
+Substitute riscv64-linux-musl or x86_64-windows-gnu for other checked targets.
+The whole host needs its target static SDL SDK and platform adapter; see
+[platform builds](BUILD_PLATFORMS.md). Native device/platform acceptance and all
+nine roadmap stages remain open.
+Windows x64 also cross-linked the standalone C89 oracle DLL; its export table
+contains the new frame writer, committed-profile query and native receiver APIs.
+The DLL was not executed. Evidence sources: [native frame contract](../frontend/tests/resource_frame.c),
+[independent exported-frame reader](../frontend/tests/frame_parts_example.py),
+[live player fixture](../frontend/tests/frame_capture.c).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

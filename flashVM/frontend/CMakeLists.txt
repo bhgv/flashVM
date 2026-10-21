@@ -1135,11 +1135,26 @@ if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpre
   set_tests_properties(flashvm_resource_frames_example PROPERTIES TIMEOUT 30)
 endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
-  add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c)
-  target_link_libraries(flashvm_resource_frame_oracle PRIVATE flashvm_srecord)
+  # Direct objects preserve automatic C-symbol exports in Windows oracle DLLs as well.
+  add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c
+    ../src/protocol/srecord.c ../src/protocol/rdispatch.c ../src/protocol/sslot.c
+    ../src/protocol/scontrol.c ../src/protocol/smedia.c)
   target_include_directories(flashvm_resource_frame_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_resource_frame_oracle PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF WINDOWS_EXPORT_ALL_SYMBOLS ON)
   add_test(NAME flashvm_resource_frame_wire COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/resource_frame_wire.py $<TARGET_FILE:flashvm_resource_frame_oracle>)
   set_tests_properties(flashvm_resource_frame_wire PROPERTIES TIMEOUT 30)
+endif()
+
+# Actual retained pixels pass through negotiated bulk profiles in an independent C host.
+if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_frame_parts ../examples/player/frame_parts/main.c)
+  target_link_libraries(flashvm_example_frame_parts PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_frame_parts PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+endif()
+if(TARGET flashvm_example_frame_parts AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_resource_frame_parts_example COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_parts_example.py $<TARGET_FILE:flashvm_example_frame_parts>
+    $<TARGET_FILE:flashvm_resource_frame_oracle>)
+  set_tests_properties(flashvm_resource_frame_parts_example PROPERTIES TIMEOUT 30)
 endif()

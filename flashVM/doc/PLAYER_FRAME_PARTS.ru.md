@@ -69,8 +69,57 @@ C-contract использует padded-строки и изменение исх
 
 Сборка host с подходящим static SDL SDK: [desktop](DESKTOP_FRONTEND.md).
 Цели: flashvm_player_host, flashvm_frontend_resource_frame,
-flashvm_resource_frame_oracle. Oracle использует position-independent standalone
-протокольный архив и не запускает VM/устройства.
+flashvm_resource_frame_oracle. Oracle собирает отдельные протокольные C-модули напрямую для экспорта C-символов
+из DLL/shared object и не запускает VM/устройства.
+## Настоящий плеер и транспорт v0.744
+
+[Прокомментированный frame_parts host](../examples/player/frame_parts/README.ru.md)
+исполняет три настоящих linked-SWF кадра offscreen и пишет компактные привязки,
+metadata и OFFER_AT/ACCEPT_AT до bulk-слотов. Проверяются 1024/768 -> 512/400 ->
+4096/4000 и повторный экспорт закреплённого слота после SDK shutdown. Режимы
+FILE/LIVE выбираются явно; библиотека не зависит от file adapter и CLI.
+
+Независимый integer/zlib Python reader сверяет wire bytes, identity, padding и
+каждый RGBA byte с authored SWF-квадратами. Затем настоящие экспортированные
+слоты проходят IPv4 UDP loopback с перестановкой, дубликатами, разрушенной и
+пропущенной частями. Native receiver перечисляет FILE-пропуски; только они
+запрашиваются и повторяются по TCP. LIVE не запрашивает повторы. Сокеты принадлежат
+тесту, не production listener и не автоматической path-MTU политике.
+
+Два live 9P-reader fixture также экспортируют собственные разрешённые leases через
+native bulk API. Раздельные направления уменьшают/увеличивают профиль между
+кадрами. Старые кадры собираются при уже опубликованных новых, последние — после
+runner teardown. Сохраняются проверки настоящих interpreter/native-JIT, local
+file/linked-memory/HTTP navigation, callback failure и STOP cancellation. Msize 9P
+независимо остаются 256/384: большие bulk-слоты не маскируются под operation reply.
+
+Прошли 54 выбранных native проверки: одному старому executable потребовалось
+восстановить потерянный хостом execute-bit, после чего он прошёл. Прошли все 14
+shared-host проверок. Native frame contract, изменённые protocol/cache/client
+модули с настоящими interpreter/JIT player и полный пример прошли ASan/UBSan.
+Leak enumeration отключено ограничениями хоста; вся VM/SDL не инструментирована,
+поэтому приёмка memory safety всей программы не заявляется.
+
+C89 frame contract слинкован, tutorial C89/public-header C++98 consumers
+скомпилированы для ARM64 Linux, RISC-V64 Linux и Windows x64. Иностранные
+бинарники не запускались; полный иностранный плеер не линковался. Из корня:
+
+```sh
+zig cc -target aarch64-linux-musl -std=c89 -pedantic-errors -IflashVM/include \
+  flashVM/frontend/tests/resource_frame.c flashVM/frontend/common/frame.c \
+  flashVM/src/protocol/srecord.c flashVM/src/protocol/rdispatch.c \
+  flashVM/src/protocol/sslot.c flashVM/src/protocol/scontrol.c \
+  flashVM/src/protocol/smedia.c -o frame-parts-contract-arm64
+```
+
+Остальные проверенные target: riscv64-linux-musl и x86_64-windows-gnu. Полный host
+требует target static SDL SDK/адаптер: [платформы](BUILD_PLATFORMS.ru.md). Приёмка
+native devices/платформ и все девять стадий остаются открытыми.
+Дополнительно для Windows x64 слинкована standalone C89 oracle DLL; export table
+содержит новый writer, committed-profile getter и native receiver API. DLL не
+запускалась. Исходники проверок: [native contract](../frontend/tests/resource_frame.c),
+[независимый reader](../frontend/tests/frame_parts_example.py),
+[live player fixture](../frontend/tests/frame_capture.c).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

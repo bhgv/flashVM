@@ -226,6 +226,9 @@ checksum. Частичная запись не интерпретируется.
 утечек отключено из-за ограничений хоста. C89-контракт слинкован, клиент
 скомпилирован для ARM64 Linux, RISC-V64 Linux и Windows x64. Чужие бинарники
 не запускались; это не приёмка полного плеера на этих платформах.
+Согласованный native bulk-export существующих leases: [части кадров](PLAYER_FRAME_PARTS.ru.md),
+[исполняемый host](../examples/player/frame_parts/README.ru.md). CHUNK/REGION
+и ограниченные resource replies сохраняют прежние контракты.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
