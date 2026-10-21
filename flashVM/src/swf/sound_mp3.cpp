@@ -171,6 +171,11 @@ FVM_Result FVM_SWFMP3Decoder::prepare_block(const unsigned char *data, size_t si
                 valid = false;
                 break;
             }
+            if (fvm_swf_mp3_verify_crc(data + at, span) != FVM_OK)
+            {
+                valid = false;
+                break;
+            }
             at += span;
         }
         if (valid && at == size)

@@ -31,6 +31,16 @@ retry guarantee applies to pre-decode CRC rejection; failures inside the codec r
 terminal as before. DefineSound full-source validation rejects a damaged final CRC
 even for an early or zero-length selected read, without publishing partial PCM.
 
+
+## Counted-block preparation (v0.815)
+
+Free-format block geometry is committed only after every candidate packet has a
+valid protected-region CRC. Failure preserves the fresh decoder even when the
+bad checksum is at the end of a multi-packet first block. Ordinary and free-format
+stream normalization reject damaged late packets without publishing a snapshot.
+Peak-budget bounds and allocation counts remain unchanged. Allocation failures
+are recoverable; normalized readers survive VM teardown without allocating.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
