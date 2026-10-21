@@ -112,6 +112,26 @@ VM/runtime и пишет native-endian interleaved S16. Выход заменя�
 | [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L40) | Borrow a prepared immutable PCM snapshot without allocation; caller cursor lives independently after VM teardown and cannot outlive the snapshot. Errors preserve cursor. [Contract](../../../doc/STREAM_PCM_READER.md). |
 | [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L48) | Fill bounded caller S16 storage and block/frame metadata without VM, allocation or I/O; zero markers advance and EOF preserves outputs. Cursor has one serial owner. [Contract](../../../doc/STREAM_PCM_READER.md). |
 
+
+## Verify without an output file / Проверка без выходного файла (v0.818)
+
+```sh
+./build-stream/flashvm_examples_multimedia_swf_stream_mp3_main --verify INPUT.swf
+```
+
+This mode uses the same bounded first-segment normalization and detached native
+reader as export, then reports `Verified N frames at RATE Hz, CHANNELS channels`.
+It opens no destination and writes no PCM. Protected MP3 CRC errors fail before
+reporting success; mute/metadata-only inspection is a different operation. Input
+remains capped at 64 MiB and preparation at a separate 64 MiB peak. Only the first
+audio segment is checked, not an entire movie's timeline or every sound resource.
+
+Режим использует ту же ограниченную нормализацию первого сегмента и независимый
+нативный reader; сообщает `Verified N frames at RATE Hz, CHANNELS channels`.
+Выходной файл не открывается, PCM не записывается. Плохая защищённая MP3 CRC
+даёт ошибку до успешного отчёта. Вход и пик подготовки отдельно ограничены 64 МиБ.
+Проверяется только первый аудиосегмент, а не весь таймлайн и все ресурсы фильма.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

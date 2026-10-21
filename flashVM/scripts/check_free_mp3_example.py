@@ -58,7 +58,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='flashvm-free-mp3-') as directory:
         root = Path(directory)
         source, target = root/'source.swf', root/'result.pcm'
-        for fixture in fixtures():
+        filename = 'swf_crc_mp3_fixture.hpp' if '--crc' in sys.argv[2:] else 'swf_free_mp3_fixture.hpp'
+        for fixture in fixtures(filename):
             for group in (1, 2, 5):
                 for version, compressed in ((4, False), (8, False), (8, True)):
                     source.write_bytes(movie(fixture, group, compressed=compressed, version=version))
@@ -66,6 +67,11 @@ def main():
                                             capture_output=True, text=True, check=True)
                     _, rate, channels, _, positions, golden = fixture
                     assert result.stdout == f'Decoded 5231 frames at {rate} Hz, {channels} channels\n', result.stdout
+                    names = {p.name for p in root.iterdir()}
+                    before = target.read_bytes()
+                    verified = subprocess.run([sys.argv[1], '--verify', str(source)], capture_output=True, text=True, check=True)
+                    assert verified.stdout == result.stdout.replace('Decoded', 'Verified')
+                    assert {p.name for p in root.iterdir()} == names and target.read_bytes() == before
                     raw = target.read_bytes()
                     assert len(raw) == 5231*channels*2
                     pcm = struct.unpack('='+str(len(raw)//2)+'h', raw)
@@ -74,6 +80,15 @@ def main():
                             continue
                         for channel in range(channels):
                             assert abs(pcm[(position-529)*channels+channel]-golden[p*channels+channel]) <= 2
+        if '--crc' in sys.argv[2:]:
+            fixture = fixtures(filename)[0]
+            data = bytearray(fixture[0]); data[4] ^= 1
+            damaged = (bytes(data),)+fixture[1:]
+            source.write_bytes(movie(damaged, 2))
+            target.write_bytes(b'unchanged')
+            for arguments in (['--verify', str(source)], ['--decode', str(source), str(target)]):
+                result = subprocess.run([sys.argv[1]]+arguments, capture_output=True)
+                assert result.returncode != 0 and target.read_bytes() == b'unchanged'
         # Invalid source must not replace the selected output before preparation succeeds.
         source.write_bytes(b'not a movie')
         target.write_bytes(b'unchanged')

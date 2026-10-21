@@ -31,10 +31,11 @@ int main(int argc, char **argv) /* Require an explicit request to run the embedd
     size_t count = 0; /* Receive the number of encoded block occurrences. */
     size_t ordinal; /* Enumerate blocks in their original movie-frame order. */
     int status = 1; /* Change to success only after every operation succeeds. */
+    if (argc == 3 && strcmp(argv[1], "--verify") == 0) return decode_file(argv[2], 0); /* Validate native PCM without creating any output file. */
     if (argc == 4 && strcmp(argv[1], "--decode") == 0) return decode_file(argv[2], argv[3]); /* Decode only explicitly supplied input/output paths. */
     if (argc == 1) /* Explain usage without allocating a VM or opening any file. */
     { /* Begin usage-only mode. */
-        puts("usage: swf_stream_mp3 --demo | --decode INPUT.swf OUTPUT.pcm"); /* Name the only accepted tutorial option. */
+        puts("usage: swf_stream_mp3 --demo | --verify INPUT.swf | --decode INPUT.swf OUTPUT.pcm"); /* Name the only accepted tutorial option. */
         return 0; /* No resources require cleanup. */
     } /* Finish usage-only mode. */
     if (argc != 2 || strcmp(argv[1], "--demo") != 0) /* Reject other arguments before side effects. */

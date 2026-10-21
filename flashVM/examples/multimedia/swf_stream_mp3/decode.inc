@@ -29,18 +29,20 @@ static int decode_file(const char *input, const char *output) /* Borrow explicit
     fvm_runtime_destroy(runtime); runtime = 0; /* Keep only native snapshot storage alive. */
     info.struct_size = sizeof(info); /* Declare the exact copied metadata ABI. */
     if (fvm_swf_stream_sound_snapshot_info(snapshot, &info) != FVM_OK || fvm_swf_stream_pcm_reader_init(&reader, snapshot) != FVM_OK) goto cleanup; /* Borrow the immutable prepared source. */
-    target = fopen(output, "wb"); /* Replace only the explicit output after successful preparation. */
-    if (!target) goto cleanup; /* Leave the validated snapshot for centralized cleanup. */
+    if (output) { /* Verification mode deliberately needs no destination file. */
+        target = fopen(output, "wb"); /* Replace only the explicit output after successful preparation. */
+        if (!target) goto cleanup; /* Leave the validated snapshot for centralized cleanup. */
+    } /* Keep native reading identical in verification and export modes. */
     for (;;) { /* Successful empty markers still advance through the source index. */
         chunk.struct_size = sizeof(chunk); /* Declare the output chunk ABI before each read. */
         result = fvm_swf_stream_pcm_reader_next(&reader, TUTORIAL_MP3_VALUES / info.channels, pcm, TUTORIAL_MP3_VALUES, &chunk, &written); /* Read bounded native S16 without VM or allocation. */
         if (result == FVM_NOT_FOUND) break; /* EOF publishes no additional data. */
-        if (result != FVM_OK || fwrite(pcm, sizeof(short), written, target) != written) goto cleanup; /* Reject decode or physical file-write errors. */
+        if (result != FVM_OK || (target && fwrite(pcm, sizeof(short), written, target) != written)) goto cleanup; /* Reject decode or physical file-write errors. */
         frames += chunk.frames; /* Count decoded frames separately from channel values. */
     } /* Finish complete sequential extraction. */
-    if (fclose(target)) { target = 0; goto cleanup; } /* Report final flush errors and invalidate ownership. */
+    if (target && fclose(target)) { target = 0; goto cleanup; } /* Report final flush errors and invalidate ownership. */
     target = 0; /* Cleanup must not close a released output. */
-    printf("Decoded %lu frames at %u Hz, %u channels\n", (unsigned long)frames, info.sample_rate, info.channels); /* Identify the raw native-endian S16 geometry. */
+    printf("%s %lu frames at %u Hz, %u channels\n", output ? "Decoded" : "Verified", (unsigned long)frames, info.sample_rate, info.channels); /* Identify the raw native-endian S16 geometry. */
     status = 0; /* All operations, including the final output flush, succeeded. */
 cleanup: /* Release native owners in every success and failure path. */
     if (target) fclose(target); /* Preserve a partial output for host diagnosis after failure. */

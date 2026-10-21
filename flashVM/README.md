@@ -1,10 +1,12 @@
-Development version: **0.817** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.817 ` and an English description. Increase the subversion before each
+Development version: **0.818** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.818 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.818: [Add bounded C89 audio verification without creating an output file](doc/MP3_CRC.md).
 
 v0.817: [Add independent protected-MP3 queue and pre-acquisition failure oracles](doc/MP3_CRC.md).
 

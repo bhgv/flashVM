@@ -63,6 +63,16 @@ and leave a preexisting trace destination unchanged. Sixty-four muted cases pass
 without opening an audio device. These are native software/queue checks, not
 physical-device acceptance. Header/side CRC does not cover audio main data.
 
+
+## Bounded C89 verification (v0.818)
+
+The annotated [C89 example](../examples/multimedia/swf_stream_mp3/README.md) adds
+`--verify INPUT.swf`: bounded input, complete first-segment normalization and
+post-VM native reads, with no output file. Export and verification share the same
+CRC/error admission. The protected fixture oracle covers 72 grouped FWS/CWS cases
+with independent sampled PCM, plus rejection without replacing an existing output.
+This command checks one audio segment, not every movie resource or AVM1 behavior.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
