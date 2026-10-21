@@ -65,6 +65,29 @@ GC между вызовами сохраняет поле и формат. Пе
 ожидает равные AV/BV advances при правильном выключенном default; явный кернинг
 покрыт отдельными проверками.
 
+
+## C ABI и изоляция потоков (v0.826)
+
+Оба native font shaping API проверяют байты direction enum до чтения значения
+C++. Неверные C-представления дают INVALID_ARGUMENT и очищают выход также
+в NO_FONTS. Четыре OS-потока независимо формируют текст с разным кернингом
+в собственных font/run/layout, разделяя лишь неизменяемые шрифтовые байты;
+лигатуры fi и аналитические AV-ширины сохраняются. Общий изменяемый font handle
+не становится безопасным; это не TSan и не приёмка нативных платформ.
+
+Пример использует оригинальную CC0 GPOS-пару (-80/1000 em при 40 px), проверяет
+разницу 3.20 px, одинаковые bidi-строки/байтовые границы и настоящий software
+rasterization. Отдельно проверяются native JIT, graph/channel transfer, GC,
+rollback отказов выделения и NO_FONTS. Styled spans, letterSpacing, поля, tabs,
+system fonts и весь SWF TextField остаются открытыми. [Adobe AS2 (зеркало)](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html).
+
+
+Приёмка: прошли 25 font/text/tutorial-проверок с профилем FONTS/JIT и пять
+выбранных NO_FONTS-проверок ABI/ошибок. Шесть full-core ASan/UBSan включают
+настоящий JIT, перенос и независимые потоки. Инъекции отказов выделения проверены
+обычной сборкой и не выдаются за чистый sanitizer exception-unwind результат.
+Физические устройства/платформы и полный SWF-текст этим не подтверждены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

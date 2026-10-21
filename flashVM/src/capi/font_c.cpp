@@ -4,10 +4,23 @@
 
 #include "flashvm/font.h"
 #include "font_internal.hpp"
+#include "font_shape_constants.h"
 #include "../details/vector.hpp"
 #include <cstring>
 #include <climits>
 #include <new>
+/* Inspect a C caller's enum representation before any C++ scalar load can be undefined. */
+static bool valid_shape_direction(const FVM_TextDirection &direction)
+{
+    for (int value = 0; value <= 2; ++value)
+    {
+        FVM_TextDirection candidate = (FVM_TextDirection)value;
+        if (!std::memcmp(&direction, &candidate, sizeof(candidate)))
+            return true;
+    }
+    return false;
+}
+
 #ifdef FVM_HAS_FONTS
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -289,7 +302,8 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
 
     /* Computation / Вычисление и обновление состояния. */
     hb_buffer_guess_segment_properties(buffer);
-    hb_feature_t feature = {HB_TAG('k', 'e', 'r', 'n'), 0, 0, (unsigned int)-1};
+    /* Restrict the selection to pair kerning; other shaping features retain their defaults. */
+    hb_feature_t feature = {FVM_FONT_KERN_TAG, 0, FVM_FONT_FEATURE_BEGIN, FVM_FONT_FEATURE_END};
     hb_shape(font->shaper, buffer, flags & FVM_FONT_SHAPE_NO_KERNING ? &feature : 0,
              flags & FVM_FONT_SHAPE_NO_KERNING ? 1 : 0);
     if (!hb_buffer_allocation_successful(buffer))
@@ -338,6 +352,11 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t si
                                      FVM_TextDirection direction, const char *language,
                                      FVM_TextRun **out)
 {
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!valid_shape_direction(direction))
+        return FVM_INVALID_ARGUMENT;
     return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false, 0,
                          out);
 }
@@ -347,6 +366,11 @@ extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *font, const char *text
                                                 FVM_TextDirection direction, const char *language,
                                                 unsigned int flags, FVM_TextRun **out)
 {
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!valid_shape_direction(direction))
+        return FVM_INVALID_ARGUMENT;
     return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language,
                          false, flags, out);
 }
@@ -547,24 +571,25 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *, unsigned int, FVM_Path **out, d
 }
 
 /* Compute and return font shape. */
-extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextDirection,
+extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextDirection direction,
                                      const char *, FVM_TextRun **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return FVM_UNSUPPORTED;
+    return valid_shape_direction(direction) ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
 }
 
 /* Preserve feature validation and ownership publication when font support is absent. */
 extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *, const char *, size_t,
-                                                FVM_TextDirection, const char *,
+                                                FVM_TextDirection direction, const char *,
                                                 unsigned int flags, FVM_TextRun **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return flags & ~FVM_FONT_SHAPE_NO_KERNING ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    return (flags & ~FVM_FONT_SHAPE_NO_KERNING) || !valid_shape_direction(direction)
+               ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 
 /* Return the number of glyph entries in the shaped run. */

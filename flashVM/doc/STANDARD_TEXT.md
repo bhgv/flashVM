@@ -56,8 +56,9 @@ unsupported for channel graph transfer rather than losing their callbacks.
 Applied formatting currently supports font, size (1–4096), RGB color, left /
 center / right alignment, and leading. Leading is added to ascent + descent;
 negative leading is accepted when resulting baseline spacing stays positive.
-Explicit null/undefined properties preserve the previous style. Enabled kerning
-uses HarfBuzz; disabling it is unsupported. Nonzero letterSpacing/margins/indents,
+Explicit null/undefined properties preserve the previous style. Pair kerning is
+explicitly selectable, with the AS2 disabled default; both current/future field
+styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Nonzero letterSpacing/margins/indents,
 bold/italic/underline/bullets, hyperlinks, tab stops and justify are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.

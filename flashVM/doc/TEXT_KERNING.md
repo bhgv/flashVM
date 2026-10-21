@@ -67,6 +67,31 @@ failed admission preserves prior kerning and cached width, roots unwind, and an
 intact retry succeeds. The analytical editing fixture now expects equal AV/BV
 advances under the corrected disabled default; explicit kerning has separate coverage.
 
+
+## C ABI validation and worker isolation (v0.826)
+
+Both native font shaping entry points inspect incoming direction enum bytes before
+loading their C++ value. Invalid C representations return INVALID_ARGUMENT and
+clear output even in NO_FONTS. Four OS workers independently alternate enabled
+and disabled kerning on owned font/run/layout handles over shared immutable font
+bytes, retaining fi ligatures and analytical AV widths. Mutable font handles are
+not made shareable; this is not a TSan result or native platform acceptance.
+
+The embedding tutorial uses the original CC0 GPOS pair (-80/1000 em at 40 px),
+checks the 3.20-pixel advance difference, retains the same bidi line/byte metadata
+and executes actual software rasterization. Native JIT paths, graph/channel
+transfer, GC, ordinary allocation-failure rollback and NO_FONTS are checked
+separately. Full styled spans, letterSpacing, margins, tabs, system fonts and all
+SWF TextField behavior remain open. [Adobe AS2 reference (mirror)](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html).
+
+
+Acceptance: 25 font/text/tutorial checks pass with the reusable FONTS/JIT profile;
+five selected NO_FONTS checks retain linkable failure contracts. Six focused
+full-core ASan/UBSan checks include actual JIT, transfer and independent workers.
+Injected allocation failures are checked in the ordinary build, not claimed as
+a clean sanitizer exception-unwind result. No physical platform/device acceptance
+or complete SWF text support is established.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

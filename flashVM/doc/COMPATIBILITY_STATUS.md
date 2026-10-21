@@ -244,6 +244,14 @@ concurrent decoder histories and C89 verification without an output file.
 Main audio data, complete Huffman validation, full SWF and physical devices remain
 outside these CRC guarantees. Все этапы roadmap остаются открытыми.
 
+Current v0.820–0.826 adds explicit native pair-kerning features and AS2
+TextFormat/TextField selection, with the disabled AS2 default, consistent wrapping/
+paths, transferable current/future styles, actual native JIT/GC and worker checks.
+Legacy native APIs retain their default; old field records retain their prior
+geometry. [EN](TEXT_KERNING.md) / [RU](TEXT_KERNING.ru.md).
+Styled spans, letterSpacing, tabs, full SWF text/display integration and native
+platform/device acceptance remain open. Все стадии roadmap остаются открытыми.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,

@@ -1,4 +1,8 @@
 # Owned horizontal text layout
+Current v0.826 adds explicit pair-kerning flags without changing the legacy native
+API default or options ABI. Wrapping, placed paths and transferred TextFields use
+the selected feature consistently. [Contract and evidence](TEXT_KERNING.md).
+
 
 `flashvm/text_layout.h` builds a single-font text block from validated UTF-8.
 It uses the static FreeType/HarfBuzz/libunibreak/FriBidi targets selected by
