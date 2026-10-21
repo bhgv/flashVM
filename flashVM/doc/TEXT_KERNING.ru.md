@@ -23,6 +23,17 @@ run. Ноль сохраняет HarfBuzz defaults; [FVM_FONT_SHAPE_NO_KERNING](
 INVALID_ARGUMENT, корректные NO_FONTS-запросы — UNSUPPORTED. Табуляция, styled spans
 и остальные прежние ограничения не снимаются.
 
+
+## AS2 TextFormat/TextField (v0.822)
+
+Новые TextFormat и динамические TextField по контракту AS2 Flash 8 имеют
+kerning=false. Явные non-null значения проходят VM Boolean conversion;
+null/undefined сохраняют прежний стиль при merge. Текущий и будущий форматы
+независимы, getters возвращают Boolean; редактирование, кеш метрик и экспорт
+путей используют одну настройку. Styled spans, полные device fonts и весь
+TextField остаются вне этого subset. Старые геометрические fixtures теперь
+явно включают ранее неявный кернинг.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

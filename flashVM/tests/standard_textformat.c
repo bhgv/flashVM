@@ -43,6 +43,8 @@ int main(void)
     assert(fvm_avm1_execute(c, code, sizeof(code)) == FVM_OK);
     assert(fvm_get_global(c, "fmt", &v) == FVM_OK && v.type == FVM_VALUE_OBJECT);
     fmt = v.object;
+    /* Existing extent expectations explicitly request the formerly implicit kerning. */
+    fvm_value_boolean(&v,1);assert(fvm_object_set(c,fmt,"kerning",&v)==FVM_OK);
     assert(get_number(c, fmt, "size") == 40 && get_number(c, fmt, "color") == 0xff0000);
     {
         FVM_Value klass, restored;
@@ -60,7 +62,7 @@ int main(void)
     assert(fvm_construct(c, "TextFormat", 0, 0, &empty) == FVM_OK);
     assert(fvm_gc_pin(c, empty) == FVM_OK);
     assert(fvm_object_get(c, empty, "font", &v) == FVM_OK && v.type == FVM_VALUE_NULL);
-    assert(fvm_object_get(c, empty, "kerning", &v) == FVM_OK && v.type == FVM_VALUE_NULL);
+    assert(fvm_object_get(c, empty, "kerning", &v) == FVM_OK && v.type == FVM_VALUE_BOOLEAN && !v.boolean);
     assert(fvm_value_string(&args[0], "AV fi") == FVM_OK);
 #ifdef FVM_HAS_FONTS
     {

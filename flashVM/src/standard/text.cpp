@@ -6,6 +6,7 @@
 #include "../core/runtime.hpp"
 #include "flashvm/standard_text.h"
 #include "flashvm/standard.h"
+#include "flashvm/execution.h"
 #include "flashvm/utf8.h"
 #include <cstring>
 #include <cmath>
@@ -44,8 +45,9 @@ struct Style
     double size, leading;
     unsigned long color;
     FVM_TextAlignment alignment;
+    bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : size(12), leading(2), color(0), alignment(FVM_TEXT_ALIGN_LEFT)
+    Style() : size(12), leading(2), color(0), alignment(FVM_TEXT_ALIGN_LEFT), kerning(false)
     {
     }
     /* Exchange the current value. */
@@ -70,6 +72,9 @@ struct Style
         /* Computation / Вычисление и обновление состояния. */
         alignment = s.alignment;
         s.alignment = a;
+        bool k = kerning;
+        kerning = s.kerning;
+        s.kerning = k;
     }
 };
 
@@ -226,6 +231,14 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
             if (v.type != FVM_VALUE_STRING || fvm_string_size(v))
                 return FVM_UNSUPPORTED;
         }
+        else if (std::strcmp(name, "kerning") == 0)
+        {
+            FVM_Value converted;
+            result = fvm_exec_to_boolean(c, &v, &converted);
+            if (result != FVM_OK)
+                return result;
+            style.kerning = converted.boolean != 0;
+        }
         else if (std::strcmp(name, "tabStops") == 0)
             return FVM_UNSUPPORTED;
         else
@@ -251,11 +264,6 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                 if (!finite_range(d, 0, 16777215) || d != std::floor(d))
                     return FVM_INVALID_ARGUMENT;
                 style.color = (unsigned long)d;
-            }
-            else if (std::strcmp(name, "kerning") == 0)
-            {
-                if (d != 1)
-                    return FVM_UNSUPPORTED;
             }
             else if (d != 0)
                 return FVM_UNSUPPORTED;
@@ -316,7 +324,8 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     options.max_width = width;
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
-    result = fvm_text_layout_create(font.font, text, size, &options, out);
+    result = fvm_text_layout_create_configured(font.font, text, size, &options,
+                                               style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, out);
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;
     return result;
@@ -415,6 +424,9 @@ static FVM_Result create_format(FVM_Context *c, FVM_Object *prototype, unsigned 
     null_value.type = FVM_VALUE_NULL;
     for (size_t i = 0; i < sizeof(properties) / sizeof(properties[0]); ++i)
         object->properties[properties[i]] = null_value;
+    FVM_Value kerning_default;
+    fvm_value_boolean(&kerning_default, 0);
+    object->properties["kerning"] = kerning_default;
     for (unsigned int i = 0; i < n; ++i)
         if (args[i].type != FVM_VALUE_UNDEFINED)
         {
@@ -475,6 +487,8 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["leading"] = v;
     fvm_value_number(&v, style.color);
     object->properties["color"] = v;
+    fvm_value_boolean(&v, style.kerning);
+    object->properties["kerning"] = v;
 
     /* Initialization / Инициализация локального состояния. */
     const char *align = style.alignment == FVM_TEXT_ALIGN_LEFT     ? "left"

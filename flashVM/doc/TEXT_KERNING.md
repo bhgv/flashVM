@@ -24,6 +24,17 @@ and survives font destruction; mutable fonts still have a single owner. Failures
 clear the result pointer, unknown flags are INVALID_ARGUMENT, and valid NO_FONTS
 requests are UNSUPPORTED. Tabs, styled spans and other old layout limits remain.
 
+
+## AS2 TextFormat/TextField (v0.822)
+
+New TextFormat objects and dynamic TextFields default to kerning=false, as the
+Flash 8 AS2 contract specifies. Explicit non-null values use the VM Boolean
+conversion; null/undefined retain the prior style during merging. Current and
+future formats carry independent selections, getters return the selected Boolean,
+and edits/cached metrics/path export use the same feature. Partial styled spans,
+full device-font behavior and complete TextField semantics remain outside this subset.
+Legacy metric fixtures now explicitly request their previously implicit kerning.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -50,6 +50,8 @@ int main(void)
         assert(fvm_set_global(c, "field", &v) == FVM_OK);
         assert(fvm_construct(c, "TextFormat", 0, 0, &fmt) == FVM_OK);
         assert(fvm_gc_pin(c, fmt) == FVM_OK);
+        /* Preserve this fixture's explicitly kerned geometry while testing the other field APIs. */
+        fvm_value_boolean(&v,1);assert(fvm_object_set(c,fmt,"kerning",&v)==FVM_OK);
         fvm_value_number(&v, 40);
         assert(fvm_object_set(c, fmt, "size", &v) == FVM_OK);
         fvm_value_undefined(&args[0]);
