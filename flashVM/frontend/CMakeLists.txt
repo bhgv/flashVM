@@ -1106,3 +1106,18 @@ if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
   set_target_properties(flashvm_frontend_resource_state PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
   add_test(NAME flashvm_resource_state_contract COMMAND flashvm_frontend_resource_state)
 endif()
+
+# Actual offscreen player commands and two independent observations through standard 9P files.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_resource_9p_player tests/frame_capture.c tests/resource_9p_client.c)
+  target_compile_definitions(flashvm_frontend_resource_9p_player PRIVATE FVM_TEST_RESOURCE_CONTROL FVM_TEST_RESOURCE_9P FVM_TEST_OFFSCREEN)
+  target_link_libraries(flashvm_frontend_resource_9p_player PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_resource_9p_player PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(Python3_Interpreter_FOUND)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_resource_9p_player_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_capture.py $<TARGET_FILE:flashvm_frontend_resource_9p_player> --${mode} --offscreen --resource)
+      set_tests_properties(flashvm_resource_9p_player_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+    endforeach()
+  endif()
+endif()

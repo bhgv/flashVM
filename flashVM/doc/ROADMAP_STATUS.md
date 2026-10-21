@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.734
+# FlashVM stage status / Состояние стадий — v0.735
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,17 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.735 verifies actual offscreen SWF playback through 9P operation files, with
+two independent state observers, source navigation epochs and cached READ after
+runner teardown. Interpreter and native-JIT fixtures compare real raster pixels,
+paused redraws, FILE/MEMORY/HTTP loading and joined cancellation of active child
+loads. The test transport is in-memory; no production network listener or mount
+is implied. All nine stages still require their full acceptance matrices.
+
+v0.735: команды настоящего плеера идут через 9P файлы, два наблюдателя читают
+независимые состояния, включая смену корня и cached READ после runner teardown.
+Проверка растров interpreter/JIT не заменяет полную SWF/OS приёмку.
 
 v0.734 adds a native player-state resource: copied root epochs, source prefixes,
 completed tick/draw counters and independent READY/TICK/changed-policy events.

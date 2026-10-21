@@ -1,10 +1,12 @@
-Development version: **0.734** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.734 ` and an English description. Increase the subversion before each
+Development version: **0.735** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.735 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.735: [Live player through 9P](doc/PLAYER_RESOURCE_STATE.md#live-9p-player-v0735) / [Плеер через 9P](doc/PLAYER_RESOURCE_STATE.ru.md#плеер-через-9p-v0735).
 
 v0.734: [Copied player state](doc/PLAYER_RESOURCE_STATE.md) / [Состояние плеера](doc/PLAYER_RESOURCE_STATE.ru.md).
 

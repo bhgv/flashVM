@@ -186,10 +186,10 @@ state adapter, затем control registration и dispatcher. Сетевого �
 
 | API | Владение / исполнение |
 | --- | --- |
-| `fvm_desktop_resource_state_create` | Создаёт native cache, заимствуя диспетчер без старта SDK. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| `fvm_desktop_resource_state_observe` | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| `fvm_desktop_resource_state_read` | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| `fvm_desktop_resource_state_destroy` | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L41) | Создаёт native cache, заимствуя диспетчер без старта SDK. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L50) | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L55) | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 

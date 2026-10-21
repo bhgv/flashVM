@@ -10,6 +10,10 @@
 #ifdef FVM_TEST_RESOURCE_CONTROL
 #include "../common/resource_control.h"
 #include "flashvm/rwire.h"
+#ifdef FVM_TEST_RESOURCE_9P
+#include "../common/resource_state.h"
+#include "resource_9p_client.h"
+#endif
 #endif
 #ifdef FVM_DESKTOP_SOCKET_HTTP
 #include "../common/socket_http.h"
@@ -31,6 +35,12 @@ typedef struct Capture
     FVM_SBindings incoming;
     FVM_SBinding types[1];
     unsigned long requests;
+#ifdef FVM_TEST_RESOURCE_9P
+    FVM_DesktopResourceState *state_adapter;
+    FVM_RHandle state_target;
+    Test9PClient clients[2];
+    unsigned long epochs[2], state_events[2], ticks_seen[2];
+#endif
 #endif
     unsigned char copy[32 * 32 * 4], previous[32 * 32 * 4];
     char source[FVM_DESKTOP_MAX_LOCATION + 1];
@@ -146,20 +156,35 @@ static int resource_setup(Capture *test)
     FVM_SBinding binding;
     unsigned char payload[128], wire[256];
     size_t size, encoded, consumed;
+    int ok;
     memset(&binding, 0, sizeof(binding));
     binding.tag = 3;
     binding.version = FVM_RWIRE_VERSION;
     binding.type_size = (unsigned int)strlen(FVM_RWIRE_REQUEST_TYPE);
     memcpy(binding.type, FVM_RWIRE_REQUEST_TYPE, binding.type_size);
-    return fvm_rdispatch_create(0, &test->dispatch) == FVM_R_OK &&
-           fvm_desktop_resource_control_init(&test->adapter, test->dispatch, "/timeline/ctl") ==
-               FVM_R_OK &&
-           fvm_rdispatch_grant(test->dispatch, test->adapter.target, 7, FVM_R_CONTROL) ==
-               FVM_R_OK &&
-           fvm_sbindings_init(&test->incoming, test->types, 1) == FVM_S_OK &&
-           fvm_sbindings_payload_write(&binding, 1, payload, sizeof(payload), &size) == FVM_S_OK &&
-           fvm_srecord_write(0, payload, size, wire, sizeof(wire), &encoded) == FVM_S_OK &&
-           fvm_sbindings_apply(&test->incoming, wire, encoded, &consumed) == FVM_S_OK;
+    ok = fvm_rdispatch_create(0, &test->dispatch) == FVM_R_OK &&
+         fvm_desktop_resource_control_init(&test->adapter, test->dispatch, "/timeline/ctl") ==
+             FVM_R_OK &&
+         fvm_rdispatch_grant(test->dispatch, test->adapter.target, 7, FVM_R_CONTROL) == FVM_R_OK &&
+         fvm_sbindings_init(&test->incoming, test->types, 1) == FVM_S_OK &&
+         fvm_sbindings_payload_write(&binding, 1, payload, sizeof(payload), &size) == FVM_S_OK &&
+         fvm_srecord_write(0, payload, size, wire, sizeof(wire), &encoded) == FVM_S_OK &&
+         fvm_sbindings_apply(&test->incoming, wire, encoded, &consumed) == FVM_S_OK;
+#ifdef FVM_TEST_RESOURCE_9P
+    if (!ok)
+        return 0;
+    return fvm_desktop_resource_state_create(test->dispatch, "/timeline/state",
+                                             &test->state_adapter,
+                                             &test->state_target) == FVM_R_OK &&
+           fvm_rdispatch_grant(test->dispatch, test->state_target, 7,
+                               FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK &&
+           fvm_rdispatch_grant(test->dispatch, test->state_target, 8,
+                               FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK &&
+           test_9p_create(test->clients, test->dispatch, 7, test->state_target) &&
+           test_9p_create(test->clients + 1, test->dispatch, 8, test->state_target);
+#else
+    return ok;
+#endif
 }
 /* Preserve the existing real-pixel policy but marshal every command through CRC/schema/queue. */
 static FVM_DesktopPlaybackCommand resource_notify(const FVM_DesktopPlaybackState *state, void *raw)
@@ -167,9 +192,44 @@ static FVM_DesktopPlaybackCommand resource_notify(const FVM_DesktopPlaybackState
     Capture *test = (Capture *)raw;
     FVM_DesktopPlaybackCommand wanted = control_frame(state, raw), delivered;
     FVM_RRequest request;
+#ifndef FVM_TEST_RESOURCE_9P
     FVM_RReply reply;
     unsigned char wire[128];
     size_t encoded, consumed;
+#endif
+#ifdef FVM_TEST_RESOURCE_9P
+    {
+        size_t i;
+        FVM_REvent event;
+        FVM_RResult status;
+        FVM_DesktopResourceSnapshot snapshot;
+        if (fvm_desktop_resource_state_observe(test->state_adapter, state) != FVM_R_OK)
+            goto failed;
+        for (i = 0; i < 2; ++i)
+        {
+            status = test_9p_event(test->clients + i, &event);
+            if (status == FVM_R_PENDING)
+                continue;
+            if (status != FVM_R_OK || event.missed ||
+                fvm_desktop_resource_state_read(event.data, event.size, &snapshot) != FVM_R_OK ||
+                snapshot.phase != (unsigned long)state->phase ||
+                snapshot.paused != (unsigned long)state->paused ||
+                snapshot.step_pending != (unsigned long)state->step_pending ||
+                snapshot.movie_ticks != state->movie_ticks ||
+                snapshot.total_ticks != state->total_ticks ||
+                snapshot.presentations != state->presentations || snapshot.flags ||
+                strcmp(snapshot.source, state->source))
+                goto failed;
+            if (event.kind == FVM_DESKTOP_STATE_READY)
+                ++test->epochs[i];
+            if (event.kind == FVM_DESKTOP_STATE_TICK)
+                ++test->ticks_seen[i];
+            if (snapshot.epoch != test->epochs[i])
+                goto failed;
+            ++test->state_events[i];
+        }
+    }
+#endif
     if (wanted != FVM_DESKTOP_PLAYBACK_KEEP)
     {
         memset(&request, 0, sizeof(request));
@@ -193,19 +253,29 @@ static FVM_DesktopPlaybackCommand resource_notify(const FVM_DesktopPlaybackState
         default:
             goto failed;
         }
+#ifdef FVM_TEST_RESOURCE_9P
+        if (!test_9p_command(test->clients, test->adapter.target, request.operation))
+            goto failed;
+#else
         if (fvm_rrequest_record_write(3, &request, wire, sizeof(wire), &encoded) != FVM_S_OK ||
             fvm_rdispatch_post_record(test->dispatch, 7, &test->incoming, wire, encoded,
                                       &consumed) != FVM_R_OK ||
             consumed != encoded)
             goto failed;
+#endif
     }
     delivered = fvm_desktop_resource_control_notify(state, &test->adapter);
     if (delivered != wanted)
         goto failed;
+#ifdef FVM_TEST_RESOURCE_9P
+    if (wanted != FVM_DESKTOP_PLAYBACK_KEEP && !test_9p_reply(test->clients))
+        goto failed;
+#else
     if (wanted != FVM_DESKTOP_PLAYBACK_KEEP &&
         (fvm_rdispatch_take(test->dispatch, 7, test->requests, &reply) != FVM_R_OK ||
          reply.result != FVM_R_OK || reply.size))
         goto failed;
+#endif
     return delivered;
 failed:
     test->failed = 1;
@@ -218,6 +288,28 @@ static void resource_cleanup(Capture *test)
     unsigned long id;
     if (!test->dispatch)
         return;
+#ifdef FVM_TEST_RESOURCE_9P
+    if (test->state_events[0])
+    {
+        FVM_DesktopResourceSnapshot snapshot;
+        if (!test_9p_query(test->clients, test->dispatch, test->state_target, &reply) ||
+            fvm_desktop_resource_state_read(reply.data, reply.size, &snapshot) != FVM_R_OK ||
+            snapshot.epoch != test->epochs[0])
+            test->failed = 1;
+    }
+    if (!test_9p_destroy(test->clients))
+        test->failed = 1;
+    if (!test_9p_destroy(test->clients + 1))
+        test->failed = 1;
+    if (test->state_adapter && fvm_desktop_resource_state_destroy(&test->state_adapter) != FVM_R_OK)
+        test->failed = 1;
+    if (test->state_events[0] != test->state_events[1] || test->epochs[0] != test->epochs[1] ||
+        test->ticks_seen[0] != test->ticks_seen[1])
+        test->failed = 1;
+    if (test->state_events[0] &&
+        test->epochs[0] != (unsigned long)(!strcmp(test->scenario, "navigation") ? 2 : 1))
+        test->failed = 1;
+#endif
     for (id = 1; id <= test->requests; ++id)
     {
         fvm_rdispatch_cancel(test->dispatch, 7, id);
@@ -386,6 +478,11 @@ int main(int argc, char **argv)
 #endif
 #ifdef FVM_TEST_RESOURCE_CONTROL
     resource_cleanup(&test);
+#endif
+#ifdef FVM_TEST_RESOURCE_9P
+    if ((!strcmp(test.scenario, "sequence") || !strcmp(test.scenario, "navigation")) &&
+        test.ticks_seen[0] != test.last_tick)
+        test.failed = 1;
 #endif
     if (fvm_desktop_shutdown() != FVM_OK)
         test.failed = 1;

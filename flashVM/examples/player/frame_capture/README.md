@@ -188,10 +188,10 @@ registration and dispatcher. This example creates no network client.
 
 | API | Ownership / execution |
 | --- | --- |
-| `fvm_desktop_resource_state_create` | Own native cached state, borrowing dispatcher without starting SDK. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| `fvm_desktop_resource_state_observe` | Owner copies the current safe point before returning the next command. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| `fvm_desktop_resource_state_read` | Decode owned event bytes into a standalone scalar/source snapshot. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| `fvm_desktop_resource_state_destroy` | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L41) | Own native cached state, borrowing dispatcher without starting SDK. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L50) | Owner copies the current safe point before returning the next command. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L55) | Decode owned event bytes into a standalone scalar/source snapshot. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Own one independent copied queue for the trusted local session. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Consume only this reader; quiet-turn PENDING is not failure. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 
