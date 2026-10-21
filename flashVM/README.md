@@ -1,10 +1,12 @@
-Development version: **0.797** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.797 ` and an English description. Increase the subversion before each
+Development version: **0.798** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.798 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.798: [Exercise short queued voice identity through actual owner frames and controls](doc/QUEUED_SOUND_IDS.md).
 
 v0.797: [Keep desktop SyncNoMultiple active until queued samples finish](doc/QUEUED_SOUND_IDS.md).
 

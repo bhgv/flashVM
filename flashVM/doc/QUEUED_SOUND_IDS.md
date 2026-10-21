@@ -97,6 +97,18 @@ EVENT_BYTES source/mixer accounting and are visible through native storage_info.
 This fixes premature NoMultiple release at software retirement; it does not add
 hardware audibility, sub-frame authored timing or reference Flash A/V clocks.
 
+## v0.798: actual SDL owner-frame regression
+
+`flashvm_frontend_queued_identity` uses a real paused SDL queue to retain a
+seven-source-frame voice after its native mixer slot has retired. A second
+actual root frame delivers NoMultiple and must not create another voice. Later
+frames run stop-by-ID/restart, AVM1 StopSounds and a new NoMultiple start; GC runs
+between deliveries. After worker resume the copied dequeue clock expires the ID.
+Five real AVM1 frame actions assert interpreter/native-JIT entry counters. The
+short-voice queue is primed directly under the producer mutex while the worker
+is suspended; no dummy substitute backend supplies the queued observation.
+This is Linux/SDL dummy-driver ownership evidence, not physical DAC timing.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
