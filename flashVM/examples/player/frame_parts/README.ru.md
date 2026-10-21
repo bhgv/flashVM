@@ -16,7 +16,7 @@
 
 Обычные сообщения переменной длины не получают padding. Bulk-режим включён
 явно и может уменьшаться/увеличиваться только с согласованного нового кадра.
-Автоматической оценки качества канала нет. FILE допускает запросы пропусков,
+Опциональный replay обратной связи описан ниже; сетевые измерения собирает хост. FILE допускает запросы пропусков,
 LIVE их не формирует. Файл сохраняет выбранный режим, но сам пример не открывает
 сетевые сокеты; TCP/UDP-проверка выполняется независимым тестом.
 
@@ -94,6 +94,55 @@ loopback с перестановкой, дубликатами, поврежде
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Освобождает quiesced очередь после adapter/replies. [Contract](../../../doc/PLAYER_FRAME_PARTS.ru.md). |
 | `fvm_desktop_shutdown` | Проверяет завершение runner/SDL; последний native export выполняется после shutdown. [Contract](../../../doc/PLAYER_FRAME_PARTS.ru.md). |
 
+## Настоящие кадры с обратной связью (v0.746)
+
+[Запускаемый пример frame_parts](README.ru.md)
+принимает `--feedback reports.srecords`: ровно три компактных отчёта, целиком
+проверяемых до открытия результата. Идентификаторы: stream 7, epoch 1, window
+1/2/3. При исполнении expected должен совпасть с числом частей предыдущего
+кадра. Это проверяет причинную привязку, но не подлинность файла или измерений.
+
+Четыре настоящих SWF кадра начинают с 1024/768. Независимый тест задаёт окно:
+шесть ожидаемых частей, четыре вовремя, одна повреждена, одна отсутствует;
+затем чистые окна из одиннадцати и шести частей, известный RTT 20 мс. Политика
+выбирает 512/400, 1024/768, затем 4096/4000. Только для короткого примера
+достаточно одного плохого/хорошего окна, минимум выборки один, cooldown ноль.
+Это явные демонстрационные настройки, а не рекомендации для реальной сети.
+
+Кандидат проходит компактные OFFER_AT/ACK на границе следующего изображения;
+лишь согласованный профиль подтверждается политике и передаётся writer кадров.
+Транскрипт содержит входящую обратную связь перед метаданными кадров 2–4:
+он отражает оба направления, а не односторонний видеоконтейнер. Без опции
+сохраняется прежний сценарий из трёх кадров с заданными размерами.
+
+Независимый reader сравнивает все RGBA байты и поля, затем передаёт реальные
+части через UDP loopback с потерями, повреждениями, повторами и перестановками.
+FILE восстанавливает только недостающие части через TCP; LIVE не переспрашивает.
+Проверяются испорченные, чрезмерные и лишние отчёты, чужие идентификаторы,
+порядок окон, неверный expected и ошибки CLI. Ошибка чтения входа сохраняет
+существующий результат; ошибка после открытия удаляет частичный файл этого запуска.
+
+Это воспроизведение явных измерений хоста. Автоматический сетевой сборщик,
+контроль перегрузки, аутентифицированный сервер и видеокодек пока не добавлены.
+
+| API | Ownership / результат |
+| --- | --- |
+| [`fvm_sadapt_config_init`](../../../include/flashvm/sadapt.h#L96) | Заполняет примерные настройки до явных поправок демо; без выделения памяти. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+| [`fvm_sadapt_init`](../../../include/flashvm/sadapt.h#L100) | Проверяет и копирует три профиля; состояние остаётся по неизменному адресу до завершения. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+| [`fvm_sadapt_feedback_read`](../../../include/flashvm/sadapt.h#L119) | Проверяет компактный отчёт и копирует лишь при успехе; все три записи разбираются до открытия результата. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+| [`fvm_sadapt_observe`](../../../include/flashvm/sadapt.h#L106) | Принимает окно предыдущего кадра и возвращает кандидата без изменения framing и сетевой отправки. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+| [`fvm_sadapt_feedback_write`](../../../include/flashvm/sadapt.h#L117) | Записывает проверенный отчёт обратного направления в транскрипт; выходными байтами владеет caller. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+| [`fvm_sadapt_commit`](../../../include/flashvm/sadapt.h#L111) | Подтверждает точный согласованный профиль после ACK; несовпадение прерывает пример. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+
+```sh
+# Controlled demonstration input; replace with real trusted host measurements.
+python3 flashVM/examples/player/frame_parts/make_feedback.py reports.srecords
+./build-frame-parts/frontend/flashvm_example_frame_parts --feedback reports.srecords frames.sparts
+./build-frame-parts/frontend/flashvm_example_frame_parts --live --feedback reports.srecords live.sparts
+```
+
+[make_feedback.py](make_feedback.py) создаёт заданную трассу из трёх окон без импорта тестов или загрузки SDK. Ожидаемый stdout адаптивного запуска: `exported_frames=4`.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -110,6 +159,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
 | `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../../../include/flashvm/rdispatch.h#L119) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
+| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:111](../../../include/flashvm/sadapt.h#L111) |
+| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:96](../../../include/flashvm/sadapt.h#L96) |
+| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:119](../../../include/flashvm/sadapt.h#L119) |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../../../include/flashvm/sadapt.h#L117) |
+| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:100](../../../include/flashvm/sadapt.h#L100) |
+| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:106](../../../include/flashvm/sadapt.h#L106) |
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
 | `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:108](../../../include/flashvm/scontrol.h#L108) |
 | `fvm_scontrol_commit` | function | [include/flashvm/scontrol.h:90](../../../include/flashvm/scontrol.h#L90) |

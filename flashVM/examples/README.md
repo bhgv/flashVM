@@ -166,7 +166,7 @@
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, bounded кадры ресурсов и owner control</em></small>
-  - [frame_parts](#example-player-frame_parts) — <small><em>Кадры SWF в согласованные части, FILE/LIVE и смена размера</em></small>
+  - [frame_parts](#example-player-frame_parts) — <small><em>Кадры SWF, FILE/LIVE и адаптация частей по обратной связи</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1865,6 +1865,8 @@ window chrome/letterbox. Флаг --offscreen отключает собстве�
 
 <a id="example-player-frame_parts"></a>
 ### frame_parts
+
+Опциональный `--feedback` связывает отчёты хоста, политику выбора размеров и ACK на следующем кадре; [контракт RU](../doc/CHANNEL_ADAPTATION.ru.md) / [EN](../doc/CHANNEL_ADAPTATION.md). Это воспроизведение измерений, не сетевой сборщик.
 
 **Тип:** C89, реальный offscreen-плеер и native cache, без видеоустройства/аудио.
 **README:** [EN](player/frame_parts/README.md) / [RU](player/frame_parts/README.ru.md).

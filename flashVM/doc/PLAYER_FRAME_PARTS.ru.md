@@ -121,6 +121,8 @@ native devices/платформ и все девять стадий остают
 [независимый reader](../frontend/tests/frame_parts_example.py),
 [live player fixture](../frontend/tests/frame_capture.c).
 
+See also / См. также: [v0.746 feedback-driven replay](CHANNEL_ADAPTATION.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -50,7 +50,7 @@ def expected(sequence):
                  for v in (color if left <= x < left+8 and 4 <= y < 12 else (255,255,255,255)))
 
 
-def parse(data, mode):
+def parse(data, mode, adaptive=False):
     tag, declaration, offset = record(data)
     assert tag == 0
     values, names = fields(declaration, 2)
@@ -62,7 +62,13 @@ def parse(data, mode):
         names = names[count:]
     assert not names
     objects = []
-    for sequence, slot_bytes, part_bytes in [(1,1024,768), (2,512,400), (3,4096,4000)]:
+    profiles = [(1,1024,768), (2,512,400), (3,1024,768), (4,4096,4000)] if adaptive else [(1,1024,768), (2,512,400), (3,4096,4000)]
+    for sequence, slot_bytes, part_bytes in profiles:
+        if adaptive and sequence > 1:
+            tag, payload, offset = record(data,offset)
+            values, tail = fields(payload,11)
+            assert tag == 0 and not tail and values == reports()[sequence-2]
+
         tag, metadata, offset = record(data,offset)
         values, source = fields(metadata,17)
         assert tag == 20 and values[:1] == [1] and values[1] and values[2]
@@ -141,6 +147,16 @@ def transport(lib, objects, mode):
         assert complete.value == 1 and image.raw == expected(sequence)
 
 
+def reports():
+    # Controlled host windows: six normal pieces with two unusable, then clean smaller/normal images.
+    return [[3,1,7,1,1,6,4,0,1,1,20], [3,1,7,1,2,11,11,0,0,1,20],
+            [3,1,7,1,3,6,6,0,0,1,20]]
+
+
+def trace(windows):
+    return b''.join(encode(0,b''.join(map(encode_integer,window))) for window in windows)
+
+
 def main():
     executable = str(Path(sys.argv[1]).resolve()); lib = C.CDLL(sys.argv[2])
     env = dict(os.environ,SDL_VIDEODRIVER='flashvm-driver-that-does-not-exist',SDL_AUDIODRIVER='dummy')
@@ -152,11 +168,36 @@ def main():
             assert result.returncode == 0,(result.stdout,result.stderr)
             assert result.stdout.strip() == 'exported_frames=3'
             transport(lib,parse(output.read_bytes(),mode),mode)
+        feedback = Path(temporary)/'feedback.srecords'
+        generator = Path(__file__).resolve().parents[2]/'examples/player/frame_parts/make_feedback.py'
+        result = subprocess.run([sys.executable,str(generator),str(feedback)],capture_output=True,timeout=8)
+        assert result.returncode == 0 and feedback.read_bytes() == trace(reports())
+        for mode in (1,2):
+            result = subprocess.run([executable,'--feedback',str(feedback),*(['--live'] if mode==2 else []),str(output)],
+                                    env=env,capture_output=True,text=True,timeout=8)
+            assert result.returncode == 0,(result.stdout,result.stderr)
+            assert result.stdout.strip() == 'exported_frames=4'
+            transport(lib,parse(output.read_bytes(),mode,True),mode)
+        valid = feedback.read_bytes()
+        for bad in (b'',b'\x80'*385,valid[:-1],valid+b'\x80',valid+valid,valid[:8]+b'\x00'+valid[9:]):
+            feedback.write_bytes(bad);output.write_bytes(b'preserve destination')
+            result = subprocess.run([executable,'--feedback',str(feedback),str(output)],env=env,capture_output=True,timeout=8)
+            assert result.returncode == 1 and output.read_bytes() == b'preserve destination'
+        for field,value in ((2,8),(3,2),(4,9),(5,7)):
+            windows = reports();windows[0][field] = value
+            feedback.write_bytes(trace(windows));output.unlink(missing_ok=True)
+            result = subprocess.run([executable,'--feedback',str(feedback),str(output)],env=env,capture_output=True,timeout=8)
+            assert result.returncode == 1 and not output.exists()  # Causal count is checked during export.
+        feedback.write_bytes(valid)
+        for args in (['--feedback'],['--feedback',str(feedback)],['--feedback',str(feedback),str(feedback)],
+                     ['--feedback',str(feedback),'--feedback',str(feedback),str(output)],['--live','--live',str(output)]):
+            result = subprocess.run([executable,*args],env=env,capture_output=True,timeout=8)
+            assert result.returncode == 2
         for args,status in [([],2),(['--unknown'],2),(['--live'],2),(['--help'],0),([temporary],1),
                             (['--live','--unknown'],2),([str(Path(temporary)/'missing'/'out')],1)]:
             result = subprocess.run([executable,*args],env=env,capture_output=True,text=True,timeout=8)
             assert result.returncode == status,(args,result.stdout,result.stderr)
-    print('PASS real RGBA frame parts, compact metadata, shrink/grow, post-SDK retention and UDP/TCP file/live loss policies')
+    print('PASS real RGBA frame parts, compact metadata, scripted and feedback-driven shrink/grow, post-SDK retention and UDP/TCP file/live loss policies')
 
 
 if __name__ == '__main__':main()

@@ -4,6 +4,9 @@
 #define EXAMPLE_FRAME_WIDTH 32U /* Authored logical stage width, without native window scaling. */
 #define EXAMPLE_FRAME_HEIGHT 32U /* Authored logical stage height. */
 #define EXAMPLE_FRAME_BYTES (EXAMPLE_FRAME_WIDTH * EXAMPLE_FRAME_HEIGHT * 4U) /* Packed RGBA storage. */
+#define EXAMPLE_FRAME_REPORTS 3UL /* Feedback windows for the four-frame adaptive replay. */
+#define EXAMPLE_FRAME_REPORT_BYTES 128U /* Maximum compact report storage per window. */
+#define EXAMPLE_FRAME_POLICY_WINDOWS 1UL /* Short demo reacts after one measured window; production policy differs. */
 #define EXAMPLE_FRAME_COUNT 3UL /* Demonstrate normal, smaller and larger profiles. */
 #define EXAMPLE_FRAME_TIME_MS 40UL /* Tutorial presentation metadata; not an audio/video clock claim. */
 #define EXAMPLE_FRAME_SESSION 1UL /* Trusted local reader granted READ by this host. */

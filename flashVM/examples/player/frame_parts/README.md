@@ -15,8 +15,7 @@ shutdown and re-encoding its first part must give identical bytes. Earlier pins
 are explicitly released; cleanup revokes all remaining pins.
 
 Ordinary variable-length messages have no padding. Bulk framing is explicit and
-may shrink/grow only at an agreed new image. There is no automatic link-quality
-estimator. FILE permits missing-part requests, LIVE suppresses them. The file
+may shrink/grow only at an agreed new image. Optional feedback replay is described below; network measurement remains host-owned. FILE permits missing-part requests, LIVE suppresses them. The file
 preserves that mode; this executable opens no sockets. The independent test owns
 the real loopback TCP/UDP transport.
 
@@ -95,6 +94,56 @@ authentication, congestion controller, video codec or remote window is installed
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Free a quiesced queue after its adapters and terminal replies are gone. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_shutdown` | Verify runner/SDL ownership ended; final native pixel export deliberately follows this call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 
+## Feedback-driven real frame replay (v0.746)
+
+The [executable frame_parts tutorial](README.md)
+now accepts `--feedback reports.srecords`. Its bounded input consists of exactly
+three compact feedback reports, decoded completely before opening output. Each
+report must identify stream 7, epoch 1, window 1/2/3. During execution its expected
+count must equal the preceding exported image's part count. This checks causal
+sample extent; it cannot authenticate a file or prove measurements are truthful.
+
+The four actual SWF images start at 1024/768. The independent test supplies a
+controlled window with six expected, four on-time and one damaged part (one
+missing), then clean eleven-part and six-part windows, known RTT 20 ms. The
+policy selects 512/400, 1024/768, then 4096/4000. For this short replay only,
+one bad/good window is sufficient, sample minimum is one and cooldown zero.
+These explicit overrides are not production network tuning advice.
+
+Each candidate travels through compact OFFER_AT/ACK at the next image boundary;
+only the selected committed profile is passed to adaptation commit and the actual
+retained-frame part writer. The transcript includes incoming feedback before
+metadata for frames 2–4, so it represents both directions, not a one-way media
+container. Without the option the original scripted three-frame mode is retained.
+
+The independent reader checks every RGBA byte and wire field, then transmits the
+actual parts on UDP loopback with damage/omission/reordering/duplicates. FILE
+repairs only missing pieces via TCP; LIVE never requests repair. Negative cases
+cover malformed/oversize/trailing reports, wrong identity/window/sample extent,
+and CLI errors. Input decoding failures preserve an existing destination; a
+failure after opening output removes that invocation's partial file.
+
+This is explicit host-feedback replay, not an installed network-quality sampler,
+congestion controller, authenticated remote service or video codec.
+
+| API | Ownership / результат |
+| --- | --- |
+| [`fvm_sadapt_config_init`](../../../include/flashvm/sadapt.h#L96) | Fill illustrative defaults before explicit demo overrides; no allocation. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_init`](../../../include/flashvm/sadapt.h#L100) | Validate and copy three supported profiles; keep owner state at its stable address until completion. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_feedback_read`](../../../include/flashvm/sadapt.h#L119) | Verify one bounded compact report, copying only on success; all three input records are decoded before output opens. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_observe`](../../../include/flashvm/sadapt.h#L106) | Consume the preceding image window and return a pending candidate without changing framing or sending traffic. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_feedback_write`](../../../include/flashvm/sadapt.h#L117) | Store a checked reverse-direction report in the demonstration transcript; caller owns output bytes. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_commit`](../../../include/flashvm/sadapt.h#L111) | Confirm exact selected geometry only after reliable control ACK; mismatch aborts the example. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+
+```sh
+# Controlled demonstration input; replace with real trusted host measurements.
+python3 flashVM/examples/player/frame_parts/make_feedback.py reports.srecords
+./build-frame-parts/frontend/flashvm_example_frame_parts --feedback reports.srecords frames.sparts
+./build-frame-parts/frontend/flashvm_example_frame_parts --live --feedback reports.srecords live.sparts
+```
+
+[make_feedback.py](make_feedback.py) writes the controlled three-window trace without importing tests or loading the SDK. Expected adaptive stdout: `exported_frames=4`.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -111,6 +160,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
 | `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../../../include/flashvm/rdispatch.h#L119) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
+| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:111](../../../include/flashvm/sadapt.h#L111) |
+| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:96](../../../include/flashvm/sadapt.h#L96) |
+| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:119](../../../include/flashvm/sadapt.h#L119) |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../../../include/flashvm/sadapt.h#L117) |
+| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:100](../../../include/flashvm/sadapt.h#L100) |
+| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:106](../../../include/flashvm/sadapt.h#L106) |
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
 | `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:108](../../../include/flashvm/scontrol.h#L108) |
 | `fvm_scontrol_commit` | function | [include/flashvm/scontrol.h:90](../../../include/flashvm/scontrol.h#L90) |

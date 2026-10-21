@@ -102,6 +102,40 @@ The generic policy does not install a network listener, quality sampler, new
 video/audio codec or automatic production-player adaptation. A host must connect
 measurements, control transport and frame-boundary activation explicitly.
 
+## Feedback-driven real frame replay (v0.746)
+
+The [executable frame_parts tutorial](../examples/player/frame_parts/README.md)
+now accepts `--feedback reports.srecords`. Its bounded input consists of exactly
+three compact feedback reports, decoded completely before opening output. Each
+report must identify stream 7, epoch 1, window 1/2/3. During execution its expected
+count must equal the preceding exported image's part count. This checks causal
+sample extent; it cannot authenticate a file or prove measurements are truthful.
+
+The four actual SWF images start at 1024/768. The independent test supplies a
+controlled window with six expected, four on-time and one damaged part (one
+missing), then clean eleven-part and six-part windows, known RTT 20 ms. The
+policy selects 512/400, 1024/768, then 4096/4000. For this short replay only,
+one bad/good window is sufficient, sample minimum is one and cooldown zero.
+These explicit overrides are not production network tuning advice.
+
+Each candidate travels through compact OFFER_AT/ACK at the next image boundary;
+only the selected committed profile is passed to adaptation commit and the actual
+retained-frame part writer. The transcript includes incoming feedback before
+metadata for frames 2–4, so it represents both directions, not a one-way media
+container. Without the option the original scripted three-frame mode is retained.
+
+The independent reader checks every RGBA byte and wire field, then transmits the
+actual parts on UDP loopback with damage/omission/reordering/duplicates. FILE
+repairs only missing pieces via TCP; LIVE never requests repair. Negative cases
+cover malformed/oversize/trailing reports, wrong identity/window/sample extent,
+and CLI errors. Input decoding failures preserve an existing destination; a
+failure after opening output removes that invocation's partial file.
+
+This is explicit host-feedback replay, not an installed network-quality sampler,
+congestion controller, authenticated remote service or video codec.
+
+Validation at v0.746: 54 selected native regression checks and 14 shared-host checks passed. New policy/cache/protocol paths and the actual interpreter/JIT frame integration passed ASan/UBSan (leak detection disabled by the restricted host). Strict C89 link checks and C++98 consumers build for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; foreign binaries were not executed. All nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
