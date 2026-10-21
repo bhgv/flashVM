@@ -16,7 +16,8 @@
 #define FVM_MP3_LAYER_3 1U /* Only Layer III belongs in SWF MP3 data. */
 #define FVM_MP3_BITRATE_SHIFT 4U /* High nibble in byte two. */
 #define FVM_MP3_BITRATE_BAD 15U /* Reserved invalid bitrate code. */
-#define FVM_MP3_BITRATE_FREE 0U /* Free-format framing needs a separate inference contract. */
+#define FVM_MP3_BITRATE_FREE 0U /* Free-format uses header-spacing inference instead of a bitrate table. */
+#define FVM_MP3_FREE_MAX_BYTES 2304U /* Exclusive inferred span ceiling of the pinned decoder. */
 #define FVM_MP3_RATE_SHIFT 2U /* Two-bit sampling-rate table index in byte two. */
 #define FVM_MP3_RATE_MASK 3U /* Sampling-rate index field. */
 #define FVM_MP3_RATE_RESERVED 3U /* Invalid sampling-rate table index. */

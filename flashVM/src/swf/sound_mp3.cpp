@@ -4,8 +4,8 @@
 #include <climits>
 #include <cstring>
 
-/* Parse a complete Layer-III packet without synchronization search or source mutation. */
-FVM_Result fvm_swf_mp3_probe(const unsigned char *data, size_t size, FVM_SWFMP3Frame *out)
+/* Parse a Layer-III header; zero bytes denotes a valid free-format header awaiting geometry. */
+static FVM_Result mp3_header(const unsigned char *data, size_t size, FVM_SWFMP3Frame *out)
 {
     if (!out || !data || size < FVM_MP3_HEADER_BYTES || data[0] != FVM_MP3_SYNC_FIRST ||
         (data[1] & FVM_MP3_SYNC_MASK) != FVM_MP3_SYNC_MASK)
@@ -18,7 +18,7 @@ FVM_Result fvm_swf_mp3_probe(const unsigned char *data, size_t size, FVM_SWFMP3F
         rate == FVM_MP3_RATE_RESERVED ||
         (data[3] & FVM_MP3_EMPHASIS_MASK) == FVM_MP3_EMPHASIS_RESERVED)
         return FVM_INVALID_ARGUMENT;
-    if (layer != FVM_MP3_LAYER_3 || bitrate == FVM_MP3_BITRATE_FREE)
+    if (layer != FVM_MP3_LAYER_3)
         return FVM_UNSUPPORTED;
     const unsigned int rates[] = {44100U, 48000U, 32000U};
     const unsigned int bitrates1[] = {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320};
@@ -34,8 +34,51 @@ FVM_Result fvm_swf_mp3_probe(const unsigned char *data, size_t size, FVM_SWFMP3F
                                                               : FVM_MP3_MPEG2_COEFFICIENT;
     info.bytes = coefficient * (version == FVM_MP3_VERSION_1 ? bitrates1[bitrate] : bitrates2[bitrate]) /
                  info.rate + ((data[2] & FVM_MP3_PADDING_MASK) != 0);
-    if (info.bytes < FVM_MP3_HEADER_BYTES || info.bytes > size)
+    if (bitrate == FVM_MP3_BITRATE_FREE)
+        info.bytes = 0;
+    else if (info.bytes < FVM_MP3_HEADER_BYTES || info.bytes > size)
         return FVM_INVALID_ARGUMENT;
+    *out = info;
+    return FVM_OK;
+}
+/* Require exact free-format geometry, without accepting a skipped byte or a different source clock. */
+static bool free_header(const unsigned char *data, size_t size, const FVM_SWFMP3Frame &first)
+{
+    FVM_SWFMP3Frame next;
+    return mp3_header(data, size, &next) == FVM_OK && !next.bytes &&
+           next.rate == first.rate && next.channels == first.channels && next.samples == first.samples;
+}
+/* Infer an unpadded free-format size from three consecutive matching headers at offset zero. */
+FVM_Result fvm_swf_mp3_probe(const unsigned char *data, size_t size, FVM_SWFMP3Frame *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFMP3Frame info;
+    FVM_Result result = mp3_header(data, size, &info);
+    if (result != FVM_OK)
+        return result;
+    if (!info.bytes)
+    {
+        size_t padding = (data[2] & FVM_MP3_PADDING_MASK) != 0;
+        size_t chosen = 0;
+        for (size_t span = FVM_MP3_HEADER_BYTES; span < FVM_MP3_FREE_MAX_BYTES; ++span)
+        {
+            if (span > size || size - span < FVM_MP3_HEADER_BYTES)
+                break;
+            if (!free_header(data + span, size - span, info))
+                continue;
+            size_t base = span - padding;
+            size_t second = base + ((data[span + 2] & FVM_MP3_PADDING_MASK) != 0);
+            if (second > size - span || size - span - second < FVM_MP3_HEADER_BYTES ||
+                !free_header(data + span + second, size - span - second, info))
+                continue;
+            chosen = span;
+            break; /* Select the smallest verified span, not a multiple spanning whole packets. */
+        }
+        if (!chosen)
+            return FVM_UNSUPPORTED; /* Too little synchronization evidence for an event packet. */
+        info.bytes = chosen;
+    }
     *out = info;
     return FVM_OK;
 }

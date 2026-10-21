@@ -16,7 +16,7 @@ struct FVM_SWFMP3Frame
     unsigned int channels; /* Effective interleaving, one or two native S16 channel values. */
     unsigned int samples; /* Fixed 576 or 1152 source frames for this packet. */
 };
-/* Reject skipped bytes, reserved fields, truncation and unsupported free-format/layer policy. */
+/* Reject skipped bytes/reserved fields; infer free-format from three consecutive matching headers. */
 FVM_Result fvm_swf_mp3_probe(const unsigned char *, size_t, FVM_SWFMP3Frame *);
 /* Validate complete event MPEG data before decoding the selected latency-trimmed range.
  * Stack-only two-pass extraction; metadata and output storage remain caller-owned. */

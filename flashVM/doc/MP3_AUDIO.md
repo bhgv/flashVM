@@ -10,7 +10,7 @@ private prefixes; scalar C++98 code avoids ISA-dependent dispatch, containers,
 allocations, VM references, callbacks or devices. The public host ABI remains C89.
 This first checkpoint does not yet route public SWF resource reads to the decoder.
 
-[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L8) validates a complete contiguous MPEG-1/2/2.5 Layer-III packet
+[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L52) validates a complete contiguous MPEG-1/2/2.5 Layer-III packet
 before exposing its exact bytes/rate/channels/576-or-1152 frame count. It rejects
 reserved fields, short packets and synchronization gaps; Layer I/II and free-format
 bitrate return UNSUPPORTED. CBR and variable standard bitrate indices are allowed.
@@ -202,7 +202,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
+| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:52](../src/swf/sound_mp3.cpp#L52) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:110](../include/flashvm/swf_sound_mixer.h#L110) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
