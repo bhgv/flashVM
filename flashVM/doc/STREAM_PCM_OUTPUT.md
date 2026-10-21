@@ -202,6 +202,34 @@ Validation at v0.756: 77 selected native checks pass (one previously built MP3 t
 
 Call only on the VM owner thread, outside collection/teardown, retaining the same-context native clip for the call. No allocation, callback, script lookup, tick or managed pointer escapes; copied scalars need no root. Null/wrong-sized/foreign/prototype/corrupt input returns INVALID_ARGUMENT and preserves the entire descriptor. The query is not a navigation event log: multiple changes between observations may be invisible. The host still owns source identity, queue discontinuity and synchronization policy. `movieclip_playback_info.cpp` verifies invalid-output atomicity, zero-allocation observation, stopped ticks, seek/entry distinction, looping, replaced script property and GC-safe retained ownership.
 
+## Multiple prepared sources (v0.760)
+
+`fvm_swf_stream_output_continue(output, next)` requires an exhausted current
+source with no pending PCM and a distinct initialized converter whose output
+rate/channels match the backend. The next converter is borrowed at its current
+position; source rates/channels may differ. Success changes only the binding
+and clears EOF. Accepted FIFO samples, submitted/played clocks, pause and last
+chunk remain intact; empty sources can be continued in bounded host-controlled
+steps. No allocation, VM, backend callback or implicit decode occurs. Host owns
+ordering, conversion phase per source, source lifetimes and external serialization.
+INVALID_ARGUMENT covers unfinished/pending/self/null/mismatched/reentrant calls;
+other validation errors propagate, preserving both cursors, FIFO and descriptor.
+
+`fvm_swf_stream_output_bind_frame(output, target, positive_frame)` is an explicit
+discontinuity: validate geometry and select the first target block at/after the
+frame, then pause and clear. Only acknowledged clear publishes target binding,
+its phase-zero position and reset output clock. Same converter is allowed. On
+failed clear the prior converter, pending bytes and target cursor remain unchanged;
+an acknowledged pause is retained. Errors/exception statuses follow ordinary seek.
+Beyond-last seeks EOF, gaps select later blocks. Caller exclusively retains the
+new converter/snapshot until producer quiescence. No allocation or VM calls.
+This is a host prefix-discard policy, not reference Flash cross-header seeking.
+
+`swf_stream_output_segments.cpp` checks exact PCM, empty intermediates, different
+source rate/channel geometry, nonempty FIFO continuity, callback-free transition,
+zero-allocation calls after VM teardown, invalid output geometry, reentry and
+failed-clear preservation of pending retry bytes and both source positions.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -214,6 +242,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:96](../include/flashvm/swf_stream_output.h#L96) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:89](../include/flashvm/swf_stream_output.h#L89) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../include/flashvm/swf_stream_output.h#L57) |

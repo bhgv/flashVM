@@ -200,6 +200,33 @@ helper для gotoAndStop.
 
 Вызывайте только из потока-владельца VM вне GC/teardown, удерживая клип того же контекста. Нет выделений памяти, callbacks, поиска script-свойств или продвижения кадров; наружу копируются скаляры, которым не нужен root. Null, неверный размер, чужой контекст, прототип и повреждённое состояние дают INVALID_ARGUMENT, сохраняя весь выходной дескриптор. Это не журнал навигации: несколько изменений между наблюдениями могут быть не видны. Идентичность источника, очистка очереди при переходах и синхронизация остаются обязанностью хоста. Тест movieclip_playback_info.cpp проверяет атомарность ошибок, отсутствие выделений, stopped ticks, различие выбора/входа, цикл, заменённое script-свойство и удержание через GC.
 
+## Несколько подготовленных источников (v0.760)
+
+`fvm_swf_stream_output_continue(output, next)` требует исчерпанного текущего
+источника без pending PCM и другого initialized converter с теми же output
+rate/channels, что у backend. Следующий converter заимствуется с текущей позиции;
+source rate/channels могут отличаться. Меняются только binding и EOF. Принятые
+FIFO samples, submitted/played clocks, pause и последний chunk сохраняются.
+Пустые источники пропускаются отдельными ограниченными шагами хоста. Нет
+выделений, VM, backend callbacks и неявного decode. Порядок источников, отдельная
+фаза преобразования, lifetime и сериализация принадлежат хосту. INVALID_ARGUMENT:
+unfinished/pending/self/null/mismatched/reentrant; прочие validation errors
+распространяются, сохраняя оба cursors, FIFO и дескриптор.
+
+`fvm_swf_stream_output_bind_frame(output, target, positive_frame)` — явный разрыв:
+проверка geometry и выбор первого блока не раньше кадра, затем pause/clear.
+Только подтверждённый clear публикует новый binding, phase-zero position и
+сброшенные часы. Допустим тот же converter. При ошибке clear прежний converter,
+pending bytes и cursor цели сохраняются, подтверждённая пауза остаётся. Статусы
+ошибок/исключений как у обычного seek. Beyond-last выбирает EOF, gap — поздний
+блок. Хост эксклюзивно удерживает converter/snapshot до quiescence. Нет выделений
+и VM calls. Это prefix-discard политика, не эталонный Flash seek между заголовками.
+
+`swf_stream_output_segments.cpp` проверяет точный PCM, пустой промежуточный
+источник, разные source rate/channels, continuity непустой FIFO, переход без
+callbacks, отсутствие выделений после VM teardown, geometry errors, reentry и
+сохранение pending retry bytes/обоих cursors при failed clear.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -212,6 +239,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:96](../include/flashvm/swf_stream_output.h#L96) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:89](../include/flashvm/swf_stream_output.h#L89) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../include/flashvm/swf_stream_output.h#L57) |

@@ -81,6 +81,20 @@ extern "C"
      * block seeks EOF. This is a prefix discard policy, not reference Flash seek emulation.
      * Binary metadata lookup only; errors before seek cause no backend effects. */
     FVM_API FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *, unsigned int frame);
+    /* At exhausted source (no pending PCM), bind a distinct valid converter with identical output
+     * geometry. Preserve FIFO, pause, pending-buffer ownership and cumulative dequeue clock;
+     * clear eof only. No callbacks/allocation/VM. INVALID_ARGUMENT for unfinished source,
+     * reentry, null/self or mismatched geometry; other validation errors propagate unchanged.
+     * Host owns ordering and exclusively retains both converters/snapshots until quiescence. */
+    FVM_API FVM_Result fvm_swf_stream_output_continue(FVM_SWFStreamOutput *,
+                                                       FVM_SWFStreamConverter *next);
+    /* Explicit discontinuity to a converter/frame: validate geometry and binary frame selection,
+     * then pause/clear and publish new binding/position only on clear success. Reset clock/phase,
+     * discard pending, leave paused. Old converter unchanged when distinct; failed clear retains
+     * old binding/pending and target cursor (acknowledged pause remains visible). No allocation/VM.
+     * Caller exclusively retains target/snapshot; positive frame; same target is allowed. */
+    FVM_API FVM_Result fvm_swf_stream_output_bind_frame(FVM_SWFStreamOutput *,
+                                                         FVM_SWFStreamConverter *, unsigned int);
 #ifdef __cplusplus
 }
 #endif

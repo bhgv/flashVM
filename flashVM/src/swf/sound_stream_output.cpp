@@ -233,16 +233,28 @@ extern "C" FVM_Result fvm_swf_stream_output_info(FVM_SWFStreamOutput *s,
         return FVM_ERROR;
     }
 }
-/* Clear/seek is a staged external operation: a successful pause cannot be rolled back on error. */
-extern "C" FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *s, size_t block, size_t first)
+/* Check a prospective cursor on a copy before any native queue or binding change. */
+static FVM_Result stream_match(FVM_SWFStreamOutput *s, FVM_SWFStreamConverter *converter)
 {
-    if (!stream_output(s))
+    if (!converter || converter->struct_size != sizeof(*converter) ||
+        converter->output_rate != s->backend.sample_rate ||
+        converter->output_channels != s->backend.channels)
         return FVM_INVALID_ARGUMENT;
-    StreamBusy guard(s);
-    FVM_SWFStreamConverter next = *s->converter;
-    FVM_Result result = fvm_swf_stream_converter_seek(&next, block, first);
+    FVM_SWFStreamConverter checked = *converter;
+    return fvm_swf_stream_converter_seek(&checked, checked.block_count, 0);
+}
+/* Clear/seek is staged: successful pause remains visible when clear fails. */
+static FVM_Result stream_seek(FVM_SWFStreamOutput *s, FVM_SWFStreamConverter *target, size_t block,
+                              size_t first)
+{
+    FVM_Result result = stream_match(s, target);
     if (result != FVM_OK)
         return result;
+    FVM_SWFStreamConverter next = *target;
+    result = fvm_swf_stream_converter_seek(&next, block, first);
+    if (result != FVM_OK)
+        return result;
+    StreamBusy guard(s);
     try
     {
         result = s->backend.pause(s->backend.userdata, 1);
@@ -252,7 +264,8 @@ extern "C" FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *s, size_t 
         result = s->backend.clear(s->backend.userdata);
         if (result != FVM_OK)
             return result;
-        *s->converter = next;
+        *target = next;
+        s->converter = target;
         std::memset(&s->info, 0, sizeof(s->info));
         s->info.struct_size = sizeof(s->info);
         s->info.paused = 1;
@@ -264,20 +277,19 @@ extern "C" FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *s, size_t 
         return FVM_ERROR;
     }
 }
-
-/* Resolve nonsequential owner navigation without exposing source block ordinals to the host. */
-extern "C" FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *s, unsigned int frame)
+/* Resolve trusted block metadata without backend effects or target cursor publication. */
+static FVM_Result stream_frame_block(FVM_SWFStreamConverter *converter, unsigned int frame,
+                                     size_t &first)
 {
-    if (!stream_output(s) || !frame)
-        return FVM_INVALID_ARGUMENT;
-    size_t first = 0, last = s->converter->block_count;
+    first = 0;
+    size_t last = converter->block_count;
     while (first < last)
     {
         size_t middle = first + (last - first) / 2;
         FVM_SWFStreamSoundBlock block;
         block.struct_size = sizeof(block);
         FVM_Result result =
-            fvm_swf_stream_sound_snapshot_block_at(s->converter->snapshot, middle, &block);
+            fvm_swf_stream_sound_snapshot_block_at(converter->snapshot, middle, &block);
         if (result != FVM_OK)
             return result;
         if (block.frame < frame)
@@ -285,5 +297,52 @@ extern "C" FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *s, u
         else
             last = middle;
     }
-    return fvm_swf_stream_output_seek(s, first, 0);
+    return FVM_OK;
+}
+/* Preserve the existing absolute current-source seek entry point. */
+extern "C" FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *s, size_t block, size_t first)
+{
+    if (!stream_output(s))
+        return FVM_INVALID_ARGUMENT;
+    return stream_seek(s, s->converter, block, first);
+}
+/* Resolve nonsequential navigation without exposing source block ordinals to a native host. */
+extern "C" FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *s, unsigned int frame)
+{
+    if (!stream_output(s))
+        return FVM_INVALID_ARGUMENT;
+    return fvm_swf_stream_output_bind_frame(s, s->converter, frame);
+}
+/* Switch exhausted sources without clearing accepted PCM or restarting queue accounting. */
+extern "C" FVM_Result fvm_swf_stream_output_continue(FVM_SWFStreamOutput *s,
+                                                     FVM_SWFStreamConverter *next)
+{
+    if (!stream_output(s) || next == s->converter || s->info.pending_frames)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result result = stream_match(s, next);
+    if (result != FVM_OK)
+        return result;
+    unsigned int frame;
+    result = stream_next_frame(s, &frame);
+    if (result != FVM_NOT_FOUND)
+        return result == FVM_OK ? FVM_INVALID_ARGUMENT : result;
+    s->converter = next;
+    s->info.eof = 0;
+    return FVM_OK;
+}
+/* Validate first, then publish a different source/frame only after acknowledged native clear. */
+extern "C" FVM_Result fvm_swf_stream_output_bind_frame(FVM_SWFStreamOutput *s,
+                                                       FVM_SWFStreamConverter *target,
+                                                       unsigned int frame)
+{
+    if (!stream_output(s) || !frame)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result result = stream_match(s, target);
+    if (result != FVM_OK)
+        return result;
+    size_t block;
+    result = stream_frame_block(target, frame, block);
+    if (result != FVM_OK)
+        return result;
+    return stream_seek(s, target, block, 0);
 }
