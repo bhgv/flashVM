@@ -16,11 +16,11 @@ example never invokes FFmpeg, SDL, a network service or an ActionScript compiler
 the caller buffer, prepares independent native ownership and copies effective
 rate/channels. Context and runtime are destroyed **before** output is opened.
 After teardown, event mode creates an explicit same-rate mixer and transfers the
-prepared voice using [fvm_swf_sound_mixer_submit_prepared](../../../include/flashvm/swf_sound_mixer.h#L69). Success clears the old
+prepared voice using [fvm_swf_sound_mixer_submit_prepared](../../../include/flashvm/swf_sound_mixer.h#L78). Success clears the old
 voice handle; errors preserve it for cleanup. Conversion policy permits effective
 MPEG rates, but matching source/output geometry causes no resampling. The host
 bounds mixer output to frames_per_play times play_count, never an infinite silence
-tail. [fvm_swf_sound_mixer_stop_id](../../../include/flashvm/swf_sound_mixer.h#L101) ends future same-ID composition without touching
+tail. [fvm_swf_sound_mixer_stop_id](../../../include/flashvm/swf_sound_mixer.h#L110) ends future same-ID composition without touching
 a device.
 
 The export loop uses a caller-owned aligned buffer; it never reads a VM/GC pointer,
@@ -88,11 +88,11 @@ Detailed codec/source contracts: [EN](../../../doc/MP3_AUDIO.md) / [RU](../../..
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | End managed context after independent source preparation |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source runtime before native output; no reader borrows it |
 | [fvm_swf_stream_pcm_reader_next](../../../include/flashvm/swf_stream_pcm.h#L48) | Copy bounded normalized stream chunks; native EOF is NOT_FOUND |
-| [fvm_swf_sound_mixer_create_configured](../../../include/flashvm/swf_sound_mixer.h#L39) | Allocate an explicit same-rate one-slot native mixer after VM teardown; no source/context reference |
-| [fvm_swf_sound_mixer_submit_prepared](../../../include/flashvm/swf_sound_mixer.h#L69) | Adopt prepared voice without allocation/VM; clear handle only on success, preserve it on failure |
-| [fvm_swf_sound_mixer_read](../../../include/flashvm/swf_sound_mixer.h#L105) | Produce only explicitly authorized finite frames; same-geometry native PCM, no allocation/callback |
-| [fvm_swf_sound_mixer_stop_id](../../../include/flashvm/swf_sound_mixer.h#L101) | Apply native immediate/DECLICK same-ID stop to future composition; no queued-PCM cancellation |
-| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L124) | Release adopted voices after export quiescence; caller no longer closes a transferred handle |
+| [fvm_swf_sound_mixer_create_configured](../../../include/flashvm/swf_sound_mixer.h#L48) | Allocate an explicit same-rate one-slot native mixer after VM teardown; no source/context reference |
+| [fvm_swf_sound_mixer_submit_prepared](../../../include/flashvm/swf_sound_mixer.h#L78) | Adopt prepared voice without allocation/VM; clear handle only on success, preserve it on failure |
+| [fvm_swf_sound_mixer_read](../../../include/flashvm/swf_sound_mixer.h#L114) | Produce only explicitly authorized finite frames; same-geometry native PCM, no allocation/callback |
+| [fvm_swf_sound_mixer_stop_id](../../../include/flashvm/swf_sound_mixer.h#L110) | Apply native immediate/DECLICK same-ID stop to future composition; no queued-PCM cancellation |
+| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L133) | Release adopted voices after export quiescence; caller no longer closes a transferred handle |
 | [fvm_swf_sound_voice_close](../../../include/flashvm/swf_sound.h#L128) | Null-safe native voice release after reads stop; no device/VM callback |
 | [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Null-safe native stream release after reader quiescence |
 
@@ -118,11 +118,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../../../include/flashvm/swf_sound.h#L62) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../../../include/flashvm/swf_sound.h#L134) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:124](../../../include/flashvm/swf_sound_mixer.h#L124) |
-| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../../../include/flashvm/swf_sound_mixer.h#L39) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:105](../../../include/flashvm/swf_sound_mixer.h#L105) |
-| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:101](../../../include/flashvm/swf_sound_mixer.h#L101) |
-| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:69](../../../include/flashvm/swf_sound_mixer.h#L69) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
+| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:114](../../../include/flashvm/swf_sound_mixer.h#L114) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:110](../../../include/flashvm/swf_sound_mixer.h#L110) |
+| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:78](../../../include/flashvm/swf_sound_mixer.h#L78) |
 | `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../../../include/flashvm/swf_sound.h#L128) |
 | `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../../../include/flashvm/swf_sound.h#L114) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../../../include/flashvm/swf_sound.h#L82) |

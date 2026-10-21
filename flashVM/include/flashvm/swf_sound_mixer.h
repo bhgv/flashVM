@@ -34,6 +34,15 @@ extern "C"
         unsigned int voice_capacity; /* Maximum simultaneous nonempty voices, 1..MAX_VOICES. */
         unsigned long flags;         /* CONVERT and/or DECLICK; zero retains exact legacy policy. */
     } FVM_SWFSoundMixerConfig;
+    /* Count remaining output frames if this prepared voice is adopted NOW with conversion phase
+     * zero at output_rate (MIN_RATE..MAX_RATE). Include remaining repeats and partial source
+     * progress; ceil the rational duration, and return zero at EOF. This is not the remaining
+     * count of a voice already held by a mixer with fractional lookahead. No PCM read, allocation,
+     * callback, VM or progress change. Null/bad output rate INVALID_ARGUMENT; duration beyond
+     * SOUND_OUTPUT_MAX_CLOCK UNSUPPORTED; errors preserve out. Retain/serialize caller-owned
+     * voice. Output is an exact integer-valued double, not seconds, a device clock or a seek. */
+    FVM_API FVM_Result fvm_swf_sound_voice_output_frames(const FVM_SWFSoundVoice *,
+                                                         unsigned int output_rate, double *out);
     /* Create with explicit conversion policy; clear *out on all failures, copy caller config on
      * success. */
     FVM_API FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *,

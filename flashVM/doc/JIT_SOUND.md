@@ -13,7 +13,7 @@ callbacks. Active registrations are visited in registration order. Every active
 output receives one stop attempt even if an earlier callback fails. Return the
 first failure; successful channels become inactive and failed channels remain
 active for a later explicit retry. Other contexts and unregistered standalone
-outputs or [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) snapshots are untouched. The action does not close
+outputs or [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) snapshots are untouched. The action does not close
 channel registrations, free userdata, resample/mix audio or advance MovieClip.
 Actual playback/discard remains the host output's responsibility.
 
@@ -43,7 +43,7 @@ source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flash
 выхода выполняется одна попытка stop в порядке регистрации, включая выходы
 после первого отказа. Возвращается первая ошибка. Успешные каналы становятся
 inactive; неудачные остаются active для явного повторения. Другие контексты,
-незарегистрированные outputs и [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) snapshots не затрагиваются.
+незарегистрированные outputs и [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) snapshots не затрагиваются.
 Регистрации и userdata остаются живы; MovieClip clock и mixer не запускаются.
 
 [GC:] [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L27) удерживает registry стабильным и запрещает сборку,
@@ -105,5 +105,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_decode` | function | [src/jit/decode.cpp:148](../src/jit/decode.cpp#L148) |
 | `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:7](../src/jit/effects.cpp#L7) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
 <!-- source-links:end -->

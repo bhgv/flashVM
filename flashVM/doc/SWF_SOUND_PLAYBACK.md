@@ -177,7 +177,7 @@ output) and [`fvm_swf_sound_render`](../src/swf/sound_render.cpp#L10) (bounded p
 
 ## Incremental alternative
 
-For long repetition counts, use an independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) snapshot:
+For long repetition counts, use an independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L11) snapshot:
 [SWF_SOUND_VOICES.md](SWF_SOUND_VOICES.md). It retains one source interval and
 produces bounded caller buffers with identical gain/loop arithmetic. Snapshot
 reads do not apply channel synchronization; hosts drive their own output and
@@ -213,5 +213,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_render` | function | [src/swf/sound_render.cpp:10](../src/swf/sound_render.cpp#L10) |
 | `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:155](../include/flashvm/swf_sound.h#L155) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
 <!-- source-links:end -->

@@ -75,7 +75,7 @@ catch-up burst. Activity/Surface/native thread принадлежат SDLActivit
 событий без --mute создаёт SDL device 48000 Hz stereo, configured mixer на 32
 голоса и output producer block512/target2048 frames. Callback
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) доставляет ordinal до DoAction;
-[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L57) готовит голос либо применяет stop/no-multiple.
+[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L66) готовит голос либо применяет stop/no-multiple.
 Ошибки декодирования/конверсии/устройства видимы и завершают воспроизведение.
 На итерацию не более четырёх pump, ожидание при наличии audio ограничено 5 ms.
 [Контракт очереди](SWF_SOUND_OUTPUT.ru.md). Это не realtime callback.
@@ -164,5 +164,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../include/flashvm/swf_sound_mixer.h#L66) |
 <!-- source-links:end -->

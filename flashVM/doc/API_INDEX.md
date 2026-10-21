@@ -115,7 +115,7 @@ These inspect controls without automatically scheduling playback.
 [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L152) applies one bounded styled voice to a dedicated
 channel: [playback contract](SWF_SOUND_PLAYBACK.md).
 
-Prepared independent sequential voices: [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9), [`FVM_SWFSoundVoiceInfo`](../include/flashvm/swf_sound.h#L67),
+Prepared independent sequential voices: [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L11), [`FVM_SWFSoundVoiceInfo`](../include/flashvm/swf_sound.h#L67),
 [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_read`](../include/flashvm/swf_sound.h#L126), [`fvm_swf_sound_voice_info`](../include/flashvm/swf_sound.h#L114),
 [`fvm_swf_sound_voice_close`](../include/flashvm/swf_sound.h#L128) — [incremental voice contracts](SWF_SOUND_VOICES.md).
 Source PCM is retained once; snapshot reads allocate nothing and outlive the VM.
@@ -145,9 +145,9 @@ Full parameters, ownership, errors and restrictions:
 [EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
 ## Incremental StartSound mixing
 
-[`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L52), [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L57),
-[`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L105), [`fvm_swf_sound_mixer_info`](../include/flashvm/swf_sound_mixer.h#L120),
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L122), [`fvm_swf_sound_mixer_close`](../include/flashvm/swf_sound_mixer.h#L124):
+[`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L61), [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L66),
+[`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L114), [`fvm_swf_sound_mixer_info`](../include/flashvm/swf_sound_mixer.h#L129),
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L131), [`fvm_swf_sound_mixer_close`](../include/flashvm/swf_sound_mixer.h#L133):
 [full individual contracts](SWF_SOUND_MIXER.md) /
 [русское руководство](SWF_SOUND_MIXER.ru.md),
 [annotated C89 tutorial](../examples/multimedia/swf_event_mixer/README.md).
@@ -158,7 +158,7 @@ root StartSound entry to host mixing, before DoAction. [EN contracts](MOVIECLIP_
 [RU](MOVIECLIP_SOUND.ru.md). Sprite sound and automatic device-clock scheduling remain unsupported.
 ## Explicit mixer rate/channel conversion
 
-[`fvm_swf_sound_mixer_create_configured`](../include/flashvm/swf_sound_mixer.h#L39), [`fvm_swf_sound_mixer_get_config`](../include/flashvm/swf_sound_mixer.h#L49),
+[`fvm_swf_sound_mixer_create_configured`](../include/flashvm/swf_sound_mixer.h#L48), [`fvm_swf_sound_mixer_get_config`](../include/flashvm/swf_sound_mixer.h#L58),
 [`FVM_SWFSoundMixerConfig`](../include/flashvm/swf_sound_mixer.h#L28), [`FVM_SWF_SOUND_MIXER_CONVERT`](../include/flashvm/swf_sound_mixer.h#L21):
 [individual EN contracts](SWF_SOUND_CONVERSION.md) / [RU](SWF_SOUND_CONVERSION.ru.md).
 Legacy strict creation and info ABI remain unchanged; conversion is opt-in.
@@ -303,16 +303,16 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:124](../include/flashvm/swf_sound_mixer.h#L124) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../include/flashvm/swf_sound_mixer.h#L133) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:52](../include/flashvm/swf_sound_mixer.h#L52) |
-| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../include/flashvm/swf_sound_mixer.h#L39) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
+| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:49](../include/flashvm/swf_sound_mixer.h#L49) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:120](../include/flashvm/swf_sound_mixer.h#L120) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:105](../include/flashvm/swf_sound_mixer.h#L105) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:122](../include/flashvm/swf_sound_mixer.h#L122) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
+| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:58](../include/flashvm/swf_sound_mixer.h#L58) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:129](../include/flashvm/swf_sound_mixer.h#L129) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:131](../include/flashvm/swf_sound_mixer.h#L131) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../include/flashvm/swf_sound_mixer.h#L66) |
 | `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:70](../include/flashvm/swf_sound_output.h#L70) |
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:50](../include/flashvm/swf_sound_output.h#L50) |
 | `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:59](../include/flashvm/swf_sound_output.h#L59) |
@@ -333,7 +333,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:14](../include/flashvm/swf_sound.h#L14) |
 | `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../include/flashvm/swf_sound_mixer.h#L28) |
 | `FVM_SWFSoundOutputInfo` | struct | [include/flashvm/swf_sound_output.h:34](../include/flashvm/swf_sound_output.h#L34) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
 | `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:67](../include/flashvm/swf_sound.h#L67) |
 | `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |

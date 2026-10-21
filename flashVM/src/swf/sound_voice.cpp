@@ -3,6 +3,8 @@
 #include "sound_event_constants.h"
 #include "sound_style.hpp"
 #include <cstring>
+#include <cmath>
+#include "flashvm/swf_sound_output.h"
 #include <new>
 
 /* [GC:] Own native sample/envelope copies only; no context, managed roots or borrowed SWF bytes survive open. */
@@ -194,6 +196,36 @@ extern "C" FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *voice, F
     if (!voice || !out || out->struct_size != sizeof(*out))
         return FVM_INVALID_ARGUMENT;
     *out = voice->info;
+    return FVM_OK;
+}
+
+/* Count a fresh conversion grid using exact integer-valued double operations, not PCM reads. */
+extern "C" FVM_Result fvm_swf_sound_voice_output_frames(const FVM_SWFSoundVoice *voice,
+                                                         unsigned int rate, double *out)
+{
+    if (!voice || !out || rate < FVM_SWF_SOUND_MIXER_MIN_RATE ||
+        rate > FVM_SWF_SOUND_MIXER_MAX_RATE)
+        return FVM_INVALID_ARGUMENT;
+    const FVM_SWFSoundVoiceInfo &info = voice->info;
+    if (info.finished)
+    {
+        *out = 0;
+        return FVM_OK;
+    }
+    double remaining = (double)info.frames_per_play * (info.play_count - info.play_index);
+    if (remaining > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK)
+        return FVM_UNSUPPORTED;
+    remaining -= (double)info.frame_in_play;
+    /* fmod preserves the integral remainder even near the exact-frame accounting boundary. */
+    double remainder = std::fmod(remaining, (double)info.sample_rate);
+    double whole = (remaining - remainder) / info.sample_rate;
+    double converted = whole * rate;
+    if (converted > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK)
+        return FVM_UNSUPPORTED;
+    double fraction = std::ceil(remainder * rate / info.sample_rate);
+    if (converted > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - fraction)
+        return FVM_UNSUPPORTED;
+    *out = converted + fraction;
     return FVM_OK;
 }
 

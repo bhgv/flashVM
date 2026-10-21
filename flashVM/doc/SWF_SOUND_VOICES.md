@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-[`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L9) is an explicitly host-owned native snapshot of one root
+[`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L11) is an explicitly host-owned native snapshot of one root
 StartSound's decoded source interval and ordered envelope. It renders the same
 PCM/ADPCM ranges, repetitions, gains and fixed clocks as
 [fvm_swf_sound_event_submit](SWF_SOUND_PLAYBACK.md), but retains the source only
@@ -52,7 +52,7 @@ total-frame product, so long durations do not require a non-C89 integer type.
 ## fvm_swf_sound_voice_open
 
 Arguments: required owning context, zero-based root StartSound ordinal, required
-[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9)** destination. The destination is cleared before all other
+[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11)** destination. The destination is cleared before all other
 validation. Do not pass storage containing a live handle without first closing
 it. On success ownership of one native snapshot passes to the caller.
 
@@ -125,7 +125,7 @@ or host devices. The handle is invalid immediately after a non-null close.
 
 ## Русский контракт
 
-[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) — явная host-owned native-копия диапазона PCM и огибающей одного
+[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) — явная host-owned native-копия диапазона PCM и огибающей одного
 корневого StartSound. Источник декодируется один раз, повторы не копируются целиком.
 Чтение выдаёт caller-sized native S16; StreamSoundBlock, автоматический clock,
 смешивание и управление stop/no-multiple в этот API не входят. SyncStop не имеет
@@ -212,6 +212,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:126](../include/flashvm/swf_sound.h#L126) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
 | `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:67](../include/flashvm/swf_sound.h#L67) |
 <!-- source-links:end -->

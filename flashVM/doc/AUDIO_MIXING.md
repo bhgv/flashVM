@@ -109,7 +109,7 @@ partial/offset overlap не поддержан и не обнаруживает�
 ## Voice integration example
 
 [swf_mix](../examples/multimedia/swf_mix/README.md) prepares two independent
-[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) handles, reads equal-sized source blocks, pads the shorter
+[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) handles, reads equal-sized source blocks, pads the shorter
 voice after EOF, mixes them and writes through an actual host FILE callback.
 The combined duration is the longest voice, not the sum of voice lengths.
 See [incremental voice ownership](SWF_SOUND_VOICES.md),
@@ -140,5 +140,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_media_frame_valid` | function | [src/multimedia/common/session.hpp:15](../src/multimedia/common/session.hpp#L15) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:38](../include/flashvm/multimedia.h#L38) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
 <!-- source-links:end -->
