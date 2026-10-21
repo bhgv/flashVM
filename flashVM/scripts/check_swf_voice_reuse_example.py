@@ -58,6 +58,8 @@ def main():
         source, output = root/'input.swf', root/'output.pcm'
         result = subprocess.run([executable, str(source), str(output), '--bad'], capture_output=True)
         assert result.returncode and not output.exists()
+        result = subprocess.run([executable, str(source), str(output)], capture_output=True)
+        assert result.returncode and not output.exists()
         for compressed in (False, True):
             for channels in (1, 2):
                 for movie in (pcm_movie, adpcm_movie):
@@ -100,6 +102,14 @@ def main():
             source.write_bytes(bad);output.write_bytes(b'preserve')
             result = subprocess.run([executable, str(source), str(output)], capture_output=True)
             assert result.returncode and output.read_bytes() == b'preserve'
+        source.write_bytes(pcm_movie(1, False)[0])
+        missing = root/'missing'/'output.pcm'
+        result = subprocess.run([executable, str(source), str(missing)], capture_output=True)
+        assert result.returncode and not missing.parent.exists()
+        with source.open('wb') as oversized: oversized.truncate(16*1024*1024+1)
+        output.write_bytes(b'preserve')
+        result = subprocess.run([executable, str(source), str(output)], capture_output=True)
+        assert result.returncode and output.read_bytes() == b'preserve'
         print('PASS C89 two-replay host:', cases, 'wire/sample cases; full FFmpeg oracle', bool(ffmpeg))
     return 0
 

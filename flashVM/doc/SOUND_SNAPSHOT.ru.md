@@ -1,5 +1,10 @@
 # Снимки звуковых событий корня — v0.637
 
+Ограниченная нативная подготовка, независимые глубокие копии и позиционирование:
+[NATIVE_VOICES.ru.md](NATIVE_VOICES.ru.md). Это отдельный от managed-снимка ordinal
+кадра механизм; после подготовки исходная VM не нужна.
+
+
 [English](SOUND_SNAPSHOT.md). Дополнение к [доставке звука MovieClip](MOVIECLIP_SOUND.ru.md).
 [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) доставляет root StartSound через
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); изменения не открывают аудиоустройство.

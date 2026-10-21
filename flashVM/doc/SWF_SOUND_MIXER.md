@@ -1,5 +1,11 @@
 # Incremental StartSound mixer
 
+Prepared native transfer, bounded construction/adoption, exact storage and activity
+queries are documented in [NATIVE_VOICES.md](NATIVE_VOICES.md). Context-based
+submission requires the source owner; prepared adoption and native controls do
+not retain or access a VM. Supported MP3 voices use effective source geometry.
+
+
 ## Purpose and ownership
 
 The C89 API in [swf_sound_mixer.h](../include/flashvm/swf_sound_mixer.h) combines
@@ -12,8 +18,8 @@ shows actual controls and optional file output.
 
 [GC:] The mixer owns only native slot/PCM/envelope storage, with no context pointer,
 managed object or borrowed source bytes. Existing voices survive source reload,
-GC, runtime and context destruction. Submission needs a live loaded context on
-its owning thread. All operations on one mixer require external serialization;
+GC, runtime and context destruction. Context-based submission needs a live loaded context on
+its owning thread; prepared adoption does not. All operations on one mixer require external serialization;
 it is neither a thread-safe queue nor a reentrant callback service. No function
 calls host output, opens a device or starts a thread. Never close a mixer while
 another thread is reading it.
@@ -26,7 +32,7 @@ creation function and info struct retain their ABI and strict behavior.
 
 One mixer has a fixed nominal rate (5512, 11025, 22050 or 44100 Hz), one or two
 interleaved channels and 1..[`FVM_SWF_SOUND_MIXER_MAX_VOICES`](../include/flashvm/swf_sound_mixer.h#L9) simultaneous voices
-(currently 64). Source PCM8/PCM16/ADPCM is converted by the existing decoder and
+(currently 64). Source PCM8/PCM16/ADPCM/MP3 is converted by the existing decoder and
 styled voice preparation. Other codecs retain their existing UNSUPPORTED/error
 behavior. Source rate and channel count must exactly match: there is no implicit
 resampling, mono/stereo conversion, master gain or crossfade.

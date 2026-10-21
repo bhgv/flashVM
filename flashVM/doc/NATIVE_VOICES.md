@@ -153,6 +153,38 @@ was skipped in this run. This covers event composition after owner-lock changes;
 root streaming plus StartSound, child dictionaries, reference timing and device
 acceptance remain open. It does not redefine event onset as a movie/DAC clock.
 
+## v0.792: failure boundaries and final evidence
+
+`swf_sound_voice_storage_allocation` checks open, deep clone and fixed mixer
+creation at isolated allocation allowances 0–3. Partial object/envelope/PCM
+owners are reclaimed; failed outputs are null, and the existing template stays
+at its exact repeat/frame cursor. GC follows every result, and the template
+continues allocation-free after VM teardown. Mixer storage checks also verify
+release tails remain charged, stop-by-ID clears the non-releasing activity
+condition, and a new SyncNoMultiple voice can start while the old tail releases.
+
+Final focused validation on this Linux host:
+
+- 79 native sound/stream/codec and actual C89 usage/export checks passed.
+- 14 real SDL dummy-player checks passed, including both MP3 oracles, frame gates,
+  controls, preparation failures, budgets and four independent native readers.
+- 11 full-minimal-core ASan/UBSan success-path/C89 checks passed. LeakSanitizer
+  was disabled because this host cannot access /proc. Exception-injected
+  allocation failures are not claimed under ASan.
+- All 12 isolated allocation allowances passed ordinary execution and UBSan
+  instrumentation of the changed voice/mixer modules; other core modules in that
+  scoped failure run used the ordinary library.
+- Deterministic documentation source links, sorted example catalog, version-only
+  CMake refresh and changed tutorial comment/API coverage passed. The global
+  multimedia comment checker still reports two unchanged baseline Windows speech
+  files; their bytes match v0.782. It is not claimed globally passing.
+
+This series does not complete SWF ≤ 8. Root stream-plus-event integration,
+child dictionaries/streams, reference A/V and discontinuous seek, remaining
+codecs/API/graphics/text/JIT/GC/debugger work and physical/foreign execution remain
+open. Native deep-copy concurrency is not a claim of shared-handle thread safety,
+ThreadSanitizer cleanliness, or reference Flash audible timing.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -1,5 +1,10 @@
 # Root sound ordinal snapshots — v0.637
 
+Native bounded preparation, independent deep copies and cursor positioning:
+[NATIVE_VOICES.md](NATIVE_VOICES.md). These are separate from managed frame-event
+ordinal capture and require no source VM after preparation.
+
+
 [Русский](SOUND_SNAPSHOT.ru.md). This supplements [root sound delivery](MOVIECLIP_SOUND.md).
 [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) delivers root StartSound notifications through
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); no audio device is opened by these changes.

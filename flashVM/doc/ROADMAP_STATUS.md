@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.782
+# FlashVM stage status / Состояние стадий — v0.792
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.783–v0.792: bounded native voice templates, clone/seek, aggregate mixer accounting and preparation outside the desktop worker mutex. Actual three-codec event PCM oracle and four independent native readers; 79 native/C89, 14 SDL dummy and 11 full-core ASan/UBSan success-path checks, plus 12 scoped UBSan failure allowances. Root stream/event mixing, child streams and reference A/V/seek remain open. [EN](NATIVE_VOICES.md) / [RU](NATIVE_VOICES.ru.md).
 
 v0.776–v0.782: scalar MP3 decoding, effective-rate event styles, bounded continuous root streams, SDL queue integration and detached C89 export with native prepared-voice controls. 70 native/tutorial and seven SDL dummy-player checks pass. Reference seeking/A/V, mixed root playback, devices and foreign execution remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
 

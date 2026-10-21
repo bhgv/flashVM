@@ -23,6 +23,10 @@ int main()
     assert(fvm_swf_sound_mixer_storage_info(other,&used)==FVM_OK && used.fixed_bytes==empty.fixed_bytes);
     fvm_swf_sound_mixer_close(other);
     assert(fvm_swf_sound_voice_storage_info(a,&voice)==FVM_OK);
+    FVM_SWFSoundVoice *tail=0,*again=0;
+    assert(fvm_swf_sound_voice_open(c,0,&tail)==FVM_OK && fvm_swf_sound_voice_open(c,1,&again)==FVM_OK);
+    FVM_SWFSoundMixer *release=0;geometry.flags|=FVM_SWF_SOUND_MIXER_DECLICK;
+    assert(fvm_swf_sound_mixer_create_configured(&geometry,&release)==FVM_OK);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);allowance=0;
     size_t budget=empty.retained_bytes+voice.retained_bytes;
     int active=99;
@@ -43,5 +47,17 @@ int main()
     assert(fvm_swf_sound_mixer_stop_all(mixer)==FVM_OK);
     used.struct_size=0;
     assert(fvm_swf_sound_mixer_storage_info(mixer,&used)==FVM_INVALID_ARGUMENT && !used.struct_size);
+    assert(fvm_swf_sound_mixer_submit_prepared(release,&tail)==FVM_OK && !tail);
+    used.struct_size=sizeof(used);
+    assert(fvm_swf_sound_mixer_storage_info(release,&used)==FVM_OK && used.voice_bytes==voice.retained_bytes);
+    size_t releasing_bytes=used.retained_bytes;
+    assert(fvm_swf_sound_mixer_stop_id(release,7)==FVM_OK);
+    assert(fvm_swf_sound_mixer_sound_active(release,7,&active)==FVM_OK && !active);
+    assert(fvm_swf_sound_mixer_storage_info(release,&used)==FVM_OK && used.retained_bytes==releasing_bytes);
+    assert(fvm_swf_sound_mixer_submit_prepared_bounded(release,&again,releasing_bytes+voice.retained_bytes)==FVM_OK && !again);
+    assert(fvm_swf_sound_mixer_sound_active(release,7,&active)==FVM_OK && active);
+    assert(fvm_swf_sound_mixer_read(release,512,pcm,1024,&n)==FVM_OK);
+    assert(fvm_swf_sound_mixer_storage_info(release,&used)==FVM_OK && !used.voice_bytes);
+    fvm_swf_sound_mixer_close(release);
     fvm_swf_sound_mixer_close(mixer);assert(allowance==0);allowance=-1;return 0;
 }
