@@ -29,6 +29,7 @@
     - [channels](#example-embedding-channels) — <small><em>Отправка и получение через FIFO</em></small>
     - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
+    - [resource_events](#example-embedding-resource_events) — <small><em>Независимые очереди наблюдателей и отзыв сессии</em></small>
     - [shared_mutex](#example-embedding-shared_mutex) — <small><em>Общая блокировка из разных VM</em></small>
     - [srecords](#example-embedding-srecords) — <small><em>Двоичные теги направлений, порции и файловый обмен</em></small>
   - [functions](#group-embedding-functions)
@@ -446,6 +447,17 @@ link demonstrated API functions to public headers and feature guides.
 Экспортирует живой mutex через TCP-брокер, сохраняет ссылку в файловом канале и импортирует её в другом контексте. Восстанавливается доступ к исходному ресурсу, а не снимок его состояния; требуется OS_PORTS.
 
 **Файлы:** [main.c](embedding/resource_broker/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-resource_events"></a>
+#### resource_events
+
+**Тип:** C89, самостоятельный собираемый пример без VM/SDL и сети.
+**README:** [EN](embedding/resource_events/README.md) / [RU](embedding/resource_events/README.ru.md).
+Две сессии независимо читают одну публикацию; показаны выдача прав, снимок
+ресурсов и явное отключение. [main.c](embedding/resource_events/main.c),
+[контракт очередей](../doc/RESOURCE_EVENTS.ru.md). Это не сетевой или 9P-сервер.
 
 [К оглавлению](#оглавление).
 
@@ -2012,6 +2024,7 @@ Source line links describe the current checkout, including in historical notes.
 - [qt5 — frontends/qt5](#example-frontends-qt5)
 - [redirect_loading — player/redirect_loading](#example-player-redirect_loading)
 - [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
+- [resource_events — embedding/resource_events](#example-embedding-resource_events)
 - [resource_exceptions.as — actionscript/resource_exceptions.as](#example-actionscript-resource_exceptions-as)
 - [resource_snapshots — debugger/resource_snapshots](#example-debugger-resource_snapshots)
 - [resurrection — embedding/resurrection](#example-embedding-resurrection)

@@ -12,7 +12,7 @@
 #define FVM_R_WRITE 2U      /* Change state operation authority. */
 #define FVM_R_CONTROL 4U    /* Timeline/device command authority. */
 #define FVM_R_SUBSCRIBE                                                                            \
-    8U                   /* Subscribe operation authority, not an implemented event transport.     \
+    8U                   /* Subscribe authority for independent queues; see revents.h.     \
                           */
 #define FVM_R_RIGHTS 15U /* All currently defined authority bits. */
 #ifdef __cplusplus

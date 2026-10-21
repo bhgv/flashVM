@@ -9,6 +9,8 @@ player pause/resume/step/stop adapter. **Not implemented here:** general GUI
 methods, directory/subtree namespace semantics, a mounted filesystem, 9P server
 or full Inferno namespace behavior. [Dispatcher](RESOURCE_DISPATCH.md). Existing VM channel serialization remains unchanged.
 
+Independent native observers and filtered discovery are implemented: [EN](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md). These are flat resources, not directory semantics.
+
 ## Shared operation layer
 
 Three layers share one operation model: typed C calls, permission-aware request/

@@ -1,5 +1,7 @@
 # FlashVM C89/C++98 API index
 
+- [Resource observers](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md): `revents.h`, independent event queues, discovery and disconnect.
+
 - `include/flashvm/gc.h`: collection, mode, pinning, introspection.
 - `include/flashvm/value.h`: primitive and object values.
 - `include/flashvm/table.h`: indexed elements and metatables.

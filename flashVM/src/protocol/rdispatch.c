@@ -1,5 +1,5 @@
 /* Bounded copied control requests; only explicit owner pumping invokes registered resource code. */
-#include "flashvm/rdispatch.h"
+#include "flashvm/revents.h"
 #include <stdlib.h>
 #include <string.h>
 #define R_FREE 0U    /* Unoccupied request slot. */
@@ -34,6 +34,16 @@ typedef struct Job
     unsigned char input[FVM_R_BYTES]; /* Immutable copied request payload. */
     FVM_RReply reply;                 /* Retained copied response. */
 } Job;
+/* Per-reader native queue; guarded by the same dispatcher lock as grants. */
+typedef struct Subscription
+{
+    unsigned long generation;             /* Nonzero incarnation, or retired zero. */
+    unsigned long session;                /* Zero marks a free slot. */
+    FVM_RHandle target;                   /* Exact observed resource generation. */
+    size_t head, count;                   /* Independent circular queue extent. */
+    unsigned long missed;                 /* Saturating loss since the last successful take. */
+    FVM_REvent events[FVM_R_EVENT_QUEUE]; /* Fixed owned copies. */
+} Subscription;
 /* One allocation has explicit hard bounds and no implicit workers, sockets or VM contexts. */
 struct FVM_RDispatch
 {
@@ -41,7 +51,9 @@ struct FVM_RDispatch
     Resource resources[FVM_R_RESOURCES]; /* Native registration table. */
     Grant grants[FVM_R_GRANTS];          /* Explicit authority table. */
     Job jobs[FVM_R_REQUESTS];            /* Accepted work and retained replies share capacity. */
-    int head, tail, pumping;             /* FIFO ends and non-reentrant owner guard. */
+    Subscription subscriptions[FVM_R_WATCHES]; /* Session-local observers. */
+    unsigned long sequence;                    /* Shared publication sequence, never wrapped. */
+    int head, tail, pumping;                   /* FIFO ends and non-reentrant owner guard. */
 };
 /* IDs use the same nonzero unsigned 32-bit domain on all native data models. */
 static int valid_id(unsigned long id)
@@ -108,6 +120,34 @@ static unsigned int rights(FVM_RDispatch *d, FVM_RHandle h, unsigned long sessio
             return d->grants[i].rights;
     return 0;
 }
+/* Retire an incarnation before its storage can be reused. Caller holds the lock. */
+static void close_subscription(Subscription *s)
+{
+    unsigned long generation = s->generation;
+    memset(s, 0, sizeof(*s));
+    s->generation = generation == FVM_SRECORD_U32 ? 0 : generation + 1;
+}
+/* A rights removal must discard queued observations, even if later regranted. */
+static void revoke_subscriptions(FVM_RDispatch *d, FVM_RHandle h, unsigned long session)
+{
+    size_t i;
+    for (i = 0; i < FVM_R_WATCHES; ++i)
+    {
+        Subscription *s = d->subscriptions + i;
+        if (s->session && (!session || s->session == session) && s->target.id == h.id &&
+            s->target.generation == h.generation)
+            close_subscription(s);
+    }
+}
+/* Validate an observer handle independently of resource handles. Lock is held. */
+static Subscription *subscription(FVM_RDispatch *d, FVM_RWatch h)
+{
+    Subscription *s;
+    if (!h.id || h.id > FVM_R_WATCHES || !valid_id(h.generation))
+        return 0;
+    s = d->subscriptions + (size_t)h.id - 1;
+    return s->session && s->generation == h.generation ? s : 0;
+}
 /* Server operation metadata, not a packet-supplied permission, controls authorization. */
 static FVM_RResult authorize(FVM_RDispatch *d, const FVM_RRequest *q, Resource **out)
 {
@@ -153,6 +193,8 @@ FVM_RResult fvm_rdispatch_create(const FVM_RPolicy *policy, FVM_RDispatch **out)
     d->head = d->tail = R_NONE;
     for (i = 0; i < FVM_R_RESOURCES; ++i)
         d->resources[i].generation = 1;
+    for (i = 0; i < FVM_R_WATCHES; ++i)
+        d->subscriptions[i].generation = 1;
     *out = d;
     return FVM_R_OK;
 }
@@ -226,6 +268,7 @@ FVM_RResult fvm_rdispatch_unregister(FVM_RDispatch *d, FVM_RHandle h)
         unlock_dispatch(d);
         return FVM_R_BUSY;
     }
+    revoke_subscriptions(d, h, 0);
     r->active = 0;
     r->handler = 0;
     r->userdata = 0;
@@ -256,6 +299,8 @@ FVM_RResult fvm_rdispatch_grant(FVM_RDispatch *d, FVM_RHandle h, unsigned long s
         Grant *g = d->grants + i;
         if (g->session == session && g->target.id == h.id && g->target.generation == h.generation)
         {
+            if (!(mask & FVM_R_SUBSCRIBE))
+                revoke_subscriptions(d, h, session);
             g->rights = mask;
             if (!mask)
                 g->session = 0;
@@ -473,6 +518,240 @@ FVM_RResult fvm_rdispatch_take(FVM_RDispatch *d, unsigned long session, unsigned
     }
     *out = job->reply;
     memset(job, 0, sizeof(*job));
+    unlock_dispatch(d);
+    return FVM_R_OK;
+}
+/* Copy discoverable metadata only after checking the entire required capacity. */
+FVM_RResult fvm_rdispatch_resources(FVM_RDispatch *d, unsigned long session, FVM_RResource *rows,
+                                    size_t capacity, size_t *count)
+{
+    size_t i, j, needed = 0;
+    if (!d || !valid_id(session) || !count || (!rows && capacity))
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    for (i = 0; i < FVM_R_RESOURCES; ++i)
+    {
+        FVM_RHandle h;
+        h.id = (unsigned long)i + 1;
+        h.generation = d->resources[i].generation;
+        if (d->resources[i].active && rights(d, h, session))
+            ++needed;
+    }
+    if (rows && capacity < needed)
+    {
+        unlock_dispatch(d);
+        return FVM_R_LIMIT;
+    }
+    if (rows)
+    {
+        size_t index = 0;
+        for (i = 0; i < FVM_R_RESOURCES; ++i)
+        {
+            Resource *r = d->resources + i;
+            FVM_RHandle h;
+            FVM_RResource *row;
+            unsigned int mask;
+            h.id = (unsigned long)i + 1;
+            h.generation = r->generation;
+            mask = rights(d, h, session);
+            if (!r->active || !mask)
+                continue;
+            row = rows + index++;
+            memset(row, 0, sizeof(*row));
+            row->target = h;
+            strcpy(row->path, r->path);
+            row->rights = mask;
+            for (j = 0; j < r->count; ++j)
+                if (mask & r->operations[j].right)
+                    row->operations[row->count++] = r->operations[j];
+        }
+    }
+    *count = needed;
+    unlock_dispatch(d);
+    return FVM_R_OK;
+}
+/* Subscription creation is native and never enters resource/VM code. */
+FVM_RResult fvm_rdispatch_subscribe(FVM_RDispatch *d, unsigned long session, FVM_RHandle target,
+                                    FVM_RWatch *out)
+{
+    size_t i;
+    if (!d || !valid_id(session) || !out)
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    if (!resource(d, target))
+    {
+        unlock_dispatch(d);
+        return FVM_R_UNKNOWN;
+    }
+    if (!(rights(d, target, session) & FVM_R_SUBSCRIBE))
+    {
+        unlock_dispatch(d);
+        return FVM_R_DENIED;
+    }
+    for (i = 0; i < FVM_R_WATCHES; ++i)
+    {
+        Subscription *s = d->subscriptions + i;
+        if (!s->session && s->generation)
+        {
+            s->session = session;
+            s->target = target;
+            out->id = (unsigned long)i + 1;
+            out->generation = s->generation;
+            unlock_dispatch(d);
+            return FVM_R_OK;
+        }
+    }
+    unlock_dispatch(d);
+    return FVM_R_LIMIT;
+}
+/* Slow readers lose only their own oldest copy; owner publication never waits for them. */
+FVM_RResult fvm_rdispatch_publish(FVM_RDispatch *d, FVM_RHandle target, unsigned long kind,
+                                  const void *data, size_t size, unsigned long *sequence)
+{
+    size_t i;
+    if (!d || !valid_id(kind) || !sequence || (!data && size))
+        return FVM_R_INVALID;
+    if (size > FVM_R_BYTES)
+        return FVM_R_LIMIT;
+    if (!owner(d))
+        return FVM_R_DENIED;
+    lock_dispatch(d);
+    if (!resource(d, target))
+    {
+        unlock_dispatch(d);
+        return FVM_R_UNKNOWN;
+    }
+    if (d->sequence == FVM_SRECORD_U32)
+    {
+        unlock_dispatch(d);
+        return FVM_R_LIMIT;
+    }
+    ++d->sequence;
+    for (i = 0; i < FVM_R_WATCHES; ++i)
+    {
+        Subscription *s = d->subscriptions + i;
+        FVM_REvent *event;
+        if (!s->session || s->target.id != target.id || s->target.generation != target.generation)
+            continue;
+        if (s->count == FVM_R_EVENT_QUEUE)
+        {
+            s->head = (s->head + 1) % FVM_R_EVENT_QUEUE;
+            --s->count;
+            if (s->missed != FVM_SRECORD_U32)
+                ++s->missed;
+        }
+        event = s->events + (s->head + s->count) % FVM_R_EVENT_QUEUE;
+        memset(event, 0, sizeof(*event));
+        event->target = target;
+        event->sequence = d->sequence;
+        event->kind = kind;
+        event->size = size;
+        if (size)
+            memcpy(event->data, data, size);
+        ++s->count;
+    }
+    *sequence = d->sequence;
+    unlock_dispatch(d);
+    return FVM_R_OK;
+}
+/* Session identity and generation are checked before exposing or consuming a copy. */
+FVM_RResult fvm_rdispatch_event_take(FVM_RDispatch *d, unsigned long session, FVM_RWatch h,
+                                     FVM_REvent *out)
+{
+    Subscription *s;
+    if (!d || !valid_id(session) || !out)
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    s = subscription(d, h);
+    if (!s)
+    {
+        unlock_dispatch(d);
+        return FVM_R_UNKNOWN;
+    }
+    if (s->session != session)
+    {
+        unlock_dispatch(d);
+        return FVM_R_DENIED;
+    }
+    if (!s->count)
+    {
+        unlock_dispatch(d);
+        return FVM_R_PENDING;
+    }
+    *out = s->events[s->head];
+    out->missed = s->missed;
+    s->missed = 0;
+    s->head = (s->head + 1) % FVM_R_EVENT_QUEUE;
+    --s->count;
+    unlock_dispatch(d);
+    return FVM_R_OK;
+}
+/* Closing discards only one reader, not any other observer or committed command. */
+FVM_RResult fvm_rdispatch_unsubscribe(FVM_RDispatch *d, unsigned long session, FVM_RWatch h)
+{
+    Subscription *s;
+    if (!d || !valid_id(session))
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    s = subscription(d, h);
+    if (!s)
+    {
+        unlock_dispatch(d);
+        return FVM_R_UNKNOWN;
+    }
+    if (s->session != session)
+    {
+        unlock_dispatch(d);
+        return FVM_R_DENIED;
+    }
+    close_subscription(s);
+    unlock_dispatch(d);
+    return FVM_R_OK;
+}
+/* Remove one quiesced session atomically without reordering other producers' jobs. */
+FVM_RResult fvm_rdispatch_disconnect(FVM_RDispatch *d, unsigned long session)
+{
+    size_t i;
+    int current, previous = R_NONE;
+    if (!d || !valid_id(session))
+        return FVM_R_INVALID;
+    if (!owner(d))
+        return FVM_R_DENIED;
+    lock_dispatch(d);
+    for (i = 0; i < FVM_R_REQUESTS; ++i)
+        if (d->jobs[i].state == R_RUNNING && d->jobs[i].request.session == session)
+        {
+            unlock_dispatch(d);
+            return FVM_R_BUSY;
+        }
+    current = d->head;
+    while (current != R_NONE)
+    {
+        Job *job = d->jobs + current;
+        int next = job->next;
+        if (job->request.session == session)
+        {
+            if (previous == R_NONE)
+                d->head = next;
+            else
+                d->jobs[previous].next = next;
+            if (d->tail == current)
+                d->tail = previous;
+            memset(job, 0, sizeof(*job));
+        }
+        else
+            previous = current;
+        current = next;
+    }
+    for (i = 0; i < FVM_R_REQUESTS; ++i)
+        if (d->jobs[i].state == R_DONE && d->jobs[i].request.session == session)
+            memset(d->jobs + i, 0, sizeof(d->jobs[i]));
+    for (i = 0; i < FVM_R_GRANTS; ++i)
+        if (d->grants[i].session == session)
+            d->grants[i].session = 0;
+    for (i = 0; i < FVM_R_WATCHES; ++i)
+        if (d->subscriptions[i].session == session)
+            close_subscription(d->subscriptions + i);
     unlock_dispatch(d);
     return FVM_R_OK;
 }

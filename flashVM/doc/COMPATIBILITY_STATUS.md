@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Resource observers v0.729: independent bounded queues, filtered discovery, revocation/disconnect; 9 focused native checks pass, with contract and three-reader ASan/UBSan checks. No network/mount or foreign native acceptance is claimed. [EN](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md).
+
 Ориентир: [ROADMAP.md](ROADMAP.md). Базовый реестр уточняется по мере сравнения
 с нормативными SWF/AS API; это ещё не полный каталог совместимости.
 Текущее резюме всех девяти стадий: [ROADMAP_STATUS.md](ROADMAP_STATUS.md).
