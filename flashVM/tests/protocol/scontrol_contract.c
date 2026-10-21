@@ -20,6 +20,8 @@ int main(void)
     FVM_SControlLimits local = {19, 4064, 4096, 4000};
     FVM_SControlExchange sender, receiver, before;
     FVM_SControlMessage offer, ack, decoded;
+    FVM_SControlLimits copied;
+    FVM_SControlBoundary copied_boundary;
     FVM_SMediaProfile profile;
     FVM_SMediaInfo info = {FVM_SMEDIA_FILE, 7, 8, 9, 40, 8017};
     FVM_SMediaReceiver media;
@@ -32,6 +34,11 @@ int main(void)
     int complete;
     CHECK(fvm_scontrol_init(&sender, &ceiling) == FVM_S_OK);
     CHECK(fvm_scontrol_init(&receiver, &local) == FVM_S_OK);
+    memset(&copied, 0xa5, sizeof(copied));
+    memset(&copied_boundary, 0xa5, sizeof(copied_boundary));
+    CHECK(fvm_scontrol_active(&sender, &copied, &copied_boundary) == FVM_S_UNKNOWN);
+    CHECK(copied.tag == copied.record_limit && copied_boundary.stream == copied_boundary.object);
+
     CHECK(fvm_scontrol_propose(&sender, 1, &ceiling, &offer) == FVM_S_OK && !sender.active_id);
     CHECK(fvm_scontrol_write(&offer, control, sizeof(control), &used) == FVM_S_OK &&
           used < sizeof(control));
@@ -43,6 +50,9 @@ int main(void)
     CHECK(fvm_scontrol_read(control, used, &decoded, &count) == FVM_S_OK);
     CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_OK && sender.active_id == 1);
     CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_OK);
+    CHECK(fvm_scontrol_active(&sender, &copied, &copied_boundary) == FVM_S_OK &&
+          copied.slot_bytes == 4096 && copied.part_bytes == 4000 && !copied_boundary.stream);
+
     before = sender;
     decoded.limits.tag = 20;
     CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_CONFLICT &&

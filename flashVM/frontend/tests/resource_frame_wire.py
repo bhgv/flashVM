@@ -4,7 +4,8 @@ import ctypes as C
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"tests"/"protocol"))
-from srecord_oracle import integer
+from srecord_oracle import integer, frame as srecord
+from scontrol_oracle import Limits, Boundary, Message, Exchange
 
 
 class Handle(C.Structure):
@@ -83,6 +84,29 @@ def main():
     assert call(1,1)==(0,payload(fields,source))
     acquired=list(fields);acquired[1:3]=[1,1]
     assert call(2,2)==(0,payload(acquired,source))
+    lib.fvm_scontrol_init.argtypes=[C.POINTER(Exchange),C.POINTER(Limits)]
+    lib.fvm_scontrol_propose_at.argtypes=[C.POINTER(Exchange),C.c_ulong,C.POINTER(Limits),C.POINTER(Boundary),C.POINTER(Message)]
+    lib.fvm_scontrol_respond.argtypes=[C.POINTER(Exchange),C.POINTER(Message),C.POINTER(Message)]
+    lib.fvm_scontrol_commit.argtypes=[C.POINTER(Exchange),C.POINTER(Message)]
+    part_write=lib.fvm_desktop_resource_frame_write_part
+    part_write.argtypes=[C.c_void_p,C.c_ulong,Handle,C.POINTER(Exchange),C.c_ulong,C.c_ulong,C.c_ulong,
+                        C.c_void_p,C.c_size_t,C.POINTER(C.c_size_t)]
+    sender,receiver=Exchange(),Exchange();offer,ack=Message(),Message()
+    limits=Limits(19,224,256,160);boundary=Boundary(7,8,1)
+    for x in (sender,receiver):assert lib.fvm_scontrol_init(C.byref(x),C.byref(limits))==0
+    output=C.create_string_buffer(b'\xa5'*256,256);size=C.c_size_t(9999);saved=output.raw
+    assert part_write(adapter,77,Handle(1,1),C.byref(sender),1,40,0,output,256,C.byref(size))==7
+    assert output.raw==saved and size.value==9999
+    assert lib.fvm_scontrol_propose_at(C.byref(sender),1,C.byref(limits),C.byref(boundary),C.byref(offer))==0
+    assert lib.fvm_scontrol_respond(C.byref(receiver),C.byref(offer),C.byref(ack))==0
+    assert lib.fvm_scontrol_commit(C.byref(sender),C.byref(ack))==0
+    assert part_write(adapter,77,Handle(1,1),C.byref(sender),1,40,0,output,255,C.byref(size))==2
+    assert output.raw==saved and size.value==9999
+    assert part_write(adapter,77,Handle(1,1),C.byref(sender),1,40,1,output,256,C.byref(size))==1
+    assert output.raw==saved and size.value==9999
+    assert part_write(adapter,77,Handle(1,1),C.byref(sender),1,40,0,output,256,C.byref(size))==0
+    expected=srecord(19,b''.join(map(integer,[1,1,7,8,1,40,16,0]))+bytes(range(16))).ljust(256,b'\0')
+    assert output.raw==expected and size.value==256
     pixels.raw=b"\xff"*17  # Native capture owns an independent pixel copy.
     assert call(3,3,b"".join(map(integer,[1,1,0,512])))==(0,bytes(range(16)))
     identity=10
@@ -102,6 +126,8 @@ def main():
                    [0,0,1,-1],[0,0,1,1,0],[0,0,1]]:
         assert region(values)==(1,b""),values
     assert call(4,4,integer(1)+integer(1))==(0,b"")
+    assert part_write(adapter,77,Handle(1,1),C.byref(sender),1,40,0,output,256,C.byref(size))==3
+
     assert region([0,0,1,1])==(3,b"")
     # A larger padded capture exercises exactly 512 bytes and oversized tiles.
     raw=bytes((i*37+11)%256 for i in range(40*32))

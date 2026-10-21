@@ -2,6 +2,7 @@
 #ifndef FVM_DESKTOP_RESOURCE_FRAME_H
 #define FVM_DESKTOP_RESOURCE_FRAME_H /* Guard the additive C89 frame-resource API. */
 #include "frame.h"
+#include "flashvm/scontrol.h"
 #include "flashvm/revents.h"
 #define FVM_DESKTOP_RFRAME_VERSION 1UL /* Canonical S-integer metadata/request schema. */
 #define FVM_DESKTOP_RFRAME_INFO 1UL    /* READ, empty request: latest metadata without a lease. */
@@ -97,6 +98,19 @@ extern "C"
      * Dispatcher, client files and SDK remain host-owned. Success nulls pointer, even if leases
      * were outstanding. */
     FVM_DESKTOP_API FVM_RResult fvm_desktop_resource_frame_destroy(FVM_DesktopResourceFrame **);
+    /* Owner-only bulk export from an existing immutable lease; current session must still have
+     * READ authority. Uses a committed boundary-aware media agreement, not pending offers.
+     * Stream/epoch come from that agreement, object is the captured frame sequence, total is its
+     * exact packed byte count. Host supplies FILE/LIVE mode and relative Uint32 time_ms.
+     * Encode one agreed-size slot directly from retained pixels; no whole-image scratch, VM,
+     * allocation, queueing or socket I/O. Caller owns disjoint output; used/output unchanged on
+     * error. UNKNOWN stale lease, DENIED foreign/revoked access, BUSY before agreement,
+     * CONFLICT before activation object, LIMIT for object/part-count/capacity quota, INVALID
+     * for bad mode/index/profile. Closing the output/transport does not release the lease. */
+    FVM_DESKTOP_API FVM_RResult fvm_desktop_resource_frame_write_part(FVM_DesktopResourceFrame *,
+        unsigned long session, FVM_DesktopFrameLease, const FVM_SControlExchange *,
+        unsigned long mode, unsigned long time_ms, unsigned long part,
+        void *output, size_t capacity, size_t *used);
 #ifdef __cplusplus
 }
 #endif

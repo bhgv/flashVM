@@ -273,3 +273,23 @@ FVM_SResult fvm_scontrol_propose(FVM_SControlExchange *x, unsigned long id,
     static const FVM_SControlBoundary none = {0, 0, 0};
     return fvm_scontrol_propose_at(x, id, limits, &none, out);
 }
+
+/* Adapters read only a copied, fully validated committed profile, never an in-flight offer. */
+FVM_SResult fvm_scontrol_active(const FVM_SControlExchange *x, FVM_SControlLimits *limits,
+                                FVM_SControlBoundary *boundary)
+{
+    FVM_SControlMessage message;
+    if (!control_exchange(x) || !limits || !boundary)
+        return FVM_S_INVALID;
+    if (!x->active_id)
+        return FVM_S_UNKNOWN;
+    message.command = x->active_boundary.stream ? FVM_SCONTROL_ACCEPT_AT : FVM_SCONTROL_ACCEPT;
+    message.id = x->active_id;
+    message.limits = x->active;
+    message.boundary = x->active_boundary;
+    if (!control_message(&message))
+        return FVM_S_INVALID;
+    *limits = message.limits;
+    *boundary = message.boundary;
+    return FVM_S_OK;
+}

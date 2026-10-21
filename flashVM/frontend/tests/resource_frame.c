@@ -70,6 +70,14 @@ int main(void)
     unsigned long args[6];
     size_t i, n, count;
     FVM_RRequest q;
+    FVM_SControlLimits ceiling = {19, 4064, 4096, 4000};
+    FVM_SControlLimits wanted = {19, 992, 1024, 768};
+    FVM_SControlBoundary boundary = {7, 8, 1};
+    FVM_SControlExchange sender, receiver;
+    FVM_SControlMessage offer, ack;
+    FVM_SMediaPiece piece;
+    unsigned char exported[FVM_SSLOT_BYTES], preserved[FVM_SSLOT_BYTES];
+    size_t exported_size, allocations_before;
     char source[FVM_DESKTOP_RFRAME_SOURCE + 2];
     CHECK(fvm_rdispatch_create(0, &d) == FVM_R_OK);
     memset(&target, 0xa5, sizeof(target));
@@ -132,6 +140,50 @@ int main(void)
           reply.result == FVM_R_OK &&
           fvm_desktop_resource_frame_read(reply.data, reply.size, &first) == FVM_R_OK &&
           first.lease.id);
+    CHECK(fvm_scontrol_init(&sender, &ceiling) == FVM_S_OK &&
+          fvm_scontrol_init(&receiver, &ceiling) == FVM_S_OK);
+    memset(exported, 0xa5, sizeof(exported));
+    memcpy(preserved, exported, sizeof(exported));
+    exported_size = 99;
+    allocations_before = allocation;
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_BUSY);
+    CHECK(exported_size == 99 && !memcmp(exported, preserved, sizeof(exported)));
+    CHECK(fvm_scontrol_propose_at(&sender, 1, &wanted, &boundary, &offer) == FVM_S_OK &&
+          fvm_scontrol_respond(&receiver, &offer, &ack) == FVM_S_OK &&
+          fvm_scontrol_commit(&receiver, &ack) == FVM_S_OK &&
+          fvm_scontrol_commit(&sender, &ack) == FVM_S_OK);
+    CHECK(fvm_desktop_resource_frame_write_part(a, 2, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_DENIED);
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported) - 1,
+                                                &exported_size) == FVM_R_LIMIT);
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 1,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_INVALID);
+    CHECK(exported_size == 99 && !memcmp(exported, preserved, sizeof(exported)));
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_OK);
+    CHECK(exported_size == sizeof(exported) && allocation == allocations_before &&
+          fvm_smedia_read(exported, exported_size, 19, &piece) == FVM_S_OK &&
+          piece.info.stream == 7 && piece.info.epoch == 8 && piece.info.object == first.sequence &&
+          piece.info.total == 16 && piece.info.mode == FVM_SMEDIA_FILE &&
+          piece.info.time_ms == 40 && piece.size == 16 && !memcmp(piece.data, expected, 16));
+    a->frames[a->leases[first.lease.id - 1].slot].info.byte_count = FVM_SMEDIA_MAX_BYTES + 1;
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &receiver, FVM_SMEDIA_FILE, 40,
+                                                0, exported, sizeof(exported),
+                                                &exported_size) == FVM_R_LIMIT);
+    a->frames[a->leases[first.lease.id - 1].slot].info.byte_count = 16;
+    boundary.object = 2;
+    CHECK(fvm_scontrol_propose_at(&sender, 2, &wanted, &boundary, &offer) == FVM_S_OK &&
+          fvm_scontrol_respond(&receiver, &offer, &ack) == FVM_S_OK &&
+          fvm_scontrol_commit(&sender, &ack) == FVM_S_OK);
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_CONFLICT);
     CHECK(fvm_desktop_resource_frame_capture(a, &f) == FVM_R_OK);
     CHECK(call(d, target, 2, FVM_DESKTOP_RFRAME_ACQUIRE, 0, 0, &reply) &&
           reply.result == FVM_R_OK &&
@@ -186,6 +238,9 @@ int main(void)
           reply.result == FVM_R_OK);
     CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_CHUNK, args, 4, &reply) &&
           reply.result == FVM_R_UNKNOWN);
+    CHECK(fvm_desktop_resource_frame_write_part(a, 1, first.lease, &sender, FVM_SMEDIA_FILE, 40, 0,
+                                                exported, sizeof(exported),
+                                                &exported_size) == FVM_R_UNKNOWN);
     CHECK(fvm_desktop_resource_frame_capture(a, &f) == FVM_R_OK && a->sequence == 4);
     args[0] = second.lease.id;
     args[1] = second.lease.generation;

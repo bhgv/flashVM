@@ -1,6 +1,7 @@
 /* Copied frame resources retain old images only through bounded, session-owned native leases. */
 #include "resource_frame.h"
 #include "flashvm/srecord.h"
+#include "flashvm/smedia.h"
 #include <stdlib.h>
 #include <string.h>
 /* One preallocated image buffer; published data never aliases the runner's borrowed raster. */
@@ -400,4 +401,64 @@ FVM_RResult fvm_desktop_resource_frame_destroy(FVM_DesktopResourceFrame **pointe
     free(a);
     *pointer = 0;
     return FVM_R_OK;
+}
+
+/* Export exact retained frame bytes only after current resource rights and agreement validation. */
+FVM_RResult fvm_desktop_resource_frame_write_part(
+    FVM_DesktopResourceFrame *a, unsigned long session, FVM_DesktopFrameLease lease,
+    const FVM_SControlExchange *agreement, unsigned long mode, unsigned long time_ms,
+    unsigned long part, void *output, size_t capacity, size_t *used)
+{
+    FramePin *pin;
+    FrameSlot *frame;
+    FVM_SControlLimits limits;
+    FVM_SControlBoundary boundary;
+    FVM_SMediaProfile profile;
+    FVM_SMediaInfo info;
+    FVM_RResult rights;
+    FVM_SResult result;
+    size_t operation;
+    unsigned long count, offset, bytes;
+    if (!a || !output || !used)
+        return FVM_R_INVALID;
+    rights = fvm_rdispatch_operation_index(a->dispatch, session, a->target,
+                                           FVM_DESKTOP_RFRAME_CHUNK, &operation);
+    if (rights != FVM_R_OK)
+        return rights;
+    pin = frame_pin(a, lease.id, lease.generation);
+    if (!pin)
+        return FVM_R_UNKNOWN;
+    if (pin->session != session)
+        return FVM_R_DENIED;
+    result = fvm_scontrol_active(agreement, &limits, &boundary);
+    if (result != FVM_S_OK)
+        return result == FVM_S_UNKNOWN ? FVM_R_BUSY : FVM_R_INVALID;
+    if (!limits.slot_bytes || !boundary.stream)
+        return FVM_R_INVALID;
+    frame = a->frames + pin->slot;
+    if (frame->info.sequence < boundary.object)
+        return FVM_R_CONFLICT;
+    if (frame->info.byte_count > FVM_SMEDIA_MAX_BYTES)
+        return FVM_R_LIMIT;
+    count = (frame->info.byte_count - 1) / limits.part_bytes + 1;
+    if (count > FVM_SMEDIA_PARTS)
+        return FVM_R_LIMIT;
+    if (part >= count)
+        return FVM_R_INVALID;
+    offset = part * limits.part_bytes;
+    bytes = frame->info.byte_count - offset;
+    if (bytes > limits.part_bytes)
+        bytes = limits.part_bytes;
+    profile.slot_bytes = (size_t)limits.slot_bytes;
+    profile.part_bytes = limits.part_bytes;
+    info.mode = mode;
+    info.stream = boundary.stream;
+    info.epoch = boundary.epoch;
+    info.object = frame->info.sequence;
+    info.time_ms = time_ms;
+    info.total = frame->info.byte_count;
+    result =
+        fvm_smedia_write_profile(&profile, limits.tag, &info, part, frame->pixels + (size_t)offset,
+                                 (size_t)bytes, output, capacity, used);
+    return result == FVM_S_OK ? FVM_R_OK : (result == FVM_S_LIMIT ? FVM_R_LIMIT : FVM_R_INVALID);
 }

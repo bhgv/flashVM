@@ -1135,8 +1135,8 @@ if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpre
   set_tests_properties(flashvm_resource_frames_example PROPERTIES TIMEOUT 30)
 endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
-  add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c
-    ../src/protocol/srecord.c ../src/protocol/rdispatch.c)
+  add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c)
+  target_link_libraries(flashvm_resource_frame_oracle PRIVATE flashvm_srecord)
   target_include_directories(flashvm_resource_frame_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_resource_frame_oracle PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF WINDOWS_EXPORT_ALL_SYMBOLS ON)
   add_test(NAME flashvm_resource_frame_wire COMMAND ${Python3_EXECUTABLE}

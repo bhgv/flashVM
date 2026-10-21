@@ -102,6 +102,11 @@ extern "C"
                                                 const FVM_SControlLimits *,
                                                 const FVM_SControlBoundary *,
                                                 FVM_SControlMessage *offer);
+    /* Copy the committed limits/boundary without exposing mutable exchange internals to adapters.
+     * UNKNOWN before any agreement; INVALID for bad native state/outputs. Outputs remain unchanged
+     * on error and must be disjoint from each other and the exchange. Owner-serialized, no I/O. */
+    FVM_API FVM_SResult fvm_scontrol_active(const FVM_SControlExchange *, FVM_SControlLimits *,
+                                            FVM_SControlBoundary *);
 #ifdef __cplusplus
 }
 #endif

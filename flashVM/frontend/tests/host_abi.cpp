@@ -14,6 +14,14 @@ static FVM_Result frame_notify(const FVM_DesktopFrame *, void *)
 /* No SDL or private VM header, no process argument vector and no native device startup. */
 int main()
 {
+    FVM_DesktopFrameLease empty_lease = {0, 0};
+    unsigned char part_output[1];
+    size_t part_used = 99;
+    if (fvm_desktop_resource_frame_write_part(0, 1, empty_lease, 0, 1, 0, 0, part_output,
+                                              sizeof(part_output), &part_used) != FVM_R_INVALID ||
+        part_used != 99)
+        return 1;
+
 #ifdef FVM_DESKTOP_SOCKET_HTTP
     FVM_SocketHTTPOptions network_options;
     if (!fvm_desktop_socket_options_init(&network_options) || network_options.ca_file ||
