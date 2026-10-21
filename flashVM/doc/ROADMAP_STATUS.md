@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.750
+# FlashVM stage status / Состояние стадий — v0.751
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.751: Native explicit rate/channel conversion preserves rational phase across prepared PCM blocks. [EN](STREAM_PCM_CONVERSION.md) / [RU](STREAM_PCM_CONVERSION.ru.md). No device/timeline playback acceptance.
 
 v0.750: C cursor tutorial exports actual PCM after source VM teardown; four native workers independently read one immutable segment. [EN](STREAM_PCM_READER.md) / [RU](STREAM_PCM_READER.ru.md). Scheduling, codecs, device/platform/reference acceptance remain open.
 

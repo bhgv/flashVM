@@ -6,6 +6,7 @@
 #include "swf_stream_sound.cpp"
 #undef main
 #include "flashvm/swf_stream_pcm.h"
+#include "flashvm/swf_stream_convert.h"
 int main()
 {
  FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
@@ -31,6 +32,12 @@ int main()
  assert(fvm_swf_stream_pcm_reader_seek(&reader,0,0)==FVM_OK);
  assert(fvm_swf_stream_pcm_reader_next(&reader,1,&out,1,&chunk,&n)==FVM_OK && n==1);
  assert(fvm_swf_stream_pcm_reader_next(&reader,1,&out,1,&chunk,&n)==FVM_NOT_FOUND);
+ FVM_SWFStreamConverter converter;FVM_SWFStreamConvertedChunk converted;converted.struct_size=sizeof(converted);short stereo[2];
+ assert(fvm_swf_stream_converter_init(&converter,s,48000,2)==FVM_OK);
+ assert(fvm_swf_stream_converter_next(&converter,1,stereo,2,&converted,&n)==FVM_OK && n==2 && stereo[0]==32512 && stereo[1]==32512);
+ assert(fvm_swf_stream_converter_next(&converter,1,stereo,2,&converted,&n)==FVM_OK && n==2);
+ assert(fvm_swf_stream_converter_next(&converter,1,stereo,2,&converted,&n)==FVM_NOT_FOUND);
+ assert(fvm_swf_stream_converter_seek(&converter,0,0)==FVM_OK);
  fvm_swf_stream_sound_snapshot_close(s);allowance=-1;
  return 0;
 }

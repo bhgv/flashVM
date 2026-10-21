@@ -77,6 +77,7 @@ source. Это проверка Linux native threads, не foreign OS concurrenc
 звука, real-time audio callback или A/V sync.
 
 Проверка v0.750: прошли 72 выбранные native регрессионные проверки и 14 shared-host. Reader/snapshot пути и настоящий file tutorial прошли ASan/UBSan с независимым FFmpeg PCM эталоном; leak detection отключён ограничениями хоста, вся VM не инструментирована. Новый implementation и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution или полная cross-сборка плеера этим не заявляются. Worker target требует включённого OS_PORTS. Все девять стадий открыты.
+[Explicit rate/channel conversion / Преобразование частоты/каналов](STREAM_PCM_CONVERSION.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

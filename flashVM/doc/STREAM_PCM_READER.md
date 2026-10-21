@@ -78,6 +78,7 @@ source storage. This is Linux native thread evidence; it does not certify foreig
 OS concurrency, audible output, a real-time audio callback or A/V synchronization.
 
 Validation at v0.750: 72 selected native regression checks and 14 shared-host checks pass. Reader/snapshot paths and the real file tutorial pass ASan/UBSan with an independent FFmpeg PCM oracle; leak detection is disabled by host restrictions and the whole VM is not instrumented. New implementation and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW, without claiming foreign execution or a complete cross-built player. The native OS-port worker target requires OS_PORTS enabled. All nine roadmap stages remain open.
+[Explicit rate/channel conversion / Преобразование частоты/каналов](STREAM_PCM_CONVERSION.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
