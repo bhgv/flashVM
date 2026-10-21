@@ -16,7 +16,7 @@ def main():
     pattern = r'lines=(\d+) glyphs=(\d+) advance=([\d.]+) height=([\d.]+)'
     before, after = re.match(pattern, on.stdout), re.match(pattern, off.stdout)
     assert before and after
-    assert before[1:3] == after[1:3] == ('3', '10') and before[4] == after[4]
+    assert before.groups()[:2] == after.groups()[:2] == ('3', '10') and before[4] == after[4]
     assert Decimal(after[3])-Decimal(before[3]) == Decimal('3.20')
     assert on.stdout.splitlines()[1:] == off.stdout.splitlines()[1:]
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)

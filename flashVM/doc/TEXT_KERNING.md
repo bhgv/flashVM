@@ -56,6 +56,17 @@ The default invocation preserves legacy native shaping. The reusable text-jit
 profile enables pinned static font libraries, rasterization and the available
 native JIT without requiring SDL/system fonts. No window or output file is created.
 
+
+## VM execution and rollback (v0.825)
+
+Actual AVM1 property writes and method calls produce the same explicit widths
+in the interpreter, attached native bodies and automatic JIT; native-entry counters
+verify execution. GC between calls retains the field and selected formats.
+Ordinary native allocation-failure sweeps cover current/future format setters:
+failed admission preserves prior kerning and cached width, roots unwind, and an
+intact retry succeeds. The analytical editing fixture now expects equal AV/BV
+advances under the corrected disabled default; explicit kerning has separate coverage.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

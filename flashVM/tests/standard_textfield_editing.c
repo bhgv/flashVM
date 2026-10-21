@@ -71,7 +71,8 @@ int main(void)
         before = metric(c, field, "textWidth");
         assert(fvm_avm1_execute(c, code, sizeof(code)) == FVM_OK);
         expect_text(c, field, "BV fi");
-        assert(metric(c, field, "textWidth") != before);
+        /* A and B have equal advances; the AS2 disabled-kerning default removes the old AV adjustment. */
+        assert(metric(c, field, "textWidth") == before);
         assert(strcmp(old.string, "AV fi") == 0);
         assert(replace(c, field, 2, 5, "") == FVM_OK);
         expect_text(c, field, "BV");

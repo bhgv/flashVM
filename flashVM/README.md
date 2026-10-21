@@ -1,10 +1,12 @@
-Development version: **0.824** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.824 ` and an English description. Increase the subversion before each
+Development version: **0.825** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.825 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.825: [Add native VM kerning execution and transactional format-admission workloads](doc/TEXT_KERNING.md).
 
 v0.824: [Expose explicit kerning selection in the C89 raster text tutorial](doc/TEXT_KERNING.md).
 
