@@ -94,13 +94,37 @@ FVM_Result FVM_SWFMP3Decoder::decode(const unsigned char *data, size_t size, FVM
     if (!out)
         return FVM_INVALID_ARGUMENT;
     FVM_SWFMP3Frame packet;
-    FVM_Result result = fvm_swf_mp3_probe(data, size, &packet);
+    FVM_Result result = mp3_header(data, size, &packet);
     if (result != FVM_OK)
         return result;
+    bool free_format = !packet.bytes;
+    if (free_format)
+    {
+        if (state.free_format_bytes)
+        {
+            packet.bytes = (size_t)state.free_format_bytes + ((data[2] & FVM_MP3_PADDING_MASK) != 0);
+            if (packet.bytes > size)
+                return FVM_INVALID_ARGUMENT;
+        }
+        else
+        {
+            result = fvm_swf_mp3_probe(data, size, &packet);
+            if (result != FVM_OK)
+                return result;
+        }
+    }
     if (CHAR_BIT != FVM_SWF_SOUND_BYTE_BITS || sizeof(short) != FVM_SWF_SOUND_PCM_BYTES ||
         SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX || SHRT_MIN != FVM_SWF_SOUND_SHORT_MIN ||
         sizeof(mp3d_sample_t) != sizeof(short) || packet.bytes > INT_MAX)
         return FVM_UNSUPPORTED;
+    if (free_format && !state.free_format_bytes)
+    {
+        /* Seed only verified geometry into the pinned decoder; reservoir/history remain zero. */
+        if (state.header[0])
+            return FVM_UNSUPPORTED;
+        std::memcpy(state.header, data, FVM_MP3_HEADER_BYTES);
+        state.free_format_bytes = (int)(packet.bytes - ((data[2] & FVM_MP3_PADDING_MASK) != 0));
+    }
     mp3dec_frame_info_t info;
     std::memset(&info, 0, sizeof(info));
     int frames = fvm_minimp3_decode_frame(&state, data, (int)packet.bytes, pcm, &info);

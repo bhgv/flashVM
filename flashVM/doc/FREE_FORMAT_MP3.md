@@ -16,6 +16,16 @@ free-format mode, with independent native S16 values decoded by libmpg123.
 The runtime still uses the existing static scalar minimp3; no new runtime library
 or platform requirement is introduced. Device acceptance remains separate.
 
+
+## Event decoding (v0.807)
+
+DefineSound uses the inferred first packet size to initialize the pinned native
+decoder, then retains the unpadded span and bit reservoir through the last packet.
+The complete source is validated before writing selected PCM, including zero-length
+reads. Initial latency, range limits, geometry and allocation-free two-pass reads
+retain their existing contracts. One/two-packet standalone events without sufficient
+header evidence remain UNSUPPORTED; their frame size cannot be learned from bitrate zero.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

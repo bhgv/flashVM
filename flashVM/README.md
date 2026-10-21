@@ -1,10 +1,12 @@
-Development version: **0.806** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.806 ` and an English description. Increase the subversion before each
+Development version: **0.807** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.807 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.807: [Decode free-format DefineSound with persistent native packet geometry](doc/FREE_FORMAT_MP3.md).
 
 v0.806: [Infer free-format MPEG packet geometry from strict header spacing](doc/FREE_FORMAT_MP3.md).
 
