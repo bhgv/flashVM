@@ -140,6 +140,19 @@ checker passes 24 FWS/CWS sample cases: mono/stereo PCM styles, empty playback,
 ADPCM and six effective MPEG geometries. Both output halves match exactly;
 FFmpeg checks every MP3 sample when installed. Errors/replacement are explicit.
 
+## v0.791: actual three-codec event composition oracle
+
+`flashvm_frontend_mp3_events` plays three overlapping root StartSound voices:
+supported MP3, +30000 PCM and -28000 ADPCM. Every accepted SDL stereo sample is
+compared with independently decoded FFmpeg MP3, analytical PCM/ADPCM and rational
+conversion, followed by one saturation of the complete sum. Actual serialized
+submission markers define each onset, avoiding wall-clock guesses. FWS/CWS and
+both interpreter/native-JIT action counters run for all six MPEG geometries:
+24 cases pass, maximum permitted deviation three S16 units. No optional oracle
+was skipped in this run. This covers event composition after owner-lock changes;
+root streaming plus StartSound, child dictionaries, reference timing and device
+acceptance remain open. It does not redefine event onset as a movie/DAC clock.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

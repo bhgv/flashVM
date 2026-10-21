@@ -1,10 +1,12 @@
-Development version: **0.790** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.790 ` and an English description. Increase the subversion before each
+Development version: **0.791** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.791 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.791: [Verify three-codec event composition against independent accepted PCM oracles](doc/NATIVE_VOICES.md).
 
 v0.790: [Replay native voice templates through a bounded detached C89 host](doc/NATIVE_VOICES.md).
 

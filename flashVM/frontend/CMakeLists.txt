@@ -420,6 +420,9 @@ endif()
 
 # Optional independent MPEG oracle inspects PCM actually accepted by the real SDL queue.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_test(NAME flashvm_frontend_mp3_events COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/mp3_events.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_frontend_mp3_events PROPERTIES TIMEOUT 90 SKIP_RETURN_CODE 77)
   add_test(NAME flashvm_frontend_mp3_streams COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/mp3_streams.py $<TARGET_FILE:flashvm_player>)
   set_tests_properties(flashvm_frontend_mp3_streams PROPERTIES TIMEOUT 120 SKIP_RETURN_CODE 77)
