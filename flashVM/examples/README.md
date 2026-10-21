@@ -146,6 +146,7 @@
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
+    - [swf_stream_adpcm](#example-multimedia-swf_stream_adpcm) — <small><em>Неполный ADPCM: явные длины, native PCM и ranges после VM teardown</em></small>
     - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, event-голоса и точный retry очереди после VM teardown</em></small>
     - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и сжатый снимок после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
@@ -1653,6 +1654,20 @@ source geometry от advisory playback и среднего числа samples. �
 декодирует compressed streams и не исполняет MovieClip timeline. Контракты:
 [SWF_STREAM_SOUND.md](../doc/SWF_STREAM_SOUND.md).
 
+<a id="example-multimedia-swf_stream_adpcm"></a>
+#### swf_stream_adpcm
+
+Исполняемый C89 пример: [README](multimedia/swf_stream_adpcm/README.md),
+[main.c](multimedia/swf_stream_adpcm/main.c), [fixture/constants](multimedia/swf_stream_adpcm/example_movie.h).
+Настоящий FWS8 содержит ADPCM-блоки с пятью, нулём и тремя source frames; точные
+длины известны из fixture, не выводятся из average. После VM teardown пример
+экспортирует восемь отсчётов через подготовленный PCM reader либо `--ranges`
+из encoded snapshot без дальнейшего выделения памяти. Оба режима ограничивают
+snapshot 64 KiB и проверены независимыми ручными значениями, replacement, CLI
+и файловыми ошибками. Нет SDL/device, hidden worker или автоматического movie
+clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
+[RU](../doc/STREAM_ADPCM_COUNTED.ru.md).
+
 <a id="example-multimedia-swf_stream_mix"></a>
 #### swf_stream_mix
 
@@ -2184,6 +2199,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)
+- [swf_stream_adpcm — multimedia/swf_stream_adpcm](#example-multimedia-swf_stream_adpcm)
 - [swf_stream_mix — multimedia/swf_stream_mix](#example-multimedia-swf_stream_mix)
 - [swf_stream_mp3 — multimedia/swf_stream_mp3](#example-multimedia-swf_stream_mp3)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)

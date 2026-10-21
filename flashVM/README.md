@@ -1,10 +1,12 @@
-Development version: **0.774** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.774 ` and an English description. Increase the subversion before each
+Development version: **0.775** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.775 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.775: [C89 partial-ADPCM export after VM teardown, prepared and encoded-range modes](examples/multimedia/swf_stream_adpcm/README.md).
 
 v0.774: [Allocation-free live and native-snapshot ADPCM range decoding](doc/STREAM_ADPCM_COUNTED.md#allocation-free-ranges-v0774).
 

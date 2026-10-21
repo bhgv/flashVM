@@ -1,5 +1,7 @@
 # Неполные ADPCM-блоки с явными длинами (v0.773)
 
+C89 пример prepared/ranges (v0.775): [построчный tutorial](../examples/multimedia/swf_stream_adpcm/README.md). Проверены восемь независимо рассчитанных отсчётов, пустой блок и файловые ошибки после уничтожения VM.
+
 [English](STREAM_ADPCM_COUNTED.md) · [Автоматические целые пакеты](STREAM_ADPCM.ru.md) · [Бюджеты](STREAM_STORAGE.ru.md)
 
 `fvm_swf_stream_sound_snapshot_open_adpcm_counted(context, stream, counts, count, budget_bytes, out)`
@@ -157,6 +159,18 @@ cmake --build build --target flashvm_tests_swf_stream_adpcm_ranges \
   flashvm_tests_swf_stream_adpcm_ranges_c89 flashvm_tests_swf_stream_adpcm_ranges_os_ports
 ctest --test-dir build --output-on-failure -R 'swf_stream_adpcm'
 ```
+
+
+## Проверка C89 примера (v0.775)
+
+Построчный пример проходит strict C89 и полный minimal-core ASan/UBSan в prepared
+и encoded-range режимах. Python checker проверяет восемь вручную рассчитанных
+отсчётов, replacement, usage без побочных эффектов, неверный CLI и терминальную
+ошибку открытия файла. Тематический CTest проходит 62 проверки: 60 native
+sound/stream fixtures, usage примера и его полный export checker. Проходят source
+links, version refresh и сортировка каталога. Общий multimedia comment checker
+сохраняет замечания только к двум неизменённым Windows speech files; новый пример
+полностью покрыт построчными комментариями и таблицей API.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

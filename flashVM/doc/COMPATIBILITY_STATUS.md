@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Counted ADPCM tutorial v0.775: actual strict-C89 partial-block export with two independent native ownership modes after VM teardown; eight hand-calculated samples, empty block, CLI/file checks. [Example RU/EN](../examples/multimedia/swf_stream_adpcm/README.md). No device/timeline acceptance implied.
+
 ADPCM ranges v0.774: allocation-free explicit-count extraction from live root blocks and encoded native snapshots, full-block validation before output; native/C89/allocation and independent FFmpeg range checks. [EN](STREAM_ADPCM_COUNTED.md#allocation-free-ranges-v0774) / [RU](STREAM_ADPCM_COUNTED.ru.md#диапазоны-без-выделения-памяти-v0774). No automatic desktop partial-stream scheduling.
 
 Counted partial ADPCM v0.773: explicit host lengths, exact bit/padding validation, bounded independent PCM ownership; native sample/ownership matrix and independent FFmpeg FWS/CWS checks. Automatic partial desktop decoding remains open. [EN](STREAM_ADPCM_COUNTED.md) / [RU](STREAM_ADPCM_COUNTED.ru.md).

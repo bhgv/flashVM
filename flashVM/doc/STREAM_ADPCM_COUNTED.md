@@ -1,5 +1,7 @@
 # Partial ADPCM blocks with authoritative counts (v0.773)
 
+C89 prepared/range export tutorial (v0.775): [annotated example](../examples/multimedia/swf_stream_adpcm/README.md). The fixture checks eight hand-calculated samples, an empty block and native file errors after VM teardown.
+
 [Русский](STREAM_ADPCM_COUNTED.ru.md) · [automatic whole packets](STREAM_ADPCM.md) · [storage budgets](STREAM_STORAGE.md)
 
 `fvm_swf_stream_sound_snapshot_open_adpcm_counted(context, stream, counts, count, budget_bytes, out)`
@@ -162,6 +164,18 @@ cmake --build build --target flashvm_tests_swf_stream_adpcm_ranges \
   flashvm_tests_swf_stream_adpcm_ranges_c89 flashvm_tests_swf_stream_adpcm_ranges_os_ports
 ctest --test-dir build --output-on-failure -R 'swf_stream_adpcm'
 ```
+
+
+## C89 tutorial verification (v0.775)
+
+The annotated example passes ordinary strict C89 and full-minimal-core ASan/UBSan
+in both prepared and encoded-range modes. All eight hand-calculated values, file
+replacement, no-side-effect usage, malformed CLI and terminal file-open errors
+pass the Python checker. The focused CTest run passes 62 checks: 60 native
+sound/stream fixtures, the example usage and its complete export checker.
+Source-link freshness, version refresh and sorted example catalog checks pass.
+The global multimedia comment checker still reports only two unchanged Windows
+speech files; changed tutorial files have complete line comments and API coverage.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
