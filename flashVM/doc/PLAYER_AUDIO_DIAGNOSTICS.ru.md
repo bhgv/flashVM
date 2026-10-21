@@ -63,10 +63,10 @@ worker выделяются буфер на 20 секунд (3,84 МБ при т
 Управляемых VM-указателей и дополнительных GC roots нет. При нехватке памяти
 capture отключается с сообщением в log, не меняя звук.
 
-[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L9) копирует геометрию/путь и возвращает владеющий trace либо null.
-[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L13) добавляет ограниченную запись со статическим именем;
-[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L16) копирует принятые frames, отмечая усечение при переполнении.
-[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L19) записывает переносимый WAV/отчёт и освобождает память
+[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L12) копирует геометрию/путь и возвращает владеющий trace либо null.
+[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L16) добавляет ограниченную запись со статическим именем;
+[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L19) копирует принятые frames, отмечая усечение при переполнении.
+[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L22) записывает переносимый WAV/отчёт и освобождает память
 после join worker. Все вызовы сериализует host; сами функции не потокобезопасны.
 Копирование PCM и регистрация событий не выделяют память и не пишут файлы.
 Дополнительное копирование всё же имеет диагностические накладные расходы,
@@ -109,7 +109,7 @@ APK не проверяют этот lifecycle.
 усиления JIT. Clock учитывает dequeue SDL, а не аппаратное воспроизведение, поэтому
 не обнаруживает samples, потерянные после очереди.
 
-В [AAudio SDL 2.30.0](https://github.com/libsdl-org/SDL/blob/release-2.30.0/src/audio/aaudio/SDL_aaudio.c#L301)
+В [AAudio SDL 2.30.0](https://github.com/libsdl-org/SDL/blob/release-2.30.0/src/audio/aaudio/SDL_aaudio.c#L381)
 для целого блока задан timeout 1000000 нс (1 мс), но остаток после неотрицательной
 частичной записи не сохраняется. Это конкретный механизм потери/сжатия звука;
 точное число реально записанных frames на этом участке отчёт не измерял.

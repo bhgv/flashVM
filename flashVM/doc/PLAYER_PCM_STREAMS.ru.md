@@ -19,7 +19,7 @@ per-snapshot бюджета ниже относятся к историческ�
 
 При `--frames`/`--once` плеер сохраняет длительность последнего кадра, затем ждёт
 завершения уже разрешённых потоковых блоков и принятого PCM в очереди.
-[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L101) копирует условие под mutex producer, не производит
+[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L102) копирует условие под mutex producer, не производит
 PCM, не выделяет память, не декодирует, не продвигает фильм и не разрешает будущие
 кадры. Пустые неактивные заголовки пропускаются ограниченным обходом; последующие
 источники проверяются с блока ноль, поскольку worker перезапускает их при переходе.
@@ -61,7 +61,7 @@ owner loop с протокольным presenter: успех в 180 мс, зак
 и другие кодеки остаются неподдержанными. Muted/raw-инспекция сохраняет непрозрачные
 байты: при mute декодирования и снимков нет.
 
-До открытия окна/устройства [fvm_desktop_audio_validate](../frontend/common/audio.h#L75) временно подготавливает
+До открытия окна/устройства [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) временно подготавливает
 и закрывает ADPCM-снимки. Поэтому предварительная проверка теперь может выделять
 память/декодировать и возвращать OUT_OF_MEMORY; ошибки заполнения и неподдержанной
 геометрии передаются вызывающему. При последующем открытии аудио повторно проверяется
@@ -215,12 +215,12 @@ labels/неверные targets token не публикуют. [movieclip_playba
 
 | Операция | Контракт |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L75) | Owner-thread проверка количества, формата и event-политики. OK без stream, UNSUPPORTED для неподдержанных сочетаний, ошибки структуры распространяются. Нет native device или полученного владения. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L84) | Получает snapshot/converter/FIFO/device/mutex/worker и stop binding при наличии звука; pause только 0/1. После любой частичной ошибки вызывайте close. Snapshot независим от VM, но stop binding отсоединяется до context destroy. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L80) | Владелец читает playback/navigation token удерживаемого клипа своего контекста и публикует скаляры под mutex. Ошибки query/seek/backend возвращаются; pause/clear имеют staged effects без rollback. Worker в VM не входит. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L96) | Копирует stream-only [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) под mutex. Ошибки сохраняют дескриптор; возможны ожидание lock/backend. Это FIFO dequeue position, не DAC/movie sync. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L91) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L89) | Независимая пауза хоста; нет очистки данных. Tick проверяет worker error latch. Хост вызывает последовательно; worker сериализован внутри. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L104) / [fvm_desktop_audio_close](../frontend/common/audio.h#L106) | Владелец отсоединяет binding/callback, join worker, закрывает snapshot и device, уничтожает mutex. Clear сохраняет счётчики. Context/userdata должны жить до detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) | Owner-thread проверка количества, формата и event-политики. OK без stream, UNSUPPORTED для неподдержанных сочетаний, ошибки структуры распространяются. Нет native device или полученного владения. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L85) | Получает snapshot/converter/FIFO/device/mutex/worker и stop binding при наличии звука; pause только 0/1. После любой частичной ошибки вызывайте close. Snapshot независим от VM, но stop binding отсоединяется до context destroy. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L81) | Владелец читает playback/navigation token удерживаемого клипа своего контекста и публикует скаляры под mutex. Ошибки query/seek/backend возвращаются; pause/clear имеют staged effects без rollback. Worker в VM не входит. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L97) | Копирует stream-only [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) под mutex. Ошибки сохраняют дескриптор; возможны ожидание lock/backend. Это FIFO dequeue position, не DAC/movie sync. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L92) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L90) | Независимая пауза хоста; нет очистки данных. Tick проверяет worker error latch. Хост вызывает последовательно; worker сериализован внутри. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L105) / [fvm_desktop_audio_close](../frontend/common/audio.h#L107) | Владелец отсоединяет binding/callback, join worker, закрывает snapshot и device, уничтожает mutex. Clear сохраняет счётчики. Context/userdata должны жить до detachment/quiescence. |
 
 Регрессия [memory_movie.c](../frontend/tests/memory_movie.c) также запускает скопированный изменяемый `char buf[]` с PCM-фильмом через [fvm_desktop_run_memory](../frontend/common/player.h#L47),
 намеренно задаёт не-файловую source label и проверяет неизменность заимствованных байтов.
@@ -237,8 +237,10 @@ cleanup, с выбором interpreter/JIT. [stream_audio.py](../frontend/tests/
 FVM_AUDIO_TRACE явно включает bounded RAM capture и запись файлов при close: это принятые
 блоки, в том числе позже удалённые clear, не speaker playback. Все стадии roadmap остаются
 открытыми.
-Прежний audio_underruns считает наблюдения starvation event-producer; stream mode пока не
-измеряет число/длительность underrun и не выводит поведение DAC из пустой очереди.
+В исходной контрольной точке audio_underruns считал только event-producer.
+С v0.769 [восстановление stream](PLAYER_STREAM_RECOVERY.ru.md) также учитывает
+наблюдаемую пустую работающую очередь при разрешённой работе. Длительность
+аппаратного underrun не измеряется, поведение ЦАП из пустого FIFO не выводится.
 
 Проверка v0.759: пройдены 176 выбранных player/frontend/stream/MovieClip проверок
 и 16 shared-host. Самостоятельный minimal profile проверяет playback observation

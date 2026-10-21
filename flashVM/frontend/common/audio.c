@@ -3,6 +3,7 @@
 #include "flashvm/movieclip.h"
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 /* Include the retained segment table before preparing any individual snapshot. */
 static FVM_Result stream_budget(size_t streams, size_t *remaining)
@@ -162,15 +163,77 @@ static FVM_Result stop_context_audio(void *raw)
     return result;
 }
 
+/* Caller holds mutex. Inspect current and reset-on-activation successor metadata only.
+ * Future frames are never authorized here, and no converter is advanced by this query. */
+static FVM_Result stream_authorized(FVM_DesktopAudio *audio, int *out)
+{
+    unsigned int frame = 0;
+    size_t index;
+    FVM_Result result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
+    if (result == FVM_OK)
+    {
+        *out = frame <= audio->stream_frame;
+        return FVM_OK;
+    }
+    if (result != FVM_NOT_FOUND)
+        return result;
+    for (index = audio->stream_index + 1; index < audio->stream_count; ++index)
+    {
+        FVM_SWFStreamSoundBlock block;
+        block.struct_size = sizeof(block);
+        result = fvm_swf_stream_sound_snapshot_block_at(audio->stream_segments[index].source,
+                                                        0, &block);
+        if (result == FVM_NOT_FOUND)
+            continue;
+        if (result != FVM_OK)
+            return result;
+        *out = block.frame <= audio->stream_frame;
+        return FVM_OK;
+    }
+    *out = 0;
+    return FVM_OK;
+}
+
 /* Caller holds mutex; one movie-authorized PCM stream owns this FIFO exclusively. */
 static FVM_Result refill_stream(FVM_DesktopAudio *audio)
 {
     FVM_SWFStreamOutputInfo info;
     FVM_Result result;
     unsigned int attempt;
-    int held = 0;
+    int held = 0, authorized = 0;
     if (audio->stream_movie_paused || audio->stream_cancelled)
+    {
+        audio->was_starved = 0;
+        audio->stream_waiting = 1;
         return fvm_swf_stream_output_pause(&audio->stream_output, 1);
+    }
+    info.struct_size = sizeof(info);
+    result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+    if (result != FVM_OK)
+        return result;
+    result = stream_authorized(audio, &authorized);
+    if (result != FVM_OK)
+        return result;
+    /* Initial priming, timeline gates and final drain are not observed starvation.
+     * Pause acknowledgement must succeed before changing counters or edge state. */
+    if (!authorized)
+    {
+        audio->was_starved = 0;
+        audio->stream_waiting = 1;
+    }
+    else if (!info.paused && !info.queued_frames && info.submitted_frames > 0 &&
+             !audio->was_starved && !audio->stream_waiting)
+    {
+        result = fvm_swf_stream_output_pause(&audio->stream_output, 1);
+        if (result != FVM_OK)
+            return result;
+        if (SDL_AtomicGet(&audio->underruns) < INT_MAX)
+            SDL_AtomicAdd(&audio->underruns, 1);
+        audio->was_starved = 1;
+        fvm_desktop_trace_event(audio->trace, "stream_starved", 0, FVM_OK);
+    }
+    if (authorized)
+        audio->stream_waiting = 0;
     for (attempt = 0; attempt < FVM_DESKTOP_AUDIO_PUMPS; ++attempt)
     {
         result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
@@ -207,6 +270,23 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
     if (result == FVM_OK && info.paused && info.queued_frames &&
         (held || info.queued_frames >= audio->resume_frames))
         result = fvm_swf_stream_output_pause(&audio->stream_output, 0);
+    if (result == FVM_OK && audio->was_starved && info.queued_frames)
+    {
+        /* Recheck acknowledged pause after an attempted resume; errors remain observable. */
+        result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+        if (result == FVM_OK && !info.paused)
+        {
+            audio->was_starved = 0;
+            fvm_desktop_trace_event(audio->trace, "stream_recovered",
+                                    (unsigned long)info.queued_frames, FVM_OK);
+        }
+    }
+    if (result == FVM_OK)
+    {
+        result = stream_authorized(audio, &authorized);
+        if (result == FVM_OK && !authorized)
+            audio->stream_waiting = 1;
+    }
     return result;
 }
 
@@ -447,6 +527,8 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
         if (result == FVM_OK)
         {
             audio->stream_cancelled = 0;
+            audio->was_starved = 0;
+            audio->stream_waiting = 1;
             fvm_desktop_trace_event(audio->trace, "stream_seek", info.frame, result);
         }
     }
@@ -478,7 +560,14 @@ FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *audio, int paused)
         result = audio->stream_source ? fvm_swf_stream_output_pause(&audio->stream_output, 1)
                                       : fvm_swf_sound_output_pause(audio->output, 1);
     if (result == FVM_OK)
+    {
         audio->suspended = paused;
+        if (paused)
+        {
+            audio->was_starved = 0;
+            audio->stream_waiting = 1;
+        }
+    }
     SDL_UnlockMutex(audio->mutex);
     return result;
 }
@@ -537,9 +626,7 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
 {
     FVM_Result result = FVM_OK;
     FVM_SWFStreamOutputInfo info;
-    unsigned int frame = 0;
-    int pending = 0;
-    size_t index;
+    int pending = 0, authorized = 0;
     if (!audio || !out)
         return FVM_INVALID_ARGUMENT;
     if (!audio->stream_source)
@@ -557,31 +644,8 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
         result = fvm_swf_stream_output_info(&audio->stream_output, &info);
         if (result == FVM_OK)
         {
-            pending = info.queued_frames != 0;
-            result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
-            if (result == FVM_OK)
-                pending = pending || frame <= audio->stream_frame;
-            else if (result == FVM_NOT_FOUND)
-            {
-                result = FVM_OK;
-                /* Successors reset to block zero when the worker activates them, even after loops.
-                 */
-                for (index = audio->stream_index + 1; index < audio->stream_count; ++index)
-                {
-                    FVM_SWFStreamSoundBlock block;
-                    block.struct_size = sizeof(block);
-                    result = fvm_swf_stream_sound_snapshot_block_at(
-                        audio->stream_segments[index].source, 0, &block);
-                    if (result == FVM_NOT_FOUND)
-                    {
-                        result = FVM_OK;
-                        continue;
-                    }
-                    if (result == FVM_OK)
-                        pending = pending || block.frame <= audio->stream_frame;
-                    break;
-                }
-            }
+            result = stream_authorized(audio, &authorized);
+            pending = info.queued_frames != 0 || authorized;
         }
     }
     if (result == FVM_OK)

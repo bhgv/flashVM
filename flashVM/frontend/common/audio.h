@@ -43,6 +43,7 @@ typedef struct FVM_DesktopAudio
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
     int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
     int stream_movie_paused;  /* Native clip stop flag, independent of foreground/session pause. */
+    int stream_waiting; /* Prior native observation was a frame gate/EOF or explicit pause. */
     int stream_cancelled;     /* StopSounds holds this stream until a detected navigation reset. */
     FVM_SWFSoundMixer *mixer; /* Owned native voices; every access is serialized by mutex. */
     FVM_SWFSoundOutput *output; /* Owned PCM producer, serialized by mutex. */
@@ -56,9 +57,9 @@ typedef struct FVM_DesktopAudio
     SDL_mutex *mutex;       /* Serialize source submission, producer pumping, stops and pause. */
     SDL_atomic_t running;   /* Publish shutdown independently of the worker's mutex scope. */
     SDL_atomic_t error;     /* Latched FVM_Result, safely readable after native lock failure. */
-    SDL_atomic_t underruns; /* Count observed transitions into an empty playing FIFO. */
+    SDL_atomic_t underruns; /* Observed event/authorized-stream empty-playing transitions, saturated for streams. */
     int suspended;          /* Protected foreground/background pause state. */
-    int was_starved;        /* Protected edge detector, not elapsed underrun duration. */
+    int was_starved;        /* Protected event/stream starvation edge; no inferred DAC duration. */
     size_t target_frames;   /* Immutable queue reserve derived from actual driver quantum. */
     size_t resume_frames;   /* Immutable minimum backlog before unpausing. */
     unsigned long events;   /* Main-thread successful real frame-entry controls. */

@@ -22,7 +22,7 @@ The per-snapshot-only statements in older checkpoints below are historical.
 
 Finite `--frames`/`--once` playback now retains final-frame visibility and then
 waits for already-authorized stream blocks and accepted queued PCM to finish.
-[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L101) copies this condition under the producer mutex;
+[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L102) copies this condition under the producer mutex;
 it never pumps PCM, allocates, decodes, advances a movie or authorizes a future
 frame. Empty inactive headers are skipped in a bounded scan; later sources are
 inspected at block zero because the worker re-primes them when reached.
@@ -68,7 +68,7 @@ source rates use the [explicit whole-packet contract](STREAM_ADPCM.md). Partial
 packets/other codecs remain unsupported. Raw/muted stream inspection stays opaque;
 muted ADPCM does not acquire snapshots or decode compressed payloads.
 
-Before opening a window/device, [fvm_desktop_audio_validate](../frontend/common/audio.h#L75) temporarily prepares
+Before opening a window/device, [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) temporarily prepares
 and closes ADPCM snapshots. It can now allocate/decode and return OUT_OF_MEMORY;
 malformed padding and unsupported packet geometry propagate. Later audio acquisition
 checks header policy and prepares each retained snapshot once, before opening its
@@ -230,12 +230,12 @@ new stable plugin ABI. The existing public player C entry points retain their si
 
 | Operation | Contract |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L75) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L84) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L80) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L96) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L91) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L89) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L104) / [fvm_desktop_audio_close](../frontend/common/audio.h#L106) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L85) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L81) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L97) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L92) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L90) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L105) / [fvm_desktop_audio_close](../frontend/common/audio.h#L107) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
 
 The [memory_movie.c](../frontend/tests/memory_movie.c) regression also plays a copied mutable `char buf[]` PCM movie through [fvm_desktop_run_memory](../frontend/common/player.h#L47) with a
 deliberately non-file source label and verifies the borrowed bytes are unchanged. It uses
@@ -253,9 +253,10 @@ paths. Dummy audio validates queue/control behavior, not audible hardware, other
 systems or other CPUs. FVM_AUDIO_TRACE explicitly opts into bounded RAM capture and file
 output on close; it records accepted blocks, including bytes later discarded by a clear,
 not speaker playback. All roadmap stages remain open.
-The existing audio_underruns statistic counts event-producer starvation observations only;
-stream mode does not yet measure underrun duration/count or infer DAC behavior from an
-empty queue.
+At the original checkpoint audio_underruns counted event-producer observations only.
+Since v0.769, [native stream recovery](PLAYER_STREAM_RECOVERY.md) also counts observed
+empty-playing transitions with authorized work and re-primes before resume. Neither
+path measures hardware underrun duration or infers DAC behavior from an empty FIFO.
 
 Native v0.759 validation: 176 selected player/frontend/stream/MovieClip checks and
 16 shared-host checks passed. The standalone minimal profile passes the playback

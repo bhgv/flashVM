@@ -62,10 +62,10 @@ worker starts. The shared native mutex serializes all capture operations with
 submit/pump/clear/pause. No VM pointers are retained and no GC roots are added.
 Allocation failure disables capture with a log rather than altering sound.
 
-[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L9) copies geometry/path and returns an optional owned trace.
-[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L13) appends a bounded static-name operation record;
-[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L16) copies accepted frames, marking truncation when full.
-[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L19) writes portable WAV/report and releases ownership after
+[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L12) copies geometry/path and returns an optional owned trace.
+[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L16) appends a bounded static-name operation record;
+[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L19) copies accepted frames, marking truncation when full.
+[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L22) writes portable WAV/report and releases ownership after
 the producer worker has been joined. All functions are internally serialized;
 none is independently thread-safe. PCM capture and event recording perform no
 file I/O or allocation. This extra copying still has a diagnostic overhead and
@@ -109,7 +109,7 @@ silent because they fill before the next audible event. This is evidence of
 excessive queue consumption, not a JIT gain change. The queue clock measures
 SDL dequeue, not hardware playback, so it cannot detect samples dropped later.
 
-SDL 2.30.0's [AAudio write](https://github.com/libsdl-org/SDL/blob/release-2.30.0/src/audio/aaudio/SDL_aaudio.c#L301)
+SDL 2.30.0's [AAudio write](https://github.com/libsdl-org/SDL/blob/release-2.30.0/src/audio/aaudio/SDL_aaudio.c#L381)
 uses a 1000000 ns (1 ms) timeout for a whole block and does not retain the unwritten
 suffix after a nonnegative partial write. This provides a concrete mechanism for
 the observed drop/compression. The exact partial-write count was not captured.

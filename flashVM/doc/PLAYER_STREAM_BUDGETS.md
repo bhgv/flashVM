@@ -21,7 +21,7 @@ per-snapshot part before allocation; runtime payload limits remain independent.
 
 ## Preflight, acquisition and cleanup
 
-[fvm_desktop_audio_validate](../frontend/common/audio.h#L75) performs the same arithmetic in source order before
+[fvm_desktop_audio_validate](../frontend/common/audio.h#L76) performs the same arithmetic in source order before
 window/device acquisition. It temporarily prepares **PCM as well as ADPCM**, queries
 charges, closes each temporary and virtually retains its charge in the remaining
 budget. Thus a sequence whose completed snapshots fit, but whose later temporary

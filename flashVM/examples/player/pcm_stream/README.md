@@ -75,3 +75,28 @@ The normal C API source is `fvm_desktop_run_memory`; pass the same bundled bytes
 through the [existing C89 embedding example](../embedded_movie/README.md).
 
 Since v0.767 these commands also use the default [64-MiB aggregate preparation budget](../../../doc/PLAYER_STREAM_BUDGETS.md). Input files and expected samples are unchanged. The cap includes source expansion and retained predecessor ownership; it is not a process RSS limit.
+
+## Stream recovery v0.769 / Восстановление очереди
+
+Observed empty native stream queues with authorized work are paused, primed and
+resumed by the worker. Initial/gated/finished streams are excluded. Existing
+audio_underruns and optional bounded traces report observations, not DAC behavior.
+Пустая очередь при разрешённых данных вызывает повторное наполнение; начало,
+будущие кадры и EOF не считаются underrun. Ошибки backend передаются владельцу.
+[EN](../../../doc/PLAYER_STREAM_RECOVERY.md) / [RU](../../../doc/PLAYER_STREAM_RECOVERY.ru.md).
+
+From the component directory, request bounded evidence and run statistics explicitly:
+Из каталога компонента можно явно запросить трассу и статистику:
+
+```sh
+FVM_AUDIO_TRACE=stream-recovery ./build-player/frontend/flashvm_player --once --stats examples/player/pcm_stream/adpcm-stream.swf
+```
+
+The run writes `stream-recovery.txt` and `stream-recovery.wav` on audio shutdown.
+A well-scheduled run may have no stream_starved records; zero is a valid result.
+The WAV contains accepted samples, including ones later discarded by navigation;
+it is not a recording of speaker output. The deterministic regression forces
+starvation without requiring CPU contention or a real audio device.
+Трасса может не содержать stream_starved при штатной работе. WAV содержит принятые
+отсчёты, а не запись динамиков; принятые до seek данные остаются в свидетельстве.
+Для воспроизводимой проверки используется управляемое потребление тестового FIFO.

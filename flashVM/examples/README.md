@@ -2189,3 +2189,12 @@ Execution budgets and worker-stop behavior for Key/Mouse/Selection tutorials:
 Prepared streaming PCM normalization is covered by the existing [swf_stream tutorial](multimedia/swf_stream/README.md#prepared-pcm-normalization-v0763--нормализация-подготовленного-pcm).
 
 The existing [swf_stream tutorial](multimedia/swf_stream/README.md#explicit-storage-budget-v0766--явный-бюджет-памяти) also demonstrates explicit preparation ceilings and native storage observations after VM teardown.
+
+## Stream recovery v0.769 / Восстановление очереди
+
+Observed empty native stream queues with authorized work are paused, primed and
+resumed by the worker. Initial/gated/finished streams are excluded. Existing
+audio_underruns and optional bounded traces report observations, not DAC behavior.
+Пустая очередь при разрешённых данных вызывает повторное наполнение; начало,
+будущие кадры и EOF не считаются underrun. Ошибки backend передаются владельцу.
+[EN](../doc/PLAYER_STREAM_RECOVERY.md) / [RU](../doc/PLAYER_STREAM_RECOVERY.ru.md).

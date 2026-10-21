@@ -139,3 +139,12 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 ## Aggregate stream budget (v0.767)
 
 [64-MiB prepared-source policy](../doc/PLAYER_STREAM_BUDGETS.md) includes retained snapshots, the segment table and ADPCM expansion peaks. Rejection occurs before native startup; mute prepares no snapshots.
+
+## Stream recovery v0.769 / Восстановление очереди
+
+Observed empty native stream queues with authorized work are paused, primed and
+resumed by the worker. Initial/gated/finished streams are excluded. Existing
+audio_underruns and optional bounded traces report observations, not DAC behavior.
+Пустая очередь при разрешённых данных вызывает повторное наполнение; начало,
+будущие кадры и EOF не считаются underrun. Ошибки backend передаются владельцу.
+[EN](../doc/PLAYER_STREAM_RECOVERY.md) / [RU](../doc/PLAYER_STREAM_RECOVERY.ru.md).
