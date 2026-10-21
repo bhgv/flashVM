@@ -155,7 +155,7 @@ Additional demonstrated API (contracts, limits and lifetime in
 - [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L123): enumerate the prepared index.
 - [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L125): borrow original-wire bytes until close.
 - [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L129): convert bounded independent ranges.
-- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L131): release native storage even after VM teardown.
+- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L154): release native storage even after VM teardown.
 
 The host checker runs both modes, compares exact stdout/native-S16 bytes and checks
 actual missing-directory write failure cleanup in both modes. This is file bridge
@@ -209,7 +209,7 @@ cleanup закрывает их и при ошибке. Reader не выделя
 | [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L61) | Live mode reads source-relative range synchronously on VM owner. Без удержания borrowed payload. |
 | [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84) | Older modes synchronously borrow PCM through file callback; no implicit retry. Cursor calls C callback directly. |
 | [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L92) | Older modes flush/close active registered file output before context cleanup. Не управляет cursor. |
-| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L131) | Close native source once all readers stop; null accepted. Не обращается к уничтоженной VM. |
+| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L154) | Close native source once all readers stop; null accepted. Не обращается к уничтоженной VM. |
 
 All source/stream APIs above: [inspection contract](../../../doc/SWF_STREAM_SOUND.md).
 No socket/audio device or worker is started by this tutorial. The separate
@@ -397,7 +397,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:61](../../../include/flashvm/swf_stream_sound.h#L61) |
 | `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:125](../../../include/flashvm/swf_stream_sound.h#L125) |
 | `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:123](../../../include/flashvm/swf_stream_sound.h#L123) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:131](../../../include/flashvm/swf_stream_sound.h#L131) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../../../include/flashvm/swf_stream_sound.h#L154) |
 | `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:121](../../../include/flashvm/swf_stream_sound.h#L121) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
 | `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../../../include/flashvm/swf_stream_sound.h#L72) |

@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+ADPCM ranges v0.774: allocation-free explicit-count extraction from live root blocks and encoded native snapshots, full-block validation before output; native/C89/allocation and independent FFmpeg range checks. [EN](STREAM_ADPCM_COUNTED.md#allocation-free-ranges-v0774) / [RU](STREAM_ADPCM_COUNTED.ru.md#диапазоны-без-выделения-памяти-v0774). No automatic desktop partial-stream scheduling.
+
 Counted partial ADPCM v0.773: explicit host lengths, exact bit/padding validation, bounded independent PCM ownership; native sample/ownership matrix and independent FFmpeg FWS/CWS checks. Automatic partial desktop decoding remains open. [EN](STREAM_ADPCM_COUNTED.md) / [RU](STREAM_ADPCM_COUNTED.ru.md).
 
 Root PCM header sequences v0.761: bounded 64-header preparation, one exclusive SDL queue, source format/rate/channel changes, empty headers, cross-header seeks and loop re-prime. Independent FWS/CWS sample oracle and actual worker/GC/control tests. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Reference Flash seek/drift and physical/foreign acceptance remain open.

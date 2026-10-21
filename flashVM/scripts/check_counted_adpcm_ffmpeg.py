@@ -71,6 +71,13 @@ def main():
                     if sys.byteorder != 'little':
                         actual = b''.join(actual[i:i + 2][::-1] for i in range(0, len(actual), 2))
                     assert actual == expected, (width, channels, compressed)
+                    subprocess.run([exporter, str(source), str(output), '--ranges'] +
+                                   list(map(str, counts)), check=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    ranged = output.read_bytes()
+                    if sys.byteorder != 'little':
+                        ranged = b''.join(ranged[i:i + 2][::-1] for i in range(0, len(ranged), 2))
+                    assert ranged == expected, ('ranges', width, channels, compressed)
                 print('PASS counted ADPCM width=%d channels=%d: partial packets, FWS/CWS, exact FFmpeg PCM'
                       % (width, channels))
 

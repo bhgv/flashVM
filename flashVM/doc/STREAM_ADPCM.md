@@ -6,7 +6,7 @@ Explicit host-authoritative partial lengths: [counted ADPCM](STREAM_ADPCM_COUNTE
 
 [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L81) is an additive C89 preparation API.
 Call on the owning context before native worker publication. The caller owns the
-returned immutable snapshot and closes it with [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L131).
+returned immutable snapshot and closes it with [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L154).
 Its data remains readable after context/runtime teardown, without VM calls,
 allocation, codec work or callbacks in the PCM reader/converter/output worker.
 It does not advance MovieClip, open devices or schedule audio.
@@ -80,7 +80,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:125](../include/flashvm/swf_stream_sound.h#L125) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:131](../include/flashvm/swf_stream_sound.h#L131) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../include/flashvm/swf_stream_sound.h#L154) |
 | `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:121](../include/flashvm/swf_stream_sound.h#L121) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:81](../include/flashvm/swf_stream_sound.h#L81) |

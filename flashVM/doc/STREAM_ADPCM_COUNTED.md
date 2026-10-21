@@ -35,7 +35,7 @@ Rate, channels, root frame/block identities, advisory playback and average field
 remain unchanged. The original live movie and encoded snapshot APIs remain opaque
 ADPCM; source bytes are not rewritten. The count array can be released immediately
 on return. The snapshot can outlive context/runtime, then closes through
-[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L131) after every reader/converter has stopped.
+[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L154) after every reader/converter has stopped.
 
 INVALID_ARGUMENT covers null/wrong arguments, table length mismatch, counts beyond
 ULONG_MAX, truncated/excess encoded bytes and nonzero padding. Source validation
@@ -102,6 +102,67 @@ restricted host cannot observe the stack through /proc and reports no-return/
 stack-poisoning diagnostics after injected exceptions. LeakSanitizer is disabled
 because process enumeration is unavailable. No physical/foreign acceptance claimed.
 
+
+## Allocation-free ranges (v0.774)
+
+[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L146)(context, stream, block, samples, first, frames,
+out, capacity_values, written_values) decodes one live root ADPCM block on the
+context owner. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L150)(snapshot, block, samples,
+first, frames, out, capacity_values, written_values) reads an **encoded** immutable
+snapshot, including after source VM teardown. Normalized PCM snapshots return
+UNSUPPORTED; use the ordinary PCM reader for those.
+
+Both use an authoritative total samples count for the selected block, followed
+by a first/frames source-frame range. capacity_values and written_values count
+interleaved S16 scalar channel values. Positive frames require aligned output and
+sufficient capacity; zero frames permits null output. written_values is required
+and cleared before source validation. Keep input/output/count storage disjoint.
+No destination PCM changes on failure. The complete declared bit length, padding
+and code stream are validated even for an early or zero-length range. Empty
+payload and width-only zero-frame policies match counted preparation.
+
+Null/wrong pointers, range overflow, insufficient capacity, nonzero padding or
+length/count mismatch return INVALID_ARGUMENT; samples beyond ULONG_MAX also
+returns INVALID_ARGUMENT. Non-ADPCM or unsupported native S16 representation
+returns UNSUPPORTED. Bit arithmetic overflow returns OUT_OF_MEMORY although
+neither function allocates. Source validation/missing stream/block statuses
+propagate, with written count zero. No callback, VM execution, mutation, native
+owner acquisition or managed/GC reference occurs. The live context requires owner
+serialization; encoded snapshots permit concurrent immutable reads into separate
+buffers, with close/source teardown synchronized separately.
+
+Decoding validates from the beginning: runtime is linear in total block length,
+not selected output length. Repeated tiny reads repeat that work. Use this path
+for inspection, bounded extraction or native asset analysis; prepare normalized
+PCM once for continuous low-latency playback. There is no automatic parallel
+worker, desktop scheduling, child-stream integration or clock inference.
+
+The range regression tests every width/channel geometry across packet restarts,
+wrong capacity/ranges/codecs, invalid suffixes even for empty reads, source reload
+and post-VM encoded reads. The C89 fixture invokes all three counted/range APIs
+against literal SWF bytes. The allocation fixture proves both live and native
+range reads need no allocator; the FFmpeg oracle checks the complete file again
+through native range extraction after VM teardown.
+
+
+### Range verification
+
+All 60 native sound/stream checks pass in the Linux minimal Release build.
+ASan/UBSan with the full minimal core passes the counted/range matrices, C89 ABI,
+successful ownership path and four real native workers reading a shared encoded
+snapshot after VM teardown. Changed stream code and allocation fixture pass all
+five isolated UBSan allocation budgets, including allocation-free live/native reads.
+The earlier ASan exception-unwind and LeakSanitizer host limitations still apply.
+FFmpeg FWS/CWS comparison passes for both prepared and range exporters in all
+eight width/channel combinations. These are Linux functional checks, not physical
+sound, foreign-platform acceptance or a race-detector claim.
+
+```sh
+cmake --build build --target flashvm_tests_swf_stream_adpcm_ranges \
+  flashvm_tests_swf_stream_adpcm_ranges_c89 flashvm_tests_swf_stream_adpcm_ranges_os_ports
+ctest --test-dir build --output-on-failure -R 'swf_stream_adpcm'
+```
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -111,7 +172,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:131](../include/flashvm/swf_stream_sound.h#L131) |
+| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:146](../include/flashvm/swf_stream_sound.h#L146) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../include/flashvm/swf_stream_sound.h#L154) |
 | `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:111](../include/flashvm/swf_stream_sound.h#L111) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:150](../include/flashvm/swf_stream_sound.h#L150) |
 | `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
 <!-- source-links:end -->

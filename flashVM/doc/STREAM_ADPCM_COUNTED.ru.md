@@ -34,7 +34,7 @@ padding могут допускать несколько длин: четыре 
 live и encoded snapshot API по-прежнему выдают непрозрачный ADPCM. Массив counts
 можно освободить сразу после возврата. Snapshot живёт независимо от context/runtime;
 после завершения всех readers/converters освобождается через
-[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L131).
+[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L154).
 
 INVALID_ARGUMENT: неверные/null аргументы, несовпадение размера таблицы, длина выше
 ULONG_MAX, укороченные/лишние байты и ненулевой padding. Ошибки исходного SWF и
@@ -100,6 +100,64 @@ ASan fault-unwind не засчитан: ограниченный хост не 
 LeakSanitizer выключен из-за недоступного перечисления процессов. Физическая и
 foreign-platform приёмка не заявляется.
 
+
+## Диапазоны без выделения памяти (v0.774)
+
+[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L146)(context, stream, block, samples, first, frames,
+out, capacity_values, written_values) читает один live root ADPCM block на owner
+контекста. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L150)(snapshot, block, samples,
+first, frames, out, capacity_values, written_values) читает **закодированный**
+неизменяемый snapshot, в том числе после уничтожения VM. Нормализованный PCM
+snapshot возвращает UNSUPPORTED; для него остаётся обычный PCM reader.
+
+samples — достоверное полное число кадров выбранного блока; first/frames —
+запрошенный диапазон source frames. capacity_values/written_values считают
+interleaved S16 channel values. При положительном frames нужны aligned output
+и достаточная capacity; при нуле допускается null output. written_values обязателен,
+обнуляется до проверки источника. Вход, выход и счётчик должны быть непересекающимися.
+Ошибка не меняет PCM. Даже для раннего либо пустого диапазона проверяются полная
+геометрия, padding и все объявленные коды. Правила empty/width-only соответствуют
+counted preparation.
+
+INVALID_ARGUMENT: неверные указатели, диапазон/capacity, padding, длина/число кадров,
+samples выше ULONG_MAX. UNSUPPORTED: иной кодек либо несовместимое native S16
+представление. OUT_OF_MEMORY означает арифметическое переполнение битовой длины,
+хотя функции не выделяют память. Ошибки исходного SWF/отсутствующего stream/block
+передаются как есть с нулевым written. Нет callback, исполнения VM, изменения
+источника, нового native владельца или managed/GC ссылки. Live context требует
+owner-сериализации; immutable encoded snapshot допускает параллельные чтения в
+разные buffers; close и teardown сериализуются отдельно.
+
+Декодер проверяет блок с начала: время линейно в полном числе кадров, а не размере
+выбранного диапазона. Мелкие повторные чтения повторяют работу. Путь подходит для
+анализа/извлечения assets; для low-latency playback следует один раз подготовить
+нормализованный PCM. Автоматические worker, desktop scheduling, child streams и
+вывод временных меток не добавлены.
+
+Range fixture проверяет все разрядности/каналы через packet restart, неверные
+capacity/ranges/codecs, ошибочный хвост даже для пустого чтения, reload и чтение
+после VM. C89 fixture вызывает все три counted/range API с буквальными SWF bytes.
+Allocation fixture запрещает выделение памяти для live/native range reads;
+FFmpeg oracle повторно сравнивает весь файл через native ranges после VM teardown.
+
+
+### Проверка диапазонов
+
+Все 60 native sound/stream проверок проходят Linux minimal Release. Полный minimal
+core под ASan/UBSan проходит counted/range матрицы, C89 ABI, успешное выделение и
+четыре настоящих native worker, читающих общий encoded snapshot после VM teardown.
+Изменённый stream-модуль и allocation fixture проходят все пять отдельных UBSan
+бюджетов, включая live/native reads без allocation. Прежние ограничения ASan при
+исключениях и LeakSanitizer сохраняются. Сравнение FFmpeg FWS/CWS проходит обоими
+exporters (prepared/ranges) для восьми сочетаний разрядности/каналов. Это Linux
+functional checks, не физический звук, foreign-platform приёмка или race detector.
+
+```sh
+cmake --build build --target flashvm_tests_swf_stream_adpcm_ranges \
+  flashvm_tests_swf_stream_adpcm_ranges_c89 flashvm_tests_swf_stream_adpcm_ranges_os_ports
+ctest --test-dir build --output-on-failure -R 'swf_stream_adpcm'
+```
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -109,7 +167,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:131](../include/flashvm/swf_stream_sound.h#L131) |
+| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:146](../include/flashvm/swf_stream_sound.h#L146) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:154](../include/flashvm/swf_stream_sound.h#L154) |
 | `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:111](../include/flashvm/swf_stream_sound.h#L111) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:150](../include/flashvm/swf_stream_sound.h#L150) |
 | `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
 <!-- source-links:end -->

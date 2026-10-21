@@ -27,6 +27,8 @@ int main(int argc, char **argv)
     for (unsigned i = 1; i < 17; ++i) bits.put(0, 4);
     Bytes swf = swf_block(bits.bytes, 1);
     assert(fvm_load_memory(c, swf.begin(), swf.size()) == FVM_OK);
+    FVM_SWFStreamSoundSnapshot *encoded = 0;
+    assert(fvm_swf_stream_sound_snapshot_open(c, 0, &encoded) == FVM_OK);
     const size_t frames = 17;
     FVM_SWFStreamSoundSnapshot *source = 0;
     allowance = 1;
@@ -55,8 +57,21 @@ int main(int argc, char **argv)
     assert(fvm_swf_stream_sound_snapshot_open_adpcm_counted(c, 0, &frames, 1,
                                                             (size_t)-1, &other) == FVM_OUT_OF_MEMORY && !other);
     rt->config.memory_limit_bytes = old_limit;
+    allowance = 0;
+    short raw_pcm[17];
+    size_t raw_written = 91;
+    assert(fvm_swf_stream_sound_read_adpcm(c, 0, 0, frames, 0, frames,
+                                           raw_pcm, 17, &raw_written) == FVM_OK && raw_written == 17);
+    allowance = -1;
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);
+    allowance = 0;
+    assert(fvm_swf_stream_sound_snapshot_read_adpcm(encoded, 0, frames, 0, frames,
+                                                    raw_pcm, 17, &raw_written) == FVM_OK && raw_written == 17);
+    for (size_t i = 0; i < 17; ++i) assert(raw_pcm[i] == 100);
+    fvm_swf_stream_sound_snapshot_close(encoded);
+    assert(allowance == 0);
+    allowance = -1;
     if (source)
     {
         allowance = 0;

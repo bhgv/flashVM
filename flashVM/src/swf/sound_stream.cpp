@@ -427,6 +427,66 @@ static FVM_Result stream_adpcm_counted(const unsigned char *data, size_t size,
         return FVM_INVALID_ARGUMENT;
     return FVM_OK;
 }
+/* Validate the complete authoritative block before publishing any selected PCM range.
+ * All temporary state is on the stack; neither a live VM nor native owner is mutated. */
+static FVM_Result read_adpcm_block(const FVM_SWFStreamSoundInfo &header,
+                                    const FVM_SWFStreamSoundBlock &block, size_t samples,
+                                    size_t first, size_t frames, short *out, size_t capacity,
+                                    size_t *written)
+{
+    if (header.format != FVM_SWF_SOUND_ADPCM || sizeof(short) != FVM_SWF_SOUND_PCM_BYTES ||
+        SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX || SHRT_MIN != FVM_SWF_SOUND_SHORT_MIN)
+        return FVM_UNSUPPORTED;
+    if (first > samples || frames > samples - first)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result result = stream_adpcm_counted(block.data, block.data_size, header.channels, samples);
+    if (result != FVM_OK)
+        return result;
+    FVM_SWFSoundInfo info;
+    std::memset(&info, 0, sizeof(info));
+    info.format = FVM_SWF_SOUND_ADPCM;
+    info.sample_rate = header.sample_rate;
+    info.bits_per_sample = FVM_SWF_SOUND_BITS_16;
+    info.channels = header.channels;
+    info.sample_count = (unsigned long)samples;
+    info.data = block.data;
+    info.data_size = block.data_size;
+    /* Empty payloads have no width field for the shared DefineSound decoder. */
+    return !samples ? FVM_OK : fvm_swf_sound_decode_pcm(info, (unsigned long)first, frames,
+                                                       out, capacity, written);
+}
+/* [GC:] Owner-only source scan and stack decoder; no script, allocation or source mutation. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_read_adpcm(FVM_Context *context, size_t stream, size_t ordinal,
+                                 size_t samples, size_t first, size_t frames,
+                                 short *out, size_t capacity, size_t *written)
+{
+    if (!written)
+        return FVM_INVALID_ARGUMENT;
+    *written = 0;
+    FVM_SWFStreamSoundInfo header;
+    FVM_SWFStreamSoundBlock block;
+    FVM_Result result = scan(context, stream, ordinal, &header, &block, 0, 0);
+    return result == FVM_OK ? read_adpcm_block(header, block, samples, first, frames,
+                                                out, capacity, written) : result;
+}
+/* Decode borrowed immutable encoded storage after source teardown with no new native ownership. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_read_adpcm(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                          size_t ordinal, size_t samples, size_t first,
+                                          size_t frames, short *out, size_t capacity, size_t *written)
+{
+    if (!written)
+        return FVM_INVALID_ARGUMENT;
+    *written = 0;
+    if (!snapshot)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFStreamSoundBlock block;
+    block.struct_size = sizeof(block);
+    FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, &block);
+    return result == FVM_OK ? read_adpcm_block(snapshot->info, block, samples, first, frames,
+                                                out, capacity, written) : result;
+}
 /* [GC:] Prepare independent native PCM before worker publication; the temporary never escapes.
  * Encoded plus decoded payload and block-index bytes share the runtime preparation budget. */
 static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const size_t *budget,

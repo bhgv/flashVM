@@ -127,6 +127,29 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_mp3_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundMP3Block *);
     /* Decode a requested range to native S16; written counts channel values and is cleared first. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStreamSoundSnapshot *, size_t, size_t, size_t, short *, size_t, size_t *);
+    /* Decode one ADPCM block range using an authoritative total source-frame count.
+     * Live form scans on the context owner; snapshot form needs an ENCODED ADPCM snapshot,
+     * may outlive the VM and permits concurrent immutable reads into separate output buffers.
+     * samples is the exact total for this block, first/frames select its bounded range.
+     * Validate full length/padding and all declared codes before publishing any PCM, including
+     * for zero-length reads. Zero samples accepts empty/width-only blocks. Average is ignored.
+     * out holds aligned native S16, capacity/written count scalar channel values, not frames.
+     * Positive frames require out and enough capacity; written is required and cleared first.
+     * Output storage, written and source must be disjoint. No PCM changes on failure.
+     * INVALID_ARGUMENT for bad pointers/range/length/padding or samples > ULONG_MAX;
+     * UNSUPPORTED for non-ADPCM/unsupported native S16 representation; arithmetic overflow
+     * OUT_OF_MEMORY; source/missing block statuses propagate. No allocation/callback/VM
+     * execution or mutation. Runtime is linear in full declared block length, not range length;
+     * repeated tiny reads revalidate from the beginning. Use counted preparation for playback.
+     * Keep context/snapshot alive and bytes immutable until return; serialize live changes
+     * and synchronize snapshot close. No managed pointer/GC root or output owner is retained. */
+    FVM_API FVM_Result fvm_swf_stream_sound_read_adpcm(
+        FVM_Context *, size_t stream, size_t block, size_t samples, size_t first,
+        size_t frames, short *out, size_t capacity_values, size_t *written_values);
+    /* Encoded-snapshot counterpart of read_adpcm; same range/error/output contract above. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_read_adpcm(
+        const FVM_SWFStreamSoundSnapshot *, size_t block, size_t samples, size_t first,
+        size_t frames, short *out, size_t capacity_values, size_t *written_values);
     /* Free the independent snapshot; null is a no-op. */
     FVM_API void fvm_swf_stream_sound_snapshot_close(FVM_SWFStreamSoundSnapshot *);
 #ifdef __cplusplus
