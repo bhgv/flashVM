@@ -29,6 +29,7 @@
     - [channel_values](#example-embedding-channel_values) — <small><em>Копирование и освобождение channel handle</em></small>
     - [channels](#example-embedding-channels) — <small><em>Отправка и получение через FIFO</em></small>
     - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
+    - [hybrid_heartbeat](#example-embedding-hybrid_heartbeat) — <small><em>Раздельные UDP/TCP таймеры и запрос проверки TCP</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
     - [resource_events](#example-embedding-resource_events) — <small><em>Независимые очереди наблюдателей и отзыв сессии</em></small>
     - [shared_mutex](#example-embedding-shared_mutex) — <small><em>Общая блокировка из разных VM</em></small>
@@ -448,6 +449,17 @@ listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](
 Сериализует объект в файловый канал и восстанавливает его в другом контексте. Показывает владение независимым декодированным графом и возможность читать файл позднее или из другого процесса.
 
 **Файлы:** [main.c](embedding/file_channels/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-hybrid_heartbeat"></a>
+#### hybrid_heartbeat
+
+**Тип:** C89, исполняемая модель политики с виртуальными часами, без сети.
+**README:** [EN](embedding/hybrid_heartbeat/README.md) / [RU](embedding/hybrid_heartbeat/README.ru.md).
+Раздельные интервалы UDP/TCP, ранняя проверка TCP по доверенному совету, throttle
+и различие send/receive. [main.c](embedding/hybrid_heartbeat/main.c),
+[контракт и транспортные ограничения](../doc/HYBRID_HEARTBEAT.ru.md).
 
 [К оглавлению](#оглавление).
 
@@ -1989,6 +2001,7 @@ Source line links describe the current checkout, including in historical notes.
 - [gradients — embedding/gradients](#example-embedding-gradients)
 - [gtk3 — frontends/gtk3](#example-frontends-gtk3)
 - [headless — frontends/headless](#example-frontends-headless)
+- [hybrid_heartbeat — embedding/hybrid_heartbeat](#example-embedding-hybrid_heartbeat)
 - [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
 - [image_codecs_loading — embedding/image_codecs_loading](#example-embedding-image_codecs_loading)
 - [image_loading — player/image_loading](#example-player-image_loading)

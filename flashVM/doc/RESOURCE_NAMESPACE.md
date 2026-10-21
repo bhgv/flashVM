@@ -13,6 +13,8 @@ Independent native observers and filtered discovery are implemented: [EN](RESOUR
 
 [Resource debugger / отладчик через ресурсы](RESOURCE_DEBUGGER.md): actual stop/observe/resume; no network listener or mount.
 
+[Hybrid UDP/TCP policy / политика](HYBRID_HEARTBEAT.md): separate timers and authenticated hints; actual socket adapters remain open.
+
 ## Shared operation layer
 
 Three layers share one operation model: typed C calls, permission-aware request/

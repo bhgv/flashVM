@@ -13,6 +13,8 @@
 
 [Resource debugger / отладчик через ресурсы](RESOURCE_DEBUGGER.ru.md): actual stop/observe/resume; no network listener or mount.
 
+[Hybrid UDP/TCP policy / политика](HYBRID_HEARTBEAT.ru.md): separate timers and authenticated hints; actual socket adapters remain open.
+
 ## Общий слой операций
 
 Три слоя используют единую модель: типизированные C-вызовы; dispatcher запросов/

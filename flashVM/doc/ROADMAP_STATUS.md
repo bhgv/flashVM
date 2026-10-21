@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.730
+# FlashVM stage status / Состояние стадий — v0.731
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,27 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.731 implements an embeddable hybrid UDP/TCP idle/receive policy and compact
+S-record hints: slower independent TCP checks, authenticated UDP probe requests,
+coalesced/rate-limited reconnect advice, replay/epoch checks and wrapping clocks.
+Это исполняемая политика/кодек, не UDP/TCP listener, STUN, multicast или измерение
+NAT/энергозатрат. Все девять стадий остаются открытыми.
+See [EN](HYBRID_HEARTBEAT.md) / [RU](HYBRID_HEARTBEAT.ru.md).
+
+v0.729--v0.731 verification / Проверка серии:
+36 selected Linux C89/C++98 checks pass, including resource/event/wire/heartbeat,
+real debugger stops and two client threads, interpreter/JIT/player rasters and
+four existing debugger regressions. The final three heartbeat checks were rerun
+after adding delayed-advice/CRC-prefix cases. Seven shared-player checks pass
+with HTTP providers disabled. New event/debugger/heartbeat C paths pass ASan/
+UBSan with leak enumeration disabled; underlying VM/SDL remain ordinary builds.
+ARM64 Linux, RISC-V64 Linux and Windows x64 cross-link the C89 protocol/heartbeat
+contract and compile the debugger C module/public C++98 boundary. This is neither
+foreign player execution nor full OS/device, NAT/multicast, Styx/9P or SWF acceptance.
+Нативная проверка ограничена Linux; cross-build не означает запуск на другой ОС.
+Все девять стадий остаются открытыми.
+
 
 v0.730 connects actual VM breakpoint callbacks to the resource command/event layer:
 two observers, cached frames, one controller claim and exact-stop resume. All

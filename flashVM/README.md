@@ -1,12 +1,12 @@
-Development version: **0.730** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.730 ` and an English description. Increase the subversion before each
+Development version: **0.731** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.731 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
-v0.728: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
+v0.731: [Hybrid UDP/TCP policy](doc/HYBRID_HEARTBEAT.md) / [Гибридная политика](doc/HYBRID_HEARTBEAT.ru.md).
 
 v0.640: [Canonical sound frames](doc/SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) / [Канонические звуковые кадры](doc/SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
 
