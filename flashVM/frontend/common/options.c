@@ -369,5 +369,7 @@ void fvm_desktop_help(const char *program)
     puts("Finite stream playback finishes authorized PCM and drains the queue, with a 2000 ms extra deadline.");
     printf("Prepared streaming sources: %lu-byte aggregate snapshot/index/table and expansion budget.\n",
            (unsigned long)FVM_DESKTOP_AUDIO_PREPARED_BYTES);
+    printf("Prepared event sources: %lu-byte aggregate mixer/slot/voice budget; source decode stays outside the worker mutex.\n",
+           (unsigned long)FVM_DESKTOP_AUDIO_EVENT_BYTES);
     puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM/supported MP3 segments without StartSound; other codecs/mixing unsupported.");
 }

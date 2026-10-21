@@ -78,6 +78,30 @@ observation is not a reservation: recheck controls when adopting under the lock.
 aggregate boundaries, rejected-owner preservation, no-op consumption, converted
 voice retirement and restored fixed-only storage.
 
+## v0.787: owner preparation without blocking the producer
+
+The desktop StartSound callback now resolves event metadata on the context owner,
+briefly locks to apply stops/SyncNoMultiple or observe remaining mixer bytes,
+then unlocks before PCM/ADPCM/MP3 validation, allocation and decode. A second
+short serialized phase transfers the prepared voice with an aggregate recheck.
+Failed temporary owners are freed outside the lock. The native worker never
+receives a context, clip, decoder or borrowed SWF data. Owner callbacks must not
+run concurrently; during preparation only the worker can retire old voices, so
+the observed remaining byte allowance is conservative. SyncNoMultiple checks
+activity before expensive preparation and is rechecked on actual adoption.
+
+FVM_DESKTOP_AUDIO_EVENT_BYTES defaults to 64 MiB, independently overridable from
+the streaming preparation budget. It charges fixed mixer/slots plus all retained
+and incoming voice owners. Mixer construction and its fixed-byte check occur
+before SDL audio device open. VM, queue/history/trace buffers and allocator
+bookkeeping remain outside this source-storage ceiling. A rejected event returns
+its error and does not destroy earlier voices; no stealing or silent dropping.
+This does not promise bounded owner-thread decode time or real-time playback.
+
+The actual SDL `flashvm_frontend_audio_event_budget` fixture uses a 64 KiB build:
+a first voice survives, SyncNoMultiple succeeds, oversized input returns OOM,
+existing PCM continues, and GC/StopSounds releases retained voice storage.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

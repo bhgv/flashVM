@@ -120,19 +120,60 @@ static FVM_Result traced_clear(void *raw)
     return result;
 }
 
-/* Synchronous frame-entry callback: source VM inspection always stays on its owning thread. */
+/* [GC:] Resolve/copy on the context owner without holding the native producer's mutex.
+ * Owner calls are serialized; the worker can only retire voices during preparation, so the
+ * available-byte observation is conservative. Recheck actual adoption under the mutex. */
 static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ordinal, void *raw)
 {
     FVM_DesktopAudio *audio = (FVM_DesktopAudio *)raw;
+    FVM_SWFSoundEvent event;
+    FVM_SWFSoundMixerStorageInfo storage;
+    FVM_SWFSoundVoice *voice = 0;
     FVM_Result result;
+    size_t remaining = 0;
+    int handled = 0, active = 0;
     (void)clip;
+    event.struct_size = sizeof(event);
+    result = fvm_swf_sound_event_at(context, ordinal, &event);
+    if (result != FVM_OK)
+        return result;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
-    result = fvm_swf_sound_mixer_submit(audio->mixer, context, ordinal);
+    if (event.flags & FVM_SWF_SOUND_EVENT_STOP)
+    {
+        result = fvm_swf_sound_mixer_stop_id(audio->mixer, event.sound_id);
+        handled = 1;
+    }
+    else if (event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE)
+    {
+        result = fvm_swf_sound_mixer_sound_active(audio->mixer, event.sound_id, &active);
+        handled = result != FVM_OK || active;
+    }
+    if (!handled && result == FVM_OK)
+    {
+        storage.struct_size = sizeof(storage);
+        result = fvm_swf_sound_mixer_storage_info(audio->mixer, &storage);
+        if (result == FVM_OK && storage.retained_bytes <= FVM_DESKTOP_AUDIO_EVENT_BYTES)
+            remaining = FVM_DESKTOP_AUDIO_EVENT_BYTES - storage.retained_bytes;
+        else if (result == FVM_OK)
+            result = FVM_OUT_OF_MEMORY;
+    }
+    SDL_UnlockMutex(audio->mutex);
+    if (!handled && result == FVM_OK)
+        result = fvm_swf_sound_voice_open_bounded(context, ordinal, remaining, &voice);
+    if (SDL_LockMutex(audio->mutex) != 0)
+    {
+        fvm_swf_sound_voice_close(voice);
+        return FVM_ERROR;
+    }
+    if (!handled && result == FVM_OK)
+        result = fvm_swf_sound_mixer_submit_prepared_bounded(
+            audio->mixer, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES);
     fvm_desktop_trace_event(audio->trace, "event", (unsigned long)ordinal, result);
     if (result == FVM_OK)
         ++audio->events;
     SDL_UnlockMutex(audio->mutex);
+    fvm_swf_sound_voice_close(voice); /* Rejected temporary ownership is released outside the lock. */
     return result;
 }
 
@@ -398,6 +439,24 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
                 return result;
         }
     }
+    if (!streams)
+    {
+        FVM_SWFSoundMixerStorageInfo storage;
+        geometry.struct_size = sizeof(geometry);
+        geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
+        geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
+        geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
+        geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
+        result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
+        if (result != FVM_OK)
+            return result;
+        storage.struct_size = sizeof(storage);
+        result = fvm_swf_sound_mixer_storage_info(audio->mixer, &storage);
+        if (result != FVM_OK)
+            return result;
+        if (storage.retained_bytes > FVM_DESKTOP_AUDIO_EVENT_BYTES)
+            return FVM_OUT_OF_MEMORY;
+    }
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);
     if (result != FVM_OK)
@@ -434,14 +493,6 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     }
     else
     {
-        geometry.struct_size = sizeof(geometry);
-        geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
-        geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
-        geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
-        geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
-        result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
-        if (result != FVM_OK)
-            return result;
         result = fvm_swf_sound_output_create(audio->mixer, &backend, FVM_DESKTOP_AUDIO_BLOCK,
                                              audio->target_frames, &audio->output);
         if (result != FVM_OK)

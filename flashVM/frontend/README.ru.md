@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+Подготовка событийных источников выполняется вне mutex аудиопотока; отдельный бюджет микшера/голосов по умолчанию — 64 MiB. VM/очереди/trace учитываются отдельно. [Владение и ограничения](../doc/NATIVE_VOICES.ru.md).
+
 v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency, free-format и reference MP3 seek/A/V остаются открытыми. [Текущий контракт](../doc/MP3_AUDIO.ru.md).
 
 [English](README.md). Необязательное C89-приложение поверх VM. Ядро и отдельные
