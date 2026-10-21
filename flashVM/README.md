@@ -1,10 +1,12 @@
-Development version: **0.785** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.785 ` and an English description. Increase the subversion before each
+Development version: **0.786** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.786 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.786: [Bound aggregate mixer voice storage and inspect native sound activity](doc/NATIVE_VOICES.md).
 
 v0.785: [Seek prepared voices with repeat-aware envelope reconstruction](doc/NATIVE_VOICES.md).
 

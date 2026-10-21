@@ -61,6 +61,32 @@ extern "C"
      * adoption affects FUTURE composition, never an already mixed/pending/accepted PCM block. */
     FVM_API FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *,
                                                           FVM_SWFSoundVoice **voice);
+    /* Same transfer/control policy as submit_prepared, with an aggregate retained-byte ceiling
+     * for mixer object, fixed slots and all old plus incoming voice objects/PCM/envelopes.
+     * Checked subtraction prevents overflow. Budget excess OUT_OF_MEMORY preserves incoming
+     * ownership/progress and old slots. Successful NoMultiple/finished consumption needs no new
+     * retained storage and ignores the ceiling. No allocation/VM/callback/device/GC; serialize
+     * all borrowed owners. This does not account for host template copies or output queues. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_submit_prepared_bounded(FVM_SWFSoundMixer *,
+                                                          FVM_SWFSoundVoice **voice, size_t budget_bytes);
+    /* Requested native storage only; excludes allocator overhead, queues, VM and host templates. */
+    typedef struct FVM_SWFSoundMixerStorageInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof this observation. */
+        size_t fixed_bytes; /* Mixer object/scratch and exact preallocated slot table. */
+        size_t voice_bytes; /* All owned voice objects, PCM and envelopes, including release tails. */
+        size_t retained_bytes; /* Checked sum of fixed_bytes and voice_bytes. */
+    } FVM_SWFSoundMixerStorageInfo;
+    /* Allocation/callback/VM-free copied observation; null/wrong size INVALID_ARGUMENT, checked
+     * size overflow OUT_OF_MEMORY; preserve output on error. Retain/serialize mixer until return. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_storage_info(const FVM_SWFSoundMixer *,
+                                                        FVM_SWFSoundMixerStorageInfo *);
+    /* Query non-releasing same-ID activity, exactly the SyncNoMultiple admission condition.
+     * ID 1..65535, output required; invalid input INVALID_ARGUMENT with unchanged output.
+     * No allocation/callback/VM/GC/device. Retain/serialize mixer; this is an observation, not a
+     * reservation. A later adoption must recheck policy under the same external lock. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_sound_active(const FVM_SWFSoundMixer *,
+                                                        unsigned int sound_id, int *out);
     /* Stop a dictionary identity 1..65535 using this mixer's existing immediate/DECLICK policy.
      * Null mixer/bad ID INVALID_ARGUMENT before mutation; missing ID OK no-op. No allocation,
      * VM/callback/device/GC or new ownership. Requires serialized live mixer. Does not clear

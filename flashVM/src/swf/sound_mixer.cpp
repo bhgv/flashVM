@@ -165,9 +165,56 @@ extern "C" FVM_Result fvm_swf_sound_mixer_stop_id(FVM_SWFSoundMixer *mixer, unsi
         }
     return FVM_OK;
 }
+/* Sum requested retained native storage, including releasing/converted lookahead owners. */
+extern "C" FVM_Result fvm_swf_sound_mixer_storage_info(const FVM_SWFSoundMixer *mixer,
+                                                        FVM_SWFSoundMixerStorageInfo *out)
+{
+    if (!mixer || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixerStorageInfo info;
+    info.struct_size = sizeof(info);
+    info.fixed_bytes = sizeof(*mixer) + mixer->slots.size() * sizeof(FVM_SWFSoundMixerSlot);
+    info.voice_bytes = 0;
+    for (size_t i = 0; i < mixer->slots.size(); ++i)
+        if (mixer->slots[i].voice)
+        {
+            FVM_SWFSoundVoiceStorageInfo voice;
+            voice.struct_size = sizeof(voice);
+            FVM_Result result = fvm_swf_sound_voice_storage_info(mixer->slots[i].voice, &voice);
+            if (result != FVM_OK)
+                return result;
+            if (voice.retained_bytes > (size_t)-1 - info.voice_bytes)
+                return FVM_OUT_OF_MEMORY;
+            info.voice_bytes += voice.retained_bytes;
+        }
+    if (info.voice_bytes > (size_t)-1 - info.fixed_bytes)
+        return FVM_OUT_OF_MEMORY;
+    info.retained_bytes = info.fixed_bytes + info.voice_bytes;
+    *out = info;
+    return FVM_OK;
+}
+
+/* Match SyncNoMultiple policy without consulting a source context or preparing a voice. */
+extern "C" FVM_Result fvm_swf_sound_mixer_sound_active(const FVM_SWFSoundMixer *mixer,
+                                                        unsigned int id, int *out)
+{
+    if (!mixer || !out || !id || id > FVM_SWF_SOUND_ID_MAX)
+        return FVM_INVALID_ARGUMENT;
+    int active = 0;
+    for (size_t i = 0; i < mixer->slots.size(); ++i)
+        if (mixer->slots[i].voice && !mixer->slots[i].release_frames &&
+            mixer->slots[i].sound_id == id)
+        {
+            active = 1;
+            break;
+        }
+    *out = active;
+    return FVM_OK;
+}
+
 /* Adopt prepared independent ownership only after every fallible policy check has succeeded. */
-extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *mixer,
-                                                          FVM_SWFSoundVoice **voice)
+extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared_bounded(FVM_SWFSoundMixer *mixer,
+                                                          FVM_SWFSoundVoice **voice, size_t budget)
 {
     if (!mixer || !voice || !*voice)
         return FVM_INVALID_ARGUMENT;
@@ -194,6 +241,17 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *mix
         *voice = 0;
         return FVM_OK;
     }
+    FVM_SWFSoundMixerStorageInfo retained;
+    FVM_SWFSoundVoiceStorageInfo incoming;
+    retained.struct_size = sizeof(retained);
+    incoming.struct_size = sizeof(incoming);
+    result = fvm_swf_sound_mixer_storage_info(mixer, &retained);
+    if (result == FVM_OK)
+        result = fvm_swf_sound_voice_storage_info(*voice, &incoming);
+    if (result != FVM_OK)
+        return result;
+    if (retained.retained_bytes > budget || incoming.retained_bytes > budget - retained.retained_bytes)
+        return FVM_OUT_OF_MEMORY;
     for (size_t i = 0; i < mixer->slots.size(); ++i)
     {
         if (!mixer->slots[i].voice)
@@ -214,6 +272,13 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *mix
         }
     }
     return FVM_OUT_OF_MEMORY;
+}
+
+/* Preserve the existing adoption ABI with no additional host-wide storage ceiling. */
+extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *mixer,
+                                                          FVM_SWFSoundVoice **voice)
+{
+    return fvm_swf_sound_mixer_submit_prepared_bounded(mixer, voice, (size_t)-1);
 }
 
 /* Resolve control identity before changing slots; a failed snapshot never interrupts old voices. */

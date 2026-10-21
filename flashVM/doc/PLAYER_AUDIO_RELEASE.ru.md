@@ -25,7 +25,7 @@ callback, managed references и устройства. Исчерпавшийся
 
 Затухающие голоса входят в active_voices и capacity. Они не подавляют следующий
 SyncNoMultiple start, но заполненная таблица всё равно даёт [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44)
-без вытеснения голоса. [`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L89) остаётся немедленным даже с
+без вытеснения голоса. [`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L115) остаётся немедленным даже с
 DECLICK. Без CONVERT прежняя проверка strict-геометрии/частоты сохраняется. Нужна
 сериализация host; submit выполняется в потоке владельца source context. Плеер
 выбирает оба флага; приложения включают новую политику явно.
@@ -114,7 +114,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:89](../include/flashvm/swf_sound_mixer.h#L89) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:115](../include/flashvm/swf_sound_mixer.h#L115) |
 | `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:63](../include/flashvm/swf_sound_output.h#L63) |
 | `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:67](../include/flashvm/swf_sound_output.h#L67) |

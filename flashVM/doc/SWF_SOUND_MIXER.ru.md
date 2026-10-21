@@ -34,7 +34,7 @@ Sound ID общий для всего микшера. Используйте о�
 действовать и на старые, и на новые голоса этого ID. Идентификатор context не
 сохраняется. Другие микшеры и context audio channels — отдельные пространства
 управления. AVM1 StopSounds не очищает независимый микшер: хост вызывает
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L89) и отдельно сбрасывает очередь устройства.
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L115) и отдельно сбрасывает очередь устройства.
 
 ## Контракты функций
 
@@ -76,7 +76,7 @@ callback. Действует существующий **покадровый с�
 
 ### fvm_swf_sound_mixer_read
 
-`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L72)(mixer, frames, destination, capacity_values,
+`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L98)(mixer, frames, destination, capacity_values,
 written_values)` заполняет ровно frames sample frames. Capacity/written считают
 **short-значения каналов**, то есть для stereo нужно frames × 2. Written не может
 быть null, обнуляется до проверок и не должен перекрываться с destination.
@@ -164,12 +164,12 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../include/flashvm/swf_sound_mixer.h#L91) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:117](../include/flashvm/swf_sound_mixer.h#L117) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:87](../include/flashvm/swf_sound_mixer.h#L87) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:113](../include/flashvm/swf_sound_mixer.h#L113) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:89](../include/flashvm/swf_sound_mixer.h#L89) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:98](../include/flashvm/swf_sound_mixer.h#L98) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:115](../include/flashvm/swf_sound_mixer.h#L115) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |

@@ -166,7 +166,7 @@ UNSUPPORTED, заполнение — OUT_OF_MEMORY. NoMultiple сначала �
 Нет allocation/callback/VM/managed root. Owner storage не пересекается; доступ
 сериализуется снаружи. После transfer handle нельзя читать или закрывать.
 
-[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L68)(mixer, sound_id) применяет прежний immediate/DECLICK
+[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L94)(mixer, sound_id) применяет прежний immediate/DECLICK
 stop без context. ID допустим 1–65535; null/неверный ID — INVALID_ARGUMENT до
 изменения, отсутствующий ID — OK. Повторный stop не запускает fade заново.
 Команды влияют на будущее смешивание: retained retry и accepted device PCM
@@ -195,7 +195,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
-| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:94](../include/flashvm/swf_sound_mixer.h#L94) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:62](../include/flashvm/swf_sound_mixer.h#L62) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |

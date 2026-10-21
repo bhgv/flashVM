@@ -70,10 +70,10 @@ on main thread; real-time device callbacks should consume a separate host queue.
 | [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) | Загружает/копирует SWF; исходный literal не становится borrowed mixer storage: [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_swf_sound_mixer_create`](../../../include/flashvm/swf_sound_mixer.h#L45) | Создаёт фиксированную геометрию и таблицу слотов, очищает out при отказе: [SWF_SOUND_MIXER.md](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_create). |
 | [`fvm_swf_sound_mixer_submit`](../../../include/flashvm/swf_sound_mixer.h#L50) | Синхронно готовит голос или выполняет stop/no-multiple; может выделять/декодировать: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_submit). |
-| [`fvm_swf_sound_mixer_read`](../../../include/flashvm/swf_sound_mixer.h#L72) | Продвигает software clock, выдаёт точный S16 объём с тишиной и единственным насыщением, без новых выделений: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_read). |
-| [`fvm_swf_sound_mixer_info`](../../../include/flashvm/swf_sound_mixer.h#L87) | Копирует activity/geometry без продвижения и без VM: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_info). |
-| [`fvm_swf_sound_mixer_stop_all`](../../../include/flashvm/swf_sound_mixer.h#L89) | Освобождает все software voices; не сбрасывает устройство/FILE: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_stop_all). |
-| [`fvm_swf_sound_mixer_close`](../../../include/flashvm/swf_sound_mixer.h#L91) | Освобождает native owner; null допустим, source VM не нужна: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_close). |
+| [`fvm_swf_sound_mixer_read`](../../../include/flashvm/swf_sound_mixer.h#L98) | Продвигает software clock, выдаёт точный S16 объём с тишиной и единственным насыщением, без новых выделений: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_read). |
+| [`fvm_swf_sound_mixer_info`](../../../include/flashvm/swf_sound_mixer.h#L113) | Копирует activity/geometry без продвижения и без VM: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_info). |
+| [`fvm_swf_sound_mixer_stop_all`](../../../include/flashvm/swf_sound_mixer.h#L115) | Освобождает все software voices; не сбрасывает устройство/FILE: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_stop_all). |
+| [`fvm_swf_sound_mixer_close`](../../../include/flashvm/swf_sound_mixer.h#L117) | Освобождает native owner; null допустим, source VM не нужна: [контракт](../../../doc/SWF_SOUND_MIXER.md#fvm_swf_sound_mixer_close). |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Освобождает исходный context; native mixer продолжает работать: [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Завершает source runtime после context: [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 
@@ -156,14 +156,14 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../../../include/flashvm/swf_sound_mixer.h#L91) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:117](../../../include/flashvm/swf_sound_mixer.h#L117) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../../../include/flashvm/swf_sound_mixer.h#L21) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../../../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../../../include/flashvm/swf_sound_mixer.h#L39) |
 | `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:42](../../../include/flashvm/swf_sound_mixer.h#L42) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:87](../../../include/flashvm/swf_sound_mixer.h#L87) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:72](../../../include/flashvm/swf_sound_mixer.h#L72) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:89](../../../include/flashvm/swf_sound_mixer.h#L89) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:113](../../../include/flashvm/swf_sound_mixer.h#L113) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:98](../../../include/flashvm/swf_sound_mixer.h#L98) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:115](../../../include/flashvm/swf_sound_mixer.h#L115) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../../../include/flashvm/swf_sound_mixer.h#L50) |
 | `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../../../include/flashvm/swf_sound_mixer.h#L28) |
 <!-- source-links:end -->
