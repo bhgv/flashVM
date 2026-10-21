@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.739
+# FlashVM stage status / Состояние стадий — v0.740
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.740: Fixed S-record recovery slots. See [slot contracts](MEDIA_SLOTS.md) / [контракты](MEDIA_SLOTS.ru.md).
 
 v0.739 runs the live player readers with independent negotiated msize values
 256 and 384. Full reply-file reads reassemble S records across Rread boundaries.

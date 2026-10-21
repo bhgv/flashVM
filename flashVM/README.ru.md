@@ -1,4 +1,4 @@
-Версия разработки: **0.739** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.740** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.740: [Фиксированные слоты S-записей](doc/MEDIA_SLOTS.ru.md).
 
 v0.739: [Кадры с согласованным msize](doc/PLAYER_RESOURCE_FRAMES.ru.md#согласованный-msize-v0739).
 
