@@ -129,6 +129,7 @@ FILE восстанавливает только недостающие част
 контроль перегрузки, аутентифицированный сервер и видеокодек пока не добавлены.
 
 Проверка v0.746: прошли 54 выбранные native-проверки и 14 проверок shared-host. Новая политика, cache/protocol и интеграция настоящих кадров interpreter/JIT прошли ASan/UBSan (проверка утечек отключена из-за ограничений хоста). Strict C89 link и C++98 consumer собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; чужие бинарники не запускались. Все девять стадий открыты.
+[Receive-window collector / Сборщик окон приёма](RECEIVE_WINDOWS.ru.md) supplies unique counts with host deadlines.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

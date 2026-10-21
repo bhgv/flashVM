@@ -4,6 +4,7 @@
 #include "flashvm/smedia.h"
 #include "flashvm/scontrol.h"
 #include "flashvm/sadapt.h"
+#include "flashvm/smeasure.h"
 #include "flashvm/revents.h"
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
@@ -13,6 +14,9 @@
 /* Link framing, incremental input and directional metadata without a VM runtime. */
 int main()
 {
+    FVM_SMeasure measurement;
+    if (fvm_smeasure_init(&measurement, 7, 1, 1, 1, 100) != FVM_S_OK) return 1;
+
     unsigned char output[64], input[64];
     FVM_SStream stream;
     FVM_SRecord record;

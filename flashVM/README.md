@@ -1,10 +1,12 @@
-Development version: **0.746** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.746 ` and an English description. Increase the subversion before each
+Development version: **0.747** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.747 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.747: [Unique-part receive windows with frozen feedback](doc/RECEIVE_WINDOWS.md).
 
 v0.746: [Connect explicit host feedback to actual player frame export](doc/CHANNEL_ADAPTATION.md).
 

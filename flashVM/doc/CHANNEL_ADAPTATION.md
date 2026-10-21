@@ -135,6 +135,7 @@ This is explicit host-feedback replay, not an installed network-quality sampler,
 congestion controller, authenticated remote service or video codec.
 
 Validation at v0.746: 54 selected native regression checks and 14 shared-host checks passed. New policy/cache/protocol paths and the actual interpreter/JIT frame integration passed ASan/UBSan (leak detection disabled by the restricted host). Strict C89 link checks and C++98 consumers build for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; foreign binaries were not executed. All nine roadmap stages remain open.
+[Receive-window collector / Сборщик окон приёма](RECEIVE_WINDOWS.md) supplies unique counts with host deadlines.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

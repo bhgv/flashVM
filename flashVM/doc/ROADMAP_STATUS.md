@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.746
+# FlashVM stage status / Состояние стадий — v0.747
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.747: Bounded unique receive windows, exclusive repair categories and frozen tag-zero feedback. [EN](RECEIVE_WINDOWS.md) / [RU](RECEIVE_WINDOWS.ru.md).
 
 v0.746: Replay explicit channel feedback through actual frame export, ACK-bound profile selection and independent FILE/LIVE UDP/TCP checks. [EN](CHANNEL_ADAPTATION.md) / [RU](CHANNEL_ADAPTATION.ru.md). No production network sampler or completed platform acceptance.
 
