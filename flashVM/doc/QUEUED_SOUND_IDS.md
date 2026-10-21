@@ -40,6 +40,30 @@ and stops exclusively; direct mixer mutation is outside the accounting contract.
 `swf_sound_output_identity_storage` verifies optional charges, repeated enable,
 real freeing on disable, empty/played-state restrictions and query failures.
 
+## v0.795: queued SyncNoMultiple adoption
+
+[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L96) observes FIFO progress, then adopts
+a caller-owned native voice at submitted+pending frames. Its exact remaining
+converted duration defines an exclusive per-ID endpoint. Ordinary same-ID starts
+may overlap; their maximum endpoint stays active. NoMultiple consumes an unused
+owner while that ID has unplayed registered time, even if the software mixer has
+already retired the voice. It suppresses without requiring extra mixer budget.
+Finished voices do not extend endpoints. Registration never remixes accepted or
+pending PCM: the new voice starts at the next composition boundary.
+
+Enable tracking first and route every borrowed-mixer start/read/stop through the
+output. The mixer byte budget excludes output/table/device/template storage.
+No allocation, decode or VM access occurs; backend observations can block. Keep
+all owners serialized/live. Success consumes and clears the handle; failure
+preserves its progress and old intervals/voices, although a successful FIFO
+observation can refresh copied queue counters. Clock/duration overflow is
+UNSUPPORTED; disabled tracking is UNSUPPORTED; mixer/backend statuses propagate.
+
+`swf_sound_output_identity` reproduces the retired-but-queued case, checks the
+exact rational endpoint rather than a whole prepared-block boundary, and verifies
+failed-write retention/exact retry, no-budget duplicate consumption and failed
+queue-observation ownership preservation after VM destruction.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -52,5 +76,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
 | `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
+| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:96](../include/flashvm/swf_sound_output.h#L96) |
 | `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |
 <!-- source-links:end -->

@@ -80,6 +80,21 @@ extern "C"
      * No allocation/VM; callback may block per backend contract. Keep owners serialized/live. */
     FVM_API FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *, unsigned int id,
                                                          int *out);
+    /* Transfer a prepared voice with queued SyncNoMultiple semantics and bounded mixer storage.
+     * Tracking must be enabled; disabled UNSUPPORTED. Observe the FIFO, include existing pending
+     * PCM before the new start, and register the exact exclusive end at a fresh conversion phase.
+     * NoMultiple consumes/closes/clears an unused voice while any registered same-ID interval
+     * remains unplayed, even after mixer retirement. Ordinary same-ID starts overlap and extend
+     * the maximum end. Finished voices add no interval. Success consumes/clears *voice; failures
+     * preserve its ownership/progress and old voices/intervals (queue observation may refresh).
+     * mixer_budget covers mixer/slots/voices only, as mixer_submit_prepared_bounded; output,
+     * backend and host template storage are separate. Duration/epoch overflow UNSUPPORTED;
+     * other mixer/backend statuses propagate; bad_alloc OOM, other exceptions ERROR.
+     * No allocation, decode or VM. Serialize output/mixer/voice externally; callbacks may block.
+     * Do not submit/read/stop the borrowed mixer independently once tracked starts are used.
+     * Accepted and pending PCM are immutable; new voices begin at the next composition boundary. */
+    FVM_API FVM_Result fvm_swf_sound_output_submit_prepared_bounded(FVM_SWFSoundOutput *,
+                                                       FVM_SWFSoundVoice **voice, size_t mixer_budget);
     /* Prepare/retry one block. NOT_FOUND means no complete block fits below the queue target. */
     FVM_API FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *, size_t *accepted_frames);
     /* Set queue pause state; never implicitly primes or clears PCM. */

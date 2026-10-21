@@ -235,6 +235,55 @@ extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *outp
     }
 }
 
+/* Adopt only on the uncomposed side of pending/accepted PCM; retain exact per-ID end clocks. */
+extern "C" FVM_Result fvm_swf_sound_output_submit_prepared_bounded(FVM_SWFSoundOutput *output,
+                                                       FVM_SWFSoundVoice **voice, size_t budget)
+{
+    if (!output || output->busy || !voice || !*voice)
+        return FVM_INVALID_ARGUMENT;
+    if (output->identities.empty())
+        return FVM_UNSUPPORTED;
+    FVM_SWFSoundVoiceInfo source;
+    source.struct_size = sizeof(source);
+    FVM_Result result = fvm_swf_sound_voice_info(*voice, &source);
+    if (result != FVM_OK)
+        return result;
+    BusyScope scope(output);
+    try
+    {
+        result = observe(output);
+        if (result != FVM_OK)
+            return result;
+        if ((source.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE) &&
+            output->identities[source.sound_id] > output->info.played_frames)
+        {
+            fvm_swf_sound_voice_close(*voice);
+            *voice = 0;
+            return FVM_OK;
+        }
+        double duration = 0;
+        result = fvm_swf_sound_voice_output_frames(*voice, output->backend.sample_rate, &duration);
+        if (result != FVM_OK)
+            return result;
+        double cursor = output->info.submitted_frames + (double)output->info.pending_frames;
+        if (cursor > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - duration)
+            return FVM_UNSUPPORTED;
+        double end = cursor + duration;
+        result = fvm_swf_sound_mixer_submit_prepared_bounded(output->mixer, voice, budget);
+        if (result == FVM_OK && duration && end > output->identities[source.sound_id])
+            output->identities[source.sound_id] = end;
+        return result;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
+}
+
 /* Render only when needed; a rejected complete block remains stable until acceptance or stop/close.
  */
 extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size_t *accepted)
