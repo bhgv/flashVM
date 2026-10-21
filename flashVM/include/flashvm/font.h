@@ -6,6 +6,7 @@
 /* Define FLASHVM FONT H constant or compilation switch. */
 #define FLASHVM_FONT_H
 #include "flashvm/path.h"
+#define FVM_FONT_SHAPE_NO_KERNING 1U /* Disable the OpenType kern feature for the entire run. */
 #ifdef __cplusplus
 extern "C"
 {
@@ -65,6 +66,14 @@ extern "C"
     FVM_API size_t fvm_text_run_count(const FVM_TextRun *run);
     /* Read one glyph placement and its source cluster from the shaped run. */
     FVM_API FVM_Result fvm_text_run_get(const FVM_TextRun *run, size_t index, FVM_ShapedGlyph *out);
+    /* Like font_shape, with explicit feature flags (zero preserves legacy shaping).
+     * NO_KERNING disables pair kerning without disabling ligatures/mark positioning.
+     * Unknown flags are INVALID_ARGUMENT; out is cleared on failure. The font is
+     * single-owner and borrowed only during this call; returned run is independently owned.
+     * No VM/GC/callback or device access. NO_FONTS returns UNSUPPORTED for valid flags. */
+    FVM_API FVM_Result fvm_font_shape_configured(FVM_Font *, const char *, size_t,
+                                     FVM_TextDirection, const char *, unsigned int flags,
+                                     FVM_TextRun **out);
     /* Release a shaped run and its retained glyph data. */
     FVM_API void fvm_text_run_destroy(FVM_TextRun *run);
     /* Export placed contours; advance is logical run length, bounds from path are

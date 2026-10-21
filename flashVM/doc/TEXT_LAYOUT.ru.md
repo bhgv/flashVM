@@ -4,7 +4,7 @@ API `flashvm/text_layout.h` строит блок текста из провер
 шрифтом. Используются статические FreeType/HarfBuzz/libunibreak/FriBidi,
 включаемые ключом FONTS в DEFS.txt. Поиск системных шрифтов не выполняется.
 
-Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L44), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L72).
+Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L45), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L72).
 При NULL options выбираются неограниченная ширина, естественный межстрочный
 интервал, AUTO-направление абзаца и выравнивание START. Пример
 examples/embedding/text_layout/main.c показывает переносы, смешанный текст
@@ -105,7 +105,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_read` | function | [include/flashvm/font.h:44](../include/flashvm/font.h#L44) |
+| `fvm_font_read` | function | [include/flashvm/font.h:45](../include/flashvm/font.h#L45) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:85](../include/flashvm/text_layout.h#L85) |

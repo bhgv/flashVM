@@ -13,5 +13,9 @@
 /* Implement font shape segment for this subsystem. */
 FVM_Result fvm_font_shape_segment(FVM_Font *, const char *, size_t, size_t, size_t,
                                   FVM_TextDirection, hb_script_t, const char *, FVM_TextRun **);
+/* Shape with explicit native features while retaining the surrounding line context. */
+FVM_Result fvm_font_shape_segment_configured(FVM_Font *, const char *, size_t, size_t, size_t,
+                                  FVM_TextDirection, hb_script_t, const char *, unsigned int,
+                                  FVM_TextRun **);
 #endif
 #endif

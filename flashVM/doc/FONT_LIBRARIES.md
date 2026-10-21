@@ -43,12 +43,12 @@ through the libraries' native APIs.
 
 | Operation | API / behavior |
 | --- | --- |
-| Font metrics and character mapping | [fvm_font_metrics](../include/flashvm/font.h#L49) / [fvm_font_char](../include/flashvm/font.h#L51); missing mapping returns glyph 0 |
-| Independent glyph geometry | [fvm_font_glyph](../include/flashvm/font.h#L55) copies lines/quadratic/cubic curves and closes contours |
-| OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L61) returns glyph IDs, advances, offsets and UTF-8 byte clusters |
-| Positioned text contours | [fvm_text_run_path](../include/flashvm/font.h#L73) combines positioned glyph contours in a new path |
-| Allowed Unicode breaks | [fvm_text_breaks](../include/flashvm/font.h#L79) outputs native libunibreak classifications per input byte |
-| One-line bidi resolution | [fvm_text_bidi](../include/flashvm/font.h#L87) returns resolved direction, logical levels and visual→logical map |
+| Font metrics and character mapping | [fvm_font_metrics](../include/flashvm/font.h#L50) / [fvm_font_char](../include/flashvm/font.h#L52); missing mapping returns glyph 0 |
+| Independent glyph geometry | [fvm_font_glyph](../include/flashvm/font.h#L56) copies lines/quadratic/cubic curves and closes contours |
+| OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L62) returns glyph IDs, advances, offsets and UTF-8 byte clusters |
+| Positioned text contours | [fvm_text_run_path](../include/flashvm/font.h#L82) combines positioned glyph contours in a new path |
+| Allowed Unicode breaks | [fvm_text_breaks](../include/flashvm/font.h#L88) outputs native libunibreak classifications per input byte |
+| One-line bidi resolution | [fvm_text_bidi](../include/flashvm/font.h#L96) returns resolved direction, logical levels and visual→logical map |
 
 Positions are pixels, x right/y down. FreeType's scaled unhinted outlines use 26.6
 precision; exported double coordinates do not add precision that was absent in
@@ -57,7 +57,7 @@ including its rounding. FreeType clamps character-size requests below one
 pixel; transform exported vectors for smaller geometry. Logical advances differ
 from geometric ink bounds.
 
-[fvm_font_shape](../include/flashvm/font.h#L61) accepts one homogeneous script/direction run of valid UTF-8,
+[fvm_font_shape](../include/flashvm/font.h#L62) accepts one homogeneous script/direction run of valid UTF-8,
 bounded to 4 MiB. AUTO guesses run properties; it does not lay out a multilingual
 paragraph. Bidi takes UTF-32 Unicode scalar values, at most 1,000,000 entries;
 its visual output reorders code points without mirroring or Arabic presentation
@@ -137,14 +137,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_char` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
-| `fvm_font_glyph` | function | [include/flashvm/font.h:55](../include/flashvm/font.h#L55) |
-| `fvm_font_metrics` | function | [include/flashvm/font.h:49](../include/flashvm/font.h#L49) |
-| `fvm_font_shape` | function | [include/flashvm/font.h:61](../include/flashvm/font.h#L61) |
+| `fvm_font_char` | function | [include/flashvm/font.h:52](../include/flashvm/font.h#L52) |
+| `fvm_font_glyph` | function | [include/flashvm/font.h:56](../include/flashvm/font.h#L56) |
+| `fvm_font_metrics` | function | [include/flashvm/font.h:50](../include/flashvm/font.h#L50) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:62](../include/flashvm/font.h#L62) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../include/flashvm/path.h#L81) |
 | `fvm_path_mask` | function | [include/flashvm/path.h:86](../include/flashvm/path.h#L86) |
-| `fvm_text_bidi` | function | [include/flashvm/font.h:87](../include/flashvm/font.h#L87) |
-| `fvm_text_breaks` | function | [include/flashvm/font.h:79](../include/flashvm/font.h#L79) |
-| `fvm_text_run_path` | function | [include/flashvm/font.h:73](../include/flashvm/font.h#L73) |
+| `fvm_text_bidi` | function | [include/flashvm/font.h:96](../include/flashvm/font.h#L96) |
+| `fvm_text_breaks` | function | [include/flashvm/font.h:88](../include/flashvm/font.h#L88) |
+| `fvm_text_run_path` | function | [include/flashvm/font.h:82](../include/flashvm/font.h#L82) |
 <!-- source-links:end -->

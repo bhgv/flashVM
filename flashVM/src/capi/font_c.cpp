@@ -265,12 +265,12 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Pat
 /* Compute and return shape segment. */
 static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
                                 size_t length, FVM_TextDirection direction, hb_script_t script,
-                                const char *language, bool remove_ignorables, FVM_TextRun **out)
+                                const char *language, bool remove_ignorables, unsigned int flags, FVM_TextRun **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!font || !valid_utf8(text, size) || offset > size || length > size - offset ||
+    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font || !valid_utf8(text, size) || offset > size || length > size - offset ||
         direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
         return FVM_INVALID_ARGUMENT;
     hb_buffer_t *buffer = hb_buffer_create();
@@ -289,7 +289,9 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
 
     /* Computation / Вычисление и обновление состояния. */
     hb_buffer_guess_segment_properties(buffer);
-    hb_shape(font->shaper, buffer, 0, 0);
+    hb_feature_t feature = {HB_TAG('k', 'e', 'r', 'n'), 0, 0, (unsigned int)-1};
+    hb_shape(font->shaper, buffer, flags & FVM_FONT_SHAPE_NO_KERNING ? &feature : 0,
+             flags & FVM_FONT_SHAPE_NO_KERNING ? 1 : 0);
     if (!hb_buffer_allocation_successful(buffer))
     {
         hb_buffer_destroy(buffer);
@@ -336,16 +338,34 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t si
                                      FVM_TextDirection direction, const char *language,
                                      FVM_TextRun **out)
 {
-    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false,
+    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false, 0,
                          out);
 }
 
+/* Shape one owned native run with an explicit, bounded feature selection. */
+extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *font, const char *text, size_t size,
+                                                FVM_TextDirection direction, const char *language,
+                                                unsigned int flags, FVM_TextRun **out)
+{
+    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language,
+                         false, flags, out);
+}
+/* Shape a layout segment using the same selected features as width measurement. */
+FVM_Result fvm_font_shape_segment_configured(FVM_Font *font, const char *text, size_t size,
+                                             size_t offset, size_t length,
+                                             FVM_TextDirection direction, hb_script_t script,
+                                             const char *language, unsigned int flags,
+                                             FVM_TextRun **out)
+{
+    return shape_segment(font, text, size, offset, length, direction, script, language, true,
+                         flags, out);
+}
 /* Compute and return font shape segment. */
 FVM_Result fvm_font_shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
                                   size_t length, FVM_TextDirection direction, hb_script_t script,
                                   const char *language, FVM_TextRun **out)
 {
-    return shape_segment(font, text, size, offset, length, direction, script, language, true, out);
+    return shape_segment(font, text, size, offset, length, direction, script, language, true, 0, out);
 }
 
 /* Return the number of glyph entries in the shaped run. */
@@ -534,6 +554,17 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextD
         return FVM_INVALID_ARGUMENT;
     *out = 0;
     return FVM_UNSUPPORTED;
+}
+
+/* Preserve feature validation and ownership publication when font support is absent. */
+extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *, const char *, size_t,
+                                                FVM_TextDirection, const char *,
+                                                unsigned int flags, FVM_TextRun **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    return flags & ~FVM_FONT_SHAPE_NO_KERNING ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 
 /* Return the number of glyph entries in the shaped run. */

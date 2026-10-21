@@ -27,8 +27,8 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_font_destroy`](../../../include/flashvm/font.h#L47) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
-| [`fvm_font_read`](../../../include/flashvm/font.h#L44) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
+| [`fvm_font_destroy`](../../../include/flashvm/font.h#L48) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
+| [`fvm_font_read`](../../../include/flashvm/font.h#L45) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
@@ -51,8 +51,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_destroy` | function | [include/flashvm/font.h:47](../../../include/flashvm/font.h#L47) |
-| `fvm_font_read` | function | [include/flashvm/font.h:44](../../../include/flashvm/font.h#L44) |
+| `fvm_font_destroy` | function | [include/flashvm/font.h:48](../../../include/flashvm/font.h#L48) |
+| `fvm_font_read` | function | [include/flashvm/font.h:45](../../../include/flashvm/font.h#L45) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
