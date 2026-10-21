@@ -29,6 +29,9 @@ struct FVM_SWFMP3Decoder
     mp3d_sample_t pcm[FVM_MP3_MAX_VALUES]; /* Last decoded packet, valid only after decode OK. */
     /* Initialize deterministic state before any source packet can be inspected. */
     FVM_SWFMP3Decoder();
+    /* Learn free-format framing from one complete SWF block and its exact sample count.
+     * Does not consume PCM/history; malformed input preserves decoder state. No allocation. */
+    FVM_Result prepare_block(const unsigned char *, size_t, unsigned int samples);
     /* Consume one exact packet. Header errors preserve state; decoder errors are terminal.
      * No allocation, callback or VM. Geometry/output published only on successful decode. */
     FVM_Result decode(const unsigned char *, size_t, FVM_SWFMP3Frame *);

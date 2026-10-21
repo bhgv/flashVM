@@ -41,6 +41,9 @@ static FVM_Result mp3_stream_pass(FVM_SWFStreamSoundSnapshot *snapshot, size_t l
             return result;
         if (!i && payload.seek_samples != snapshot->info.latency_seek)
             return FVM_INVALID_ARGUMENT;
+        result = decoder.prepare_block(payload.data, payload.data_size, payload.declared_samples);
+        if (result != FVM_OK)
+            return result;
         size_t at = 0, decoded = 0, copied = 0;
         size_t start = values;
         while (at < payload.data_size)

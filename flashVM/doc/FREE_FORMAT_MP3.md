@@ -26,6 +26,18 @@ reads. Initial latency, range limits, geometry and allocation-free two-pass read
 retain their existing contracts. One/two-packet standalone events without sufficient
 header evidence remain UNSUPPORTED; their frame size cannot be learned from bitrate zero.
 
+
+## Counted stream blocks (v0.808)
+
+A SoundStreamBlock provides an exact UI16 decoded sample count. Before its first
+free-format decode, native preparation derives the packet count from MPEG geometry
+and checks candidate unpadded spans against every header and the complete block
+extent. Exactly one candidate must consume the declared number of packets. This
+allows a one-packet first block, two-packet blocks and larger groups without reading
+across SWF prefixes. Empty blocks preserve history. Learned geometry/reservoir persist
+across subsequent blocks; per-block decoded counts still have to match exactly.
+No extra allocation or retained cache is added; raw/PCM/peak budget contracts remain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

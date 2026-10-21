@@ -88,6 +88,55 @@ FVM_SWFMP3Decoder::FVM_SWFMP3Decoder()
     std::memset(&state, 0, sizeof(state));
     fvm_minimp3_init(&state);
 }
+/* Infer one block's unpadded free-format span using its author-provided exact packet count. */
+FVM_Result FVM_SWFMP3Decoder::prepare_block(const unsigned char *data, size_t size,
+                                            unsigned int samples)
+{
+    if (!size)
+        return samples ? FVM_INVALID_ARGUMENT : FVM_OK;
+    FVM_SWFMP3Frame first;
+    FVM_Result result = mp3_header(data, size, &first);
+    if (result != FVM_OK || first.bytes || state.free_format_bytes)
+        return result;
+    if (state.header[0])
+        return FVM_UNSUPPORTED; /* A different bitrate mode cannot reuse an established reservoir. */
+    if (!samples || samples > FVM_MP3_BLOCK_MAX_SAMPLES || samples % first.samples)
+        return FVM_INVALID_ARGUMENT;
+    size_t packets = samples / first.samples;
+    size_t chosen = 0;
+    for (size_t base = FVM_MP3_HEADER_BYTES; base < FVM_MP3_FREE_MAX_BYTES; ++base)
+    {
+        size_t at = 0;
+        bool valid = true;
+        for (size_t index = 0; index < packets; ++index)
+        {
+            if (at > size || !free_header(data + at, size - at, first))
+            {
+                valid = false;
+                break;
+            }
+            size_t span = base + ((data[at + 2] & FVM_MP3_PADDING_MASK) != 0);
+            if (span >= FVM_MP3_FREE_MAX_BYTES || span > size - at)
+            {
+                valid = false;
+                break;
+            }
+            at += span;
+        }
+        if (valid && at == size)
+        {
+            if (chosen)
+                return FVM_INVALID_ARGUMENT;
+            chosen = base;
+        }
+    }
+    if (!chosen)
+        return FVM_INVALID_ARGUMENT;
+    /* Commit only geometry; reservoir/filter history remain pristine until the first decode. */
+    std::memcpy(state.header, data, FVM_MP3_HEADER_BYTES);
+    state.free_format_bytes = (int)chosen;
+    return FVM_OK;
+}
 /* Decode only a prebounded complete packet; refuse concealment after missing reservoir history. */
 FVM_Result FVM_SWFMP3Decoder::decode(const unsigned char *data, size_t size, FVM_SWFMP3Frame *out)
 {
