@@ -325,7 +325,7 @@ struct Segment
  * combining marks and ligature clusters keep HarfBuzz's within-run ordering. */
 /* Compute and return shape line. */
 static FVM_Result shape_line(FVM_Font *font, const char *text, const char *language,
-                             const Paragraph &p, size_t start, size_t end, size_t &budget,
+                             const Paragraph &p, size_t start, size_t end, unsigned int flags, size_t &budget,
                              fvm_detail::vector<FVM_TextLayoutGlyph> &glyphs, double &advance)
 {
 
@@ -379,10 +379,10 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
     {
         const Segment &s = segments[n];
         RunOwner run;
-        FVM_Result result = fvm_font_shape_segment(
+        FVM_Result result = fvm_font_shape_segment_configured(
             font, text + first_byte, line_size, p.bytes[s.start] - first_byte,
             p.bytes[s.end] - p.bytes[s.start], (s.level & 1) ? FVM_TEXT_RTL : FVM_TEXT_LTR,
-            p.scripts[s.start], language, &run.value);
+            p.scripts[s.start], language, flags, &run.value);
         if (result != FVM_OK)
             return result;
         for (size_t i = 0; i < fvm_text_run_count(run.value); ++i)
@@ -417,7 +417,7 @@ static bool allowed(const fvm_detail::vector<char> &breaks, const Paragraph &p, 
 
 /* Compute and return choose line. */
 static FVM_Result choose_line(FVM_Font *font, const char *text, const char *language,
-                              const Paragraph &p, size_t start, double width,
+                              const Paragraph &p, size_t start, double width, unsigned int flags,
                               const fvm_detail::vector<char> &line,
                               const fvm_detail::vector<char> &grapheme, size_t &budget, size_t &end)
 {
@@ -434,7 +434,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             continue;
         double advance;
         FVM_Result result =
-            shape_line(font, text, language, p, start, candidate, budget, trial, advance);
+            shape_line(font, text, language, p, start, candidate, flags, budget, trial, advance);
         if (result != FVM_OK)
             return result;
         if (advance > width)
@@ -458,7 +458,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             continue;
         double advance;
         FVM_Result result =
-            shape_line(font, text, language, p, start, candidate, budget, trial, advance);
+            shape_line(font, text, language, p, start, candidate, flags, budget, trial, advance);
         if (result != FVM_OK)
             return result;
         if (advance > width)
@@ -476,14 +476,14 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
 static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char *text,
                               const FVM_TextLayoutOptions &options, const FVM_FontMetrics &metrics,
                               const Paragraph &p, size_t start, size_t end, size_t next,
-                              size_t &budget)
+                              unsigned int flags, size_t &budget)
 {
 
     /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<FVM_TextLayoutGlyph> glyphs;
     double advance;
     FVM_Result result =
-        shape_line(font, text, options.language, p, start, end, budget, glyphs, advance);
+        shape_line(font, text, options.language, p, start, end, flags, budget, glyphs, advance);
     if (result != FVM_OK)
         return result;
     FVM_TextLayoutLine line;
@@ -552,14 +552,14 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
 }
 
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, size_t size,
-                                             const FVM_TextLayoutOptions *provided,
+extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *provided, unsigned int flags,
                                              FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!font)
+    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font)
         return FVM_INVALID_ARGUMENT;
     FVM_TextLayoutOptions options = {0, 0, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     if (provided)
@@ -624,13 +624,13 @@ extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, s
             do
             {
                 size_t line_end;
-                result = choose_line(font, text, options.language, p, line_start, options.max_width,
+                result = choose_line(font, text, options.language, p, line_start, options.max_width, flags,
                                      line, grapheme, budget, line_end);
                 if (result != FVM_OK)
                     return result;
                 size_t next_byte = line_end == p.chars.size() ? bytes[next] : p.bytes[line_end];
                 result = append_line(*layout.value, font, text, options, metrics, p, line_start,
-                                     line_end, next_byte, budget);
+                                     line_end, next_byte, flags, budget);
                 if (result != FVM_OK)
                     return result;
                 line_start = line_end;
@@ -659,12 +659,20 @@ extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, s
 }
 #else
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create(FVM_Font *, const char *, size_t,
-                                             const FVM_TextLayoutOptions *, FVM_TextLayout **out)
+extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags, FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return FVM_UNSUPPORTED;
+    return flags & ~FVM_FONT_SHAPE_NO_KERNING ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 #endif
+
+/* Preserve native callers' default HarfBuzz behavior without changing any option layout. */
+extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *options,
+                                             FVM_TextLayout **out)
+{
+    return fvm_text_layout_create_configured(font, text, size, options, 0, out);
+}

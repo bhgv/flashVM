@@ -1,4 +1,4 @@
-Версия разработки: **0.820** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.821** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.821: [Передача кернинга в выбор строк и размещение глифов](doc/TEXT_KERNING.ru.md).
 
 v0.820: [Явное нативное управление парным кернингом](doc/TEXT_KERNING.ru.md).
 

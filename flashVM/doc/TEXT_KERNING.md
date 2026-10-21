@@ -13,6 +13,17 @@ Input UTF-8, direction and font ownership follow the existing font contract;
 font handles must not be shared concurrently. Returned runs are independent.
 No VM, GC, callbacks or device access is involved.
 
+
+## Layout and wrapping (v0.821)
+
+[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L80) accepts the same font shaping flags without
+changing [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L26) or the legacy create API. Every candidate line
+and final script/bidi segment uses identical features. Width, alignment, glyph
+positions and exported paths therefore agree. The result owns all copied paths
+and survives font destruction; mutable fonts still have a single owner. Failures
+clear the result pointer, unknown flags are INVALID_ARGUMENT, and valid NO_FONTS
+requests are UNSUPPORTED. Tabs, styled spans and other old layout limits remain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -25,4 +36,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_shape` | function | [include/flashvm/font.h:62](../include/flashvm/font.h#L62) |
 | `fvm_font_shape_configured` | function | [include/flashvm/font.h:74](../include/flashvm/font.h#L74) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../include/flashvm/text_layout.h#L80) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
 <!-- source-links:end -->

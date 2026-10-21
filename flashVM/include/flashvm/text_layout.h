@@ -73,6 +73,13 @@ extern "C"
                                               const FVM_TextLayoutOptions *, FVM_TextLayout **out);
     /* Destroy text layout. */
     FVM_API void fvm_text_layout_destroy(FVM_TextLayout *);
+    /* Like text_layout_create, with the font shaping feature flags applied consistently
+     * during wrapping and final placement/path export. Zero preserves the legacy API.
+     * Unknown flags are INVALID_ARGUMENT; failures clear out. Layout owns copied glyphs
+     * and paths and may outlive the borrowed font. Font/thread/GC restrictions match create. */
+    FVM_API FVM_Result fvm_text_layout_create_configured(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags,
+                                             FVM_TextLayout **out);
     /* Implement text layout metrics for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *, FVM_TextLayoutMetrics *);
     /* Implement text layout line for this subsystem. */
