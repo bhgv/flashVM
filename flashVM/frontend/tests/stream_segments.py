@@ -15,18 +15,16 @@ from stream_audio import assignment
 def converted(blocks, rate):
     """Integer-only independent output positions, carrying phase within a header, not across it."""
     output = bytearray()
-    first = phase = 0
-    for samples in blocks:
-        while first < len(samples):
-            after = min(first + 1, len(samples) - 1)
-            pair = []
-            for channel in range(2):
-                numerator = samples[first][channel] * (48000 - phase) + samples[after][channel] * phase
-                pair.append((-1 if numerator < 0 else 1) * (abs(numerator) // 48000))
-            output += struct.pack('<hh', *pair)
-            advance, phase = divmod(phase + rate, 48000)
-            first += advance
-        first -= len(samples)
+    samples = [pair for block in blocks for pair in block]
+    count = (len(samples) * 48000 + rate - 1) // rate
+    for number in range(count):
+        first, phase = divmod(number * rate, 48000)
+        after = min(first + 1, len(samples) - 1)
+        pair = []
+        for channel in range(2):
+            numerator = samples[first][channel] * (48000 - phase) + samples[after][channel] * phase
+            pair.append((-1 if numerator < 0 else 1) * (abs(numerator) // 48000))
+        output += struct.pack('<hh', *pair)
     return bytes(output)
 
 

@@ -75,7 +75,7 @@ def movie(rate, channels, packets, samples, latency, compressed):
     body = rect(0, 640, 0, 640)+struct.pack('<HH', 12*256, frame)+tags
     header = (b'CWS' if compressed else b'FWS')+b'\x08'+struct.pack('<I', len(body)+8)
     expected = converted(blocks, rate)+converted([tail], 22050)
-    first = converted(blocks[:1], rate)
+    first = expected[:len(converted(blocks[:1], rate))]
     return header+(zlib.compress(body) if compressed else body), expected, first
 
 

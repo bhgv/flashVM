@@ -433,7 +433,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
             if (!index)
                 audio->stream_source = segment->source;
             result =
-                fvm_swf_stream_converter_init(&segment->converter, segment->source,
+                fvm_swf_stream_converter_init_continuous(&segment->converter, segment->source,
                                               FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS);
             if (result != FVM_OK)
                 return result;

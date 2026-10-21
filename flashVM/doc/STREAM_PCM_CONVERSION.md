@@ -21,7 +21,7 @@ At its last source sample, hold that value through its remaining source interval
 do not interpolate against a different block or across an authored frame gap.
 This explicit boundary policy is deterministic, not a band-limited resampler.
 There is no anti-alias filter, codec, A/V synchronization, queue or device scheduling.
-The desktop player's unmuted root stream playback remains unsupported.
+The desktop player supports the prepared root-stream codec subset described below.
 
 Mono duplicates into stereo. Stereo-to-mono averages toward zero before temporal
 interpolation. Final interpolation truncates toward zero. Double products remain
@@ -114,6 +114,18 @@ The caller-owned converter descriptor gained a field: rebuild all native callers
 The integer oracle covers both policies, all four SWF PCM rates, seven output rates,
 mono/stereo mapping, one/eleven-frame chunks, empty blocks, final clamping and seek.
 This is native deterministic evidence, not audible device acceptance or full SWF support.
+
+
+## Desktop use (v0.804)
+
+The SDL player now selects continuous interpolation independently for each prepared
+root-stream segment. PCM, ADPCM and MP3 use the same normalized S16 path. Header
+changes reset the grid and never lend samples across segments. Frame authorization
+continues to gate output positions: the immutable next block may supply a right
+interpolation neighbor without advancing its converter position or playing its frames.
+The SDL queue oracle flattens each segment and derives every sample position from
+its absolute output index; MP3 expected source samples still come from FFmpeg.
+Dummy SDL verifies submitted bytes, not physical speaker quality or device latency.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

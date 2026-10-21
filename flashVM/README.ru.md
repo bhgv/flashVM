@@ -1,4 +1,4 @@
-Версия разработки: **0.803** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.804** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.804: [Непрерывный потоковый звук в настольном плеере](doc/STREAM_PCM_CONVERSION.ru.md).
 
 v0.803: [Непрерывная интерполяция подготовленного потока](doc/STREAM_PCM_CONVERSION.ru.md).
 
