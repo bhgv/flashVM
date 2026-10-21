@@ -40,6 +40,20 @@ def main():
         cursor = subprocess.run([executable, str(output), '--cursor'], cwd=directory,
                                 check=True, stdout=subprocess.PIPE, universal_newlines=True)
         assert cursor.stdout == result.stdout and output.read_bytes() == expected
+        converted = subprocess.run([executable, str(output), '--convert'], cwd=directory,
+                                   check=True, stdout=subprocess.PIPE, universal_newlines=True)
+        assert converted.stdout.splitlines() == result.stdout.splitlines()[:-1]+['Exported 4 sample frames from 3 blocks.']
+        source = [(-32768,32512),(0,0),(32512,-32768)]
+        values = []
+        for n in range(4):
+            left,phase = divmod(n*44100,48000)
+            right = min(left+1,1) if left<2 else left  # Hold within the encoded block.
+            for channel in range(2):
+                numerator = source[left][channel]*(48000-phase)+source[right][channel]*phase
+                values.append((-1 if numerator<0 else 1)*(abs(numerator)//48000))
+        assert output.read_bytes() == struct.pack('=8h',*values)
+        # Restore native-rate output before its independent raw FFmpeg comparison.
+        subprocess.run([executable,str(output),'--cursor'],cwd=directory,check=True,stdout=subprocess.PIPE)
         if '--ffmpeg' in sys.argv[2:]:
             # Decode independently known raw payload, not a reimplementation of the SWF parser.
             (root/'source.u8').write_bytes(bytes([0, 255, 128, 128, 255, 0]))
@@ -56,6 +70,9 @@ def main():
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
         result = subprocess.run([executable, str(missing), '--cursor'], cwd=directory,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert result.returncode and not missing.exists() and not missing.parent.exists()
+        result = subprocess.run([executable, str(missing), '--convert'], cwd=directory,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
     print('PASS streaming tutorial: exact PCM, frame gap, empty block, replacement and native error cleanup')

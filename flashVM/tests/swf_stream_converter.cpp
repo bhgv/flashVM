@@ -25,9 +25,11 @@ int main()
     FVM_Config config;FVM_Runtime *rt=0;FVM_Context *c=0;
     assert(fvm_config_init(&config)==FVM_OK && fvm_runtime_create(&config,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
     const unsigned long rates[]={5512,11025,22050,44100,48000,96000,192000};
-    for(unsigned source_channels=1;source_channels<=2;++source_channels) {
+    const unsigned long source_rates[]={5512,11025,22050,44100};
+    for(unsigned source_index=0;source_index<4;++source_index) for(unsigned source_channels=1;source_channels<=2;++source_channels) {
+        unsigned long source_rate=source_rates[source_index];
         Bytes tags,empty;
-        tag(tags,45,header(0x3e|(source_channels-1)));
+        tag(tags,45,header(0x32|(source_index<<2)|(source_channels-1)));
         short samples[14];
         for(unsigned i=0;i<14;++i)samples[i]=(short)(i%3==0?-32768:i%3==1?32767:-1234);
         const unsigned sizes[]={1,0,2,1,3};size_t at=0;
@@ -55,8 +57,8 @@ int main()
                 assert(((chunk.flags&FVM_STREAM_CONVERT_EMPTY)!=0) == (sizes[ordinal]==0));
                 for(size_t i=0;i<chunk.frames;++i,++number) {
                     /* Small fixture keeps products within long; grid derives from absolute output index. */
-                    size_t absolute=(number*44100UL)/rate;
-                    unsigned long phase=(number*44100UL)%rate;
+                    size_t absolute=(number*source_rate)/rate;
+                    unsigned long phase=(number*source_rate)%rate;
                     assert(absolute>=base && absolute<base+sizes[ordinal]);
                     size_t right=absolute+1<base+sizes[ordinal]?absolute+1:absolute;
                     for(unsigned channel=0;channel<channels;++channel) {
@@ -75,7 +77,7 @@ int main()
                 }
                 if(chunk.flags&FVM_STREAM_CONVERT_END) { base+=sizes[ordinal];++ordinal; }
             }
-            assert(total_output==(7*rate+44100-1)/44100);
+            assert(total_output==(7*rate+source_rate-1)/source_rate);
             saved=state;old=chunk;written=999;
             assert(fvm_swf_stream_converter_next(&state,1,output,22,&chunk,&written)==FVM_NOT_FOUND && written==999);
             assert(!std::memcmp(&state,&saved,sizeof(state)) && !std::memcmp(&chunk,&old,sizeof(chunk)));

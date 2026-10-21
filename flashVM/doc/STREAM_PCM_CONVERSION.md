@@ -53,7 +53,7 @@ position snapshots while preserving the same borrowed-source lifetime.
 
 ## Validation
 
-Native tests use variable one/two/three-frame blocks, explicit empty blocks,
+Native tests cover all four nominal source rates and variable one/two/three-frame blocks, explicit empty blocks,
 seven output rates including 48000 and 192000, mono/stereo and multiple chunk sizes.
 An independent integer long-division interpolation oracle avoids native floating
 point and 64-bit integer extensions. Tests cover rational duration, skipped blocks,
@@ -66,6 +66,35 @@ cmake --build build-convert --target flashvm_tests_swf_stream_converter \
   flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot_allocation
 ctest --test-dir build-convert -R 'swf_stream_(converter|pcm_reader_api|sound_snapshot_allocation)$' --output-on-failure
 ```
+
+## Native C export and workers (v0.752)
+
+The [annotated swf_stream tutorial](../examples/multimedia/swf_stream/README.md)
+accepts `OUTPUT.pcm --convert`. It copies the source segment, destroys its original
+runtime/context and exports 48000 Hz stereo S16 using direct C file callbacks.
+No replacement output VM is created. The three source frames in two nonempty
+encoded blocks produce four output frames; the intervening movie-frame gap is
+not filled, and the explicit empty block remains visible. First per-block report
+lines describe source lengths; the final exported count describes output frames.
+The unchanged default/`--prepared`/`--cursor` modes still emit native-rate samples.
+
+The independent Python test computes the converted samples with integer weighted
+sums/truncation and compares every output byte. FFmpeg remains an independent
+oracle for original U8-to-S16 decoding, not for this converter's explicit block-edge
+policy. Failed file opens and replacement ownership are exercised in all modes.
+Four real native workers additionally perform 500 conversion rewind/read/EOF
+passes each, at 5512/48000/96000/192000 Hz, while sharing only immutable source bytes.
+Main joins every worker before source close. This proves a bounded Linux native
+thread scenario, not foreign OS/device or real-time audio callback acceptance.
+
+```sh
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --convert
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+Validation at v0.752: 73 selected native regression checks pass (two resource-player launches were rerun after restoring the built executable permission), plus 14 shared-host checks. New converter/reader/snapshot paths, native worker tests and all file-export modes pass ASan/UBSan; whole-VM instrumentation and leak detection are not claimed (host disables leak detection). New implementation and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; foreign binaries and full cross-player builds are not executed. All nine roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

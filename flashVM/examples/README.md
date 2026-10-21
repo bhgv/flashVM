@@ -1632,6 +1632,8 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 <a id="example-multimedia-swf_stream"></a>
 #### swf_stream
 
+`--convert` явно готовит 48000 Hz stereo PCM с переносом рациональной фазы между блоками; [EN](../doc/STREAM_PCM_CONVERSION.md) / [RU](../doc/STREAM_PCM_CONVERSION.ru.md). Это native экспорт, без clock/device scheduling.
+
 Режим `--cursor` экспортирует PCM прямыми C callbacks после уничтожения source VM/runtime; [EN контракт](../doc/STREAM_PCM_READER.md) / [RU](../doc/STREAM_PCM_READER.ru.md). Сравниваются все значения с live и prepared путями.
 
 Исполняемый C89 учебник: [README](multimedia/swf_stream/README.md), включая `--prepared`: независимый индекс PCM после уничтожения исходной VM.

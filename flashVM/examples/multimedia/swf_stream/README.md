@@ -216,6 +216,33 @@ No socket/audio device or worker is started by this tutorial. The separate
 native thread test demonstrates independent cursors; full player scheduling,
 codec, audible-device and reference-platform acceptance remains open.
 
+| API | Conversion ownership / Владение преобразованием |
+| --- | --- |
+| [`fvm_swf_stream_converter_init`](../../../include/flashvm/swf_stream_convert.h#L47) | Borrow immutable snapshot and copy explicit output rate/channels without allocation. Snapshot lives until caller quiesces conversion. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
+| [`fvm_swf_stream_converter_next`](../../../include/flashvm/swf_stream_convert.h#L58) | Produce bounded S16 in caller storage; rational phase survives blocks, no VM/I/O. Error/EOF preserves output and state. [Contract](../../../doc/STREAM_PCM_CONVERSION.md). |
+
+## Explicit conversion / Явное преобразование
+
+`OUTPUT.pcm --convert` uses the native converter at 48000 Hz stereo after source
+VM teardown. Rational phase survives the two nonempty source blocks and the empty
+block marker. It exports four stereo pairs (16 raw native-endian bytes), without
+filling the missing movie frame. Per-block report lines retain source lengths;
+final stdout is `Exported 4 sample frames from 3 blocks.` Caller owns the file,
+source snapshot and converter until completion. No device or real-time scheduling.
+The converter holds each block's final value; linear interpolation has no
+anti-alias filter. [Full EN contract](../../../doc/STREAM_PCM_CONVERSION.md).
+
+`OUTPUT.pcm --convert` после уничтожения source VM выдаёт 48000 Hz stereo:
+четыре стереопары, 16 raw native-endian байт. Фаза переносится между блоками;
+пропуск movie frame не заполняется. Строки по блокам показывают source lengths,
+итог — четыре output frames из трёх блоков. Caller владеет FILE/snapshot/converter
+до завершения. Устройства и real-time scheduling нет; на конце блока значение
+удерживается, anti-alias filter отсутствует. [RU контракт](../../../doc/STREAM_PCM_CONVERSION.ru.md).
+
+```sh
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --convert
+```
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -235,6 +262,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |

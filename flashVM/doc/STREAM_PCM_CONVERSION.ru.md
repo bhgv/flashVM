@@ -51,7 +51,7 @@ bytes. Самоссылок нет: копирование позиции доп
 
 ## Проверка
 
-Native тест использует блоки из одного/двух/трёх frames, пустые блоки, семь
+Native тест проверяет все четыре source rates, блоки из одного/двух/трёх frames, пустые блоки, семь
 output rates (включая 48000/192000), mono/stereo и разные размеры chunks.
 Независимый целочисленный эталон long division не использует native float или
 64-bit extensions. Проверяются duration, skipped blocks, EOF/seek/capacity
@@ -64,6 +64,34 @@ cmake --build build-convert --target flashvm_tests_swf_stream_converter \
   flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot_allocation
 ctest --test-dir build-convert -R 'swf_stream_(converter|pcm_reader_api|sound_snapshot_allocation)$' --output-on-failure
 ```
+
+## Native C экспорт и worker (v0.752)
+
+[Прокомментированный swf_stream](../examples/multimedia/swf_stream/README.md)
+принимает `OUTPUT.pcm --convert`: копирует segment, уничтожает исходные
+runtime/context и экспортирует 48000 Hz stereo S16 через прямые C file callbacks.
+Новая output VM не создаётся. Три source frames в двух непустых блоках дают
+четыре output frames; пропущенный movie frame не заполняется, явный пустой блок
+показывается отдельно. Первые строки отчёта описывают source lengths, итоговая —
+output count. Default/`--prepared`/`--cursor` сохраняют прежние native-rate байты.
+
+Независимый Python тест вычисляет converted samples через целочисленные weighted
+sums/truncation и сравнивает каждый байт. FFmpeg остаётся отдельным эталоном
+исходного U8-to-S16 decoding, а не явной block-edge политики этого converter.
+Ошибки открытия и владение перезаписываемым файлом проверяются во всех режимах.
+Четыре настоящих native worker дополнительно выполняют по 500 циклов conversion
+rewind/read/EOF на 5512/48000/96000/192000 Hz, деля только immutable source bytes.
+Main присоединяет всех до source close. Это ограниченная Linux native thread
+проверка, не foreign OS/device или real-time audio callback acceptance.
+
+```sh
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --convert
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+Проверка v0.752: прошли 73 выбранные native проверки (два resource-player запуска повторены после восстановления права исполнения собранного файла), а также 14 shared-host. Новые converter/reader/snapshot пути, native worker и все file-export режимы прошли ASan/UBSan; вся VM не инструментирована, leak detection отключён хостом. Новый implementation и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign binaries и полный cross-player не запускались. Все девять стадий открыты.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
