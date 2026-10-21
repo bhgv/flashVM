@@ -1,4 +1,7 @@
 /* Tutorial: inspect root streaming PCM blocks and send bounded copies through a real stdio bridge. */
+#include "flashvm/movieclip.h" /* Actual owner-thread timeline authorizes native PCM frame gates. */
+#include "flashvm/standard.h" /* Install MovieClip methods for explicit timeline mode. */
+#include "flashvm/gc.h" /* Pin the timeline clip across explicit owner safe points. */
 #include "flashvm/swf_stream_convert.h" /* Explicit rational output-rate conversion, still without device scheduling. */
 #include "flashvm/swf_stream_pcm.h" /* Sequential native reader, independent of a live VM or output registration. */
 #include "flashvm/swf_stream_sound.h" /* Import stream metadata, PCM conversion and channel output. */
@@ -102,6 +105,8 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
 { /* Begin explicit VM and host ownership. */
     FVM_Config config; /* Initialize before acquiring runtime ownership. */
     FVM_Runtime *runtime = 0; /* Own runtime after successful creation. */
+    FVM_Object *clip = 0; /* [GC:] Optional managed timeline root, pinned before export. */
+    int clip_pinned = 0; /* [GC:] Cleanup owns exactly one successful pin. */
     FVM_Context *context = 0; /* Own canonical FWS bytes and channel registrations. */
     FVM_SWFStreamSoundSnapshot *snapshot = 0; /* Own optional prepared source independently of both VMs. */
     FVM_AudioChannel *channel = 0; /* Borrow the context-owned registration. */
@@ -112,7 +117,8 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     StreamFile host; /* Keep output userdata alive through context destruction. */
     short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Bound caller-owned native-S16 output. */
     size_t streams, blocks, ordinal, first, frames, written, total = 0; /* Distinguish ordinals, sample frames and channel values. */
-    int queue_mode = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--queue"); /* Native FIFO before irreversible file output. */
+    int timeline_mode = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--timeline"); /* Authorize from actual MovieClip frames. */
+    int queue_mode = timeline_mode || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--queue")); /* Native FIFO before irreversible file output. */
     int convert = queue_mode || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--convert")); /* Explicit 48000 Hz stereo native export. */
     int cursor = convert || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--cursor")); /* Direct native export after original VM destruction. */
     int prepared = cursor || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--prepared")); /* Select explicit native indexing before any side effects. */
@@ -120,7 +126,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     memset(&host, 0, sizeof(host)); /* Make partial-setup and failed-write cleanup safe. */
     if (argc != TUTORIAL_STREAM_ARGUMENT_COUNT && !prepared) /* Require an explicit replaceable output path. */
     { /* Keep no-argument smoke runs side-effect free. */
-        printf("Usage: %s OUTPUT.pcm [--prepared|--cursor|--convert|--queue]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
+        printf("Usage: %s OUTPUT.pcm [--prepared|--cursor|--convert|--queue|--timeline]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
         return 0; /* No VM, file or device ownership exists yet. */
     } /* Finish explicit output selection. */
     host.path = argv[1]; /* Borrow the caller-selected path. */
@@ -133,23 +139,30 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     info.struct_size = sizeof(info); /* Declare the exact copied-header ABI. */
     if (!streams || !checked(fvm_swf_stream_sound_at(context, 0, &info), "stream_at") || !checked(fvm_swf_stream_sound_block_count(context, 0, &blocks), "block_count")) /* Select the fixture's first header segment. */
         goto cleanup; /* Keep missing/header errors visible. */
-    if (prepared) /* Demonstrate that the index does not borrow the original VM. */
+    if (prepared) /* Prepare native storage; only timeline mode retains its separate live owner. */
     { /* Prepare before destroying source ownership. */
         if (!checked(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot), "snapshot_open")) /* Copy source bytes and block index once. */
             goto cleanup; /* Preserve ordinary allocation errors. */
-        fvm_context_destroy(context); /* Release canonical movie storage. */
-        context = 0; /* Keep partial reacquisition cleanup safe. */
-        fvm_runtime_destroy(runtime); /* Prove no runtime pointer is retained by the snapshot. */
-        runtime = 0; /* Mark the old owner released. */
-        if (!cursor && (!checked(fvm_runtime_create(&config, &runtime), "output_runtime") || !checked(fvm_context_create(runtime, &context), "output_context"))) /* Create an unloaded VM only for output registration. */
-            goto cleanup; /* The independent snapshot still has its own cleanup. */
-        if (!checked(fvm_swf_stream_sound_snapshot_info(snapshot, &info), "snapshot_info") || !checked(fvm_swf_stream_sound_snapshot_block_count(snapshot, &blocks), "snapshot_count")) /* Obtain copied metadata after original VM teardown. */
-            goto cleanup; /* No movie has been loaded into the output VM. */
+        if (!timeline_mode) { /* Native-only modes prove independence from the original VM. */
+            fvm_context_destroy(context); /* Release canonical movie storage. */
+            context = 0; /* Keep partial reacquisition cleanup safe. */
+            fvm_runtime_destroy(runtime); /* Prove no runtime pointer is retained by the snapshot. */
+            runtime = 0; /* Mark the old owner released. */
+            if (!cursor && (!checked(fvm_runtime_create(&config, &runtime), "output_runtime") || !checked(fvm_context_create(runtime, &context), "output_context"))) /* Create an unloaded VM only for output registration. */
+                goto cleanup; /* The independent snapshot still has its own cleanup. */
+        } /* Timeline mode keeps its separate owner-thread playhead alive until export ends. */
+        if (!checked(fvm_swf_stream_sound_snapshot_info(snapshot, &info), "snapshot_info") || !checked(fvm_swf_stream_sound_snapshot_block_count(snapshot, &blocks), "snapshot_count")) /* Query independent source metadata, even when timeline owner remains alive. */
+            goto cleanup; /* Reject snapshot metadata failure before any output is opened. */
     } /* Finish independent source preparation. */
     if (info.channels != TUTORIAL_STREAM_CHANNELS) /* Require the layout promised by the bounded stereo buffer. */
         goto cleanup; /* Do not silently reinterpret channel geometry. */
+    if (timeline_mode) { /* Root import explicitly omits stream execution; native output owns PCM delivery. */
+        if (!checked(fvm_standard_install(context), "timeline standard") || !checked(fvm_movieclip_load_swf_ex(context, movie, sizeof(movie), "_root", FVM_SWF_IMPORT_MUTE_ROOT_STREAMS, &clip), "timeline import")) goto cleanup; /* Exact same source as snapshot. */
+        if (!checked(fvm_gc_pin(context, clip), "timeline pin")) goto cleanup; /* [GC:] Root clip/library across host safe points. */
+        clip_pinned = 1; /* [GC:] Unpin before destroying the owner context. */
+    } /* No audio worker callback enters the VM. */
     if (cursor) { /* This path never recreates a runtime/context or audio-channel registration. */
-        if (!checked(queue_mode ? export_queue(snapshot, &host, &total) : export_cursor(snapshot, &host, &total, convert), "native cursor export")) goto cleanup; /* Bounded C callbacks only. */
+        if (!checked(queue_mode ? export_queue(snapshot, &host, &total, timeline_mode ? context : 0, clip) : export_cursor(snapshot, &host, &total, convert), "native cursor export")) goto cleanup; /* Bounded C callbacks only. */
         printf("Exported %lu sample frames from %lu blocks.\n", (unsigned long)total, (unsigned long)blocks); /* Identical PCM and human report. */
         exit_code = 0; goto cleanup; /* Close snapshot only after the reader is quiesced. */
     } /* Live and older prepared modes retain their registered-channel demonstration. */
@@ -191,6 +204,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     printf("Exported %lu sample frames from %lu blocks.\n", (unsigned long)total, (unsigned long)blocks); /* Expect three stereo frames from three encoded blocks. */
     exit_code = 0; /* All parsing, decoding, host writes and explicit stopping succeeded. */
 cleanup: /* Preserve userdata until all context-owned callbacks finish. */
+    if (clip_pinned) fvm_gc_unpin(context, clip); /* [GC:] Release the retained timeline root before context teardown. */
     if (context) /* Destroy only an acquired context. */
         fvm_context_destroy(context); /* Stop remaining active output before host state leaves scope. */
     if (host.file) /* Recover a native FILE left by a failed write outside acknowledged active state. */

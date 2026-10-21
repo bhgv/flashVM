@@ -264,3 +264,26 @@ extern "C" FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *s, size_t 
         return FVM_ERROR;
     }
 }
+
+/* Resolve nonsequential owner navigation without exposing source block ordinals to the host. */
+extern "C" FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *s, unsigned int frame)
+{
+    if (!stream_output(s) || !frame)
+        return FVM_INVALID_ARGUMENT;
+    size_t first = 0, last = s->converter->block_count;
+    while (first < last)
+    {
+        size_t middle = first + (last - first) / 2;
+        FVM_SWFStreamSoundBlock block;
+        block.struct_size = sizeof(block);
+        FVM_Result result =
+            fvm_swf_stream_sound_snapshot_block_at(s->converter->snapshot, middle, &block);
+        if (result != FVM_OK)
+            return result;
+        if (block.frame < frame)
+            first = middle + 1;
+        else
+            last = middle;
+    }
+    return fvm_swf_stream_output_seek(s, first, 0);
+}

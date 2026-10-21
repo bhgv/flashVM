@@ -76,6 +76,11 @@ extern "C"
      * Leave queue paused; caller explicitly primes/resumes. EOF seek supported. */
     FVM_API FVM_Result fvm_swf_stream_output_seek(FVM_SWFStreamOutput *, size_t block,
                                                   size_t first);
+    /* Map a positive movie frame to the first indexed source block at/after it, then perform
+     * staged pause/clear/seek with phase zero. Gaps wait for a later block; beyond the last
+     * block seeks EOF. This is a prefix discard policy, not reference Flash seek emulation.
+     * Binary metadata lookup only; errors before seek cause no backend effects. */
+    FVM_API FVM_Result fvm_swf_stream_output_seek_frame(FVM_SWFStreamOutput *, unsigned int frame);
 #ifdef __cplusplus
 }
 #endif

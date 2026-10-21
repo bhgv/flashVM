@@ -33,6 +33,7 @@ int main()
     assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_NOT_FOUND && output.info.eof);
     assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_OK && !output.info.eof && output.info.paused);
     assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==2);
+    assert(fvm_swf_stream_output_seek_frame(&output,1)==FVM_OK);
     fvm_swf_stream_sound_snapshot_close(snapshot);allowance=-1;
     return 0;
 }

@@ -54,6 +54,8 @@ def main():
         assert output.read_bytes() == struct.pack('=8h',*values)
         queued = subprocess.run([executable,str(output),'--queue'],cwd=directory,check=True,stdout=subprocess.PIPE,universal_newlines=True)
         assert queued.stdout == converted.stdout and output.read_bytes() == struct.pack('=8h',*values)
+        timeline = subprocess.run([executable,str(output),'--timeline'],cwd=directory,check=True,stdout=subprocess.PIPE,universal_newlines=True)
+        assert timeline.stdout == converted.stdout and output.read_bytes() == struct.pack('=8h',*values)
         # Restore native-rate output before its independent raw FFmpeg comparison.
         subprocess.run([executable,str(output),'--cursor'],cwd=directory,check=True,stdout=subprocess.PIPE)
         if '--ffmpeg' in sys.argv[2:]:
@@ -78,6 +80,8 @@ def main():
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
         result = subprocess.run([executable,str(missing),'--queue'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        assert result.returncode and not missing.exists() and not missing.parent.exists()
+        result = subprocess.run([executable,str(missing),'--timeline'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
     print('PASS streaming tutorial: exact PCM, frame gap, empty block, replacement and native error cleanup')
     return 0

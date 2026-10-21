@@ -1,10 +1,12 @@
-Development version: **0.755** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.755 ` and an English description. Increase the subversion before each
+Development version: **0.756** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.756 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.756: [Drive native stream frame gates from an actual MovieClip](doc/STREAM_PCM_OUTPUT.md).
 
 v0.755: [Authorize native stream output by actual movie frame](doc/STREAM_PCM_OUTPUT.md).
 

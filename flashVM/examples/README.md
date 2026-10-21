@@ -1632,6 +1632,8 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 <a id="example-multimedia-swf_stream"></a>
 #### swf_stream
 
+`--timeline` разрешает native PCM по настоящему MovieClip _currentframe, проверяя stop/play и GC safe points; [EN](../doc/STREAM_PCM_OUTPUT.md) / [RU](../doc/STREAM_PCM_OUTPUT.ru.md). Нет автоматического desktop stream playback.
+
 `--queue` пропускает converted PCM через собственную FIFO и отдельный настоящий file consumer; [C include](multimedia/swf_stream/queue.inc), [EN](../doc/STREAM_PCM_OUTPUT.md) / [RU](../doc/STREAM_PCM_OUTPUT.ru.md). Producer retries не повторяют частичные file writes.
 
 `--convert` явно готовит 48000 Hz stereo PCM с переносом рациональной фазы между блоками; [EN](../doc/STREAM_PCM_CONVERSION.md) / [RU](../doc/STREAM_PCM_CONVERSION.ru.md). Это native экспорт, без clock/device scheduling.

@@ -127,6 +127,72 @@ Native тест проверяет gate zero, пропуски frames, неуд�
 в FIFO. Allocation injection проверяет query/gated pump после уничтожения VM/runtime.
 Полная sound timeline/device/reference приёмка остаётся открытой.
 
+## Настоящий MovieClip на owner (v0.756)
+
+[C swf_stream](../examples/multimedia/swf_stream/README.md) добавляет
+`OUTPUT.pcm --timeline`. В отличие от native-only режимов он сохраняет source
+context и импортирует тот же movie как pinned root с явным пропуском stream
+исполнения. PCM хранится в независимом snapshot/FIFO. Хост продвигает MovieClip,
+читает его настоящий _currentframe на owner и разрешает этот номер producer.
+Host ticks не подменяют source frame. При контролируемом stop два настоящих ticks
+оставляют frame 1 и не добавляют повторный/будущий PCM. Play/resume явные.
+Пропуск source frame ждёт фактического позднего кадра; empty markers сохраняют
+свою границу. Root/library pinned через owner GC steps; unpin выполняется до
+context destruction, после quiescence producer.
+
+Файл/отчёт точно совпадают с `--queue`/`--convert`: четыре converted stereo frames
+и явный пустой блок. Последовательный file tutorial проверяет authorization/
+ownership, не воспроизведение по часам. Audio device, worker, окно и автоматический
+desktop stream playback не устанавливаются.
+
+Отдельный raw SWF integration test задаёт каждому кадру AVM1 assignment. Он
+запускает interpreter и доступный native JIT, проверяет visited values и требует
+положительный native_entries в JIT режиме. Проверены реальные stop/play ticks,
+source gaps, GC safe points и gotoAndStop назад. Возврат сопровождается native
+seek/clear перед priming. Прямой seek к frame 3 начинает новую rational grid:
+его отдельная output duration намеренно отличается от непрерывного forward grid;
+тест проверяет reset, а не предполагает непрерывность.
+
+Это ограниченная owner integration, не reference-player stream semantics,
+child/multi-segment scheduling, stream/event mixing, codec/DAC/A/V sync.
+Немутое desktop root stream playback пока не поддерживается.
+
+```sh
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --timeline
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+Source context, clip/prototypes и все fvm_object_*/MovieClip/GC вызовы принадлежат
+только VM owner. Backend callbacks/native audio workers получают скопированное
+scalar authorization, не входят в VM и не заимствуют clip pointers. Хост разрешает
+PCM лишь после нужной safe point собственных frame actions/transitions: ошибка
+кадра/скрипта может оставить уже совершённые эффекты.
+
+## Явный source seek по movie frame
+
+[`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L83) принимает положительный movie frame, бинарным
+поиском выбирает первый блок сегмента с frame не меньше запрошенного и вызывает
+прежний staged pause/clear/seek. Пропуск выбирает поздний блок, который gate всё
+равно удерживает до разрешения. После последнего блока выбирается source EOF.
+Rational grid начинается с phase zero. Decode/allocation/VM lookup не нужны;
+неверный ноль/reentry дают INVALID_ARGUMENT до backend effects.
+
+Gate — верхняя граница, не exact-frame selector: увеличение после перехода вперёд
+разрешит и старые ещё не переданные блоки. Если пропущенный звук надо отбросить,
+нелинейные forward/backward переходы MovieClip сопровождаются явным source seek/
+clear. Helper задаёт именно prefix-discard policy, не все reference Flash stream
+seek semantics и не выбор другого header segment. Ошибки pause/clear сохраняют
+staged контракт block seek. Настоящий interpreter/native-JIT тест использует
+helper для gotoAndStop.
+
+| API | Владение и ошибки |
+| --- | --- |
+| [`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L83) | Без VM/allocation находит первый indexed block >= positive frame, затем pause/clear/reset epoch. Пропуск ждёт, позиция после конца даёт EOF. Неверные metadata/args не вызывают backend effects; поздние ошибки callbacks следуют staged seek контракту. |
+
+Проверка v0.756: прошли 77 выбранных native проверок (один ранее собранный MP3 тест повторён после восстановления права исполнения), а также 14 shared-host. Обновлённые frame-seek/gating/C89 контракты прошли финальный focused набор. ASan/UBSan проверяет native output/reader/snapshot и настоящую MovieClip authorization с interpreter/native-JIT actions; вся VM не инструментирована, leak detection отключён хостом. Все шесть export режимов совпадают по PCM; minimal build работает без desktop frontend/device. Новые C++98/C89 implementation/consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution/full cross-player не заявляются. Все девять стадий открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -144,4 +210,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:53](../include/flashvm/swf_stream_output.h#L53) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
 | `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:77](../include/flashvm/swf_stream_output.h#L77) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:83](../include/flashvm/swf_stream_output.h#L83) |
 <!-- source-links:end -->

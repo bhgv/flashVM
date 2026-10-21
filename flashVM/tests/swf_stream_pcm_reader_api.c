@@ -18,7 +18,8 @@ int main(void)
         fvm_swf_stream_output_next_frame(0,0) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_output_pause(0,0) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_output_info(0,0) != FVM_INVALID_ARGUMENT ||
-        fvm_swf_stream_output_seek(0,0,0) != FVM_INVALID_ARGUMENT) return 1;
+        fvm_swf_stream_output_seek(0,0,0) != FVM_INVALID_ARGUMENT ||
+        fvm_swf_stream_output_seek_frame(0,0) != FVM_INVALID_ARGUMENT) return 1;
     chunk.struct_size = sizeof(chunk);
     if (fvm_swf_stream_pcm_reader_init(&reader, 0) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_pcm_reader_next(0, 1, 0, 0, &chunk, &written) != FVM_INVALID_ARGUMENT ||

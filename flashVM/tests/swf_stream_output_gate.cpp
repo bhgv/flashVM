@@ -48,5 +48,14 @@ int main()
     assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_OK && !queue.frames);
     assert(fvm_swf_stream_output_next_frame(&output,&frame)==FVM_OK && frame==1);
     assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==1);
+    before=converter;writes=queue.writes;
+    assert(fvm_swf_stream_output_seek_frame(&output,0)==FVM_INVALID_ARGUMENT && !std::memcmp(&before,&converter,sizeof(before)) && queue.writes==writes);
+    assert(fvm_swf_stream_output_seek_frame(&output,2)==FVM_OK);
+    assert(fvm_swf_stream_output_next_frame(&output,&frame)==FVM_OK && frame==3);
+    assert(fvm_swf_stream_output_pump_until(&output,2,&accepted)==FVM_NOT_FOUND && !accepted);
+    assert(fvm_swf_stream_output_seek_frame(&output,4)==FVM_OK);
+    assert(fvm_swf_stream_output_next_frame(&output,&frame)==FVM_OK && frame==4);
+    assert(fvm_swf_stream_output_seek_frame(&output,5)==FVM_OK);
+    frame=77;assert(fvm_swf_stream_output_next_frame(&output,&frame)==FVM_NOT_FOUND && frame==77);
     fvm_swf_stream_sound_snapshot_close(snapshot);return 0;
 }
