@@ -9,7 +9,7 @@ import tempfile
 import wave
 import zlib
 from smoke import rect, tag
-from stream_segments import converted
+from stream_segments import converted, movie as pcm_movie
 
 
 def block(width, channels, packets, initial):
@@ -67,6 +67,25 @@ def main():
                         events = [line.split()[1] for line in report.splitlines() if len(line.split()) == 5 and line.split()[0].isdigit()]
                         assert events.count('stream_segment') == 1 and events.count('clear') == 1, report
                         assert 'truncated=0 dropped_events=0' in report
+    # Force host deadlines far ahead of the audio device: finite completion must preserve PCM.
+    with tempfile.TemporaryDirectory(prefix='flashvm-fast-stream-tail-') as directory:
+        root = Path(directory)
+        adpcm_wire, adpcm_expected = movie(4,1,False)
+        pcm_wire, pcm_expected = pcm_movie(False)
+        _, first_samples = block(4,1,1,200)
+        for name, wire, expected, frames in [('adpcm',adpcm_wire,adpcm_expected,4),
+                                              ('pcm',pcm_wire,pcm_expected,8),
+                                              ('future-gate',adpcm_wire,converted([first_samples],44100),1)]:
+            source = root/(name+'.swf')
+            source.write_bytes(wire)
+            base = root/name
+            env = dict(os.environ,SDL_VIDEODRIVER='dummy',SDL_RENDER_DRIVER='software',SDL_AUDIODRIVER='dummy',FVM_AUDIO_TRACE=str(base))
+            result = subprocess.run([sys.argv[1],'--interpreter','--frames',str(frames),'--fps','1000',str(source)],env=env,capture_output=True,text=True,timeout=10)
+            assert result.returncode == 0,result.stderr
+            with wave.open(str(base)+'.wav') as audio:
+                actual = audio.readframes(audio.getnframes())
+            assert actual == expected,(name,len(actual),len(expected))
+        print('PASS fast finite PCM/ADPCM completion and exclusion of unauthorized future frames')
     if '--ffmpeg' in sys.argv[2:]:
         # Decode the bundled encoder-generated resource independently, one FLV audio tag per block.
         with tempfile.TemporaryDirectory(prefix='flashvm-adpcm-tutorial-oracle-') as directory:

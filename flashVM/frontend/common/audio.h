@@ -16,6 +16,8 @@
 #define FVM_DESKTOP_AUDIO_RESUME_QUANTA 2U /* Prime at least two native blocks before resume. */
 #define FVM_DESKTOP_AUDIO_PUMPS 8U         /* Bound work per worker iteration. */
 #define FVM_DESKTOP_AUDIO_WAIT 5 /* Worker interval and responsive main-thread event wait, ms. */
+#define FVM_DESKTOP_AUDIO_TAIL_MS                                                                  \
+    2000UL /* Extra finite-run completion budget after the final frame deadline. */
 #define FVM_DESKTOP_AUDIO_MAX_SEGMENTS                                                             \
     64U /* Bound owner-side snapshot preparation and seek work. */
 /* Native immutable source ownership and an independently resettable conversion grid per header. */
@@ -65,9 +67,9 @@ extern "C"
 {
 #endif
     /* Validate supported unmuted root stream policy before native presentation/device acquisition.
-     * Up to MAX_SEGMENTS PCM or whole-packet ADPCM headers without root StartSound; other codec/mixed/excess
-     * UNSUPPORTED. Owner only; may allocate/decode temporary ADPCM; no device or callbacks. Core stream alignment
-     * errors propagate. */
+     * Up to MAX_SEGMENTS PCM or whole-packet ADPCM headers without root StartSound; other
+     * codec/mixed/excess UNSUPPORTED. Owner only; may allocate/decode temporary ADPCM; no device or
+     * callbacks. Core stream alignment errors propagate. */
     FVM_Result fvm_desktop_audio_validate(FVM_Context *);
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
      * Changed navigation token or pending/backward/skipped frame clears old FIFO and resets phase;
@@ -90,6 +92,11 @@ extern "C"
     FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *, FVM_SWFSoundOutputInfo *);
     /* Stream-only copied observation under producer mutex; invalid/wrong-size preserves output. */
     FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
+    /* Copy whether a running stream has authorized PCM/markers or accepted queued frames left.
+     * Inactive future sources are inspected from their initial block; no decoding or VM access.
+     * No audio, suspension, movie stop or cancellation reports zero. Query is mutex-serialized;
+     * errors preserve output. Owner must retain initialized audio throughout the call. */
+    FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *, int *);
     /* Owner safe point: detach sound delivery and join/release old root audio while keeping
      * cumulative counters. Context/window remain alive. Repeated clearing is safe. */
     FVM_Result fvm_desktop_audio_clear(FVM_Context *, FVM_DesktopAudio *);

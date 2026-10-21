@@ -8,6 +8,44 @@ event/stream явно отклоняются при preflight до окна/ус
 плеер отдельно готовит snapshot того же источника и явно отключает stream-контролы в
 модели сцены.
 
+## Ограниченное завершение конечного запуска (v0.765)
+
+При `--frames`/`--once` плеер сохраняет длительность последнего кадра, затем ждёт
+завершения уже разрешённых потоковых блоков и принятого PCM в очереди.
+[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L99) копирует условие под mutex producer, не производит
+PCM, не выделяет память, не декодирует, не продвигает фильм и не разрешает будущие
+кадры. Пустые неактивные заголовки пропускаются ограниченным обходом; последующие
+источники проверяются с блока ноль, поскольку worker перезапускает их при переходе.
+При ошибке аргумент результата сохраняется; ошибка worker/backend передаётся наружу.
+
+Без потока, при host pause, авторском stop или StopSounds дополнительное ожидание
+не требуется. Для event sound сохраняется прежняя политика последнего кадра.
+Будущий блок за пределами frame gate не удерживает конечный запуск. Завершение
+включает опустошение FIFO, а не только EOF/передачу данных; это всё ещё не часы DAC.
+
+Дополнительный срок — [FVM_DESKTOP_AUDIO_TAIL_MS](../frontend/common/audio.h#L19) (2000 мс) после более позднего
+из планового конца последнего кадра и входа в tail. Этот кооперативный срок не прерывает заблокированный SDK/host callback. Если работа осталась,
+воспроизведение завершается ошибкой `stream completion deadline exceeded` с обычным
+join/cleanup. Ошибка очереди также даёт отказ. Поэтому слишком длинный либо
+застрявший поток может потребовать другого предела кадров/частоты, но не обрезается
+с успешным статусом по окончании срока. Audio-driven pacing, общая коррекция
+seek/drift и time stretching этим не реализованы.
+
+В ожидании продолжаются owner TURN и события окна: STOP, закрытие, смена корня,
+пауза и уход в фон могут прекратить/пропустить дополнительное ожидание. PCM остаётся
+на worker. Публичные дескрипторы host и структуры ABI VM не меняются. Запись ниже
+о потере хвоста при голодании относится к прежней v0.764: безусловный выход после
+планового кадра заменён ограниченным завершением.
+
+[stream_pending.cpp](../frontend/tests/stream_pending.cpp) с настоящей очередью и остановленным worker проверяет gate,
+пустой/активный/следующий источник, неизменность позиции, принятую очередь, pause,
+cancel и сохранение результата при ошибке. [tail_stream.py](../frontend/tests/tail_stream.py) запускает реальный
+owner loop с протокольным presenter: успех в 180 мс, закрытие до 130 мс, ошибку
+наблюдения и точный timeout в 2100 мс после кадра длиной 100 мс. Это не device-тест. CLI-оракул дополнительно задаёт `--fps 1000` для PCM/ADPCM
+и предел в один кадр: весь разрешённый PCM должен завершиться без будущих блоков.
+Прежняя проверка фоновой паузы сохранена; её fake endpoint теперь реализует текущие
+наблюдения аудио и использует только булевый, не разыменовываемый маркер устройства.
+
 ## Целые ADPCM-пакеты в плеере (v0.764)
 
 Корневой ADPCM теперь принимается вместе с PCM в прежнем лимите 64 заголовков,
@@ -16,7 +54,7 @@ event/stream явно отклоняются при preflight до окна/ус
 и другие кодеки остаются неподдержанными. Muted/raw-инспекция сохраняет непрозрачные
 байты: при mute декодирования и снимков нет.
 
-До открытия окна/устройства `fvm_desktop_audio_validate` временно подготавливает
+До открытия окна/устройства [fvm_desktop_audio_validate](../frontend/common/audio.h#L73) временно подготавливает
 и закрывает ADPCM-снимки. Поэтому предварительная проверка теперь может выделять
 память/декодировать и возвращать OUT_OF_MEMORY; ошибки заполнения и неподдержанной
 геометрии передаются вызывающему. При последующем открытии аудио повторно проверяется
@@ -31,7 +69,7 @@ frame gate, продолжение очереди, stop/pause/navigation и ос
 player-host ABI не меняются. [Готовый ADPCM-фильм и генератор](../examples/player/pcm_stream/README.ru.md)
 включены в каталог примеров; FFmpeg нужен только для генерации/независимой сверки.
 
-`stream_adpcm.py` независимо упаковывает постоянные differential codes для восьми
+[stream_adpcm.py](../frontend/tests/stream_adpcm.py) независимо упаковывает постоянные differential codes для восьми
 сочетаний ширины/каналов и сравнивает каждый принятый сэмпл после целочисленной
 рациональной конверсии. Настоящий CLI проверяется FWS/CWS, interpreter/native JIT
 и переходом к PCM-заголовку (32 запуска). Необязательный `--ffmpeg` сверяет все
@@ -48,14 +86,14 @@ stop/play, GC, StopSounds и переходами назад/на тот же к
 
 ## Последовательность заголовков (v0.761)
 
-Плеер принимает до [FVM_DESKTOP_AUDIO_MAX_SEGMENTS](../frontend/common/audio.h#L19) (64) проверенных PCM-заголовков,
+Плеер принимает до [FVM_DESKTOP_AUDIO_MAX_SEGMENTS](../frontend/common/audio.h#L21) (64) проверенных PCM-заголовков,
 по-прежнему без root StartSound. Каждый должен иметь PCM_NATIVE или PCM_LE;
 сжатые кодеки, event/stream mixing и превышение лимита отклоняются до окна/device.
 Mute проверяет произвольное число индексированных root segments без snapshots и
 аудиоустройства. Этот предел ограничивает startup/seek, не размер пакета 9P и не
 геометрию сетевого media channel.
 
-Владелец выделяет обнулённый массив [FVM_DesktopStreamSegment](../frontend/common/audio.h#L22) и готовит snapshots/
+Владелец выделяет обнулённый массив [FVM_DesktopStreamSegment](../frontend/common/audio.h#L24) и готовит snapshots/
 converters до старта worker. Каждая запись владеет snapshot и отдельной phase grid.
 При частичном отказе close сначала join worker, закрывает каждую ненулевую запись
 один раз и освобождает массив; stream_source теперь только borrowed alias первой
@@ -170,12 +208,12 @@ labels/неверные targets token не публикуют. [movieclip_playba
 
 | Операция | Контракт |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L71) | Owner-thread проверка количества, формата и event-политики. OK без stream, UNSUPPORTED для неподдержанных сочетаний, ошибки структуры распространяются. Нет native device или полученного владения. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L80) | Получает snapshot/converter/FIFO/device/mutex/worker и stop binding при наличии звука; pause только 0/1. После любой частичной ошибки вызывайте close. Snapshot независим от VM, но stop binding отсоединяется до context destroy. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L76) | Владелец читает playback/navigation token удерживаемого клипа своего контекста и публикует скаляры под mutex. Ошибки query/seek/backend возвращаются; pause/clear имеют staged effects без rollback. Worker в VM не входит. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L92) | Копирует stream-only [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) под mutex. Ошибки сохраняют дескриптор; возможны ожидание lock/backend. Это FIFO dequeue position, не DAC/movie sync. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L87) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L85) | Независимая пауза хоста; нет очистки данных. Tick проверяет worker error latch. Хост вызывает последовательно; worker сериализован внутри. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L95) / [fvm_desktop_audio_close](../frontend/common/audio.h#L97) | Владелец отсоединяет binding/callback, join worker, закрывает snapshot и device, уничтожает mutex. Clear сохраняет счётчики. Context/userdata должны жить до detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L73) | Owner-thread проверка количества, формата и event-политики. OK без stream, UNSUPPORTED для неподдержанных сочетаний, ошибки структуры распространяются. Нет native device или полученного владения. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L82) | Получает snapshot/converter/FIFO/device/mutex/worker и stop binding при наличии звука; pause только 0/1. После любой частичной ошибки вызывайте close. Snapshot независим от VM, но stop binding отсоединяется до context destroy. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L78) | Владелец читает playback/navigation token удерживаемого клипа своего контекста и публикует скаляры под mutex. Ошибки query/seek/backend возвращаются; pause/clear имеют staged effects без rollback. Worker в VM не входит. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L94) | Копирует stream-only [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) под mutex. Ошибки сохраняют дескриптор; возможны ожидание lock/backend. Это FIFO dequeue position, не DAC/movie sync. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L89) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L87) | Независимая пауза хоста; нет очистки данных. Tick проверяет worker error latch. Хост вызывает последовательно; worker сериализован внутри. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L102) / [fvm_desktop_audio_close](../frontend/common/audio.h#L104) | Владелец отсоединяет binding/callback, join worker, закрывает snapshot и device, уничтожает mutex. Clear сохраняет счётчики. Context/userdata должны жить до detachment/quiescence. |
 
 Регрессия [memory_movie.c](../frontend/tests/memory_movie.c) также запускает скопированный изменяемый `char buf[]` с PCM-фильмом через [fvm_desktop_run_memory](../frontend/common/player.h#L47),
 намеренно задаёт не-файловую source label и проверяет неизменность заимствованных байтов.
@@ -212,6 +250,24 @@ executables/devices не запускались. Двухсекундный пр
 а обычный native CTest выполняет полный in-process fault sweep. C89/C++98 объекты
 скомпилированы для ARM64 Linux, RISC-V64 Linux и Windows x64; это не полная foreign
 сборка плеера, target SDK/runtime и не приёмка физического устройства.
+## Область проверок v0.763–v0.765
+
+Прошли 108 выбранных нативных и 23 shared-host проверки: настоящий CLI PCM/ADPCM,
+offscreen-встраивание, ресурсные/frame-каналы, host ABI и завершение с обработкой
+событий. Core-подготовка также прошла 20 stream/ADPCM-тестов и точную сверку FFmpeg.
+ASan/UBSan проверили изменённые модули/fixture; отказы выделения изолировались до
+бюджета 4 для core и 11 для frontend. Вся VM и зависимости SDL не инструментировались;
+перечисление утечек процессов здесь недоступно. Один sanitizer-запуск примера при
+параллельной сборке превысил явный срок завершения; изолированный повтор ADPCM/FFmpeg/
+быстрых frame-deadline сценариев прошёл. Истечение срока остаётся ошибкой, успех
+при произвольном голодании CPU не гарантируется.
+
+Полные минимальные ядра и три ADPCM/C89-программы слинкованы для ARM64, RISC-V64,
+x86-64 Linux/musl. x86-64/musl-тесты действительно запущены здесь. Обновлённый
+статический ARM64 SDL/AGG-плеер слинкован и проверен по ELF. Исполнение на другом CPU,
+физические устройства и полная Flash/platform-приёмка остаются открытыми.
+Прежние пропуски комментариев Windows speech описаны в [core-отчёте](STREAM_ADPCM.ru.md);
+этот общий проверщик успешным не объявляется.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

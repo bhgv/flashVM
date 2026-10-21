@@ -1121,6 +1121,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     FVM_ExecutionMode mode;
     size_t stream_count = 0; /* Validate root stream policy before native setup. */
     double authored, rate, width, height, period, next;
+    double tail_deadline; /* Bound completion after scheduled final-frame visibility. */
     unsigned long ticks = 0, limit = options->frames;
     unsigned long presentations = 0,
                   refreshes = 0; /* Count successful draws separately from timeline ticks. */
@@ -1480,11 +1481,28 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         if (now - next > FVM_DESKTOP_LATE_FRAMES * period)
             next = now;
     }
-    /* Keep the last bounded frame visible for its scheduled duration, with responsive close. */
-    while (!*quit && !(navigation && navigation->pending) && !(control && control->paused) &&
-           fvm_desktop_now() < next)
+    /* Retain final-frame visibility, then finish authorized stream work within a native deadline. */
+    tail_deadline = fvm_desktop_now();
+    if (tail_deadline < next)
+        tail_deadline = next;
+    tail_deadline += FVM_DESKTOP_AUDIO_TAIL_MS;
+    while (!*quit && !(navigation && navigation->pending) && !(control && control->paused))
     {
-        int wait;
+        int wait, pending = 0;
+        double tail_now = fvm_desktop_now();
+        if (tail_now >= next)
+        {
+            if (!checked(fvm_desktop_audio_stream_pending(&audio, &pending),
+                         "stream tail observation", path))
+                goto cleanup;
+            if (!pending)
+                break;
+            if (tail_now >= tail_deadline)
+            {
+                checked(FVM_ERROR, "stream completion deadline exceeded", path);
+                goto cleanup;
+            }
+        }
         /* Final-frame visibility must not postpone an embedding host's STOP command. */
         if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_TURN, context, clip, path,
                                       ticks, presentations),
@@ -1497,7 +1515,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         }
         if (control && control->paused)
             break; /* The frame bound already completed; a paused tail need not delay return. */
-        wait = (int)(next - fvm_desktop_now());
+        wait = tail_now >= next ? FVM_DESKTOP_AUDIO_WAIT : (int)(next - fvm_desktop_now());
         if (control && control->policy.notify && wait > (int)FVM_DESKTOP_PLAYBACK_WAIT_MS)
             wait = FVM_DESKTOP_PLAYBACK_WAIT_MS;
         if (!fvm_desktop_window_active(window))

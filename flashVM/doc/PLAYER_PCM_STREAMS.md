@@ -11,6 +11,48 @@ root streaming controls without opening audio. Strict core scene import remains 
 the player uses the exact-source root-stream omission flag and separately snapshots the
 validated source before starting its worker.
 
+## Bounded finite-run stream completion (v0.765)
+
+Finite `--frames`/`--once` playback now retains final-frame visibility and then
+waits for already-authorized stream blocks and accepted queued PCM to finish.
+[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L99) copies this condition under the producer mutex;
+it never pumps PCM, allocates, decodes, advances a movie or authorizes a future
+frame. Empty inactive headers are skipped in a bounded scan; later sources are
+inspected at block zero because the worker re-primes them when reached.
+Errors preserve the output argument. An observed worker/backend error propagates.
+
+No stream, host suspension, authored stop or StopSounds cancellation needs extra
+completion. Event-sound output keeps its existing final-frame policy. A future
+stream block beyond the current movie gate does not keep a finite run alive.
+Normal stream completion includes FIFO drain, not merely source EOF/submission;
+this software observation is still not a DAC/speaker clock.
+
+The additional deadline is [FVM_DESKTOP_AUDIO_TAIL_MS](../frontend/common/audio.h#L19) (2000 ms), starting after
+the later of the scheduled final-frame deadline and entry to tail processing.
+This cooperative deadline cannot preempt a blocked SDK/host callback.
+Pending work at expiry fails playback with `stream completion deadline exceeded`
+and performs normal joined cleanup. Queue/backend failures likewise fail the run.
+Thus finite slow/oversized/stalled streams may need a different authored frame
+bound/rate; there is no silent-success truncation at the deadline. This does not
+implement general audio-driven movie pacing, seek correction or time stretching.
+
+Owner TURN notifications and window events continue during completion; STOP,
+window close, root replacement, pause and background suspension can end/skip the
+extra wait. PCM stays on the worker. No public host descriptor or VM ABI layout
+changes. The previous severe-starvation truncation report below is historical:
+this bounded completion replaces that unconditional final-frame shutdown.
+
+The real-queue [stream_pending.cpp](../frontend/tests/stream_pending.cpp) checks authorization, empty/current/inactive
+sources, unchanged producer position, accepted queue data, pause/cancel and error
+preservation with a quiesced worker. The deterministic [tail_stream.py](../frontend/tests/tail_stream.py) runs the
+actual owner loop against a protocol presenter and checks completion at 180 ms,
+close before 130 ms, backend failure, and exact timeout at 2100 ms after a 100 ms
+frame. It is explicitly not a device test. The CLI oracle also forces `--fps 1000`
+for PCM/ADPCM and a one-frame future gate, requiring complete authorized PCM
+while excluding later blocks. Existing tail background tests retain
+pause/resume checks; their fake endpoint now supplies all current native audio
+observations and a non-dereferenced device marker.
+
 ## Whole-packet ADPCM in the player (v0.764)
 
 Root ADPCM is now accepted alongside PCM within the existing 64-header limit,
@@ -19,7 +61,7 @@ source rates use the [explicit whole-packet contract](STREAM_ADPCM.md). Partial
 packets/other codecs remain unsupported. Raw/muted stream inspection stays opaque;
 muted ADPCM does not acquire snapshots or decode compressed payloads.
 
-Before opening a window/device, `fvm_desktop_audio_validate` temporarily prepares
+Before opening a window/device, [fvm_desktop_audio_validate](../frontend/common/audio.h#L73) temporarily prepares
 and closes ADPCM snapshots. It can now allocate/decode and return OUT_OF_MEMORY;
 malformed padding and unsupported packet geometry propagate. Later audio acquisition
 checks header policy and prepares each retained snapshot once, before opening its
@@ -35,7 +77,7 @@ The public player-host descriptors remain unchanged. The new [ADPCM movie and
 regenerator](../examples/player/pcm_stream/README.md#whole-packet-adpcm-variant-v0764)
 are linked from the example catalog; FFmpeg is needed only to regenerate/check them.
 
-`stream_adpcm.py` independently packs constant differential codes for all eight
+[stream_adpcm.py](../frontend/tests/stream_adpcm.py) independently packs constant differential codes for all eight
 width/channel combinations and checks every accepted sample after integer rational
 conversion. FWS/CWS, interpreter/native JIT and a PCM successor exercise the actual
 CLI (32 runs). Optional `--ffmpeg` independently decodes the bundled encoder-generated
@@ -52,14 +94,14 @@ handshake and does not claim those timing limitations are solved.
 
 ## Header sequences (v0.761)
 
-The player now accepts up to [FVM_DESKTOP_AUDIO_MAX_SEGMENTS](../frontend/common/audio.h#L19) (64) validated PCM
+The player now accepts up to [FVM_DESKTOP_AUDIO_MAX_SEGMENTS](../frontend/common/audio.h#L21) (64) validated PCM
 headers, still without root StartSound. Every header must be PCM_NATIVE or PCM_LE;
 compressed codecs, root event/stream mixing and excess header count fail before
 window/device acquisition. Muting still validates arbitrary indexed root segments
 without creating snapshots or opening audio. The current limit bounds startup
 preparation and navigation scans, not the 9P packet size or media channel geometry.
 
-The owner allocates a zero-initialized array of [FVM_DesktopStreamSegment](../frontend/common/audio.h#L22) and
+The owner allocates a zero-initialized array of [FVM_DesktopStreamSegment](../frontend/common/audio.h#L24) and
 prepares all snapshots/converters before starting a worker. Each entry owns its
 snapshot and independent phase grid. On partial preparation failure, close joins
 any worker first, closes every nonnull entry once and frees the array; the old
@@ -181,12 +223,12 @@ new stable plugin ABI. The existing public player C entry points retain their si
 
 | Operation | Contract |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L71) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L80) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L76) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L92) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L87) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L85) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L95) / [fvm_desktop_audio_close](../frontend/common/audio.h#L97) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L73) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L82) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L78) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L94) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L89) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L87) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L102) / [fvm_desktop_audio_close](../frontend/common/audio.h#L104) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
 
 The [memory_movie.c](../frontend/tests/memory_movie.c) regression also plays a copied mutable `char buf[]` PCM movie through [fvm_desktop_run_memory](../frontend/common/player.h#L47) with a
 deliberately non-file source label and verifies the borrowed bytes are unchanged. It uses
@@ -225,6 +267,25 @@ unpoison stack frames here; isolated budgets 0 through 10 each run in a fresh pr
 while the ordinary native CTest exercises the complete in-process failure sweep.
 C89/C++98 objects compile for ARM64 Linux, RISC-V64 Linux and Windows x64; this is
 not a full foreign player build, target SDK/runtime or physical device acceptance.
+## v0.763–v0.765 validation scope
+
+108 selected native and 23 shared-host checks passed, including real CLI PCM/ADPCM,
+offscreen embedding, resource/frame channels, host ABI and responsive final completion.
+The new compressed core path also passed the 20 core stream/ADPCM suite and exact
+independent FFmpeg checks. Edited native modules and fixtures passed ASan/UBSan;
+allocation failures were isolated through budget 4 for preparation and 11 for the
+multi-header frontend. Entire VM/SDL dependencies were not instrumented and process
+leak enumeration is unavailable on this restricted host. A timing-sensitive
+sanitizer tutorial run exceeded the explicit completion budget under concurrent
+build load; the isolated ADPCM/FFmpeg/fast-deadline rerun passed. Budget exhaustion
+remains an explicit playback failure, not a guarantee of success under arbitrary starvation.
+
+Complete minimal cores and three selected ADPCM/C89 executables linked for ARM64,
+RISC-V64 and x86-64 Linux/musl. The x86-64/musl tests actually ran on this host;
+updated static ARM64 SDL/AGG player linked and passed ELF identity checks. Foreign
+CPU execution, physical devices and full Flash/platform acceptance remain open.
+The unchanged Windows speech comment-checker failures are recorded in the
+[core preparation report](STREAM_ADPCM.md); that broader comment check is not claimed passing.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

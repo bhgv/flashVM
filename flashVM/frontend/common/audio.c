@@ -493,6 +493,65 @@ FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamO
     return result;
 }
 
+/* Observe bounded native work without pumping it on the owner or authorizing future movie frames.
+ */
+FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
+{
+    FVM_Result result = FVM_OK;
+    FVM_SWFStreamOutputInfo info;
+    unsigned int frame = 0;
+    int pending = 0;
+    size_t index;
+    if (!audio || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (!audio->stream_source)
+    {
+        *out = 0;
+        return FVM_OK;
+    }
+    if (SDL_LockMutex(audio->mutex) != 0)
+        return FVM_ERROR;
+    result = (FVM_Result)SDL_AtomicGet(&audio->error);
+    if (result == FVM_OK && !audio->suspended && !audio->stream_movie_paused &&
+        !audio->stream_cancelled)
+    {
+        info.struct_size = sizeof(info);
+        result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+        if (result == FVM_OK)
+        {
+            pending = info.queued_frames != 0;
+            result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
+            if (result == FVM_OK)
+                pending = pending || frame <= audio->stream_frame;
+            else if (result == FVM_NOT_FOUND)
+            {
+                result = FVM_OK;
+                /* Successors reset to block zero when the worker activates them, even after loops.
+                 */
+                for (index = audio->stream_index + 1; index < audio->stream_count; ++index)
+                {
+                    FVM_SWFStreamSoundBlock block;
+                    block.struct_size = sizeof(block);
+                    result = fvm_swf_stream_sound_snapshot_block_at(
+                        audio->stream_segments[index].source, 0, &block);
+                    if (result == FVM_NOT_FOUND)
+                    {
+                        result = FVM_OK;
+                        continue;
+                    }
+                    if (result == FVM_OK)
+                        pending = pending || block.frame <= audio->stream_frame;
+                    break;
+                }
+            }
+        }
+    }
+    if (result == FVM_OK)
+        *out = pending;
+    SDL_UnlockMutex(audio->mutex);
+    return result;
+}
+
 /* Root content removal must silence the old native producer without ending the VM/window.
  * Detach the VM callback first; close joins the native-only worker before freeing PCM ownership. */
 FVM_Result fvm_desktop_audio_clear(FVM_Context *context, FVM_DesktopAudio *audio)

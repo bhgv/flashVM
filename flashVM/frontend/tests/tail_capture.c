@@ -14,6 +14,7 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *c, FVM_Object *clip, FVM_DesktopA
 {
     (void)c; (void)clip;
     audio->output = (FVM_SWFSoundOutput *)audio;
+    audio->device = (FVM_SDLAudioQueue *)audio; /* Boolean sentinel; no SDK operation uses it. */
     return FVM_OK;
 }
 /* Any attempt to resume audio in the background makes the actual player fail. */
@@ -34,6 +35,7 @@ FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *audio, int paused)
 void fvm_desktop_audio_close(FVM_DesktopAudio *audio)
 {
     audio->output = NULL;
+    audio->device = NULL;
 }
 /* This legacy-runner fixture must never request an initial control pause. */
 FVM_Result fvm_desktop_audio_open_paused(FVM_Context *c, FVM_Object *clip,
@@ -52,4 +54,26 @@ FVM_Result fvm_desktop_audio_clear(FVM_Context *c, FVM_DesktopAudio *audio)
     (void)c;
     (void)audio;
     return FVM_ERROR;
+}
+
+/* This presenter-only movie has no root stream; require ordinary core indexing. */
+FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
+{
+    size_t count = 0;
+    FVM_Result result = fvm_swf_stream_sound_count(context, &count);
+    return result != FVM_OK ? result : count ? FVM_UNSUPPORTED : FVM_OK;
+}
+/* No stream/VM ownership is kept by this fake native endpoint. */
+FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip, FVM_DesktopAudio *audio)
+{
+    (void)context; (void)clip; (void)audio;
+    return FVM_OK;
+}
+/* Ordinary tail-pause fixture has no queued stream work. */
+FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *pending)
+{
+    (void)audio;
+    if (!pending) return FVM_INVALID_ARGUMENT;
+    *pending = 0;
+    return FVM_OK;
 }

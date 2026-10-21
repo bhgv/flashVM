@@ -1,10 +1,12 @@
-Development version: **0.764** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.764 ` and an English description. Increase the subversion before each
+Development version: **0.765** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.765 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.765: [Complete authorized stream audio before finite player shutdown](doc/PLAYER_PCM_STREAMS.md).
 
 v0.764: [Play whole ADPCM root packets through the native SDL queue](doc/PLAYER_PCM_STREAMS.md).
 

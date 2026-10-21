@@ -37,7 +37,7 @@ same arguments; this is not audible device evidence.
 FVM_AUDIO_TRACE=/absolute/path/evidence explicitly enables WAV/text recording of accepted
 PCM on close. This is not speaker recording. The worker has a frame gate, pause and
 bounded work; exact A/V sync, stream+event mixing, partial ADPCM packets and other compressed
-stream codecs remain open. Finite playback can truncate unproduced data under severe host starvation.
+stream codecs remain open. Since v0.765 finite stream playback waits for authorized PCM and queue drain, with a 2000 ms extra deadline; unfinished work fails playback instead of reporting silent-success truncation.
 
 ## Whole-packet ADPCM variant (v0.764)
 
