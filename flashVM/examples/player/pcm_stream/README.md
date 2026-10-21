@@ -100,3 +100,5 @@ starvation without requiring CPU contention or a real audio device.
 Трасса может не содержать stream_starved при штатной работе. WAV содержит принятые
 отсчёты, а не запись динамиков; принятые до seek данные остаются в свидетельстве.
 Для воспроизводимой проверки используется управляемое потребление тестового FIFO.
+
+Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](../../../doc/CROSS_WINDOWS_ZIG.md) / [RU](../../../doc/CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.

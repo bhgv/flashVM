@@ -154,3 +154,5 @@ Zig напрямую и не устанавливает/не требует эт
 
 Повторяемый параметр `--artifact PATH` дополнительно проверяет уже слинкованные
 программы FlashVM по тем же правилам ELF после успешной сборки отдельного fixture.
+
+Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](CROSS_WINDOWS_ZIG.md) / [RU](CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.

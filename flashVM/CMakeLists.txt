@@ -329,6 +329,9 @@ if(FVM_BUILD_TESTS)
   find_package(Python3 COMPONENTS Interpreter QUIET)
 endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_windows_pe_inspector
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_windows_pe_inspector.py)
+  set_tests_properties(flashvm_windows_pe_inspector PROPERTIES TIMEOUT 10)
   add_test(NAME flashvm_crash_archive_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_crash_archive.py
             $<TARGET_FILE:flashvm_tests_crash_diagnostics>

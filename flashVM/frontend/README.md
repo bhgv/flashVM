@@ -148,3 +148,5 @@ audio_underruns and optional bounded traces report observations, not DAC behavio
 Пустая очередь при разрешённых данных вызывает повторное наполнение; начало,
 будущие кадры и EOF не считаются underrun. Ошибки backend передаются владельцу.
 [EN](../doc/PLAYER_STREAM_RECOVERY.md) / [RU](../doc/PLAYER_STREAM_RECOVERY.ru.md).
+
+Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](../doc/CROSS_WINDOWS_ZIG.md) / [RU](../doc/CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.

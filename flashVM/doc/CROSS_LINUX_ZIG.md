@@ -154,3 +154,5 @@ that every Linux kernel, CPU extension set or system service is supported.
 
 `--artifact PATH` can be repeated to check already-linked FlashVM executables
 against the same target ELF rules after the detached fixture succeeds.
+
+Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](CROSS_WINDOWS_ZIG.md) / [RU](CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.

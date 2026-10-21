@@ -328,3 +328,5 @@ python3 scripts/test_platform_source.py
 ```
 
 Schema 2 and v0.641–0.645 tooling: [release evidence](RELEASE_EVIDENCE.md). Historical schema-1 notes are not new acceptance evidence.
+
+Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](CROSS_WINDOWS_ZIG.md) / [RU](CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.
