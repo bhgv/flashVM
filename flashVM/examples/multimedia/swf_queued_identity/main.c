@@ -65,6 +65,7 @@ int main(int argc, char **argv) /* Optional explicit destination receives accept
     FVM_AudioQueueBackend backend; /* Copied native callback table borrowing host. */
     FVM_SWFSoundMixerInfo mixer_info; /* Observe software retirement independently of queued activity. */
     FVM_SWFSoundOutputStorageInfo storage; /* Observe separate fixed/output/identity charges. */
+    FVM_SWFSoundOutputIdentityInfo identity; /* Copied native deadline diagnostics, not a VM/debugger pointer. */
     FVM_SWFSoundOutputInfo info; /* Copy accepted versus pending ownership after write failure. */
     ExampleHost host; /* Stack owner outlives all borrowed backend calls. */
     FILE *file = 0; /* Optional explicitly named terminal file consumer. */
@@ -109,6 +110,9 @@ int main(int argc, char **argv) /* Optional explicit destination receives accept
     if (mixer_info.active_voices || accepted != EXAMPLE_ID_BLOCK) goto cleanup; /* Voice ended before its queued PCM. */
     if (!checked(fvm_swf_sound_output_sound_active(output, EXAMPLE_ID_SOUND, &playing), "queued ID")) goto cleanup; /* Real model FIFO clock. */
     if (!playing) goto cleanup; /* Paused unplayed PCM still reserves the dictionary identity. */
+    identity.struct_size = sizeof(identity); /* Request exact copied native diagnostic ABI. */
+    if (!checked(fvm_swf_sound_output_identity_info(output, EXAMPLE_ID_SOUND, &identity), "identity deadline")) goto cleanup; /* Poll FIFO. */
+    if (identity.end_frame != duration || identity.until_end_frames != duration) goto cleanup; /* Paused source has played nothing. */
     if (!checked(fvm_swf_sound_output_submit_prepared_bounded(output, &duplicate, 0), "suppress duplicate")) goto cleanup; /* Consume without new storage. */
     if (duplicate) goto cleanup; /* Success acknowledges ownership even when NoMultiple is suppressed. */
     if (!checked(fvm_swf_sound_output_pause(output, 0), "resume")) goto cleanup; /* Permit explicit modeled consumption. */

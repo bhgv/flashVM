@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.792
+# FlashVM stage status / Состояние стадий — v0.802
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.793–v0.802: queued SyncNoMultiple identity lifetime, exact native deadlines, transactional storage/control and C89 FIFO tutorial. Desktop no longer permits a short duplicate merely because PCM preparation retired its software voice. 89 native/C89, 15 SDL dummy and 15 ASan/UBSan checks plus a no-new-allocation path pass; failure/exception boundaries use scoped UBSan. All stages, root stream/event mixing, child streams and reference A/V/seek remain open. [EN](QUEUED_SOUND_IDS.md) / [RU](QUEUED_SOUND_IDS.ru.md).
 
 v0.783–v0.792: bounded native voice templates, clone/seek, aggregate mixer accounting and preparation outside the desktop worker mutex. Actual three-codec event PCM oracle and four independent native readers; 79 native/C89, 14 SDL dummy and 11 full-core ASan/UBSan success-path checks, plus 12 scoped UBSan failure allowances. Root stream/event mixing, child streams and reference A/V/seek remain open. [EN](NATIVE_VOICES.md) / [RU](NATIVE_VOICES.ru.md).
 

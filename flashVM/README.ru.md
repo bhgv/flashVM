@@ -1,4 +1,4 @@
-Версия разработки: **0.801** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.802** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.802: [Скопированные границы ID очереди для нативной диагностики](doc/QUEUED_SOUND_IDS.ru.md).
 
 v0.801: [Учебный C89-хост с идентичностью звука до конца FIFO](doc/QUEUED_SOUND_IDS.ru.md).
 

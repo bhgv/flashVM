@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Queued event identities v0.793–v0.802: exact fresh-grid duration, optional native deadline/storage diagnostics, tracked bounded adoption and clear/stop controls. Desktop SyncNoMultiple includes pending/queued PCM after software voice retirement. 89 native/C89 and 15 SDL dummy checks pass; 15 full-core ASan/UBSan checks plus one no-new-allocation path; failure boundaries use scoped UBSan. Root stream/event integration, children, reference A/V/seek and physical/platform acceptance remain open. [EN](QUEUED_SOUND_IDS.md) / [RU](QUEUED_SOUND_IDS.ru.md).
+
 Native event ownership v0.783–v0.792: bounded preparation/clone/mixer construction and adoption; repeat-aware native positioning, exact storage, owner decode outside worker mutex. 79 native/C89, 14 SDL dummy-player and 11 full-core ASan/UBSan success-path checks pass; 12 isolated failure allowances pass scoped UBSan. Root stream/event integration, children, reference timing and device/platform acceptance remain open. [EN](NATIVE_VOICES.md) / [RU](NATIVE_VOICES.ru.md).
 
 Native prepared voice controls v0.782: transfer ownership at the current cursor and stop sound IDs without a live VM or new allocation. Strict C89 MP3 export adopts its mixer after source teardown. Seven-commit MP3 series: 70 native/tutorial and seven SDL dummy-player checks pass. Full reference timing, mixed root playback and physical/platform acceptance remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).

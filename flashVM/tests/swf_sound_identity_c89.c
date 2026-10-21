@@ -24,7 +24,10 @@ static FVM_Result queued(void *raw,size_t *out)
     {
         int active=99;
         FVM_SWFSoundOutputStorageInfo storage;
+        FVM_SWFSoundOutputIdentityInfo identity;
         storage.struct_size=sizeof(storage);storage.fixed_bytes=123;
+        identity.struct_size=sizeof(identity);identity.end_frame=123;
+        assert(fvm_swf_sound_output_identity_info(current,7,&identity)==FVM_INVALID_ARGUMENT && identity.end_frame==123);
         assert(fvm_swf_sound_output_sound_active(current,7,&active)==FVM_INVALID_ARGUMENT && active==99);
         assert(fvm_swf_sound_output_stop_id(current,7)==FVM_INVALID_ARGUMENT);
         assert(fvm_swf_sound_output_set_identity_tracking(current,1)==FVM_INVALID_ARGUMENT);

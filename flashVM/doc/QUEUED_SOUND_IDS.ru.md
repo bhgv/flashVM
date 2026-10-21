@@ -42,7 +42,7 @@ UNSUPPORTED, неверный ID/reentry — INVALID_ARGUMENT. Ошибки/ис
 
 ## v0.795: передача с SyncNoMultiple до конца очереди
 
-[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L96) опрашивает FIFO, затем передаёт
+[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L114) опрашивает FIFO, затем передаёт
 голос с позиции submitted+pending. Точная оставшаяся длительность на выходной
 сетке задаёт исключающую конечную границу ID. Обычные старты одного ID могут
 перекрываться, сохраняется максимальный конец. NoMultiple потребляет ненужного
@@ -66,7 +66,7 @@ UNSUPPORTED; ошибки микшера/backend передаются вызыв
 
 ## v0.796: владение при stop и clear
 
-[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L104) применяет immediate/DECLICK-политику будущего
+[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L122) применяет immediate/DECLICK-политику будущего
 микширования и снимает регистрацию NoMultiple этого ID. Отсутствующий ID — успех,
 неверный ID/null/reentry — INVALID_ARGUMENT, выключенный tracking — UNSUPPORTED.
 Аллокаций, callbacks и VM нет. Принятый и pending PCM неизменяем: команда не
@@ -143,6 +143,49 @@ oracle проверяет каждый S16 и ошибки CLI/выхода. Д�
 хост; устройство не открывается. Владение, бюджеты и каждая строка C/заголовков
 описаны отдельно.
 
+## v0.802: скопированная диагностика границ ID
+
+[`fvm_swf_sound_output_identity_info`](../include/flashvm/swf_sound_output.h#L99) опрашивает FIFO и копирует ID, played-позицию
+epoch, последнюю исключающую конечную границу, время до неё и активность.
+Требуются точный struct_size и ID 1..65535. Ошибки null/размера/reentry —
+INVALID_ARGUMENT, выключенный tracking — UNSUPPORTED; статусы/исключения backend
+передаются как для sound_active. Отказ сохраняет выход. Нет аллокаций, decode,
+VM или managed-указателя; сериализуйте живых владельцев до возврата callback.
+Истёкший ID хранит исторический end, но имеет active=0/until_end=0; отменённый/
+очищенный ID имеет end=0. until_end включает queued-паузу до будущего старта:
+это НЕ число оставшихся ненулевых отсчётов и не задержка DAC. Boolean-запрос
+активности использует тот же проверенный путь диагностики.
+
+`swf_sound_output_identity_info` проверяет live/expired/restart/clear поля,
+промежуток queued silence и сохранение выхода при отказах. API также проверяют
+C89 reentry-fixture и исполняемый учебник FIFO.
+
+## Итоговые проверки v0.802 и границы
+
+Один выход/микшер соответствует одному словарю SWF. Одинаковые числовые ID из
+разных фильмов — один ключ; замена корня требует clear/rebuild владельца.
+Прежний desktop joined root-clear освобождает старую таблицу. FIFO-позиция не
+означает слышимость DAC или эталонные A/V-часы Flash.
+
+На этом Linux-хосте прошли 89 целевых native sound/stream/codec и настоящих
+C89-проверок, а также 15 тестов реального SDL-плеера с dummy-драйверами. Оба
+независимых MP3 stream/three-codec event oracle выполнены с реальными действиями
+интерпретатора/нативного JIT. Полное minimal-ядро ASan/UBSan прошло 15 выбранных
+success/status/C89-проверок плюс отдельный успешный путь включения таблицы с
+последующим запретом аллокаций. Расширенная проверка короткого/длинного same-ID
+старта прошла обычный запуск и полный ASan/UBSan. LeakSanitizer отключён из-за
+недоступного /proc. Внедрённые исключения/отказы аллокаций под ASan не заявляются:
+обе изолированные границы выделения таблицы и исключения backend прошли обычный
+запуск и UBSan изменённых voice/output-модулей с остальным обычным ядром.
+ThreadSanitizer, устройства и выполнение на других платформах не заявляются.
+
+Проверены CMake version-only refresh, детерминированные source links, сортировка
+каталога и комментарии/API нового учебника. Общий multimedia comment checker
+по-прежнему сообщает только о двух побайтово неизменённых baseline Windows
+speech-файлах; глобальный PASS не заявляется. Все девять стадий плана открыты.
+Root stream вместе с event, дочерние потоки, эталонные seek/A/V, оставшиеся кодеки
+и прочие графика/текст/AS/JIT/GC/debugger остаются отдельными задачами завершения.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -152,10 +195,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:99](../include/flashvm/swf_sound_output.h#L99) |
 | `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
-| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:104](../include/flashvm/swf_sound_output.h#L104) |
+| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:122](../include/flashvm/swf_sound_output.h#L122) |
 | `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
-| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:96](../include/flashvm/swf_sound_output.h#L96) |
+| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
 | `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |
 <!-- source-links:end -->

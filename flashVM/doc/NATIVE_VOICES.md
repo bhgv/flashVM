@@ -1,5 +1,7 @@
 # Bounded native event voices
 
+Since v0.797 the desktop uses output identity deadlines for NoMultiple; the low-level mixer activity query remains a software-slot observation. See [queued identities](QUEUED_SOUND_IDS.md).
+
 ## v0.783: exact storage and preparation ceilings
 
 [`fvm_swf_sound_voice_open_bounded`](../include/flashvm/swf_sound.h#L97) retains the existing PCM/ADPCM/MP3, range,

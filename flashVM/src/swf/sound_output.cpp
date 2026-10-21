@@ -215,11 +215,12 @@ extern "C" FVM_Result fvm_swf_sound_output_storage_info(const FVM_SWFSoundOutput
     return FVM_OK;
 }
 
-/* Observe the exclusive FIFO clock, then test one copied native identity deadline. */
-extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *output,
-                                                         unsigned int id, int *out)
+/* Copy native deadline diagnostics only after an acknowledged, valid exclusive FIFO observation. */
+extern "C" FVM_Result fvm_swf_sound_output_identity_info(FVM_SWFSoundOutput *output,
+                                      unsigned int id, FVM_SWFSoundOutputIdentityInfo *out)
 {
-    if (!output || output->busy || !out || !id || id > FVM_SWF_SOUND_ID_MAX)
+    if (!output || output->busy || !out || out->struct_size != sizeof(*out) ||
+        !id || id > FVM_SWF_SOUND_ID_MAX)
         return FVM_INVALID_ARGUMENT;
     if (output->identities.empty())
         return FVM_UNSUPPORTED;
@@ -227,9 +228,18 @@ extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *outp
     try
     {
         FVM_Result result = observe(output);
-        if (result == FVM_OK)
-            *out = output->identities[id] > output->info.played_frames;
-        return result;
+        if (result != FVM_OK)
+            return result;
+        FVM_SWFSoundOutputIdentityInfo info;
+        info.struct_size = sizeof(info);
+        info.sound_id = id;
+        info.played_frames = output->info.played_frames;
+        info.end_frame = output->identities[id];
+        info.until_end_frames = info.end_frame > info.played_frames
+                                    ? info.end_frame - info.played_frames : 0;
+        info.active = info.until_end_frames > 0;
+        *out = info;
+        return FVM_OK;
     }
     catch (const std::bad_alloc &)
     {
@@ -239,6 +249,20 @@ extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *outp
     {
         return FVM_ERROR;
     }
+}
+
+/* Preserve the Boolean query ABI while sharing one validated identity-clock implementation. */
+extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *output,
+                                                         unsigned int id, int *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundOutputIdentityInfo info;
+    info.struct_size = sizeof(info);
+    FVM_Result result = fvm_swf_sound_output_identity_info(output, id, &info);
+    if (result == FVM_OK)
+        *out = info.active;
+    return result;
 }
 
 /* Adopt only on the uncomposed side of pending/accepted PCM; retain exact per-ID end clocks. */

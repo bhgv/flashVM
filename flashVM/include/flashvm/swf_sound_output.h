@@ -80,6 +80,24 @@ extern "C"
      * No allocation/VM; callback may block per backend contract. Keep owners serialized/live. */
     FVM_API FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *, unsigned int id,
                                                          int *out);
+    /* Copied identity diagnostics use FIFO dequeue time, including pending/uncomposed intervals. */
+    typedef struct FVM_SWFSoundOutputIdentityInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof this native observation. */
+        unsigned int sound_id; /* Requested dictionary identity, 1..65535. */
+        double played_frames; /* Observed accepted-minus-queued epoch cursor. */
+        double end_frame; /* Last registered exclusive end; zero after clear/ID cancellation. */
+        double until_end_frames; /* max(end_frame-played_frames,0); includes gaps before a new start. */
+        int active; /* Nonzero exactly while until_end_frames is positive. */
+    } FVM_SWFSoundOutputIdentityInfo;
+    /* Observe backend and copy one identity's deadline/cursor without allocation, decode or VM.
+     * Expired registrations retain their historical end until overwritten/cancelled; they are
+     * inactive. until_end is time to the deadline, not a count of remaining nonzero PCM samples
+     * or DAC latency. Invalid ID/null/wrong size/reentry INVALID_ARGUMENT; disabled UNSUPPORTED;
+     * backend errors propagate, bad_alloc OOM, other exceptions ERROR. Errors preserve out.
+     * Retain/serialize output/mixer/backend until callback return, as for sound_active. */
+    FVM_API FVM_Result fvm_swf_sound_output_identity_info(FVM_SWFSoundOutput *, unsigned int id,
+                                                          FVM_SWFSoundOutputIdentityInfo *out);
     /* Transfer a prepared voice with queued SyncNoMultiple semantics and bounded mixer storage.
      * Tracking must be enabled; disabled UNSUPPORTED. Observe the FIFO, include existing pending
      * PCM before the new start, and register the exact exclusive end at a fresh conversion phase.

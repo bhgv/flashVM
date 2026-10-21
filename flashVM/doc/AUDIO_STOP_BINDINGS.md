@@ -14,7 +14,7 @@ activity remains unchanged. No fake frame submission is necessary.
 It must idempotently stop/discard all prepared voices, pending PCM and native
 queue state it owns. No global device is implicitly opened. No PCM format, mixer
 implementation or OS is imposed by the binding. The SDL player uses
-[`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L114) to pause/clear/reset its explicit output.
+[`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L132) to pause/clear/reset its explicit output.
 
 [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L92) first attempts each active PCM channel in registration order,
 then **every** binding in binding-registration order, even if no PCM was accepted.
@@ -126,5 +126,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:132](../include/flashvm/swf_sound_output.h#L132) |
 <!-- source-links:end -->
