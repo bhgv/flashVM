@@ -36,11 +36,11 @@ remote authentication or 9P.
 | [`fvm_rdebug_snapshot_read`](../../../include/flashvm/rdebug.h#L91) | Decode counted copied event data without borrowing VM objects. [Contract](../../../doc/RESOURCE_DEBUGGER.md). |
 | [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L95) | Own a bounded dispatcher; NULL hooks mean single-owner use. [Contract](../../../doc/RESOURCE_DISPATCH.md). |
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Free only after users and pending command identities are quiesced. [Contract](../../../doc/RESOURCE_DISPATCH.md). |
-| [`fvm_rdispatch_disconnect`](../../../include/flashvm/revents.h#L69) | Owner revokes session state and discards its queued commands/replies. [Contract](../../../doc/RESOURCE_EVENTS.md). |
-| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L59) | Copy one reader’s event; no other observer loses its copy. [Contract](../../../doc/RESOURCE_EVENTS.md). |
+| [`fvm_rdispatch_disconnect`](../../../include/flashvm/revents.h#L79) | Owner revokes session state and discards its queued commands/replies. [Contract](../../../doc/RESOURCE_EVENTS.md). |
+| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Copy one reader’s event; no other observer loses its copy. [Contract](../../../doc/RESOURCE_EVENTS.md). |
 | [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L108) | Owner assigns explicit session-specific rights. [Contract](../../../doc/RESOURCE_DISPATCH.md). |
 | [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L115) | Copy a request; owner execution occurs later, outside the queue lock. [Contract](../../../doc/RESOURCE_DISPATCH.md). |
-| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L47) | Create an independent queue requiring SUBSCRIBE authority. [Contract](../../../doc/RESOURCE_EVENTS.md). |
+| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Create an independent queue requiring SUBSCRIBE authority. [Contract](../../../doc/RESOURCE_EVENTS.md). |
 | [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L126) | Acknowledge/copy a completed reply and free its bounded slot. [Contract](../../../doc/RESOURCE_DISPATCH.md). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Allocate the runtime; caller destroys it after its contexts. [Contract](../../../doc/API_INDEX.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the runtime after context and adapter cleanup. [Contract](../../../doc/API_INDEX.md). |
@@ -72,11 +72,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdebug_snapshot_read` | function | [include/flashvm/rdebug.h:91](../../../include/flashvm/rdebug.h#L91) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
-| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:69](../../../include/flashvm/revents.h#L69) |
-| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:59](../../../include/flashvm/revents.h#L59) |
+| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:79](../../../include/flashvm/revents.h#L79) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../../../include/flashvm/revents.h#L65) |
 | `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
-| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:47](../../../include/flashvm/revents.h#L47) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../../../include/flashvm/revents.h#L53) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |

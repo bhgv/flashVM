@@ -11,6 +11,7 @@
     - [file_channels.as](#example-actionscript-file_channels-as) — <small><em>Сохранение графа в файл и чтение обратно</em></small>
     - [gc_workers_channels.as](#example-actionscript-gc_workers_channels-as) — <small><em>Worker, канал и очистка через GC</em></small>
     - [resource_exceptions.as](#example-actionscript-resource_exceptions-as) — <small><em>Ошибки ресурсов и освобождение mutex</em></small>
+- [resource_files — embedding/resource_files](#example-embedding-resource_files)
     - [shared_mutex.as](#example-actionscript-shared_mutex-as) — <small><em>Общий mutex и канал между worker</em></small>
     - [sprite_resources.as](#example-actionscript-sprite_resources-as) — <small><em>Экземпляры спрайта из ресурсов SWF</em></small>
 - [debugger](#group-debugger)
@@ -32,6 +33,7 @@
     - [hybrid_heartbeat](#example-embedding-hybrid_heartbeat) — <small><em>Раздельные UDP/TCP таймеры и запрос проверки TCP</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
     - [resource_events](#example-embedding-resource_events) — <small><em>Независимые очереди наблюдателей и отзыв сессии</em></small>
+    - [resource_files](#example-embedding-resource_files) — <small><em>Файлы операций, частичное чтение и явный owner pump</em></small>
     - [shared_mutex](#example-embedding-shared_mutex) — <small><em>Общая блокировка из разных VM</em></small>
     - [srecords](#example-embedding-srecords) — <small><em>Двоичные теги направлений, порции и файловый обмен</em></small>
   - [functions](#group-embedding-functions)
@@ -482,6 +484,17 @@ listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](
 Две сессии независимо читают одну публикацию; показаны выдача прав, снимок
 ресурсов и явное отключение. [main.c](embedding/resource_events/main.c),
 [контракт очередей](../doc/RESOURCE_EVENTS.ru.md). Это не сетевой или 9P-сервер.
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-resource_files"></a>
+#### resource_files
+
+**Тип:** C89, самостоятельный пример без VM/SDL, сети и mount.
+**README:** [EN](embedding/resource_files/README.md) / [RU](embedding/resource_files/README.ru.md).
+Записывает параметры операции в синтетический файл, явно исполняет очередь на
+owner и читает ответ по одному байту с проверкой S-record declaration и CRC.
+[main.c](embedding/resource_files/main.c), [контракт](../doc/RESOURCE_FILES.ru.md).
 
 [К оглавлению](#оглавление).
 

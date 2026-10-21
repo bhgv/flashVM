@@ -42,6 +42,12 @@ extern "C"
     FVM_API FVM_RResult fvm_rdispatch_resources(FVM_RDispatch *, unsigned long session,
                                                 FVM_RResource *rows, size_t capacity,
                                                 size_t *count);
+    /* Return the immutable zero-based server operation position for a currently authorized ID.
+     * Filesystem adapters use it for stable qids across sessions and rights-filter changes.
+     * UNKNOWN resource/operation, DENIED missing right; output changes only on OK. */
+    FVM_API FVM_RResult fvm_rdispatch_operation_index(FVM_RDispatch *, unsigned long session,
+                                                      FVM_RHandle, unsigned long operation,
+                                                      size_t *index);
     /* Any synchronized producer may subscribe when currently granted SUBSCRIBE. Each successful
      * call creates an independent empty queue; output changes only on OK. */
     FVM_API FVM_RResult fvm_rdispatch_subscribe(FVM_RDispatch *, unsigned long session,
@@ -58,6 +64,10 @@ extern "C"
      * occurs. */
     FVM_API FVM_RResult fvm_rdispatch_event_take(FVM_RDispatch *, unsigned long session, FVM_RWatch,
                                                  FVM_REvent *);
+    /* Check an existing observer without consuming data. Revoked/recreated subscriptions UNKNOWN;
+     * wrong session DENIED. Adapters use this before returning partially buffered event bytes. */
+    FVM_API FVM_RResult fvm_rdispatch_watch_check(FVM_RDispatch *, unsigned long session,
+                                                  FVM_RWatch);
     /* Authenticated consumer closes its own queue; stale incarnation UNKNOWN, other session DENIED.
      */
     FVM_API FVM_RResult fvm_rdispatch_unsubscribe(FVM_RDispatch *, unsigned long session,

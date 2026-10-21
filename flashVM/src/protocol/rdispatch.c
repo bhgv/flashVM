@@ -686,6 +686,42 @@ FVM_RResult fvm_rdispatch_event_take(FVM_RDispatch *d, unsigned long session, FV
     unlock_dispatch(d);
     return FVM_R_OK;
 }
+/* Expose a stable server-defined operation ordinal, never a filtered discovery-array index. */
+FVM_RResult fvm_rdispatch_operation_index(FVM_RDispatch *d, unsigned long session, FVM_RHandle h,
+                                          unsigned long operation, size_t *out)
+{
+    Resource *r;
+    size_t i;
+    FVM_RResult result = FVM_R_UNKNOWN;
+    if (!d || !valid_id(session) || !valid_id(operation) || !out)
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    r = resource(d, h);
+    if (r)
+        for (i = 0; i < r->count; ++i)
+            if (r->operations[i].id == operation)
+            {
+                result = (rights(d, h, session) & r->operations[i].right) ? FVM_R_OK : FVM_R_DENIED;
+                if (result == FVM_R_OK)
+                    *out = i;
+                break;
+            }
+    unlock_dispatch(d);
+    return result;
+}
+/* Validate a retained stream's observer incarnation without stealing the next event. */
+FVM_RResult fvm_rdispatch_watch_check(FVM_RDispatch *d, unsigned long session, FVM_RWatch h)
+{
+    Subscription *s;
+    FVM_RResult result;
+    if (!d || !valid_id(session))
+        return FVM_R_INVALID;
+    lock_dispatch(d);
+    s = subscription(d, h);
+    result = !s ? FVM_R_UNKNOWN : s->session != session ? FVM_R_DENIED : FVM_R_OK;
+    unlock_dispatch(d);
+    return result;
+}
 /* Closing discards only one reader, not any other observer or committed command. */
 FVM_RResult fvm_rdispatch_unsubscribe(FVM_RDispatch *d, unsigned long session, FVM_RWatch h)
 {

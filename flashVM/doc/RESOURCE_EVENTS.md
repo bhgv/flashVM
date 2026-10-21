@@ -3,7 +3,7 @@
 The C89 `revents.h` API extends the native dispatcher with coherent discovery,
 independent event queues and session cleanup. It does not open sockets, mount a
 filesystem or deserialize VM pointers. A transport authenticates each session;
-the owner grants rights. [Dispatcher](RESOURCE_DISPATCH.md),
+the owner grants rights. [Dispatcher](RESOURCE_DISPATCH.md), [file adapter](RESOURCE_FILES.md),
 [namespace plan](RESOURCE_NAMESPACE.md), [tutorial](../examples/embedding/resource_events/README.md).
 
 ## API and ownership
@@ -18,11 +18,11 @@ No allocation after dispatcher creation, VM call or GC root is introduced here.
 | Function | Contract |
 | --- | --- |
 | [`fvm_rdispatch_resources`](../include/flashvm/revents.h#L42) | Takes session, rows, capacity and required count pointer. NULL rows/zero capacity queries count. A non-NULL short buffer returns LIMIT without touching rows/count. Snapshot includes only currently granted resources, copied canonical paths and operations whose required rights the session holds. No subtree inheritance or implicit directory traversal. |
-| [`fvm_rdispatch_subscribe`](../include/flashvm/revents.h#L47) | Takes session, resource incarnation and watch output. Requires SUBSCRIBE. Each successful call allocates a distinct empty native queue; missing resource UNKNOWN, missing right DENIED, exhausted slots LIMIT. No resource callback is executed. |
-| [`fvm_rdispatch_publish`](../include/flashvm/revents.h#L52) | Owner-only: resource, nonzero Uint32 kind, counted payload and sequence output. Copies at most [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) to each matching subscriber. Excess bytes LIMIT; NULL nonempty payload INVALID. Sequence starts at one and never wraps; exhaustion LIMIT has no publication effect. No receiver still consumes a sequence. |
-| [`fvm_rdispatch_event_take`](../include/flashvm/revents.h#L59) | Any synchronized consumer supplies its authenticated session/watch and event output. Copies and removes only that reader's oldest event. PENDING means empty; a stale watch is UNKNOWN and a different session is DENIED. On OK `missed` reports that reader's drops since its previous take, then resets. |
-| [`fvm_rdispatch_unsubscribe`](../include/flashvm/revents.h#L63) | Session/watch close one queue and discard its unread events. Other readers remain intact. Stale watch UNKNOWN; another session DENIED. |
-| [`fvm_rdispatch_disconnect`](../include/flashvm/revents.h#L69) | Owner-only, after the session transport has quiesced. Atomically removes grants, observers, queued jobs and retained replies for that session. Running work from the same session returns BUSY before any change. Other producers retain FIFO order. It never undoes executed side effects. |
+| [`fvm_rdispatch_subscribe`](../include/flashvm/revents.h#L53) | Takes session, resource incarnation and watch output. Requires SUBSCRIBE. Each successful call allocates a distinct empty native queue; missing resource UNKNOWN, missing right DENIED, exhausted slots LIMIT. No resource callback is executed. |
+| [`fvm_rdispatch_publish`](../include/flashvm/revents.h#L58) | Owner-only: resource, nonzero Uint32 kind, counted payload and sequence output. Copies at most [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) to each matching subscriber. Excess bytes LIMIT; NULL nonempty payload INVALID. Sequence starts at one and never wraps; exhaustion LIMIT has no publication effect. No receiver still consumes a sequence. |
+| [`fvm_rdispatch_event_take`](../include/flashvm/revents.h#L65) | Any synchronized consumer supplies its authenticated session/watch and event output. Copies and removes only that reader's oldest event. PENDING means empty; a stale watch is UNKNOWN and a different session is DENIED. On OK `missed` reports that reader's drops since its previous take, then resets. |
+| [`fvm_rdispatch_unsubscribe`](../include/flashvm/revents.h#L73) | Session/watch close one queue and discard its unread events. Other readers remain intact. Stale watch UNKNOWN; another session DENIED. |
+| [`fvm_rdispatch_disconnect`](../include/flashvm/revents.h#L79) | Owner-only, after the session transport has quiesced. Atomically removes grants, observers, queued jobs and retained replies for that session. Running work from the same session returns BUSY before any change. Other producers retain FIFO order. It never undoes executed side effects. |
 
 [`FVM_RResource`](../include/flashvm/revents.h#L31), [`FVM_RWatch`](../include/flashvm/revents.h#L13) and [`FVM_REvent`](../include/flashvm/revents.h#L19) are copied native records. Resource
 and watch handles have separate incarnation spaces. A path is a name, not an
@@ -80,12 +80,12 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 | `FVM_R_EVENT_QUEUE` | macro / define | [include/flashvm/revents.h:6](../include/flashvm/revents.h#L6) |
 | `FVM_R_WATCHES` | macro / define | [include/flashvm/revents.h:5](../include/flashvm/revents.h#L5) |
-| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:69](../include/flashvm/revents.h#L69) |
-| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:59](../include/flashvm/revents.h#L59) |
-| `fvm_rdispatch_publish` | function | [include/flashvm/revents.h:52](../include/flashvm/revents.h#L52) |
+| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:79](../include/flashvm/revents.h#L79) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../include/flashvm/revents.h#L65) |
+| `fvm_rdispatch_publish` | function | [include/flashvm/revents.h:58](../include/flashvm/revents.h#L58) |
 | `fvm_rdispatch_resources` | function | [include/flashvm/revents.h:42](../include/flashvm/revents.h#L42) |
-| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:47](../include/flashvm/revents.h#L47) |
-| `fvm_rdispatch_unsubscribe` | function | [include/flashvm/revents.h:63](../include/flashvm/revents.h#L63) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../include/flashvm/revents.h#L53) |
+| `fvm_rdispatch_unsubscribe` | function | [include/flashvm/revents.h:73](../include/flashvm/revents.h#L73) |
 | `FVM_REvent` | struct | [include/flashvm/revents.h:19](../include/flashvm/revents.h#L19) |
 | `FVM_RResource` | struct | [include/flashvm/revents.h:31](../include/flashvm/revents.h#L31) |
 | `FVM_RWatch` | struct | [include/flashvm/revents.h:13](../include/flashvm/revents.h#L13) |

@@ -4,6 +4,7 @@
 #include "flashvm/revents.h"
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
+#include "flashvm/rfs.h"
 /* Link framing, incremental input and directional metadata without a VM runtime. */
 int main()
 {

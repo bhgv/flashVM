@@ -31,9 +31,9 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp src/jit/*.cpp
                                  src/multimedia/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
-add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c)
+add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c)
 target_include_directories(flashvm_srecord PUBLIC ${PROJECT_SOURCE_DIR}/include)
-add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
+add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
@@ -229,7 +229,7 @@ if(FVM_BUILD_TESTS)
 endif()
 function(fvm_add_program source)
   file(RELATIVE_PATH relative ${PROJECT_SOURCE_DIR} ${source})
-  if(relative STREQUAL "examples/embedding/srecords/main.c" OR relative STREQUAL "examples/embedding/resource_events/main.c" OR relative STREQUAL "examples/embedding/hybrid_heartbeat/main.c")
+  if(relative STREQUAL "examples/embedding/srecords/main.c" OR relative STREQUAL "examples/embedding/resource_events/main.c" OR relative STREQUAL "examples/embedding/hybrid_heartbeat/main.c" OR relative STREQUAL "examples/embedding/resource_files/main.c")
     return() # The protocol tutorial deliberately links only the standalone C codec.
   endif()
   if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
@@ -552,7 +552,7 @@ endif()
 
 # Standalone wire-format oracle needs no VM, SDL, devices or socket provider.
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
-  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c)
+  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c)
   target_include_directories(flashvm_srecord_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_srecord_oracle PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS YES)
   add_test(NAME flashvm_srecord_wire_oracle COMMAND ${Python3_EXECUTABLE}
@@ -668,5 +668,19 @@ if(FVM_BUILD_EXAMPLES)
   target_link_libraries(flashvm_examples_embedding_hybrid_heartbeat_main PRIVATE flashvm_srecord)
   if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_test(NAME flashvm_rheartbeat_tutorial COMMAND flashvm_examples_embedding_hybrid_heartbeat_main)
+  endif()
+endif()
+
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_rfs_contract tests/resources/filesystem.c)
+  target_link_libraries(flashvm_rfs_contract PRIVATE flashvm_srecord)
+  add_test(NAME flashvm_rfs_contract COMMAND flashvm_rfs_contract)
+endif()
+
+if(FVM_BUILD_EXAMPLES)
+  add_executable(flashvm_examples_embedding_resource_files_main examples/embedding/resource_files/main.c)
+  target_link_libraries(flashvm_examples_embedding_resource_files_main PRIVATE flashvm_srecord)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_rfs_tutorial COMMAND flashvm_examples_embedding_resource_files_main)
   endif()
 endif()

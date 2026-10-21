@@ -1,3 +1,5 @@
+[Файловый адаптер](RESOURCE_FILES.ru.md): дополнительные проверки watch и позиции операции описаны отдельно.
+
 # Независимые наблюдатели ресурсов
 
 C89 API `revents.h` добавляет к диспетчеру согласованный снимок ресурсов,
@@ -18,11 +20,11 @@ OK. Записи C нельзя передавать по сети как стр
 | Функция | Контракт |
 | --- | --- |
 | [`fvm_rdispatch_resources`](../include/flashvm/revents.h#L42) | Сессия, массив, ёмкость и обязательный указатель числа строк. NULL/0 запрашивает количество. Малый ненулевой массив: LIMIT без изменения массива/числа. Видны только выданные ресурсы; пути копируются, операции фильтруются по текущим правам. Наследования прав от каталогов нет. |
-| [`fvm_rdispatch_subscribe`](../include/flashvm/revents.h#L47) | Сессия, поколение ресурса, выходной watch. Нужен SUBSCRIBE. Каждый вызов создаёт отдельную пустую очередь; UNKNOWN для отсутствующего ресурса, DENIED без прав, LIMIT при исчерпании слотов. Обработчик ресурса не вызывается. |
-| [`fvm_rdispatch_publish`](../include/flashvm/revents.h#L52) | Только владелец: ресурс, ненулевой Uint32 kind, буфер/длина, выходной sequence. Копирует до [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) каждому подписчику. Большой буфер: LIMIT; NULL при ненулевой длине: INVALID. Sequence начинается с 1, не оборачивается; при исчерпании LIMIT без публикации. Без подписчиков номер также расходуется. |
-| [`fvm_rdispatch_event_take`](../include/flashvm/revents.h#L59) | Аутентифицированная сессия, watch и выходное событие. Копирует и удаляет только её старейшее событие. Пусто: PENDING; старое поколение: UNKNOWN; чужая сессия: DENIED. `missed` сообщает потери этого читателя после прошлого take и сбрасывается при успешном чтении. |
-| [`fvm_rdispatch_unsubscribe`](../include/flashvm/revents.h#L63) | Закрывает очередь указанной сессии/watch с потерей непрочитанного. Другие наблюдатели не затрагиваются. Старый watch: UNKNOWN; чужая сессия: DENIED. |
-| [`fvm_rdispatch_disconnect`](../include/flashvm/revents.h#L69) | Только владелец после остановки транспорта сессии. Удаляет её права, подписки, ожидающие команды и сохранённые ответы. Её выполняющаяся команда: BUSY до любых изменений. Порядок остальных команд сохраняется. Уже выполненные эффекты не отменяются. |
+| [`fvm_rdispatch_subscribe`](../include/flashvm/revents.h#L53) | Сессия, поколение ресурса, выходной watch. Нужен SUBSCRIBE. Каждый вызов создаёт отдельную пустую очередь; UNKNOWN для отсутствующего ресурса, DENIED без прав, LIMIT при исчерпании слотов. Обработчик ресурса не вызывается. |
+| [`fvm_rdispatch_publish`](../include/flashvm/revents.h#L58) | Только владелец: ресурс, ненулевой Uint32 kind, буфер/длина, выходной sequence. Копирует до [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) каждому подписчику. Большой буфер: LIMIT; NULL при ненулевой длине: INVALID. Sequence начинается с 1, не оборачивается; при исчерпании LIMIT без публикации. Без подписчиков номер также расходуется. |
+| [`fvm_rdispatch_event_take`](../include/flashvm/revents.h#L65) | Аутентифицированная сессия, watch и выходное событие. Копирует и удаляет только её старейшее событие. Пусто: PENDING; старое поколение: UNKNOWN; чужая сессия: DENIED. `missed` сообщает потери этого читателя после прошлого take и сбрасывается при успешном чтении. |
+| [`fvm_rdispatch_unsubscribe`](../include/flashvm/revents.h#L73) | Закрывает очередь указанной сессии/watch с потерей непрочитанного. Другие наблюдатели не затрагиваются. Старый watch: UNKNOWN; чужая сессия: DENIED. |
+| [`fvm_rdispatch_disconnect`](../include/flashvm/revents.h#L79) | Только владелец после остановки транспорта сессии. Удаляет её права, подписки, ожидающие команды и сохранённые ответы. Её выполняющаяся команда: BUSY до любых изменений. Порядок остальных команд сохраняется. Уже выполненные эффекты не отменяются. |
 
 [`FVM_RResource`](../include/flashvm/revents.h#L31), [`FVM_RWatch`](../include/flashvm/revents.h#L13), [`FVM_REvent`](../include/flashvm/revents.h#L19) содержат собственные копии. У watch
 и ресурса разные пространства поколений. SUBSCRIBE независим от READ/CONTROL:
@@ -73,12 +75,12 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 | `FVM_R_EVENT_QUEUE` | macro / define | [include/flashvm/revents.h:6](../include/flashvm/revents.h#L6) |
 | `FVM_R_WATCHES` | macro / define | [include/flashvm/revents.h:5](../include/flashvm/revents.h#L5) |
-| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:69](../include/flashvm/revents.h#L69) |
-| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:59](../include/flashvm/revents.h#L59) |
-| `fvm_rdispatch_publish` | function | [include/flashvm/revents.h:52](../include/flashvm/revents.h#L52) |
+| `fvm_rdispatch_disconnect` | function | [include/flashvm/revents.h:79](../include/flashvm/revents.h#L79) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../include/flashvm/revents.h#L65) |
+| `fvm_rdispatch_publish` | function | [include/flashvm/revents.h:58](../include/flashvm/revents.h#L58) |
 | `fvm_rdispatch_resources` | function | [include/flashvm/revents.h:42](../include/flashvm/revents.h#L42) |
-| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:47](../include/flashvm/revents.h#L47) |
-| `fvm_rdispatch_unsubscribe` | function | [include/flashvm/revents.h:63](../include/flashvm/revents.h#L63) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../include/flashvm/revents.h#L53) |
+| `fvm_rdispatch_unsubscribe` | function | [include/flashvm/revents.h:73](../include/flashvm/revents.h#L73) |
 | `FVM_REvent` | struct | [include/flashvm/revents.h:19](../include/flashvm/revents.h#L19) |
 | `FVM_RResource` | struct | [include/flashvm/revents.h:31](../include/flashvm/revents.h#L31) |
 | `FVM_RWatch` | struct | [include/flashvm/revents.h:13](../include/flashvm/revents.h#L13) |

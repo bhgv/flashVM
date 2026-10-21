@@ -1,4 +1,4 @@
-Версия разработки: **0.731** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.732** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.732: [Portable resource files](doc/RESOURCE_FILES.md) / [Файлы ресурсов](doc/RESOURCE_FILES.ru.md).
 
 v0.731: [Hybrid UDP/TCP policy](doc/HYBRID_HEARTBEAT.md) / [Гибридная политика](doc/HYBRID_HEARTBEAT.ru.md).
 

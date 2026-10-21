@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.731
+# FlashVM stage status / Состояние стадий — v0.732
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,15 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.732 adds portable synthetic resource files: incarnation directories, authorized
+operation files and independent binary event streams. Native C89 fixtures cover
+partial I/O, revocation, cancellation and bounded exhaustion. No OS mount or
+network transport is implied; stages 6/7/9 and all other stages remain open.
+
+v0.732: переносимые файлы ресурсов с поколениями, операциями и событиями.
+Проверены частичные чтения, отзыв прав, отмена и лимиты; OS mount и сетевой
+транспорт пока не добавлены. Приёмка стадий остаётся открытой.
 
 v0.731 implements an embeddable hybrid UDP/TCP idle/receive policy and compact
 S-record hints: slower independent TCP checks, authenticated UDP probe requests,

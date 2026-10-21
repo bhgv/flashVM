@@ -1,10 +1,12 @@
-Development version: **0.731** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.731 ` and an English description. Increase the subversion before each
+Development version: **0.732** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.732 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.732: [Portable resource files](doc/RESOURCE_FILES.md) / [Файлы ресурсов](doc/RESOURCE_FILES.ru.md).
 
 v0.731: [Hybrid UDP/TCP policy](doc/HYBRID_HEARTBEAT.md) / [Гибридная политика](doc/HYBRID_HEARTBEAT.ru.md).
 
