@@ -38,3 +38,35 @@ fvm_desktop_run_memory; см. [встроенный фильм](../embedded_movi
 включает WAV/текстовую запись принятых PCM блоков при закрытии. Не выдавайте trace за
 запись динамиков. У worker есть frame gate, pause и bounded work; точный A/V sync,
 stream+event mixing, сжатые stream codecs остаются открытыми.
+
+## Потоковый ADPCM из целых пакетов (v0.764)
+
+[adpcm-stream.swf](adpcm-stream.swf) — самостоятельный SWF8 320×200, восемь кадров
+при 5 fps. В каждом кадре полный четырёхбитный моно ADPCM-пакет: 4096 сэмплов
+22050 Hz, негромкая треугольная волна около 441 Hz; фон синий, затем оранжевый.
+Длина таймлайна 1,6 с и 32768 исходных сэмплов намеренно различаются: автоматическая
+компенсация drift и вставка тишины не заявлены. Плеер преобразует в 48000 Hz stereo.
+
+```sh
+python3 flashVM/examples/player/pcm_stream/make_adpcm.py --ffmpeg ffmpeg
+build/player/frontend/flashvm_player --interpreter --once flashVM/examples/player/pcm_stream/adpcm-stream.swf
+build/player/frontend/flashvm_player --jit --once flashVM/examples/player/pcm_stream/adpcm-stream.swf
+python3 flashVM/frontend/tests/stream_adpcm.py build/player/frontend/flashvm_player --ffmpeg
+```
+
+Отдельный [генератор](make_adpcm.py) требует Python3 и FFmpeg с encoder `adpcm_swf`
+и FLV muxer. Временные raw/FLV-файлы удаляются и при ошибке; указанный SWF заменяется
+только после проверки полученных пакетов. Результат воспроизводится выбранной
+версией encoder; между версиями FFmpeg байты могут отличаться. Прежний генератор
+PCM не меняется и не требует FFmpeg. **Для воспроизведения FFmpeg не нужен**:
+владелец VM заранее декодирует C++98-функцией; worker использует независимый PCM.
+Освобождение снимков/SDL — после join. Короткие ADPCM-пакеты, смешивание с корневыми
+StartSound и прочие кодеки пока не поддержаны: [контракт](../../../doc/STREAM_ADPCM.ru.md).
+
+Независимая проверка декодирует все пакеты FFmpeg, вычисляет рациональную конверсию
+целыми числами и сравнивает 71332 принятых стереокадра. Это dummy-очередь SDL,
+не запись динамиков и не приёмка физического устройства. При сильном голодании
+host конечный запуск может завершиться до производства последних PCM-данных.
+Для прямого C89-встраивания передайте те же байты в `fvm_desktop_run_memory`, как
+в [готовом примере](../embedded_movie/README.md). Контекст принадлежит владельцу,
+не worker; время жизни снимка завершается только после остановки producer.

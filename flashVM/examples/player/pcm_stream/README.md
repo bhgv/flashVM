@@ -36,5 +36,40 @@ For reproducible queue checks use SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy wi
 same arguments; this is not audible device evidence.
 FVM_AUDIO_TRACE=/absolute/path/evidence explicitly enables WAV/text recording of accepted
 PCM on close. This is not speaker recording. The worker has a frame gate, pause and
-bounded work; exact A/V sync, stream+event mixing, multiple headers and compressed stream
-codecs remain open.
+bounded work; exact A/V sync, stream+event mixing, partial ADPCM packets and other compressed
+stream codecs remain open. Finite playback can truncate unproduced data under severe host starvation.
+
+## Whole-packet ADPCM variant (v0.764)
+
+Bundled [adpcm-stream.swf](adpcm-stream.swf) is a standalone 320×200 SWF8, eight
+frames at 5 fps. Each frame contains one four-bit mono ADPCM packet: 4096 source
+samples at 22050 Hz, a modest approximately 441 Hz triangle, blue then orange.
+The 1.6-second timeline and 32768-sample source duration intentionally differ;
+no automatic drift correction or synthesized gap silence is claimed.
+
+```sh
+python3 flashVM/examples/player/pcm_stream/make_adpcm.py --ffmpeg ffmpeg
+build/player/frontend/flashvm_player --interpreter --once flashVM/examples/player/pcm_stream/adpcm-stream.swf
+build/player/frontend/flashvm_player --jit --once flashVM/examples/player/pcm_stream/adpcm-stream.swf
+```
+
+The separate [generator](make_adpcm.py) requires Python3 and an installed FFmpeg
+with its `adpcm_swf` encoder and FLV muxer. Temporary raw/FLV files are cleaned on
+success or failure; only the explicitly named bundled SWF is replaced, after
+successful validation. Regeneration is deterministic for the selected encoder;
+bytes need not be identical across encoder releases. Existing PCM generation is
+unchanged and still needs no FFmpeg. **Playback needs no FFmpeg**: owner preparation
+uses the C++98 decoder and the worker receives immutable native PCM. Snapshots
+and SDL device remain owned until worker join. Only whole ADPCM packets are
+supported, without root event-sound mixing; see [EN](../../../doc/STREAM_ADPCM.md) /
+[RU](../../../doc/STREAM_ADPCM.ru.md). The independent optional player check is:
+
+```sh
+python3 flashVM/frontend/tests/stream_adpcm.py build/player/frontend/flashvm_player --ffmpeg
+```
+
+It decodes every bundled packet with FFmpeg, computes output conversion using
+integer arithmetic and checks all 71332 accepted 48000 Hz stereo frames.
+This is SDL dummy-queue evidence, not speaker recording or physical-device acceptance.
+The normal C API source is `fvm_desktop_run_memory`; pass the same bundled bytes
+through the [existing C89 embedding example](../embedded_movie/README.md).

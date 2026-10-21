@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 /* Reject unsupported combinations before a window or audio endpoint can be opened. */
-FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
+static FVM_Result validate_headers(FVM_Context *context, int decode)
 {
     size_t streams = 0, events = 0, index;
     FVM_SWFStreamSoundInfo info;
@@ -25,10 +25,27 @@ FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
         result = fvm_swf_stream_sound_at(context, index, &info);
         if (result != FVM_OK)
             return result;
-        if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
+        if (info.format == FVM_SWF_SOUND_ADPCM)
+        {
+            if (decode)
+            {
+                FVM_SWFStreamSoundSnapshot *prepared = 0;
+                result = fvm_swf_stream_sound_snapshot_open_pcm(context, index, &prepared);
+                fvm_swf_stream_sound_snapshot_close(prepared);
+                if (result != FVM_OK)
+                    return result;
+            }
+        }
+        else if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
             return FVM_UNSUPPORTED;
     }
     return FVM_OK;
+}
+
+/* Validate/decode compressed payload before window/device acquisition; no result is retained. */
+FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
+{
+    return validate_headers(context, 1);
 }
 
 /* Forward the actual write, recording only blocks accepted by the real SDL adapter. */
@@ -231,7 +248,8 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     result = fvm_swf_stream_sound_count(context, &streams);
     if (result != FVM_OK || (!count && !streams))
         return result;
-    result = fvm_desktop_audio_validate(context);
+    result =
+        validate_headers(context, 0); /* Preparation below validates ADPCM before device open. */
     if (result != FVM_OK)
         return result;
     if (streams)
@@ -249,7 +267,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
             info.struct_size = sizeof(info);
             result = fvm_swf_stream_sound_at(context, index, &info);
             if (result == FVM_OK)
-                result = fvm_swf_stream_sound_snapshot_open(context, index, &segment->source);
+                result = fvm_swf_stream_sound_snapshot_open_pcm(context, index, &segment->source);
             if (result != FVM_OK)
                 return result;
             segment->frame = info.frame;

@@ -131,3 +131,7 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 [Collection between frames](../doc/PLAYER_EVENT_GC.md).
 
 [Build metadata and C host interface](../doc/PLAYER_BUILD_INFO.md).
+
+## Whole-packet ADPCM root streams (v0.764)
+
+[Player contract and bounded decoder](../doc/PLAYER_PCM_STREAMS.md); [runnable ADPCM example](../examples/player/pcm_stream/README.md#whole-packet-adpcm-variant-v0764). No FFmpeg runtime dependency; other codecs/partial packets and root event mixing remain unsupported.

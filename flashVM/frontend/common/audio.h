@@ -65,8 +65,8 @@ extern "C"
 {
 #endif
     /* Validate supported unmuted root stream policy before native presentation/device acquisition.
-     * Up to MAX_SEGMENTS PCM headers without root StartSound events; codec/mixed/excess
-     * UNSUPPORTED. Owner only; no device, callbacks or output allocation. Core stream alignment
+     * Up to MAX_SEGMENTS PCM or whole-packet ADPCM headers without root StartSound; other codec/mixed/excess
+     * UNSUPPORTED. Owner only; may allocate/decode temporary ADPCM; no device or callbacks. Core stream alignment
      * errors propagate. */
     FVM_Result fvm_desktop_audio_validate(FVM_Context *);
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
