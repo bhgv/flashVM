@@ -197,6 +197,28 @@ extern "C" FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *voice, F
     return FVM_OK;
 }
 
+/* Reposition within the immutable selected interval; reconstruct envelope lookup lazily on read. */
+extern "C" FVM_Result fvm_swf_sound_voice_seek(FVM_SWFSoundVoice *voice, unsigned int play,
+                                                size_t frame)
+{
+    if (!voice)
+        return FVM_INVALID_ARGUMENT;
+    bool empty = !voice->info.play_count || !voice->info.frames_per_play;
+    if (empty)
+    {
+        if (play || frame)
+            return FVM_INVALID_ARGUMENT;
+    }
+    else if (play > voice->info.play_count ||
+             (play == voice->info.play_count ? frame != 0 : frame >= voice->info.frames_per_play))
+        return FVM_INVALID_ARGUMENT;
+    voice->info.play_index = play;
+    voice->info.frame_in_play = frame;
+    voice->info.finished = empty || play == voice->info.play_count;
+    voice->segment = 0;
+    return FVM_OK;
+}
+
 /* Produce a bounded sequential slice, with the same elapsed-time envelope as full rendering. */
 extern "C" FVM_Result fvm_swf_sound_voice_read(FVM_SWFSoundVoice *voice, size_t frames, short *out, size_t capacity,
                                                size_t *written)

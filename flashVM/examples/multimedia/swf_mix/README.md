@@ -79,7 +79,7 @@ teardown закрывает такой ресурс. Runtime освобожда�
 - [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L131) — точная сумма, silence padding, лимиты/alias/ошибки:
   [AUDIO_MIXING.md](../../../doc/AUDIO_MIXING.md#fvm_audio_mix_s16).
 - [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L114),
-  [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L116), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L118) — ownership,
+  [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L126), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L128) — ownership,
   progression, EOF and cleanup: [SWF_SOUND_VOICES.md](../../../doc/SWF_SOUND_VOICES.md).
 - [`fvm_jit_available`](../../../include/flashvm/jit.h#L13), [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64),
   [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71), [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52), [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) —
@@ -163,8 +163,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:118](../../../include/flashvm/swf_sound.h#L118) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../../../include/flashvm/swf_sound.h#L128) |
 | `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../../../include/flashvm/swf_sound.h#L114) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../../../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:116](../../../include/flashvm/swf_sound.h#L116) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:126](../../../include/flashvm/swf_sound.h#L126) |
 <!-- source-links:end -->

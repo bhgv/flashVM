@@ -39,6 +39,23 @@
 повторов, изменений огибающей и EOF, затем продолжает копию после освобождения
 оригинала. Проверяются точный/недостаточный бюджеты и ошибки после teardown VM.
 
+## v0.785: позиционирование нативного голоса
+
+[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L123) выбирает повтор и кадр исходного PCM без аллокаций и
+декодирования. Для непустого голоса: play_index < play_count и frame <
+frames_per_play либо EOF (play_count,0). Пустой голос/ноль повторов принимает
+только (0,0), оставаясь завершённым. Ошибка сохраняет всю позицию. (0,0)
+перезапускает непустой шаблон. Следующее чтение восстановит время огибающей
+с учётом повторов; обратный переход сбрасывает кэш сегмента огибающей.
+Сериализуйте голос, которым ещё владеете; переданный микшеру указатель недоступен.
+Это позиция готового PCM, а не таймлайн клипа, сетка конвертера, микшер, pending
+блок или аппаратные часы. Их состояние сбрасывается собственными операциями.
+
+`swf_sound_voice_seek` сравнивает каждую позицию трёх повторов/трёх точек огибающей
+с заранее последовательно отрендеренным результатом, в обратном порядке после
+уничтожения VM. Проверены restart, EOF, сохранение позиции при ошибке и пустые
+голоса, включая нулевое число повторов; аллокации при seek запрещены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -51,5 +68,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
+| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:123](../include/flashvm/swf_sound.h#L123) |
 | `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |
 <!-- source-links:end -->

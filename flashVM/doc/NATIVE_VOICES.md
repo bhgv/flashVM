@@ -39,6 +39,23 @@ charge every template and clone. Close each untransferred result separately.
 envelope changes and EOF, then destroys the original and continues the copy.
 Exact/short budgets and argument preservation are exercised after source teardown.
 
+## v0.785: native cursor positioning
+
+[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L123) selects a repeat and source-relative frame without
+allocation or decoding. For a nonempty voice choose play_index < play_count and
+frame < frames_per_play, or (play_count,0) for EOF. Empty/zero-play voices accept
+only (0,0), remaining finished. Invalid input leaves all progress unchanged.
+(0,0) restarts a nonempty template. The next read reconstructs envelope time from
+the absolute elapsed repeats; backward seeks reset cached envelope lookup.
+Serialize the caller-owned voice. Never seek an already transferred handle.
+This positions prepared source PCM, not a movie timeline, conversion grid, mixer,
+pending queue block or hardware clock. Those owners need their own reset policy.
+
+`swf_sound_voice_seek` compares every position in a three-repeat, three-envelope
+fixture with a previously rendered independent sequential result, in reverse
+order after VM destruction. It checks restart, canonical EOF, invalid unchanged
+progress, empty and zero-loop owners with allocation forbidden throughout seeks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -51,5 +68,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
+| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:123](../include/flashvm/swf_sound.h#L123) |
 | `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |
 <!-- source-links:end -->

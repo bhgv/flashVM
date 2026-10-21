@@ -2663,7 +2663,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L142) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L152) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -3465,7 +3465,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
 <!-- source-links:end -->

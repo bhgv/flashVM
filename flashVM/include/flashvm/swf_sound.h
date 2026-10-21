@@ -112,6 +112,16 @@ extern "C"
                                                  FVM_SWFSoundVoice **out);
     /* Copy geometry/progress without allocations, callbacks or VM access. */
     FVM_API FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *, FVM_SWFSoundVoiceInfo *);
+    /* Set a native voice cursor without decoding/allocation/VM/callbacks. play_index is zero-
+     * based; frame_in_play is relative to the selected source interval, before rate conversion.
+     * Nonempty: play_index < play_count and frame < frames_per_play, or canonical EOF
+     * (play_count,0). Empty/zero-play voices accept only (0,0) and remain finished. (0,0)
+     * restarts nonempty playback. Null/out-of-range INVALID_ARGUMENT before any mutation.
+     * Reconstruct envelope position from absolute elapsed repeats on the next read; backward
+     * seek never retains a later gain segment. No device/queue/mixer time is changed. Caller
+     * must still own and externally serialize the voice; an adopted handle cannot be sought. */
+    FVM_API FVM_Result fvm_swf_sound_voice_seek(FVM_SWFSoundVoice *, unsigned int play_index,
+                                                size_t frame_in_play);
     /* Read at most requested frames as native S16, advancing only after argument validation; EOF is NOT_FOUND. */
     FVM_API FVM_Result fvm_swf_sound_voice_read(FVM_SWFSoundVoice *, size_t, short *, size_t, size_t *);
     /* Release native snapshot storage; null is accepted, no VM/host output callback is entered. */

@@ -2,7 +2,7 @@
 
 ## Scope
 
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L142) connects one root StartSound control to a dedicated
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L152) connects one root StartSound control to a dedicated
 [`FVM_AudioChannel`](../src/multimedia/audio/channel.hpp#L6). It renders supported PCM/ADPCM, source boundaries, repetitions
 and linear envelopes, then calls the real registered output once. Stop and
 no-multiple inspect all same-ID bound voices in the owning context. This is an explicit
@@ -19,7 +19,7 @@ canonical loaded SWF; live channel owned by that context. The channel must be
 dedicated to this resource. An unbound channel must be inactive. A successful
 nonempty event write binds its sound ID until the channel is closed; stopping
 or reloading SWF does not erase this binding. A different sound ID is rejected
-on this channel, including by [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L145). Plain host writes remain
+on this channel, including by [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155). Plain host writes remain
 available; the host must use them only for this dedicated resource. Closing and
 re-registering permits a new identity. There are no managed objects or GC roots
 in the binding, and it is not serialized across contexts.
@@ -105,7 +105,7 @@ memory_limit_bytes, or the default [FVM_SWF_DEFAULT_LIMIT](../include/flashvm/sw
 is checked before products/allocation. Allocator bookkeeping, channel wrappers,
 canonical input and the host's output copy are separate. Allocation occurs
 outside managed GC. Large/long events can return OUT_OF_MEMORY even though raw
-[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L145) can export the source in smaller chunks. No persistent
+[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155) can export the source in smaller chunks. No persistent
 cache, streaming decoder or automatic mixing buffer is added.
 
 ## Русский контракт
@@ -116,7 +116,7 @@ StartSound к явно выбранному голосовому каналу: P
 GC/destruction/audio callback. ordinal начинается с нуля и относится к текущему
 canonical FWS/CWS. Первый успешный непустой event write закрепляет sound ID за
 каналом до close. Другой ID на этом канале — INVALID_ARGUMENT, включая обычный
-[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L145). Stop/reload привязку не снимают; незакреплённый active-канал
+[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155). Stop/reload привязку не снимают; незакреплённый active-канал
 нельзя присвоить событию. Пользовательские write остаются доступны под
 ответственность host: этот канал должен обслуживать только выделенный ресурс.
 
@@ -172,7 +172,7 @@ chunks. See the [resource/metadata contracts](SWF_SOUND_RESOURCES.md),
 [swf_polyphony](../examples/multimedia/swf_polyphony/README.md) demonstrates
 two overlapping resource voices, global no-multiple, stop-by-ID and preservation
 of a different resource through real independent stdio outputs.
-Implementation is split between [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L142) (guarded native
+Implementation is split between [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L152) (guarded native
 output) and [`fvm_swf_sound_render`](../src/swf/sound_render.cpp#L10) (bounded preparation).
 
 ## Incremental alternative
@@ -209,9 +209,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWF_SOUND_ENVELOPE_RATE` | macro / define | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
 | `FVM_SWF_SOUND_ENVELOPE_UNITY` | macro / define | [include/flashvm/swf_sound.h:27](../include/flashvm/swf_sound.h#L27) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
 | `fvm_swf_sound_render` | function | [src/swf/sound_render.cpp:10](../src/swf/sound_render.cpp#L10) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:145](../include/flashvm/swf_sound.h#L145) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:155](../include/flashvm/swf_sound.h#L155) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
 <!-- source-links:end -->
