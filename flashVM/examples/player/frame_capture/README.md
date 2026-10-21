@@ -178,6 +178,22 @@ fail before startup. [Contract](../../../doc/RESOURCE_DISPATCH.md).
 | [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L121) | On failure cancel a queued STOP before taking the retained result. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L105) | After runner return release callback registration before Capture disposal. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Free only the native dispatcher after all accepted requests are acknowledged. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+## Resource state v0.734
+
+With `--resource-control`, owner notify copies state into `/timeline/state`;
+a local observer independently takes and decodes events. The snapshot owns its
+bytes after SDK teardown; no root/context is retained. Source truncation is
+explicit. Quiet turns do not fill queues. Destroy state adapter before control
+registration and dispatcher. This example creates no network client.
+
+| API | Ownership / execution |
+| --- | --- |
+| `fvm_desktop_resource_state_create` | Own native cached state, borrowing dispatcher without starting SDK. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| `fvm_desktop_resource_state_observe` | Owner copies the current safe point before returning the next command. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| `fvm_desktop_resource_state_read` | Decode owned event bytes into a standalone scalar/source snapshot. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| `fvm_desktop_resource_state_destroy` | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Own one independent copied queue for the trusted local session. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
+| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Consume only this reader; quiet-turn PENDING is not failure. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -191,8 +207,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../../../include/flashvm/rdispatch.h#L121) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../../../include/flashvm/revents.h#L65) |
 | `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../../../include/flashvm/revents.h#L53) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
 | `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../../../include/flashvm/rdispatch.h#L105) |
 <!-- source-links:end -->

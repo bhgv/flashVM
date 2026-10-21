@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.733
+# FlashVM stage status / Состояние стадий — v0.734
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,16 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.734 adds a native player-state resource: copied root epochs, source prefixes,
+completed tick/draw counters and independent READY/TICK/changed-policy events.
+Quiet turns do not fill queues. The C89 lifecycle/codec contract and frame-capture
+resource example pass; no VM pointer enters the payload and no new transport or
+OS mount is installed. Full player/SWF/platform acceptance remains open.
+
+v0.734: копии состояния плеера через ресурсы, поколения корней и события
+завершённых тиков. Тихие TURN подавлены; владение, усечение и очистка явные.
+Все девять стадий остаются открытыми.
 
 v0.733 adds a bounded 9P2000 device-message adapter with fid walks, file I/O,
 stat directories, deferred reads, flush and clunk/reset cleanup. Independent

@@ -1,4 +1,5 @@
 # FlashVM C89/C++98 API index
+- [Player resource state](PLAYER_RESOURCE_STATE.md) / [RU](PLAYER_RESOURCE_STATE.ru.md): owner snapshots, root epochs and independent READY/TICK/policy observations.
 - [Resource 9P2000](RESOURCE_9P.md) / [RU](RESOURCE_9P.ru.md): `r9p.h`, bounded device-message adapter with host-owned transport.
 - [Resource files](RESOURCE_FILES.md) / [RU](RESOURCE_FILES.ru.md): `rfs.h`, native open/read/write/close over dispatcher resources.
 

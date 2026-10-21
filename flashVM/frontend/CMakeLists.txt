@@ -68,7 +68,7 @@ if(FVM_PLAYER_HOST_SHARED)
   set(player_host_type SHARED)
 endif()
 # A native IDE can link the same synchronous implementation without a CLI entrypoint.
-add_library(flashvm_player_host ${player_host_type} common/resource_control.c common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
+add_library(flashvm_player_host ${player_host_type} common/resource_state.c common/resource_control.c common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
   common/audio.c common/audio_trace.c)
 target_include_directories(flashvm_player_host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(flashvm_player_host PUBLIC flashvm SDL2::SDL2)
@@ -1098,4 +1098,11 @@ if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpre
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
     ${PROJECT_SOURCE_DIR}/examples/player/frame_capture --offscreen --resource-control)
   set_tests_properties(flashvm_resource_capture_example PROPERTIES TIMEOUT 30)
+endif()
+
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_resource_state tests/resource_state.c)
+  target_link_libraries(flashvm_frontend_resource_state PRIVATE flashvm_srecord)
+  set_target_properties(flashvm_frontend_resource_state PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_resource_state_contract COMMAND flashvm_frontend_resource_state)
 endif()

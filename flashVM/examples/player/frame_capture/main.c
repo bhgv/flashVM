@@ -1,4 +1,5 @@
 /* Copy a chosen logical stage raster into native storage and write it after SDK cleanup; see README.md / README.ru.md. */
+#include "../../../frontend/common/resource_state.h" /* Copied timeline snapshots and independent observer events. */
 #include "../../../frontend/common/resource_control.h" /* Native resource queue to player owner-control bridge. */
 #include "../../../frontend/common/player.h" /* Public C89 observer/control/source declarations, with no SDL types. */
 #ifdef FVM_DESKTOP_SOCKET_HTTP /* Use the provider selected by this SDK configuration. */
@@ -26,6 +27,10 @@ typedef struct Capture /* No managed context/root or borrowed frame/source point
     unsigned char *pixels; /* [GC:] Native allocation, not a VM root; free explicitly after output. */
     FVM_RDispatch *dispatch; /* Optional owned native queue; no VM object or worker is allocated by it. */
     FVM_DesktopResourceControl resource; /* Borrowed adapter storage lives through unregister and runner return. */
+    FVM_DesktopResourceState *state_adapter; /* Own native snapshot storage; never retain the callback's root/context. */
+    FVM_RHandle state_target; /* Registered generation of the timeline observation endpoint. */
+    FVM_RWatch state_watch; /* Own one local copied observation queue. */
+    FVM_DesktopResourceSnapshot last_state; /* This scalar/source copy survives player teardown. */
     int posted, control_failed; /* Track acknowledgement and cleanup/error status independently of captured pixels. */
     int captured; /* Set only after a complete validated row copy succeeds. */
 } Capture; /* Caller stack storage outlives the synchronous observer/control callbacks. */
@@ -61,6 +66,7 @@ static void control_resources_release(Capture *capture) /* The queue never owns 
         fvm_rdispatch_cancel(capture->dispatch, 1, 1); /* DONE may report CONFLICT; take still acknowledges it. */
         if (fvm_rdispatch_take(capture->dispatch, 1, 1, &reply) != FVM_R_OK) capture->control_failed = 1; /* Require no retained job. */
     } /* A previously acknowledged STOP needs no second take. */
+    if (capture->state_adapter && fvm_desktop_resource_state_destroy(&capture->state_adapter) != FVM_R_OK) capture->control_failed = 1; /* Close state watches before queue destruction. */
     if (capture->resource.struct_size && fvm_rdispatch_unregister(capture->dispatch, capture->resource.target) != FVM_R_OK) capture->control_failed = 1; /* Release borrow. */
     if (fvm_rdispatch_destroy(&capture->dispatch) != FVM_R_OK) capture->control_failed = 1; /* No host pixels or userdata are freed by destroy. */
 } /* SDK shutdown follows this native resource cleanup. */
@@ -69,7 +75,10 @@ static int control_resources_setup(Capture *capture) /* Single-owner mode delibe
 { /* A real producer thread supplies working mutex/owner hooks instead. */
     if (fvm_rdispatch_create(0, &capture->dispatch) == FVM_R_OK && /* Fixed bounded native allocation. */
         fvm_desktop_resource_control_init(&capture->resource, capture->dispatch, "/timeline/ctl") == FVM_R_OK && /* Copied path/operations. */
-        fvm_rdispatch_grant(capture->dispatch, capture->resource.target, 1, FVM_R_CONTROL) == FVM_R_OK) return 1; /* Trusted local session only. */
+        fvm_rdispatch_grant(capture->dispatch, capture->resource.target, 1, FVM_R_CONTROL) == FVM_R_OK && /* Only this local controller may stop playback. */
+        fvm_desktop_resource_state_create(capture->dispatch, "/timeline/state", &capture->state_adapter, &capture->state_target) == FVM_R_OK && /* Own a copied observation endpoint. */
+        fvm_rdispatch_grant(capture->dispatch, capture->state_target, 1, FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK && /* Explicit observation authority. */
+        fvm_rdispatch_subscribe(capture->dispatch, 1, capture->state_target, &capture->state_watch) == FVM_R_OK) return 1; /* Trusted local session only. */
     control_resources_release(capture); /* Dispose any partially acquired registration/allocation. */
     return 0; /* No VM, window or output file was opened. */
 } /* Registry/adapter storage remains owned by main. */
@@ -79,8 +88,15 @@ static FVM_DesktopPlaybackCommand stop_after_capture(const FVM_DesktopPlaybackSt
     Capture *capture = (Capture *)raw; /* Shared only with the synchronous frame observer. */
     FVM_RRequest request; /* Native request descriptor; no S-record encoding is required for local C calls. */
     FVM_RReply reply; /* Owned response copy used for delivery acknowledgement. */
+    FVM_REvent event; /* Own the publication bytes only through this bounded native copy. */
+    FVM_RResult observed; /* Distinguish quiet turns from errors. */
     FVM_DesktopPlaybackCommand command; /* Player applies this returned policy intent after callback return. */
     if (!capture->dispatch) return capture->captured ? FVM_DESKTOP_PLAYBACK_STOP : FVM_DESKTOP_PLAYBACK_KEEP; /* Existing default behavior. */
+    if (fvm_desktop_resource_state_observe(capture->state_adapter, state) != FVM_R_OK) { capture->control_failed = 1; return FVM_DESKTOP_PLAYBACK_STOP; } /* Copy before the next command takes effect. */
+    observed = fvm_rdispatch_event_take(capture->dispatch, 1, capture->state_watch, &event); /* Only this reader's queue is consumed. */
+    if (observed == FVM_R_OK) { /* READY/TICK and changed policy carry independent snapshot bytes. */
+        if (fvm_desktop_resource_state_read(event.data, event.size, &capture->last_state) != FVM_R_OK || event.missed) { capture->control_failed = 1; return FVM_DESKTOP_PLAYBACK_STOP; } /* Decode without any VM pointer. */
+    } else if (observed != FVM_R_PENDING) { capture->control_failed = 1; return FVM_DESKTOP_PLAYBACK_STOP; } /* Ordinary quiet turns publish nothing. */
     if (capture->captured && !capture->posted) /* Submit exactly one terminal request after the pixel copy. */
     { /* The target/operation, not a caller-provided right, selects CONTROL permission. */
         memset(&request, 0, sizeof(request)); request.session = 1; request.id = 1; /* Trusted local identity; no reconnect protocol here. */

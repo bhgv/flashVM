@@ -176,6 +176,22 @@ endpoint управления и GUI-ФС не создаются. HTTP исхо
 | [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L121) | На ошибке отменить queued STOP до take сохранённого результата. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L105) | После runner снять регистрацию до освобождения Capture. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Освободить native dispatcher после подтверждения всех принятых запросов. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+## Состояние через ресурсы v0.734
+
+При `--resource-control` owner notify копирует состояние в `/timeline/state`,
+локальный наблюдатель независимо забирает и декодирует события. Снимок хранит
+свои байты после завершения SDK; корень/context не удерживается. Source может
+быть усечён с флагом. Тихие TURN не заполняют очередь. Сначала уничтожается
+state adapter, затем control registration и dispatcher. Сетевого клиента нет.
+
+| API | Владение / исполнение |
+| --- | --- |
+| `fvm_desktop_resource_state_create` | Создаёт native cache, заимствуя диспетчер без старта SDK. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| `fvm_desktop_resource_state_observe` | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| `fvm_desktop_resource_state_read` | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| `fvm_desktop_resource_state_destroy` | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
+| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -189,8 +205,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../../../include/flashvm/rdispatch.h#L121) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../../../include/flashvm/revents.h#L65) |
 | `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
 | `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../../../include/flashvm/revents.h#L53) |
 | `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
 | `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../../../include/flashvm/rdispatch.h#L105) |
 <!-- source-links:end -->

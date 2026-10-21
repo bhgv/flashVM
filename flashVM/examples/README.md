@@ -164,7 +164,7 @@
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
-  - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, offscreen и owner resource control</em></small>
+  - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, offscreen, команды и копии состояния</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1833,6 +1833,8 @@ Timeline при fetch ждёт; это не полная async Flash loading sem
 
 <a id="example-player-frame_capture"></a>
 ### frame_capture
+
+С v0.734 resource-control режим также показывает независимые копии состояния таймлайна; [контракт](../doc/PLAYER_RESOURCE_STATE.ru.md).
 
 Самостоятельный C89-хост получает logical-stage RGBA через callback, копирует
 нужный host tick в свою память, завершает плеер и только после SDK cleanup пишет PPM.
