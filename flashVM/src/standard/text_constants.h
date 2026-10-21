@@ -5,4 +5,5 @@
 #define FVM_TEXT_FIELD_MAX_BYTES 16384UL
 #define FVM_TEXT_FIELD_MAX_SCALARS 4096UL
 #define FVM_TEXT_FIELD_MAX_UNITS 8192UL
+#define FVM_TEXT_STYLE_NO_KERNING 4UL /* Packed field-style flag; low bits retain legacy alignment. */
 #endif

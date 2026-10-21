@@ -35,6 +35,18 @@ and edits/cached metrics/path export use the same feature. Partial styled spans,
 full device-font behavior and complete TextField semantics remain outside this subset.
 Legacy metric fixtures now explicitly request their previously implicit kerning.
 
+
+## Transfer compatibility (v0.823)
+
+Current/future native field styles retain kerning through binary serialization
+and channels. The existing alignment word carries an explicit NO_KERNING flag;
+no record length, allocation charge or public ABI structure changes. Old field
+records without the flag restore their historically enabled kerning. New dynamic
+fields default disabled. Other unknown bits/invalid low alignment values reject
+with existing graph rollback. Old readers reject the new disabled flag rather
+than silently drawing a different width. This field-record compatibility does
+not preserve implicit behavior of old generic TextFormat objects with null flags.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

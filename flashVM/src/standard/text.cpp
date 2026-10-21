@@ -1309,7 +1309,8 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.size = style.size;
     out.leading = style.leading;
     out.color = style.color;
-    out.alignment = (unsigned long)style.alignment;
+    out.alignment = (unsigned long)style.alignment |
+                    (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING);
     out.source = *context->fonts.find(style.font)->second;
 }
 
@@ -1317,7 +1318,8 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
     if (src.font.empty() || src.font.size() > 255 || !finite_range(src.size, 1, 4096) ||
-        !finite_range(src.leading, -4096, 4096) || src.color > 16777215UL || src.alignment > 2)
+        !finite_range(src.leading, -4096, 4096) || src.color > 16777215UL ||
+        (src.alignment & ~FVM_TEXT_STYLE_NO_KERNING) > 2)
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing =
         context->fonts.find(src.font);
@@ -1343,7 +1345,8 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.size = src.size;
     out.leading = src.leading;
     out.color = src.color;
-    out.alignment = (FVM_TextAlignment)src.alignment;
+    out.alignment = (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_NO_KERNING);
+    out.kerning = (src.alignment & FVM_TEXT_STYLE_NO_KERNING) == 0;
     return FVM_OK;
 }
 } // namespace

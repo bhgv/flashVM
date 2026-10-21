@@ -23,7 +23,7 @@ struct FVM_TextStyleState
     double size /* Size of the associated payload or collection. */,
         leading; /* Extra spacing added between text lines. */
     unsigned long color /* Text color used for rendering. */,
-        alignment;         /* Requested horizontal text alignment. */
+        alignment;         /* Low alignment bits plus the explicit NO_KERNING transfer flag. */
     FVM_FontSource source; /* Source name associated with this entry. */
     /* Initialize Text Style State and its owned state. */
     FVM_TextStyleState() : size(12), leading(2), color(0), alignment(0)
