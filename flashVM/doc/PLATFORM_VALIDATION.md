@@ -8,6 +8,10 @@ devices, SDKs or evidence. HEADLESS is the only implemented presentation adapter
 No source/history archives are created, in accordance with the standing delivery
 instruction. All bundled dependencies remain static CMake targets.
 
+Explicit Linux/musl cross-build instructions for the complete minimal core and
+static SDL player: [Zig guide](CROSS_LINUX_ZIG.md). Cross builds require separate
+target execution; the native runner below intentionally rejects cross directories.
+
 ## Native Windows, Linux and macOS
 
 Use Python 3.8+, Git, CMake/CTest 3.26+ and the native C/C++ toolchain. From the

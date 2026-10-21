@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.761
+# FlashVM stage status / Состояние стадий — v0.762
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.762: Explicit Zig Linux/musl toolchain builds the complete minimal core and selected programs for ARM64, RISC-V64 and x86-64; target-built static SDL/AGG player links for ARM64. x86-64/musl runtime checks pass on this x86-64 Linux host. [EN](CROSS_LINUX_ZIG.md) / [RU](CROSS_LINUX_ZIG.ru.md). ARM64/RISC-V64 execution, physical devices and OS/platform acceptance remain open.
 
 v0.761: Desktop SDL playback prepares up to 64 PCM header segments, changes source rate/channel/width without clearing accepted audio, skips empty headers under a fixed worker budget and re-primes later cursors after navigation. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Codec/mixing/drift/device/platform acceptance remains open.
 
