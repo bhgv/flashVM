@@ -21,6 +21,7 @@
     - [backtrace](#example-debugger-backtrace) — <small><em>JSON-бэктрейс после ошибки VM</em></small>
     - [jit_dump](#example-debugger-jit_dump) — <small><em>ZIP-дамп VM с исходным и JIT-кодом</em></small>
     - [live_variables](#example-debugger-live_variables) — <small><em>Живые аргументы, локальные и регистры</em></small>
+    - [resource_debugger](#example-debugger-resource_debugger) — <small><em>Два наблюдателя, claim и продолжение через очередь</em></small>
     - [source_breakpoints](#example-debugger-source_breakpoints) — <small><em>SWF/SWD, breakpoint и строка исходника</em></small>
 - [embedding](#group-embedding)
   - [channels](#group-embedding-channels)
@@ -375,6 +376,17 @@ link demonstrated API functions to public headers and feature guides.
 Входит в синхронный debugger callback до раскрутки кадров и читает аргумент, локальные значения и регистр. FORCE и выбор JIT независимы; callback проверяет успешность сохранения и возвращает управление обычной обработке ошибки.
 
 **Файлы:** [main.c](debugger/live_variables/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-debugger-resource_debugger"></a>
+#### resource_debugger
+
+**Тип:** C89, исполняемый пример настоящей AVM1-остановки.
+**README:** [EN](debugger/resource_debugger/README.md) / [RU](debugger/resource_debugger/README.ru.md).
+Два независимых наблюдателя читают STOP/RESUME; контроллер получает claim и
+продолжает точный stop через owner FIFO. Функция возвращает 42. Без сетевого
+listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](../doc/RESOURCE_DEBUGGER.ru.md).
 
 [К оглавлению](#оглавление).
 
@@ -2024,6 +2036,7 @@ Source line links describe the current checkout, including in historical notes.
 - [qt5 — frontends/qt5](#example-frontends-qt5)
 - [redirect_loading — player/redirect_loading](#example-player-redirect_loading)
 - [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
+- [resource_debugger — debugger/resource_debugger](#example-debugger-resource_debugger)
 - [resource_events — embedding/resource_events](#example-embedding-resource_events)
 - [resource_exceptions.as — actionscript/resource_exceptions.as](#example-actionscript-resource_exceptions-as)
 - [resource_snapshots — debugger/resource_snapshots](#example-debugger-resource_snapshots)

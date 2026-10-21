@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.729
+# FlashVM stage status / Состояние стадий — v0.730
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,17 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.730 connects actual VM breakpoint callbacks to the resource command/event layer:
+two observers, cached frames, one controller claim and exact-stop resume. All
+integer fields retain the compact canonical S-integer profile. Interpreter, JIT
+fallback and subsequent native entries are checked where the host supports JIT.
+Five focused native checks pass. Four C debugger/protocol fixtures also pass
+ASan/UBSan with leak enumeration disabled; the underlying VM/SDL build is ordinary.
+The two-client POSIX fixture uses a blocking owner condition-variable service.
+Отладчик получает команды через двоичный интерфейс; сетевой listener, Styx/9P,
+[FVM_Channel](../src/capi/channel_c.c#L26) graph bridge и полный экспорт locals/objects пока не реализованы.
+See [EN](RESOURCE_DEBUGGER.md) / [RU](RESOURCE_DEBUGGER.ru.md). All stages remain open.
 
 v0.729 adds independent bounded resource observers, filtered metadata discovery,
 revocation-safe watches and atomic quiesced-session cleanup. Three real POSIX
@@ -2107,6 +2118,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |

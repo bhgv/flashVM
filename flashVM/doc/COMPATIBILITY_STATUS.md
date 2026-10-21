@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Resource debugger v0.730: actual AVM1 stops, copied frames, binary commands/events, controller arbitration and owner resume. Native/JIT and transport limits are explicit. [EN](RESOURCE_DEBUGGER.md) / [RU](RESOURCE_DEBUGGER.ru.md).
+
 Resource observers v0.729: independent bounded queues, filtered discovery, revocation/disconnect; 9 focused native checks pass, with contract and three-reader ASan/UBSan checks. No network/mount or foreign native acceptance is claimed. [EN](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md).
 
 Ориентир: [ROADMAP.md](ROADMAP.md). Базовый реестр уточняется по мере сравнения

@@ -1,5 +1,7 @@
 # FlashVM C89/C++98 API index
 
+- [Resource debugger](RESOURCE_DEBUGGER.md) / [RU](RESOURCE_DEBUGGER.ru.md): `rdebug.h`, owner commands, copied frames and multiple observers.
+
 - [Resource observers](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md): `revents.h`, independent event queues, discovery and disconnect.
 
 - `include/flashvm/gc.h`: collection, mode, pinning, introspection.

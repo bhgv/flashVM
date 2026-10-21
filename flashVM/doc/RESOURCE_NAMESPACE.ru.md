@@ -11,6 +11,8 @@
 
 Независимые очереди наблюдателей и фильтрованный снимок реализованы: [RU](RESOURCE_EVENTS.ru.md). Это плоские ресурсы, а не семантика каталогов.
 
+[Resource debugger / отладчик через ресурсы](RESOURCE_DEBUGGER.ru.md): actual stop/observe/resume; no network listener or mount.
+
 ## Общий слой операций
 
 Три слоя используют единую модель: типизированные C-вызовы; dispatcher запросов/

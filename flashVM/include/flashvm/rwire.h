@@ -1,12 +1,13 @@
 /* Binary S-record request/reply envelopes; session identity comes from authenticated transport. */
 #ifndef FLASHVM_RWIRE_H
 #define FLASHVM_RWIRE_H /* Guard bounded native resource wire helpers. */
-#include "rdispatch.h"
+#include "revents.h"
 #include "sbindings.h"
 #define FVM_RWIRE_VERSION 1UL /* Payload schema version, encoded using canonical S integers. */
 #define FVM_RWIRE_REQUEST_TYPE "flashvm.resource.request" /* Incoming binding identity. */
 #define FVM_RWIRE_REPLY_TYPE                                                                       \
     "flashvm.resource.reply" /* Outgoing/incoming reply binding identity. */
+#define FVM_RWIRE_EVENT_TYPE "flashvm.resource.event" /* Direction-local copied observer event. */
 #define FVM_RWIRE_BODY_MAX                                                                         \
     (FVM_R_BYTES + 80U) /* Framing quota for payload plus bounded metadata. */
 #ifdef __cplusplus
@@ -39,6 +40,14 @@ extern "C"
     FVM_API FVM_SResult fvm_rreply_record_read(const FVM_SBindings *incoming, const void *input,
                                                size_t size, unsigned long *request_id, FVM_RReply *,
                                                size_t *consumed);
+    /* Encode a copied event without consuming its subscription. Retry I/O from that retained copy.
+     * Payload: version,target-slot,generation,sequence,kind,missed,size,bytes, using S integers. */
+    FVM_API FVM_SResult fvm_revent_record_write(unsigned long tag, const FVM_REvent *, void *,
+                                                size_t capacity, size_t *used);
+    /* Verify CRC/schema and copy one complete event only on OK. Unknown binding UNKNOWN;
+     * malformed fields INVALID; framing statuses propagate. No session/authority is encoded. */
+    FVM_API FVM_SResult fvm_revent_record_read(const FVM_SBindings *, const void *, size_t,
+                                               FVM_REvent *, size_t *consumed);
 #ifdef __cplusplus
 }
 #endif

@@ -11,6 +11,8 @@ or full Inferno namespace behavior. [Dispatcher](RESOURCE_DISPATCH.md). Existing
 
 Independent native observers and filtered discovery are implemented: [EN](RESOURCE_EVENTS.md) / [RU](RESOURCE_EVENTS.ru.md). These are flat resources, not directory semantics.
 
+[Resource debugger / отладчик через ресурсы](RESOURCE_DEBUGGER.md): actual stop/observe/resume; no network listener or mount.
+
 ## Shared operation layer
 
 Three layers share one operation model: typed C calls, permission-aware request/
