@@ -39,7 +39,7 @@ acceptance are separate from this decoder checkpoint. All roadmap stages remain 
 
 ## v0.777 DefineSound decoding
 
-[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L108) now decodes MP3 in SWF4–8 without allocations or callbacks.
+[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L128) now decodes MP3 in SWF4–8 without allocations or callbacks.
 Its range is relative to the declared source after a nonnegative SI16 initial
 SeekSamples prefix. Every complete packet is validated before any output changes;
 then a fresh stack decoder copies only the requested range. Declared frames must
@@ -48,7 +48,7 @@ not exposed beyond that count. No hidden LAME/Xing gapless adjustment is applied
 Zero-length reads still validate the complete source. Source changes/teardown and
 output buffers need owner serialization; no managed pointer survives return.
 
-[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L94) uses effective first-packet MPEG rate/channels for supported
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L114) uses effective first-packet MPEG rate/channels for supported
 MP3 when that packet validates, preserving the original encoded bytes and source
 count. Advisory SWF flags cannot silently resample the data. Opaque malformed
 metadata remains inspectable, but decode rejects it. Negative latency, free-format
@@ -203,10 +203,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:62](../include/flashvm/swf_sound_mixer.h#L62) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:128](../include/flashvm/swf_sound.h#L128) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

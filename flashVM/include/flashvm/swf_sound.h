@@ -80,6 +80,26 @@ extern "C"
     } FVM_SWFSoundVoiceInfo;
     /* Snapshot one root event's decoded interval and envelope; publish null on failure, reject stop controls. */
     FVM_API FVM_Result fvm_swf_sound_voice_open(FVM_Context *, size_t, FVM_SWFSoundVoice **);
+    /* Requested native storage, excluding allocator overhead, VM, decoder stack and host queues. */
+    typedef struct FVM_SWFSoundVoiceStorageInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof this observation. */
+        size_t retained_bytes; /* Native object plus PCM and envelope arrays; no hidden capacity. */
+        size_t pcm_bytes; /* Selected interval only; repetitions do not multiply storage. */
+        size_t envelope_bytes; /* Copied ordered envelope records, including ABI padding. */
+    } FVM_SWFSoundVoiceStorageInfo;
+    /* Same source validation/runtime payload limit as voice_open, plus an explicit object/PCM/
+     * envelope ceiling. Zero is valid and returns OUT_OF_MEMORY even for empty voices. Clear
+     * *out before validation; never allocate the voice or its arrays above the ceiling. May
+     * decode/allocate on the context owner; no callback, VM execution or device access. Result
+     * owns its copies independently of context/GC/reload. Other errors follow voice_open.
+     * Serialize the source context; budget is requested storage, not process RSS or CPU work. */
+    FVM_API FVM_Result fvm_swf_sound_voice_open_bounded(FVM_Context *, size_t event_index,
+                                                        size_t budget_bytes, FVM_SWFSoundVoice **out);
+    /* No allocation/callback/VM; null or wrong struct_size INVALID_ARGUMENT, output preserved.
+     * Retain and externally serialize the native voice until return. */
+    FVM_API FVM_Result fvm_swf_sound_voice_storage_info(const FVM_SWFSoundVoice *,
+                                                        FVM_SWFSoundVoiceStorageInfo *);
     /* Copy geometry/progress without allocations, callbacks or VM access. */
     FVM_API FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *, FVM_SWFSoundVoiceInfo *);
     /* Read at most requested frames as native S16, advancing only after argument validation; EOF is NOT_FOUND. */

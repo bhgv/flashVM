@@ -39,7 +39,7 @@ python3 scripts/check_vendor_sources.py
 
 ## v0.777 декодирование DefineSound
 
-[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L108) теперь читает MP3 в SWF4–8 без allocation/callback. Диапазон
+[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L128) теперь читает MP3 в SWF4–8 без allocation/callback. Диапазон
 отсчитывается после неотрицательного SI16 SeekSamples. Сначала проверяются все
 полные packets; затем новый stack decoder копирует только выбранные кадры.
 Объявленная длина должна помещаться после latency; полный encoder tail проверяется,
@@ -47,7 +47,7 @@ python3 scripts/check_vendor_sources.py
 Даже нулевое чтение проверяет весь источник. Изменение/teardown и output buffers
 сериализуются owner; managed pointers после возврата не остаются.
 
-[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L94) выдаёт фактические MPEG rate/channels из первого корректного
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L114) выдаёт фактические MPEG rate/channels из первого корректного
 packet, сохраняя исходные байты и объявленную длину. Advisory SWF flags не вызывают
 скрытый resampling. Неверные opaque metadata остаются доступны для анализа, но
 decode отвергает данные. Отрицательная latency, free-format и другие MPEG layers
@@ -194,10 +194,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:62](../include/flashvm/swf_sound_mixer.h#L62) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:128](../include/flashvm/swf_sound.h#L128) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
 <!-- source-links:end -->

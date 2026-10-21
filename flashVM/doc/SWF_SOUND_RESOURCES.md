@@ -98,7 +98,7 @@ a caller destination overlapping canonical SWF storage.
 
 [GC:] Canonical SWF bytes are context-owned native storage, not a managed string
 or temporary root. Sound inspection introduces no managed graph edges or roots.
-[`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L115) converts to its own native PCM copy before host output.
+[`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L135) converts to its own native PCM copy before host output.
 The channel callback barrier blocks explicit GC and registry mutation; a callback
 which successfully reloads the context cannot invalidate that submitted copy.
 No VM locals, call arguments or per-frame debug snapshots are added by this API.
@@ -249,7 +249,7 @@ reload, allocation faults and a real static ALSA null-PCM output pipeline.
 Physical audible playback and original Flash Player equivalence remain separate.
 
 Explicit single-voice styled output is now available through
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L112): see [playback contracts](SWF_SOUND_PLAYBACK.md).
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L132): see [playback contracts](SWF_SOUND_PLAYBACK.md).
 Metadata queries below still never apply styles or activate output.
 
 ## Root StartSound records / события StartSound
@@ -305,7 +305,7 @@ otherwise well-formed event referencing an absent definition remains countable.
 Arguments: owning context, zero-based root event ordinal, required initialized
 [FVM_SWFSoundEvent](../include/flashvm/swf_sound.h#L37) output. Wrong struct_size/null output returns INVALID_ARGUMENT.
 After full control validation, the selected ID is resolved through
-[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L94): NOT_FOUND means missing ordinal or missing sound; duplicate
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L114): NOT_FOUND means missing ordinal or missing sound; duplicate
 selected IDs/malformed sound definitions return INVALID_ARGUMENT. Unsupported
 compressed codecs may still be inspected: no decoder is opened. OK publishes the
 copied record, retaining the caller's required size value. All failures leave the
@@ -373,8 +373,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `FVM_SWF_SOUND_ADPCM` | macro / define | [include/flashvm/swf_sound.h:10](../include/flashvm/swf_sound.h#L10) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:92](../include/flashvm/swf_sound.h#L92) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:90](../include/flashvm/swf_sound.h#L90) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:110](../include/flashvm/swf_sound.h#L110) |
 | `FVM_SWF_SOUND_ENVELOPE_RATE` | macro / define | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
 | `FVM_SWF_SOUND_ENVELOPE_UNITY` | macro / define | [include/flashvm/swf_sound.h:27](../include/flashvm/swf_sound.h#L27) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
@@ -386,12 +386,12 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWF_SOUND_EVENT_NO_MULTIPLE` | macro / define | [include/flashvm/swf_sound.h:34](../include/flashvm/swf_sound.h#L34) |
 | `FVM_SWF_SOUND_EVENT_OUT_POINT` | macro / define | [include/flashvm/swf_sound.h:31](../include/flashvm/swf_sound.h#L31) |
 | `FVM_SWF_SOUND_EVENT_STOP` | macro / define | [include/flashvm/swf_sound.h:35](../include/flashvm/swf_sound.h#L35) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:132](../include/flashvm/swf_sound.h#L132) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
 | `FVM_SWF_SOUND_PCM_LE` | macro / define | [include/flashvm/swf_sound.h:12](../include/flashvm/swf_sound.h#L12) |
 | `FVM_SWF_SOUND_PCM_NATIVE` | macro / define | [include/flashvm/swf_sound.h:9](../include/flashvm/swf_sound.h#L9) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:115](../include/flashvm/swf_sound.h#L115) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:128](../include/flashvm/swf_sound.h#L128) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:135](../include/flashvm/swf_sound.h#L135) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
 | `FVM_SWFSoundEvent` | struct | [include/flashvm/swf_sound.h:37](../include/flashvm/swf_sound.h#L37) |
 | `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:14](../include/flashvm/swf_sound.h#L14) |

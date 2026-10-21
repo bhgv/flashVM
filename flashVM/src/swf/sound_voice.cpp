@@ -20,8 +20,22 @@ struct FVM_SWFSoundVoice
     }
 };
 
-/* Capture one coherent event interval before returning any native handle. */
-extern "C" FVM_Result fvm_swf_sound_voice_open(FVM_Context *context, size_t ordinal, FVM_SWFSoundVoice **out)
+/* Compute exact native requested storage; fixed vectors allocate exactly once at their final sizes. */
+static FVM_Result voice_charge(size_t frames, unsigned int channels, size_t points, size_t *out)
+{
+    size_t bytes = sizeof(FVM_SWFSoundVoice);
+    if (points > ((size_t)-1 - bytes) / sizeof(FVM_SWFSoundEnvelope))
+        return FVM_OUT_OF_MEMORY;
+    bytes += points * sizeof(FVM_SWFSoundEnvelope);
+    if (frames > ((size_t)-1 - bytes) / sizeof(short) / channels)
+        return FVM_OUT_OF_MEMORY;
+    *out = bytes + frames * channels * sizeof(short);
+    return FVM_OK;
+}
+
+/* Capture one coherent event interval within an explicit native-object/PCM/envelope ceiling. */
+extern "C" FVM_Result fvm_swf_sound_voice_open_bounded(FVM_Context *context, size_t ordinal,
+                                                        size_t budget, FVM_SWFSoundVoice **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
@@ -69,6 +83,10 @@ extern "C" FVM_Result fvm_swf_sound_voice_open(FVM_Context *context, size_t ordi
     unsigned long frames = plays ? end - first : 0;
     if (envelope_bytes > limit || frames > (limit - envelope_bytes) / sizeof(short) / source.channels)
         return FVM_OUT_OF_MEMORY;
+    size_t charge = 0;
+    result = voice_charge((size_t)frames, source.channels, event.envelope_count, &charge);
+    if (result != FVM_OK || charge > budget)
+        return FVM_OUT_OF_MEMORY;
     FVM_SWFSoundVoice *voice = 0;
     try
     {
@@ -109,6 +127,28 @@ extern "C" FVM_Result fvm_swf_sound_voice_open(FVM_Context *context, size_t ordi
         delete voice;
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Preserve the existing runtime payload policy without imposing a new host object ceiling. */
+extern "C" FVM_Result fvm_swf_sound_voice_open(FVM_Context *context, size_t ordinal,
+                                                FVM_SWFSoundVoice **out)
+{
+    return fvm_swf_sound_voice_open_bounded(context, ordinal, (size_t)-1, out);
+}
+
+/* Inspect only owned exact-capacity vectors; no callback, allocation or source VM is involved. */
+extern "C" FVM_Result fvm_swf_sound_voice_storage_info(const FVM_SWFSoundVoice *voice,
+                                                        FVM_SWFSoundVoiceStorageInfo *out)
+{
+    if (!voice || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundVoiceStorageInfo info;
+    info.struct_size = sizeof(info);
+    info.pcm_bytes = voice->samples.size() * sizeof(short);
+    info.envelope_bytes = voice->points.size() * sizeof(FVM_SWFSoundEnvelope);
+    info.retained_bytes = sizeof(*voice) + info.pcm_bytes + info.envelope_bytes;
+    *out = info;
+    return FVM_OK;
 }
 
 /* Copy progress transactionally; snapshot state remains independent of the originating VM. */
