@@ -6,6 +6,7 @@ pkg-config, or search for a system Cairo, Pixman, SQLite, zlib or AGG installati
 
 | Directory | Pinned version | When compiled |
 | --- | --- | --- |
+| [minimp3](minimp3/README.md) | ea99364f, CC0-1.0 | Always, scalar Layer-III core decoder |
 | mini_regex | Existing project implementation | Always |
 | flash_case | Ruffle 2372a4e, Flash UCS2 mappings; MIT | Loaded AVM1 casing; header only |
 | zlib | 1.3.1 | Always, for bounded CWS loading |

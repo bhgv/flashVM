@@ -39,6 +39,9 @@ add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/p
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)
 target_compile_definitions(flashvm PUBLIC ${FVM_BUILD_KEYS})
+# Core SWF MP3 does not depend on the optional multimedia SDK or a system decoder.
+add_library(fvm_minimp3 STATIC external/minimp3/decoder.cpp)
+target_link_libraries(flashvm PUBLIC fvm_minimp3)
 option(FVM_ENABLE_MACOS_ARM64_JIT "Opt in to macOS 11.4+ ARM64 MAP_JIT callback publication" OFF)
 if(FVM_ENABLE_MACOS_ARM64_JIT)
   if(NOT APPLE OR NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")

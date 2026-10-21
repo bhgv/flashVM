@@ -6,6 +6,7 @@ were updated. Historical validation reports retain their original paths.
 
 | Dependency | Version | Integration |
 | --- | --- | --- |
+| [minimp3](../external/minimp3/README.md) | ea99364f, unchanged CC0 | Static scalar Layer-III core, even NO_MEDIA |
 | mini_regex | Existing byte-oriented subset | Always built |
 | zlib | 1.3.1 | Bounded CWS decompression |
 | AGG | 2.4 core, pinned fork commit | RGBA8 polygon rasterizer |

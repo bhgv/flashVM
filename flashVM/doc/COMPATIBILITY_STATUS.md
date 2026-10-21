@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+MP3 decoder foundation v0.776: pinned scalar Layer III, MPEG-1/2/2.5 analytical golden samples and framing checks; public resource/player integration remains open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
+
 Counted ADPCM tutorial v0.775: actual strict-C89 partial-block export with two independent native ownership modes after VM teardown; eight hand-calculated samples, empty block, CLI/file checks. [Example RU/EN](../examples/multimedia/swf_stream_adpcm/README.md). No device/timeline acceptance implied.
 
 ADPCM ranges v0.774: allocation-free explicit-count extraction from live root blocks and encoded native snapshots, full-block validation before output; native/C89/allocation and independent FFmpeg range checks. [EN](STREAM_ADPCM_COUNTED.md#allocation-free-ranges-v0774) / [RU](STREAM_ADPCM_COUNTED.ru.md#диапазоны-без-выделения-памяти-v0774). No automatic desktop partial-stream scheduling.
