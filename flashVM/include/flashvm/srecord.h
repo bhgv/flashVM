@@ -2,15 +2,21 @@
 #ifndef FLASHVM_SRECORD_H
 #define FLASHVM_SRECORD_H /* Guard the standalone C89 wire-format interface. */
 #include "flashvm.h"
+#include <limits.h>
+#define FVM_SRECORD_OCTET_BITS 8U /* Wire octets require eight-bit C bytes. */
+#if CHAR_BIT != FVM_SRECORD_OCTET_BITS
+#error Binary S-record profile 1 requires eight-bit bytes
+#endif
 #define FVM_SRECORD_PROFILE 1U       /* Out-of-band profile; no implicit wire negotiation. */
 #define FVM_SRECORD_FINAL 0x80U      /* Set on the last integer octet, not a continuation octet. */
 #define FVM_SRECORD_SIGN 0x40U       /* Sign in the first octet only. */
 #define FVM_SRECORD_FIRST_MASK 0x3fU /* Six magnitude bits in the first integer octet. */
 #define FVM_SRECORD_NEXT_MASK 0x7fU  /* Seven magnitude bits in subsequent octets. */
 #define FVM_SRECORD_U32 0xffffffffUL /* Bound a portable limb and the CRC arithmetic. */
-#define FVM_SRECORD_SHIFT_LIMIT 0x01ffffffUL /* Largest high limb safe before a seven-bit shift.   \
-                                              */
-#define FVM_SRECORD_INTEGER_MAX 10U          /* Maximum canonical encoding of a 64-bit magnitude. */
+#define FVM_SRECORD_SHIFT_LIMIT                                                                    \
+    0x01ffffffUL                          /* Largest high limb safe before a seven-bit shift.      \
+                                           */
+#define FVM_SRECORD_INTEGER_MAX 10U       /* Maximum canonical encoding of a 64-bit magnitude. */
 #define FVM_SRECORD_BODY_MAX 16777216UL   /* Absolute profile body bound, including encoded tag. */
 #define FVM_SRECORD_CRC_POLY 0xedb88320UL /* Reflected CRC-32/ISO-HDLC polynomial. */
 #define FVM_SRECORD_CONTROL_TAG 0UL       /* Direction-local type binding records. */

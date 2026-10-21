@@ -39,6 +39,7 @@ special/printable selectors без allocation/мутации. Отдельный
 [Контракт](CLIP_KEYPRESS.ru.md) / [EN](CLIP_KEYPRESS.md).
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
 Binary S-record codec / Двоичный codec: [EN](SRECORD.md) / [RU](SRECORD.ru.md).
+Accepted resource/filesystem design / Принятый план ФС ресурсов: [EN](RESOURCE_NAMESPACE.md) / [RU](RESOURCE_NAMESPACE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

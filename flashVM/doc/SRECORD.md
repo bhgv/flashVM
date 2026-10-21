@@ -39,7 +39,8 @@ body     : unsigned canonical tag followed by opaque payload
 ```
 
 Length counts the encoded tag plus its payload; it excludes checksum and length
-fields. Tags are nonnegative 32-bit values. Zero is reserved for direction-local
+fields. Prefer tags 1..63 for common scalars and larger tags for bulk/container schemas.
+Tags are nonnegative 32-bit values. Zero is reserved for direction-local
 binding metadata. Record bodies are nonempty and limited to 16 MiB; a reader
 also supplies a lower per-call quota. Empty payloads and embedded NULs are valid.
 Payloads can contain nested complete S-records, chunks or schema-defined metadata.
@@ -70,16 +71,16 @@ safe to allocate without bounds.
 
 | API | Contract |
 | --- | --- |
-| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L50) | Borrows integer and caller output; validates 32-bit limbs/sign and full capacity before writing. OK publishes used; errors preserve bytes/used. |
-| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L52) | Borrows prefix; requires output value/used, publishes only on OK. MORE retains neither input nor partial result; caller retains and retries prefix. |
-| [`fvm_srecord_write`](../include/flashvm/srecord.h#L60) | Borrows tag/payload, writes caller buffer only after complete validation. Payload and outputs must not overlap. No allocation, VM or transport. |
-| [`fvm_srecord_read`](../include/flashvm/srecord.h#L66) | Borrows input and returns one verified borrowed view/consumed extent. limit counts body bytes. Outputs unchanged on MORE/error; trailing records remain for another call. |
+| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L56) | Borrows integer and caller output; validates 32-bit limbs/sign and full capacity before writing. OK publishes used; errors preserve bytes/used. |
+| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L58) | Borrows prefix; requires output value/used, publishes only on OK. MORE retains neither input nor partial result; caller retains and retries prefix. |
+| [`fvm_srecord_write`](../include/flashvm/srecord.h#L66) | Borrows tag/payload, writes caller buffer only after complete validation. Payload and outputs must not overlap. No allocation, VM or transport. |
+| [`fvm_srecord_read`](../include/flashvm/srecord.h#L72) | Borrows input and returns one verified borrowed view/consumed extent. limit counts body bytes. Outputs unchanged on MORE/error; trailing records remain for another call. |
 
 All calls are reentrant with independent storage, contain no global mutable
 state and do not enter VM, GC, SDL or devices. Caller serializes shared buffers.
 Pointers must address valid accessible storage and output objects must not alias
 each other/input. No pointer accessibility/provenance probing is performed.
-[FVM_S_OK](../include/flashvm/srecord.h#L24), MORE, INVALID, LIMIT and CHECKSUM distinguish complete/incomplete,
+[FVM_S_OK](../include/flashvm/srecord.h#L30), MORE, INVALID, LIMIT and CHECKSUM distinguish complete/incomplete,
 malformed, bounded and damaged data. No exception crosses C. Native views are
 never sent by copying sizeof(struct) bytes.
 
@@ -170,6 +171,7 @@ buffer into itself; state/storage/input/output must be disjoint. No concurrent
 push/reset/use of a view without external synchronization. Zero input is MORE
 for an incomplete prefix, not an EOF indication. The transport decides whether
 EOF with retained bytes is truncation. There is no timer or hidden blocking read.
+Resource/filesystem architecture / Принятый план ресурсов и ФС: [EN](RESOURCE_NAMESPACE.md) / [RU](RESOURCE_NAMESPACE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -180,15 +182,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:24](../include/flashvm/srecord.h#L24) |
+| `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:30](../include/flashvm/srecord.h#L30) |
 | `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../include/flashvm/sbindings.h#L49) |
 | `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../include/flashvm/sbindings.h#L33) |
 | `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
-| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:52](../include/flashvm/srecord.h#L52) |
-| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:50](../include/flashvm/srecord.h#L50) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:60](../include/flashvm/srecord.h#L60) |
+| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:58](../include/flashvm/srecord.h#L58) |
+| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:56](../include/flashvm/srecord.h#L56) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:72](../include/flashvm/srecord.h#L72) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
 | `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
 | `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
 | `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../include/flashvm/sstream.h#L38) |

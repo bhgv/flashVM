@@ -62,6 +62,13 @@ def main():
     records[1].tag=7
     assert write(records,2,untouched,300,C.byref(used))==2 and untouched.raw[:300]==b'\xa5'*300
     out=Binding(99,1,1,b'x');assert lookup(C.byref(left),99,C.byref(out))==6 and out.tag==99
+    full=Table();many=(Binding*256)();assert init(C.byref(full),many,256)==0
+    items=[(i+1,b'x'*63,1) for i in range(256)];data=declaration(items)
+    assert apply(C.byref(full),data,len(data),C.byref(used))==0 and full.count==256
+    assert apply(C.byref(full),data,len(data),C.byref(used))==0 and full.count==256
+    for tag,name,version in items:
+        out=Binding();assert lookup(C.byref(full),tag,C.byref(out))==0 and out.type==name
+    reject(frame(0,integer(1)+integer(257)))
     print('PASS opposite tag-3 schemas, copied identities, atomic conflicts/capacity, duplicates, malformed and corrupted tag-zero records')
 
 if __name__=='__main__':main()

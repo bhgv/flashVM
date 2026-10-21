@@ -77,6 +77,18 @@ def main():
             untouched=C.create_string_buffer(b'\xa5'*len(expected));used.value=777
             assert rw(tag,payload,len(payload),untouched,len(expected)-1,C.byref(used))==3
             assert untouched.raw[:len(expected)]==b'\xa5'*len(expected) and used.value==777
+    # Exercise the three-to-four-byte length/20-to-27-bit checksum boundary explicitly.
+    for size in [1048574,1048575]:
+        payload=b'\xa5'*size;expected=frame(1,payload);out=C.create_string_buffer(len(expected));used=C.c_size_t()
+        assert rw(1,payload,size,out,len(out),C.byref(used))==0 and out.raw==expected
+        rec=Record();assert rr(out,len(out),16777216,C.byref(rec),C.byref(used))==0
+    # Oversized geometry must be rejected before dereferencing the advertised payload extent.
+    out=C.create_string_buffer(b'\xa5'*32);used=C.c_size_t(777)
+    assert rw(3,b'x',C.c_size_t(-1).value,out,32,C.byref(used))==3
+    assert out.raw[:32]==b'\xa5'*32 and used.value==777
+    for length,limit,status in [(16777216,16777216,1),(16777217,16777216,3),(16777216,16777215,3)]:
+        prefix=integer(0)+integer(length);rec=Record(19,20,21,22);used.value=777
+        assert rr(prefix,len(prefix),limit,C.byref(rec),C.byref(used))==status and rec.tag==19 and used.value==777
     good=frame(3,b'abc');bad=good[:-1]+bytes([good[-1]^1]);rec=Record(19,20,21,22);used=C.c_size_t(777)
     assert rr(bad,len(bad),100,C.byref(rec),C.byref(used))==4
     assert rec.tag==19 and used.value==777

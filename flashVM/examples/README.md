@@ -30,6 +30,7 @@
     - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
     - [shared_mutex](#example-embedding-shared_mutex) — <small><em>Общая блокировка из разных VM</em></small>
+    - [srecords](#example-embedding-srecords) — <small><em>Двоичные теги направлений, порции и файловый обмен</em></small>
   - [functions](#group-embedding-functions)
     - [cpp98_stack](#example-embedding-cpp98_stack) — <small><em>RAII-стек значений и индексы C++98</em></small>
     - [function_parameters](#example-embedding-function_parameters) — <small><em>Параметры AVM1-функции — AS-исходник</em></small>
@@ -456,6 +457,19 @@ link demonstrated API functions to public headers and feature guides.
 Использует установленные расширения mutex/channel в нескольких worker-контекстах. Демонстрирует разделяемую блокировку и обмен сериализованными значениями при раздельном владении обычными объектами.
 
 **Файлы:** [main.c](embedding/shared_mutex/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-srecords"></a>
+#### srecords
+
+**Тип:** C89 — самостоятельный собираемый пример, без VM/SDL. **README:**
+[EN](embedding/srecords/README.md) / [RU](embedding/srecords/README.ru.md).
+
+Тег 3 означает float64 в одном направлении и boolean в другом. Двоичные
+декларации, приём по одному байту, проверенная view и обычные fwrite/fread.
+[main.c](embedding/srecords/main.c), [формат](../doc/SRECORD.ru.md),
+[принятый план ФС](../doc/RESOURCE_NAMESPACE.ru.md). Это пока не mount/9P server.
 
 [К оглавлению](#оглавление).
 
@@ -2014,6 +2028,7 @@ Source line links describe the current checkout, including in historical notes.
 - [speech_tts — multimedia/speech_tts](#example-multimedia-speech_tts)
 - [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
 - [sqlite — extending/sqlite](#example-extending-sqlite)
+- [srecords — embedding/srecords](#example-embedding-srecords)
 - [stack_c — extending/stack_c](#example-extending-stack_c)
 - [stage_quality — embedding/stage_quality](#example-embedding-stage_quality)
 - [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)

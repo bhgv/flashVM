@@ -1,12 +1,12 @@
-Development version: **0.724** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.724 ` and an English description. Increase the subversion before each
+Development version: **0.725** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.725 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
-v0.724: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
+v0.725: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
 
 v0.640: [Canonical sound frames](doc/SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) / [Канонические звуковые кадры](doc/SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
 
@@ -712,6 +712,7 @@ with legacy strict API preserved and an annotated --convert-demo tutorial.
 [Auditable native release evidence](doc/RELEASE_EVIDENCE.md).
 [Build for the host or another OS/CPU](../BUILDING.md).
 Binary S-record profile / Двоичные S-записи: [EN](doc/SRECORD.md) / [RU](doc/SRECORD.ru.md).
+Resource namespace design / План пространства ресурсов: [EN](doc/RESOURCE_NAMESPACE.md) / [RU](doc/RESOURCE_NAMESPACE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

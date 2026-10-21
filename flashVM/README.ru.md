@@ -1,4 +1,4 @@
-Версия разработки: **0.724** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.725** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,7 +9,7 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
-v0.724: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
+v0.725: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
 
 v0.640: [Canonical sound frames](doc/SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) / [Канонические звуковые кадры](doc/SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
 
@@ -473,6 +473,7 @@ v0.583: отдельный audio worker и [StopSounds](doc/AUDIO_STOP_BINDINGS.
 [Проверяемые результаты платформенной приёмки](doc/RELEASE_EVIDENCE.ru.md).
 [Сборка для своей и другой ОС/CPU](../BUILDING.ru.md).
 Binary S-record profile / Двоичные S-записи: [EN](doc/SRECORD.md) / [RU](doc/SRECORD.ru.md).
+Resource namespace design / План пространства ресурсов: [EN](doc/RESOURCE_NAMESPACE.md) / [RU](doc/RESOURCE_NAMESPACE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

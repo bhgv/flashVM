@@ -49,6 +49,10 @@ def main():
     assert init(C.byref(stream),storage,len(storage),16000)==0
     rec=Record(19,20,21,22);used.value=777
     assert push(C.byref(stream),None,0,C.byref(rec),C.byref(used))==1 and used.value==0 and rec.tag==19
+    assert init(C.byref(stream),small,3,1)==0
+    minimal=frame(0,b'');assert len(minimal)==3
+    assert push(C.byref(stream),minimal,3,C.byref(rec),C.byref(used))==0
+    assert rec.tag==0 and rec.size==0 and used.value==3
     print('PASS arbitrary fragments, coalesced frames, sticky errors, header quotas, stable views and explicit reset')
 
 if __name__=='__main__':main()

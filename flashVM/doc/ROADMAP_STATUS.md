@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.724
+# FlashVM stage status / Состояние стадий — v0.725
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,29 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.725 adds an annotated standalone C89 duplex/file tutorial, C++98 ABI client,
+independent transcript checks and bounded malformed-input stress. The accepted
+three-layer resource/filesystem architecture is recorded explicitly as future
+work: no dispatcher, VM-class conversion, mount/9P server or Inferno conformance
+is claimed. [EN](RESOURCE_NAMESPACE.md) / [RU](RESOURCE_NAMESPACE.ru.md).
+
+Final v0.722–v0.725 verification: seven native protocol/tutorial checks pass,
+including independent Python big integers/zlib, length/checksum boundaries,
+full 256-slot bindings, atomic rejection and arbitrary fragments. Three existing
+channel/graph-transfer/serialization tests pass separately. A fresh minimal VM
+static SDK builds; the C++98 protocol client links and runs against both the
+standalone C library and VM archive. ASan/UBSan cover all three protocol C modules,
+50000 bounded malformed/mutation cases, CRC-valid random metadata bodies and
+memory/file tutorial failures. Leak checks are disabled in the traced environment;
+VM and system libraries are not instrumented in this focused run. The standalone
+C89 codec/tutorial cross-link for Linux ARM64, Linux RISC-V64 and Windows x86-64;
+C++98 public ABI clients compile for those targets, without foreign execution.
+Cross tools use a local self-path adapter because /proc/self/exe is unavailable;
+this does not establish native target acceptance. Source links, API/tutorial
+comments and catalog sorting pass. The provisional adaptive checksum retains
+six bits for one-byte lengths; authentication remains another layer. Existing
+VM wire serialization is unchanged. All roadmap stages remain open.
 
 v0.724 adds caller-buffered incremental S-record reception. Fragment/coalescing
 oracles verify exact consumption, header quotas, sticky data errors and stable
