@@ -3,6 +3,12 @@
 [English](MEDIA_SLOTS.md). Отдельный C89 API готовит двоичные S-записи для
 файловых и потоковых каналов. Формат S-записи и стандартные сообщения 9P не меняются.
 
+Мелкие команды, свойства, ответы и события продолжают использовать обычные
+S-записи переменной длины без заполнения. Фиксированный размер не является
+общим требованием канала. Профиль слотов включается явно только для крупных
+объектов/медиа; небольшой объект можно целиком передать обычной S-записью.
+
+
 ## Профиль восстановления 1
 
 До приёма данных стороны согласуют профиль через аутентифицированный надёжный
@@ -70,6 +76,57 @@ ctest --test-dir build -R flashvm_srecord_slot_oracle --output-on-failure
 усечённый префикс, атомарность выхода, заполнение, повреждённую длину, 400
 воспроизводимых изменений и настоящие TCP/UDP IPv4 loopback-сокеты. Сокеты
 принадлежат тесту; сетевой listener плеера этим не добавляется.
+## Части файлов и live v0.741
+
+`smedia.h` задаёт opt-in тип `flashvm.media.fragment`. Ненулевой tag привязывается
+отдельно для каждого направления через доверенный надёжный канал. Payload:
+восемь канонических неотрицательных S-целых `version=1, mode, stream, epoch,
+object, time_ms, total, part`, затем сырые байты. FILE=1, LIVE=2. Stream/epoch/object
+ненулевые Uint32. Time_ms — относительное время представления Uint32; смысл и
+часы задаёт хост, автоматического планировщика нет. После переподключения нужна
+новая согласованная epoch; генерации identity и автоматического wrap нет.
+
+Каждая нефинальная часть содержит ровно 768 байт, последняя — точный остаток.
+Offset вычисляется как part*768; произвольных перекрывающихся offsets нет.
+Total — 1..3145728 байт, до 4096 частей, bitmap 512 байт. Это предел одного
+объекта, не всего файла/соединения. Большие файлы/видео используют несколько
+объектов; порядок и итоговое завершение принадлежат хосту. Пустой файл передаётся
+обычным файловым/управляющим протоколом, не нулевым bulk-объектом. Профиль слотов
+выбирается явно, а не из недоверенных пакетов данных.
+
+Receiver копирует заранее согласованную identity и заимствует буфер минимум
+на total байт. Первый пакет не выбирает identity. Перед копированием проверяются
+checksum, формат, tag и identity. Одинаковый дубликат идемпотентен; другие байты
+у принятой части или другая identity дают CONFLICT. Чужой tag UNKNOWN, неверные
+метаданные INVALID, короткий слот MORE, малая ёмкость LIMIT. Ошибки сохраняют
+buffer/receiver/complete. Инициализированы только принятые части: пропуски содержат
+старые произвольные байты, весь объект готов только при complete. Read выдаёт
+заимствованный piece для немедленного потребителя. Итогового digest всего файла
+и криптографической аутентификации этим не добавлено.
+
+FILE missing перечисляет пропуски по возрастанию порциями. Хост передаёт запросы
+через надёжный доверенный TCP с ограничением частоты и хранит исходные байты до
+подтверждения завершения. Повтор сохраняет identity, номер и данные части.
+LIVE missing всегда возвращает ноль: по deadline хост пропускает потери, выполняет
+поддерживаемую кодеком маскировку и явно инициализирует следующий объект. Части
+текущего объекта можно принимать вне порядка; старые object/epoch отвергаются.
+Автоматического вытеснения/deadline нет. Это сборка/политика повторов, не декодер,
+A/V синхронизация, STUN, pacing, UDP authentication, listener или воспроизведение
+сетевого медиа плеером.
+
+| API | Контракт |
+| --- | --- |
+| [`fvm_smedia_write`](../include/flashvm/smedia.h#L55) | Точная часть в один слот 1024 байта, без выделений; output/used атомарны при ошибке. |
+| [`fvm_smedia_read`](../include/flashvm/smedia.h#L60) | Проверяет слот, согласованный tag и точный размер; заимствованный piece только при OK. |
+| [`fvm_smedia_receiver_init`](../include/flashvm/smedia.h#L65) | Копирует доверенную identity, очищает bitmap, заимствует достаточный буфер; байты буфера не меняет. Ошибка сохраняет старый receiver. |
+| [`fvm_smedia_accept`](../include/flashvm/smedia.h#L73) | Проверяет и копирует новую часть либо принимает идентичный дубликат. Complete означает получение всех частей; ошибки не меняют выходы. |
+| [`fvm_smedia_missing`](../include/flashvm/smedia.h#L80) | Выдаёт порцию FILE-пропусков от start, продолжение last+1; LIVE — ноль. Без I/O, таймеров и отправки запросов. Count меняется только при OK. |
+
+[Исполняемый пример](../examples/embedding/media_parts/README.ru.md) показывает
+повреждённую середину, выборочный повтор файла, пропуски live и компактное
+управление. Независимый Python oracle проверяет байты, префиксы, метаданные,
+последний бит bitmap, переставленные UDP-части и компактный TCP-запрос повтора.
+Сокеты — часть теста; native-модули не зависят от транспорта.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -81,6 +138,11 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
+| `fvm_smedia_accept` | function | [include/flashvm/smedia.h:73](../include/flashvm/smedia.h#L73) |
+| `fvm_smedia_missing` | function | [include/flashvm/smedia.h:80](../include/flashvm/smedia.h#L80) |
+| `fvm_smedia_read` | function | [include/flashvm/smedia.h:60](../include/flashvm/smedia.h#L60) |
+| `fvm_smedia_receiver_init` | function | [include/flashvm/smedia.h:65](../include/flashvm/smedia.h#L65) |
+| `fvm_smedia_write` | function | [include/flashvm/smedia.h:55](../include/flashvm/smedia.h#L55) |
 | `fvm_sslot_batch` | function | [include/flashvm/sslot.h:38](../include/flashvm/sslot.h#L38) |
 | `fvm_sslot_read` | function | [include/flashvm/sslot.h:21](../include/flashvm/sslot.h#L21) |
 | `fvm_sslot_write` | function | [include/flashvm/sslot.h:15](../include/flashvm/sslot.h#L15) |

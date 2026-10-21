@@ -31,6 +31,7 @@
     - [channels](#example-embedding-channels) — <small><em>Отправка и получение через FIFO</em></small>
     - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
     - [hybrid_heartbeat](#example-embedding-hybrid_heartbeat) — <small><em>Раздельные UDP/TCP таймеры и запрос проверки TCP</em></small>
+    - [media_parts](#example-embedding-media_parts) — <small><em>Компактное управление, части файлов и live без повторов</em></small>
     - [resource_9p](#example-embedding-resource_9p) — <small><em>Клиентские кадры 9P2000 и чтение файла ресурса</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
     - [resource_events](#example-embedding-resource_events) — <small><em>Независимые очереди наблюдателей и отзыв сессии</em></small>
@@ -463,6 +464,18 @@ listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](
 Раздельные интервалы UDP/TCP, ранняя проверка TCP по доверенному совету, throttle
 и различие send/receive. [main.c](embedding/hybrid_heartbeat/main.c),
 [контракт и транспортные ограничения](../doc/HYBRID_HEARTBEAT.ru.md).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-media_parts"></a>
+#### media_parts
+
+**Тип:** C89, самостоятельный пример без VM/SDL, сокетов и декодеров.
+**README:** [EN](embedding/media_parts/README.md) / [RU](embedding/media_parts/README.ru.md).
+Три слота крупного объекта, разрушенная длина средней записи, запрос только
+недостающей части файла и отсутствие повторов в live-режиме. Мелкое управление
+остаётся записью переменной длины. [main.c](embedding/media_parts/main.c),
+[limits.h](embedding/media_parts/limits.h), [контракт](../doc/MEDIA_SLOTS.ru.md).
 
 [К оглавлению](#оглавление).
 
@@ -2052,6 +2065,7 @@ Source line links describe the current checkout, including in historical notes.
 - [manual_collection — embedding/manual_collection](#example-embedding-manual_collection)
 - [media — embedding/media](#example-embedding-media)
 - [media — extending/media](#example-extending-media)
+- [media_parts — embedding/media_parts](#example-embedding-media_parts)
 - [meta_call — extending/meta_call](#example-extending-meta_call)
 - [mixed_input — embedding/mixed_input](#example-embedding-mixed_input)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)

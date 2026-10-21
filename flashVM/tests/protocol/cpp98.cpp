@@ -1,6 +1,7 @@
 /* C++98 ABI check uses only public protocol headers and the standalone C library. */
 #include "flashvm/sbindings.h"
 #include "flashvm/sstream.h"
+#include "flashvm/smedia.h"
 #include "flashvm/revents.h"
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
@@ -26,6 +27,17 @@ int main()
         fvm_sstream_push(&stream, input, size, &record, &used) != FVM_S_OK || record.tag != 3 ||
         record.size != 1 || record.payload[0] != 0xbf || fvm_sstream_reset(&stream) != FVM_S_OK)
         return 1;
+    unsigned char slot[FVM_SSLOT_BYTES], object[1];
+    FVM_SMediaInfo media = {FVM_SMEDIA_FILE, 1, 1, 1, 0, 1};
+    FVM_SMediaReceiver receiver;
+    FVM_SMediaPiece piece;
+    int complete = 0;
+    if (fvm_smedia_write(3, &media, 0, "x", 1, slot, sizeof(slot), &used) != FVM_S_OK ||
+        fvm_smedia_read(slot, used, 3, &piece) != FVM_S_OK ||
+        fvm_smedia_receiver_init(&receiver, 3, &media, object, sizeof(object)) != FVM_S_OK ||
+        fvm_smedia_accept(&receiver, slot, used, &complete) != FVM_S_OK || !complete ||
+        object[0] != 'x')
+        return 1;
     FVM_RHeartbeatPolicy policy;
     FVM_RHeartbeat heartbeat;
     FVM_RDispatch *dispatch = 0;
@@ -39,10 +51,8 @@ int main()
     if (fvm_rheartbeat_init(&heartbeat, &policy, 1, 0) != FVM_R_OK ||
         fvm_rdispatch_create(0, &dispatch) != FVM_R_OK ||
         fvm_rdispatch_resources(dispatch, 1, 0, 0, &used) != FVM_R_OK || used != 0 ||
-        fvm_rfs_create(dispatch, 1, &fs) != FVM_R_OK ||
-        fvm_r9p_create(fs, &server) != FVM_R_OK ||
-        fvm_r9p_destroy(&server) != FVM_R_OK ||
-        fvm_rfs_destroy(&fs) != FVM_R_OK ||
+        fvm_rfs_create(dispatch, 1, &fs) != FVM_R_OK || fvm_r9p_create(fs, &server) != FVM_R_OK ||
+        fvm_r9p_destroy(&server) != FVM_R_OK || fvm_rfs_destroy(&fs) != FVM_R_OK ||
         fvm_rdispatch_destroy(&dispatch) != FVM_R_OK)
         return 1;
     return 0;

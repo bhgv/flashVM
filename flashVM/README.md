@@ -1,10 +1,12 @@
-Development version: **0.740** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.740 ` and an English description. Increase the subversion before each
+Development version: **0.741** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.741 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.741: [Bounded file and live media fragment reception](doc/MEDIA_SLOTS.md).
 
 v0.740: [Fixed S-record recovery slots](doc/MEDIA_SLOTS.md).
 

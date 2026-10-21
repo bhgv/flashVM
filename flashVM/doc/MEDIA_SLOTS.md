@@ -4,6 +4,12 @@
 S-record batches for file and real-time media channels. It does not change the
 S-record profile, resource request schema or standard 9P wire messages.
 
+Small commands, properties, replies and events retain ordinary variable-length
+S-records without padding. Fixed extent is not a channel-wide requirement.
+The slot profile is explicitly enabled only for bulk objects/media; a small
+object may be sent as one ordinary S-record instead.
+
+
 ## Recovery profile 1
 
 Agree the slot profile over an authenticated reliable control channel before
@@ -77,6 +83,59 @@ The independent Python big-integer/zlib oracle checks encoded bytes, every
 truncated prefix, atomic output, all-padding corruption, damaged length isolation,
 400 seeded mutations, multi-slot batches and real TCP/UDP IPv4 loopback sockets.
 The loopback sockets are a test harness, not an installed player listener.
+## File and live fragments v0.741
+
+`smedia.h` defines the optional `flashvm.media.fragment` type. Bind a nonzero tag
+separately for each direction on an authenticated reliable channel. A fragment
+payload contains eight canonical nonnegative S integers in this order:
+`version=1, mode, stream, epoch, object, time_ms, total, part`, then raw bytes.
+Mode is FILE=1 or LIVE=2. Stream, epoch and object are nonzero Uint32; time_ms is
+Uint32 relative presentation metadata interpreted by the host, not wall time or
+an automatic scheduler. Reconnection/reuse requires a new epoch agreed with the
+peer; the module does not generate identities or wrap them automatically.
+
+Nonfinal pieces contain exactly 768 bytes, the final piece the exact remainder.
+Offset is derived as part*768, with no peer-selected overlapping offsets. Total
+is 1..3145728 bytes and at most 4096 parts; the bitmap is 512 bytes. This bounds
+one object, not an entire file/connection: larger files or videos use multiple
+objects with separate host-managed ordering/completion. An empty file is handled
+by the ordinary control/file protocol, not a zero-part bulk object. Fixed profile
+sizes are versioned opt-in choices, not negotiated by untrusted data packets.
+
+Receiver initialization copies the expected identity and borrows a caller buffer
+of at least total bytes. It never adopts the first packet's metadata. A received
+slot is checksum/format/tag/identity checked before copying. Unchanged duplicate
+parts succeed idempotently; different valid bytes for an accepted part or a
+changed identity return CONFLICT. Wrong tag UNKNOWN; malformed metadata INVALID;
+short slot MORE; capacity LIMIT. Errors leave buffer, receiver and complete
+unchanged. Only accepted parts are initialized: holes contain arbitrary prior
+bytes, and the whole object is usable only when complete is true. Part views
+from read borrow the input and can instead feed a host's immediate consumer.
+There is no whole-file digest or cryptographic authenticity guarantee.
+
+FILE missing enumerates absent indices in ascending pages. Send bounded/rate-
+limited requests over reliable authenticated TCP and keep sender storage until
+acknowledged completion. A correct retry has the same identity, part index and
+bytes. LIVE missing always returns zero: the host skips losses at its deadline,
+performs codec concealment if supported and explicitly reinitializes for the
+next object. Out-of-order parts within the current object are accepted; old
+objects/epochs are rejected, with no automatic eviction or deadline extension.
+This implements reassembly/retry policy, not codecs, audio/video synchronization,
+STUN, pacing, UDP authentication, a network listener or player media playback.
+
+| API | Contract |
+| --- | --- |
+| [`fvm_smedia_write`](../include/flashvm/smedia.h#L55) | Encode one exact part into one 1024-byte slot; no allocations. Output/used atomic on error. |
+| [`fvm_smedia_read`](../include/flashvm/smedia.h#L60) | Validate slot, agreed tag and exact fragment extent; publish a borrowed piece only on OK. |
+| [`fvm_smedia_receiver_init`](../include/flashvm/smedia.h#L65) | Copy trusted expected identity, clear bitmap, borrow sufficient caller buffer; never clear buffer bytes. Error preserves previous receiver. |
+| [`fvm_smedia_accept`](../include/flashvm/smedia.h#L73) | Verify and copy one new matching part or accept an identical duplicate. Set complete when all parts arrived. All error outputs remain unchanged. |
+| [`fvm_smedia_missing`](../include/flashvm/smedia.h#L80) | Enumerate bounded FILE holes from start; continue with last+1. LIVE returns zero. No I/O/timers/requests, count changes only on OK. |
+
+[Runnable tutorial](../examples/embedding/media_parts/README.md) demonstrates a
+corrupt middle slot, selective file retry, live omission and compact control.
+The independent Python oracle verifies exact bytes, truncated prefixes, metadata,
+last bitmap bit, reordered UDP and a small TCP missing-part request. The sockets
+belong to the test harness; native modules remain transport-independent.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -88,6 +147,11 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
+| `fvm_smedia_accept` | function | [include/flashvm/smedia.h:73](../include/flashvm/smedia.h#L73) |
+| `fvm_smedia_missing` | function | [include/flashvm/smedia.h:80](../include/flashvm/smedia.h#L80) |
+| `fvm_smedia_read` | function | [include/flashvm/smedia.h:60](../include/flashvm/smedia.h#L60) |
+| `fvm_smedia_receiver_init` | function | [include/flashvm/smedia.h:65](../include/flashvm/smedia.h#L65) |
+| `fvm_smedia_write` | function | [include/flashvm/smedia.h:55](../include/flashvm/smedia.h#L55) |
 | `fvm_sslot_batch` | function | [include/flashvm/sslot.h:38](../include/flashvm/sslot.h#L38) |
 | `fvm_sslot_read` | function | [include/flashvm/sslot.h:21](../include/flashvm/sslot.h#L21) |
 | `fvm_sslot_write` | function | [include/flashvm/sslot.h:15](../include/flashvm/sslot.h#L15) |
