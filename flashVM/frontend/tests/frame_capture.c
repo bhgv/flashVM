@@ -85,7 +85,22 @@ static int frame_pixels(Capture *test, size_t client, const unsigned char *expec
         memcpy(pixels + offset, reply.data, reply.size);
         offset += reply.size;
     }
-    return !memcmp(pixels, expected, sizeof(pixels));
+    if (memcmp(pixels, expected, sizeof(pixels)))
+        return 0;
+    /* Nonzero x and multiple rows prove packed regions skip the source row suffix. */
+    n = frame_number(bytes, info->lease.id);
+    n += frame_number(bytes + n, info->lease.generation);
+    n += frame_number(bytes + n, 7);
+    n += frame_number(bytes + n, 5);
+    n += frame_number(bytes + n, 16);
+    n += frame_number(bytes + n, 8);
+    if (!test_9p_call(test->clients + client, test->dispatch, test->frame_target,
+                      FVM_DESKTOP_RFRAME_REGION, bytes, n, &reply) || reply.size != FVM_R_BYTES)
+        return 0;
+    for (offset = 0; offset < 8; ++offset)
+        if (memcmp(reply.data + offset * 64, expected + ((offset + 5) * 32 + 7) * 4, 64))
+            return 0;
+    return 1;
 }
 /* Keep each previous image pinned while the next frame publishes, then independently reacquire. */
 static int frame_export(Capture *test, const FVM_DesktopFrame *frame)

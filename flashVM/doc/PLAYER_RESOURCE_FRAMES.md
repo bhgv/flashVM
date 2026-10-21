@@ -48,7 +48,7 @@ for readers and never acknowledges network delivery.
 The host chooses the registered path, for example `/display/frame`. The current
 filesystem projects it under its incarnation directory, e.g. `/3.1/path` names
 the registration and `/3.1/ops/2` invokes ACQUIRE. Discover actual slot/generation
-names; do not assume them in applications. All four operations require READ;
+names; do not assume them in applications. All five operations require READ;
 SUBSCRIBE can independently grant metadata events. Lease IDs alone grant no
 permission, and a wire uname/session claim cannot choose native authority.
 
@@ -60,7 +60,7 @@ permission, and a wire uname/session claim cannot choose native authority.
 | [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L13) | Exactly lease ID and generation as two S integers. Release only this session's pin; another owner DENIED, stale handle UNKNOWN. Success has an empty result. Generation exhaustion retires that lease slot permanently. |
 
 Every ordinary resource write still queues an operation; its native owner must
-pump it. INFO/ACQUIRE/CHUNK/RELEASE handlers access only native cache storage.
+pump it. INFO/ACQUIRE/CHUNK/REGION/RELEASE handlers access only native cache storage.
 They may be pumped after runner return without touching a dead VM. During a live
 player, pump at safe owner boundaries; control operations retain their separate
 notify-only delivery contract. Do not pump arbitrary VM handlers from a frame
@@ -87,12 +87,12 @@ The host owns authentication, transport, native callback installation and grants
 
 | Function | Contract |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L67) | Dispatcher, canonical path, per-slot capacity, adapter and target outputs. Allocate fixed native cache and four READ operations; borrow dispatcher until destroy. Invalid descriptor/capacity INVALID, oversize LIMIT, allocation NOMEM, registration errors propagate. Outputs only on OK. No SDK/device startup or grants. |
-| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L76) | Adapter and borrowed valid frame. Validate format, reason, bounded dimensions, counters, source/visible extents; copy packed pixels to a spare, publish metadata, commit latest. No allocation. Invalid frame INVALID; capacity/sequence LIMIT; missing spare BUSY increments dropped only. Publication failures preserve prior published image. Caller owns callback failure/drop policy. |
-| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L82) | Standard frame observer callback; userdata is adapter. OK or BUSY returns [FVM_OK](../include/flashvm/flashvm.h#L42), intentionally dropping only bounded export under backpressure. INVALID maps [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); other failures [FVM_ERROR](../include/flashvm/flashvm.h#L43). Retains no callback pointer/source/pixel/VM borrow. A host may instead call capture to choose another policy. |
-| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L86) | Decode one counted metadata payload, not the outer S envelope. Validate complete schema, lease pair/range, packed geometry, flags, nonzero sequence/presentations, reason, source length and exact end. INVALID preserves native output. Client owns the copied result; no adapter/VM access or allocation. |
-| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L91) | Owner supplies adapter and authenticated session after transport quiesces. Remove this resource's rights, destroy its watches and release every session-owned pin. Errors leave pins intact; a regrant cannot revive old generations. Also disconnect the native dispatcher session when appropriate. |
-| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L97) | Owner quiesces capture/handlers/clients, then unregisters exact resource and frees all native buffers, invalidating even outstanding pins. Running handler BUSY preserves pointer. On OK null pointer; queued old jobs later complete UNKNOWN and still need acknowledgement/disconnect. Dispatcher/client files/SDK remain host-owned. |
+| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L69) | Dispatcher, canonical path, per-slot capacity, adapter and target outputs. Allocate fixed native cache and five READ operations; borrow dispatcher until destroy. Invalid descriptor/capacity INVALID, oversize LIMIT, allocation NOMEM, registration errors propagate. Outputs only on OK. No SDK/device startup or grants. |
+| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L78) | Adapter and borrowed valid frame. Validate format, reason, bounded dimensions, counters, source/visible extents; copy packed pixels to a spare, publish metadata, commit latest. No allocation. Invalid frame INVALID; capacity/sequence LIMIT; missing spare BUSY increments dropped only. Publication failures preserve prior published image. Caller owns callback failure/drop policy. |
+| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L84) | Standard frame observer callback; userdata is adapter. OK or BUSY returns [FVM_OK](../include/flashvm/flashvm.h#L42), intentionally dropping only bounded export under backpressure. INVALID maps [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); other failures [FVM_ERROR](../include/flashvm/flashvm.h#L43). Retains no callback pointer/source/pixel/VM borrow. A host may instead call capture to choose another policy. |
+| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L88) | Decode one counted metadata payload, not the outer S envelope. Validate complete schema, lease pair/range, packed geometry, flags, nonzero sequence/presentations, reason, source length and exact end. INVALID preserves native output. Client owns the copied result; no adapter/VM access or allocation. |
+| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L93) | Owner supplies adapter and authenticated session after transport quiesces. Remove this resource's rights, destroy its watches and release every session-owned pin. Errors leave pins intact; a regrant cannot revive old generations. Also disconnect the native dispatcher session when appropriate. |
+| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L99) | Owner quiesces capture/handlers/clients, then unregisters exact resource and frees all native buffers, invalidating even outstanding pins. Running handler BUSY preserves pointer. On OK null pointer; queued old jobs later complete UNKNOWN and still need acknowledgement/disconnect. Dispatcher/client files/SDK remain host-owned. |
 
 Close/release each image explicitly. Closing an operation file, fid or even the
 9P adapter does **not** automatically release application-specific frame leases.
@@ -189,6 +189,35 @@ target OS/CPU: see [desktop build](DESKTOP_FRONTEND.md) and
 [platform validation](PLATFORM_VALIDATION.md). Cross-compiling this module does
 not replace full player build/execution, Android Activity/surface integration or
 device acceptance.
+## Frame regions v0.738
+
+`FVM_DESKTOP_RFRAME_REGION` (operation 5, READ) takes exactly six canonical
+nonnegative S integers: lease ID, generation, x, y, width, height. Coordinates
+are zero-based logical stage pixels, with the origin at the upper left. Width
+and height must be positive; the entire rectangle must lie within the leased
+image. The reply contains tightly packed row-major RGBA bytes, without source
+row padding or an additional header. Its size is exactly width*height*4.
+
+Invalid geometry, trailing/missing fields or noncanonical integers return INVALID.
+A valid rectangle exceeding [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) (512) returns LIMIT with no partial
+pixels; divide larger rectangles into tiles. Stale leases return UNKNOWN and
+another session's lease DENIED, as with CHUNK. Reads do not allocate, release a
+pin or change the cached image. This does not calculate dirty rectangles.
+
+For example, `[lease, generation, 7, 5, 16, 8]` returns 512 bytes from eight
+rows, each containing sixteen pixels. Every row in the response is 64 bytes;
+the full image's row stride is not present in the reply.
+
+The independent Python oracle compares all rectangles of a 2x2 image and 300
+seeded rectangles of an 8x32 padded source, including exact 512-byte and
+oversized requests. Two live 9P readers also compare an interior 16x8 region
+of actual player frames, retained old images and final images after teardown.
+
+9P negotiates a whole-message `msize` in the initial Tversion/Rversion exchange.
+It includes 9P headers; the dispatcher payload bound [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) is independent.
+A resource reply file may require multiple Tread/Rread exchanges when the
+negotiated msize is smaller than its encoded S-record. Raising msize does not
+raise the native dispatcher payload limit. See the [9P adapter](RESOURCE_9P.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

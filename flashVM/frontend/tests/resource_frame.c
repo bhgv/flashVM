@@ -67,7 +67,7 @@ int main(void)
     FVM_DesktopResourceFrameInfo info, before, first, second;
     FVM_DesktopFrameLease leases[FVM_DESKTOP_RFRAME_LEASES];
     unsigned char pixels[24], expected[16], encoded[FVM_R_BYTES];
-    unsigned long args[4];
+    unsigned long args[6];
     size_t i, n, count;
     FVM_RRequest q;
     char source[FVM_DESKTOP_RFRAME_SOURCE + 2];
@@ -152,6 +152,24 @@ int main(void)
           reply.result == FVM_R_OK && reply.size == 16 && !memcmp(reply.data, expected, 16));
     CHECK(call(d, target, 2, FVM_DESKTOP_RFRAME_CHUNK, args, 4, &reply) &&
           reply.result == FVM_R_DENIED);
+    args[2] = 1;
+    args[3] = 0;
+    args[4] = 1;
+    args[5] = 2;
+    CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_REGION, args, 6, &reply) &&
+          reply.result == FVM_R_OK && reply.size == 8 && !memcmp(reply.data, expected + 4, 4) &&
+          !memcmp(reply.data + 4, expected + 12, 4));
+    CHECK(call(d, target, 2, FVM_DESKTOP_RFRAME_REGION, args, 6, &reply) &&
+          reply.result == FVM_R_DENIED && !reply.size);
+    CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_REGION, args, 5, &reply) &&
+          reply.result == FVM_R_INVALID && !reply.size);
+    args[4] = FVM_SRECORD_U32;
+    CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_REGION, args, 6, &reply) &&
+          reply.result == FVM_R_INVALID && !reply.size);
+    args[4] = 0;
+    CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_REGION, args, 6, &reply) &&
+          reply.result == FVM_R_INVALID && !reply.size);
+    args[3] = 512;
     args[2] = 16;
     CHECK(call(d, target, 1, FVM_DESKTOP_RFRAME_CHUNK, args, 4, &reply) &&
           reply.result == FVM_R_OK && !reply.size);

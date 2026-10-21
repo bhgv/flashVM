@@ -1,10 +1,13 @@
-Development version: **0.737** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.737 ` and an English description. Increase the subversion before each
+Development version: **0.738** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.738 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.738: [Leased frame regions](doc/PLAYER_RESOURCE_FRAMES.md#frame-regions-v0738).
+
 
 v0.737: [Frame pixels over 9P](doc/PLAYER_RESOURCE_FRAMES.md#live-9p-pixels-v0737) / [Пиксели через 9P](doc/PLAYER_RESOURCE_FRAMES.ru.md#пиксели-через-9p-v0737).
 

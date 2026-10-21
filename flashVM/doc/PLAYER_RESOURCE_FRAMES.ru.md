@@ -42,8 +42,8 @@ Capacity/sequence LIMIT не превращается в тихий пропус
 
 Хост задаёт путь, например `/display/frame`. Текущая FS проецирует регистрацию
 в каталог поколения: `/3.1/path` сообщает исходное имя, `/3.1/ops/2` вызывает
-ACQUIRE. Настоящие slot/generation нужно перечислять, не угадывать. Все четыре
-операции требуют READ; SUBSCRIBE независимо разрешает metadata events. Знание
+ACQUIRE. Настоящие slot/generation нужно перечислять, не угадывать. Все пять
+операций требуют READ; SUBSCRIBE независимо разрешает metadata events. Знание
 lease ID не даёт прав; wire uname/session claim не выбирает native authority.
 
 | Операция | Параметры и результат |
@@ -54,7 +54,7 @@ lease ID не даёт прав; wire uname/session claim не выбирает 
 | [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L13) | Ровно lease ID и generation как два S-целых. Освобождает только собственный pin; чужой DENIED, старый UNKNOWN. Успех — пустой ответ. При исчерпании generation слот окончательно retired. |
 
 Обычная resource write лишь ставит операцию в очередь, исполняет native owner
-pump. Эти четыре handler используют только native cache и допустимы после
+pump. Эти пять handler используют только native cache и допустимы после
 возврата runner, без мёртвой VM. Во время playback — только безопасные owner
 границы; control операции сохраняют отдельный notify-only контракт. Нельзя
 pump-ить произвольные VM handlers из frame callback лишь потому, что конкретные
@@ -79,12 +79,12 @@ callback и выдача прав принадлежат хосту.
 
 | Функция | Контракт |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L67) | Dispatcher, canonical path, per-slot capacity, выходы adapter/target. Fixed native cache и четыре READ операции, заимствование dispatcher до destroy. Некорректные аргументы/capacity INVALID, слишком большой объём LIMIT, allocation NOMEM, ошибки регистрации передаются. Выходы только на OK; SDK/device/grant не запускает. |
-| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L76) | Адаптер и borrowed frame. Проверяет format/reason/dimensions/counters/source/visible extents, копирует packed pixels в spare, публикует metadata, меняет latest. Без allocation. Неверный frame INVALID, capacity/sequence LIMIT; нет spare BUSY с ростом только dropped. Ошибки publish сохраняют прежний опубликованный кадр. Политику ошибок/пропуска выбирает хост. |
-| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L82) | Стандартный frame observer callback, userdata=adapter. OK/BUSY даёт [FVM_OK](../include/flashvm/flashvm.h#L42), при backpressure пропущен только экспорт. INVALID отображается в [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), прочее — [FVM_ERROR](../include/flashvm/flashvm.h#L43). Не удерживает source/pixel/VM указателей. Можно вместо него явно вызывать capture со своей политикой. |
-| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L86) | Декодирует один counted metadata payload без outer envelope. Проверяет полную schema, lease pair/range, packed geometry, flags, ненулевые sequence/presentations, reason, source length и точный конец. INVALID сохраняет native output. Результат принадлежит клиенту, без adapter/VM и allocation. |
-| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L91) | Owner передаёт adapter и trusted session после остановки транспорта. Удаляет права ресурса, его watches и все pins сессии. Ошибка сохраняет pins; regrant старые поколения не возрождает. При полном disconnect также вызвать очистку сессии dispatcher. |
-| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L97) | Owner останавливает capture/handlers/clients, unregister точного поколения и free native buffers, инвалидируя даже открытые pins. Running handler BUSY сохраняет pointer. OK обнуляет pointer; queued old jobs затем UNKNOWN и требуют take/disconnect. Dispatcher/client files/SDK принадлежат хосту. |
+| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L69) | Dispatcher, canonical path, per-slot capacity, выходы adapter/target. Fixed native cache и пять READ операций, заимствование dispatcher до destroy. Некорректные аргументы/capacity INVALID, слишком большой объём LIMIT, allocation NOMEM, ошибки регистрации передаются. Выходы только на OK; SDK/device/grant не запускает. |
+| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L78) | Адаптер и borrowed frame. Проверяет format/reason/dimensions/counters/source/visible extents, копирует packed pixels в spare, публикует metadata, меняет latest. Без allocation. Неверный frame INVALID, capacity/sequence LIMIT; нет spare BUSY с ростом только dropped. Ошибки publish сохраняют прежний опубликованный кадр. Политику ошибок/пропуска выбирает хост. |
+| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L84) | Стандартный frame observer callback, userdata=adapter. OK/BUSY даёт [FVM_OK](../include/flashvm/flashvm.h#L42), при backpressure пропущен только экспорт. INVALID отображается в [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), прочее — [FVM_ERROR](../include/flashvm/flashvm.h#L43). Не удерживает source/pixel/VM указателей. Можно вместо него явно вызывать capture со своей политикой. |
+| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L88) | Декодирует один counted metadata payload без outer envelope. Проверяет полную schema, lease pair/range, packed geometry, flags, ненулевые sequence/presentations, reason, source length и точный конец. INVALID сохраняет native output. Результат принадлежит клиенту, без adapter/VM и allocation. |
+| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L93) | Owner передаёт adapter и trusted session после остановки транспорта. Удаляет права ресурса, его watches и все pins сессии. Ошибка сохраняет pins; regrant старые поколения не возрождает. При полном disconnect также вызвать очистку сессии dispatcher. |
+| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L99) | Owner останавливает capture/handlers/clients, unregister точного поколения и free native buffers, инвалидируя даже открытые pins. Running handler BUSY сохраняет pointer. OK обнуляет pointer; queued old jobs затем UNKNOWN и требуют take/disconnect. Dispatcher/client files/SDK принадлежат хосту. |
 
 Каждый lease освобождайте явно. Закрытие operation file, fid и даже 9P adapter
 **не** освобождает специфичные pins автоматически. Потерянный ACQUIRE reply может
@@ -178,6 +178,33 @@ Fixture включает настоящий resource_frame.c с fault injection;
 OS/CPU: см. [desktop build](DESKTOP_FRONTEND.ru.md) и
 [платформенную приёмку](PLATFORM_VALIDATION.ru.md). Кросс-компиляция этого модуля
 не заменяет сборку/запуск всего плеера, Android Activity/surface и проверку устройств.
+## Области кадра v0.738
+
+`FVM_DESKTOP_RFRAME_REGION` (операция 5, READ) принимает ровно шесть
+канонических неотрицательных S-целых: lease ID, generation, x, y, width, height.
+Координаты — логические пиксели сцены от левого верхнего угла, начиная с нуля.
+Ширина и высота положительны; весь прямоугольник должен входить в закреплённый
+кадр. Ответ — строки RGBA подряд, без padding и дополнительного заголовка;
+размер ровно width*height*4 байт.
+
+Ошибочная геометрия, лишние/недостающие поля или неканонические целые дают
+INVALID. Допустимый прямоугольник больше [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) (512 байт) даёт LIMIT без
+частичного результата: крупную область клиент разбивает на плитки. Старый lease
+даёт UNKNOWN, чужой — DENIED. Чтение не выделяет память, не освобождает lease и
+не изменяет кадр. Автоматическое вычисление изменившихся областей не добавлено.
+
+Например, `[lease, generation, 7, 5, 16, 8]` возвращает 512 байт: восемь строк по
+16 пикселей. Каждая строка ответа занимает 64 байта, stride полного кадра в ней
+не сохраняется. Независимый Python oracle проверяет все области кадра 2x2 и
+300 воспроизводимых областей padded-источника 8x32, включая предел 512 байт.
+Два клиента 9P сравнивают внутреннюю область 16x8 настоящих кадров плеера,
+старых закреплённых изображений и последних изображений после завершения VM.
+
+В первом обмене Tversion/Rversion согласуется `msize` всего сообщения 9P,
+включая заголовки. Отдельный предел [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) относится к payload
+диспетчера. Если S-запись ответа больше согласованного msize, файл ответа
+читается несколькими Tread/Rread. Увеличение msize не увеличивает внутренний
+предел payload. См. [адаптер 9P](RESOURCE_9P.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

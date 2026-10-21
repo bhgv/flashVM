@@ -213,11 +213,11 @@ guide and separate client fixtures cover CHUNK/leases.
 
 | API | Ownership / execution |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L67) | Own three explicit-capacity pixel slots, borrowing dispatcher. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L76) | Owner copies visible rows and publishes metadata without retaining borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L86) | Decode copied event metadata into independent native storage. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L91) | Remove local rights/watches and release all session pins before teardown. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L97) | Unregister before freeing native pixel buffers; dispatcher remains host-owned. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L69) | Own three explicit-capacity pixel slots, borrowing dispatcher. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L78) | Owner copies visible rows and publishes metadata without retaining borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L88) | Decode copied event metadata into independent native storage. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L93) | Remove local rights/watches and release all session pins before teardown. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L99) | Unregister before freeing native pixel buffers; dispatcher remains host-owned. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

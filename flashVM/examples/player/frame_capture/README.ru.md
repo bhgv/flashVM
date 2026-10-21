@@ -211,11 +211,11 @@ destroy frame adapter, затем state/control/dispatcher. PPM по-прежн�
 
 | API | Владение / исполнение |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L67) | Создаёт три слота явного размера, заимствует dispatcher. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L76) | Owner копирует строки и публикует metadata без удержания borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L86) | Декодирует metadata события в отдельную native копию. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L91) | Удаляет локальные права/watches и все pins сессии перед teardown. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L97) | Снимает регистрацию до free native pixels; dispatcher принадлежит хосту. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L69) | Создаёт три слота явного размера, заимствует dispatcher. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L78) | Owner копирует строки и публикует metadata без удержания borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L88) | Декодирует metadata события в отдельную native копию. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L93) | Удаляет локальные права/watches и все pins сессии перед teardown. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L99) | Снимает регистрацию до free native pixels; dispatcher принадлежит хосту. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

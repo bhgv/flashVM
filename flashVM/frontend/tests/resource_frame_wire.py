@@ -85,7 +85,43 @@ def main():
     assert call(2,2)==(0,payload(acquired,source))
     pixels.raw=b"\xff"*17  # Native capture owns an independent pixel copy.
     assert call(3,3,b"".join(map(integer,[1,1,0,512])))==(0,bytes(range(16)))
+    identity=10
+    def region(values):
+        nonlocal identity
+        identity+=1
+        return call(identity,5,b"".join(map(integer,[1,1]+values)))
+    for x in range(2):
+        for y in range(2):
+            for width in range(1,3-x):
+                for height in range(1,3-y):
+                    expected=b"".join(bytes(range(16))[(row*2+x)*4:(row*2+x+width)*4]
+                                      for row in range(y,y+height))
+                    assert region([x,y,width,height])==(0,expected)
+    for values in [[0,0,0,1],[0,0,1,0],[2,0,1,1],[0,2,1,1],
+                   [1,0,2,1],[0,1,1,2],[0xffffffff,0,1,1],[0,0,0xffffffff,1],
+                   [0,0,1,-1],[0,0,1,1,0],[0,0,1]]:
+        assert region(values)==(1,b""),values
     assert call(4,4,integer(1)+integer(1))==(0,b"")
+    assert region([0,0,1,1])==(3,b"")
+    # A larger padded capture exercises exactly 512 bytes and oversized tiles.
+    raw=bytes((i*37+11)%256 for i in range(40*32))
+    image=C.create_string_buffer(raw)
+    assert lib.fvm_desktop_resource_frame_destroy(C.byref(adapter))==0
+    assert lib.fvm_desktop_resource_frame_create(dispatch,b"/display/frame",1024,C.byref(adapter),C.byref(target))==0
+    assert lib.fvm_rdispatch_grant(dispatch,target,77,1)==0
+    frame.width=8;frame.height=32;frame.stride=40;frame.byte_count=len(raw);frame.pixels=C.addressof(image)
+    assert lib.fvm_desktop_resource_frame_capture(adapter,C.byref(frame))==0
+    assert call(6,2)[0]==0
+    import random
+    rng=random.Random(738)
+    for _ in range(300):
+        x=rng.randrange(8);y=rng.randrange(32)
+        width=rng.randrange(1,9-x);height=rng.randrange(1,33-y)
+        expected=b"".join(raw[row*40+x*4:row*40+(x+width)*4] for row in range(y,y+height))
+        assert region([x,y,width,height])==((0,expected) if len(expected)<=512 else (2,b""))
+    assert region([0,0,8,16])==(0,b"".join(raw[row*40:row*40+32] for row in range(16)))
+    assert region([0,0,8,17])==(2,b"")
+    assert call(7,4,integer(1)+integer(1))==(0,b"")
     assert call(5,3,b"".join(map(integer,[1,1,0,16])))[0]==3
     assert lib.fvm_desktop_resource_frame_destroy(C.byref(adapter))==0
     assert lib.fvm_rdispatch_destroy(C.byref(dispatch))==0

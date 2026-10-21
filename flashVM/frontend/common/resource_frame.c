@@ -109,9 +109,9 @@ static FVM_RResult frame_deliver(const FVM_RRequest *q, void *out, size_t capaci
     FVM_DesktopResourceFrame *a = (FVM_DesktopResourceFrame *)raw;
     FVM_DesktopResourceFrameInfo info;
     FramePin *pin;
-    unsigned long args[FVM_DESKTOP_RFRAME_CHUNK_FIELDS];
+    unsigned long args[FVM_DESKTOP_RFRAME_REGION_FIELDS];
     unsigned char bytes[FVM_R_BYTES];
-    size_t i, n;
+    size_t i, n, row, rows;
     *used = 0;
     if (q->operation == FVM_DESKTOP_RFRAME_INFO || q->operation == FVM_DESKTOP_RFRAME_ACQUIRE)
     {
@@ -147,12 +147,15 @@ static FVM_RResult frame_deliver(const FVM_RRequest *q, void *out, size_t capaci
         *used = n;
         return FVM_R_OK;
     }
-    if (q->operation != FVM_DESKTOP_RFRAME_CHUNK && q->operation != FVM_DESKTOP_RFRAME_RELEASE)
+    if (q->operation != FVM_DESKTOP_RFRAME_CHUNK && q->operation != FVM_DESKTOP_RFRAME_RELEASE &&
+        q->operation != FVM_DESKTOP_RFRAME_REGION)
         return FVM_R_UNKNOWN;
     if (!frame_arguments(q, args,
-                         q->operation == FVM_DESKTOP_RFRAME_CHUNK
-                             ? FVM_DESKTOP_RFRAME_CHUNK_FIELDS
-                             : FVM_DESKTOP_RFRAME_LEASE_FIELDS))
+                         q->operation == FVM_DESKTOP_RFRAME_REGION
+                             ? FVM_DESKTOP_RFRAME_REGION_FIELDS
+                             : (q->operation == FVM_DESKTOP_RFRAME_CHUNK
+                                    ? FVM_DESKTOP_RFRAME_CHUNK_FIELDS
+                                    : FVM_DESKTOP_RFRAME_LEASE_FIELDS)))
         return FVM_R_INVALID;
     pin = frame_pin(a, args[0], args[1]);
     if (!pin)
@@ -165,6 +168,25 @@ static FVM_RResult frame_deliver(const FVM_RRequest *q, void *out, size_t capaci
         return FVM_R_OK;
     }
     info = a->frames[pin->slot].info;
+    if (q->operation == FVM_DESKTOP_RFRAME_REGION)
+    {
+        /* Subtraction bounds coordinates before any sum, product or output mutation. */
+        if (!args[4] || !args[5] || args[2] >= info.width || args[3] >= info.height ||
+            args[4] > info.width - args[2] || args[5] > info.height - args[3])
+            return FVM_R_INVALID;
+        row = (size_t)args[4] * FVM_DESKTOP_FRAME_PIXEL_BYTES;
+        rows = (size_t)args[5];
+        /* Reject oversized rectangles atomically; callers tile them explicitly. */
+        if (row > FVM_R_BYTES || rows > FVM_R_BYTES / row || row * rows > capacity)
+            return FVM_R_LIMIT;
+        n = ((size_t)args[3] * (size_t)info.width + (size_t)args[2]) *
+            FVM_DESKTOP_FRAME_PIXEL_BYTES;
+        for (i = 0; i < rows; ++i)
+            memcpy((unsigned char *)out + i * row,
+                   a->frames[pin->slot].pixels + n + i * (size_t)info.row_bytes, row);
+        *used = row * rows;
+        return FVM_R_OK;
+    }
     if (!args[3] || args[3] > FVM_R_BYTES || args[2] > info.byte_count)
         return FVM_R_INVALID;
     n = (size_t)(info.byte_count - args[2]);
@@ -188,7 +210,8 @@ FVM_RResult fvm_desktop_resource_frame_create(FVM_RDispatch *dispatch, const cha
     static const FVM_ROperation operations[] = {{FVM_DESKTOP_RFRAME_INFO, FVM_R_READ},
                                                 {FVM_DESKTOP_RFRAME_ACQUIRE, FVM_R_READ},
                                                 {FVM_DESKTOP_RFRAME_CHUNK, FVM_R_READ},
-                                                {FVM_DESKTOP_RFRAME_RELEASE, FVM_R_READ}};
+                                                {FVM_DESKTOP_RFRAME_RELEASE, FVM_R_READ},
+                                                {FVM_DESKTOP_RFRAME_REGION, FVM_R_READ}};
     if (!dispatch || !out || !target || !capacity)
         return FVM_R_INVALID;
     if (capacity > FVM_DESKTOP_RFRAME_MAX_BYTES)

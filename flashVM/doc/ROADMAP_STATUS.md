@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.737
+# FlashVM stage status / Состояние стадий — v0.738
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,9 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.738 adds bounded packed rectangle reads from immutable session-owned frame leases.
+Independent cropped-pixel checks cover padded rows and invalid/oversized regions.
 
 v0.737 verifies two independent 9P clients acquiring, reading and releasing real
 player RGBA frames. Each old image is checked while a newer frame is published;

@@ -26,6 +26,8 @@
     4U /* Lease ID/generation, byte offset and requested count. */
 #define FVM_DESKTOP_RFRAME_LEASE_FIELDS 2U      /* Lease ID and generation for release. */
 #define FVM_DESKTOP_RFRAME_MAX_BYTES 67108864UL /* 4096*4096*4 visible RGBA bytes per slot. */
+#define FVM_DESKTOP_RFRAME_REGION 5UL /* READ: lease, x/y and width/height; packed RGBA reply. */
+#define FVM_DESKTOP_RFRAME_REGION_FIELDS 6U /* Lease ID/generation, x, y, width, height. */
 #ifdef __cplusplus
 extern "C"
 {
@@ -60,7 +62,7 @@ extern "C"
     typedef struct FVM_DesktopResourceFrame
         FVM_DesktopResourceFrame; /* Opaque owner-only native cache. */
     /* Owner allocates exactly SLOTS pixel buffers of capacity bytes, plus fixed metadata, then
-     * registers four READ operations. Capacity 1..MAX_BYTES; no SDK startup, grant or hidden
+     * registers five READ operations. Capacity 1..MAX_BYTES; no SDK startup, grant or hidden
      * default allocation. Outputs only on OK; allocation/registration failure frees all partial
      * storage. Borrows dispatcher until destroy. Host quiesces calls and keeps adapter stable; it
      * owns no managed pointers. */
