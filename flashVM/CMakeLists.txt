@@ -531,6 +531,14 @@ if(FVM_BUILD_DESKTOP_FRONTEND)
   add_subdirectory(frontend)
 endif()
 
+# Check the bounded C89 MP3 exporter using native voices and normalized streams after VM teardown.
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_swf_mp3_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_mp3_example.py
+      $<TARGET_FILE:flashvm_examples_multimedia_swf_mp3_main>)
+  set_tests_properties(flashvm_swf_mp3_tutorial PROPERTIES TIMEOUT 30)
+endif()
+
 # Check literal partial-ADPCM C89 export in both prepared and native encoded-range modes.
 if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_swf_stream_adpcm_tutorial

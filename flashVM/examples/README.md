@@ -145,6 +145,7 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
+    - [swf_mp3](#example-multimedia-swf_mp3) — <small><em>MP3 StartSound/stream в native FILE после VM teardown</em></small>
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
     - [swf_stream_adpcm](#example-multimedia-swf_stream_adpcm) — <small><em>Неполный ADPCM: явные длины, native PCM и ranges после VM teardown</em></small>
     - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, event-голоса и точный retry очереди после VM teardown</em></small>
@@ -1632,6 +1633,18 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 порциями без новых аллокаций: [constants](multimedia/swf_audio/example_constants.h).
 Это экспорт raw PCM, не автоматический SWF-плеер.
 
+<a id="example-multimedia-swf_mp3"></a>
+#### swf_mp3
+
+Исполняемый strict-C89 пример: [README](multimedia/swf_mp3/README.md),
+[main.c](multimedia/swf_mp3/main.c), [bounds](multimedia/swf_mp3/example_constants.h).
+Экспортирует первый MP3 StartSound либо первый root MP3 stream в caller-selected
+native-S16 FILE. Input и preparation ограничены; VM уничтожается до output loop.
+Проверены шесть MPEG geometries, CBR/VBR, FWS/CWS, golden positions, exact lengths,
+replacement, CLI и terminal errors; при наличии FFmpeg сравнивается каждый отсчёт.
+Нет SDL/device, hidden worker, resampling или movie clock. [EN](../doc/MP3_AUDIO.md) /
+[RU](../doc/MP3_AUDIO.ru.md).
+
 <a id="example-multimedia-swf_stream"></a>
 #### swf_stream
 
@@ -2197,6 +2210,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_audio_queue — multimedia/swf_audio_queue](#example-multimedia-swf_audio_queue)
 - [swf_event_mixer — multimedia/swf_event_mixer](#example-multimedia-swf_event_mixer)
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
+- [swf_mp3 — multimedia/swf_mp3](#example-multimedia-swf_mp3)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)
 - [swf_stream_adpcm — multimedia/swf_stream_adpcm](#example-multimedia-swf_stream_adpcm)

@@ -139,6 +139,21 @@ Latency trim и prefix-discard seek сохраняют описанную native
 MP3 seek/read-ahead, negative initial latency, free-format, child streams,
 stream/event composition и A/V sync остаются открытыми. Ни одна стадия не закрыта.
 
+## v0.781 исполняемый C89 MP3 exporter
+
+[Построчный tutorial](../examples/multimedia/swf_mp3/README.md) экспортирует первый
+MP3 StartSound либо первый root MP3 stream после уничтожения context/runtime.
+Input, native preparation и export duration ограничены отдельно; S16 копируется
+порциями, native file errors терминальны. В export loop нет device, worker,
+resampling, внешнего codec SDK или исходной VM.
+
+Настоящий executable проходит strict C89 и полный minimal-core ASan/UBSan в обоих
+режимах, шести MPEG geometries и FWS/CWS. Проходят независимые golden positions,
+полные длины, replacement, неверные CLI/source и файловые ошибки. С доступным
+FFmpeg сравнивается каждый отсчёт в пределах трёх S16 единиц; без FFmpeg остаются
+checked-in golden tests. LeakSanitizer выключен из-за ограничений process enumeration;
+ASan injected exception-unwind не засчитывается, как описано ранее.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

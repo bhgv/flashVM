@@ -145,6 +145,22 @@ policy above. Full reference MP3 seek/read-ahead, negative initial latency,
 free-format bitrate, child streams, stream/event composition and A/V synchronization
 remain open. No roadmap stage is marked complete.
 
+## v0.781 executable C89 MP3 exporter
+
+The [annotated tutorial](../examples/multimedia/swf_mp3/README.md) exports an actual
+first MP3 StartSound or first root MP3 stream after source context/runtime teardown.
+It bounds input, native preparation and export duration separately, copies native
+S16 in fixed chunks and treats native file errors as terminal. No device, worker,
+resampling, external codec SDK or source VM survives in the export loop.
+
+Its actual executable passes ordinary strict C89 and full-minimal-core ASan/UBSan
+in both modes, all six MPEG geometries and FWS/CWS. Independent golden positions,
+complete output lengths, replacement, malformed CLI/source and terminal file errors
+pass; with the available FFmpeg oracle every exported sample is compared within
+three S16 units. Checked-in golden checks still run without FFmpeg. LeakSanitizer
+is disabled on this host because process enumeration is unavailable; ASan injected
+exception-unwind runs remain outside accepted evidence as documented previously.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

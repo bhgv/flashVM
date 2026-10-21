@@ -1,10 +1,12 @@
-Development version: **0.780** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.780 ` and an English description. Increase the subversion before each
+Development version: **0.781** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.781 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.781: [Export MP3 voices and streams through an annotated VM-free C89 host](doc/MP3_AUDIO.md).
 
 v0.780: [Play supported MP3 root streams through the native SDL queue](doc/MP3_AUDIO.md).
 
