@@ -1,4 +1,4 @@
-Версия разработки: **0.809** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.810** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.810: [Ограниченный экспорт подготовленного звука реальных SWF через C89](doc/FREE_FORMAT_MP3.ru.md).
 
 v0.809: [Ограничение определения free-format длины точными счётчиками](doc/FREE_FORMAT_MP3.ru.md).
 

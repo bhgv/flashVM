@@ -49,6 +49,15 @@ Grouped-packet and failure-retry tests cover all four fixtures. Allocation-failu
 sweeps confirm unchanged preparation acquisitions; copied PCM survives VM teardown
 and reads/closes with allocation completely disabled.
 
+
+## Bounded real-file export (v0.810)
+
+The [C89 tutorial](../examples/multimedia/swf_stream_mp3/README.md) now accepts
+`--decode INPUT.swf OUTPUT.pcm`. It fully validates/normalizes the first audio
+segment before replacing output, destroys VM/runtime, and writes bounded native
+S16 using an independent cursor. Host input and native peak are separately capped
+at 64 MiB. It exports one segment without device playback or A/V scheduling.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

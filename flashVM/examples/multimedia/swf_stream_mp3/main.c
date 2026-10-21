@@ -1,7 +1,9 @@
-/* Inspect SWF MP3 prefixes and keep encoded blocks after VM teardown; no playback. */
-#include "flashvm/swf_stream_sound.h" /* Import the live and detached C89 inspection APIs. */
+/* Inspect encoded MP3 prefixes or export validated native PCM from a real SWF without playback. */
+#include "flashvm/swf_stream_pcm.h" /* Import the live and detached C89 inspection APIs. */
+#include <stdlib.h> /* Own the bounded external-input buffer. */
 #include <stdio.h> /* Print copied metadata and failures. */
 #include <string.h> /* Recognize the explicit demonstration argument. */
+#include "decode.inc" /* Add the annotated real-file normalization/export workflow. */
 static const unsigned char fixture[] = { /* FWS4: two blocks with deliberately opaque MPEG data. */
     70, 87, 83, 4, 43, 0, 0, 0, /* Synthetic wire bytes; MPEG bytes are opaque, not playable audio. */
     8, 0, 0, 12, 2, 0, 134, 4, /* Synthetic wire bytes; MPEG bytes are opaque, not playable audio. */
@@ -29,9 +31,10 @@ int main(int argc, char **argv) /* Require an explicit request to run the embedd
     size_t count = 0; /* Receive the number of encoded block occurrences. */
     size_t ordinal; /* Enumerate blocks in their original movie-frame order. */
     int status = 1; /* Change to success only after every operation succeeds. */
+    if (argc == 4 && strcmp(argv[1], "--decode") == 0) return decode_file(argv[2], argv[3]); /* Decode only explicitly supplied input/output paths. */
     if (argc == 1) /* Explain usage without allocating a VM or opening any file. */
     { /* Begin usage-only mode. */
-        puts("usage: swf_stream_mp3 --demo"); /* Name the only accepted tutorial option. */
+        puts("usage: swf_stream_mp3 --demo | --decode INPUT.swf OUTPUT.pcm"); /* Name the only accepted tutorial option. */
         return 0; /* No resources require cleanup. */
     } /* Finish usage-only mode. */
     if (argc != 2 || strcmp(argv[1], "--demo") != 0) /* Reject other arguments before side effects. */

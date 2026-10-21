@@ -85,6 +85,33 @@ no owner is destroyed twice. `print_block` only reads scalar metadata.
 
 Каталог: [examples/README.md](../../README.md#example-multimedia-swf_stream_mp3).
 
+
+## Real PCM export / Экспорт настоящего PCM (v0.810)
+
+```sh
+./build-stream/flashvm_examples_multimedia_swf_stream_mp3_main --decode INPUT.swf OUTPUT.pcm
+```
+
+[decode.inc](decode.inc) reads a seekable SWF of at most 64 MiB, fully prepares its
+first supported audio segment with a separate 64 MiB native peak ceiling, destroys
+the VM/runtime, then writes bounded native-endian interleaved S16 chunks. Output
+is replaced only after successful preparation; write/flush errors fail and may
+leave a partial file. Exactly one segment is exported; no playback, resampling,
+A/V scheduling or cross-segment concatenation is implied. PCM, ADPCM and supported
+MP3, including free-format, share the same preparation contract.
+
+Режим читает seekable SWF не больше 64 МиБ, полностью подготавливает первый
+поддерживаемый аудиосегмент с отдельным ограничением пика 64 МиБ, уничтожает
+VM/runtime и пишет native-endian interleaved S16. Выход заменяется только после
+успешной подготовки; ошибка записи/закрытия может оставить частичный файл.
+Экспортируется один сегмент без воспроизведения, пересчёта частоты и A/V-таймлайна.
+
+| API | Contract / Контракт |
+| --- | --- |
+| [`fvm_swf_stream_sound_snapshot_open_pcm_bounded`](../../../include/flashvm/swf_stream_sound.h#L102) | Validate and normalize the complete first segment on the VM owner thread, outside GC; errors publish no owner. Caller closes the independent snapshot. Peak limit includes transient encoded and PCM storage. [EN](../../../doc/STREAM_STORAGE.md) / [RU](../../../doc/STREAM_STORAGE.ru.md). |
+| [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L40) | Borrow a prepared immutable PCM snapshot without allocation; caller cursor lives independently after VM teardown and cannot outlive the snapshot. Errors preserve cursor. [Contract](../../../doc/STREAM_PCM_READER.md). |
+| [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L48) | Fill bounded caller S16 storage and block/frame metadata without VM, allocation or I/O; zero markers advance and EOF preserves outputs. Cursor has one serial owner. [Contract](../../../doc/STREAM_PCM_READER.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -100,10 +127,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
+| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../../../include/flashvm/swf_stream_sound.h#L51) |
 | `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:129](../../../include/flashvm/swf_stream_sound.h#L129) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
 | `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:127](../../../include/flashvm/swf_stream_sound.h#L127) |
 | `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:133](../../../include/flashvm/swf_stream_sound.h#L133) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->

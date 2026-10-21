@@ -149,7 +149,7 @@
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
     - [swf_stream_adpcm](#example-multimedia-swf_stream_adpcm) — <small><em>Неполный ADPCM: явные длины, native PCM и ranges после VM teardown</em></small>
     - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, event-голоса и точный retry очереди после VM teardown</em></small>
-    - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и сжатый снимок после уничтожения VM</em></small>
+    - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и ограниченный экспорт PCM после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
@@ -1706,6 +1706,9 @@ Desktop mixed policy остаётся открытой. [Адаптер EN](../d
 Показывает различие объявленного SampleCount, signed SeekSamples и header latency,
 а также полный префикс с пустым MPEG-телом. Каждая строка подписана, assertions нет.
 Синтетические MPEG-байты не являются воспроизводимым аудио; NO_MEDIA достаточен.
+Режим `--decode INPUT.swf OUTPUT.pcm` в [decode.inc](multimedia/swf_stream_mp3/decode.inc)
+нормализует первый реальный сегмент в ограниченный S16 после уничтожения VM;
+выход открывается только после полной подготовки.
 Контракты и ограничения: [SWF_STREAM_MP3.md](../doc/SWF_STREAM_MP3.md).
 
 <a id="group-multimedia-devices"></a>

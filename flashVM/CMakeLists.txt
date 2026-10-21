@@ -474,6 +474,10 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_stream_example.py
               $<TARGET_FILE:flashvm_examples_multimedia_swf_stream_main>)
     set_tests_properties(flashvm_swf_stream_tutorial_host PROPERTIES TIMEOUT 30)
+    add_test(NAME flashvm_swf_free_mp3_export
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_free_mp3_example.py
+              $<TARGET_FILE:flashvm_examples_multimedia_swf_stream_mp3_main>)
+    set_tests_properties(flashvm_swf_free_mp3_export PROPERTIES TIMEOUT 30)
   endif()
   if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_test(NAME flashvm_macos_jit_policy
