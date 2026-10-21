@@ -149,3 +149,48 @@ injection or native OS/widget certification is implied.
 | --- | --- |
 | [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L95) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
 | [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L100) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+
+## Resource control / Ресурсное управление (v0.728)
+
+```sh
+./build-capture/frontend/flashvm_example_frame_capture --offscreen --resource-control --tick 2 flashVM/examples/player/frame_capture/start.swf resource.ppm
+ctest --test-dir build-capture -R '^flashvm_resource_capture_example$' --output-on-failure
+```
+
+Флаг создаёт native-очередь одного владельца, выдаёт local session 1 CONTROL
+для /timeline/ctl, post-ит один STOP после копии кадра и подтверждает доставку.
+Unregister/destroy идут после runner до shutdown SDK и записи output. Сетевой
+endpoint управления и GUI-ФС не создаются. HTTP исходного SWF остаётся отдельным
+прежним provider. Native C-запрос не требует S-record encoding; live fixtures
+дополнительно проверяют binary route. Pixels/header/exit status прежние.
+Повтор флага отвергается до startup. [Контракт](../../../doc/RESOURCE_DISPATCH.ru.md).
+
+| C API | Назначение и владение |
+| --- | --- |
+| [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L95) | Создать ограниченную native-очередь одного владельца, без startup VM/SDK. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L29) | Зарегистрировать CONTROL endpoint; заимствование adapter в Capture живёт до unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L108) | Выдать CONTROL лишь доверенной локальной сессии, не произвольному remote client. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L115) | Скопировать пустой STOP request; принятие не равно исполнению. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L39) | Доставить команду у владельца, вернуть intent без сохранения VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L126) | Скопировать/подтвердить reply доставки, освободить identity/capacity. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L121) | На ошибке отменить queued STOP до take сохранённого результата. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L105) | После runner снять регистрацию до освобождения Capture. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Освободить native dispatcher после подтверждения всех принятых запросов. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../../../include/flashvm/rdispatch.h#L121) |
+| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
+| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
+| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
+| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
+| `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../../../include/flashvm/rdispatch.h#L105) |
+<!-- source-links:end -->

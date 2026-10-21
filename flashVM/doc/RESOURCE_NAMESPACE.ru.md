@@ -3,9 +3,10 @@
 [English](RESOURCE_NAMESPACE.md) · [Двоичные записи](SRECORD.ru.md) · [План](ROADMAP_STATUS.md).
 
 Здесь закреплена принятая архитектура будущего управления FlashVM.
-**Уже реализовано:** двоичные S-записи, направленные декларации типов, приём
-порциями и пример C/файла. **Пока не реализовано:** dispatcher ресурсов,
-удалённые GUI-методы, mount, сервер 9P и полная семантика Inferno. Прежняя
+**Уже реализовано:** S-записи/привязки/приём порциями, ограниченный owner dispatcher,
+права сессий на ресурсы, binary request/reply и первый player control adapter.
+**Пока не реализовано:** общие GUI-методы, каталоги/subtree namespace, mount,
+сервер 9P и полная семантика Inferno. [Dispatcher](RESOURCE_DISPATCH.ru.md). Прежняя
 сериализация VM-каналов не изменена.
 
 ## Общий слой операций
@@ -101,9 +102,9 @@ handles при rename/unlink, cancellation и teardown mount. Для повед�
 
 1. Завершено в этой серии: framing, атомарные привязки, приём порциями, прямой
    C API и двоичные примеры в памяти/файле.
-2. Далее: ограниченный owner dispatcher, request/reply/events, поколения handles,
-   права поддеревьев и discovery; тесты без VM-эффектов.
-3. Подключить timeline/control/frame к существующим typed owner API, затем клипы,
+2. Owner dispatcher/request/reply/поколения/grants ресурсов реализованы.
+   Далее — events, права поддеревьев и discovery.
+3. Доставка pause/resume/step/stop подключена; далее frame, затем клипы,
    drawing/audio/input с проверками GC/cancel/errors.
 4. Клиентский API файловых операций и адаптеры; реальные mount/9P после protocol
    conformance/native OS acceptance. Особенности Inferno — по явному контракту.

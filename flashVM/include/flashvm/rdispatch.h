@@ -71,9 +71,9 @@ extern "C"
             data[FVM_R_BYTES]; /* Copied result storage independent from queue lifetime. */
     } FVM_RReply;
     /* Owner callback outside queue lock. Initialize *used and write <=capacity bytes; return a
-     * defined result. No exception/longjmp across C. It may post/query/cancel other requests, but
-     * not recurse pump or destroy/unregister this executing resource. Userdata remains owned by the
-     * host. */
+     * defined terminal result (not PENDING). No asynchronous completion or exception/longjmp across
+     * C. It may post/query/cancel other requests, but not recurse pump or destroy/unregister this
+     * executing resource. Userdata remains owned by the host. */
     typedef FVM_RResult (*FVM_RHandler)(const FVM_RRequest *, void *reply, size_t capacity,
                                         size_t *used, void *userdata);
     /* Trusted host policy callbacks must not reenter the dispatcher themselves. */

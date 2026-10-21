@@ -186,6 +186,7 @@ described in [player input](PLAYER_POINTER.md). Full scene/button routing remain
 
 [Logical RGBA frames / RGBA-кадры сцены](FRAME_CAPTURE.md).
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
+Queued resource owner control / Очередь управления ресурсами: [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

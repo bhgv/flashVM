@@ -80,8 +80,8 @@ Storage доступно и не перекрывает внутреннюю п�
 ```sh
 cmake -S flashVM -B build-resource -DFVM_BUILD_TESTS=ON \
   -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
-cmake --build build-resource --target flashvm_srecord flashvm_rdispatch_contract --parallel
-ctest --test-dir build-resource -R '^flashvm_rdispatch_' --output-on-failure
+cmake --build build-resource --target flashvm_srecord flashvm_srecord_oracle flashvm_rdispatch_contract --parallel
+ctest --test-dir build-resource -R '^flashvm_rdispatch_(contract|wire)$' --output-on-failure
 ```
 
 SDL/network SDK не требуется. Cross задаёт target toolchain/libc; тесты запускаются
@@ -120,6 +120,68 @@ framing/consumption полной записи и временем жизни н�
 200 copied requests, host mutex, явный backpressure/ack. Workers не могут pump.
 Handler повторно берёт nonrecursive mutex, проверяя освобождение lock перед
 вызовом. Это native Linux threading, не проверка foreign OS/distributed mutex.
+## Адаптер владельца плеера (v0.728)
+
+[resource_control.h](../frontend/common/resource_control.h) регистрирует явный
+ресурс наподобие /timeline/ctl с PAUSE/RESUME/STEP/STOP и правом CONTROL.
+Хост выдаёт grants, устанавливает notify в обычный playback control и сохраняет
+adapter/dispatcher до возврата runner. Init не запускает VM/окно/worker.
+
+| Player API | Контракт |
+| --- | --- |
+| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L29) | Владелец копирует путь/операции, заимствует storage adapter, публикует его только при успехе. Перед освобождением storage нужен unregister adapter.target. |
+| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L39) | Сигнатура обычного playback notify. Проверяет READY/TURN/TICK, pump-ит максимум один FIFO job и возвращает native intent. Неверное состояние/ошибка pump даёт STOP. Context/root не сохраняет/не сериализует. |
+
+Доставлять операции адаптера разрешено только внутри этого notify. Внешний pump
+завершает их BUSY без изменения player policy. Payload команды пуст; неверный
+payload даёт reply INVALID и KEEP. Reply OK подтверждает доставку в callback,
+**до** применения player intent. Завершённое продвижение подтверждается поздним
+TICK/frame. STEP сохраняет прежнюю семантику coalesced step permit: несколько
+команд до такта не накапливают произвольное число кадров/инструкций. Для точного
+счёта надо дождаться такта перед следующим STEP. STOP остаётся FIFO, не новым
+priority interrupt; длинный owner handler принудительно не прерывается.
+
+Адаптер не владеет dispatcher/grants/requests/registration/SDK/managed roots.
+После возврата runner остановить внешних producers, cancel/take остатки, затем
+unregister, destroy dispatcher, shutdown SDK и освобождение host storage. Перед
+unload модуля с handler code также нужен unregister. Произвольные регистрации
+хоста не добавляют неявный SDK shutdown guard. Прежние ограничения callbacks/
+runners сохраняются.
+
+[Capture tutorial](../examples/player/frame_capture/README.ru.md) получает
+--resource-control: локальный native STOP после копии нужного кадра, без
+обязательного кодирования. Отдельные live fixtures передают pause/step/stop
+через привязанные S-records и проверяют реальные SWF pixels/paused refresh/
+root navigation в interpreter/JIT с file/memory/HTTP. Это первая граница сервиса,
+не перевод всех graphics/audio/clip классов и не remote GUI/socket/mount.
+Handlers are synchronous: returning PENDING is rejected as HANDLER; terminal wire replies reject PENDING too.
+Обработчик синхронен: возврат PENDING даёт HANDLER; terminal wire reply также не допускает PENDING.
+## Player SDK build / Сборка адаптера плеера
+
+```sh
+cmake -S flashVM -B build-resource-player -DFVM_BUILD_DESKTOP_FRONTEND=ON \
+  -DFVM_BUILD_TESTS=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_SOCKET_HTTP=ON \
+  -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" \
+  -DSDL2_DIR=/path/to/target-sdl/lib/cmake/SDL2
+cmake --build build-resource-player --target flashvm_frontend_resource_control \
+  flashvm_frontend_resource_player flashvm_frontend_host_abi flashvm_example_frame_capture --parallel
+ctest --test-dir build-resource-player -R '^flashvm_resource_|^flashvm_frontend_host_abi$' --output-on-failure
+```
+
+POSIX native threading fixture / Только для native POSIX, не Windows:
+
+```sh
+cmake --build build-resource --target flashvm_rdispatch_threads --parallel
+ctest --test-dir build-resource -R '^flashvm_rdispatch_threads$' --output-on-failure
+```
+
+Для cross задайте CMAKE_TOOLCHAIN_FILE и SDK SDL/libc/network именно target.
+Shared-хост использует FVM_PLAYER_HOST_SHARED=ON и runtime search path из
+[desktop setup](DESKTOP_FRONTEND.ru.md). Plain C contract протокола/адаптера
+cross-link-ится без SDL; это отдельное свидетельство, не полный target player SDK
+или запуск устройства. Live fixture дополнительно возобновляет timeline, затем
+передаёт binary STOP при активном медленном HTTP child body и требует cancel/join.
+Без HTTP provider проверяются local/embedded, а HTTP явно помечается недоступным.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

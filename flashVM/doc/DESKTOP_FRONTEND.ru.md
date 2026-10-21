@@ -183,6 +183,7 @@ CTest в сеансе display. Для cross-build они не регистрир
 
 [Logical RGBA frames / RGBA-кадры сцены](FRAME_CAPTURE.ru.md).
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
+Queued resource owner control / Очередь управления ресурсами: [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

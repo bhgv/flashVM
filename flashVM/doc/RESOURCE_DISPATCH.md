@@ -89,8 +89,8 @@ C strings; native structs are never their own wire encoding.
 ```sh
 cmake -S flashVM -B build-resource -DFVM_BUILD_TESTS=ON \
   -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
-cmake --build build-resource --target flashvm_srecord flashvm_rdispatch_contract --parallel
-ctest --test-dir build-resource -R '^flashvm_rdispatch_' --output-on-failure
+cmake --build build-resource --target flashvm_srecord flashvm_srecord_oracle flashvm_rdispatch_contract --parallel
+ctest --test-dir build-resource -R '^flashvm_rdispatch_(contract|wire)$' --output-on-failure
 ```
 
 No SDL/network SDK is needed. Cross builds supply the target toolchain and libc;
@@ -132,6 +132,73 @@ copied requests, native mutex policy, explicit backpressure and acknowledged
 replies. Workers are denied owner pump. The handler reacquires the nonrecursive
 mutex to prove pump released it. This is native Linux thread evidence, not a
 claim of tested foreign OS threads or a distributed mutex implementation.
+## Player owner adapter (v0.728)
+
+[resource_control.h](../frontend/common/resource_control.h) registers an explicit
+/timeline/ctl-style resource with four server-defined CONTROL operations: PAUSE,
+RESUME, STEP and STOP. The caller grants sessions, installs the adapter notify in
+an ordinary playback-control descriptor and keeps adapter/dispatcher alive through
+synchronous runner return. No native window, VM or worker starts during init.
+
+| Player API | Contract |
+| --- | --- |
+| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L29) | Owner registers a copied path/operation table and borrows caller adapter storage; publish adapter only on success. Caller unregisters adapter.target before releasing storage. |
+| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L39) | Existing playback notify signature. Validate READY/TURN/TICK, pump at most one FIFO job, return native command intent. Invalid state or failed pump returns STOP. Never retains/serializes context/root. |
+
+Only this notify may deliver the adapter's operations. External direct pumping
+finishes those requests BUSY without changing player policy. Empty command
+payloads are required; malformed payload replies INVALID and returns KEEP. The
+queue reply OK acknowledges delivery to the native control callback, **before**
+the player applies its returned intent. Use a later playback TICK/frame observation
+to acknowledge executed timeline progress. STEP follows existing coalesced step-
+permit semantics: multiple requests before a tick do not accumulate an arbitrary
+instruction/frame count. Wait for the resulting tick before issuing another step
+when exact counted advances matter. STOP is FIFO, not a new priority interrupt;
+a long owner handler cannot be forcibly preempted by this adapter.
+
+The adapter does not own the dispatcher, grants, requests, resource registration,
+SDK or managed roots. After runner return cancel/take any remaining request, then
+unregister, destroy dispatcher, shut down SDK, release caller storage. Quiesce
+external producers first. Unregister-before-free is also required before unloading
+a module containing handler code. There is no implicit SDK shutdown guard for
+arbitrary host registrations. Existing callback/runner restrictions still apply.
+
+The [capture tutorial](../examples/player/frame_capture/README.md) adds
+--resource-control: a local native STOP request after the selected pixel copy,
+without encoding text or binary records. Separate live fixtures marshal pause/
+step/stop through bound S-records before the same notify and verify real SWF
+pixels, paused refreshes and root navigation in interpreter/JIT, including
+file/memory/HTTP origins. This demonstrates a service boundary, not conversion
+of every graphics/audio/clip class or a remote GUI/socket/mount implementation.
+Handlers are synchronous: returning PENDING is rejected as HANDLER; terminal wire replies reject PENDING too.
+Обработчик синхронен: возврат PENDING даёт HANDLER; terminal wire reply также не допускает PENDING.
+## Player SDK build / Сборка адаптера плеера
+
+```sh
+cmake -S flashVM -B build-resource-player -DFVM_BUILD_DESKTOP_FRONTEND=ON \
+  -DFVM_BUILD_TESTS=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_SOCKET_HTTP=ON \
+  -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" \
+  -DSDL2_DIR=/path/to/target-sdl/lib/cmake/SDL2
+cmake --build build-resource-player --target flashvm_frontend_resource_control \
+  flashvm_frontend_resource_player flashvm_frontend_host_abi flashvm_example_frame_capture --parallel
+ctest --test-dir build-resource-player -R '^flashvm_resource_|^flashvm_frontend_host_abi$' --output-on-failure
+```
+
+POSIX native threading fixture / Только для native POSIX, не Windows:
+
+```sh
+cmake --build build-resource --target flashvm_rdispatch_threads --parallel
+ctest --test-dir build-resource -R '^flashvm_rdispatch_threads$' --output-on-failure
+```
+
+For cross compilation add CMAKE_TOOLCHAIN_FILE and a matching target SDL/libc/
+network SDK. For a shared host add FVM_PLAYER_HOST_SHARED=ON and follow the runtime
+library search-path rules in [desktop setup](DESKTOP_FRONTEND.md). The standalone
+protocol/adapter contract cross-links without SDL by compiling its plain C sources;
+that evidence is distinct from a full target player SDK or native device run.
+The live resource fixture additionally resumes, then sends a binary STOP while a
+slow HTTP child body is active and requires cancellation/join. Without an HTTP
+provider, explicit local/embedded coverage remains and HTTP is reported unavailable.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

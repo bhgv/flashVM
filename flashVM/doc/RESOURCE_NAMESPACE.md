@@ -3,10 +3,11 @@
 [Русский](RESOURCE_NAMESPACE.ru.md) · [Binary records](SRECORD.md) · [Roadmap](ROADMAP_STATUS.md).
 
 This records the accepted architecture for future FlashVM resource control.
-**Implemented now:** binary S-record framing, directional type declarations,
-fragmented reception and a native/file tutorial. **Not implemented here:** a
-resource dispatcher, remote GUI methods, a mounted filesystem, 9P server or full
-Inferno namespace behavior. Existing VM channel serialization remains unchanged.
+**Implemented now:** binary framing/bindings, fragmented input, bounded owner
+dispatch, per-resource session grants, binary request/reply helpers and a first
+player pause/resume/step/stop adapter. **Not implemented here:** general GUI
+methods, directory/subtree namespace semantics, a mounted filesystem, 9P server
+or full Inferno namespace behavior. [Dispatcher](RESOURCE_DISPATCH.md). Existing VM channel serialization remains unchanged.
 
 ## Shared operation layer
 
@@ -106,9 +107,9 @@ are different domains; the metadata ASCII identity limit is not a path encoding.
 
 1. Completed in this series: canonical framing, atomic bindings, incremental
    input, direct C linkage and binary/file examples.
-2. Next: bounded owner dispatcher, request/reply/event schemas, handle generations,
-   subtree authority and operation discovery, tested without VM side effects.
-3. Wire timeline/control/frame services through existing typed owner APIs,
+2. Bounded owner dispatch/request/reply/generations/per-resource grants are now
+   implemented; subtree authority, event subscriptions and discovery remain next.
+3. Pause/resume/step/stop owner delivery is implemented; extend frame services,
    then clip/drawing/audio/input capabilities with GC/cancel/error tests.
 4. Implement a filesystem-like client API and adapters; add real mounts/9P only
    with protocol conformance and native OS acceptance. Extend to Inferno namespace

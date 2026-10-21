@@ -1,4 +1,5 @@
 /* Copy a chosen logical stage raster into native storage and write it after SDK cleanup; see README.md / README.ru.md. */
+#include "../../../frontend/common/resource_control.h" /* Native resource queue to player owner-control bridge. */
 #include "../../../frontend/common/player.h" /* Public C89 observer/control/source declarations, with no SDL types. */
 #ifdef FVM_DESKTOP_SOCKET_HTTP /* Use the provider selected by this SDK configuration. */
 #include "../../../frontend/common/socket_http.h" /* Worker-safe native HTTP/TLS transport. */
@@ -23,6 +24,9 @@ typedef struct Capture /* No managed context/root or borrowed frame/source point
     unsigned int width, height; /* Copied logical-stage pixel dimensions. */
     size_t stride; /* Byte distance between copied native rows. */
     unsigned char *pixels; /* [GC:] Native allocation, not a VM root; free explicitly after output. */
+    FVM_RDispatch *dispatch; /* Optional owned native queue; no VM object or worker is allocated by it. */
+    FVM_DesktopResourceControl resource; /* Borrowed adapter storage lives through unregister and runner return. */
+    int posted, control_failed; /* Track acknowledgement and cleanup/error status independently of captured pixels. */
     int captured; /* Set only after a complete validated row copy succeeds. */
 } Capture; /* Caller stack storage outlives the synchronous observer/control callbacks. */
 
@@ -47,13 +51,56 @@ static FVM_Result capture_frame(const FVM_DesktopFrame *frame, void *raw) /* Nat
     return FVM_OK; /* Drawing and its copied pixels are already committed. */
 } /* frame/pixels/source from the runner cease to be borrowed here. */
 
-/* Stop at the next owner boundary after capture, without treating a successful image as an error. */
+/* Release native control registration only after its synchronous runner has returned. */
+static void control_resources_release(Capture *capture) /* The queue never owns the Capture storage. */
+{ /* A failure path may leave one accepted STOP awaiting acknowledgement. */
+    FVM_RReply reply; /* Take copies bytes; no response pointer outlives dispatcher storage. */
+    if (!capture->dispatch) return; /* Ordinary capture mode allocates no queue. */
+    if (capture->posted == 1) /* Cancel queued work or acknowledge an already delivered reply. */
+    { /* Running work cannot remain after the synchronous owner callback returned. */
+        fvm_rdispatch_cancel(capture->dispatch, 1, 1); /* DONE may report CONFLICT; take still acknowledges it. */
+        if (fvm_rdispatch_take(capture->dispatch, 1, 1, &reply) != FVM_R_OK) capture->control_failed = 1; /* Require no retained job. */
+    } /* A previously acknowledged STOP needs no second take. */
+    if (capture->resource.struct_size && fvm_rdispatch_unregister(capture->dispatch, capture->resource.target) != FVM_R_OK) capture->control_failed = 1; /* Release borrow. */
+    if (fvm_rdispatch_destroy(&capture->dispatch) != FVM_R_OK) capture->control_failed = 1; /* No host pixels or userdata are freed by destroy. */
+} /* SDK shutdown follows this native resource cleanup. */
+/* Create an optional local resource endpoint with explicit control authority and no transport. */
+static int control_resources_setup(Capture *capture) /* Single-owner mode deliberately needs no mutex policy. */
+{ /* A real producer thread supplies working mutex/owner hooks instead. */
+    if (fvm_rdispatch_create(0, &capture->dispatch) == FVM_R_OK && /* Fixed bounded native allocation. */
+        fvm_desktop_resource_control_init(&capture->resource, capture->dispatch, "/timeline/ctl") == FVM_R_OK && /* Copied path/operations. */
+        fvm_rdispatch_grant(capture->dispatch, capture->resource.target, 1, FVM_R_CONTROL) == FVM_R_OK) return 1; /* Trusted local session only. */
+    control_resources_release(capture); /* Dispose any partially acquired registration/allocation. */
+    return 0; /* No VM, window or output file was opened. */
+} /* Registry/adapter storage remains owned by main. */
+/* Stop after capture directly or through the optional copied native resource queue. */
 static FVM_DesktopPlaybackCommand stop_after_capture(const FVM_DesktopPlaybackState *state, void *raw) /* Same owner thread. */
-{ /* This callback reads native host state only; it never retains the supplied VM snapshot. */
-    Capture *capture = (Capture *)raw; /* Shared with the observer on the same owner, not a worker. */
-    (void)state; /* No context/root or frame seek is required to complete this capture. */
-    return capture->captured ? FVM_DESKTOP_PLAYBACK_STOP : FVM_DESKTOP_PLAYBACK_KEEP; /* STOP ends later root navigation too. */
-} /* Another host may instead combine its own controller mailbox with the frame observer. */
+{ /* No context/root from state is retained or sent to the native queue. */
+    Capture *capture = (Capture *)raw; /* Shared only with the synchronous frame observer. */
+    FVM_RRequest request; /* Native request descriptor; no S-record encoding is required for local C calls. */
+    FVM_RReply reply; /* Owned response copy used for delivery acknowledgement. */
+    FVM_DesktopPlaybackCommand command; /* Player applies this returned policy intent after callback return. */
+    if (!capture->dispatch) return capture->captured ? FVM_DESKTOP_PLAYBACK_STOP : FVM_DESKTOP_PLAYBACK_KEEP; /* Existing default behavior. */
+    if (capture->captured && !capture->posted) /* Submit exactly one terminal request after the pixel copy. */
+    { /* The target/operation, not a caller-provided right, selects CONTROL permission. */
+        memset(&request, 0, sizeof(request)); request.session = 1; request.id = 1; /* Trusted local identity; no reconnect protocol here. */
+        request.target = capture->resource.target; request.operation = FVM_DESKTOP_RESOURCE_STOP; /* Empty typed command payload. */
+        if (fvm_rdispatch_post(capture->dispatch, &request) != FVM_R_OK) /* Acceptance is separate from execution. */
+        { /* Preserve failure instead of writing a misleading successful output. */
+            capture->control_failed = 1; return FVM_DESKTOP_PLAYBACK_STOP; /* Runner still performs normal joined cleanup. */
+        } /* No borrowed stack request pointer escapes post. */
+        capture->posted = 1; /* Retain identity until the owner delivery reply is taken. */
+    } /* Before capture, notify normally returns KEEP with an empty queue. */
+    command = fvm_desktop_resource_control_notify(state, &capture->resource); /* At most one queued job, on the playback owner. */
+    if (capture->posted == 1 && command == FVM_DESKTOP_PLAYBACK_STOP) /* This marks command delivery, not an extra rendered frame. */
+    { /* The requested frame was already copied before STOP was posted. */
+        if (fvm_rdispatch_take(capture->dispatch, 1, 1, &reply) != FVM_R_OK || reply.result != FVM_R_OK || reply.size) capture->control_failed = 1; /* Acknowledge safely. */
+        else capture->posted = 2; /* Queue capacity and duplicate-request retention are released. */
+    } /* Frame completion was observed separately in capture_frame. */
+    return command; /* Native player policy applies STOP after this function returns. */
+} /* No VM pointer or dispatcher-owned borrow is retained. */
+
+/* Another host may instead combine its own controller mailbox with the frame observer. */
 
 /* Write visible RGB after all runner resources are gone; native RGBA remains independently owned. */
 static int write_ppm(const char *path, const Capture *capture) /* Output policy belongs to this console adapter, not the SDK. */
@@ -102,13 +149,14 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
     FVM_DesktopPlaybackControl control; /* Successful owner STOP once the desired raster is copied. */
     FVM_DesktopFrameObserver observer; /* Separate additive pixel callback policy. */
     const char *error = 0; /* Borrowed static diagnostic text, never freed by this caller. */
-    int embedded = 0, offscreen = 0, tick_selected = 0; /* Reject repeated console selectors. */
+    int embedded = 0, offscreen = 0, resource_mode = 0, tick_selected = 0; /* Reject repeated console selectors. */
     int valid = argc >= 3, argument, status; /* Require source and output filename after optional arguments. */
     memset(&capture, 0, sizeof(capture)); capture.wanted = 1; /* Default selects the first successful tick raster. */
     for (argument = 1; argument < argc - 2; ++argument) /* Leave exactly source and output positional arguments. */
     { /* The shared library never needs this argv vocabulary. */
         if (!strcmp(argv[argument], "--embedded") && !embedded) embedded = 1; /* Select linked bytes once. */
         else if (!strcmp(argv[argument], "--offscreen") && !offscreen) offscreen = 1; /* Select timer-only delivery once. */
+        else if (!strcmp(argv[argument], "--resource-control") && !resource_mode) resource_mode = 1; /* Optional native resource queue. */
         else if (!strcmp(argv[argument], "--tick") && !tick_selected && argument + 1 < argc - 2) /* Require a numeric value. */
         { /* Consume one complete bounded tick count. */
             tick_selected = 1; /* A second selector is an argument error. */
@@ -118,7 +166,7 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
     } /* Final positional storage remains owned by this process through playback/output. */
     if (!valid || argv[argc - 2][0] == '-' || argv[argc - 1][0] == '-') /* Avoid ambiguous missing/unknown options. */
     { /* Show this adapter's complete syntax and leave the filesystem untouched. */
-        fprintf(stderr, "Usage: %s [--embedded] [--offscreen] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
+        fprintf(stderr, "Usage: %s [--embedded] [--offscreen] [--resource-control] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
         return 2; /* Argument failure without any native resources or output file. */
     } /* Source/provider validation is delegated to the ordinary typed API. */
     fvm_desktop_options_init(&options); /* Initialize every scalar playback option. */
@@ -139,6 +187,10 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
         return 1; /* Output file and native player resources remain unopened. */
     } /* Embedded input may retain URL provenance without reading startup bytes. */
 #endif /* A custom host can instead provide its own compatible native transport. */
+    if (resource_mode && !control_resources_setup(&capture)) /* No output/SDK startup occurred yet. */
+    { /* Setup cleans every partially acquired native resource. */
+        fprintf(stderr, "resource control setup failed\n"); return 1; /* Do not start an uncontrolled substitute run. */
+    } /* Capture/adapter storage remains alive through synchronous runner return. */
 #if defined(FVM_DESKTOP_SOCKET_HTTP) || defined(FVM_DESKTOP_HTTP) /* Explicit optional worker transport for startup/child requests. */
     { /* Provider and monitor storage remain borrowed through joined runner cleanup. */
         FVM_DesktopBackgroundLoader loader; /* Byte transport, independent of the native frame observer. */
@@ -165,6 +217,8 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
             status = fvm_desktop_run_source_observed(&options, &source, &loader, &control, &observer, &error); /* URL reports unsupported transport. */
     } /* All borrowed source bytes remain owned until this synchronous return. */
 #endif /* Output happens only after player-owned resources have been disposed. */
+    control_resources_release(&capture); /* Release registration/requests before SDK shutdown or Capture disposal. */
+    if (capture.control_failed) status = 1; /* Native acknowledgement/cleanup failure is not successful capture. */
     if (status && error) fprintf(stderr, "%s\n", error); /* Report static text without freeing it. */
     if (fvm_desktop_shutdown() != FVM_OK) status = 1; /* Require complete VM/window/transfer/session cleanup. */
     if (!status && !capture.captured) /* A user close before the desired tick did not fulfill this capture request. */

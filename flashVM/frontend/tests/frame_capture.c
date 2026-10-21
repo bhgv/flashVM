@@ -7,6 +7,10 @@
 #define fvm_desktop_run_source_background_observed fvm_desktop_run_source_background_offscreen
 #endif
 #include "../common/player.h"
+#ifdef FVM_TEST_RESOURCE_CONTROL
+#include "../common/resource_control.h"
+#include "flashvm/rwire.h"
+#endif
 #ifdef FVM_DESKTOP_SOCKET_HTTP
 #include "../common/socket_http.h"
 #elif defined(FVM_DESKTOP_HTTP)
@@ -21,6 +25,13 @@
 typedef struct Capture
 {
     const char *scenario;
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    FVM_RDispatch *dispatch;
+    FVM_DesktopResourceControl adapter;
+    FVM_SBindings incoming;
+    FVM_SBinding types[1];
+    unsigned long requests;
+#endif
     unsigned char copy[32 * 32 * 4], previous[32 * 32 * 4];
     char source[FVM_DESKTOP_MAX_LOCATION + 1];
     unsigned long count, last_tick;
@@ -106,6 +117,11 @@ static FVM_DesktopPlaybackCommand control_frame(const FVM_DesktopPlaybackState *
         test->failed = 1;
         return FVM_DESKTOP_PLAYBACK_STOP;
     }
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    if (!strcmp(test->scenario, "stop-active"))
+        return test->received && state->total_ticks >= 2 ? FVM_DESKTOP_PLAYBACK_STOP
+                                                         : FVM_DESKTOP_PLAYBACK_RESUME;
+#endif
     if (!strcmp(test->scenario, "navigation"))
         return state->total_ticks >= 2 ? FVM_DESKTOP_PLAYBACK_STOP : FVM_DESKTOP_PLAYBACK_STEP;
     if (state->phase == FVM_DESKTOP_PLAYBACK_TICK)
@@ -123,6 +139,97 @@ static FVM_DesktopPlaybackCommand control_frame(const FVM_DesktopPlaybackState *
     }
     return FVM_DESKTOP_PLAYBACK_KEEP;
 }
+#ifdef FVM_TEST_RESOURCE_CONTROL
+/* Establish one incoming resource-request schema; no VM/context/root pointer enters the wire. */
+static int resource_setup(Capture *test)
+{
+    FVM_SBinding binding;
+    unsigned char payload[128], wire[256];
+    size_t size, encoded, consumed;
+    memset(&binding, 0, sizeof(binding));
+    binding.tag = 3;
+    binding.version = FVM_RWIRE_VERSION;
+    binding.type_size = (unsigned int)strlen(FVM_RWIRE_REQUEST_TYPE);
+    memcpy(binding.type, FVM_RWIRE_REQUEST_TYPE, binding.type_size);
+    return fvm_rdispatch_create(0, &test->dispatch) == FVM_R_OK &&
+           fvm_desktop_resource_control_init(&test->adapter, test->dispatch, "/timeline/ctl") ==
+               FVM_R_OK &&
+           fvm_rdispatch_grant(test->dispatch, test->adapter.target, 7, FVM_R_CONTROL) ==
+               FVM_R_OK &&
+           fvm_sbindings_init(&test->incoming, test->types, 1) == FVM_S_OK &&
+           fvm_sbindings_payload_write(&binding, 1, payload, sizeof(payload), &size) == FVM_S_OK &&
+           fvm_srecord_write(0, payload, size, wire, sizeof(wire), &encoded) == FVM_S_OK &&
+           fvm_sbindings_apply(&test->incoming, wire, encoded, &consumed) == FVM_S_OK;
+}
+/* Preserve the existing real-pixel policy but marshal every command through CRC/schema/queue. */
+static FVM_DesktopPlaybackCommand resource_notify(const FVM_DesktopPlaybackState *state, void *raw)
+{
+    Capture *test = (Capture *)raw;
+    FVM_DesktopPlaybackCommand wanted = control_frame(state, raw), delivered;
+    FVM_RRequest request;
+    FVM_RReply reply;
+    unsigned char wire[128];
+    size_t encoded, consumed;
+    if (wanted != FVM_DESKTOP_PLAYBACK_KEEP)
+    {
+        memset(&request, 0, sizeof(request));
+        request.session = 999; /* Deliberately not trusted wire identity. */
+        request.id = ++test->requests;
+        request.target = test->adapter.target;
+        switch (wanted)
+        {
+        case FVM_DESKTOP_PLAYBACK_PAUSE:
+            request.operation = FVM_DESKTOP_RESOURCE_PAUSE;
+            break;
+        case FVM_DESKTOP_PLAYBACK_RESUME:
+            request.operation = FVM_DESKTOP_RESOURCE_RESUME;
+            break;
+        case FVM_DESKTOP_PLAYBACK_STEP:
+            request.operation = FVM_DESKTOP_RESOURCE_STEP;
+            break;
+        case FVM_DESKTOP_PLAYBACK_STOP:
+            request.operation = FVM_DESKTOP_RESOURCE_STOP;
+            break;
+        default:
+            goto failed;
+        }
+        if (fvm_rrequest_record_write(3, &request, wire, sizeof(wire), &encoded) != FVM_S_OK ||
+            fvm_rdispatch_post_record(test->dispatch, 7, &test->incoming, wire, encoded,
+                                      &consumed) != FVM_R_OK ||
+            consumed != encoded)
+            goto failed;
+    }
+    delivered = fvm_desktop_resource_control_notify(state, &test->adapter);
+    if (delivered != wanted)
+        goto failed;
+    if (wanted != FVM_DESKTOP_PLAYBACK_KEEP &&
+        (fvm_rdispatch_take(test->dispatch, 7, test->requests, &reply) != FVM_R_OK ||
+         reply.result != FVM_R_OK || reply.size))
+        goto failed;
+    return delivered;
+failed:
+    test->failed = 1;
+    return FVM_DESKTOP_PLAYBACK_STOP;
+}
+/* Cancel/ack any failure-path leftovers before resource/dispatcher teardown and SDK shutdown. */
+static void resource_cleanup(Capture *test)
+{
+    FVM_RReply reply;
+    unsigned long id;
+    if (!test->dispatch)
+        return;
+    for (id = 1; id <= test->requests; ++id)
+    {
+        fvm_rdispatch_cancel(test->dispatch, 7, id);
+        fvm_rdispatch_take(test->dispatch, 7, id, &reply);
+    }
+    if (test->adapter.struct_size &&
+        fvm_rdispatch_unregister(test->dispatch, test->adapter.target) != FVM_R_OK)
+        test->failed = 1;
+    if (fvm_rdispatch_destroy(&test->dispatch) != FVM_R_OK)
+        test->failed = 1;
+}
+#endif
 /* Observe immutable transfer progress/cancellation while callbacks own only native userdata. */
 static int loading(const FVM_DesktopLoadEvent *event, void *raw)
 {
@@ -179,11 +286,15 @@ int main(int argc, char **argv)
     test.scenario = argv[3];
     network = strstr(argv[1], "://") != 0;
     controlled = !strcmp(test.scenario, "sequence") || !strcmp(test.scenario, "navigation");
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    controlled = controlled || !strcmp(test.scenario, "stop-active");
+#endif
     fvm_desktop_options_init(&options);
     options.mode = !strcmp(argv[2], "--jit") ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER;
     options.mute = 1;
     options.stats = 1;
-    options.frames = !strcmp(test.scenario, "fail-active") ? 100 : 2;
+    options.frames =
+        (!strcmp(test.scenario, "fail-active") || !strcmp(test.scenario, "stop-active")) ? 100 : 2;
     options.fps = 100;
     fvm_desktop_frame_observer_init(&observer);
     observer.notify = capture_frame;
@@ -191,6 +302,7 @@ int main(int argc, char **argv)
     fvm_desktop_playback_control_init(&control);
     control.initially_paused = 1;
     control.notify = control_frame;
+
     control.userdata = &test;
     fvm_desktop_loader_init(&loader);
     loader.max_loads = 8;
@@ -229,6 +341,14 @@ int main(int argc, char **argv)
     if (SDL_PushEvent(&host_event) != 1)
         return 4;
 #endif
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    if (!resource_setup(&test))
+    {
+        resource_cleanup(&test);
+        return 4;
+    }
+    control.notify = resource_notify;
+#endif
     if (!strcmp(test.scenario, "bad"))
         observer.notify = 0;
     if (network)
@@ -249,6 +369,13 @@ int main(int argc, char **argv)
             (!strcmp(test.scenario, "fail-active") && !test.cancelled))
             test.failed = 1;
     }
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    else if (!strcmp(test.scenario, "stop-active"))
+    {
+        if (status || test.count < 2 || !test.cancelled || !test.requests)
+            test.failed = 1;
+    }
+#endif
     else if (status || test.count != (!strcmp(test.scenario, "sequence") ? 4UL : 2UL))
         test.failed = 1;
 #ifdef FVM_TEST_OFFSCREEN
@@ -256,6 +383,9 @@ int main(int argc, char **argv)
         host_event.type != SDL_USEREVENT || host_event.user.code != 720)
         test.failed = 1;
     SDL_QuitSubSystem(SDL_INIT_TIMER | SDL_INIT_EVENTS);
+#endif
+#ifdef FVM_TEST_RESOURCE_CONTROL
+    resource_cleanup(&test);
 #endif
     if (fvm_desktop_shutdown() != FVM_OK)
         test.failed = 1;

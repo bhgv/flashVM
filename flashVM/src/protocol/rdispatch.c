@@ -387,7 +387,8 @@ FVM_RResult fvm_rdispatch_pump(FVM_RDispatch *d, size_t budget, size_t *complete
         if (result == FVM_R_OK)
         {
             result = r->handler(&job->request, job->reply.data, FVM_R_BYTES, &size, r->userdata);
-            if (result < FVM_R_OK || result > FVM_R_HANDLER || size > FVM_R_BYTES)
+            if (result < FVM_R_OK || result > FVM_R_HANDLER || result == FVM_R_PENDING ||
+                size > FVM_R_BYTES)
             {
                 result = FVM_R_HANDLER;
                 size = 0;

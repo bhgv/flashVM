@@ -118,7 +118,7 @@ FVM_SResult fvm_rreply_record_write(unsigned long tag, unsigned long id, const F
     unsigned char body[FVM_RWIRE_BODY_MAX];
     size_t n = 0;
     if (!reply || !identity(tag) || !identity(id) || reply->result < FVM_R_OK ||
-        reply->result > FVM_R_HANDLER)
+        reply->result > FVM_R_HANDLER || reply->result == FVM_R_PENDING)
         return FVM_S_INVALID;
     if (reply->size > FVM_R_BYTES)
         return FVM_S_LIMIT;
@@ -149,7 +149,7 @@ FVM_SResult fvm_rreply_record_read(const FVM_SBindings *incoming, const void *in
     left = record.size;
     if (!get_field(&cursor, &left, &version) || version != FVM_RWIRE_VERSION ||
         !get_field(&cursor, &left, &request) || !identity(request) ||
-        !get_field(&cursor, &left, &result) || result > FVM_R_HANDLER ||
+        !get_field(&cursor, &left, &result) || result > FVM_R_HANDLER || result == FVM_R_PENDING ||
         !get_field(&cursor, &left, &length) || length != left || length > FVM_R_BYTES)
         return FVM_S_INVALID;
     memset(&reply, 0, sizeof(reply));

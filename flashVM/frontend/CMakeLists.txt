@@ -68,7 +68,7 @@ if(FVM_PLAYER_HOST_SHARED)
   set(player_host_type SHARED)
 endif()
 # A native IDE can link the same synchronous implementation without a CLI entrypoint.
-add_library(flashvm_player_host ${player_host_type} common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
+add_library(flashvm_player_host ${player_host_type} common/resource_control.c common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
   common/audio.c common/audio_trace.c)
 target_include_directories(flashvm_player_host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(flashvm_player_host PUBLIC flashvm SDL2::SDL2)
@@ -1071,4 +1071,31 @@ if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpre
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
     ${PROJECT_SOURCE_DIR}/examples/player/frame_capture --offscreen)
   set_tests_properties(flashvm_example_offscreen_capture PROPERTIES TIMEOUT 30)
+endif()
+
+# Real SWF capture/control policy marshalled through resource S-records and the owner adapter.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_resource_player tests/frame_capture.c)
+  target_compile_definitions(flashvm_frontend_resource_player PRIVATE FVM_TEST_RESOURCE_CONTROL FVM_TEST_OFFSCREEN)
+  target_link_libraries(flashvm_frontend_resource_player PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_resource_player PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(Python3_Interpreter_FOUND)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_resource_player_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_capture.py $<TARGET_FILE:flashvm_frontend_resource_player> --${mode} --offscreen --resource)
+      set_tests_properties(flashvm_resource_player_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+    endforeach()
+  endif()
+endif()
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_resource_control tests/resource_control.c)
+  target_link_libraries(flashvm_frontend_resource_control PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_resource_control PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_resource_control_contract COMMAND flashvm_frontend_resource_control)
+endif()
+if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_resource_capture_example COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
+    ${PROJECT_SOURCE_DIR}/examples/player/frame_capture --offscreen --resource-control)
+  set_tests_properties(flashvm_resource_capture_example PROPERTIES TIMEOUT 30)
 endif()

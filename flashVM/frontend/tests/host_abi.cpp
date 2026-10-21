@@ -1,5 +1,6 @@
 /* C++98 links only the player-host boundary, including DLL imports and opaque cleanup. */
 #include "../common/player.h"
+#include "../common/resource_control.h"
 #ifdef FVM_DESKTOP_SOCKET_HTTP
 #include "../common/socket_http.h"
 #endif
@@ -86,6 +87,10 @@ int main()
     if (fvm_desktop_run_source_offscreen(0, 0, 0, 0, &frames, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
         fvm_desktop_run_source_background_offscreen(0, 0, &background, &monitor, 0, &frames, 0) !=
             FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    FVM_DesktopResourceControl resource;
+    if (fvm_desktop_resource_control_init(&resource, 0, "/timeline/ctl") != FVM_R_INVALID ||
+        fvm_desktop_resource_control_notify(0, 0) != FVM_DESKTOP_PLAYBACK_STOP)
         return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;

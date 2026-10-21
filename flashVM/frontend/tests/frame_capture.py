@@ -42,7 +42,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*_):pass
     def do_GET(self):
         self.paths.append(self.path)
-        if self.path=='/app/start.swf':data=movie('navigation' if self.scenario=='navigation' else 'slow.txt' if self.scenario=='fail-active' else None)
+        if self.path=='/app/start.swf':data=movie('navigation' if self.scenario=='navigation' else 'slow.txt' if self.scenario in ('fail-active','stop-active') else None)
         elif self.path=='/app/next.swf':data=movie(orange=True)
         elif self.path=='/app/slow.txt':data=b'answer=late'
         else:self.send_error(404);return
@@ -74,16 +74,16 @@ def main():
         server=ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         url='http://127.0.0.1:%d/app/start.swf'%server.server_port
         try:
-            for scenario in ('sequence','navigation','fail-active'):
+            for scenario in ('sequence','navigation','fail-active')+(('stop-active',) if '--resource' in sys.argv else ()):
                 Handler.scenario=scenario
                 for memory in (None,source):
-                    source.write_bytes(movie('navigation' if scenario=='navigation' else 'slow.txt' if scenario=='fail-active' else None));Handler.paths.clear()
+                    source.write_bytes(movie('navigation' if scenario=='navigation' else 'slow.txt' if scenario in ('fail-active','stop-active') else None));Handler.paths.clear()
                     result=run(url,scenario,memory)
                     if result.returncode==77:print('PASS file/memory frame capture; HTTP provider not compiled');return
                     assert result.returncode==0,(scenario,result.stdout,result.stderr)
                     expected=[] if memory else ['/app/start.swf']
                     if scenario=='navigation':expected+=['/app/next.swf']
-                    elif scenario=='fail-active':expected+=['/app/slow.txt']
+                    elif scenario in ('fail-active','stop-active'):expected+=['/app/slow.txt']
                     assert Handler.paths==expected,(scenario,Handler.paths)
         finally:server.shutdown();server.server_close();thread.join()
     print('PASS real RGBA pixels, paused redraw, navigation counts, memory/HTTP and callback-error cancellation')

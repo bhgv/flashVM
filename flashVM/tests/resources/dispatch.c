@@ -77,6 +77,11 @@ static FVM_RResult malformed(const FVM_RRequest *q, void *out, size_t capacity, 
     (void)q;
     (void)out;
     (void)raw;
+    if (q->operation == 2)
+    {
+        *used = 0;
+        return FVM_R_PENDING;
+    }
     *used = capacity + 1;
     return FVM_R_OK;
 }
@@ -183,15 +188,21 @@ int main(void)
     CHECK(fvm_rdispatch_unregister(host.dispatch, host.target) == FVM_R_DENIED);
     host.owner = 1;
     CHECK(fvm_rdispatch_unregister(host.dispatch, host.target) == FVM_R_OK);
-    CHECK(fvm_rdispatch_register(host.dispatch, "/bad", ops, 1, malformed, 0, &host.target) ==
+    CHECK(fvm_rdispatch_register(host.dispatch, "/bad", ops, 2, malformed, 0, &host.target) ==
           FVM_R_OK);
-    CHECK(fvm_rdispatch_grant(host.dispatch, host.target, 1, FVM_R_READ) == FVM_R_OK);
+    CHECK(fvm_rdispatch_grant(host.dispatch, host.target, 1, FVM_R_READ | FVM_R_WRITE) == FVM_R_OK);
     request.target = host.target;
     request.id = 200;
     CHECK(fvm_rdispatch_post(host.dispatch, &request) == FVM_R_OK);
     CHECK(fvm_rdispatch_pump(host.dispatch, 1, &done) == FVM_R_OK);
     CHECK(fvm_rdispatch_take(host.dispatch, 1, 200, &reply) == FVM_R_OK &&
           reply.result == FVM_R_HANDLER && reply.size == 0);
+    request.id = 201;
+    request.operation = 2;
+    CHECK(fvm_rdispatch_post(host.dispatch, &request) == FVM_R_OK);
+    CHECK(fvm_rdispatch_pump(host.dispatch, 1, &done) == FVM_R_OK);
+    CHECK(fvm_rdispatch_take(host.dispatch, 1, 201, &reply) == FVM_R_OK &&
+          reply.result == FVM_R_HANDLER && !reply.size);
     /* Exhaustion is injected at the internal boundary to avoid billions of unregister cycles. */
     old = host.target;
     host.dispatch->resources[old.id - 1].generation = FVM_SRECORD_U32;

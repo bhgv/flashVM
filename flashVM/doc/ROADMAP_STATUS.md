@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.727
+# FlashVM stage status / Состояние стадий — v0.728
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,33 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.728 delivers resource pause/resume/step/stop at existing player owner boundaries.
+Bound binary requests control real interpreter/JIT SWFs, with exact rasters, pause
+refresh, file/memory/HTTP root navigation and resource STOP cancellation/join of
+an active HTTP child load. The annotated capture example adds --resource-control
+for native C delivery without mandatory serialization. Replies acknowledge command
+delivery, not later frame execution; STEP retains existing coalesced permits.
+No remote socket service, mounted filesystem, general event stream or conversion
+of every VM interface class is claimed. [EN](RESOURCE_DISPATCH.md) /
+[RU](RESOURCE_DISPATCH.ru.md).
+
+Final v0.726–v0.728 verification: 21 selected native Linux protocol/queue/player/
+tutorial checks pass. Shared host variants each pass seven focused checks, with
+socket HTTP and with no HTTP provider (explicit unavailable-provider local/memory
+coverage). Four POSIX producers deliver 200 copied jobs with owner-only callbacks
+and ordinary mutex backpressure. ASan/UBSan cover protocol/queue/control-adapter
+C modules, allocation/reentry/grant/generation/cancellation contracts, threaded
+producers, real interpreter/JIT resource SWFs and tutorial output/errors. Leak
+checks are disabled because traced /proc enumeration is unavailable; VM, SDL and
+transports remain uninstrumented. C89 protocol/owner-control contract sources
+cross-link for Linux ARM64, Linux RISC-V64 and Windows x86-64; C++98 boundary clients
+compile. These foreign binaries, full foreign player SDKs and devices are not
+executed here. SDK uses separately built static SDL 2.30.0. Windowless tests use
+an invalid video driver; ordinary window regressions use explicit dummy video.
+An initially broad test-name filter selected unbuilt unrelated resource fixtures;
+the final bounded selection above passes. Source links and example comment/API/
+catalog checks pass. All nine roadmap stages remain open.
 
 v0.727 adds direction-bound binary request/reply envelopes without a wire session
 claim. CRC/schema validation precedes queue effects; independent vectors check

@@ -61,6 +61,10 @@ def main():
     assert rwrite(3,1,C.byref(reply),out,len(out),C.byref(used))==0
     response=out.raw[:used.value];assert response==frame(3,b''.join(map(integer,[1,1,0,7]))+b'\0hello\xff')
     rid=C.c_ulong(999);decoded=Reply();assert read(C.byref(tables[1]),response,len(response),C.byref(rid),C.byref(decoded),C.byref(used))==0 and rid.value==1
+    invalid_reply=Reply();invalid_reply.result=6;invalid_reply.size=0;used.value=777
+    assert rwrite(3,1,C.byref(invalid_reply),out,len(out),C.byref(used))==2 and used.value==777
+    pending_packet=frame(3,b''.join(map(integer,[1,1,6,0])))
+    assert read(C.byref(tables[1]),pending_packet,len(pending_packet),C.byref(rid),C.byref(decoded),C.byref(used))==2
     before=bytes(decoded);rid.value=999;used.value=777
     assert read(C.byref(tables[0]),response,len(response),C.byref(rid),C.byref(decoded),C.byref(used))==2 and rid.value==999 and bytes(decoded)==before and used.value==777
     for table,status in [(tables[0],4),(tables[1],1),(tables[2],1)]:
