@@ -44,7 +44,8 @@ int main(int argc, char **argv)
     for (long budget = begin; budget < end && !success; ++budget)
     {
         allowance = budget;
-        FVM_Result result = fvm_swf_stream_sound_snapshot_open_pcm(c, 0, &snapshot);
+        FVM_Result result =
+            fvm_swf_stream_sound_snapshot_open_pcm_bounded(c, 0, (size_t)-1, &snapshot);
         allowance = -1;
         if (result == FVM_OK)
             success = true;
@@ -61,6 +62,11 @@ int main(int argc, char **argv)
     if (success)
     {
         allowance = 0;
+        FVM_SWFStreamSoundStorageInfo storage;
+        storage.struct_size = sizeof(storage);
+        assert(fvm_swf_stream_sound_snapshot_storage_info(snapshot, &storage) == FVM_OK &&
+               storage.peak_bytes >= storage.retained_bytes);
+
         verify(snapshot, 1, 4);
         fvm_swf_stream_sound_snapshot_close(snapshot);
         allowance = -1;

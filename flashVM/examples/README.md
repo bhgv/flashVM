@@ -2186,3 +2186,5 @@ Execution budgets and worker-stop behavior for Key/Mouse/Selection tutorials:
 [EN](../doc/INPUT_EVENT_BUDGET.md) / [RU](../doc/INPUT_EVENT_BUDGET.ru.md).
 
 Prepared streaming PCM normalization is covered by the existing [swf_stream tutorial](multimedia/swf_stream/README.md#prepared-pcm-normalization-v0763--нормализация-подготовленного-pcm).
+
+The existing [swf_stream tutorial](multimedia/swf_stream/README.md#explicit-storage-budget-v0766--явный-бюджет-памяти) also demonstrates explicit preparation ceilings and native storage observations after VM teardown.

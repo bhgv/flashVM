@@ -7,4 +7,5 @@
 #define TUTORIAL_STREAM_OUTPUT_RATE 48000UL /* Explicit conversion target; source remains 44100 Hz. */
 #define TUTORIAL_STREAM_QUEUE_FRAMES 2U /* Small explicit FIFO forces producer backpressure and drains. */
 #define TUTORIAL_STREAM_MOVIE_FRAMES 4U /* Bound owner timeline progression for the literal SWF. */
+#define TUTORIAL_STREAM_SOURCE_BYTES (1024UL * 1024UL) /* Bound complete prepared snapshot peak to one MiB. */
 #endif /* Finish the example-local bounds. */

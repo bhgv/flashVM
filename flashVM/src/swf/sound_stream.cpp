@@ -21,7 +21,9 @@ struct FVM_SWFStreamSoundSnapshot
     fvm_detail::vector<FVM_SWFStreamSoundEntry> blocks; /* Exact segment block index. */
     fvm_detail::vector<unsigned char> bytes; /* Original wire bytes, not expanded samples. */
     fvm_detail::vector<short> pcm; /* Optional expanded native-S16 storage, aligned for decoding. */
-    unsigned char empty;           /* Valid address for an entirely empty payload store. */
+    size_t retained_bytes; /* Snapshot object plus its current payload/index allocation sizes. */
+    size_t peak_bytes;     /* Maximum simultaneous raw/decoded ownership during preparation. */
+    unsigned char empty;   /* Valid address for an entirely empty payload store. */
 };
 
 namespace
@@ -312,8 +314,8 @@ extern "C" FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *context, size_t
 }
 
 /* Prepare an indexed immutable encoded segment in two linear scans, publishing only on success. */
-extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, size_t stream,
-                                                         FVM_SWFStreamSoundSnapshot **out)
+static FVM_Result snapshot_open(FVM_Context *context, size_t stream, const size_t *budget,
+                                FVM_SWFStreamSoundSnapshot **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
@@ -328,11 +330,18 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, s
                        : FVM_SWF_DEFAULT_LIMIT;
     if (bytes > limit || count > (limit - bytes) / sizeof(FVM_SWFStreamSoundEntry))
         return FVM_OUT_OF_MEMORY;
+    size_t charge = bytes + count * sizeof(FVM_SWFStreamSoundEntry);
+    if (charge > (size_t)-1 - sizeof(FVM_SWFStreamSoundSnapshot))
+        return FVM_OUT_OF_MEMORY;
+    charge += sizeof(FVM_SWFStreamSoundSnapshot);
+    if (budget && charge > *budget)
+        return FVM_OUT_OF_MEMORY;
     FVM_SWFStreamSoundSnapshot *snapshot = 0;
     try
     {
         snapshot = new FVM_SWFStreamSoundSnapshot;
         snapshot->empty = 0;
+        snapshot->retained_bytes = snapshot->peak_bytes = charge;
         snapshot->info = info;
         snapshot->blocks.resize(count);
         snapshot->bytes.resize(bytes);
@@ -350,6 +359,12 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, s
         delete snapshot;
         return FVM_OUT_OF_MEMORY;
     }
+}
+/* Preserve the original per-payload runtime bound and original encoded representation. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, size_t stream,
+                                                         FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open(context, stream, 0, out);
 }
 /* Infer only whole 4096-frame ADPCM packets; an average header is never a sample count.
  * Partial packets have no explicit count in this format and remain deliberately unsupported. */
@@ -380,14 +395,14 @@ static FVM_Result stream_adpcm_frames(const unsigned char *data, size_t size, un
 }
 /* [GC:] Prepare independent native PCM before worker publication; the temporary never escapes.
  * Encoded plus decoded payload and block-index bytes share the runtime preparation budget. */
-extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *context, size_t stream,
-                                                             FVM_SWFStreamSoundSnapshot **out)
+static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const size_t *budget,
+                                    FVM_SWFStreamSoundSnapshot **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
     FVM_SWFStreamSoundSnapshot *snapshot = 0;
-    FVM_Result result = fvm_swf_stream_sound_snapshot_open(context, stream, &snapshot);
+    FVM_Result result = snapshot_open(context, stream, budget, &snapshot);
     if (result != FVM_OK)
         return result;
     if (snapshot->info.format == FVM_SWF_SOUND_PCM_NATIVE ||
@@ -422,7 +437,15 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *contex
             return result == FVM_OK ? FVM_OUT_OF_MEMORY : result;
         }
         size_t block_values = frames * snapshot->info.channels;
-        used += block_values * FVM_SWF_SOUND_PCM_BYTES;
+        size_t decoded_bytes = block_values * FVM_SWF_SOUND_PCM_BYTES;
+        if (decoded_bytes > (size_t)-1 - snapshot->peak_bytes ||
+            (budget && decoded_bytes > *budget - snapshot->peak_bytes))
+        {
+            delete snapshot;
+            return FVM_OUT_OF_MEMORY;
+        }
+        snapshot->peak_bytes += decoded_bytes;
+        used += decoded_bytes;
         values += block_values;
         entry.block.sample_count = frames;
         entry.block.sample_count_known = 1;
@@ -460,6 +483,7 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *contex
             entry.block.data_size = written * FVM_SWF_SOUND_PCM_BYTES;
             offset += written;
         }
+        snapshot->retained_bytes = snapshot->peak_bytes - snapshot->bytes.size();
         fvm_detail::vector<unsigned char> encoded;
         snapshot->bytes.swap(
             encoded); /* Release compressed storage when this preparation returns. */
@@ -473,6 +497,33 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *contex
         delete snapshot;
         return FVM_OUT_OF_MEMORY;
     }
+}
+/* [GC:] Legacy preparation keeps its payload-only runtime limit, with no extra caller ceiling. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *context, size_t stream,
+                                                             FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open_pcm(context, stream, 0, out);
+}
+/* [GC:] Bound both initial copying and compressed expansion before allocating either payload. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_open_pcm_bounded(FVM_Context *context, size_t stream, size_t budget,
+                                               FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open_pcm(context, stream, &budget, out);
+}
+/* Copy native allocation charges only; this immutable observation needs no original VM. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_storage_info(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                           FVM_SWFStreamSoundStorageInfo *out)
+{
+    if (!snapshot || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFStreamSoundStorageInfo info;
+    info.struct_size = sizeof(info);
+    info.retained_bytes = snapshot->retained_bytes;
+    info.peak_bytes = snapshot->peak_bytes;
+    *out = info;
+    return FVM_OK;
 }
 /* Copy source geometry without consulting the original context. */
 extern "C" FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *snapshot,

@@ -73,6 +73,26 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *, size_t,
                                                               FVM_SWFStreamSoundSnapshot **);
 
+    /* Native allocation charges, excluding allocator bookkeeping, stack, VM and device memory. */
+    typedef struct FVM_SWFStreamSoundStorageInfo
+    {
+        size_t struct_size; /* Caller sets exact sizeof this native observation structure. */
+        size_t retained_bytes; /* Snapshot object, exact block index and retained raw/PCM arrays. */
+        size_t peak_bytes; /* Largest simultaneous object/index/encoded/decoded charge during open. */
+    } FVM_SWFStreamSoundStorageInfo;
+    /* Same owner/preparation/codec contract as open_pcm, plus an explicit peak-byte ceiling.
+     * Zero is a valid empty budget: even an empty snapshot needs ownership and returns OOM.
+     * Runtime payload/index limit still applies independently. Output cleared first; budget
+     * excess OUT_OF_MEMORY before the offending allocation. No device/callback/VM execution.
+     * Subtract retained_bytes from an aggregate budget before preparing the next snapshot. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm_bounded(
+        FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **);
+    /* Copy immutable native charges without allocation/callback/VM; valid after VM teardown.
+     * Null/wrong-size INVALID_ARGUMENT, output intact. Caller retains snapshot until return;
+     * concurrent const reads allowed; synchronize close separately. Peak >= retained. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_storage_info(
+        const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundStorageInfo *);
+
     /* Copy the snapshot header (normalized after open_pcm ADPCM), preserving output on error. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
     /* Query the prepared block count without rescanning the movie. */

@@ -151,11 +151,11 @@ Additional demonstrated API (contracts, limits and lifetime in
 [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm)):
 
 - [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L65): validate, budget and copy the selected segment.
-- [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L77): inspect the copied source/playback header.
-- [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L79): enumerate the prepared index.
-- [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L81): borrow original-wire bytes until close.
-- [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L85): convert bounded independent ranges.
-- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L87): release native storage even after VM teardown.
+- [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L97): inspect the copied source/playback header.
+- [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L99): enumerate the prepared index.
+- [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L101): borrow original-wire bytes until close.
+- [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L105): convert bounded independent ranges.
+- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L107): release native storage even after VM teardown.
 
 The host checker runs both modes, compares exact stdout/native-S16 bytes and checks
 actual missing-directory write failure cleanup in both modes. This is file bridge
@@ -198,18 +198,18 @@ cleanup закрывает их и при ошибке. Reader не выделя
 | [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L65) | Own independent encoded bytes/index; allocation may fail before output. Создаёт native копию с отдельным владением. |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release source before cursor output, or context callbacks before userdata cleanup. Уничтожает context до runtime. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release only after its contexts; copied snapshot survives. Снимок не заимствует runtime. |
-| [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L77) | Copy source geometry after original VM teardown. Без VM и allocation. |
-| [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L79) | Query immutable indexed count after teardown. Заимствует snapshot лишь на вызов. |
+| [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L97) | Copy source geometry after original VM teardown. Без VM и allocation. |
+| [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L99) | Query immutable indexed count after teardown. Заимствует snapshot лишь на вызов. |
 | [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L40) | Borrow immutable snapshot, initialize native cursor without allocation. Caller keeps snapshot alive. [Contract](../../../doc/STREAM_PCM_READER.md). |
 | [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L48) | Copy bounded S16 and owned metadata; EOF/errors preserve outputs. Single owner, no VM/I/O. [Contract](../../../doc/STREAM_PCM_READER.md). |
-| [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L81) | Borrow indexed block metadata/data while snapshot lives; cursor uses only copied frame/count for reporting. Не хранит data после закрытия. |
+| [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L101) | Borrow indexed block metadata/data while snapshot lives; cursor uses only copied frame/count for reporting. Не хранит data после закрытия. |
 | [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82) | Older modes copy host callbacks into a context-owned channel; cursor mode bypasses registration. Состояние FILE живёт до context cleanup. |
 | [`fvm_swf_stream_sound_block_at`](../../../include/flashvm/swf_stream_sound.h#L59) | Live mode borrows block while source context remains loaded. Не переживает reload. |
-| [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L85) | Older prepared mode copies a chosen block range without source VM. Заполняет caller samples. |
+| [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L105) | Older prepared mode copies a chosen block range without source VM. Заполняет caller samples. |
 | [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L61) | Live mode reads source-relative range synchronously on VM owner. Без удержания borrowed payload. |
 | [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84) | Older modes synchronously borrow PCM through file callback; no implicit retry. Cursor calls C callback directly. |
 | [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L92) | Older modes flush/close active registered file output before context cleanup. Не управляет cursor. |
-| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L87) | Close native source once all readers stop; null accepted. Не обращается к уничтоженной VM. |
+| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L107) | Close native source once all readers stop; null accepted. Не обращается к уничтоженной VM. |
 
 All source/stream APIs above: [inspection contract](../../../doc/SWF_STREAM_SOUND.md).
 No socket/audio device or worker is started by this tutorial. The separate
@@ -323,6 +323,31 @@ The compressed stream contract and independent FFmpeg checks are documented in
 | API | Contract / Контракт |
 | --- | --- |
 | [`fvm_swf_stream_sound_snapshot_open_pcm`](../../../include/flashvm/swf_stream_sound.h#L73) | Owner prepares an independent immutable PCM snapshot; may allocate/decode, clears output on failure, normalizes whole ADPCM packets to native S16 and requires explicit close. Владелец подготавливает независимый PCM до worker; ошибка освобождает временные данные. |
+## Explicit storage budget (v0.766) / Явный бюджет памяти
+
+All prepared modes now use [`fvm_swf_stream_sound_snapshot_open_pcm_bounded`](../../../include/flashvm/swf_stream_sound.h#L88) with
+[TUTORIAL_STREAM_SOURCE_BYTES](example_constants.h#L10) (one MiB). The additional `--storage` mode exports
+unchanged native PCM after input VM teardown and first prints
+`Storage: retained N bytes, peak M bytes.` Values depend on native structure sizes;
+this tiny PCM fixture has equal retained and peak charges, not a fixed ABI byte count.
+The output file is still replaced only by the explicit file consumer. Missing output
+paths fail with ordinary cleanup, after printing the storage observation.
+
+Подготовленные режимы ограничены одним МиБ, включая объект/индекс/временный пик.
+`--storage` запрашивает память после уничтожения входной VM и экспортирует тот же
+PCM; `N`/`M` зависят от размеров нативных структур. Для данного PCM peak равен
+retained. Это учёт владения, не RSS процесса. Предел задаётся в
+[example_constants.h](example_constants.h); подробный контракт: [EN](../../../doc/STREAM_STORAGE.md) /
+[RU](../../../doc/STREAM_STORAGE.ru.md).
+
+```sh
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --storage
+```
+
+| API | Contract / Контракт |
+| --- | --- |
+| [`fvm_swf_stream_sound_snapshot_open_pcm_bounded`](../../../include/flashvm/swf_stream_sound.h#L88) | Owner prepares PCM under an explicit peak ceiling; clears output and releases temporaries on failure, closes via the ordinary snapshot API. Владелец ограничивает пик до публикации worker; бюджет не изменяет runtime config. |
+| [`fvm_swf_stream_sound_snapshot_storage_info`](../../../include/flashvm/swf_stream_sound.h#L93) | Copies retained/peak charges without allocation or VM access; works after VM teardown, preserves output for null/wrong-size inputs. Snapshot must remain alive until return; close after all readers. |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -366,11 +391,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:57](../../../include/flashvm/swf_stream_sound.h#L57) |
 | `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:53](../../../include/flashvm/swf_stream_sound.h#L53) |
 | `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:61](../../../include/flashvm/swf_stream_sound.h#L61) |
-| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:81](../../../include/flashvm/swf_stream_sound.h#L81) |
-| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:79](../../../include/flashvm/swf_stream_sound.h#L79) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:87](../../../include/flashvm/swf_stream_sound.h#L87) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:77](../../../include/flashvm/swf_stream_sound.h#L77) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:101](../../../include/flashvm/swf_stream_sound.h#L101) |
+| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:99](../../../include/flashvm/swf_stream_sound.h#L99) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:107](../../../include/flashvm/swf_stream_sound.h#L107) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:97](../../../include/flashvm/swf_stream_sound.h#L97) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:73](../../../include/flashvm/swf_stream_sound.h#L73) |
-| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:85](../../../include/flashvm/swf_stream_sound.h#L85) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:88](../../../include/flashvm/swf_stream_sound.h#L88) |
+| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:105](../../../include/flashvm/swf_stream_sound.h#L105) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:93](../../../include/flashvm/swf_stream_sound.h#L93) |
 <!-- source-links:end -->

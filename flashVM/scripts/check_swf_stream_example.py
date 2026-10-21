@@ -40,6 +40,12 @@ def main():
         cursor = subprocess.run([executable, str(output), '--cursor'], cwd=directory,
                                 check=True, stdout=subprocess.PIPE, universal_newlines=True)
         assert cursor.stdout == result.stdout and output.read_bytes() == expected
+        storage = subprocess.run([executable, str(output), '--storage'], cwd=directory,
+                                 check=True, stdout=subprocess.PIPE, universal_newlines=True)
+        lines = storage.stdout.splitlines()
+        charges = re.fullmatch(r'Storage: retained (\d+) bytes, peak (\d+) bytes\.', lines[0])
+        assert charges and 0 < int(charges[1]) <= int(charges[2]) <= 1024*1024
+        assert lines[1:] == result.stdout.splitlines() and output.read_bytes() == expected
         converted = subprocess.run([executable, str(output), '--convert'], cwd=directory,
                                    check=True, stdout=subprocess.PIPE, universal_newlines=True)
         assert converted.stdout.splitlines() == result.stdout.splitlines()[:-1]+['Exported 4 sample frames from 3 blocks.']
@@ -82,6 +88,8 @@ def main():
         result = subprocess.run([executable,str(missing),'--queue'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
         result = subprocess.run([executable,str(missing),'--timeline'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        assert result.returncode and not missing.exists() and not missing.parent.exists()
+        result = subprocess.run([executable,str(missing),'--storage'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
     print('PASS streaming tutorial: exact PCM, frame gap, empty block, replacement and native error cleanup')
     return 0
