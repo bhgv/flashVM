@@ -51,9 +51,9 @@ Seek проверяет абсолютный source block/offset на копии
 | --- | --- |
 | [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L44) | Копирует backend и заимствует native объекты; нужны пустая queue/совпадающая геометрия. INVALID_ARGUMENT при неверных descriptor/bounds, UNSUPPORTED при недостаточной точности double, backend статусы передаются. Без allocation/advance. |
 | [`fvm_swf_stream_output_pump`](../include/flashvm/swf_stream_output.h#L53) | Проверяет budget, готовит/повторяет один блок, отдаёт backend. Ошибка write сохраняет pending; пустые markers OK/0; EOF/backpressure NOT_FOUND. Accepted обнуляется первым; новая pending подготовка намеренно сохраняется при write error. |
-| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L55) | Подтверждает pause 0/1, без clear/priming. Ошибка сохраняет подтверждённый pause. |
-| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L59) | Копирует clock/chunk лишь после корректного queued observation. Точный struct_size, ошибка сохраняет output. Без source read/allocation. |
-| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L64) | Проверяет source position, pause/clear, затем reset source grid/pending/epoch. Поэтапный контракт ошибки выше; неверная позиция не вызывает backend side effects. |
+| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L68) | Подтверждает pause 0/1, без clear/priming. Ошибка сохраняет подтверждённый pause. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L72) | Копирует clock/chunk лишь после корректного queued observation. Точный struct_size, ошибка сохраняет output. Без source read/allocation. |
+| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L77) | Проверяет source position, pause/clear, затем reset source grid/pending/epoch. Поэтапный контракт ошибки выше; неверная позиция не вызывает backend side effects. |
 
 ## Сборка и проверка
 
@@ -99,6 +99,34 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 
 Проверка v0.754: прошли 75 выбранных native регрессионных проверок и 14 shared-host. Новые output/converter/reader/snapshot пути, worker контракты и все пять export режимов прошли ASan/UBSan; allocation injection — native. Leak detection отключён ограничениями хоста, вся VM не инструментирована. Новые C++98 implementations и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution или полная player/device приёмка не заявляются. Все девять стадий открыты.
 
+## Явное разрешение movie frames (v0.755)
+
+Прежний unrestricted pump сохранён. Новый gated pump принимает лишь блоки с
+номером movie frame не больше заданной хостом границы; ноль блокирует все кадры.
+Проверяются доверенные prepared metadata до conversion либо pending metadata до
+повторной write. Будущий кадр даёт NOT_FOUND без продвижения converter и записи
+PCM; queue-clock observations могут обновиться. Будущие данные не теряются.
+Пустые/skipped markers подчиняются той же границе; пропуск не разрешает более
+поздний звук автоматически.
+
+Отдельный next-frame query возвращает сначала pending frame, иначе frame из
+source index. Нет backend callbacks, decode, allocation или VM. NOT_FOUND на EOF
+сохраняет выход. Вместе с info это различает gate, FIFO backpressure и EOF.
+Gate не отзывает уже принятый FIFO звук. Переход назад/новый root incarnation
+требует явного seek/clear либо новых native объектов: уменьшившийся tick counter
+не является безопасной синхронизацией. Хост задаёт настоящий movie frame,
+а не число host ticks/presentations.
+
+| API | Владение и ошибки |
+| --- | --- |
+| [`fvm_swf_stream_output_next_frame`](../include/flashvm/swf_stream_output.h#L57) | Копирует следующий pending/indexed movie frame; владение source/backend неизменно. Без callback/VM/allocation. INVALID_ARGUMENT при null/reentry, NOT_FOUND на EOF; ошибка сохраняет выход. |
+| [`fvm_swf_stream_output_pump_until`](../include/flashvm/swf_stream_output.h#L64) | Контракт retry/backpressure/accepted=0 как у pump; max_movie_frame — явное разрешение, ноль блокирует всё. Будущий/pending-too-new блок даёт NOT_FOUND без conversion/write. Seek/clear при переходе назад выполняет хост. |
+
+Native тест проверяет gate zero, пропуски frames, неудачный retry будущего блока,
+пустые markers, приоритет pending, неизменность позиции/байтов и EOF с данными
+в FIFO. Allocation injection проверяет query/gated pump после уничтожения VM/runtime.
+Полная sound timeline/device/reference приёмка остаётся открытой.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -109,9 +137,11 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:59](../include/flashvm/swf_stream_output.h#L59) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../include/flashvm/swf_stream_output.h#L72) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
-| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:55](../include/flashvm/swf_stream_output.h#L55) |
+| `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../include/flashvm/swf_stream_output.h#L57) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:68](../include/flashvm/swf_stream_output.h#L68) |
 | `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:53](../include/flashvm/swf_stream_output.h#L53) |
-| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
+| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:77](../include/flashvm/swf_stream_output.h#L77) |
 <!-- source-links:end -->

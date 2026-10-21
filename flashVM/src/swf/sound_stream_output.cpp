@@ -91,8 +91,32 @@ extern "C" FVM_Result fvm_swf_stream_output_init(FVM_SWFStreamOutput *out,
         return FVM_ERROR;
     }
 }
+/* Read trusted prepared metadata; pending bytes remain the next operation until accepted/reset. */
+static FVM_Result stream_next_frame(const FVM_SWFStreamOutput *s, unsigned int *out)
+{
+    if (s->info.pending_frames)
+    {
+        *out = s->info.chunk.frame;
+        return FVM_OK;
+    }
+    FVM_SWFStreamSoundBlock block;
+    block.struct_size = sizeof(block);
+    FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(s->converter->snapshot,
+                                                               s->converter->block_index, &block);
+    if (result == FVM_OK)
+        *out = block.frame;
+    return result;
+}
+/* Querying metadata neither consumes source PCM nor calls an external backend. */
+extern "C" FVM_Result fvm_swf_stream_output_next_frame(const FVM_SWFStreamOutput *s,
+                                                       unsigned int *out)
+{
+    if (!stream_output(s) || !out)
+        return FVM_INVALID_ARGUMENT;
+    return stream_next_frame(s, out);
+}
 /* Keep a rejected prepared block stable until a later all-or-none backend acceptance. */
-extern "C" FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *s, size_t *accepted)
+static FVM_Result stream_pump(FVM_SWFStreamOutput *s, const unsigned int *limit, size_t *accepted)
 {
     if (accepted)
         *accepted = 0;
@@ -106,6 +130,20 @@ extern "C" FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *s, size_t 
             return result;
         if (s->info.eof)
             return FVM_NOT_FOUND;
+        if (limit)
+        {
+            unsigned int next;
+            result = stream_next_frame(s, &next);
+            if (result == FVM_NOT_FOUND)
+            {
+                s->info.eof = 1;
+                return result;
+            }
+            if (result != FVM_OK)
+                return result;
+            if (next > *limit)
+                return FVM_NOT_FOUND;
+        }
         size_t available = s->target - s->info.queued_frames;
         if (!available || s->info.pending_frames > available)
             return FVM_NOT_FOUND;
@@ -146,6 +184,17 @@ extern "C" FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *s, size_t 
     {
         return FVM_ERROR;
     }
+}
+/* Preserve the original unrestricted native FIFO producer entry point. */
+extern "C" FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *s, size_t *accepted)
+{
+    return stream_pump(s, 0, accepted);
+}
+/* Authorize only actual source movie frames through an explicit host-selected boundary. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *s, unsigned int frame,
+                                                       size_t *accepted)
+{
+    return stream_pump(s, &frame, accepted);
 }
 /* Pause is explicit: priming/resume policy belongs to the embedding host. */
 extern "C" FVM_Result fvm_swf_stream_output_pause(FVM_SWFStreamOutput *s, int paused)

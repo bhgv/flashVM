@@ -51,6 +51,19 @@ extern "C"
      * No allocation/VM; callbacks may block only according to host policy. Reentry
      * INVALID_ARGUMENT. */
     FVM_API FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *, size_t *accepted);
+    /* Copy the next pending/source block's movie frame without decoding, callbacks or VM access.
+     * NOT_FOUND at source EOF; errors preserve output. Pending retry metadata takes precedence.
+     * This query does not observe/drain FIFO or grant timeline authorization. */
+    FVM_API FVM_Result fvm_swf_stream_output_next_frame(const FVM_SWFStreamOutput *,
+                                                        unsigned int *);
+    /* Same bounded producer contract, but do not prepare/accept a block beyond max_movie_frame.
+     * Zero holds all source frames. Gate/backpressure/EOF return NOT_FOUND; next_frame/info
+     * distinguish them. Lowering a gate cannot recall already accepted FIFO audio: backward
+     * navigation requires explicit seek/clear. A disallowed pending retry remains unchanged.
+     * The host supplies actual timeline authorization, never a tick count or packet timestamp. */
+    FVM_API FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *,
+                                                        unsigned int max_movie_frame,
+                                                        size_t *accepted);
     /* Acknowledge pause/resume without clearing, priming or advancing converter position. */
     FVM_API FVM_Result fvm_swf_stream_output_pause(FVM_SWFStreamOutput *, int paused);
     /* Observe backend backlog and copy clock/metadata; failures preserve caller output. Reject
