@@ -73,6 +73,28 @@ CRC/error admission. The protected fixture oracle covers 72 grouped FWS/CWS case
 with independent sampled PCM, plus rejection without replacing an existing output.
 This command checks one audio segment, not every movie resource or AVM1 behavior.
 
+
+## Concurrent native decoding and acceptance (v0.819)
+
+Four real OS workers independently decode all eight shared immutable fixtures
+for eight passes each. The host creates workers/gate before disabling C++ new/new[],
+releases the gate with proper mutex ordering, then joins all workers before cleanup.
+Each instance rejects a damaged checksum without changing history, retries the intact
+packet and compares independent PCM positions. No VM or GC state is shared or needed.
+This workload passes ordinary native and full-core ASan/UBSan builds; it is not TSan
+or native Windows/macOS/Android acceptance.
+
+Final evidence: 93 native audio tests, six CRC/worker ASan/UBSan cases, 128 valid
+protected SDL cases, 128 rejected first/last-checksum cases, 64 muted bypass cases,
+the distinct-ID preflight unit and C89 verification/export pass. LAME/mpg123 regenerate
+all protected and prior free-format fixtures exactly on the validation host.
+Native injected allocation failures use the ordinary build. Header/side CRC does
+not establish whole-audio integrity, full SWF support, A/V timing or device quality.
+
+
+The global multimedia comment checker still reports two unchanged baseline Windows
+speech files; the changed annotated C89 tutorial and frontend catalog checks pass.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

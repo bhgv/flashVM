@@ -1,4 +1,8 @@
 # Desktop SWF frontend
+v0.819 validates MP3 header/side-information CRC and preflights every statically
+referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only
+references and mute do not decode. [Admission and limits](../doc/MP3_CRC.md).
+
 
 Desktop event SyncNoMultiple now uses queued identity deadlines, including short voices already retired by the mixer. Output identity storage is separate from the source budget. [Queue/control contract](../doc/QUEUED_SOUND_IDS.md).
 

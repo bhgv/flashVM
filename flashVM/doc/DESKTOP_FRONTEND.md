@@ -1,4 +1,8 @@
 # Desktop SWF application — v0.577
+v0.819 validates MP3 header/side-information CRC and preflights every statically
+referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only
+references and mute do not decode. [Admission and limits](MP3_CRC.md).
+
 
 v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency and reference MP3 seek/A/V remain open. Free-format support was added in v0.806–0.811; short events without enough framing evidence remain unsupported. [Free-format contract](FREE_FORMAT_MP3.md). [Current MP3 contract](MP3_AUDIO.md).
 

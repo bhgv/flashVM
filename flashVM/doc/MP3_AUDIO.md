@@ -2,11 +2,11 @@
 
 [Русский](MP3_AUDIO.ru.md) · [functional roadmap](ROADMAP.md)
 
-Current v0.811: [free-format decoding](FREE_FORMAT_MP3.md) is implemented for framed
-events and counted stream blocks. The historical v0.776–0.782 limitations below
-describe those checkpoints; free-format statements there are superseded by the
-linked current contract. Short standalone events without framing evidence, negative
-latency, CRC validation and full reference seek/A/V remain outside this support.
+Current v0.819: [free-format decoding](FREE_FORMAT_MP3.md) and protected-region
+[CRC validation](MP3_CRC.md) are implemented. Historical checkpoint limitations
+below are superseded by these contracts. Short standalone events without framing
+evidence, negative latency, complete Huffman integrity and reference seek/A/V
+remain outside this support. MPEG CRC covers header/side information, not main data.
 
 ## v0.776 scalar decoder foundation
 

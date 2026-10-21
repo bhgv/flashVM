@@ -236,6 +236,14 @@ Current v0.811 free-format support supersedes earlier checkpoint limitations bel
 sufficiently framed events are supported; short unframed events, negative initial
 latency and full reference MP3 seek/A/V remain open. Actual devices stay separate.
 
+Current v0.819: [MP3 protected-region CRC and player admission](MP3_CRC.md) /
+[RU](MP3_CRC.ru.md) supersede older CRC limitations below. Coverage includes
+MPEG-1/2/2.5, standard/free-format, pre-acquisition root-event validation, native
+concurrent decoder histories and C89 verification without an output file.
+93 native audio tests, six ASan/UBSan and independent SDL/mutation oracles pass.
+Main audio data, complete Huffman validation, full SWF and physical devices remain
+outside these CRC guarantees. Все этапы roadmap остаются открытыми.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,

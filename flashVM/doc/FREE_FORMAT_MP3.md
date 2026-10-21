@@ -2,6 +2,10 @@
 
 [Русский](FREE_FORMAT_MP3.ru.md).
 
+Current v0.819 also validates protected packet header/side-information CRC and
+preflights referenced root MP3 before unmuted desktop device acquisition. Earlier
+CRC limitations in checkpoint sections below are superseded by [this contract](MP3_CRC.md).
+
 ## Strict framing (v0.806)
 
 The private [fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L94) accepts bitrate index zero when three consecutive

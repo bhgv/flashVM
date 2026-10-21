@@ -1,4 +1,8 @@
 # Последовательность root PCM-заголовков в SDL-плеере
+v0.819 проверяет CRC заголовка/side information MP3 и все статические корневые
+MP3-ссылки до unmuted-аудиоустройства, один раз на ID. Stop-only ссылки и mute
+не декодируют звук. [Допуск и ограничения](MP3_CRC.ru.md).
+
 
 v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency и reference MP3 seek/A/V остаются открытыми. Free-format добавлен в v0.806–0.811; короткие события без достаточных заголовков остаются unsupported. [Контракт free-format](FREE_FORMAT_MP3.ru.md). [Текущий контракт](MP3_AUDIO.ru.md).
 
