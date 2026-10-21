@@ -6,12 +6,15 @@
 /* Invalid input must remain callable without initializing a VM or audio device. */
 int main(void)
 {
+    FVM_SWFStreamSoundSnapshot *snapshot = (FVM_SWFStreamSoundSnapshot *)1;
     FVM_MovieClipPlaybackInfo playback;
     unsigned long navigation = 91;
     FVM_SWFStreamConverter converter;
     FVM_SWFStreamPCMReader reader;
     FVM_SWFStreamPCMChunk chunk;
     size_t written = 999;
+    if (fvm_swf_stream_sound_snapshot_open_pcm(0, 0, &snapshot) != FVM_INVALID_ARGUMENT || snapshot)
+        return 1;
     playback.struct_size = sizeof(playback);
     if (fvm_movieclip_get_playback_info(0, 0, &playback) != FVM_INVALID_ARGUMENT ||
         fvm_movieclip_get_navigation(0, 0, &navigation) != FVM_INVALID_ARGUMENT || navigation != 91)

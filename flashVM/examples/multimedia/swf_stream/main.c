@@ -141,7 +141,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
         goto cleanup; /* Keep missing/header errors visible. */
     if (prepared) /* Prepare native storage; only timeline mode retains its separate live owner. */
     { /* Prepare before destroying source ownership. */
-        if (!checked(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot), "snapshot_open")) /* Copy source bytes and block index once. */
+        if (!checked(fvm_swf_stream_sound_snapshot_open_pcm(context, 0, &snapshot), "snapshot_open")) /* Copy source bytes and block index once. */
             goto cleanup; /* Preserve ordinary allocation errors. */
         if (!timeline_mode) { /* Native-only modes prove independence from the original VM. */
             fvm_context_destroy(context); /* Release canonical movie storage. */

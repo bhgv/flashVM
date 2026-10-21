@@ -63,11 +63,21 @@ extern "C"
     typedef struct FVM_SWFStreamSoundSnapshot FVM_SWFStreamSoundSnapshot;
     /* Copy and index one encoded segment; clear *out first, subject to the runtime memory budget. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *, size_t, FVM_SWFStreamSoundSnapshot **);
-    /* Copy the original source/advisory header, preserving output on error. */
+    /* Owner-only preparation: copy PCM unchanged or expand whole 4096-frame ADPCM packets.
+     * ADPCM output is normalized PCM_NATIVE/S16 with exact per-block counts; source/frame/header
+     * identity and advisory playback fields persist. Zero-byte/width-only empty blocks allowed.
+     * Partial ADPCM packets and other codecs UNSUPPORTED; nonzero padding INVALID_ARGUMENT.
+     * Output cleared first; encoded+decoded payload/index must fit runtime memory limit.
+     * May allocate/decode; failure releases temporary ownership. No callback or device/VM execution.
+     * Returned immutable snapshot uses existing reader/converter/close APIs after VM teardown. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *, size_t,
+                                                              FVM_SWFStreamSoundSnapshot **);
+
+    /* Copy the snapshot header (normalized after open_pcm ADPCM), preserving output on error. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
     /* Query the prepared block count without rescanning the movie. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_count(const FVM_SWFStreamSoundSnapshot *, size_t *);
-    /* Borrow an indexed original-wire payload until snapshot_close. */
+    /* Borrow indexed payload until close: original bytes, or native S16 after open_pcm ADPCM. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundBlock *);
     /* Inspect the indexed MP3 prefix after source VM teardown; the MPEG span lasts until close. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_mp3_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundMP3Block *);

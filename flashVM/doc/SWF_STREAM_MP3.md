@@ -46,7 +46,7 @@ sized nonnull output. **Success:** OK publishes the indexed prefix/MPEG view.
 MP3 prefix shorter than four bytes; NOT_FOUND for an absent block; UNSUPPORTED
 for a selected non-MP3 codec. Output is unchanged on failure. There is no
 allocation, root rescan, VM access, callback or GC. The originating VM may already
-be destroyed. The span lasts until [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L77).
+be destroyed. The span lasts until [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L87).
 Concurrent immutable reads are possible while an external owner guarantees that
 close cannot race with them; the API supplies no locking or reference counting.
 
@@ -147,8 +147,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../include/flashvm/swf_stream_sound.h#L51) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:77](../include/flashvm/swf_stream_sound.h#L77) |
-| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:73](../include/flashvm/swf_stream_sound.h#L73) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
+| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:83](../include/flashvm/swf_stream_sound.h#L83) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
 | `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream.cpp:12](../src/swf/sound_stream.cpp#L12) |
 | `FVM_SWFStreamSoundMP3Block` | struct | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
