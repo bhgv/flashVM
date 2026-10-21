@@ -18,6 +18,28 @@ at four source and eight output rates with actual one-frame mixer retirement,
 including EOF and post-VM lifetime. This is native sample accounting, not full
 Flash timeline or physical-device acceptance.
 
+## v0.794: optional fixed identity storage
+
+[`fvm_swf_sound_output_set_identity_tracking`](../include/flashvm/swf_sound_output.h#L61) enables/disables a fixed native table
+of OUTPUT_ID_SLOTS double deadlines (512 KiB on this host). Configure only with
+no mixer voices, accepted or pending PCM; enabling allocates transactionally,
+disabling actually frees storage. Invalid state/arguments return INVALID_ARGUMENT;
+allocation failure returns OOM and preserves the old table. No backend/VM is
+called. All mutations require external output/mixer serialization.
+
+[`fvm_swf_sound_output_storage_info`](../include/flashvm/swf_sound_output.h#L74) copies exact output object, retry PCM,
+optional history, optional deadline and checked total byte charges. Borrowed
+mixer/device, VM and allocator overhead are excluded. Invalid size/null/reentry
+preserves output. [`fvm_swf_sound_output_sound_active`](../include/flashvm/swf_sound_output.h#L81) observes the exclusive FIFO
+and compares one ID's deadline with accepted-minus-queued progress. Disabled
+tracking returns UNSUPPORTED; invalid ID/reentry returns INVALID_ARGUMENT;
+backend errors/exceptions preserve query output. These callbacks may block under
+the backend contract. No VM or new allocation is entered. Use tracked starts
+and stops exclusively; direct mixer mutation is outside the accounting contract.
+
+`swf_sound_output_identity_storage` verifies optional charges, repeated enable,
+real freeing on disable, empty/played-state restrictions and query failures.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -27,5 +49,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
+| `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
+| `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
 | `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |
 <!-- source-links:end -->

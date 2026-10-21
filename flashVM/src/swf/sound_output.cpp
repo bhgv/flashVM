@@ -1,6 +1,7 @@
 /* FlashVM: bounded PCM producer/retry state and software-device FIFO clock. */
 #include "../details/vector.hpp"
 #include "sound_output_constants.h"
+#include "sound_constants.h"
 #include "flashvm/swf_sound_output.h"
 #include <cfloat>
 #include <cstring>
@@ -13,6 +14,8 @@ struct FVM_SWFSoundOutput
         *mixer; /* Borrowed; host may submit events but must not independently read/stop it. */
     FVM_AudioQueueBackend backend; /* Copied callback table with borrowed userdata. */
     fvm_detail::vector<short> pcm; /* One fixed-capacity preparation/retry block. */
+    fvm_detail::vector<double>
+        identities; /* Optional fixed ID-indexed exclusive end frames on this output epoch. */
     FVM_SWFSoundOutputInfo info;   /* Copied epoch counts and last validated queue state. */
     fvm_detail::vector<short>
         history;           /* [GC:] Optional native accepted-PCM ring; no managed roots. */
@@ -144,6 +147,90 @@ extern "C" FVM_Result fvm_swf_sound_output_create(FVM_SWFSoundMixer *mixer,
     catch (...)
     {
         delete output;
+        return FVM_ERROR;
+    }
+}
+
+/* Configure native ID deadlines transactionally before any voice/PCM enters this output epoch. */
+extern "C" FVM_Result fvm_swf_sound_output_set_identity_tracking(FVM_SWFSoundOutput *output,
+                                                                  int enabled)
+{
+    if (!output || output->busy || (enabled != 0 && enabled != 1) ||
+        output->info.submitted_frames || output->info.pending_frames)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixerInfo mixer;
+    mixer.struct_size = sizeof(mixer);
+    FVM_Result result = fvm_swf_sound_mixer_info(output->mixer, &mixer);
+    if (result != FVM_OK || mixer.active_voices)
+        return result != FVM_OK ? result : FVM_INVALID_ARGUMENT;
+    BusyScope scope(output);
+    if (enabled == !output->identities.empty())
+        return FVM_OK;
+    try
+    {
+        fvm_detail::vector<double> table;
+        if (enabled)
+        {
+            if (FVM_SWF_SOUND_OUTPUT_ID_SLOTS > (size_t)-1 / sizeof(double))
+                return FVM_OUT_OF_MEMORY;
+            table.resize(FVM_SWF_SOUND_OUTPUT_ID_SLOTS);
+        }
+        output->identities.swap(table);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Requested native storage excludes the borrowed mixer/device and allocator bookkeeping. */
+extern "C" FVM_Result fvm_swf_sound_output_storage_info(const FVM_SWFSoundOutput *output,
+                                                         FVM_SWFSoundOutputStorageInfo *out)
+{
+    if (!output || output->busy || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundOutputStorageInfo info;
+    info.struct_size = sizeof(info);
+    info.fixed_bytes = sizeof(*output);
+    info.pcm_bytes = output->pcm.size() * sizeof(short);
+    info.history_bytes = output->history.size() * sizeof(short);
+    info.identity_bytes = output->identities.size() * sizeof(double);
+    size_t bytes = info.fixed_bytes;
+    const size_t parts[] = {info.pcm_bytes, info.history_bytes, info.identity_bytes};
+    for (size_t i = 0; i < sizeof(parts) / sizeof(parts[0]); ++i)
+    {
+        if (parts[i] > (size_t)-1 - bytes)
+            return FVM_OUT_OF_MEMORY;
+        bytes += parts[i];
+    }
+    info.retained_bytes = bytes;
+    *out = info;
+    return FVM_OK;
+}
+
+/* Observe the exclusive FIFO clock, then test one copied native identity deadline. */
+extern "C" FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *output,
+                                                         unsigned int id, int *out)
+{
+    if (!output || output->busy || !out || !id || id > FVM_SWF_SOUND_ID_MAX)
+        return FVM_INVALID_ARGUMENT;
+    if (output->identities.empty())
+        return FVM_UNSUPPORTED;
+    BusyScope scope(output);
+    try
+    {
+        FVM_Result result = observe(output);
+        if (result == FVM_OK)
+            *out = output->identities[id] > output->info.played_frames;
+        return result;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
         return FVM_ERROR;
     }
 }

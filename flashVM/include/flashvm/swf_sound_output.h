@@ -51,6 +51,35 @@ extern "C"
                                                    const FVM_AudioQueueBackend *,
                                                    size_t block_frames, size_t target_frames,
                                                    FVM_SWFSoundOutput **out);
+#define FVM_SWF_SOUND_OUTPUT_ID_SLOTS 65536UL /* Fixed optional ID table, including unused ID zero. */
+    /* Optional queued identity policy; configure only in an empty output epoch with no mixer
+     * voices, accepted or pending PCM. enabled is 0/1. Preallocate ID_SLOTS doubles on enable;
+     * disable frees the table. No callback/VM/device mutation; allocation failure leaves old
+     * ownership intact. Invalid arguments/state INVALID_ARGUMENT; allocation/size failure OOM.
+     * Retain/serialize output and borrowed mixer. Tracking requires ALL voice starts/stops to
+     * use this output's tracked APIs; direct mixer mutation invalidates identity accounting. */
+    FVM_API FVM_Result fvm_swf_sound_output_set_identity_tracking(FVM_SWFSoundOutput *, int enabled);
+    /* Requested owned storage; excluded: borrowed mixer/backend, device, VM and allocator headers. */
+    typedef struct FVM_SWFSoundOutputStorageInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof this observation. */
+        size_t fixed_bytes; /* Native output object and vector descriptors. */
+        size_t pcm_bytes; /* Exact fixed pending/retry buffer. */
+        size_t history_bytes; /* Optional exact accepted-PCM history ring. */
+        size_t identity_bytes; /* Optional exact ID deadline table. */
+        size_t retained_bytes; /* Checked sum of the four owned charges. */
+    } FVM_SWFSoundOutputStorageInfo;
+    /* Copy storage without allocation, callbacks or VM. Null/wrong size/reentry INVALID_ARGUMENT;
+     * checked sum overflow OOM; errors preserve out. Externally serialize live output. */
+    FVM_API FVM_Result fvm_swf_sound_output_storage_info(const FVM_SWFSoundOutput *,
+                                                         FVM_SWFSoundOutputStorageInfo *);
+    /* Observe backend backlog and test whether ID 1..65535 has not reached its exclusive end
+     * on the accepted-minus-queued clock. Includes uncomposed/pending registered voice time;
+     * not DAC audibility. Tracking disabled UNSUPPORTED. Invalid/reentry INVALID_ARGUMENT;
+     * backend errors propagate, bad_alloc OOM, other exceptions ERROR; preserve out on failure.
+     * No allocation/VM; callback may block per backend contract. Keep owners serialized/live. */
+    FVM_API FVM_Result fvm_swf_sound_output_sound_active(FVM_SWFSoundOutput *, unsigned int id,
+                                                         int *out);
     /* Prepare/retry one block. NOT_FOUND means no complete block fits below the queue target. */
     FVM_API FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *, size_t *accepted_frames);
     /* Set queue pause state; never implicitly primes or clears PCM. */

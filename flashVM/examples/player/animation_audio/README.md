@@ -135,11 +135,11 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 | [`fvm_movieclip_set_sound_callback`](../../../include/flashvm/movieclip.h#L21) | Синхронно доставляет настоящий root StartSound до DoAction; [contract](../../../doc/MOVIECLIP_SOUND.md). |
 | [`fvm_swf_sound_mixer_submit`](../../../include/flashvm/swf_sound_mixer.h#L66) | Готовит независимый native voice или применяет stop/no-multiple; [mixer](../../../doc/SWF_SOUND_MIXER.md). |
 | [`fvm_swf_sound_mixer_create_configured`](../../../include/flashvm/swf_sound_mixer.h#L48) | Выделяет bounded mixer и явно выбирает 48 kHz stereo conversion; [conversion](../../../doc/SWF_SOUND_CONVERSION.md). |
-| [`fvm_swf_sound_output_pump`](../../../include/flashvm/swf_sound_output.h#L55) | Готовит/повторяет один PCM-блок; [output](../../../doc/SWF_SOUND_OUTPUT.md#pump-and-retry). |
-| [`fvm_swf_sound_output_pause`](../../../include/flashvm/swf_sound_output.h#L57) | Управляет потреблением при воспроизведении/Android background; [pause](../../../doc/SWF_SOUND_OUTPUT.md#pause-and-copied-clock). |
-| [`fvm_swf_sound_output_stop`](../../../include/flashvm/swf_sound_output.h#L61) | Удаляет очередь, pending и голоса перед закрытием; [stop](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
-| [`fvm_audio_sdl_queue_open`](../../../include/flashvm/swf_sound_output.h#L77) | Открывает настоящий output; host владеет device, SDK failure передаётся наружу; [SDL](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
-| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L93) | Закрывает device до SDL_Quit; [cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
+| [`fvm_swf_sound_output_pump`](../../../include/flashvm/swf_sound_output.h#L84) | Готовит/повторяет один PCM-блок; [output](../../../doc/SWF_SOUND_OUTPUT.md#pump-and-retry). |
+| [`fvm_swf_sound_output_pause`](../../../include/flashvm/swf_sound_output.h#L86) | Управляет потреблением при воспроизведении/Android background; [pause](../../../doc/SWF_SOUND_OUTPUT.md#pause-and-copied-clock). |
+| [`fvm_swf_sound_output_stop`](../../../include/flashvm/swf_sound_output.h#L90) | Удаляет очередь, pending и голоса перед закрытием; [stop](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
+| [`fvm_audio_sdl_queue_open`](../../../include/flashvm/swf_sound_output.h#L106) | Открывает настоящий output; host владеет device, SDK failure передаётся наружу; [SDL](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
+| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L122) | Закрывает device до SDL_Quit; [cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
 | [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64) | Выбирает interpreter/automatic JIT с явной проверкой доступности; [execution](../../../doc/API_INDEX.md). |
 | [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71) | Возвращает фактические execution counters, не состояние CLI-флага; [API index](../../../doc/API_INDEX.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) / [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | Закрепляют/освобождают managed root и HostInput на срок host-владения; [GC](../../../doc/GC_NATIVE_ROOTS.md). |
@@ -165,8 +165,8 @@ boundary. [EN](../../../doc/PLAYER_AUDIO_RELEASE.md) /
 
 | API | Individual behavior and documentation |
 | --- | --- |
-| [`fvm_swf_sound_output_set_release`](../../../include/flashvm/swf_sound_output.h#L63) | Optional history before worker start; [configuration/OOM](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_set_release). |
-| [`fvm_swf_sound_output_stop_release`](../../../include/flashvm/swf_sound_output.h#L67) | Context stop callback clears and queues a bounded tail; [failure/retry/limits](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_stop_release). |
+| [`fvm_swf_sound_output_set_release`](../../../include/flashvm/swf_sound_output.h#L92) | Optional history before worker start; [configuration/OOM](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_set_release). |
+| [`fvm_swf_sound_output_stop_release`](../../../include/flashvm/swf_sound_output.h#L96) | Context stop callback clears and queues a bounded tail; [failure/retry/limits](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_stop_release). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -177,8 +177,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:93](../../../include/flashvm/swf_sound_output.h#L93) |
-| `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:77](../../../include/flashvm/swf_sound_output.h#L77) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:122](../../../include/flashvm/swf_sound_output.h#L122) |
+| `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:106](../../../include/flashvm/swf_sound_output.h#L106) |
 | `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../../../include/flashvm/execution_mode.h#L71) |
 | `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
@@ -192,9 +192,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../../../include/flashvm/swf_sound_mixer.h#L23) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../../../include/flashvm/swf_sound_mixer.h#L66) |
-| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:57](../../../include/flashvm/swf_sound_output.h#L57) |
-| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:55](../../../include/flashvm/swf_sound_output.h#L55) |
-| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:63](../../../include/flashvm/swf_sound_output.h#L63) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:61](../../../include/flashvm/swf_sound_output.h#L61) |
-| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:67](../../../include/flashvm/swf_sound_output.h#L67) |
+| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:86](../../../include/flashvm/swf_sound_output.h#L86) |
+| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:84](../../../include/flashvm/swf_sound_output.h#L84) |
+| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:92](../../../include/flashvm/swf_sound_output.h#L92) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:90](../../../include/flashvm/swf_sound_output.h#L90) |
+| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:96](../../../include/flashvm/swf_sound_output.h#L96) |
 <!-- source-links:end -->
