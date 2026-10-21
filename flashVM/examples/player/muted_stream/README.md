@@ -1,3 +1,5 @@
+Current player policy / Текущая политика: [single root PCM playback](../../../doc/PLAYER_PCM_STREAMS.md). The standalone C89 example below remains explicitly muted.
+
 # Explicitly muted root streaming movie
 
 The supplied [SWF8](muted-stream.swf) contains one 320×200 blue-grey frame and
@@ -15,9 +17,9 @@ build/player/frontend/flashvm_player --interpreter --mute --frames 3 \
   flashVM/examples/player/muted_stream/muted-stream.swf
 ```
 
-Use --jit only where available. With --mute the scene plays silently; without it,
-root streaming playback fails explicitly before opening a native window/device.
-The latter is intentional until a proper streaming output clock is implemented.
+Use --jit only where available. With --mute the scene plays silently. Since v0.758
+this single-PCM fixture also plays without --mute, although three samples are too
+short for an audible demonstration; use the [longer PCM example](../pcm_stream/README.md).
 For bounded headless loading, set SDL_VIDEODRIVER=dummy and --fps 1000. That is not
 physical video/audio acceptance.
 

@@ -453,10 +453,15 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         else if (delta != 0)
         {
 #if SDL_VERSION_ATLEAST(2, 26, 0)
-            /* SDL's renderer event watch has already applied logical size, viewport
-             * and DPI scaling to queued wheel positions. Never transform twice. */
-            view->input.x = event->wheel.mouseX;
-            view->input.y = event->wheel.mouseY;
+            /* SDL's renderer watch maps motion/button events, not wheel mouseX/mouseY.
+             * Convert native window coordinates exactly once through the live viewport. */
+            float logical_x = (float)event->wheel.mouseX;
+            float logical_y = (float)event->wheel.mouseY;
+            if (event->wheel.windowID)
+                SDL_RenderWindowToLogical(view->renderer, event->wheel.mouseX, event->wheel.mouseY,
+                                          &logical_x, &logical_y);
+            view->input.x = logical_x;
+            view->input.y = logical_y;
 #endif
             queue_input(view, FVM_DESKTOP_EVENT_WHEEL, FVM_MOUSE_EVENT_MOVE, 0, delta);
         }

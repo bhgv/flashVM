@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Root streaming audio is either explicitly muted or rejected before SDL initialization."""
+"""Supported single PCM streams play; unsupported combinations fail before native initialization."""
 import os
 from pathlib import Path
 import struct
@@ -20,10 +20,12 @@ def movie(kind):
     if kind=='mp3':
         header=tag(18,b'\x0e\x2e\x01\0\0\0')
         block=tag(19,b'\x01\0\0\0\xff\xe0')
+    if kind=='segments':
+        block+=tag(1)+header+tag(19,b'\0\x10')
     if kind=='mixed':
         header=tag(14,struct.pack('<HBI',1,0x3e,1)+b'\0\x10')+header
         block+=tag(15,b'\x01\0\0')
-    body=rect(0,640,0,640)+struct.pack('<HH',24*256,1)+header+block+tag(1)+tag(0)
+    body=rect(0,640,0,640)+struct.pack('<HH',24*256,2 if kind=='segments' else 1)+header+block+tag(1)+tag(0)
     data=b'FWS\x08'+struct.pack('<I',len(body)+8)+body
     return b'CWS'+data[3:8]+zlib.compress(data[8:]) if kind=='cws' else data
 
@@ -31,23 +33,23 @@ def movie(kind):
 def main():
     executable,mode=sys.argv[1:]
     with tempfile.TemporaryDirectory() as directory:
-        for kind in ['valid','cws','mp3','mixed','short_header','odd_pcm','orphan','duplicate']:
+        for kind in ['valid','cws','mp3','mixed','segments','short_header','odd_pcm','orphan','duplicate']:
             path=Path(directory)/'stream.swf';path.write_bytes(movie(kind))
             for mute in [False,True]:
-                # Unmuted preflight must not touch a video/audio driver, even when none exists.
-                env=dict(os.environ,SDL_VIDEODRIVER='dummy' if mute else 'flashvm-no-video',
-                         SDL_AUDIODRIVER='flashvm-no-audio')
+                supported=kind in ('valid','cws')
+                env=dict(os.environ,SDL_VIDEODRIVER='dummy' if mute or supported else 'flashvm-no-video',
+                         SDL_AUDIODRIVER='dummy' if supported and not mute else 'flashvm-no-audio')
                 command=[executable,mode,'--frames','1','--fps','1000','--stats']
                 if mute:command.append('--mute')
                 result=subprocess.run(command+[str(path)],env=env,capture_output=True,text=True,timeout=15)
                 output=result.stdout+result.stderr
                 if mode=='--jit' and 'requested JIT backend unavailable' in output:return 77
-                if kind in ('valid','cws','mp3','mixed') and mute:
-                    assert result.returncode==0 and 'audio_device=0' in output,output
+                if supported or (kind in ('mp3','mixed','segments') and mute):
+                    assert result.returncode==0 and ('audio_device=0' if mute else 'audio_device=1') in output,output
                     if kind=='mixed':assert 'sound_events=1' in output,output
                 else:
                     assert result.returncode!=0,output
-                    expected='streaming audio playback is unsupported' if kind in ('valid','cws','mp3','mixed') else 'root stream validation failed'
+                    expected='root audio policy' if kind in ('mp3','mixed','segments') else 'root stream validation failed'
                     assert expected in output,(kind,mute,output)
                     assert 'cannot open desktop window' not in output,output
     print('PASS root stream preflight, explicit mute and malformed controls',mode)

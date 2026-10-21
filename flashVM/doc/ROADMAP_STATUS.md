@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.757
+# FlashVM stage status / Состояние стадий — v0.758
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.758: Actual desktop CLI plays one root PCM stream through an owner-authorized native SDL worker. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Exact FWS/CWS accepted PCM checks use dummy audio; mixed/codecs/multi-header/drift/physical acceptance remain open.
 
 v0.757: Intrinsic MovieClip playback observations expose selected frame, entry and play flags without script getters or allocation. [EN](STREAM_PCM_OUTPUT.md) / [RU](STREAM_PCM_OUTPUT.ru.md). An observation is not a navigation history or device acceptance.
 

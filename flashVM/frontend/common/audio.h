@@ -3,6 +3,7 @@
 #define FVM_DESKTOP_AUDIO_H
 #include "flashvm/swf_sound_output.h"
 #include "flashvm/audio_stop.h"
+#include "flashvm/swf_stream_output.h"
 #include <SDL.h>
 #include "audio_trace.h"
 #define FVM_DESKTOP_AUDIO_RELEASE_DIVISOR 200U /* Five-millisecond native stop release. */
@@ -17,7 +18,16 @@
 #define FVM_DESKTOP_AUDIO_WAIT 5 /* Worker interval and responsive main-thread event wait, ms. */
 typedef struct FVM_DesktopAudio
 {
-    FVM_SWFSoundMixer *mixer;   /* Owned native voices; every access is serialized by mutex. */
+    FVM_SWFStreamSoundSnapshot *stream_source; /* Owned immutable PCM; close after worker join. */
+    FVM_SWFStreamConverter stream_converter;   /* Exclusively worker/locked-owner native cursor. */
+    FVM_SWFStreamOutput stream_output; /* Caller-buffered native producer, valid with source. */
+    short stream_pcm[FVM_DESKTOP_AUDIO_BLOCK * FVM_DESKTOP_AUDIO_CHANNELS]; /* Owned retry bytes. */
+    unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
+    unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
+    int stream_entered;           /* Prior entry flag, used to detect pending navigation. */
+    int stream_movie_paused;  /* Native clip stop flag, independent of foreground/session pause. */
+    int stream_cancelled;     /* StopSounds holds this stream until a detected navigation reset. */
+    FVM_SWFSoundMixer *mixer; /* Owned native voices; every access is serialized by mutex. */
     FVM_SWFSoundOutput *output; /* Owned PCM producer, serialized by mutex. */
     FVM_SDLAudioQueue *device;  /* Owned native output, closed after joining the worker. */
     FVM_AudioStopBinding
@@ -41,7 +51,16 @@ typedef struct FVM_DesktopAudio
 extern "C"
 {
 #endif
-    /* Acquire native ownership and start a producer only when the file has root sound controls. */
+    /* Validate supported unmuted root stream policy before native presentation/device acquisition.
+     * One PCM segment without root StartSound events; codec/mixed/multi-segment UNSUPPORTED.
+     * Owner only; no device, callbacks or output allocation. Core stream alignment errors
+     * propagate. */
+    FVM_Result fvm_desktop_audio_validate(FVM_Context *);
+    /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
+     * Pending/backward/skipped navigation clears old FIFO and resets phase; repeated observations
+     * do not rewind. No VM pointer reaches worker. Host pause remains independent. */
+    FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
+    /* Acquire native ownership for root events or one supported PCM stream; never both. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
     FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
@@ -55,6 +74,8 @@ extern "C"
     /* Copy queue observation under the same native mutex; useful for diagnostics and regression
      * tests. */
     FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *, FVM_SWFSoundOutputInfo *);
+    /* Stream-only copied observation under producer mutex; invalid/wrong-size preserves output. */
+    FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
     /* Owner safe point: detach sound delivery and join/release old root audio while keeping
      * cumulative counters. Context/window remain alive. Repeated clearing is safe. */
     FVM_Result fvm_desktop_audio_clear(FVM_Context *, FVM_DesktopAudio *);

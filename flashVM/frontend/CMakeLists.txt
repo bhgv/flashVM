@@ -276,6 +276,16 @@ endif()
 
 # Native-only producer progress is independent of a deliberately stalled VM/render thread.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_stream_worker tests/stream_worker.cpp common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_stream_worker PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_stream_worker PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_stream_worker PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_stream_worker PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_stream_worker COMMAND flashvm_frontend_stream_worker)
+  set_tests_properties(flashvm_frontend_stream_worker PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 15)
   add_executable(flashvm_frontend_audio_worker tests/audio_worker.cpp common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_audio_worker PRIVATE flashvm SDL2::SDL2)
   if(MSVC)
@@ -385,6 +395,9 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_player_stream_audio COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_audio.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_player_stream_audio PROPERTIES TIMEOUT 30)
   foreach(mode interpreter jit)
     add_test(NAME flashvm_player_stream_preflight_${mode} COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_preflight.py $<TARGET_FILE:flashvm_player> --${mode})
@@ -394,7 +407,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID)
-  add_executable(flashvm_frontend_input_reader tests/input_reader.c common/transfer.c common/options.c
+  add_executable(flashvm_frontend_input_reader tests/input_reader.c common/transfer.c common/frame.c common/playback.c common/playback_mailbox.c common/options.c
     common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_input_reader PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_input_reader PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
@@ -421,7 +434,7 @@ endif()
 
 # Real collector safe points between slow frames; no native-window acceptance claim.
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_event_gc ${frontend_os}/main.c tests/event_gc.c common/transfer.c
+  add_executable(flashvm_frontend_event_gc ${frontend_os}/main.c tests/event_gc.c common/transfer.c common/frame.c common/playback.c common/playback_mailbox.c
     common/options.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_event_gc PRIVATE flashvm SDL2::SDL2)
   if(WIN32)
@@ -542,7 +555,7 @@ if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_memory_origin tests/memory_origin.c common/transfer.c common/options.c
+  add_executable(flashvm_frontend_memory_origin tests/memory_origin.c common/transfer.c common/frame.c common/playback.c common/playback_mailbox.c common/options.c
     common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_memory_origin PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_memory_origin PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)

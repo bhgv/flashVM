@@ -11,6 +11,9 @@ int fvm_port_monotonic_ms(double *out) { if (!out) return 0; *out = milliseconds
 /* Return a stable owned test window descriptor; the real host SDL window path is tested separately. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *name, unsigned int width, unsigned int height)
 { (void)name; view.width=width; view.height=height; return &view; }
+/* The protocol fixture has no window in either presentation mode; preserve the same owned view. */
+FVM_DesktopWindow *fvm_desktop_window_open_offscreen(unsigned int width,unsigned int height)
+{ return fvm_desktop_window_open("offscreen",width,height); }
 /* Inspect actual rasterized RGBA bytes at an interior shape pixel, not merely a redraw flag. */
 int fvm_desktop_window_present(FVM_DesktopWindow *window,const FVM_RasterSurface *surface,size_t count)
 {

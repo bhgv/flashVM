@@ -18,16 +18,16 @@ native queued records. Script Mouse listeners are the supported SWF6–8 subset.
 The wheel C fixture uses a real SDL dummy window and actual VM listeners, checks
 origin restoration, ordering, cancellation/error consumption, synthesis/touch/
 background/foreign filtering and overflow. No physical wheel/device is certified.
-## Queued logical position (v0.657 correction)
+## Queued logical position (v0.758 correction)
 
-SDL 2.26+ carries mouseX/mouseY on wheel events. With a logical renderer SDL's
-own event watch transforms those coordinates before the queued event is consumed.
-The player now uses them directly, as it already does for mouse motion/buttons.
-The v0.653 extra conversion was incorrect after resizing. The regression now
-uses SDL_PushEvent with the actual window ID and the real event queue: a 64×32
-window with centered 32×32 scene maps (26,20) to (10,20) exactly once. Older SDKs
-retain the last logical pointer position. Zero-window-ID synthetic events must
-already use logical coordinates, like other explicit synthetic input.
+SDL 2.26+ carries mouseX/mouseY on wheel events. The earlier v0.657 claim that
+SDL's renderer watch transforms wheel positions was wrong for the tested SDL 2.30
+SDK: that watch transforms motion/button events, while wheel coordinates remain
+native window positions. The player now calls SDL_RenderWindowToLogical once for
+wheel events with a real window ID. The real SDL_PushEvent regression resizes a
+window to 64×32 with a centered 32×32 scene and verifies (26,20) becomes (10,20).
+Older SDKs retain the last logical pointer position. Explicit zero-window-ID
+synthetic events already carry logical coordinates and bypass conversion.
 
 ## Cursor visibility (v0.654)
 

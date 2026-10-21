@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Root PCM player v0.758: one segment, exclusive SDL queue, native owner-frame authorization and joined teardown. FWS/CWS exact PCM oracle, stop/play/seek/GC/StopSounds worker checks. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Dummy queue is not physical device or foreign platform acceptance.
+
 Hybrid heartbeat v0.731: configurable independent timers, requested TCP checks, bounded advice, replay/epoch and compact hint codec. Policy tests do not claim network acceptance. [EN](HYBRID_HEARTBEAT.md) / [RU](HYBRID_HEARTBEAT.ru.md).
 
 Resource debugger v0.730: actual AVM1 stops, copied frames, binary commands/events, controller arbitration and owner resume. Native/JIT and transport limits are explicit. [EN](RESOURCE_DEBUGGER.md) / [RU](RESOURCE_DEBUGGER.ru.md).

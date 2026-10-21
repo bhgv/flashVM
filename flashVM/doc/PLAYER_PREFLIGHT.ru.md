@@ -2,6 +2,8 @@
 
 [English](PLAYER_PREFLIGHT.md).
 
+Текущая политика v0.758: [один root PCM stream воспроизводится](PLAYER_PCM_STREAMS.ru.md); остальные кодеки, смесь и несколько потоков отклоняются до native setup. Ниже сохранён исходный контракт muted import.
+
 ## Namespace курсора SWF5 (v0.662)
 
 Проигрыватель теперь устанавливает Mouse для SWF5–8 по прежнему контракту
@@ -16,8 +18,8 @@ flashvm_player_legacy_cursor_interpreter/jit исполняют настоящи
 проверяет скриптовую семантику, не физический курсор и не полный Flash API.
 ## Явное отключение корневого потока (v0.663)
 
-Root streaming sound проверяется до создания окна/устройства. Без --mute фильм
-с корневым потоком явно сообщает о неподдержанном воспроизведении. С --mute
+Root streaming sound проверяется до создания окна/устройства. Изначально без --mute
+все root streams отклонялись; v0.758 разрешает один PCM stream по политике выше. С --mute
 проигрыватель использует новый [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L142) и
 [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L132): проверяет и пропускает только корневые потоковые
 управления. Прежний [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L93) остаётся строгим.

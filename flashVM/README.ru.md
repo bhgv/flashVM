@@ -1,4 +1,4 @@
-Версия разработки: **0.757** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.758** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.758: [Один корневой PCM-поток через SDL-очередь с разрешением по кадрам](doc/PLAYER_PCM_STREAMS.ru.md).
 
 v0.756: [Drive native stream frame gates from an actual MovieClip](doc/STREAM_PCM_OUTPUT.ru.md).
 

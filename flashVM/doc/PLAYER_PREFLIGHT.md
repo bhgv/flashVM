@@ -2,6 +2,8 @@
 
 [Русский](PLAYER_PREFLIGHT.ru.md).
 
+Current v0.758 policy: [one PCM root stream plays](PLAYER_PCM_STREAMS.md); unsupported codecs/mixed/multiple streams still fail before native setup. The section below records the original muted-import contract.
+
 ## SWF5 cursor namespace (v0.662)
 
 The player now installs Mouse for SWF5–8, matching the existing
@@ -16,8 +18,8 @@ separate SWF5 listener call must fail while SWF6–8 listener calls succeed. Dum
 video checks script/runtime behavior, not a physical cursor or complete Flash API.
 ## Explicit root-stream muting (v0.663)
 
-Root streaming sound is validated before window/device setup. Unmuted movies
-with root streams report unsupported playback instead of silently omitting audio.
+Root streaming sound is validated before window/device setup. Originally all unmuted root streams were rejected; v0.758 permits the bounded
+single-PCM policy linked above.
 With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L142) API and
 [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L132). It validates and omits only root stream controls
 from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L93) remains strict.

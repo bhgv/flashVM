@@ -3,6 +3,30 @@
 #include "flashvm/movieclip.h"
 #include <string.h>
 
+/* Reject unsupported combinations before a window or audio endpoint can be opened. */
+FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
+{
+    size_t streams = 0, events = 0;
+    FVM_SWFStreamSoundInfo info;
+    FVM_Result result = fvm_swf_stream_sound_count(context, &streams);
+    if (result != FVM_OK || !streams)
+        return result;
+    if (streams != 1)
+        return FVM_UNSUPPORTED;
+    result = fvm_swf_sound_event_count(context, &events);
+    if (result != FVM_OK)
+        return result;
+    if (events)
+        return FVM_UNSUPPORTED;
+    info.struct_size = sizeof(info);
+    result = fvm_swf_stream_sound_at(context, 0, &info);
+    if (result != FVM_OK)
+        return result;
+    return info.format == FVM_SWF_SOUND_PCM_NATIVE || info.format == FVM_SWF_SOUND_PCM_LE
+               ? FVM_OK
+               : FVM_UNSUPPORTED;
+}
+
 /* Forward the actual write, recording only blocks accepted by the real SDL adapter. */
 static FVM_Result traced_write(void *raw, const short *pcm, size_t frames)
 {
@@ -62,7 +86,15 @@ static FVM_Result stop_context_audio(void *raw)
     FVM_Result result;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
-    result = fvm_swf_sound_output_stop_release(audio->output);
+    if (audio->stream_source)
+    {
+        result = fvm_swf_stream_output_seek(&audio->stream_output,
+                                            audio->stream_converter.block_count, 0);
+        if (result == FVM_OK)
+            audio->stream_cancelled = 1;
+    }
+    else
+        result = fvm_swf_sound_output_stop_release(audio->output);
     if (result == FVM_OK)
     {
         ++audio->stops;
@@ -73,12 +105,43 @@ static FVM_Result stop_context_audio(void *raw)
     return result;
 }
 
+/* Caller holds mutex; one movie-authorized PCM stream owns this FIFO exclusively. */
+static FVM_Result refill_stream(FVM_DesktopAudio *audio)
+{
+    FVM_SWFStreamOutputInfo info;
+    FVM_Result result;
+    unsigned int attempt;
+    int held = 0;
+    if (audio->stream_movie_paused || audio->stream_cancelled)
+        return fvm_swf_stream_output_pause(&audio->stream_output, 1);
+    for (attempt = 0; attempt < FVM_DESKTOP_AUDIO_PUMPS; ++attempt)
+    {
+        result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
+        if (result == FVM_NOT_FOUND)
+        {
+            held = 1;
+            break;
+        }
+        if (result != FVM_OK)
+            return result;
+    }
+    info.struct_size = sizeof(info);
+    result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+    /* A short authorized block/EOF cannot reach a full driver reserve; let it drain. */
+    if (result == FVM_OK && info.paused && info.queued_frames &&
+        (held || info.queued_frames >= audio->resume_frames))
+        result = fvm_swf_stream_output_pause(&audio->stream_output, 0);
+    return result;
+}
+
 /* Caller holds the mutex; this path uses only independent native PCM and SDL queue state. */
 static FVM_Result refill(FVM_DesktopAudio *audio)
 {
     FVM_SWFSoundOutputInfo info;
     FVM_Result result;
     unsigned int attempt;
+    if (audio->stream_source)
+        return refill_stream(audio);
     info.struct_size = sizeof(info);
     result = fvm_swf_sound_output_info(audio->output, &info);
     if (result != FVM_OK)
@@ -133,15 +196,30 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     FVM_SDLAudioQueueInfo device_info;
     FVM_SWFSoundMixerConfig geometry;
     FVM_Result result;
-    size_t count = 0;
-    (void)clip;
+    size_t count = 0, streams = 0;
     if (!audio || (paused != 0 && paused != 1))
         return FVM_INVALID_ARGUMENT;
     memset(audio, 0, sizeof(*audio));
     audio->suspended = paused; /* Publish the initial policy before the worker can prime/unpause. */
     result = fvm_swf_sound_event_count(context, &count);
-    if (result != FVM_OK || !count)
+    if (result != FVM_OK)
         return result;
+    result = fvm_swf_stream_sound_count(context, &streams);
+    if (result != FVM_OK || (!count && !streams))
+        return result;
+    result = fvm_desktop_audio_validate(context);
+    if (result != FVM_OK)
+        return result;
+    if (streams)
+    {
+        result = fvm_swf_stream_sound_snapshot_open(context, 0, &audio->stream_source);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_swf_stream_converter_init(&audio->stream_converter, audio->stream_source,
+                                               FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS);
+        if (result != FVM_OK)
+            return result;
+    }
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);
     if (result != FVM_OK)
@@ -167,29 +245,43 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         backend.pause = traced_pause;
         backend.clear = traced_clear;
     }
-    geometry.struct_size = sizeof(geometry);
-    geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
-    geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
-    geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
-    geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
-    result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
-    if (result != FVM_OK)
-        return result;
-    result = fvm_swf_sound_output_create(audio->mixer, &backend, FVM_DESKTOP_AUDIO_BLOCK,
-                                         audio->target_frames, &audio->output);
-    if (result != FVM_OK)
-        return result;
-    result = fvm_swf_sound_output_set_release(audio->output, FVM_DESKTOP_AUDIO_RATE /
-                                                                 FVM_DESKTOP_AUDIO_RELEASE_DIVISOR);
-    if (result != FVM_OK)
-        return result;
+    if (audio->stream_source)
+    {
+        result =
+            fvm_swf_stream_output_init(&audio->stream_output, &audio->stream_converter, &backend,
+                                       audio->stream_pcm, sizeof(audio->stream_pcm) / sizeof(short),
+                                       FVM_DESKTOP_AUDIO_BLOCK, audio->target_frames);
+        if (result != FVM_OK)
+            return result;
+    }
+    else
+    {
+        geometry.struct_size = sizeof(geometry);
+        geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
+        geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
+        geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
+        geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
+        result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_swf_sound_output_create(audio->mixer, &backend, FVM_DESKTOP_AUDIO_BLOCK,
+                                             audio->target_frames, &audio->output);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_swf_sound_output_set_release(
+            audio->output, FVM_DESKTOP_AUDIO_RATE / FVM_DESKTOP_AUDIO_RELEASE_DIVISOR);
+        if (result != FVM_OK)
+            return result;
+    }
     audio->mutex = SDL_CreateMutex();
     if (!audio->mutex)
         return FVM_OUT_OF_MEMORY;
     result =
         fvm_audio_stop_binding_create(context, stop_context_audio, audio, &audio->stop_binding);
-    if (result == FVM_OK)
+    if (result == FVM_OK && !audio->stream_source)
         result = fvm_movieclip_set_sound_callback(context, sound_event, audio);
+    if (result == FVM_OK)
+        result = fvm_desktop_audio_timeline(context, clip, audio);
     if (result != FVM_OK)
         return result;
     SDL_AtomicSet(&audio->running, 1);
@@ -212,18 +304,61 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_De
     return fvm_desktop_audio_open_paused(context, clip, audio, 0);
 }
 
+/* [GC:] VM inspection stays on owner; native producer receives only copied scalar policy. */
+FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
+                                      FVM_DesktopAudio *audio)
+{
+    FVM_MovieClipPlaybackInfo info;
+    FVM_Result result = FVM_OK;
+    int reset;
+    if (!audio)
+        return FVM_INVALID_ARGUMENT;
+    if (!audio->stream_source)
+        return FVM_OK;
+    info.struct_size = sizeof(info);
+    result = fvm_movieclip_get_playback_info(context, clip, &info);
+    if (result != FVM_OK)
+        return result;
+    if (SDL_LockMutex(audio->mutex) != 0)
+        return FVM_ERROR;
+    reset = audio->stream_selected &&
+            ((!info.entered && (audio->stream_entered || info.frame != audio->stream_selected)) ||
+             info.frame < audio->stream_selected || info.frame > audio->stream_selected + 1);
+    if (reset)
+    {
+        result = fvm_swf_stream_output_seek_frame(&audio->stream_output, info.frame);
+        if (result == FVM_OK)
+        {
+            audio->stream_cancelled = 0;
+            fvm_desktop_trace_event(audio->trace, "stream_seek", info.frame, result);
+        }
+    }
+    if (result == FVM_OK)
+    {
+        audio->stream_selected = info.frame;
+        audio->stream_entered = info.entered;
+        audio->stream_frame = info.entered ? info.frame : 0;
+        audio->stream_movie_paused = !info.playing;
+        if (!info.playing || !info.entered)
+            result = fvm_swf_stream_output_pause(&audio->stream_output, 1);
+    }
+    SDL_UnlockMutex(audio->mutex);
+    return result;
+}
+
 /* Background suspension preserves the FIFO; worker primes again before foreground resume. */
 FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *audio, int paused)
 {
     FVM_Result result = FVM_OK;
     if (paused != 0 && paused != 1)
         return FVM_INVALID_ARGUMENT;
-    if (!audio->output)
+    if (!audio->output && !audio->stream_source)
         return FVM_OK;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
     if (paused)
-        result = fvm_swf_sound_output_pause(audio->output, 1);
+        result = audio->stream_source ? fvm_swf_stream_output_pause(&audio->stream_output, 1)
+                                      : fvm_swf_sound_output_pause(audio->output, 1);
     if (result == FVM_OK)
         audio->suspended = paused;
     SDL_UnlockMutex(audio->mutex);
@@ -236,7 +371,7 @@ FVM_Result fvm_desktop_audio_tick_paused(FVM_DesktopAudio *audio, int paused)
     FVM_Result result;
     if (!audio || (paused != 0 && paused != 1))
         return FVM_INVALID_ARGUMENT;
-    if (!audio->output)
+    if (!audio->output && !audio->stream_source)
         return FVM_OK;
     result = (FVM_Result)SDL_AtomicGet(&audio->error);
     if (result != FVM_OK)
@@ -259,6 +394,19 @@ FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *audio, FVM_SWFSoundOutputInf
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
     result = fvm_swf_sound_output_info(audio->output, info);
+    SDL_UnlockMutex(audio->mutex);
+    return result;
+}
+
+/* Copy stream diagnostics without racing native preparation or queue accounting. */
+FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamOutputInfo *info)
+{
+    FVM_Result result;
+    if (!audio || !audio->stream_source)
+        return FVM_INVALID_ARGUMENT;
+    if (SDL_LockMutex(audio->mutex) != 0)
+        return FVM_ERROR;
+    result = fvm_swf_stream_output_info(&audio->stream_output, info);
     SDL_UnlockMutex(audio->mutex);
     return result;
 }
@@ -293,10 +441,13 @@ void fvm_desktop_audio_close(FVM_DesktopAudio *audio)
     SDL_AtomicSet(&audio->running, 0);
     if (audio->thread)
         SDL_WaitThread(audio->thread, 0);
+    if (audio->stream_source && audio->stream_output.struct_size)
+        fvm_swf_stream_output_seek(&audio->stream_output, audio->stream_converter.block_count, 0);
     if (audio->output)
         fvm_swf_sound_output_stop(audio->output);
     fvm_swf_sound_output_close(audio->output);
     fvm_swf_sound_mixer_close(audio->mixer);
+    fvm_swf_stream_sound_snapshot_close(audio->stream_source);
     fvm_desktop_trace_close(audio->trace);
     fvm_audio_sdl_queue_close(audio->device);
     if (audio->mutex)

@@ -466,7 +466,7 @@ static FVM_Result background_fetch(const char *reference, const char *base, FVM_
             if (!fvm_desktop_window_events(session->window, 0))
                 session->closed = 1;
             result = fvm_desktop_window_status(session->window);
-            if (result == FVM_OK && session->audio && session->audio->output)
+            if (result == FVM_OK && session->audio && session->audio->device)
                 result = fvm_desktop_window_active(session->window)
                              ? fvm_desktop_audio_tick_paused(
                                    session->audio, session->control && session->control->paused)
@@ -1090,8 +1090,12 @@ static FVM_Result playback_observe(FVM_DesktopPlaybackSession *control,
 
 /* Poll the native error latch without resuming the PCM producer while timeline control is paused.
  */
-static FVM_Result playback_audio(FVM_DesktopAudio *audio, const FVM_DesktopPlaybackSession *control)
+static FVM_Result playback_audio(FVM_Context *context, FVM_Object *clip, FVM_DesktopAudio *audio,
+                                  const FVM_DesktopPlaybackSession *control)
 {
+    FVM_Result result = fvm_desktop_audio_timeline(context, clip, audio);
+    if (result != FVM_OK)
+        return result;
     return fvm_desktop_audio_tick_paused(audio, control && control->paused);
 }
 
@@ -1115,7 +1119,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     FVM_RasterSurface surface;
     FVM_Affine viewport;
     FVM_ExecutionMode mode;
-    size_t stream_count = 0; /* Detect unsupported root streaming playback before native setup. */
+    size_t stream_count = 0; /* Validate root stream policy before native setup. */
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
     unsigned long presentations = 0,
@@ -1150,13 +1154,10 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (!checked(fvm_swf_stream_sound_count(context, &stream_count), "root stream validation",
                  path))
         goto cleanup;
-    if (stream_count && !options->mute)
-    {
-        fprintf(stderr,
-                "%s: root streaming audio playback is unsupported; use --mute to play silently\n",
-                path);
+    if (!options->mute &&
+        !checked(fvm_desktop_audio_validate(context),
+                 "root audio policy (single PCM stream without StartSound required)", path))
         goto cleanup;
-    }
     authored = (double)info.frame_rate_fixed8 / FVM_DESKTOP_FIXED8_UNIT;
     if (!fvm_desktop_rate(options, authored, &rate))
     {
@@ -1197,7 +1198,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         !checked(fvm_standard_broadcaster_install(context), "AsBroadcaster namespace", path))
         goto cleanup;
     if (!checked(fvm_movieclip_load_swf_ex(context, bytes, length, "_root",
-                                           options->mute ? FVM_SWF_IMPORT_MUTE_ROOT_STREAMS : 0,
+                                           (options->mute || stream_count)
+                                               ? FVM_SWF_IMPORT_MUTE_ROOT_STREAMS : 0,
                                            &clip),
                  "scene import", path))
         goto cleanup;
@@ -1274,7 +1276,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_READY, context, clip, path, ticks,
                                   presentations),
                  "playback control", path) ||
-        (control && !checked(playback_audio(&audio, control), "initial controlled PCM", path)))
+        (control && !checked(playback_audio(context, clip, &audio, control),
+                             "initial controlled PCM", path)))
         goto cleanup;
     if (control && control->stopped)
         *quit = 1;
@@ -1304,7 +1307,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         }
         if (!fvm_desktop_window_active(window))
         {
-            if (audio.output &&
+            if (audio.device &&
                 !checked(fvm_desktop_audio_pause(&audio, 1), "background audio pause", path))
                 goto cleanup;
             if (!fvm_desktop_window_events(window, FVM_DESKTOP_AUDIO_WAIT))
@@ -1316,7 +1319,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             next = fvm_desktop_now();
             continue;
         }
-        if (!checked(playback_audio(&audio, control), "PCM queue", path))
+        if (!checked(playback_audio(context, clip, &audio, control), "PCM queue", path))
             goto cleanup;
         if (!checked(fvm_desktop_window_pump_clip_input(window, context, clip, -viewport.x0,
                                                         -viewport.y0),
@@ -1401,7 +1404,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                     continue;
             }
             wait = (int)(next - now);
-            if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
+            if (audio.device && wait > FVM_DESKTOP_AUDIO_WAIT)
                 wait = FVM_DESKTOP_AUDIO_WAIT;
             /* Poll owner commands even when a slow, timer-free movie has no SDL events. */
             if (control && control->policy.notify && wait > (int)FVM_DESKTOP_PLAYBACK_WAIT_MS)
@@ -1434,7 +1437,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         /* Deliver timers on the VM thread before rendering callback-driven scene changes. */
         if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
-        if (!checked(playback_audio(&audio, control), "frame PCM queue", path))
+        if (!checked(playback_audio(context, clip, &audio, control), "frame PCM queue", path))
             goto cleanup;
         if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request",
                      path))
@@ -1465,7 +1468,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_TICK, context, clip, path,
                                       ticks, presentations),
                      "playback control", path) ||
-            (control && !checked(playback_audio(&audio, control), "controlled PCM queue", path)))
+            (control && !checked(playback_audio(context, clip, &audio, control),
+                             "controlled PCM queue", path)))
             goto cleanup;
         if (control && control->stopped)
         {
@@ -1498,13 +1502,13 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             wait = FVM_DESKTOP_PLAYBACK_WAIT_MS;
         if (!fvm_desktop_window_active(window))
         {
-            if (audio.output &&
+            if (audio.device &&
                 !checked(fvm_desktop_audio_pause(&audio, 1), "tail background audio pause", path))
                 goto cleanup;
         }
-        else if (!checked(playback_audio(&audio, control), "tail PCM queue", path))
+        else if (!checked(playback_audio(context, clip, &audio, control), "tail PCM queue", path))
             goto cleanup;
-        if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
+        if (audio.device && wait > FVM_DESKTOP_AUDIO_WAIT)
             wait = FVM_DESKTOP_AUDIO_WAIT;
         if (wait < 1)
             wait = 1;

@@ -171,6 +171,7 @@
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
+  - [pcm_stream](#example-player-pcm_stream) — <small><em>Корневой PCM stream: готовый SWF, цвет и тон через SDL очередь</em></small>
   - [playback_control](#example-player-playback_control) — <small><em>C89: пауза, шаг, продолжение и STOP для file/embedded/HTTP</em></small>
   - [playback_mailbox](#example-player-playback_mailbox) — <small><em>C89: OS-поток контроллера, подтверждённые шаги и копии без VM-указателей</em></small>
   - [redirect_loading](#example-player-redirect_loading) — <small><em>Ограниченные redirects и конечные root/child/form origin через C API</em></small>
@@ -1933,6 +1934,15 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [README EN](player/monitored_loading/README.md) / [RU](player/monitored_loading/README.ru.md),
 [C](player/monitored_loading/main.c), [контракт](../doc/LOAD_MONITOR.ru.md).
 
+<a id="example-player-pcm_stream"></a>
+### pcm_stream
+
+Двухсекундный SWF8: mono PCM stream 44100→48000 stereo, синий/оранжевый фон,
+441/882 Гц. Исполняемый пример для player CLI и тех же байтов через C host,
+не sketch и не проверка физического устройства. [README EN](player/pcm_stream/README.md) /
+[RU](player/pcm_stream/README.ru.md), [генератор](player/pcm_stream/make_movie.py),
+[фильм](player/pcm_stream/pcm-stream.swf), [контракт](../doc/PLAYER_PCM_STREAMS.ru.md).
+
 <a id="example-player-playback_control"></a>
 ### playback_control
 
@@ -2114,6 +2124,7 @@ Source line links describe the current checkout, including in historical notes.
 - [os_ports — embedding/os_ports](#example-embedding-os_ports)
 - [parallel_render — embedding/parallel_render](#example-embedding-parallel_render)
 - [parsing.as — actionscript/parsing.as](#example-actionscript-parsing-as)
+- [pcm_stream — player/pcm_stream](#example-player-pcm_stream)
 - [playback_control — player/playback_control](#example-player-playback_control)
 - [playback_mailbox — player/playback_mailbox](#example-player-playback_mailbox)
 - [property_resolve — embedding/property_resolve](#example-embedding-property_resolve)
