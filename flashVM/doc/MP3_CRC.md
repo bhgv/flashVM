@@ -41,6 +41,17 @@ stream normalization reject damaged late packets without publishing a snapshot.
 Peak-budget bounds and allocation counts remain unchanged. Allocation failures
 are recoverable; normalized readers survive VM teardown without allocating.
 
+
+## Player admission (v0.816)
+
+Unmuted desktop playback now fully validates each MP3 referenced by a root
+StartSound before window/audio acquisition. A fixed 8192-byte owner-stack bitmap
+deduplicates UI16 sound IDs; a zero-length public PCM read validates every packet
+without retaining PCM. Stop-only events do not require a source decode. This checks
+all statically referenced root MP3, including later or otherwise unreached frames.
+Muted playback and metadata inspection do not decode the sound. Playback-time
+voice preparation remains separately bounded and outside the native worker mutex.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -22,6 +22,11 @@
 #define FVM_DESKTOP_AUDIO_MAX_SEGMENTS                                                             \
     64U /* Bound owner-side snapshot preparation and seek work. */
 
+#define FVM_DESKTOP_AUDIO_RESOURCE_IDS 65536UL /* SWF UI16 sound identities, including reserved zero. */
+#define FVM_DESKTOP_AUDIO_ID_SHIFT 3U /* Eight checked identities fit in one bitmap octet. */
+#define FVM_DESKTOP_AUDIO_ID_MASK 7U /* Select a resource's bit in its bitmap octet. */
+#define FVM_DESKTOP_AUDIO_CHECKED_BYTES 8192U /* Fixed stack bound for owner-side MP3 admission. */
+
 /* Native immutable source ownership and an independently resettable conversion grid per header. */
 typedef struct FVM_DesktopStreamSegment
 {
@@ -72,7 +77,9 @@ extern "C"
     /* Validate supported unmuted root stream policy before native presentation/device acquisition.
      * Up to MAX_SEGMENTS PCM, whole-packet ADPCM or supported MP3 headers without root StartSound; other
      * codec/mixed/excess UNSUPPORTED. Owner only; may allocate/copy/decode temporary sources; no
-     * device or callbacks. Core stream alignment errors propagate. */
+     * device or callbacks. Referenced root MP3 events are fully validated once per distinct
+     * sound ID before acquisition, including CRC; metadata-only and muted paths stay separate.
+     * Core stream alignment errors propagate. */
     FVM_Result fvm_desktop_audio_validate(FVM_Context *);
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
      * Changed navigation token or pending/backward/skipped frame clears old FIFO and resets phase;

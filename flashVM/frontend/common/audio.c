@@ -78,10 +78,54 @@ static FVM_Result validate_headers(FVM_Context *context, int decode)
     return FVM_OK;
 }
 
+/* Validate every referenced root MP3 once before device acquisition; fixed bitmap avoids repeated decode. */
+static FVM_Result validate_mp3_events(FVM_Context *context)
+{
+    unsigned char checked[FVM_DESKTOP_AUDIO_CHECKED_BYTES];
+    size_t count = 0, ordinal;
+    FVM_Result result = fvm_swf_sound_event_count(context, &count);
+    if (result != FVM_OK)
+        return result;
+    memset(checked, 0, sizeof(checked));
+    for (ordinal = 0; ordinal < count; ++ordinal)
+    {
+        FVM_SWFSoundEvent event;
+        FVM_SWFSoundInfo info;
+        unsigned int mask;
+        size_t byte, written = 0;
+        event.struct_size = sizeof(event);
+        result = fvm_swf_sound_event_at(context, ordinal, &event);
+        if (result != FVM_OK)
+            return result;
+        if (event.flags & FVM_SWF_SOUND_EVENT_STOP)
+            continue;
+        if (event.sound_id >= FVM_DESKTOP_AUDIO_RESOURCE_IDS)
+            return FVM_INVALID_ARGUMENT;
+        byte = event.sound_id >> FVM_DESKTOP_AUDIO_ID_SHIFT;
+        mask = 1U << (event.sound_id & FVM_DESKTOP_AUDIO_ID_MASK);
+        if (checked[byte] & mask)
+            continue;
+        info.struct_size = sizeof(info);
+        result = fvm_swf_sound_info(context, event.sound_id, &info);
+        if (result != FVM_OK)
+            return result;
+        if (info.format == FVM_SWF_SOUND_MP3)
+        {
+            /* A zero-length read still validates every packet and writes no retained PCM. */
+            result = fvm_swf_sound_read_pcm(context, event.sound_id, 0, 0, 0, 0, &written);
+            if (result != FVM_OK)
+                return result;
+        }
+        checked[byte] |= (unsigned char)mask;
+    }
+    return FVM_OK;
+}
+
 /* Validate aggregate preparation before window/device acquisition; no snapshot is retained. */
 FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
 {
-    return validate_headers(context, 1);
+    FVM_Result result = validate_headers(context, 1);
+    return result == FVM_OK ? validate_mp3_events(context) : result;
 }
 
 /* Forward the actual write, recording only blocks accepted by the real SDL adapter. */

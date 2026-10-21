@@ -1,10 +1,12 @@
-Development version: **0.815** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.815 ` and an English description. Increase the subversion before each
+Development version: **0.816** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.816 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.816: [Preflight referenced root MP3 resources before desktop audio acquisition](doc/MP3_CRC.md).
 
 v0.815: [Validate protected free-format blocks before committing inferred geometry](doc/MP3_CRC.md).
 
