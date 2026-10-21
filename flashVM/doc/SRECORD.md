@@ -101,6 +101,53 @@ The test-only shared oracle exposes the C codec to independent Python big-intege
 and zlib vectors. Cross builds supply a target toolchain file; tests run on the
 target. The codec uses C89 limbs and explicit bytes, not host endian assumptions.
 Foreign native execution and 9P/Inferno filesystem integration remain future work.
+## Direction-local tag-zero bindings (v0.723)
+
+[sbindings.h](../include/flashvm/sbindings.h) adds caller-owned bounded registries.
+Use separate registries for every session direction: A's outgoing declarations
+populate B's incoming table; B's outgoing declarations populate A's incoming table.
+Tag 3 can therefore mean `ieee754.f64.be` A→B and `boolean` B→A. There is no global
+numeric type map. Tag zero cannot be rebound. Unbound nonzero tags remain unknown;
+the raw codec may expose their bytes, but dispatch must not guess their meaning.
+
+Tag-zero payload schema 1 is binary:
+
+```text
+unsigned payload_schema_version = 1
+unsigned binding_count
+repeat binding_count:
+    unsigned nonzero_tag
+    unsigned nonzero_type_schema_version
+    unsigned identity_byte_count
+    identity_bytes
+```
+
+All integers use the same canonical encoding. Identity is 1..63 printable ASCII
+bytes excluding spaces; it names a schema, not a codec or permission. Content
+strings/UTF-16/UTF-8/binary data are unaffected by this metadata-name restriction.
+At most 256 associations exist in this first bounded registry. Payload count zero
+is valid. Nested application records require their own declared sequence schema.
+
+Bindings are immutable during a direction/session. Exact repeats are idempotent;
+a duplicate tag within one declaration is invalid even if identical. A conflicting
+binding, malformed/truncated/checksum-damaged payload, extra payload bytes or
+insufficient slots leaves the entire table unchanged. Reset is explicit table
+reinitialization only after stopping/quiescing the old session and discarding its
+queued records. It is not an in-band reinterpretation of already queued tags.
+
+| API | Contract |
+| --- | --- |
+| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L33) | Initialize caller descriptor/slot capacity without touching slots. No allocation/VM/GC; reinit starts an empty direction-local table. |
+| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L37) | Copy immutable metadata to host output; UNKNOWN for zero/unbound tags. Output unchanged on failure; no object reference or authority is granted. |
+| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L43) | Validate all bindings/capacity then write only binary declaration payload; wrap with record_write tag 0. Caller provides separate payload and framed-output buffers. |
+| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L49) | Verify a complete tag-zero record, preflight all entries and append atomically. Copies identities; input is borrowed only during call. used publishes one consumed record only on OK. |
+
+Registry descriptor/slots/input/output must not overlap. No hidden allocation or
+locks; synchronize a shared table externally, including lookup versus apply/reset.
+The implementation uses bounded two-pass validation, not a record-sized stack.
+This declares schema identities only: floats/objects/audio/video still need
+schema implementations and permission-aware owner-thread dispatch. It does not
+automatically serialize native resources or migrate live VM objects.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -112,6 +159,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:24](../include/flashvm/srecord.h#L24) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../include/flashvm/sbindings.h#L49) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../include/flashvm/sbindings.h#L33) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
 | `fvm_sinteger_read` | function | [include/flashvm/srecord.h:52](../include/flashvm/srecord.h#L52) |
 | `fvm_sinteger_write` | function | [include/flashvm/srecord.h:50](../include/flashvm/srecord.h#L50) |
 | `fvm_srecord_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |

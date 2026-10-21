@@ -99,6 +99,53 @@ SDL/сеть/startup VM для codec не нужны. Тестовая shared-б
 независимыми Python big integers и zlib. Cross задаёт target toolchain file;
 тесты исполняются на target. Native foreign OS и интеграция 9P/Inferno ФС пока
 не реализованы; формат не зависит от endian/native ABI.
+## Независимые привязки направлений, тег 0 (v0.723)
+
+[sbindings.h](../include/flashvm/sbindings.h) добавляет ограниченную таблицу хоста.
+Для каждого направления каждого сеанса нужна отдельная таблица: исходящие
+декларации A заполняют входящую таблицу B и наоборот. Поэтому тег 3 может быть
+ieee754.f64.be в A→B и boolean в B→A. Глобального числового соответствия нет.
+Нуль перепривязать нельзя. Неизвестный ненулевой тег остаётся неизвестным;
+сырой codec может вернуть байты, но dispatcher не должен угадывать их тип.
+
+Двоичный payload тега 0, схема 1:
+
+```text
+unsigned версия_схемы_payload = 1
+unsigned число_привязок
+повторить число_привязок раз:
+    unsigned ненулевой_тег
+    unsigned ненулевая_версия_схемы_типа
+    unsigned длина_идентификатора
+    байты_идентификатора
+```
+
+Все числа записаны тем же каноническим способом. Идентификатор — 1..63
+печатных ASCII-байта без пробелов; он называет схему, не предоставляет кодек
+или полномочия. Ограничение не касается пользовательских строк/UTF-16/UTF-8/
+бинарных данных. В первой таблице максимум 256 привязок; декларация с count=0
+допустима. Вложенные записи требуют объявленной прикладной схемы sequence.
+
+Привязка неизменна внутри направления/сеанса. Точный повтор идемпотентен;
+повтор тега внутри одной декларации недопустим даже при одинаковой схеме.
+Конфликт, повреждение/truncation/checksum, лишние байты и нехватка slots
+оставляют всю таблицу прежней. Сброс — явная переинициализация после остановки
+старого сеанса и удаления его queued records. Уже отправленные теги нельзя
+внезапно переинтерпретировать новой схемой.
+
+| API | Контракт |
+| --- | --- |
+| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L33) | Заполняет descriptor/capacity, не меняя slots. Без выделений/VM/GC; reinit создаёт пустую таблицу направления. |
+| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L37) | Копирует metadata в output; UNKNOWN для нуля/неизвестного тега. Ошибка сохраняет output. Указатель объекта или полномочия не выдаёт. |
+| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L43) | Проверяет весь список и ёмкость, пишет только двоичный payload декларации. Его оборачивают record_write с тегом 0 в отдельный буфер. |
+| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L49) | Проверяет целую запись тега 0/checksum и все элементы до атомарного добавления. Идентификаторы копируются; вход нужен лишь на время вызова. Used меняется только при OK. |
+
+Descriptor/slots/input/output не перекрываются. Скрытых выделений/блокировок
+нет; общий доступ lookup/apply/reset синхронизирует хост. Двухпроходная проверка
+ограничена числом элементов и не выделяет стек размером с запись. Это пока
+декларации схем: float/objects/audio/video требуют собственных реализаций схем
+и dispatcher с полномочиями/исполнением у владельца. Native-ресурсы и живые
+VM-объекты автоматически не сериализуются и не перемещаются.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -110,6 +157,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:24](../include/flashvm/srecord.h#L24) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../include/flashvm/sbindings.h#L49) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../include/flashvm/sbindings.h#L33) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
 | `fvm_sinteger_read` | function | [include/flashvm/srecord.h:52](../include/flashvm/srecord.h#L52) |
 | `fvm_sinteger_write` | function | [include/flashvm/srecord.h:50](../include/flashvm/srecord.h#L50) |
 | `fvm_srecord_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |

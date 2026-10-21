@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.722
+# FlashVM stage status / Состояние стадий — v0.723
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.723 adds immutable direction-local tag-zero schema declarations with bounded
+caller-owned registries. Opposite tag-3 identities, idempotence, copied metadata,
+atomic multi-entry conflict/capacity rejection and malformed/CRC checks pass.
+No globally fixed numeric type table or automatic object execution is introduced.
+All stages remain open. [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 
 v0.722 adds a standalone C89 binary S-record codec: canonical big-endian
 signed-magnitude integers with last-octet bit, bounded record framing and a
