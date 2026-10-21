@@ -58,6 +58,19 @@ segment before replacing output, destroys VM/runtime, and writes bounded native
 S16 using an independent cursor. Host input and native peak are separately capped
 at 64 MiB. It exports one segment without device playback or A/V scheduling.
 
+
+## Actual SDL queue oracle (v0.811)
+
+The optional Linux libmpg123 oracle independently decodes every source sample
+with implicit gapless trimming disabled, then applies the explicit SWF latency.
+It compares all PCM actually accepted by dummy SDL: four original encodings,
+one/two/five-packet stream blocks, FWS/CWS and interpreter/native JIT. Mixed event
+cases add PCM and ADPCM voices using actual submission markers and one final clip.
+All 64 cases pass within three S16 units. Event actions confirm execution in both
+engines. Five framing/event/stream cases pass full-core ASan/UBSan. This does not
+certify physical devices, CRC/Huffman integrity, child streams or stream/event
+composition in one movie. [Oracle](../frontend/tests/free_mp3_audio.py).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

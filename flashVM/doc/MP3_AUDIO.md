@@ -2,6 +2,12 @@
 
 [Русский](MP3_AUDIO.ru.md) · [functional roadmap](ROADMAP.md)
 
+Current v0.811: [free-format decoding](FREE_FORMAT_MP3.md) is implemented for framed
+events and counted stream blocks. The historical v0.776–0.782 limitations below
+describe those checkpoints; free-format statements there are superseded by the
+linked current contract. Short standalone events without framing evidence, negative
+latency, CRC validation and full reference seek/A/V remain outside this support.
+
 ## v0.776 scalar decoder foundation
 
 A pinned, unmodified [minimp3](../external/minimp3/README.md) Layer-III decoder is

@@ -1,6 +1,6 @@
 # Десктопное приложение для SWF — v0.577
 
-v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency, free-format и reference MP3 seek/A/V остаются открытыми. [Текущий контракт](MP3_AUDIO.ru.md).
+v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency и reference MP3 seek/A/V остаются открытыми. Free-format добавлен в v0.806–0.811; короткие события без достаточных заголовков остаются unsupported. [Контракт free-format](FREE_FORMAT_MP3.ru.md). [Текущий контракт](MP3_AUDIO.ru.md).
 
 Обновление v0.582: [тестовые сборки, HostInput, звук и Android APK](PLAYER_TEST_BUILDS.ru.md).
 

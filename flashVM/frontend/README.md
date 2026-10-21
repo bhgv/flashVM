@@ -4,7 +4,7 @@ Desktop event SyncNoMultiple now uses queued identity deadlines, including short
 
 Event source preparation uses a separate 64 MiB default mixer/voice budget and runs outside the audio worker mutex. Queue/trace/VM memory is separate. [Ownership and limits](../doc/NATIVE_VOICES.md).
 
-v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency, free-format and reference MP3 seek/A/V remain open. [Current MP3 contract](../doc/MP3_AUDIO.md).
+v0.780 adds supported root MP3 streams and MP3 event decoding; bounded native preparation, exact queue length and independent PCM checks. Mixed root stream/event movies, negative initial latency and reference MP3 seek/A/V remain open. Free-format support was added in v0.806–0.811; short events without enough framing evidence remain unsupported. [Free-format contract](../doc/FREE_FORMAT_MP3.md). [Current MP3 contract](../doc/MP3_AUDIO.md).
 
 [Русская версия](README.ru.md). This is an optional C89 desktop host for the VM,
 not a dependency of the core library or compiler projects.

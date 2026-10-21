@@ -4,7 +4,7 @@ Desktop SyncNoMultiple учитывает ID до конца очереди, в�
 
 Подготовка событийных источников выполняется вне mutex аудиопотока; отдельный бюджет микшера/голосов по умолчанию — 64 MiB. VM/очереди/trace учитываются отдельно. [Владение и ограничения](../doc/NATIVE_VOICES.ru.md).
 
-v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency, free-format и reference MP3 seek/A/V остаются открытыми. [Текущий контракт](../doc/MP3_AUDIO.ru.md).
+v0.780 добавляет поддержанный root MP3 stream/event decode с bounded native preparation и независимой проверкой PCM. Mixed root stream/event, negative latency и reference MP3 seek/A/V остаются открытыми. Free-format добавлен в v0.806–0.811; короткие события без достаточных заголовков остаются unsupported. [Контракт free-format](../doc/FREE_FORMAT_MP3.ru.md). [Текущий контракт](../doc/MP3_AUDIO.ru.md).
 
 [English](README.md). Необязательное C89-приложение поверх VM. Ядро и отдельные
 проекты компиляторов не зависят от SDL2 и этой точки запуска.

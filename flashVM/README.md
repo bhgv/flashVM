@@ -1,10 +1,12 @@
-Development version: **0.810** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.810 ` and an English description. Increase the subversion before each
+Development version: **0.811** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.811 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.811: [Add independent free-format SDL stream and mixed-event oracles](doc/FREE_FORMAT_MP3.md).
 
 v0.810: [Add bounded C89 export of prepared audio from real SWF files](doc/FREE_FORMAT_MP3.md).
 

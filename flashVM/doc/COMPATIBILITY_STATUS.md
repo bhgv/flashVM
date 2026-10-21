@@ -231,6 +231,11 @@ No roadmap stage is closed. Update this inventory with concrete tests, profiles
 and limitations when implementing a remaining item. This initial inventory is
 not yet a complete SWF tag/action/AS API compatibility catalogue.
 
+Current v0.811 free-format support supersedes earlier checkpoint limitations below:
+[EN](FREE_FORMAT_MP3.md) / [RU](FREE_FORMAT_MP3.ru.md). Counted stream blocks and
+sufficiently framed events are supported; short unframed events, negative initial
+latency and full reference MP3 seek/A/V remain open. Actual devices stay separate.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,
