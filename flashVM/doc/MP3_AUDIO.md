@@ -161,6 +161,38 @@ three S16 units. Checked-in golden checks still run without FFmpeg. LeakSanitize
 is disabled on this host because process enumeration is unavailable; ASan injected
 exception-unwind runs remain outside accepted evidence as documented previously.
 
+## v0.782 prepared mixer commands without a source VM
+
+[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L62)(mixer, voice) accepts a pointer to one live,
+exclusively owned native voice handle. On OK it consumes ownership and clears the
+handle; finished/NoMultiple no-ops close the unused owner. On error it preserves
+handle/progress and every existing slot. Null arguments are INVALID_ARGUMENT,
+strict geometry mismatch UNSUPPORTED and full capacity OUT_OF_MEMORY. NoMultiple
+checks active non-releasing same-ID voices before rendering policy, matching
+legacy submission. Adoption starts conversion phase zero at the CURRENT voice
+cursor, never rewinds a partially read interval. No allocation, callback, VM or
+managed root occurs. Keep owner storage disjoint and externally serialize access;
+never use or close a handle after transfer.
+
+[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L68)(mixer, sound_id) applies the existing immediate or
+DECLICK policy without a context. ID must be 1–65535; null/invalid returns
+INVALID_ARGUMENT before mutation, absent identity is OK. Repeated release stops
+do not restart the fade. Stop/adoption affect future composition only: retained
+mixed retry bytes and accepted device PCM are immutable until separately
+acknowledged queue cancellation. These calls are not internal locks or a complete
+frame-command scheduler. Legacy context submission delegates to the same native
+control implementation after owner-side preparation.
+
+The allocation-injected fixture forbids all new allocations after GC and source
+teardown, covering transfer, full/mismatched preservation, duplicate/empty owner
+consumption, partial-progress adoption, exact sample continuation, invalid/missing
+IDs and immediate/repeated fade stop. The C89 MP3 tutorial now creates its mixer
+and adopts ownership AFTER VM teardown, then exports exactly its explicit finite
+voice duration. Its independent golden/full-FFmpeg oracle remains unchanged.
+These are static-core C APIs; automatic stream/event desktop scheduling remains open.
+
+Final v0.782 validation: 70 focused native/C89 tests and seven actual SDL dummy-player tests passed. Full-core ASan/UBSan success paths, including allocation-forbidden native transfer, passed; LeakSanitizer was disabled because this host cannot access /proc. Injected allocation failures 0–4 passed ordinary runs and scoped UBSan; exception unwinding is not claimed under ASan. Physical devices and other platform execution remain separate acceptance work.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -172,6 +204,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
+| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:62](../include/flashvm/swf_sound_mixer.h#L62) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |

@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Native prepared voice controls v0.782: transfer ownership at the current cursor and stop sound IDs without a live VM or new allocation. Strict C89 MP3 export adopts its mixer after source teardown. Seven-commit MP3 series: 70 native/tutorial and seven SDL dummy-player checks pass. Full reference timing, mixed root playback and physical/platform acceptance remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
+
 Root MP3 player v0.780: bounded native preparation, retained decoder history and one initial latency trim; actual SDL accepted PCM within three S16 units of independent FFmpeg/rational output, FWS/CWS and interpreter/JIT. MP3 worker stop/play/GC/seek/cancellation checks pass; dummy drivers are not physical/foreign acceptance. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
 
 DefineSound MP3 v0.777: effective MPEG geometry, nonnegative initial latency, allocation-free full validation and selected PCM reads; SWF4–8 golden/edge checks. Negative latency/free-format, stream/player and full reference timing remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).

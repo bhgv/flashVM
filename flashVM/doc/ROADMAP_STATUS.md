@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.772
+# FlashVM stage status / Состояние стадий — v0.782
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.776–v0.782: scalar MP3 decoding, effective-rate event styles, bounded continuous root streams, SDL queue integration and detached C89 export with native prepared-voice controls. 70 native/tutorial and seven SDL dummy-player checks pass. Reference seeking/A/V, mixed root playback, devices and foreign execution remain open. [EN](MP3_AUDIO.md) / [RU](MP3_AUDIO.ru.md).
 
 v0.772: Retain mixed event and stream PCM across atomic queue rejection. [EN](MIX_QUEUE.md) / [RU](MIX_QUEUE.ru.md). Bounded implementation; full Flash/device/platform acceptance remains open.
 

@@ -144,6 +144,78 @@ extern "C" FVM_Result fvm_swf_sound_mixer_get_config(const FVM_SWFSoundMixer *mi
     return FVM_OK;
 }
 
+/* Stop one native sound identity without inspecting any source VM or device queue. */
+extern "C" FVM_Result fvm_swf_sound_mixer_stop_id(FVM_SWFSoundMixer *mixer, unsigned int sound_id)
+{
+    if (!mixer || !sound_id || sound_id > FVM_SWF_SOUND_ID_MAX)
+        return FVM_INVALID_ARGUMENT;
+    for (size_t i = 0; i < mixer->slots.size(); ++i)
+        if (mixer->slots[i].voice && mixer->slots[i].sound_id == sound_id)
+        {
+            FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
+            if (!(mixer->config.flags & FVM_SWF_SOUND_MIXER_DECLICK))
+                retire(mixer, i);
+            else if (!slot.release_frames)
+            {
+                slot.release_frames = mixer->info.sample_rate / FVM_SWF_SOUND_RELEASE_DIVISOR;
+                if (slot.release_frames < FVM_SWF_SOUND_RELEASE_MIN)
+                    slot.release_frames = FVM_SWF_SOUND_RELEASE_MIN;
+                slot.release_left = slot.release_frames;
+            }
+        }
+    return FVM_OK;
+}
+/* Adopt prepared independent ownership only after every fallible policy check has succeeded. */
+extern "C" FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *mixer,
+                                                          FVM_SWFSoundVoice **voice)
+{
+    if (!mixer || !voice || !*voice)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundVoiceInfo progress;
+    progress.struct_size = sizeof(progress);
+    FVM_Result result = fvm_swf_sound_voice_info(*voice, &progress);
+    if (result != FVM_OK)
+        return result;
+    if (progress.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE)
+        for (size_t i = 0; i < mixer->slots.size(); ++i)
+            if (mixer->slots[i].voice && !mixer->slots[i].release_frames &&
+                mixer->slots[i].sound_id == progress.sound_id)
+            {
+                fvm_swf_sound_voice_close(*voice);
+                *voice = 0;
+                return FVM_OK;
+            }
+    if (!(mixer->config.flags & FVM_SWF_SOUND_MIXER_CONVERT) &&
+        (progress.sample_rate != mixer->info.sample_rate || progress.channels != mixer->info.channels))
+        return FVM_UNSUPPORTED;
+    if (progress.finished)
+    {
+        fvm_swf_sound_voice_close(*voice);
+        *voice = 0;
+        return FVM_OK;
+    }
+    for (size_t i = 0; i < mixer->slots.size(); ++i)
+    {
+        if (!mixer->slots[i].voice)
+        {
+            FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
+            slot.sound_id = progress.sound_id;
+            slot.voice = *voice;
+            slot.source_rate = progress.sample_rate;
+            slot.source_channels = progress.channels;
+            slot.phase = 0;
+            slot.release_frames = slot.release_left = 0;
+            slot.ready = slot.left_valid = slot.right_valid = false;
+            slot.converted = progress.sample_rate != mixer->info.sample_rate ||
+                             progress.channels != mixer->info.channels;
+            ++mixer->info.active_voices;
+            *voice = 0;
+            return FVM_OK;
+        }
+    }
+    return FVM_OUT_OF_MEMORY;
+}
+
 /* Resolve control identity before changing slots; a failed snapshot never interrupts old voices. */
 extern "C" FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *mixer, FVM_Context *context,
                                                  size_t ordinal)
@@ -157,23 +229,7 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *mixer, FVM_C
         return result;
     /* A stop is meaningful even if its source codec/rate cannot be rendered by this mixer. */
     if (event.flags & FVM_SWF_SOUND_EVENT_STOP)
-    {
-        for (size_t i = 0; i < mixer->slots.size(); ++i)
-            if (mixer->slots[i].voice && mixer->slots[i].sound_id == event.sound_id)
-            {
-                FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
-                if (!(mixer->config.flags & FVM_SWF_SOUND_MIXER_DECLICK))
-                    retire(mixer, i);
-                else if (!slot.release_frames)
-                {
-                    slot.release_frames = mixer->info.sample_rate / FVM_SWF_SOUND_RELEASE_DIVISOR;
-                    if (slot.release_frames < FVM_SWF_SOUND_RELEASE_MIN)
-                        slot.release_frames = FVM_SWF_SOUND_RELEASE_MIN;
-                    slot.release_left = slot.release_frames;
-                }
-            }
-        return FVM_OK;
-    }
+        return fvm_swf_sound_mixer_stop_id(mixer, event.sound_id);
     if (event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE)
         for (size_t i = 0; i < mixer->slots.size(); ++i)
             if (mixer->slots[i].voice && !mixer->slots[i].release_frames &&
@@ -192,34 +248,9 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *mixer, FVM_C
     result = fvm_swf_sound_voice_open(context, ordinal, &voice);
     if (result != FVM_OK)
         return result;
-    FVM_SWFSoundVoiceInfo progress;
-    progress.struct_size = sizeof(progress);
-    fvm_swf_sound_voice_info(voice, &progress);
-    if (progress.finished)
-    {
-        fvm_swf_sound_voice_close(voice);
-        return FVM_OK;
-    }
-    for (size_t i = 0; i < mixer->slots.size(); ++i)
-    {
-        if (!mixer->slots[i].voice)
-        {
-            FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
-            slot.sound_id = event.sound_id;
-            slot.voice = voice;
-            slot.source_rate = progress.sample_rate;
-            slot.source_channels = progress.channels;
-            slot.phase = 0;
-            slot.release_frames = slot.release_left = 0;
-            slot.ready = slot.left_valid = slot.right_valid = false;
-            slot.converted = progress.sample_rate != mixer->info.sample_rate ||
-                             progress.channels != mixer->info.channels;
-            ++mixer->info.active_voices;
-            return FVM_OK;
-        }
-    }
-    fvm_swf_sound_voice_close(voice);
-    return FVM_OUT_OF_MEMORY;
+    result = fvm_swf_sound_mixer_submit_prepared(mixer, &voice);
+    fvm_swf_sound_voice_close(voice); /* Failure leaves the temporary owner with this caller. */
+    return result;
 }
 
 /* Pull/map one styled source frame. The owned voice decoder cannot fail with these validated

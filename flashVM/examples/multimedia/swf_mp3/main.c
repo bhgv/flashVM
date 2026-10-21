@@ -1,4 +1,5 @@
 /* C89 tutorial: export an MP3 StartSound or root stream after destroying its source VM. */
+#include "flashvm/swf_sound_mixer.h" /* Adopt prepared voices after their VM has disappeared. */
 #include "flashvm/swf_stream_pcm.h" /* Native stream snapshots and incremental PCM reads. */
 #include "example_constants.h" /* Explicit source, ownership and finite-export limits. */
 #include <stdio.h> /* Caller-selected binary input/output only. */
@@ -19,6 +20,8 @@ int main(int argc, char **argv) /* INPUT.swf OUTPUT.pcm [--stream]. */
     FVM_Context *context = 0; /* Source context, destroyed before its runtime. */
     FVM_SWFSoundVoice *voice = 0; /* Native first StartSound interval/envelope/loop owner. */
     FVM_SWFStreamSoundSnapshot *source = 0; /* Native first MP3 stream PCM owner. */
+    FVM_SWFSoundMixer *mixer = 0; /* Native owner of an adopted voice; no context is borrowed. */
+    FVM_SWFSoundMixerConfig geometry; /* Explicit same-rate mixer output policy. */
     FVM_SWFStreamPCMReader reader; /* Caller cursor borrowing the normalized source. */
     FVM_SWFStreamPCMChunk chunk; /* Exact block/frame metadata for native stream copies. */
     FVM_SWFSoundVoiceInfo voice_info; /* Copied native event geometry. */
@@ -30,6 +33,7 @@ int main(int argc, char **argv) /* INPUT.swf OUTPUT.pcm [--stream]. */
     long length = 0; /* Validated ftell result before conversion to size_t. */
     short pcm[EXAMPLE_MP3_BLOCK * EXAMPLE_MP3_CHANNELS]; /* Caller-owned aligned transfer storage. */
     size_t written = 0, frames = 0; /* Channel-value count and derived complete frame count. */
+    unsigned long expected_frames = 0; /* Explicit finite voice duration, excluding mixer silence. */
     unsigned long total = 0; /* Finite accepted export count, checked before every write. */
     unsigned int rate = 0, channels = 0; /* Effective MPEG clock and native interleaving. */
     int stream = 0, status = 1; /* Explicit source mode and pessimistic cleanup result. */
@@ -78,9 +82,20 @@ int main(int argc, char **argv) /* INPUT.swf OUTPUT.pcm [--stream]. */
         voice_info.struct_size = sizeof(voice_info); /* Request copied progress/geometry. */
         if (!checked(fvm_swf_sound_voice_info(voice, &voice_info), "voice geometry")) goto cleanup; /* Copy. */
         rate = voice_info.sample_rate; channels = voice_info.channels; /* Effective source clock. */
+        if (voice_info.play_count && voice_info.frames_per_play > /* Check multiplication before adoption. */
+            EXAMPLE_MP3_EXPORT_FRAMES / voice_info.play_count) goto cleanup; /* Bound long repeats. */
+        expected_frames = (unsigned long)voice_info.frames_per_play * voice_info.play_count; /* Finite source. */
     } /* End native voice preparation. */
     fvm_context_destroy(context); context = 0; /* No managed source is needed by either native owner. */
     fvm_runtime_destroy(runtime); runtime = 0; /* Complete VM teardown before file output starts. */
+    if (!stream) /* Native command publication no longer needs a live context. */
+    { /* Begin caller-controlled mixer ownership. */
+        geometry.struct_size = sizeof(geometry); /* Exact configuration ABI. */
+        geometry.sample_rate = rate; geometry.channels = channels; /* Keep source clock/interleaving. */
+        geometry.voice_capacity = EXAMPLE_MP3_VOICES; geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT; /* Allow MPEG rates. */
+        if (!checked(fvm_swf_sound_mixer_create_configured(&geometry, &mixer), "mixer")) goto cleanup; /* Own. */
+        if (!checked(fvm_swf_sound_mixer_submit_prepared(mixer, &voice), "adopt")) goto cleanup; /* Consume handle. */
+    } /* End native command publication; voice is null on success. */
     output = fopen(argv[2], "wb"); /* Explicitly replace only the requested PCM output. */
     if (!output) goto cleanup; /* A native file failure is terminal, never an atomic queue retry. */
     for (;;) /* Copy only finite native chunks; never execute a timeline or infer a movie clock. */
@@ -88,8 +103,14 @@ int main(int argc, char **argv) /* INPUT.swf OUTPUT.pcm [--stream]. */
         chunk.struct_size = sizeof(chunk); /* Native stream metadata for this copy. */
         if (stream) result = fvm_swf_stream_pcm_reader_next( /* Skip no encoded block identities. */
             &reader, EXAMPLE_MP3_BLOCK, pcm, sizeof(pcm) / sizeof(pcm[0]), &chunk, &written); /* Values. */
-        else result = fvm_swf_sound_voice_read(voice, EXAMPLE_MP3_BLOCK, pcm, /* Independent voice cursor. */
-            sizeof(pcm) / sizeof(pcm[0]), &written); /* Capacity is interleaved S16 values. */
+        else /* Bound mixer output to the prepared voice duration; never export an infinite silence tail. */
+        { /* Read only caller-authorized native frames. */
+            if (total == expected_frames) break; /* The host owns finite output policy. */
+            frames = (size_t)(expected_frames - total); /* Remaining explicit source duration. */
+            if (frames > EXAMPLE_MP3_BLOCK) frames = EXAMPLE_MP3_BLOCK; /* Bound each native call. */
+            result = fvm_swf_sound_mixer_read(mixer, frames, pcm, /* Advance only adopted native voices. */
+                sizeof(pcm) / sizeof(pcm[0]), &written); /* Capacity counts channel values. */
+        } /* End the finite native mixer copy. */
         if (result == FVM_NOT_FOUND) break; /* Only native EOF completes a successful export. */
         if (!checked(result, "native read")) goto cleanup; /* Keep source alive through cleanup. */
         frames = written / channels; /* Geometry was validated during native preparation. */
@@ -97,6 +118,7 @@ int main(int argc, char **argv) /* INPUT.swf OUTPUT.pcm [--stream]. */
         if (fwrite(pcm, sizeof(pcm[0]), written, output) != written) goto cleanup; /* Terminal short write. */
         total += (unsigned long)frames; /* Advance after complete output acceptance. */
     } /* End native-only export. */
+    if (mixer && !checked(fvm_swf_sound_mixer_stop_id(mixer, voice_info.sound_id), "stop ID")) goto cleanup; /* No device. */
     if (fclose(output) != 0) { output = 0; goto cleanup; } /* Flush failure remains observable. */
     output = 0; /* File ownership ended exactly once. */
     printf("Exported %lu MP3 frames at %u Hz/%u channels after VM teardown.\n", total, rate, channels); /* Evidence. */
@@ -105,6 +127,7 @@ cleanup: /* Readers stop before their borrowed native source is released. */
     if (input) fclose(input); /* Close partial input acquisition. */
     if (output) fclose(output); /* Close partial output; a failed export may leave a partial file. */
     free(bytes); /* Null-safe temporary file-buffer release. */
+    fvm_swf_sound_mixer_close(mixer); /* Release adopted ownership after every native read stops. */
     fvm_swf_sound_voice_close(voice); /* Null-safe native event release, no VM required. */
     fvm_swf_stream_sound_snapshot_close(source); /* Release native stream after reader quiescence. */
     if (context) fvm_context_destroy(context); /* Release partial managed preparation. */

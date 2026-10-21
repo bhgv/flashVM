@@ -49,6 +49,23 @@ extern "C"
      * Errors preserve existing voices. A full mixer returns OUT_OF_MEMORY, never steals a voice. */
     FVM_API FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *, FVM_Context *,
                                                   size_t event_index);
+    /* Transfer one prepared native voice at its CURRENT progress into this mixer, no allocation.
+     * voice and *voice are required live disjoint ownership storage; retain and serialize all
+     * owners until return. Success consumes *voice and clears it, including finished/NoMultiple
+     * no-ops (those close the unused voice). Failure preserves handle, progress and old slots.
+     * Strict geometry mismatch UNSUPPORTED; full capacity OUT_OF_MEMORY; bad pointers
+     * INVALID_ARGUMENT. NoMultiple sees only active non-releasing same-ID voices and can
+     * succeed without rendering a mismatched source. Conversion starts a new phase at the
+     * current voice cursor; never rewinds it. No VM, callback, device or managed/GC pointer.
+     * Caller must not read/close an adopted handle. Externally serialize mixer/voice/queue:
+     * adoption affects FUTURE composition, never an already mixed/pending/accepted PCM block. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_submit_prepared(FVM_SWFSoundMixer *,
+                                                          FVM_SWFSoundVoice **voice);
+    /* Stop a dictionary identity 1..65535 using this mixer's existing immediate/DECLICK policy.
+     * Null mixer/bad ID INVALID_ARGUMENT before mutation; missing ID OK no-op. No allocation,
+     * VM/callback/device/GC or new ownership. Requires serialized live mixer. Does not clear
+     * queued/pending PCM, rewind voices or cancel an external producer; future composition only. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_stop_id(FVM_SWFSoundMixer *, unsigned int sound_id);
     /* Fill exactly frames with native S16, including silence; capacity/written count channel
      * values. Validate before advancing; mix in wide precision and saturate once. No
      * allocation/callback. */

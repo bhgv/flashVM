@@ -96,11 +96,11 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release source canonical/managed ownership before native export. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source VM lifetime; native snapshots remain retained. |
 | [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L58) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
-| [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L67) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
+| [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L84) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
 | [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L30) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L36) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
 | [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L40) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
-| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L74) | Release native voices after all serial reads finish; null allowed. |
+| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L91) | Release native voices after all serial reads finish; null allowed. |
 | [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Release stream storage after converter use; null allowed. |
 
 <!-- source-links:start -->
@@ -121,8 +121,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:40](../../../include/flashvm/swf_sound_mix_queue.h#L40) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:30](../../../include/flashvm/swf_sound_mix_queue.h#L30) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:36](../../../include/flashvm/swf_sound_mix_queue.h#L36) |
-| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:67](../../../include/flashvm/swf_sound_mixer.h#L67) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:74](../../../include/flashvm/swf_sound_mixer.h#L74) |
+| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:84](../../../include/flashvm/swf_sound_mixer.h#L84) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../../../include/flashvm/swf_sound_mixer.h#L91) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../../../include/flashvm/swf_sound_mixer.h#L39) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../../../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |

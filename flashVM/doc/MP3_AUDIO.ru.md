@@ -154,6 +154,36 @@ FFmpeg сравнивается каждый отсчёт в пределах т
 checked-in golden tests. LeakSanitizer выключен из-за ограничений process enumeration;
 ASan injected exception-unwind не засчитывается, как описано ранее.
 
+## v0.782 подготовленные mixer commands без исходной VM
+
+[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L62)(mixer, voice) принимает указатель на живой
+исключительно принадлежащий caller native voice. OK забирает владение и обнуляет
+handle; finished/NoMultiple no-op закрывает ненужный owner. Ошибка сохраняет handle,
+progress и старые slots. Null — INVALID_ARGUMENT, strict geometry mismatch —
+UNSUPPORTED, заполнение — OUT_OF_MEMORY. NoMultiple сначала проверяет активные
+не-releasing same-ID voices, как прежняя submission. Фаза conversion начинается
+с нуля у ТЕКУЩЕГО voice cursor; частично прочитанный интервал не перематывается.
+Нет allocation/callback/VM/managed root. Owner storage не пересекается; доступ
+сериализуется снаружи. После transfer handle нельзя читать или закрывать.
+
+[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L68)(mixer, sound_id) применяет прежний immediate/DECLICK
+stop без context. ID допустим 1–65535; null/неверный ID — INVALID_ARGUMENT до
+изменения, отсутствующий ID — OK. Повторный stop не запускает fade заново.
+Команды влияют на будущее смешивание: retained retry и accepted device PCM
+остаются неизменными до отдельно подтверждённого queue cancellation. Это не
+internal lock и не полный frame-command scheduler. Прежний context submit
+после owner preparation использует те же native controls.
+
+Allocation fixture запрещает новые allocation после GC/VM teardown и проверяет
+transfer, сохранение при заполнении/mismatch, duplicate/empty consumption,
+partial-progress adoption, точные следующие отсчёты, неверные/отсутствующие IDs,
+immediate и repeated fade stop. C89 MP3 tutorial теперь создаёт mixer и передаёт
+ему voice ПОСЛЕ уничтожения VM, затем экспортирует только явную конечную длину.
+Независимый golden/full-FFmpeg oracle не менялся. Это static-core C APIs;
+автоматический desktop stream/event scheduler остаётся открытым.
+
+Итоговая проверка v0.782: прошли 70 целевых native/C89 тестов и семь тестов настоящего SDL-плеера с dummy-драйверами. Успешные пути полного ядра, включая передачу без разрешённых аллокаций, прошли ASan/UBSan; LeakSanitizer отключён из-за недоступного /proc. Внедрённые отказы аллокаций 0–4 прошли обычные проверки и UBSan изменённых модулей; раскрутка исключений под ASan не заявляется. Физические устройства и запуск на других платформах проверяются отдельно.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -165,6 +195,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:8](../src/swf/sound_mp3.cpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
+| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:62](../include/flashvm/swf_sound_mixer.h#L62) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:108](../include/flashvm/swf_sound.h#L108) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |

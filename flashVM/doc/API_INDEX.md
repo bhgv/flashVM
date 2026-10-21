@@ -146,8 +146,8 @@ Full parameters, ownership, errors and restrictions:
 ## Incremental StartSound mixing
 
 [`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L45), [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L50),
-[`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L55), [`fvm_swf_sound_mixer_info`](../include/flashvm/swf_sound_mixer.h#L70),
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L72), [`fvm_swf_sound_mixer_close`](../include/flashvm/swf_sound_mixer.h#L74):
+[`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L72), [`fvm_swf_sound_mixer_info`](../include/flashvm/swf_sound_mixer.h#L87),
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L89), [`fvm_swf_sound_mixer_close`](../include/flashvm/swf_sound_mixer.h#L91):
 [full individual contracts](SWF_SOUND_MIXER.md) /
 [русское руководство](SWF_SOUND_MIXER.ru.md),
 [annotated C89 tutorial](../examples/multimedia/swf_event_mixer/README.md).
@@ -303,15 +303,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:112](../include/flashvm/swf_sound.h#L112) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:94](../include/flashvm/swf_sound.h#L94) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:74](../include/flashvm/swf_sound_mixer.h#L74) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:91](../include/flashvm/swf_sound_mixer.h#L91) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../include/flashvm/swf_sound_mixer.h#L39) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
 | `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:42](../include/flashvm/swf_sound_mixer.h#L42) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:70](../include/flashvm/swf_sound_mixer.h#L70) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:87](../include/flashvm/swf_sound_mixer.h#L87) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:89](../include/flashvm/swf_sound_mixer.h#L89) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:70](../include/flashvm/swf_sound_output.h#L70) |
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:50](../include/flashvm/swf_sound_output.h#L50) |
