@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.732
+# FlashVM stage status / Состояние стадий — v0.733
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,16 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.733 adds a bounded 9P2000 device-message adapter with fid walks, file I/O,
+stat directories, deferred reads, flush and clunk/reset cleanup. Independent
+wire tests include actual fragmented TCP loopback; a real AVM1 stop/frame/resume
+runs through two 9P connections. Host transport/authentication and OS mounts
+remain separate; full 9P/Inferno and roadmap-stage acceptance are not claimed.
+
+v0.733: device-адаптер 9P2000, ожидающие read/flush и очистка fids. Проверены
+независимые wire vectors, TCP loopback и AVM1 отладчик через два соединения.
+Production listener, OS mount и полная приёмка стадий остаются открытыми.
 
 v0.732 adds portable synthetic resource files: incarnation directories, authorized
 operation files and independent binary event streams. Native C89 fixtures cover

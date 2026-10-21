@@ -31,6 +31,7 @@
     - [channels](#example-embedding-channels) — <small><em>Отправка и получение через FIFO</em></small>
     - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
     - [hybrid_heartbeat](#example-embedding-hybrid_heartbeat) — <small><em>Раздельные UDP/TCP таймеры и запрос проверки TCP</em></small>
+    - [resource_9p](#example-embedding-resource_9p) — <small><em>Клиентские кадры 9P2000 и чтение файла ресурса</em></small>
     - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
     - [resource_events](#example-embedding-resource_events) — <small><em>Независимые очереди наблюдателей и отзыв сессии</em></small>
     - [resource_files](#example-embedding-resource_files) — <small><em>Файлы операций, частичное чтение и явный owner pump</em></small>
@@ -462,6 +463,17 @@ listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](
 Раздельные интервалы UDP/TCP, ранняя проверка TCP по доверенному совету, throttle
 и различие send/receive. [main.c](embedding/hybrid_heartbeat/main.c),
 [контракт и транспортные ограничения](../doc/HYBRID_HEARTBEAT.ru.md).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-resource_9p"></a>
+#### resource_9p
+
+**Тип:** C89, самостоятельный собираемый пример без VM/SDL, сети и mount.
+**README:** [EN](embedding/resource_9p/README.md) / [RU](embedding/resource_9p/README.ru.md).
+Передаёт стандартные version/attach/walk/open/read кадры обработчику и проверяет
+содержимое файла исходного пути. Права выдаёт native host, а не клиентский uname.
+[main.c](embedding/resource_9p/main.c), [контракт](../doc/RESOURCE_9P.ru.md).
 
 [К оглавлению](#оглавление).
 
@@ -2061,6 +2073,7 @@ Source line links describe the current checkout, including in historical notes.
 - [prototypes — extending/prototypes](#example-extending-prototypes)
 - [qt5 — frontends/qt5](#example-frontends-qt5)
 - [redirect_loading — player/redirect_loading](#example-player-redirect_loading)
+- [resource_9p — embedding/resource_9p](#example-embedding-resource_9p)
 - [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
 - [resource_debugger — debugger/resource_debugger](#example-debugger-resource_debugger)
 - [resource_events — embedding/resource_events](#example-embedding-resource_events)

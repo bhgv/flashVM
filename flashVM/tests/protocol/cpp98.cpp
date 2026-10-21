@@ -5,6 +5,8 @@
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
 #include "flashvm/rfs.h"
+#include "flashvm/r9p.h"
+#include <string.h>
 /* Link framing, incremental input and directional metadata without a VM runtime. */
 int main()
 {
@@ -24,16 +26,23 @@ int main()
         fvm_sstream_push(&stream, input, size, &record, &used) != FVM_S_OK || record.tag != 3 ||
         record.size != 1 || record.payload[0] != 0xbf || fvm_sstream_reset(&stream) != FVM_S_OK)
         return 1;
-    FVM_RHeartbeatPolicy policy = {0};
+    FVM_RHeartbeatPolicy policy;
     FVM_RHeartbeat heartbeat;
     FVM_RDispatch *dispatch = 0;
+    FVM_RFS *fs = 0;
+    FVM_R9P *server = 0;
     FVM_RDebug *debug = 0;
     (void)debug;
+    memset(&policy, 0, sizeof(policy));
     policy.struct_size = sizeof(policy);
     policy.transports = FVM_RH_TRANSPORTS;
     if (fvm_rheartbeat_init(&heartbeat, &policy, 1, 0) != FVM_R_OK ||
         fvm_rdispatch_create(0, &dispatch) != FVM_R_OK ||
         fvm_rdispatch_resources(dispatch, 1, 0, 0, &used) != FVM_R_OK || used != 0 ||
+        fvm_rfs_create(dispatch, 1, &fs) != FVM_R_OK ||
+        fvm_r9p_create(fs, &server) != FVM_R_OK ||
+        fvm_r9p_destroy(&server) != FVM_R_OK ||
+        fvm_rfs_destroy(&fs) != FVM_R_OK ||
         fvm_rdispatch_destroy(&dispatch) != FVM_R_OK)
         return 1;
     return 0;

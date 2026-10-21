@@ -84,6 +84,7 @@ C89 тест проверяет фрагменты ответа, независ�
 BUSY при running close, пустой payload, исчерпание слотов/ID, отказ allocation и
 атомарность выходов. Это native протокольная проверка, не запуск на чужой OS,
 полная совместимость Flash, сетевой listener или mount.
+[Адаптер сообщений 9P2000](RESOURCE_9P.ru.md) добавлен в v0.733; OS mount и named scene tree остаются отдельной работой.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

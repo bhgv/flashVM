@@ -1,4 +1,5 @@
 # FlashVM C89/C++98 API index
+- [Resource 9P2000](RESOURCE_9P.md) / [RU](RESOURCE_9P.ru.md): `r9p.h`, bounded device-message adapter with host-owned transport.
 - [Resource files](RESOURCE_FILES.md) / [RU](RESOURCE_FILES.ru.md): `rfs.h`, native open/read/write/close over dispatcher resources.
 
 - [Hybrid heartbeat](HYBRID_HEARTBEAT.md) / [RU](HYBRID_HEARTBEAT.ru.md): `rheartbeat.h`, separate UDP/TCP policy and checked hints.

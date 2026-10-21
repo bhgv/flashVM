@@ -88,6 +88,7 @@ stable qids across filtered sessions, directory invalidation, stale generations,
 queued cancellation, running-close BUSY, empty payload, fixed-slot/ID exhaustion,
 allocation failure and atomic outputs. This is native protocol evidence, not
 foreign-OS execution, complete Flash compatibility, a network listener or mount.
+[9P2000 message adapter](RESOURCE_9P.md) added in v0.733; OS mount and the named scene tree remain separate work.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
