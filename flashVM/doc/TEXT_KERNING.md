@@ -47,6 +47,15 @@ with existing graph rollback. Old readers reject the new disabled flag rather
 than silently drawing a different width. This field-record compatibility does
 not preserve implicit behavior of old generic TextFormat objects with null flags.
 
+
+## C89 raster tutorial (v0.824)
+
+The [text layout example](../examples/embedding/text_layout/README.md) now accepts
+`--no-kerning` and draws its independently owned paths into caller RGBA storage.
+The default invocation preserves legacy native shaping. The reusable text-jit
+profile enables pinned static font libraries, rasterization and the available
+native JIT without requiring SDL/system fonts. No window or output file is created.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

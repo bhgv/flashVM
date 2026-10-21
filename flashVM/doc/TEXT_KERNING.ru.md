@@ -45,6 +45,15 @@ memory charge и публичных ABI-структур. Старые запи�
 флаг вместо молчаливого изменения ширины. Эта совместимость field records не
 сохраняет неявное поведение старых общих TextFormat-объектов с null-флагами.
 
+
+## Растровый пример C89 (v0.824)
+
+[Пример text layout](../examples/embedding/text_layout/README.md) принимает
+`--no-kerning` и рисует независимые owned-пути в RGBA-буфер хоста. Без флага
+сохраняется прежний нативный shaping. Профиль text-jit включает закреплённые
+статические шрифтовые библиотеки, rasterization и доступный native JIT без
+SDL/system fonts. Окно и выходной файл не создаются.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

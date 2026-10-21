@@ -27,20 +27,45 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_font_destroy`](../../../include/flashvm/font.h#L48) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
-| [`fvm_font_read`](../../../include/flashvm/font.h#L45) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
-| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_text_layout_create`](../../../include/flashvm/text_layout.h#L72) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L94) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L86) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L84) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L92) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_font_destroy`](../../../include/flashvm/font.h#L48) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_font_read`](../../../include/flashvm/font.h#L45) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_create_configured`](../../../include/flashvm/text_layout.h#L80) | Borrow the font during bounded shaping/wrapping with explicit flags; own independent layout paths. Unknown flags fail and clear output. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L94) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L86) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L84) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L92) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 
 [Описание в общем каталоге](../../README.md#example-embedding-text_layout).
 <!-- example-catalog-api:end -->
+
+
+## Explicit kerning / Явный кернинг (v0.824)
+
+```sh
+cmake -S . -B build-text -DFVM_DEFS_FILE=cmake/profiles/text-jit.defs -DCMAKE_BUILD_TYPE=Release
+cmake --build build-text --target flashvm_examples_embedding_text_layout_main
+./build-text/flashvm_examples_embedding_text_layout_main
+./build-text/flashvm_examples_embedding_text_layout_main --no-kerning
+```
+
+Default invocation preserves legacy native kerning. `--no-kerning` disables pair
+kerning consistently during wrapping, measurements, placed paths and software
+rasterization. Ligatures and bidi shaping remain enabled. The original CC0 geometric
+font has an AV adjustment of -80/1000 em; at 40 pixels the first-line advance changes
+by about 3.2 pixels. The example prints line/glyph metadata and draws into an owned
+RGBA memory buffer, without opening a window or writing files. Unknown options fail
+before native allocation. NO_FONTS prints its existing prerequisite message.
+
+По умолчанию сохраняется прежний нативный кернинг. `--no-kerning` отключает его
+одинаково для переносов, метрик, путей и программного рендера. Лигатуры и bidi
+сохраняются. Оригинальный CC0-шрифт задаёт AV -80/1000 em: при 40 px разница
+составляет около 3.2 px. Пример печатает метаданные и рисует в собственный RGBA-буфер
+без окон и файлов. Неизвестные параметры отвергаются до выделения; NO_FONTS печатает
+прежнее требование FONTS. Это не приёмка устройств и не полный SWF TextField.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -56,7 +81,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
-| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../../../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../../../include/flashvm/text_layout.h#L80) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:94](../../../include/flashvm/text_layout.h#L94) |
 | `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:86](../../../include/flashvm/text_layout.h#L86) |

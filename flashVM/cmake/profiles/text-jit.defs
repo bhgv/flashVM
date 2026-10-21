@@ -1,0 +1,11 @@
+# Reusable native text geometry/shaping and optional JIT profile; no SDL or system fonts required.
+GRAPHICS_AGG
+FONTS
+AUTO_PLATFORM
+HEADLESS
+OS_PORTS
+JIT
+NO_RENDER_JOBS
+NO_SQLITE
+NO_MEDIA
+NO_IMAGE_CODECS

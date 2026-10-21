@@ -14,11 +14,15 @@
 #include <string.h>
 /* Initialize the example, run its API operations and release owned resources. */
 /* Точка входа: запускаем последовательность действий этого примера. */
-int main(void)
+int main(int argc, char **argv)
 /* Начинаем блок инструкций или описание объекта. */
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
+    unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    if (argc == 2 && !strcmp(argv[1], "--no-kerning")) flags = FVM_FONT_SHAPE_NO_KERNING; /* Disable pair kerning only. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
+    { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
     const char text[] = "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8";
     /* Сохраняем вычисленное значение: FVM_Font *font. */
@@ -63,20 +67,21 @@ int main(void)
             __LINE__);
         /* Завершаем ветку ошибки. */
     }
-    /* Вызываем fvm_text_layout_create: разбиваем текст на строки и размещаем глифы.
+    /* Вызываем fvm_text_layout_create_configured: разбиваем текст на строки и размещаем глифы.
      * font — шрифтовой дескриптор.
      * text — текст UTF-8 для разбивки на строки и размещения глифов.
      * strlen(text) — размер входного текста или ресурса в байтах.
      * &options — параметры переносов, направления и выравнивания текста.
+     * flags — явный выбор парного кернинга, одинаковый для измерения и вывода.
      * &layout — адрес или буфер для результата.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
-    if (!(fvm_text_layout_create(font, text, strlen(text), &options, &layout) == FVM_OK))
+    if (!(fvm_text_layout_create_configured(font, text, strlen(text), &options, flags, &layout) == FVM_OK))
     /* Начинаем обработку неуспешного вызова или неверного результата. */
     {
         /* Выводим исходное условие, имя файла и номер строки; этот вызов не возвращается. */
         fvm_example_fail(
             /* Продолжаем условие проверки или аргументы диагностического сообщения. */
-            "fvm_text_layout_create(font, text, strlen(text), &options, &layout) == FVM_OK",
+            "fvm_text_layout_create_configured(font, text, strlen(text), &options, flags, &layout) == FVM_OK",
             /* Передаём имя исходного файла и номер строки неуспешной проверки. */
             __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
@@ -228,8 +233,10 @@ int main(void)
      * path — векторный путь. */
     fvm_path_destroy(path);
 /* Начинаем альтернативную ветку компиляции. */
+    } /* Release the font-enabled declaration scope after native cleanup. */
 #else
     /* Выводим строку с завершающим переводом строки. */
+    (void)flags; /* Feature parsing remains available when native fonts are disabled. */
     puts("Text layout requires FONTS in DEFS.txt.");
 /* Завершаем условный блок компиляции. */
 #endif

@@ -102,7 +102,7 @@
     - [font_libraries](#example-embedding-font_libraries) — <small><em>Шрифты, shaping и редактируемые контуры</em></small>
     - [standard_text](#example-embedding-standard_text) — <small><em>TextField, шрифты и векторный текст</em></small>
     - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
-    - [text_layout](#example-embedding-text_layout) — <small><em>Строки, метрики и контуры text layout</em></small>
+    - [text_layout](#example-embedding-text_layout) — <small><em>Строки, кернинг, метрики и контуры text layout</em></small>
     - [url_encoding](#example-embedding-url_encoding) — <small><em>URL-функции AS1/AS2, UTF-16 и NUL без потери длины</em></small>
   - [workers](#group-embedding-workers)
     - [worker_channels](#example-embedding-worker_channels) — <small><em>Обмен host↔worker по двум каналам</em></small>
@@ -1226,7 +1226,7 @@ AS2-эскиз сетевой интеграции и host bridge. Отдель�
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/text_layout/README.md](embedding/text_layout/README.md).
 
-Создаёт горизонтальную раскладку текста, запрашивает метрики и строки и извлекает контуры отдельных glyph и всего layout. Показывает преобразование и отрисовку owned-путей и порядок освобождения font/layout/path.
+Создаёт горизонтальную раскладку текста, запрашивает метрики и строки и извлекает контуры отдельных glyph и всего layout. Показывает `--no-kerning` для согласованных переносов и геометрии, преобразование и отрисовку owned-путей и порядок освобождения font/layout/path.
 
 **Файлы:** [main.c](embedding/text_layout/main.c).
 
