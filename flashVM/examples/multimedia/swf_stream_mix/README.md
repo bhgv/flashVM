@@ -101,7 +101,7 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L36) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
 | [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L40) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L74) | Release native voices after all serial reads finish; null allowed. |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L115) | Release stream storage after converter use; null allowed. |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L131) | Release stream storage after converter use; null allowed. |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -127,6 +127,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../../../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:115](../../../include/flashvm/swf_stream_sound.h#L115) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:131](../../../include/flashvm/swf_stream_sound.h#L131) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:96](../../../include/flashvm/swf_stream_sound.h#L96) |
 <!-- source-links:end -->

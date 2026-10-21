@@ -1,5 +1,5 @@
 /* FlashVM: live root streaming-sound inspection and optional owned indexed encoded snapshots.
- * Explicit preparation can expand whole ADPCM packets; no MovieClip clock or host output runs. */
+ * Explicit preparation can expand whole or authoritatively counted partial ADPCM packets; no MovieClip clock or host output runs. */
 #include "../core/runtime.hpp"
 #include "flashvm/swf_stream_sound.h"
 #include "reader.hpp"
@@ -400,18 +400,56 @@ static FVM_Result stream_adpcm_frames(const unsigned char *data, size_t size, un
     *frames = count * FVM_SWF_ADPCM_BLOCK_FRAMES;
     return FVM_OK;
 }
+/* Validate an externally supplied exact frame count without guessing padding as sample data.
+ * ADPCM packets share bit alignment; only the final block byte may contain zero padding. */
+static FVM_Result stream_adpcm_counted(const unsigned char *data, size_t size,
+                                       unsigned int channels, size_t frames)
+{
+    if (frames > ULONG_MAX)
+        return FVM_INVALID_ARGUMENT;
+    if (!size)
+        return frames ? FVM_INVALID_ARGUMENT : FVM_OK;
+    unsigned int width = (data[0] >> FVM_SWF_STREAM_ADPCM_WIDTH_SHIFT) + FVM_SWF_ADPCM_MIN_WIDTH;
+    size_t packet =
+        channels * (FVM_SWF_STREAM_ADPCM_INITIAL_BITS + (FVM_SWF_ADPCM_BLOCK_FRAMES - 1) * width);
+    size_t whole = frames / FVM_SWF_ADPCM_BLOCK_FRAMES;
+    size_t tail = frames % FVM_SWF_ADPCM_BLOCK_FRAMES;
+    size_t extra = tail ? channels * (FVM_SWF_STREAM_ADPCM_INITIAL_BITS + (tail - 1) * width) : 0;
+    if (whole > ((size_t)-1 - FVM_SWF_ADPCM_WIDTH_BITS - extra) / packet)
+        return FVM_OUT_OF_MEMORY;
+    size_t bits = FVM_SWF_ADPCM_WIDTH_BITS + whole * packet + extra;
+    size_t bytes = bits / FVM_SWF_SOUND_BYTE_BITS + (bits % FVM_SWF_SOUND_BYTE_BITS != 0);
+    if (bytes != size)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int padding = (unsigned int)((FVM_SWF_SOUND_BYTE_BITS -
+                                          bits % FVM_SWF_SOUND_BYTE_BITS) % FVM_SWF_SOUND_BYTE_BITS);
+    if (padding && (data[size - 1] & ((1U << padding) - 1U)))
+        return FVM_INVALID_ARGUMENT;
+    return FVM_OK;
+}
 /* [GC:] Prepare independent native PCM before worker publication; the temporary never escapes.
  * Encoded plus decoded payload and block-index bytes share the runtime preparation budget. */
 static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const size_t *budget,
+                                    const size_t *counts, const size_t *count,
                                     FVM_SWFStreamSoundSnapshot **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
+    if (count && *count && !counts)
+        return FVM_INVALID_ARGUMENT;
     FVM_SWFStreamSoundSnapshot *snapshot = 0;
     FVM_Result result = snapshot_open(context, stream, budget, &snapshot);
     if (result != FVM_OK)
         return result;
+    if (count && (*count != snapshot->blocks.size() ||
+                  snapshot->info.format != FVM_SWF_SOUND_ADPCM))
+    {
+        FVM_Result failure = *count != snapshot->blocks.size() ? FVM_INVALID_ARGUMENT
+                                                               : FVM_UNSUPPORTED;
+        delete snapshot;
+        return failure;
+    }
     if (snapshot->info.format == FVM_SWF_SOUND_PCM_NATIVE ||
         snapshot->info.format == FVM_SWF_SOUND_PCM_LE)
     {
@@ -435,8 +473,11 @@ static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const s
         FVM_SWFStreamSoundEntry &entry = snapshot->blocks[i];
         const unsigned char *data =
             snapshot->bytes.empty() ? &snapshot->empty : snapshot->bytes.begin() + entry.offset;
-        size_t frames = 0;
-        result = stream_adpcm_frames(data, entry.block.data_size, snapshot->info.channels, &frames);
+        size_t frames = count ? counts[i] : 0;
+        result = count ? stream_adpcm_counted(data, entry.block.data_size,
+                                               snapshot->info.channels, frames)
+                       : stream_adpcm_frames(data, entry.block.data_size,
+                                              snapshot->info.channels, &frames);
         if (result != FVM_OK ||
             frames > (limit - used) / FVM_SWF_SOUND_PCM_BYTES / snapshot->info.channels)
         {
@@ -509,14 +550,23 @@ static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const s
 extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *context, size_t stream,
                                                              FVM_SWFStreamSoundSnapshot **out)
 {
-    return snapshot_open_pcm(context, stream, 0, out);
+    return snapshot_open_pcm(context, stream, 0, 0, 0, out);
 }
 /* [GC:] Bound both initial copying and compressed expansion before allocating either payload. */
 extern "C" FVM_Result
 fvm_swf_stream_sound_snapshot_open_pcm_bounded(FVM_Context *context, size_t stream, size_t budget,
                                                FVM_SWFStreamSoundSnapshot **out)
 {
-    return snapshot_open_pcm(context, stream, &budget, out);
+    return snapshot_open_pcm(context, stream, &budget, 0, 0, out);
+}
+/* [GC:] Host-authoritative block counts allow partial ADPCM packets without a runtime dependency.
+ * The count table is borrowed only during this synchronous owner-side bounded preparation. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_open_adpcm_counted(FVM_Context *context, size_t stream,
+                                                 const size_t *counts, size_t count, size_t budget,
+                                                 FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open_pcm(context, stream, &budget, counts, &count, out);
 }
 /* Copy native allocation charges only; this immutable observation needs no original VM. */
 extern "C" FVM_Result

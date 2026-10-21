@@ -95,6 +95,22 @@ extern "C"
      * Subtract retained_bytes from an aggregate budget before preparing the next snapshot. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm_bounded(
         FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **);
+    /* Owner-only bounded ADPCM expansion using host-authoritative per-block frame counts.
+     * counts has exactly count entries in encoded block order (including empty blocks).
+     * It may be null only for count=0; table storage is borrowed until return, never retained.
+     * Unlike open_pcm, partial final packets are supported; average_samples is never used.
+     * Exact encoded length and zero final padding are required. No alignment between packets.
+     * Zero frames accepts an empty payload or a width-only byte with zero padding.
+     * Count/length/padding mismatch or frames > ULONG_MAX INVALID_ARGUMENT; non-ADPCM
+     * UNSUPPORTED; overflow/allocation/runtime or explicit peak ceiling OUT_OF_MEMORY.
+     * Clear *out first; null out INVALID_ARGUMENT. Failure releases all temporary ownership.
+     * Same storage charges, native lifetime, read/converter/close and external serialization
+     * contracts as open_pcm_bounded. May allocate/decode; no callback/device/VM execution.
+     * A count is an explicit host assertion, not inferred/verified movie timing; multiple
+     * counts can fit identical zero-padded bytes. Do not guess counts from a header average. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_adpcm_counted(
+        FVM_Context *, size_t stream, const size_t *counts, size_t count,
+        size_t budget_bytes, FVM_SWFStreamSoundSnapshot **);
     /* Copy immutable native charges without allocation/callback/VM; valid after VM teardown.
      * Null/wrong-size INVALID_ARGUMENT, output intact. Caller retains snapshot until return;
      * concurrent const reads allowed; synchronize close separately. Peak >= retained. */
