@@ -1,4 +1,4 @@
-Версия разработки: **0.811** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.812** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.812: [Воспроизводимая генерация free-format с независимыми PCM-эталонами](doc/FREE_FORMAT_MP3.ru.md).
 
 v0.811: [Независимые оракулы SDL для free-format потоков и смешанных событий](doc/FREE_FORMAT_MP3.ru.md).
 

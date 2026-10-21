@@ -5071,6 +5071,23 @@ player mixing or full SWF completion is claimed.
 нативные потребители требуют пересборки. Оракулы проверяют расчёты и dummy SDL,
 но не заменяют приёмку устройств и всей спецификации SWF.
 
+
+## v0.806–0.812 free-format audio
+
+Strict free-format framing, persistent event decoding and exact counted stream
+blocks now feed native snapshots and the desktop player. 86 native audio tests,
+five full-core ASan/UBSan cases, 64 actual dummy-SDL stream/mixed-event cases and
+the C89 export oracle pass; original fixtures regenerate exactly with LAME 3.100
+and independent mpg123 PCM. Short unframed events, negative initial latency, CRC,
+reference MP3 seeking/A/V, child streams and player stream/event composition remain
+open. No physical platform/device acceptance is claimed.
+
+Free-format теперь проходит через строгую разметку, декодирование событий, точные
+потоковые счётчики, нативные снимки и плеер. Пройдены 86 нативных тестов, пять
+ASan/UBSan, 64 dummy-SDL случая и экспорт C89; исходные эталоны воспроизведены
+независимыми LAME/mpg123. Остальные перечисленные ограничения и все стадии roadmap
+остаются открытыми. [EN](FREE_FORMAT_MP3.md) / [RU](FREE_FORMAT_MP3.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

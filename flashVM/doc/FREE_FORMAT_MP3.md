@@ -71,6 +71,32 @@ engines. Five framing/event/stream cases pass full-core ASan/UBSan. This does no
 certify physical devices, CRC/Huffman integrity, child streams or stream/event
 composition in one movie. [Oracle](../frontend/tests/free_mp3_audio.py).
 
+
+## Regeneration and acceptance (v0.812)
+
+Normal builds/tests use checked-in original fixtures and need no external codec.
+To reproduce them on a Linux host with LAME 3.100 and system libmpg123:
+
+```sh
+python3 scripts/generate_free_mp3_test_fixture.py --check
+python3 scripts/generate_free_mp3_test_fixture.py --output /tmp/free-mp3-fixture.hpp
+```
+
+The generator owns separate encoder/decoder handles, synthesizes original analytical
+input, disables LAME Info tags and implicit mpg123 gapless trimming, then records
+all encoded bytes and selected independent native S16 values. It never calls
+FlashVM/minimp3 and never overwrites the checked-in fixture by default. The complete
+fixture reproduces byte-for-byte on the validation host; differing library/host
+versions must be reviewed rather than silently replacing the golden values.
+The shared optional mpg123 helper also drives the real SDL queue oracle.
+
+Acceptance: 86 native audio regressions, five full-core ASan/UBSan cases, 64 real
+dummy-SDL cases and the C89 file-export oracle pass. Allocation-failure paths use
+the ordinary native build; sanitizer exception-unwind limitations are not treated
+as a clean injected-failure sanitizer result. The global multimedia comment checker
+still reports two unchanged baseline Windows speech files; changed tutorial code
+and the frontend catalog checker pass. All roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
