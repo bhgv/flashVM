@@ -1,4 +1,4 @@
-Версия разработки: **0.721** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.722** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,7 +9,7 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
-v0.721: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
+v0.722: [Windowless player](doc/OFFSCREEN_PLAYER.md) / [Плеер без окна](doc/OFFSCREEN_PLAYER.ru.md).
 
 v0.640: [Canonical sound frames](doc/SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) / [Канонические звуковые кадры](doc/SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
 
@@ -472,6 +472,7 @@ with legacy strict API preserved and an annotated --convert-demo tutorial.
 v0.583: отдельный audio worker и [StopSounds](doc/AUDIO_STOP_BINDINGS.ru.md); исправление треска Android требует проверки на телефоне.
 [Проверяемые результаты платформенной приёмки](doc/RELEASE_EVIDENCE.ru.md).
 [Сборка для своей и другой ОС/CPU](../BUILDING.ru.md).
+Binary S-record profile / Двоичные S-записи: [EN](doc/SRECORD.md) / [RU](doc/SRECORD.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

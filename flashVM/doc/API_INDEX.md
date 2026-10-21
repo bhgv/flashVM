@@ -217,6 +217,7 @@ special/printable selectors without allocation or state mutation.
 [Thread-safe playback mailbox / Межпоточный ящик команд](PLAYBACK_MAILBOX.md) / [RU](PLAYBACK_MAILBOX.ru.md).
 [RGBA frame observation / Наблюдение RGBA-кадров](FRAME_CAPTURE.md) / [RU](FRAME_CAPTURE.ru.md).
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
+Binary S-record codec / Двоичный codec: [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

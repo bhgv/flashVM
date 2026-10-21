@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.721
+# FlashVM stage status / Состояние стадий — v0.722
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,13 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.722 adds a standalone C89 binary S-record codec: canonical big-endian
+signed-magnitude integers with last-octet bit, bounded record framing and a
+provisional adaptive CRC profile. Independent Python integer/zlib vectors pass,
+including prefixes, 64-bit limbs, damaged tags, nested/binary payloads and unchanged
+error outputs. No VM channel/scene/9P integration is implied. All stages remain
+open. [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 
 v0.721 extends the annotated capture tutorial with --offscreen and all-pixel PPM
 checks using an invalid video driver. Existing windowed commands remain the

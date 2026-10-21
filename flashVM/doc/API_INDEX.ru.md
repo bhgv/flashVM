@@ -38,6 +38,7 @@ special/printable selectors без allocation/мутации. Отдельный
 [`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L97) рассылает точные retained selectors.
 [Контракт](CLIP_KEYPRESS.ru.md) / [EN](CLIP_KEYPRESS.md).
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
+Binary S-record codec / Двоичный codec: [EN](SRECORD.md) / [RU](SRECORD.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
