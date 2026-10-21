@@ -1,0 +1,145 @@
+# Leased frame resources
+
+The additive C89 [frontend/common/resource_frame.h](../frontend/common/resource_frame.h) API exports copied logical
+stage RGBA frames through the existing dispatcher, S-record envelopes and
+resource files. It complements [timeline state](PLAYER_RESOURCE_STATE.md),
+[frame observation](FRAME_CAPTURE.md), [9P](RESOURCE_9P.md) and the
+[capture example](../examples/player/frame_capture/README.md).
+[Русский](PLAYER_RESOURCE_FRAMES.ru.md).
+
+## Ownership and bounds
+
+Create chooses an explicit capacity per pixel slot, from one byte through
+[FVM_DESKTOP_RFRAME_MAX_BYTES](../frontend/common/resource_frame.h#L28) (64 MiB). There are [FVM_DESKTOP_RFRAME_SLOTS](../frontend/common/resource_frame.h#L17) (three)
+slots: total pixel allocation is three times that capacity, plus fixed native
+metadata. All allocations precede resource registration; errors free partial
+storage and leave both outputs unchanged. There is no hidden maximum-size
+allocation. After create, capture, requests and cleanup allocate nothing.
+
+Capture runs on the frame-observer owner and copies visible RGBA rows to a
+nonlatest, unpinned spare. Source padding is discarded. It publishes metadata
+before committing the new latest slot. No runner pixel/source/context/root
+pointer is retained. Failed geometry/publication leaves the previous published
+image intact. The native frame cache and live leases can outlive runner/SDK
+teardown as long as their dispatcher remains alive and owner calls are serialized.
+[GC:] No managed roots, collection, VM calls or SDL work are introduced.
+
+Each successful capture has a nonzero Uint32 sequence in this adapter lifetime;
+exhaustion returns LIMIT rather than wrapping. A client must ACQUIRE a lease
+before CHUNK reads. The image remains immutable until that lease is released,
+revoked or the adapter is destroyed, even while newer frames arrive. INFO and
+metadata events do not create a pin. There are [FVM_DESKTOP_RFRAME_LEASES](../frontend/common/resource_frame.h#L19) (eight)
+lease slots, authenticated per session with independent nonwrapping generations.
+No fairness, implicit lease timeout, persistent handle or cross-restart identity
+is promised. An authenticated reader can consume the bounded pin quota; host
+policy must release/revoke lost or abusive sessions.
+
+If old leases leave no spare slot, capture returns BUSY, preserves the current
+image/leases/sequence, and increments a saturating dropped counter. The direct
+frame-notify wrapper treats BUSY as successful playback: only export is dropped.
+INFO/ACQUIRE report the current dropped count; events report it at publication.
+At Uint32 max it is a lower bound. This is separate from an observer event's
+missed count, which reports that subscriber's queue overflow. Configured capacity
+or sequence exhaustion is LIMIT, not a silent drop. Capture never blocks waiting
+for readers and never acknowledges network delivery.
+
+## Resource operations
+
+The host chooses the registered path, for example `/display/frame`. The current
+filesystem projects it under its incarnation directory, e.g. `/3.1/path` names
+the registration and `/3.1/ops/2` invokes ACQUIRE. Discover actual slot/generation
+names; do not assume them in applications. All four operations require READ;
+SUBSCRIBE can independently grant metadata events. Lease IDs alone grant no
+permission, and a wire uname/session claim cannot choose native authority.
+
+| Operation | Request and result |
+| --- | --- |
+| [FVM_DESKTOP_RFRAME_INFO](../frontend/common/resource_frame.h#L7) | Empty request, return latest metadata with zero/zero lease. Before first capture terminal BUSY. No pixel pin is allocated. |
+| [FVM_DESKTOP_RFRAME_ACQUIRE](../frontend/common/resource_frame.h#L8) | Empty request, return latest metadata with a new session-owned lease ID/generation. Full/retired lease table LIMIT. Errors acquire no pin. Repeated calls intentionally allocate independent leases. |
+| [FVM_DESKTOP_RFRAME_CHUNK](../frontend/common/resource_frame.h#L10) | Exactly four canonical nonnegative S integers: lease ID, generation, byte offset, count. Count 1..[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9); offset no greater than byte_count. Return up to count raw packed RGBA bytes. At exact end OK/zero bytes; beyond end or invalid count INVALID. Live lease of another session DENIED; stale/revoked/unknown lease UNKNOWN. No word/pixel alignment is required. |
+| [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L13) | Exactly lease ID and generation as two S integers. Release only this session's pin; another owner DENIED, stale handle UNKNOWN. Success has an empty result. Generation exhaustion retires that lease slot permanently. |
+
+Every ordinary resource write still queues an operation; its native owner must
+pump it. INFO/ACQUIRE/CHUNK/RELEASE handlers access only native cache storage.
+They may be pumped after runner return without touching a dead VM. During a live
+player, pump at safe owner boundaries; control operations retain their separate
+notify-only delivery contract. Do not pump arbitrary VM handlers from a frame
+callback just because these frame handlers happen to be native-only.
+
+A CHUNK reply is already counted bytes inside the existing checked resource
+reply envelope. Metadata is seventeen canonical unsigned S integers followed by
+source_size bytes: version, lease ID, lease generation, sequence, format, width,
+height, row_bytes, byte_count, movie_ticks, total_ticks, presentations,
+total_presentations, reason, flags, dropped, source_size. Packed rows are width*4,
+top to bottom, straight-alpha R/G/B/A octets. No native endian pixel words or
+structs are transmitted. Source prefixes are bytewise bounded to 255 and explicitly
+flagged; they need not end on a UTF-8 code-point boundary. Native counters greater
+than Uint32 saturate with an explicit flag. Counters describe host ticks/draws,
+not script `_currentframe`. These are raw raster frames, not a video codec or
+an audio/video clock synchronization implementation.
+
+## C API and lifetime
+
+All adapter mutations and handlers run on the serialized owner; worker clients
+only post/take copied dispatcher data using its mutex policy, or decode copied
+metadata. Input/output objects must not overlap opaque storage or each other.
+The host owns authentication, transport, native callback installation and grants.
+
+| Function | Contract |
+| --- | --- |
+| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L67) | Dispatcher, canonical path, per-slot capacity, adapter and target outputs. Allocate fixed native cache and four READ operations; borrow dispatcher until destroy. Invalid descriptor/capacity INVALID, oversize LIMIT, allocation NOMEM, registration errors propagate. Outputs only on OK. No SDK/device startup or grants. |
+| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L76) | Adapter and borrowed valid frame. Validate format, reason, bounded dimensions, counters, source/visible extents; copy packed pixels to a spare, publish metadata, commit latest. No allocation. Invalid frame INVALID; capacity/sequence LIMIT; missing spare BUSY increments dropped only. Publication failures preserve prior published image. Caller owns callback failure/drop policy. |
+| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L82) | Standard frame observer callback; userdata is adapter. OK or BUSY returns [FVM_OK](../include/flashvm/flashvm.h#L42), intentionally dropping only bounded export under backpressure. INVALID maps [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); other failures [FVM_ERROR](../include/flashvm/flashvm.h#L43). Retains no callback pointer/source/pixel/VM borrow. A host may instead call capture to choose another policy. |
+| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L86) | Decode one counted metadata payload, not the outer S envelope. Validate complete schema, lease pair/range, packed geometry, flags, nonzero sequence/presentations, reason, source length and exact end. INVALID preserves native output. Client owns the copied result; no adapter/VM access or allocation. |
+| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L91) | Owner supplies adapter and authenticated session after transport quiesces. Remove this resource's rights, destroy its watches and release every session-owned pin. Errors leave pins intact; a regrant cannot revive old generations. Also disconnect the native dispatcher session when appropriate. |
+| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L97) | Owner quiesces capture/handlers/clients, then unregisters exact resource and frees all native buffers, invalidating even outstanding pins. Running handler BUSY preserves pointer. On OK null pointer; queued old jobs later complete UNKNOWN and still need acknowledgement/disconnect. Dispatcher/client files/SDK remain host-owned. |
+
+Close/release each image explicitly. Closing an operation file, fid or even the
+9P adapter does **not** automatically release application-specific frame leases.
+A lost ACQUIRE reply can leave a pin until RELEASE or native revoke; retries can
+allocate another pin. Transport disconnect cleanup must call frame revoke before
+dispatcher disconnect, or destroy the entire frame adapter after callers quiesce.
+A plain external grant removal alone denies further reads but does not free pins.
+This explicit separation avoids inferring ownership from unauthenticated packets.
+
+## Example and build
+
+`frame_capture --resource-frames` adds a 4-MiB-per-slot budget (12 MiB total pixels),
+exports every presented frame and decodes one independent metadata event. It also
+enables the existing resource-control/state example; ordinary capture and
+`--resource-control` keep their previous memory budget. Over-budget frames fail
+explicitly. The example demonstrates a local publisher/metadata reader, not a
+network listener or a complete remote GUI. Its ordinary PPM remains a separately
+owned copy written after SDK teardown. [Budget header](../examples/player/frame_capture/resource_limits.h).
+
+```sh
+cmake --build build-player --target flashvm_frontend_resource_frame flashvm_resource_frame_oracle flashvm_example_frame_capture
+ctest --test-dir build-player -R '^flashvm_resource_frame' --output-on-failure
+./build-player/frontend/flashvm_example_frame_capture --offscreen --resource-frames --embedded flashVM/examples/player/frame_capture/start.swf frame.ppm
+```
+
+Configure the static SDL host as documented in [desktop build](DESKTOP_FRONTEND.md).
+The standalone contract checks copied padded rows, immutable old leases, bounded
+chunks/EOF, competing sessions, explicit release/revoke, lease/buffer exhaustion,
+allocation failures at every buffer allocation, source/counter truncation,
+sequence/generation exhaustion and queued stale teardown. A Python integer oracle
+checks independent metadata bytes, malformed geometry/leases, all prefixes and
+native queue replies/chunk ownership without VM/SDL startup. Tutorial tests
+compare every output RGB pixel for file, linked-memory and configured HTTP sources.
+All roadmap stages remain open; these checks do not certify every SWF tag,
+physical hardware, foreign-platform execution, OS mount or production transport.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
+<!-- source-links:end -->

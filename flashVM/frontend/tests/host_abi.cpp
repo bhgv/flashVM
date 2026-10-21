@@ -2,6 +2,7 @@
 #include "../common/player.h"
 #include "../common/resource_control.h"
 #include "../common/resource_state.h"
+#include "../common/resource_frame.h"
 #ifdef FVM_DESKTOP_SOCKET_HTTP
 #include "../common/socket_http.h"
 #endif
@@ -50,6 +51,11 @@ int main()
         policy.connect_ms > policy.total_ms || policy.ca_file ||
         fvm_desktop_run_source_network(0, 0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
         fvm_desktop_run_network(0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    FVM_DesktopResourceFrameInfo frame_info;
+    FVM_DesktopResourceFrame *resource_frame = 0;
+    if (fvm_desktop_resource_frame_read(0, 0, &frame_info) != FVM_R_INVALID ||
+        fvm_desktop_resource_frame_destroy(&resource_frame) != FVM_R_INVALID)
         return 1;
     FVM_DesktopResourceSnapshot resource_snapshot;
     FVM_DesktopResourceState *resource_state = 0;

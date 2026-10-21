@@ -68,7 +68,7 @@ if(FVM_PLAYER_HOST_SHARED)
   set(player_host_type SHARED)
 endif()
 # A native IDE can link the same synchronous implementation without a CLI entrypoint.
-add_library(flashvm_player_host ${player_host_type} common/resource_state.c common/resource_control.c common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
+add_library(flashvm_player_host ${player_host_type} common/resource_frame.c common/resource_state.c common/resource_control.c common/player.c common/frame.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
   common/audio.c common/audio_trace.c)
 target_include_directories(flashvm_player_host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(flashvm_player_host PUBLIC flashvm SDL2::SDL2)
@@ -1120,4 +1120,26 @@ if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
       set_tests_properties(flashvm_resource_9p_player_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
     endforeach()
   endif()
+endif()
+
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_resource_frame tests/resource_frame.c common/frame.c)
+  target_link_libraries(flashvm_frontend_resource_frame PRIVATE flashvm_srecord)
+  set_target_properties(flashvm_frontend_resource_frame PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_resource_frame_contract COMMAND flashvm_frontend_resource_frame)
+endif()
+if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_resource_frames_example COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
+    ${PROJECT_SOURCE_DIR}/examples/player/frame_capture --offscreen --resource-frames)
+  set_tests_properties(flashvm_resource_frames_example PROPERTIES TIMEOUT 30)
+endif()
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c
+    ../src/protocol/srecord.c ../src/protocol/rdispatch.c)
+  target_include_directories(flashvm_resource_frame_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  set_target_properties(flashvm_resource_frame_oracle PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  add_test(NAME flashvm_resource_frame_wire COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/resource_frame_wire.py $<TARGET_FILE:flashvm_resource_frame_oracle>)
+  set_tests_properties(flashvm_resource_frame_wire PROPERTIES TIMEOUT 30)
 endif()

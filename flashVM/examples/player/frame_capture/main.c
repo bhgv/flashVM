@@ -1,4 +1,6 @@
 /* Copy a chosen logical stage raster into native storage and write it after SDK cleanup; see README.md / README.ru.md. */
+#include "../../../frontend/common/resource_frame.h" /* Bounded native frame cache and client metadata decoder. */
+#include "resource_limits.h" /* Explicit twelve-MiB total pixel-cache budget for the optional example mode. */
 #include "../../../frontend/common/resource_state.h" /* Copied timeline snapshots and independent observer events. */
 #include "../../../frontend/common/resource_control.h" /* Native resource queue to player owner-control bridge. */
 #include "../../../frontend/common/player.h" /* Public C89 observer/control/source declarations, with no SDL types. */
@@ -31,6 +33,11 @@ typedef struct Capture /* No managed context/root or borrowed frame/source point
     FVM_RHandle state_target; /* Registered generation of the timeline observation endpoint. */
     FVM_RWatch state_watch; /* Own one local copied observation queue. */
     FVM_DesktopResourceSnapshot last_state; /* This scalar/source copy survives player teardown. */
+    FVM_DesktopResourceFrame *frame_adapter; /* Own bounded native image buffers only in resource-frames mode. */
+    FVM_RHandle frame_target; /* Registered frame resource incarnation, separate from timeline state. */
+    FVM_RWatch frame_watch; /* Own one local metadata-event subscription; it does not pin pixels. */
+    FVM_DesktopResourceFrameInfo last_frame; /* Owned metadata remains valid after SDK teardown. */
+    int resource_frames; /* Optional export selector; ordinary capture/control keep their prior budgets. */
     int posted, control_failed; /* Track acknowledgement and cleanup/error status independently of captured pixels. */
     int captured; /* Set only after a complete validated row copy succeeds. */
 } Capture; /* Caller stack storage outlives the synchronous observer/control callbacks. */
@@ -40,6 +47,16 @@ static FVM_Result capture_frame(const FVM_DesktopFrame *frame, void *raw) /* Nat
 { /* Defer file I/O until playback cleanup; keep the owner callback bounded by one allocation/copy. */
     Capture *capture = (Capture *)raw; /* Borrow the main function's native state. */
     FVM_Result result; /* Preserve a specific copy failure for the runner's ordinary failure path. */
+    FVM_RResult exported; /* Distinguish successful export from bounded backpressure drops. */
+    FVM_REvent event; /* Copy a metadata notification, never a borrowed image pointer. */
+    if (capture->frame_adapter) { /* Export every presented frame independently of the selected PPM tick. */
+        exported = fvm_desktop_resource_frame_capture(capture->frame_adapter, frame); /* Copy visible rows before this borrow ends. */
+        if (exported != FVM_R_OK && exported != FVM_R_BUSY) return FVM_ERROR; /* Geometry/budget/publication errors fail this example explicitly. */
+        if (exported == FVM_R_OK) { /* Only successful captures publish frame metadata. */
+            if (fvm_rdispatch_event_take(capture->dispatch, 1, capture->frame_watch, &event) != FVM_R_OK || event.missed) return FVM_ERROR; /* Consume only this local observer. */
+            if (fvm_desktop_resource_frame_read(event.data, event.size, &capture->last_frame) != FVM_R_OK) return FVM_ERROR; /* Decode a pointer-free metadata copy. */
+        } /* BUSY leaves the last exported frame intact and increases the metadata drop counter. */
+    } /* The runner still owns the original raster and continues normal frame selection. */
     if (capture->captured || frame->reason != FVM_DESKTOP_FRAME_TICK || frame->total_ticks < capture->wanted) /* Ignore other observations. */
         return FVM_OK; /* Refreshes and earlier host ticks do not fulfill the request. */
     capture->pixels = (unsigned char *)calloc(1, frame->byte_count); /* Own independent pixels; zero unused padding. */
@@ -66,6 +83,8 @@ static void control_resources_release(Capture *capture) /* The queue never owns 
         fvm_rdispatch_cancel(capture->dispatch, 1, 1); /* DONE may report CONFLICT; take still acknowledges it. */
         if (fvm_rdispatch_take(capture->dispatch, 1, 1, &reply) != FVM_R_OK) capture->control_failed = 1; /* Require no retained job. */
     } /* A previously acknowledged STOP needs no second take. */
+    if (capture->frame_adapter && fvm_desktop_resource_frame_revoke(capture->frame_adapter, 1) != FVM_R_OK) capture->control_failed = 1; /* Drop this session's watches and any retained leases. */
+    if (capture->frame_adapter && fvm_desktop_resource_frame_destroy(&capture->frame_adapter) != FVM_R_OK) capture->control_failed = 1; /* Free native pixels before dispatcher teardown. */
     if (capture->state_adapter && fvm_desktop_resource_state_destroy(&capture->state_adapter) != FVM_R_OK) capture->control_failed = 1; /* Close state watches before queue destruction. */
     if (capture->resource.struct_size && fvm_rdispatch_unregister(capture->dispatch, capture->resource.target) != FVM_R_OK) capture->control_failed = 1; /* Release borrow. */
     if (fvm_rdispatch_destroy(&capture->dispatch) != FVM_R_OK) capture->control_failed = 1; /* No host pixels or userdata are freed by destroy. */
@@ -78,7 +97,12 @@ static int control_resources_setup(Capture *capture) /* Single-owner mode delibe
         fvm_rdispatch_grant(capture->dispatch, capture->resource.target, 1, FVM_R_CONTROL) == FVM_R_OK && /* Only this local controller may stop playback. */
         fvm_desktop_resource_state_create(capture->dispatch, "/timeline/state", &capture->state_adapter, &capture->state_target) == FVM_R_OK && /* Own a copied observation endpoint. */
         fvm_rdispatch_grant(capture->dispatch, capture->state_target, 1, FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK && /* Explicit observation authority. */
-        fvm_rdispatch_subscribe(capture->dispatch, 1, capture->state_target, &capture->state_watch) == FVM_R_OK) return 1; /* Trusted local session only. */
+        fvm_rdispatch_subscribe(capture->dispatch, 1, capture->state_target, &capture->state_watch) == FVM_R_OK) { /* The state endpoint is ready before optional image allocation. */
+        if (!capture->resource_frames) return 1; /* Preserve the existing resource-control memory budget. */
+        if (fvm_desktop_resource_frame_create(capture->dispatch, "/display/frame", EXAMPLE_CAPTURE_FRAME_CAPACITY, &capture->frame_adapter, &capture->frame_target) == FVM_R_OK && /* Allocate three bounded native slots. */
+            fvm_rdispatch_grant(capture->dispatch, capture->frame_target, 1, FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK && /* Host decides pixel visibility. */
+            fvm_rdispatch_subscribe(capture->dispatch, 1, capture->frame_target, &capture->frame_watch) == FVM_R_OK) return 1; /* Events do not themselves acquire leases. */
+    } /* Trusted local session only. */
     control_resources_release(capture); /* Dispose any partially acquired registration/allocation. */
     return 0; /* No VM, window or output file was opened. */
 } /* Registry/adapter storage remains owned by main. */
@@ -173,6 +197,7 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
         if (!strcmp(argv[argument], "--embedded") && !embedded) embedded = 1; /* Select linked bytes once. */
         else if (!strcmp(argv[argument], "--offscreen") && !offscreen) offscreen = 1; /* Select timer-only delivery once. */
         else if (!strcmp(argv[argument], "--resource-control") && !resource_mode) resource_mode = 1; /* Optional native resource queue. */
+        else if (!strcmp(argv[argument], "--resource-frames") && !resource_mode) { resource_mode = 1; capture.resource_frames = 1; } /* Frame export also enables ordinary native resource control. */
         else if (!strcmp(argv[argument], "--tick") && !tick_selected && argument + 1 < argc - 2) /* Require a numeric value. */
         { /* Consume one complete bounded tick count. */
             tick_selected = 1; /* A second selector is an argument error. */
@@ -182,7 +207,7 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
     } /* Final positional storage remains owned by this process through playback/output. */
     if (!valid || argv[argc - 2][0] == '-' || argv[argc - 1][0] == '-') /* Avoid ambiguous missing/unknown options. */
     { /* Show this adapter's complete syntax and leave the filesystem untouched. */
-        fprintf(stderr, "Usage: %s [--embedded] [--offscreen] [--resource-control] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
+        fprintf(stderr, "Usage: %s [--embedded] [--offscreen] [--resource-control | --resource-frames] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
         return 2; /* Argument failure without any native resources or output file. */
     } /* Source/provider validation is delegated to the ordinary typed API. */
     fvm_desktop_options_init(&options); /* Initialize every scalar playback option. */

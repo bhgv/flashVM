@@ -192,6 +192,30 @@ state adapter, затем control registration и dispatcher. Сетевого �
 | [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
+## Экспорт кадров v0.736
+
+Опция `--resource-frames` вместо `--resource-control` включает также native
+кэш `/display/frame`: три слота по 4 MiB, всего 12 MiB пикселей. Лимит задан
+в [resource_limits.h](resource_limits.h), не является скрытым default SDK.
+Каждый presented frame копируется без padding; локальная metadata subscription
+не pin-ит пиксели. BUSY увеличивает dropped и сохраняет старый экспорт.
+Ошибки geometry/capacity/publication завершают этот пример явно. Обычный режим
+и resource-control не выделяют этот кэш. Cleanup: revoke локальной сессии,
+destroy frame adapter, затем state/control/dispatcher. PPM по-прежнему owned
+копия после SDK teardown. Это publisher/metadata пример; CHUNK/leases описаны
+в руководстве и проверяются отдельными клиентскими fixtures.
+
+```sh
+./build-player/frontend/flashvm_example_frame_capture --offscreen --resource-frames --embedded flashVM/examples/player/frame_capture/start.swf frame.ppm
+```
+
+| API | Владение / исполнение |
+| --- | --- |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L67) | Создаёт три слота явного размера, заимствует dispatcher. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L76) | Owner копирует строки и публикует metadata без удержания borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L86) | Декодирует metadata события в отдельную native копию. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L91) | Удаляет локальные права/watches и все pins сессии перед teardown. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L97) | Снимает регистрацию до free native pixels; dispatcher принадлежит хосту. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

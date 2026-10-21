@@ -194,6 +194,30 @@ registration and dispatcher. This example creates no network client.
 | [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Own one independent copied queue for the trusted local session. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Consume only this reader; quiet-turn PENDING is not failure. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
+## Frame export v0.736
+
+Use `--resource-frames` instead of `--resource-control` to also create native
+`/display/frame` storage: three 4-MiB slots, twelve MiB total pixels. The limit is
+explicit in [resource_limits.h](resource_limits.h), not a hidden SDK default.
+Every presented frame is copied without padding; the local metadata subscription
+does not pin pixels. BUSY increases dropped while preserving prior export.
+Geometry/capacity/publication errors explicitly fail this example. Ordinary and
+resource-control modes do not allocate this cache. Cleanup revokes the local
+session, destroys the frame adapter, then state/control/dispatcher. PPM remains
+an owned copy after SDK teardown. This is a publisher/metadata tutorial; the
+guide and separate client fixtures cover CHUNK/leases.
+
+```sh
+./build-player/frontend/flashvm_example_frame_capture --offscreen --resource-frames --embedded flashVM/examples/player/frame_capture/start.swf frame.ppm
+```
+
+| API | Ownership / execution |
+| --- | --- |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L67) | Own three explicit-capacity pixel slots, borrowing dispatcher. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L76) | Owner copies visible rows and publishes metadata without retaining borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L86) | Decode copied event metadata into independent native storage. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L91) | Remove local rights/watches and release all session pins before teardown. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L97) | Unregister before freeing native pixel buffers; dispatcher remains host-owned. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

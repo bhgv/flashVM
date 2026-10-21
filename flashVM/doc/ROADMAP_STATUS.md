@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.735
+# FlashVM stage status / Состояние стадий — v0.736
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,16 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.736 adds a bounded copied RGBA resource with three pixel buffers, explicit
+session-owned leases and chunked reads. Old leased frames remain immutable;
+backpressure drops export without blocking playback. Allocation/identity/lifetime
+contracts and independent Python metadata/queue vectors pass; the capture tutorial
+adds an explicit optional frame budget. No codec, OS mount or network listener
+is introduced, and complete player/platform acceptance remains open.
+
+v0.736: кадры ресурсов с удержанием, поколениями и чтением порциями; native
+ownership и память ограничены. Все девять стадий остаются открытыми.
 
 v0.735 verifies actual offscreen SWF playback through 9P operation files, with
 two independent state observers, source navigation epochs and cached READ after

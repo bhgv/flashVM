@@ -164,7 +164,7 @@
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
-  - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, offscreen, команды и копии состояния</em></small>
+  - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM, bounded кадры ресурсов и owner control</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1833,6 +1833,8 @@ Timeline при fetch ждёт; это не полная async Flash loading sem
 
 <a id="example-player-frame_capture"></a>
 ### frame_capture
+
+Опция v0.736 `--resource-frames` публикует копии кадров с явным лимитом памяти; [контракт](../doc/PLAYER_RESOURCE_FRAMES.ru.md), [лимит](player/frame_capture/resource_limits.h).
 
 С v0.734 resource-control режим также показывает независимые копии состояния таймлайна; [контракт](../doc/PLAYER_RESOURCE_STATE.ru.md).
 

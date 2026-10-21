@@ -24,7 +24,7 @@ def main():
         folder=Path(temporary);output=folder/'capture.ppm';source=directory/'start.swf'
         def run(arguments,tick=None,status=0):
             if output.exists():output.unlink()
-            result=subprocess.run([str(executable),*(['--resource-control'] if '--resource-control' in sys.argv else []),*(['--offscreen'] if '--offscreen' in sys.argv else []),*map(str,arguments)],env=env,capture_output=True,text=True,timeout=8)
+            result=subprocess.run([str(executable),*(['--resource-frames'] if '--resource-frames' in sys.argv else ['--resource-control'] if '--resource-control' in sys.argv else []),*(['--offscreen'] if '--offscreen' in sys.argv else []),*map(str,arguments)],env=env,capture_output=True,text=True,timeout=8)
             assert result.returncode==status,(arguments,result.stdout,result.stderr)
             if tick is not None:
                 assert result.stdout.strip()=='captured_tick=%d width=32 height=32'%tick,result.stdout
@@ -51,7 +51,7 @@ def main():
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         base='http://127.0.0.1:%d/'%server.server_port
         try:
-            result=subprocess.run([str(executable),*(['--resource-control'] if '--resource-control' in sys.argv else []),*(['--offscreen'] if '--offscreen' in sys.argv else []),'--tick','2',base+'start.swf',str(output)],env=env,capture_output=True,text=True,timeout=8)
+            result=subprocess.run([str(executable),*(['--resource-frames'] if '--resource-frames' in sys.argv else ['--resource-control'] if '--resource-control' in sys.argv else []),*(['--offscreen'] if '--offscreen' in sys.argv else []),'--tick','2',base+'start.swf',str(output)],env=env,capture_output=True,text=True,timeout=8)
             if result.returncode and 'URL loading requires' in result.stderr:
                 assert not Handler.paths
                 print('PASS all-pixel PPM file/embedded capture and early/output errors; HTTP not compiled')
