@@ -19,7 +19,7 @@ The base contributes to the same bounded wide accumulator as every prepared voic
 saturation happens once at the end of the mixing pass. For example base -30000
 plus two +30000 voices yields +30000. Rendering the voices into clipped S16 first
 and then adding the base would incorrectly yield +2767. With no active voices the
-base is preserved. Existing [`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L98) keeps its zero-base behavior,
+base is preserved. Existing [`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L105) keeps its zero-base behavior,
 including silence after voice exhaustion; both entry points advance the same voice
 clock and can be interleaved under the same serial owner. Conversion, loops,
 envelopes and stop policies retain their existing voice/mixer contracts.
@@ -121,6 +121,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:110](../include/flashvm/swf_sound_mixer.h#L110) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:98](../include/flashvm/swf_sound_mixer.h#L98) |
+| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:117](../include/flashvm/swf_sound_mixer.h#L117) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:105](../include/flashvm/swf_sound_mixer.h#L105) |
 <!-- source-links:end -->

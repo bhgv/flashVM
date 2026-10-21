@@ -6,7 +6,7 @@ MovieClip imports root DefineSound (14) and StartSound (15). Register
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) before advancing a sound frame. Its
 [`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L18) receives `(context, clip, event_index, userdata)` at
 actual root frame entry. The zero-based index addresses the same loaded SWF's
-[`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62) and [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L50). The host chooses its
+[`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62) and [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L57). The host chooses its
 mixer, output geometry and device queue. No hidden audio device/thread is created.
 This extends [incremental mixing](SWF_SOUND_MIXER.md), not automatic device-clock
 synchronization. [Runnable C89 example](../examples/multimedia/swf_event_mixer/README.md).
@@ -117,5 +117,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
 <!-- source-links:end -->

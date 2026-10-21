@@ -38,6 +38,13 @@ extern "C"
      * success. */
     FVM_API FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *,
                                                              FVM_SWFSoundMixer **out);
+    /* Same configured geometry/policy contract plus a fixed native object/scratch/slot ceiling.
+     * Validate configuration first; zero/insufficient budget OUT_OF_MEMORY before allocating
+     * the mixer or slot array. Clear *out first; null output/bad config INVALID_ARGUMENT.
+     * No VM/callback/device. Result owns exact fixed_bytes reported by storage_info; later
+     * voice adoption needs its own aggregate ceiling. Excludes allocator/queue/host memory. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_create_bounded(const FVM_SWFSoundMixerConfig *,
+                                                          size_t budget_bytes, FVM_SWFSoundMixer **out);
     /* Copy the immutable configuration; wrong size/null arguments preserve output. */
     FVM_API FVM_Result fvm_swf_sound_mixer_get_config(const FVM_SWFSoundMixer *,
                                                       FVM_SWFSoundMixerConfig *);

@@ -441,21 +441,16 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     }
     if (!streams)
     {
-        FVM_SWFSoundMixerStorageInfo storage;
         geometry.struct_size = sizeof(geometry);
         geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
         geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
         geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
         geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
-        result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
+        result = fvm_swf_sound_mixer_create_bounded(
+            &geometry, FVM_DESKTOP_AUDIO_EVENT_BYTES, &audio->mixer);
         if (result != FVM_OK)
             return result;
-        storage.struct_size = sizeof(storage);
-        result = fvm_swf_sound_mixer_storage_info(audio->mixer, &storage);
-        if (result != FVM_OK)
-            return result;
-        if (storage.retained_bytes > FVM_DESKTOP_AUDIO_EVENT_BYTES)
-            return FVM_OUT_OF_MEMORY;
+
     }
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);

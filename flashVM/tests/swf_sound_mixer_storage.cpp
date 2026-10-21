@@ -16,6 +16,12 @@ int main()
     FVM_SWFSoundMixerStorageInfo empty={sizeof(empty),0,0,0},used=empty;
     FVM_SWFSoundVoiceStorageInfo voice={sizeof(voice),0,0,0};
     assert(fvm_swf_sound_mixer_storage_info(mixer,&empty)==FVM_OK && !empty.voice_bytes && empty.fixed_bytes==empty.retained_bytes);
+    FVM_SWFSoundMixerConfig geometry={sizeof(geometry),48000,2,2,FVM_SWF_SOUND_MIXER_CONVERT};
+    FVM_SWFSoundMixer *other=(FVM_SWFSoundMixer*)1;
+    assert(fvm_swf_sound_mixer_create_bounded(&geometry,empty.fixed_bytes-1,&other)==FVM_OUT_OF_MEMORY && !other);
+    assert(fvm_swf_sound_mixer_create_bounded(&geometry,empty.fixed_bytes,&other)==FVM_OK && other);
+    assert(fvm_swf_sound_mixer_storage_info(other,&used)==FVM_OK && used.fixed_bytes==empty.fixed_bytes);
+    fvm_swf_sound_mixer_close(other);
     assert(fvm_swf_sound_voice_storage_info(a,&voice)==FVM_OK);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);allowance=0;
     size_t budget=empty.retained_bytes+voice.retained_bytes;

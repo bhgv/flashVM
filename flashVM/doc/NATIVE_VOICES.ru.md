@@ -58,12 +58,12 @@ frames_per_play либо EOF (play_count,0). Пустой голос/ноль п
 
 ## v0.786: общий бюджет владения микшера
 
-[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L82) возвращает память объекта/рабочих массивов/
+[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L89) возвращает память объекта/рабочих массивов/
 слотов микшера, всех голосов и проверенную сумму. Хвосты release и голоса с
 lookahead конвертера учитываются до реального освобождения слота. Ошибка
 аргументов сохраняет результат. Нет обращения к VM, callbacks или аллокаций.
 
-[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L70) дополняет прежнюю передачу голоса
+[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L77) дополняет прежнюю передачу голоса
 общим пределом памяти объекта, слотов и голосов. Отказ по бюджету сохраняет
 указатель/позицию нового голоса и старые слоты. NoMultiple и завершённый голос
 потребляют ненужного владельца без увеличения памяти даже при нулевом бюджете.
@@ -71,7 +71,7 @@ lookahead конвертера учитываются до реального о
 накладные расходы аллокатора и внешние шаблоны не входят в сумму. Сериализуйте
 всех владельцев; callbacks, VM и аллокаций нет.
 
-[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L88) проверяет совпадающий ID среди голосов без
+[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L95) проверяет совпадающий ID среди голосов без
 release, как SyncNoMultiple. Допустимы ID 1..65535; ошибка сохраняет выход.
 Запрос ничего не резервирует: проверка повторяется при передаче под mutex.
 `swf_sound_mixer_storage` запрещает аллокации после teardown VM и проверяет
@@ -118,6 +118,18 @@ owner-вызов bounded voice-open. За это время настоящий S
 Проверяется независимость владельцев, а не конкурентный доступ к одному голосу.
 Linux/dummy не означает проверку аппаратуры, ThreadSanitizer или других платформ.
 
+## v0.789: проверка фиксированной памяти до создания микшера
+
+[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L46) дополняет configured-создание пределом
+памяти объекта/рабочих массивов/слотов. Сначала проверяет конфигурацию, затем
+размеры и переполнение до обеих аллокаций. Нулевой/недостаточный бюджет даёт OOM
+и нулевой выход; прочие ошибки конфигурации сохраняются. Нет callbacks,
+устройства или VM. storage_info.fixed_bytes равен проверенному размеру.
+Входящие голоса всё ещё требуют bounded adoption. Desktop использует этот
+конструктор до открытия аудиоустройства. Шаблоны/очереди и накладные расходы
+аллокатора учитываются отдельно. `swf_sound_mixer_storage` дополнительно
+проверяет точный бюджет создания и нехватку одного байта.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -127,9 +139,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:88](../include/flashvm/swf_sound_mixer.h#L88) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:82](../include/flashvm/swf_sound_mixer.h#L82) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:70](../include/flashvm/swf_sound_mixer.h#L70) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
+| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:95](../include/flashvm/swf_sound_mixer.h#L95) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:89](../include/flashvm/swf_sound_mixer.h#L89) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:77](../include/flashvm/swf_sound_mixer.h#L77) |
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |

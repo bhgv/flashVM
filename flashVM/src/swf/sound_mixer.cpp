@@ -93,8 +93,8 @@ extern "C" FVM_Result fvm_swf_sound_mixer_create(unsigned int rate, unsigned int
 }
 
 /* Create a bounded owner; the policy and slot table are complete before any handle is published. */
-extern "C" FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *config,
-                                                            FVM_SWFSoundMixer **out)
+extern "C" FVM_Result fvm_swf_sound_mixer_create_bounded(const FVM_SWFSoundMixerConfig *config,
+                                                         size_t budget, FVM_SWFSoundMixer **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
@@ -114,6 +114,12 @@ extern "C" FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMi
         return FVM_INVALID_ARGUMENT;
     if (CHAR_BIT != FVM_SWF_SOUND_BYTE_BITS || sizeof(short) != FVM_SWF_SOUND_UI16_BYTES)
         return FVM_UNSUPPORTED;
+    size_t fixed = sizeof(FVM_SWFSoundMixer);
+    if (config->voice_capacity > ((size_t)-1 - fixed) / sizeof(FVM_SWFSoundMixerSlot))
+        return FVM_OUT_OF_MEMORY;
+    fixed += config->voice_capacity * sizeof(FVM_SWFSoundMixerSlot);
+    if (fixed > budget)
+        return FVM_OUT_OF_MEMORY;
     FVM_SWFSoundMixer *mixer = 0;
     try
     {
@@ -131,6 +137,13 @@ extern "C" FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMi
         delete mixer;
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Retain the configured ABI without imposing an additional native-object storage ceiling. */
+extern "C" FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *config,
+                                                            FVM_SWFSoundMixer **out)
+{
+    return fvm_swf_sound_mixer_create_bounded(config, (size_t)-1, out);
 }
 
 /* Query the explicit policy without changing phase, voices or caller-owned configuration storage.
