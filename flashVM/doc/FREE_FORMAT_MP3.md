@@ -38,6 +38,17 @@ across SWF prefixes. Empty blocks preserve history. Learned geometry/reservoir p
 across subsequent blocks; per-block decoded counts still have to match exactly.
 No extra allocation or retained cache is added; raw/PCM/peak budget contracts remain.
 
+
+## Bounded inference work (v0.809)
+
+Counted-block inference considers at most two unpadded spans: floor(bytes/packets)
+and its predecessor, since each packet contributes at most one padding byte.
+It validates each header and exact terminal extent before committing decoder state.
+Truncation, nonmultiples, zero counts with bytes and counts beyond UI16 are rejected.
+Grouped-packet and failure-retry tests cover all four fixtures. Allocation-failure
+sweeps confirm unchanged preparation acquisitions; copied PCM survives VM teardown
+and reads/closes with allocation completely disabled.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

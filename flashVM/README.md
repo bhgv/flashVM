@@ -1,10 +1,12 @@
-Development version: **0.808** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.808 ` and an English description. Increase the subversion before each
+Development version: **0.809** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.809 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.809: [Bound free-format block inference to exact byte and sample counts](doc/FREE_FORMAT_MP3.md).
 
 v0.808: [Prepare counted free-format stream blocks without cross-tag read-ahead](doc/FREE_FORMAT_MP3.md).
 

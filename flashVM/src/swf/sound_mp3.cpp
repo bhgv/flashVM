@@ -103,8 +103,16 @@ FVM_Result FVM_SWFMP3Decoder::prepare_block(const unsigned char *data, size_t si
     if (!samples || samples > FVM_MP3_BLOCK_MAX_SAMPLES || samples % first.samples)
         return FVM_INVALID_ARGUMENT;
     size_t packets = samples / first.samples;
+    /* size = packets * base + padding_count, with 0 <= padding_count <= packets.
+     * Only floor(size/packets) and its predecessor can satisfy this equation. */
+    size_t high = size / packets;
+    size_t low = high ? high - 1 : 0;
+    if (low < FVM_MP3_HEADER_BYTES)
+        low = FVM_MP3_HEADER_BYTES;
+    if (high >= FVM_MP3_FREE_MAX_BYTES)
+        high = FVM_MP3_FREE_MAX_BYTES - 1;
     size_t chosen = 0;
-    for (size_t base = FVM_MP3_HEADER_BYTES; base < FVM_MP3_FREE_MAX_BYTES; ++base)
+    for (size_t base = low; base <= high; ++base)
     {
         size_t at = 0;
         bool valid = true;
@@ -152,7 +160,7 @@ FVM_Result FVM_SWFMP3Decoder::decode(const unsigned char *data, size_t size, FVM
         if (state.free_format_bytes)
         {
             packet.bytes = (size_t)state.free_format_bytes + ((data[2] & FVM_MP3_PADDING_MASK) != 0);
-            if (packet.bytes > size)
+            if (packet.bytes > size || packet.bytes >= FVM_MP3_FREE_MAX_BYTES)
                 return FVM_INVALID_ARGUMENT;
         }
         else
