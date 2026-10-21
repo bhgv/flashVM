@@ -1,10 +1,12 @@
-Development version: **0.787** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.787 ` and an English description. Increase the subversion before each
+Development version: **0.788** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.788 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.788: [Verify owner preparation isolation and four independent native voice workers](doc/NATIVE_VOICES.md).
 
 v0.787: [Prepare event PCM outside the worker mutex within an aggregate byte ceiling](doc/NATIVE_VOICES.md).
 

@@ -102,6 +102,22 @@ The actual SDL `flashvm_frontend_audio_event_budget` fixture uses a 64 KiB build
 a first voice survives, SyncNoMultiple succeeds, oversized input returns OOM,
 existing PCM continues, and GC/StopSounds releases retained voice storage.
 
+## v0.788: real producer isolation and independent native workers
+
+`flashvm_frontend_event_prepare_worker` wraps only the production owner's bounded
+voice-open call with a 350 ms delay. During that delay the actual SDL worker must
+submit over 10000 additional frames from the existing voice; a held producer
+mutex would submit zero. Two real AVM1 frame actions check interpreter and native
+JIT entry counters. GC and joined teardown run afterwards. This deliberately
+stalls preparation, not a simulated queue or an inferred wall-clock DAC position.
+
+`flashvm_frontend_voice_clone_workers` deep-clones four partially consumed voices,
+collects/destroys the VM and closes the source template, then starts four actual
+SDL threads. Each independently seeks/reads 1000 slices against analytical PCM,
+then closes its own native handle before join. The test verifies independent
+ownership, not unsynchronized access to one shared voice. SDL dummy/Linux results
+are not hardware, ThreadSanitizer or foreign-platform acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
