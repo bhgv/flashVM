@@ -12,6 +12,7 @@
 #include "flashvm/rwire.h"
 #ifdef FVM_TEST_RESOURCE_9P
 #include "../common/resource_state.h"
+#include "../common/resource_frame.h"
 #include "resource_9p_client.h"
 #endif
 #endif
@@ -38,6 +39,10 @@ typedef struct Capture
 #ifdef FVM_TEST_RESOURCE_9P
     FVM_DesktopResourceState *state_adapter;
     FVM_RHandle state_target;
+    FVM_DesktopResourceFrame *frame_adapter;
+    FVM_RHandle frame_target;
+    FVM_DesktopResourceFrameInfo frame_info[2];
+    unsigned char held_pixels[2][32 * 32 * 4];
     Test9PClient clients[2];
     unsigned long epochs[2], state_events[2], ticks_seen[2];
 #endif
@@ -47,6 +52,82 @@ typedef struct Capture
     unsigned long count, last_tick;
     int failed, dirty, received, cancelled;
 } Capture;
+#ifdef FVM_TEST_RESOURCE_9P
+/* Construct canonical operation arguments, independent of native byte layout. */
+static size_t frame_number(unsigned char *out, unsigned long value)
+{
+    FVM_SInteger number;
+    size_t used = 0;
+    number.high = 0;
+    number.low = value;
+    number.negative = 0;
+    if (fvm_sinteger_write(&number, out, FVM_SRECORD_INTEGER_MAX, &used) != FVM_S_OK)
+        return 0;
+    return used;
+}
+/* Reassemble a whole leased image from bounded 9P operation replies and compare every RGBA byte. */
+static int frame_pixels(Capture *test, size_t client, const unsigned char *expected)
+{
+    unsigned char bytes[64], pixels[32 * 32 * 4];
+    size_t offset = 0, n;
+    FVM_RReply reply;
+    FVM_DesktopResourceFrameInfo *info = test->frame_info + client;
+    while (offset < sizeof(pixels))
+    {
+        n = frame_number(bytes, info->lease.id);
+        n += frame_number(bytes + n, info->lease.generation);
+        n += frame_number(bytes + n, (unsigned long)offset);
+        n += frame_number(bytes + n, FVM_R_BYTES);
+        if (!test_9p_call(test->clients + client, test->dispatch, test->frame_target,
+                          FVM_DESKTOP_RFRAME_CHUNK, bytes, n, &reply) ||
+            reply.size != FVM_R_BYTES)
+            return 0;
+        memcpy(pixels + offset, reply.data, reply.size);
+        offset += reply.size;
+    }
+    return !memcmp(pixels, expected, sizeof(pixels));
+}
+/* Keep each previous image pinned while the next frame publishes, then independently reacquire. */
+static int frame_export(Capture *test, const FVM_DesktopFrame *frame)
+{
+    size_t i, n;
+    unsigned char bytes[32];
+    FVM_RReply reply;
+    FVM_DesktopResourceFrameInfo *info;
+    if (fvm_desktop_resource_frame_capture(test->frame_adapter, frame) != FVM_R_OK)
+        return 0;
+    for (i = 0; i < 2; ++i)
+    {
+        info = test->frame_info + i;
+        if (info->lease.id)
+        {
+            if (!frame_pixels(test, i, test->held_pixels[i]))
+                return 0;
+            n = frame_number(bytes, info->lease.id);
+            n += frame_number(bytes + n, info->lease.generation);
+            if (!test_9p_call(test->clients + i, test->dispatch, test->frame_target,
+                              FVM_DESKTOP_RFRAME_RELEASE, bytes, n, &reply) ||
+                reply.size)
+                return 0;
+        }
+        if (!test_9p_call(test->clients + i, test->dispatch, test->frame_target,
+                          FVM_DESKTOP_RFRAME_ACQUIRE, 0, 0, &reply) ||
+            fvm_desktop_resource_frame_read(reply.data, reply.size, info) != FVM_R_OK ||
+            !info->lease.id || info->sequence != test->count || info->width != 32 ||
+            info->height != 32 || info->row_bytes != 128 ||
+            info->byte_count != sizeof(test->copy) || info->format != frame->format ||
+            info->reason != frame->reason || info->movie_ticks != frame->movie_ticks ||
+            info->total_ticks != frame->total_ticks ||
+            info->presentations != frame->presentations ||
+            info->total_presentations != frame->total_presentations || info->flags ||
+            info->dropped || strcmp(info->source, frame->source) ||
+            !frame_pixels(test, i, test->copy))
+            return 0;
+        memcpy(test->held_pixels[i], test->copy, sizeof(test->copy));
+    }
+    return test->frame_info[0].lease.id != test->frame_info[1].lease.id;
+}
+#endif
 /* Validate one exact packed RGBA pixel without endian-dependent integer casts. */
 static int pixel(const unsigned char *data, unsigned int x, unsigned int r, unsigned int g,
                  unsigned int b)
@@ -74,6 +155,10 @@ static FVM_Result capture_frame(const FVM_DesktopFrame *frame, void *raw)
         goto failed;
     strcpy(test->source, frame->source);
     test->last_tick = frame->total_ticks;
+#ifdef FVM_TEST_RESOURCE_9P
+    if (!frame_export(test, frame))
+        goto failed;
+#endif
     if (!strcmp(test->scenario, "sequence"))
     {
         static const unsigned long ticks[] = {0, 1, 1, 2};
@@ -180,6 +265,11 @@ static int resource_setup(Capture *test)
                                FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK &&
            fvm_rdispatch_grant(test->dispatch, test->state_target, 8,
                                FVM_R_READ | FVM_R_SUBSCRIBE) == FVM_R_OK &&
+           fvm_desktop_resource_frame_create(test->dispatch, "/display/frame", sizeof(test->copy),
+                                             &test->frame_adapter,
+                                             &test->frame_target) == FVM_R_OK &&
+           fvm_rdispatch_grant(test->dispatch, test->frame_target, 7, FVM_R_READ) == FVM_R_OK &&
+           fvm_rdispatch_grant(test->dispatch, test->frame_target, 8, FVM_R_READ) == FVM_R_OK &&
            test_9p_create(test->clients, test->dispatch, 7, test->state_target) &&
            test_9p_create(test->clients + 1, test->dispatch, 8, test->state_target);
 #else
@@ -297,10 +387,30 @@ static void resource_cleanup(Capture *test)
             snapshot.epoch != test->epochs[0])
             test->failed = 1;
     }
+    if (test->frame_info[0].lease.id)
+    {
+        FVM_DesktopResourceFrameInfo info;
+        if (!frame_pixels(test, 0, test->held_pixels[0]) ||
+            !frame_pixels(test, 1, test->held_pixels[1]) ||
+            !test_9p_call(test->clients, test->dispatch, test->frame_target,
+                          FVM_DESKTOP_RFRAME_INFO, 0, 0, &reply) ||
+            fvm_desktop_resource_frame_read(reply.data, reply.size, &info) != FVM_R_OK ||
+            info.lease.id || info.sequence != test->count)
+            test->failed = 1;
+    }
     if (!test_9p_destroy(test->clients))
         test->failed = 1;
     if (!test_9p_destroy(test->clients + 1))
         test->failed = 1;
+    if (test->frame_adapter)
+    {
+        if (fvm_desktop_resource_frame_revoke(test->frame_adapter, 7) != FVM_R_OK)
+            test->failed = 1;
+        if (fvm_desktop_resource_frame_revoke(test->frame_adapter, 8) != FVM_R_OK)
+            test->failed = 1;
+        if (fvm_desktop_resource_frame_destroy(&test->frame_adapter) != FVM_R_OK)
+            test->failed = 1;
+    }
     if (test->state_adapter && fvm_desktop_resource_state_destroy(&test->state_adapter) != FVM_R_OK)
         test->failed = 1;
     if (test->state_events[0] != test->state_events[1] || test->epochs[0] != test->epochs[1] ||

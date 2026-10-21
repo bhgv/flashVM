@@ -16,6 +16,8 @@ typedef struct Test9PClient
 int test_9p_create(Test9PClient *, FVM_RDispatch *, unsigned long, FVM_RHandle);
 int test_9p_command(Test9PClient *, FVM_RHandle, unsigned long);
 int test_9p_reply(Test9PClient *);
+int test_9p_call(Test9PClient *, FVM_RDispatch *, FVM_RHandle, unsigned long, const void *, size_t,
+                 FVM_RReply *);
 int test_9p_query(Test9PClient *, FVM_RDispatch *, FVM_RHandle, FVM_RReply *);
 FVM_RResult test_9p_event(Test9PClient *, FVM_REvent *);
 int test_9p_destroy(Test9PClient *);

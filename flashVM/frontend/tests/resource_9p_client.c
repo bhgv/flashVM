@@ -135,6 +135,26 @@ int test_9p_reply(Test9PClient *c)
     FVM_RReply reply;
     return reply_payload(c, &reply) && !reply.size;
 }
+int test_9p_call(Test9PClient *c, FVM_RDispatch *dispatch, FVM_RHandle target,
+                 unsigned long operation, const void *payload, size_t size, FVM_RReply *reply)
+{
+    unsigned char bytes[FVM_R_BYTES + 16];
+    char name[16];
+    size_t done;
+    if (size > FVM_R_BYTES || (!payload && size))
+        return 0;
+    sprintf(name, "%lu", operation);
+    if (!walk(c, 2, target, "ops", name) || !open_file(c, 2, 2))
+        return 0;
+    memset(bytes, 0, 16);
+    put(bytes, 2, 4);
+    put(bytes + 12, (unsigned long)size, 4);
+    if (size)
+        memcpy(bytes + 16, payload, size);
+    return send(c, 118, 4, bytes, size + 16) && response(c, 119, 4) &&
+           get(c->output + 7, 4) == size && fvm_rdispatch_pump(dispatch, 1, &done) == FVM_R_OK &&
+           done == 1 && reply_payload(c, reply);
+}
 int test_9p_query(Test9PClient *c, FVM_RDispatch *dispatch, FVM_RHandle target, FVM_RReply *reply)
 {
     size_t done;

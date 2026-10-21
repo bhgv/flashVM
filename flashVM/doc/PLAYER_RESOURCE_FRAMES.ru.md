@@ -118,6 +118,66 @@ leases, все prefixes и native queue replies/chunks без старта VM/SD
 tests сравнивают каждый RGB пиксель для file, linked memory и настроенного HTTP.
 Все стадии открыты; полного SWF/железа/OS mount/production transport и запуска
 на чужой платформе эти проверки не доказывают.
+## Пиксели через 9P v0.737
+
+Live fixture [frame_capture.c](../frontend/tests/frame_capture.c) использует
+реальный offscreen player и test-only C89 клиент
+[resource_9p_client.c](../frontend/tests/resource_9p_client.c). Обе сессии 7/8
+получают READ frame resource; session 7 отдельно имеет CONTROL таймлайна.
+Каждая команда ACQUIRE/CHUNK/RELEASE/INFO передаётся стандартными 9P сообщениями
+через файл операции, с существующими tag-zero reply bindings и CRC envelopes.
+Нативные callbacks клиента не получают pixels/root/context.
+
+При каждой публикации каждый клиент сначала перечитывает старый удержанный
+кадр восемью CHUNK запросами по 512 байт и сравнивает все 4096 RGBA байт с прежней
+owned копией. Затем RELEASE, ACQUIRE нового кадра, проверка metadata и полное
+сравнение новых пикселей. Два lease ID различаются. Старое изображение остаётся
+неизменным при смене кадров и навигации root; последовательность экспортов
+соответствует presented frames, включая paused redraw. Отдельный независимый
+SWF/pixel oracle проверяет фактические цвета/положение геометрии.
+
+После runner return оба клиента снова читают удержанные финальные изображения
+и INFO без доступа к уже уничтоженному контексту. После закрытия 9P/FS native
+хост явно вызывает revoke для обеих сессий, затем destroy frame adapter.
+Выполняются существующие FILE/MEMORY/HTTP сценарии, navigation и STOP/callback
+failure при активном loadVariables с cancel/join. JIT сценарии требуют ненулевого
+native counter, а не просто включённого флага JIT; отсутствующий backend SKIP.
+
+```sh
+cmake --build build-player --target flashvm_frontend_resource_9p_player
+ctest --test-dir build-player -R '^flashvm_resource_9p_player_' --output-on-failure
+```
+
+Транспорт в этом player fixture внутренний; это проверка файлов/сообщений/
+владения и реальных pixels, не TCP/UDP listener, auth service или ОС mount.
+Предыдущий отдельный wire fixture 9P проверяет fragmented TCP loopback.
+## Проверка серии v0.736–v0.737
+
+На Linux x86-64 прошли 48 выбранных native и 13 shared-host тестов без SKIP.
+Native сборка включала socket HTTP; shared — без HTTP providers с явной проверкой
+отсутствующей возможности. Применялись offscreen/dummy, не физические устройства.
+ASAN/UBSAN прошли allocation/lifecycle contract и новые frame/state/protocol/client
+модули в реальном player fixture для interpreter и JIT. Основные VM/SDL архивы
+в этом fixture обычные, leak enumeration отключён; дополнительно unit считает
+все native выделения/освобождения при отказах и duplicate registration.
+Это не полная санитайзерная приёмка VM.
+
+C89 frame/lease contract кросс-слинкован для ARM64 Linux musl, RISC-V64 Linux musl
+и Windows x64 GNU; C89 9P клиент и C++98 player-host boundary скомпилированы в
+целевые объекты. Чужие бинарники не запускались. Самостоятельная проверка модуля:
+
+```sh
+zig cc -target aarch64-linux-musl -std=c89 -pedantic-errors \
+  -IflashVM/include flashVM/frontend/tests/resource_frame.c \
+  flashVM/frontend/common/frame.c flashVM/src/protocol/rdispatch.c \
+  flashVM/src/protocol/srecord.c -o frame-contract-arm64
+```
+
+Fixture включает настоящий resource_frame.c с fault injection; VM/SDL ему не
+нужны. Для всего player host требуются toolchain и static SDL SDK той же целевой
+OS/CPU: см. [desktop build](DESKTOP_FRONTEND.ru.md) и
+[платформенную приёмку](PLATFORM_VALIDATION.ru.md). Кросс-компиляция этого модуля
+не заменяет сборку/запуск всего плеера, Android Activity/surface и проверку устройств.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

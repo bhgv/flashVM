@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.736
+# FlashVM stage status / Состояние стадий — v0.737
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,17 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.737 verifies two independent 9P clients acquiring, reading and releasing real
+player RGBA frames. Each old image is checked while a newer frame is published;
+final pins and metadata remain readable after runner teardown. Existing pixel,
+interpreter/native-JIT, file/memory/HTTP navigation and cancellation fixtures are
+retained. This is an in-memory transport integration, not a production listener,
+OS mount, video codec or completed roadmap-stage acceptance.
+
+v0.737: два 9P клиента читают пиксели настоящих кадров порциями; старые leases
+и финальный кадр переживают смену изображения и runner teardown. Все стадии
+роудмапа остаются открытыми.
 
 v0.736 adds a bounded copied RGBA resource with three pixel buffers, explicit
 session-owned leases and chunked reads. Old leased frames remain immutable;

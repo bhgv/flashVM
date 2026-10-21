@@ -128,6 +128,67 @@ native queue replies/chunk ownership without VM/SDL startup. Tutorial tests
 compare every output RGB pixel for file, linked-memory and configured HTTP sources.
 All roadmap stages remain open; these checks do not certify every SWF tag,
 physical hardware, foreign-platform execution, OS mount or production transport.
+## Live 9P pixels v0.737
+
+The live [frame_capture.c](../frontend/tests/frame_capture.c) fixture uses the
+actual offscreen player and a test-only C89
+[resource_9p_client.c](../frontend/tests/resource_9p_client.c). Sessions 7/8 both
+receive frame READ; session 7 separately controls the timeline. Each
+ACQUIRE/CHUNK/RELEASE/INFO command travels through standard 9P operation-file
+messages with existing tag-zero reply bindings and checked S envelopes. Client
+callbacks receive no live pixels/root/context pointer.
+
+At each publication every client first rereads its previous leased frame in
+eight 512-byte CHUNK operations and compares all 4096 RGBA bytes with its previous
+owned copy. It then RELEASEs, ACQUIREs the latest frame, validates metadata and
+compares the complete new image. The two lease IDs differ. Old images remain
+immutable across frame changes and whole-root navigation; export sequence matches
+presented frames including paused redraw. The separate independent SWF/pixel
+oracle verifies actual colors and geometry position.
+
+After runner return both clients reread their final pinned images and INFO
+without accessing the disposed context. After closing 9P/FS, native host cleanup
+explicitly revokes both sessions, then destroys the frame adapter. Existing
+FILE/MEMORY/HTTP, navigation and STOP/callback-failure during active loadVariables
+with cancellation/join remain exercised. JIT scenarios require a nonzero native
+counter, not merely a JIT option; unavailable backends explicitly SKIP.
+
+```sh
+cmake --build build-player --target flashvm_frontend_resource_9p_player
+ctest --test-dir build-player -R '^flashvm_resource_9p_player_' --output-on-failure
+```
+
+This player fixture uses in-memory transport. It verifies files/messages/native
+ownership and real pixels, not a TCP/UDP listener, authentication service or OS
+mount. The separate earlier 9P wire fixture covers fragmented TCP loopback.
+## v0.736–v0.737 verification
+
+Linux x86-64 passed 48 selected native and 13 shared-host tests without skips.
+Native enabled socket HTTP; shared disabled HTTP providers and explicitly checked
+capability absence. Runs used offscreen/dummy rather than physical devices.
+ASAN/UBSAN passed the allocation/lifecycle contract and new frame/state/protocol/
+client modules in the actual player fixture for interpreter and JIT. Underlying
+VM/SDL archives were ordinary builds and leak enumeration was disabled; the unit
+also accounts for every native allocation/free during failures and duplicate
+registration. This is not a full sanitized VM acceptance run.
+
+The C89 frame/lease contract cross-linked for ARM64 Linux musl, RISC-V64 Linux
+musl and Windows x64 GNU; C89 9P client and C++98 player-host boundary compiled to
+target objects. Foreign binaries were not executed. A standalone module check is:
+
+```sh
+zig cc -target aarch64-linux-musl -std=c89 -pedantic-errors \
+  -IflashVM/include flashVM/frontend/tests/resource_frame.c \
+  flashVM/frontend/common/frame.c flashVM/src/protocol/rdispatch.c \
+  flashVM/src/protocol/srecord.c -o frame-contract-arm64
+```
+
+The fixture includes actual resource_frame.c with fault injection and needs no
+VM/SDL. For the whole player host use a toolchain and static SDL SDK matching the
+target OS/CPU: see [desktop build](DESKTOP_FRONTEND.md) and
+[platform validation](PLATFORM_VALIDATION.md). Cross-compiling this module does
+not replace full player build/execution, Android Activity/surface integration or
+device acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
