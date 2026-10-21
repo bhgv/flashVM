@@ -65,7 +65,7 @@ mount/bind are not implemented here. Accepted plan: [namespace](../../../doc/RES
 | [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L33) | Retain each fragment; only OK publishes a borrowed verified view. MORE still reports consumed bytes. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 | [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L37) | Copy the receiving direction's type/version metadata; no global tag interpretation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 | [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L38) | Invalidate the last view after its last use; retain caller storage, discard state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L72) | Verify one complete record in fread bytes and return its exact consumed extent; view borrows input. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L80) | Verify one complete record in fread bytes and return its exact consumed extent; view borrows input. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 
 ## Cross / Другие OS и CPU
 
@@ -95,7 +95,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../../../include/flashvm/sbindings.h#L33) |
 | `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:72](../../../include/flashvm/srecord.h#L72) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../../../include/flashvm/srecord.h#L80) |
 | `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../../../include/flashvm/srecord.h#L66) |
 | `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../../../include/flashvm/sstream.h#L24) |
 | `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../../../include/flashvm/sstream.h#L33) |

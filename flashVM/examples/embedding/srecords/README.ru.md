@@ -64,7 +64,7 @@ mount/bind пока не реализованы. Принятый план: [nam
 | [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L33) | Сохранить фрагмент; только OK публикует view. MORE также сообщает consumed. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 | [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L37) | Скопировать тип/версию входящего направления, без глобальной трактовки тегов. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 | [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L38) | После последнего использования инвалидировать view, сохранить storage, сбросить state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L72) | Проверить одну запись в байтах fread, вернуть точный consumed; view заимствует вход. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L80) | Проверить одну запись в байтах fread, вернуть точный consumed; view заимствует вход. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 
 ## Cross / Другие OS и CPU
 
@@ -94,7 +94,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../../../include/flashvm/sbindings.h#L33) |
 | `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:72](../../../include/flashvm/srecord.h#L72) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../../../include/flashvm/srecord.h#L80) |
 | `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../../../include/flashvm/srecord.h#L66) |
 | `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../../../include/flashvm/sstream.h#L24) |
 | `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../../../include/flashvm/sstream.h#L33) |

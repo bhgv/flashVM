@@ -17,10 +17,14 @@ class Piece(C.Structure):
     _fields_ = [('info', Info), ('part', C.c_ulong), ('data', C.c_void_p), ('size', C.c_size_t)]
 
 
+class Profile(C.Structure):
+    _fields_ = [('slot_bytes', C.c_size_t), ('part_bytes', C.c_ulong)]
+
+
 class Receiver(C.Structure):
     _fields_ = [('struct_size', C.c_size_t), ('info', Info), ('tag', C.c_ulong),
                 ('buffer', C.c_void_p), ('capacity', C.c_size_t), ('received', C.c_ulong),
-                ('bitmap', C.c_ubyte * 512)]
+                ('bitmap', C.c_ubyte * 512), ('profile', Profile)]
 
 
 def wire(info, part, data, tag=19):

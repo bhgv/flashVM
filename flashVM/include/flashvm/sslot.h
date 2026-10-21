@@ -2,8 +2,10 @@
 #ifndef FLASHVM_SSLOT_H
 #define FLASHVM_SSLOT_H /* Guard the standalone C89 slot and batch API. */
 #include "srecord.h"
-#define FVM_SSLOT_BYTES 1024U /* Profile 1 fixed slot size, agreed before receiving data. */
-#define FVM_SSLOT_BATCH 64U   /* Bounded number of slots processed in one owner call. */
+#define FVM_SSLOT_BYTES 1024U       /* Profile 1 fixed slot size, agreed before receiving data. */
+#define FVM_SSLOT_MIN_BYTES 256UL   /* Smallest negotiated optional bulk slot. */
+#define FVM_SSLOT_MAX_BYTES 65536UL /* Maximum negotiated slot; host must have native capacity. */
+#define FVM_SSLOT_BATCH 64U         /* Bounded number of slots processed in one owner call. */
 #ifdef __cplusplus
 extern "C"
 {
@@ -37,6 +39,16 @@ extern "C"
      * report/callback results. Invalid arguments leave report untouched and invoke no callbacks. */
     FVM_API FVM_SResult fvm_sslot_batch(const void *, size_t, FVM_SSlotNotify, void *,
                                         FVM_SSlotReport *);
+    /* Explicit-size variants use an already agreed slot extent, MIN_BYTES..MAX_BYTES. They have
+     * the same ownership/atomicity rules as the default 1024-byte wrappers, and allocate nothing.
+     * A size_t unable to represent the negotiated extent must reject it at host negotiation. */
+    FVM_API FVM_SResult fvm_sslot_write_sized(unsigned long tag, const void *, size_t,
+                                              size_t slot_bytes, void *, size_t capacity,
+                                              size_t *used);
+    FVM_API FVM_SResult fvm_sslot_read_sized(const void *, size_t, size_t slot_bytes, FVM_SRecord *,
+                                             size_t *used);
+    FVM_API FVM_SResult fvm_sslot_batch_sized(const void *, size_t, size_t slot_bytes,
+                                              FVM_SSlotNotify, void *, FVM_SSlotReport *);
 #ifdef __cplusplus
 }
 #endif

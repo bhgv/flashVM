@@ -1,4 +1,5 @@
 /* Optional bulk-media slots coexist with compact control records; no sockets or VM required. */
+#include "flashvm/scontrol.h" /* Optional tag-zero size negotiation, separate from type binding. */
 #include "flashvm/smedia.h" /* Public C89 fragment, slot and reassembly contracts. */
 #include "limits.h" /* Bounded tutorial storage and explicitly agreed example tags. */
 #include <stdio.h> /* Report results after all native work has completed. */
@@ -20,12 +21,34 @@ static void receive_part(size_t index, FVM_SResult result, const FVM_SRecord *re
     if (!record || record->tag != EXAMPLE_MEDIA_TAG) /* A valid checksum does not select the expected type. */
         state->failed = 1; /* Defer the tutorial error until synchronous traversal returns. */
 } /* End damage-only generic batch observer. */
+/* Simulate a reliable tag-zero exchange; real hosts authenticate and queue these compact records. */
+static int negotiate(FVM_SMediaProfile *profile) { /* No data slot is active before both commits. */
+    FVM_SControlLimits ceiling = {EXAMPLE_MEDIA_TAG, EXAMPLE_MEDIA_CEILING - FVM_SCONTROL_FRAMING, EXAMPLE_MEDIA_CEILING, EXAMPLE_MEDIA_CEILING - FVM_SCONTROL_FRAMING - FVM_SCONTROL_METADATA}; /* Real local maxima. */
+    FVM_SControlLimits wanted = {EXAMPLE_MEDIA_TAG, FVM_SSLOT_BYTES - FVM_SCONTROL_FRAMING, FVM_SSLOT_BYTES, FVM_SMEDIA_PAYLOAD}; /* Tutorial requests the small built-in bulk profile. */
+    FVM_SControlExchange sender, receiver; /* Distinct owners for the two ends of this direction. */
+    FVM_SControlMessage offer, ack, decoded; /* Copied fields, never native struct bytes on wire. */
+    unsigned char bytes[128]; /* Compact service records need no slot-sized buffer. */
+    size_t used, consumed; /* Each decode consumes exactly one complete service record. */
+    if (fvm_scontrol_init(&sender, &ceiling) != FVM_S_OK || fvm_scontrol_init(&receiver, &ceiling) != FVM_S_OK) /* Validate local capacities first. */
+        return 0; /* No implicit allocation or type binding. */
+    if (fvm_scontrol_propose(&sender, EXAMPLE_NEGOTIATION_ID, &wanted, &offer) != FVM_S_OK || fvm_scontrol_write(&offer, bytes, sizeof(bytes), &used) != FVM_S_OK) /* Pending offer only. */
+        return 0; /* Existing payload configuration remains unchanged. */
+    if (fvm_scontrol_read(bytes, used, &decoded, &consumed) != FVM_S_OK || consumed != used || fvm_scontrol_respond(&receiver, &decoded, &ack) != FVM_S_OK) /* Receive and cap the offer. */
+        return 0; /* Do not accept uncorrelated or malformed control. */
+    if (fvm_scontrol_write(&ack, bytes, sizeof(bytes), &used) != FVM_S_OK || fvm_scontrol_commit(&receiver, &ack) != FVM_S_OK) /* Here encoding represents the in-memory ACK queue. */
+        return 0; /* A network host commits only after successfully queuing its ACK. */
+    if (fvm_scontrol_read(bytes, used, &decoded, &consumed) != FVM_S_OK || consumed != used || fvm_scontrol_commit(&sender, &decoded) != FVM_S_OK) /* Initiator commits checked ACK. */
+        return 0; /* A proposal alone never changes the data framing. */
+    profile->slot_bytes = (size_t)sender.active.slot_bytes; /* Copy agreed size into the typed data adapter. */
+    profile->part_bytes = sender.active.part_bytes; /* The peer may have selected a smaller part quota. */
+    return profile->slot_bytes == FVM_SSLOT_BYTES && profile->part_bytes == FVM_SMEDIA_PAYLOAD; /* Arrays below intentionally use this requested tutorial geometry. */
+} /* End explicit tag-zero exchange. */
 /* Encode all parts with exact final length; output belongs to the caller's contiguous batch. */
-static int encode(const FVM_SMediaInfo *info, const unsigned char *source, unsigned char *slots) { /* No allocation. */
+static int encode(const FVM_SMediaProfile *profile, const FVM_SMediaInfo *info, const unsigned char *source, unsigned char *slots) { /* No allocation. */
     size_t part, size, used; /* Native loop counters and checked writer result extent. */
     for (part = 0; part < EXAMPLE_MEDIA_PARTS; ++part) { /* Pack one S-record per optional bulk slot. */
         size = part + 1 == EXAMPLE_MEDIA_PARTS ? EXAMPLE_MEDIA_TAIL : FVM_SMEDIA_PAYLOAD; /* Final remainder. */
-        if (fvm_smedia_write(EXAMPLE_MEDIA_TAG, info, (unsigned long)part, source + part * FVM_SMEDIA_PAYLOAD, size, slots + part * FVM_SSLOT_BYTES, FVM_SSLOT_BYTES, &used) != FVM_S_OK || used != FVM_SSLOT_BYTES) /* Atomic write. */
+        if (fvm_smedia_write_profile(profile, EXAMPLE_MEDIA_TAG, info, (unsigned long)part, source + part * FVM_SMEDIA_PAYLOAD, size, slots + part * FVM_SSLOT_BYTES, FVM_SSLOT_BYTES, &used) != FVM_S_OK || used != FVM_SSLOT_BYTES) /* Atomic write. */
             return 0; /* Do not send an incompletely encoded batch. */
     } /* Every slot is complete and padded. */
     return 1; /* Caller may batch or transmit individual slots. */
@@ -36,6 +59,7 @@ int main(void) { /* Console is only a report around the reusable C API. */
     unsigned char slots[EXAMPLE_MEDIA_PARTS * FVM_SSLOT_BYTES], retry[FVM_SSLOT_BYTES]; /* Bulk transport buffers. */
     unsigned char control[64]; /* Small control message retains variable-length encoding. */
     FVM_SMediaInfo info = {FVM_SMEDIA_FILE, 7, 1, 1, 0, EXAMPLE_MEDIA_BYTES}; /* Authenticated expected identity. */
+    FVM_SMediaProfile profile; /* Explicitly negotiated geometry, not a channel-wide default. */
     ExampleReceiver state; /* No heap allocation or external subsystem. */
     FVM_SSlotReport report; /* Independent validity of each fixed boundary. */
     FVM_SMediaPiece piece; /* Borrowed piece view for immediate media consumers. */
@@ -44,11 +68,13 @@ int main(void) { /* Console is only a report around the reusable C API. */
     memset(&state, 0, sizeof(state)); /* Initialize tutorial-only flags before callbacks. */
     for (i = 0; i < sizeof(source); ++i) /* Distinct bytes expose wrong offsets or short tails. */
         source[i] = (unsigned char)(i % 251U); /* Deterministic fixture, no codec dependency. */
-    if (!encode(&info, source, slots)) /* Encode three ordinary S-records inside fixed slots. */
+    if (!negotiate(&profile)) /* Agree the optional bulk geometry through compact tag-zero messages. */
+        return 1; /* No received data packet can negotiate these sizes. */
+    if (!encode(&profile, &info, source, slots)) /* Encode three ordinary S-records inside fixed slots. */
         return 1; /* An encoding failure produces no successful example report. */
     memcpy(retry, slots + FVM_SSLOT_BYTES, sizeof(retry)); /* Sender retains just the missing part here. */
     memset(slots + FVM_SSLOT_BYTES, 0x7f, FVM_SSLOT_BYTES); /* Destroy checksum, length and body. */
-    if (fvm_smedia_receiver_init(&state.receiver, EXAMPLE_MEDIA_TAG, &info, output, sizeof(output)) != FVM_S_OK) /* No output bytes touched. */
+    if (fvm_smedia_receiver_init_profile(&state.receiver, &profile, EXAMPLE_MEDIA_TAG, &info, output, sizeof(output)) != FVM_S_OK) /* No output bytes touched. */
         return 1; /* Host refuses an invalid buffer/identity before network input. */
     if (fvm_sslot_batch(slots, sizeof(slots), receive_part, &state, &report) != FVM_S_OK || report.valid != 2 || state.damaged != 1 || state.failed) /* Fixed resynchronization. */
         return 1; /* The third slot must remain independently readable. */
@@ -64,9 +90,9 @@ int main(void) { /* Console is only a report around the reusable C API. */
     info.mode = FVM_SMEDIA_LIVE; /* Reuse storage for a separately agreed immediate-media object. */
     ++info.object; /* Do not reuse the previous object's wire identity. */
     info.time_ms = 40; /* Host owns presentation clock/deadline interpretation. */
-    if (!encode(&info, source, slots) || fvm_smedia_receiver_init(&state.receiver, EXAMPLE_MEDIA_TAG, &info, output, sizeof(output)) != FVM_S_OK) /* Abandon prior state explicitly. */
+    if (!encode(&profile, &info, source, slots) || fvm_smedia_receiver_init_profile(&state.receiver, &profile, EXAMPLE_MEDIA_TAG, &info, output, sizeof(output)) != FVM_S_OK) /* Abandon prior state explicitly. */
         return 1; /* No automatic object adoption from incoming packets. */
-    if (fvm_smedia_read(slots, FVM_SSLOT_BYTES, EXAMPLE_MEDIA_TAG, &piece) != FVM_S_OK || piece.part != 0 || piece.size != FVM_SMEDIA_PAYLOAD) /* Immediate piece consumer. */
+    if (fvm_smedia_read_profile(&profile, slots, FVM_SSLOT_BYTES, EXAMPLE_MEDIA_TAG, &piece) != FVM_S_OK || piece.part != 0 || piece.size != FVM_SMEDIA_PAYLOAD) /* Immediate piece consumer. */
         return 1; /* A real codec consumes the verified borrowed bytes before reuse. */
     if (fvm_smedia_accept(&state.receiver, slots, FVM_SSLOT_BYTES, &state.complete) != FVM_S_OK || state.complete) /* Other parts intentionally omitted. */
         return 1; /* The host may discard missing parts when its deadline expires. */

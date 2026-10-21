@@ -117,34 +117,51 @@ static unsigned long crc_mask(size_t length_size)
     return bits >= 32U ? FVM_SRECORD_U32 : (1UL << bits) - 1UL;
 }
 /* Build complete framing after all validation, with no dynamic allocation or hidden state. */
-FVM_SResult fvm_srecord_write(unsigned long tag, const void *payload, size_t size,
-                              unsigned char *out, size_t capacity, size_t *used)
+FVM_SResult fvm_srecord_write_pair(unsigned long tag, const void *first, size_t first_size,
+                                   const void *second, size_t second_size, unsigned char *out,
+                                   size_t capacity, size_t *used)
 {
     unsigned char tag_bytes[FVM_SRECORD_INTEGER_MAX], length_bytes[FVM_SRECORD_INTEGER_MAX];
     unsigned char checksum[FVM_SRECORD_INTEGER_MAX];
     size_t ts, ls, cs, body, total;
     unsigned long crc;
-    if (!out || !used || (!payload && size) || tag > FVM_SRECORD_U32)
+    if (!out || !used || (!first && first_size) || (!second && second_size) ||
+        tag > FVM_SRECORD_U32)
         return FVM_S_INVALID;
     write_field(tag, tag_bytes, &ts);
-    if (size > FVM_SRECORD_BODY_MAX - ts)
+    if (first_size > FVM_SRECORD_BODY_MAX - ts ||
+        second_size > FVM_SRECORD_BODY_MAX - ts - first_size)
         return FVM_S_LIMIT;
-    body = ts + size;
+    if (first_size > (size_t)-1 - ts || second_size > (size_t)-1 - ts - first_size)
+        return FVM_S_LIMIT;
+    body = ts + first_size + second_size;
     write_field((unsigned long)body, length_bytes, &ls);
     crc = crc_bytes(FVM_SRECORD_U32, length_bytes, ls);
     crc = crc_bytes(crc, tag_bytes, ts);
-    crc = (crc_bytes(crc, (const unsigned char *)payload, size) ^ FVM_SRECORD_U32) & crc_mask(ls);
+    crc = crc_bytes(crc, (const unsigned char *)first, first_size);
+    crc = (crc_bytes(crc, (const unsigned char *)second, second_size) ^ FVM_SRECORD_U32) &
+          crc_mask(ls);
     write_field(crc, checksum, &cs);
+    if (body > (size_t)-1 - cs - ls)
+        return FVM_S_LIMIT;
     total = cs + ls + body;
     if (capacity < total)
         return FVM_S_LIMIT;
     memcpy(out, checksum, cs);
     memcpy(out + cs, length_bytes, ls);
     memcpy(out + cs + ls, tag_bytes, ts);
-    if (size)
-        memcpy(out + cs + ls + ts, payload, size);
+    if (first_size)
+        memcpy(out + cs + ls + ts, first, first_size);
+    if (second_size)
+        memcpy(out + cs + ls + ts + first_size, second, second_size);
     *used = total;
     return FVM_S_OK;
+}
+/* Preserve the ordinary single-span writer through the same atomic framing implementation. */
+FVM_SResult fvm_srecord_write(unsigned long tag, const void *payload, size_t size,
+                              unsigned char *out, size_t capacity, size_t *used)
+{
+    return fvm_srecord_write_pair(tag, payload, size, 0, 0, out, capacity, used);
 }
 /* Framing bounds precede CRC; tag and payload are exposed only after checksum acceptance. */
 FVM_SResult fvm_srecord_read(const void *input, size_t size, size_t limit, FVM_SRecord *view,

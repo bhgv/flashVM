@@ -2,6 +2,7 @@
 #include "flashvm/sbindings.h"
 #include "flashvm/sstream.h"
 #include "flashvm/smedia.h"
+#include "flashvm/scontrol.h"
 #include "flashvm/revents.h"
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
@@ -37,6 +38,10 @@ int main()
         fvm_smedia_receiver_init(&receiver, 3, &media, object, sizeof(object)) != FVM_S_OK ||
         fvm_smedia_accept(&receiver, slot, used, &complete) != FVM_S_OK || !complete ||
         object[0] != 'x')
+        return 1;
+    FVM_SControlLimits limits = {3, 63, 0, 0};
+    FVM_SControlExchange exchange;
+    if (fvm_scontrol_init(&exchange, &limits) != FVM_S_OK || exchange.active_id)
         return 1;
     FVM_RHeartbeatPolicy policy;
     FVM_RHeartbeat heartbeat;

@@ -6,4 +6,6 @@
 #define EXAMPLE_MEDIA_BYTES (2U * FVM_SMEDIA_PAYLOAD + EXAMPLE_MEDIA_TAIL) /* Source extent. */
 #define EXAMPLE_MEDIA_TAG 19UL /* Direction-local tag already agreed by this in-memory host. */
 #define EXAMPLE_CONTROL_TAG 44UL /* Independent compact control type for this example only. */
+#define EXAMPLE_MEDIA_CEILING 4096UL /* Local advertised bulk-buffer capacity, before negotiation. */
+#define EXAMPLE_NEGOTIATION_ID 1UL /* First monotonically increasing request in this fresh session. */
 #endif /* End example geometry. */

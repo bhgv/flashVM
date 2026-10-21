@@ -65,6 +65,14 @@ extern "C"
      * body <= BODY_MAX. */
     FVM_API FVM_SResult fvm_srecord_write(unsigned long tag, const void *payload, size_t size,
                                           unsigned char *output, size_t capacity, size_t *used);
+    /* Scatter-input equivalent of write: concatenate two disjoint borrowed byte spans without
+     * an object-sized temporary buffer. Each span and all outputs must not overlap. All size,
+     * checksum and capacity checks precede output; no allocation or native structure serialization.
+     */
+    FVM_API FVM_SResult fvm_srecord_write_pair(unsigned long tag, const void *first,
+                                               size_t first_size, const void *second,
+                                               size_t second_size, unsigned char *, size_t capacity,
+                                               size_t *used);
     /* limit is 1..BODY_MAX and counts tag+payload; pass BODY_MAX explicitly for the full profile.
      * MORE means retain/retry the prefix. Checksum is verified before tag interpretation.
      * OK publishes one record and consumed extent; trailing records remain unconsumed.

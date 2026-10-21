@@ -72,7 +72,7 @@ Reader сначала проверяет целые и лимиты, затем 
 | [`fvm_sinteger_write`](../include/flashvm/srecord.h#L56) | Заимствует число и output хоста, проверяет limbs/знак и ёмкость до записи. Used публикуется только при OK; ошибка сохраняет bytes/used. |
 | [`fvm_sinteger_read`](../include/flashvm/srecord.h#L58) | Заимствует префикс, value/used обязательны. Публикация только при OK. При MORE вызывающий сохраняет и дополняет префикс. |
 | [`fvm_srecord_write`](../include/flashvm/srecord.h#L66) | Заимствует tag/payload, пишет лишь после полной проверки. Payload не пересекается с output. Без выделений памяти, VM и транспорта. |
-| [`fvm_srecord_read`](../include/flashvm/srecord.h#L72) | Возвращает одну проверенную заимствованную view и consumed. Limit считает body. При MORE/ошибке выходы прежние; следующие записи не потребляются. |
+| [`fvm_srecord_read`](../include/flashvm/srecord.h#L80) | Возвращает одну проверенную заимствованную view и consumed. Limit считает body. При MORE/ошибке выходы прежние; следующие записи не потребляются. |
 
 Независимое хранение делает вызовы реентерабельными. Глобального изменяемого
 состояния, входа в VM/GC/SDL/device нет. Общие буферы синхронизирует хост.
@@ -184,7 +184,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
 | `fvm_sinteger_read` | function | [include/flashvm/srecord.h:58](../include/flashvm/srecord.h#L58) |
 | `fvm_sinteger_write` | function | [include/flashvm/srecord.h:56](../include/flashvm/srecord.h#L56) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:72](../include/flashvm/srecord.h#L72) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../include/flashvm/srecord.h#L80) |
 | `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
 | `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
 | `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
