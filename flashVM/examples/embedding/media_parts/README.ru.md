@@ -56,6 +56,24 @@ Expected / ожидается: `PASS compact control, bulk batch recovery, file 
 | [`fvm_smedia_receiver_init_profile`](../../../include/flashvm/smedia.h#L100) | Копирует согласованные profile/identity, заимствует буфер; INVALID/LIMIT сохраняют receiver. [Contract](../../../doc/MEDIA_SLOTS.ru.md). |
 | [`fvm_smedia_read_profile`](../../../include/flashvm/smedia.h#L98) | Проверяет согласованный слот и размер части; выход заимствует ввод только при OK. [Contract](../../../doc/MEDIA_SLOTS.ru.md). |
 
+## Receive-window observations / Наблюдения окна приёма
+
+The C example closes FILE statistics before retry: expected=3, on_time=2,
+late=0, damaged=0; the unidentified corrupt slot remains missing. Completing
+FILE later leaves that report unchanged. A new LIVE window accepts one part and
+closes with explicitly unknown RTT. Times/RTT here are controlled tutorial inputs,
+not network measurements. / C пример закрывает FILE статистику до восстановления:
+expected=3, on_time=2, late=damaged=0. Повреждённый slot без индекса отсутствует;
+позднее восстановление не меняет отчёт. Новое LIVE окно получает одну часть
+и закрывается с явно неизвестным RTT. Время/RTT здесь заданы учебником.
+
+| API | Ownership / владение |
+| --- | --- |
+| [`fvm_smeasure_media_init`](../../../include/flashvm/smeasure.h#L71) | Bind pristine receiver and its existing storage until finish; copy agreed identity/profile, no image allocation. Привязывает пустой receiver до finish, без новой картинки. [Contract](../../../doc/RECEIVE_WINDOWS.ru.md). |
+| [`fvm_smeasure_media_accept`](../../../include/flashvm/smeasure.h#L78) | Verify bytes before copying and crediting a unique part; corrupt slots preserve all outputs. Проверяет данные до копирования и учёта; ошибка атомарна. [Contract](../../../doc/RECEIVE_WINDOWS.ru.md). |
+| [`fvm_smeasure_media_finish`](../../../include/flashvm/smeasure.h#L82) | Freeze historical counts at the chosen deadline; release borrow without freeing storage. Замораживает историю, завершает заимствование без освобождения памяти. [Contract](../../../doc/RECEIVE_WINDOWS.ru.md). |
+| [`fvm_sadapt_feedback_write`](../../../include/flashvm/sadapt.h#L117) | Encode the owned FILE report as a compact tag-zero service-3 record in caller storage. Кодирует отчёт в caller buffer, без padding. [Contract](../../../doc/CHANNEL_ADAPTATION.ru.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -65,12 +83,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../../../include/flashvm/sadapt.h#L117) |
 | `fvm_scontrol_commit` | function | [include/flashvm/scontrol.h:90](../../../include/flashvm/scontrol.h#L90) |
 | `fvm_scontrol_init` | function | [include/flashvm/scontrol.h:74](../../../include/flashvm/scontrol.h#L74) |
 | `fvm_scontrol_propose` | function | [include/flashvm/scontrol.h:78](../../../include/flashvm/scontrol.h#L78) |
 | `fvm_scontrol_read` | function | [include/flashvm/scontrol.h:69](../../../include/flashvm/scontrol.h#L69) |
 | `fvm_scontrol_respond` | function | [include/flashvm/scontrol.h:83](../../../include/flashvm/scontrol.h#L83) |
 | `fvm_scontrol_write` | function | [include/flashvm/scontrol.h:67](../../../include/flashvm/scontrol.h#L67) |
+| `fvm_smeasure_media_accept` | function | [include/flashvm/smeasure.h:78](../../../include/flashvm/smeasure.h#L78) |
+| `fvm_smeasure_media_finish` | function | [include/flashvm/smeasure.h:82](../../../include/flashvm/smeasure.h#L82) |
+| `fvm_smeasure_media_init` | function | [include/flashvm/smeasure.h:71](../../../include/flashvm/smeasure.h#L71) |
 | `fvm_smedia_accept` | function | [include/flashvm/smedia.h:82](../../../include/flashvm/smedia.h#L82) |
 | `fvm_smedia_missing` | function | [include/flashvm/smedia.h:89](../../../include/flashvm/smedia.h#L89) |
 | `fvm_smedia_read` | function | [include/flashvm/smedia.h:69](../../../include/flashvm/smedia.h#L69) |

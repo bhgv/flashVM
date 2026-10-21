@@ -471,6 +471,8 @@ listener и 9P. [main.c](debugger/resource_debugger/main.c), [контракт](
 <a id="example-embedding-media_parts"></a>
 #### media_parts
 
+Дополнительно: native окна приёма считают проверенные уникальные части, замораживают FILE отчёт до восстановления и отдельно закрывают LIVE с неизвестным RTT. [Контракт RU](../doc/RECEIVE_WINDOWS.ru.md) / [EN](../doc/RECEIVE_WINDOWS.md).
+
 **Тип:** C89, самостоятельный пример без VM/SDL, сокетов и декодеров.
 **README:** [EN](embedding/media_parts/README.md) / [RU](embedding/media_parts/README.ru.md).
 Три слота крупного объекта, разрушенная длина средней записи, запрос только
@@ -1865,6 +1867,8 @@ window chrome/letterbox. Флаг --offscreen отключает собстве�
 
 <a id="example-player-frame_parts"></a>
 ### frame_parts
+
+Тест строит native feedback по реальным UDP поступлениям и TCP echo RTT, затем управляет повторным запуском настоящего плеера. [RU](../doc/RECEIVE_WINDOWS.ru.md) / [EN](../doc/RECEIVE_WINDOWS.md).
 
 Опциональный `--feedback` связывает отчёты хоста, политику выбора размеров и ACK на следующем кадре; [контракт RU](../doc/CHANNEL_ADAPTATION.ru.md) / [EN](../doc/CHANNEL_ADAPTATION.md). Это воспроизведение измерений, не сетевой сборщик.
 

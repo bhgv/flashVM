@@ -1,5 +1,6 @@
 /* Optional bulk-media slots coexist with compact control records; no sockets or VM required. */
 #include "flashvm/scontrol.h" /* Optional tag-zero size negotiation, separate from type binding. */
+#include "flashvm/smeasure.h" /* Actual verified arrivals form bounded deadline feedback. */
 #include "flashvm/smedia.h" /* Public C89 fragment, slot and reassembly contracts. */
 #include "limits.h" /* Bounded tutorial storage and explicitly agreed example tags. */
 #include <stdio.h> /* Report results after all native work has completed. */
@@ -60,6 +61,8 @@ int main(void) { /* Console is only a report around the reusable C API. */
     unsigned char control[64]; /* Small control message retains variable-length encoding. */
     FVM_SMediaInfo info = {FVM_SMEDIA_FILE, 7, 1, 1, 0, EXAMPLE_MEDIA_BYTES}; /* Authenticated expected identity. */
     FVM_SMediaProfile profile; /* Explicitly negotiated geometry, not a channel-wide default. */
+    FVM_SMeasureMedia observation; /* Borrows only the native receiver/storage through each closed window. */
+    FVM_SAdaptFeedback feedback; /* Owned historical counts remain unchanged after file repair. */
     ExampleReceiver state; /* No heap allocation or external subsystem. */
     FVM_SSlotReport report; /* Independent validity of each fixed boundary. */
     FVM_SMediaPiece piece; /* Borrowed piece view for immediate media consumers. */
@@ -76,17 +79,21 @@ int main(void) { /* Console is only a report around the reusable C API. */
     memset(slots + FVM_SSLOT_BYTES, 0x7f, FVM_SSLOT_BYTES); /* Destroy checksum, length and body. */
     if (fvm_smedia_receiver_init_profile(&state.receiver, &profile, EXAMPLE_MEDIA_TAG, &info, output, sizeof(output)) != FVM_S_OK) /* No output bytes touched. */
         return 1; /* Host refuses an invalid buffer/identity before network input. */
+    if (fvm_smeasure_media_init(&observation, &state.receiver, info.object, EXAMPLE_MEASURE_DEADLINE) != FVM_S_OK) return 1; /* Bind pristine agreed identity/profile. */
     if (fvm_sslot_batch(slots, sizeof(slots), receive_part, &state, &report) != FVM_S_OK || report.valid != 2 || state.damaged != 1 || state.failed) /* Fixed resynchronization. */
         return 1; /* The third slot must remain independently readable. */
     for (i = 0; i < EXAMPLE_MEDIA_PARTS; ++i) { /* A host may route each known slot by its trusted profile. */
-        FVM_SResult result = fvm_smedia_accept(&state.receiver, slots + i * FVM_SSLOT_BYTES, FVM_SSLOT_BYTES, &state.complete); /* Verify before copy. */
+        FVM_SResult result = fvm_smeasure_media_accept(&observation, slots + i * FVM_SSLOT_BYTES, FVM_SSLOT_BYTES, (unsigned long)i, &state.complete); /* Verify before copy. */
         if ((i == 1 && result == FVM_S_OK) || (i != 1 && result != FVM_S_OK)) /* Only the deliberately damaged part fails. */
             return 1; /* Never accept bytes from an unchecked record. */
     } /* Valid first and final parts now coexist around an unfilled hole. */
+    if (fvm_smeasure_media_finish(&observation, EXAMPLE_MEASURE_DEADLINE, 1, EXAMPLE_MEASURE_RTT, &feedback) != FVM_S_OK || feedback.on_time != 2 || feedback.late || feedback.damaged) return 1; /* Corrupt unidentified slot stays missing. */
+    if (fvm_sadapt_feedback_write(&feedback, control, sizeof(control), &used) != FVM_S_OK) return 1; /* Compact service-3 report, without bulk padding. */
     if (fvm_smedia_missing(&state.receiver, 0, holes, EXAMPLE_MEDIA_PARTS, &count) != FVM_S_OK || count != 1 || holes[0] != 1) /* File policy. */
         return 1; /* Request exactly part one through the host's reliable control channel. */
     if (fvm_smedia_accept(&state.receiver, retry, sizeof(retry), &state.complete) != FVM_S_OK || !state.complete || memcmp(source, output, sizeof(source))) /* Only one part retried. */
         return 1; /* Completion means every exact object byte was copied. */
+    if (feedback.on_time != 2 || observation.measurement.report.on_time != 2) return 1; /* Late FILE repair cannot improve frozen history. */
     info.mode = FVM_SMEDIA_LIVE; /* Reuse storage for a separately agreed immediate-media object. */
     ++info.object; /* Do not reuse the previous object's wire identity. */
     info.time_ms = 40; /* Host owns presentation clock/deadline interpretation. */
@@ -94,10 +101,12 @@ int main(void) { /* Console is only a report around the reusable C API. */
         return 1; /* No automatic object adoption from incoming packets. */
     if (fvm_smedia_read_profile(&profile, slots, FVM_SSLOT_BYTES, EXAMPLE_MEDIA_TAG, &piece) != FVM_S_OK || piece.part != 0 || piece.size != FVM_SMEDIA_PAYLOAD) /* Immediate piece consumer. */
         return 1; /* A real codec consumes the verified borrowed bytes before reuse. */
-    if (fvm_smedia_accept(&state.receiver, slots, FVM_SSLOT_BYTES, &state.complete) != FVM_S_OK || state.complete) /* Other parts intentionally omitted. */
+    if (fvm_smeasure_media_init(&observation, &state.receiver, info.object, EXAMPLE_MEASURE_DEADLINE) != FVM_S_OK) return 1; /* New independent live observation. */
+    if (fvm_smeasure_media_accept(&observation, slots, FVM_SSLOT_BYTES, 0, &state.complete) != FVM_S_OK || state.complete) /* Other parts intentionally omitted. */
         return 1; /* The host may discard missing parts when its deadline expires. */
     if (fvm_smedia_missing(&state.receiver, 0, holes, EXAMPLE_MEDIA_PARTS, &count) != FVM_S_OK || count) /* Live policy suppresses retry requests. */
         return 1; /* No automatic retransmission delays immediate playback. */
+    if (fvm_smeasure_media_finish(&observation, EXAMPLE_MEASURE_DEADLINE, 0, 0, &feedback) != FVM_S_OK || feedback.on_time != 1 || feedback.rtt_known) return 1; /* Unknown RTT remains explicit, never guessed. */
     if (fvm_srecord_write(EXAMPLE_CONTROL_TAG, "ok", 2, control, sizeof(control), &used) != FVM_S_OK || used >= FVM_SSLOT_BYTES) /* Small messages stay compact. */
         return 1; /* No slot padding is required for ordinary control records. */
     printf("PASS compact control, bulk batch recovery, file retry and live no-retry policy\n"); /* Stable tutorial result. */

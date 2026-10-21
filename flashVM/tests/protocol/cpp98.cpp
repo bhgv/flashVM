@@ -14,6 +14,10 @@
 /* Link framing, incremental input and directional metadata without a VM runtime. */
 int main()
 {
+    FVM_SMeasureMedia measured;
+    if (fvm_smeasure_media_init(&measured, 0, 1, 100) != FVM_S_INVALID ||
+        fvm_smeasure_media_accept(0, 0, 0, 0, 0) != FVM_S_INVALID ||
+        fvm_smeasure_media_finish(0, 0, 0, 0, 0) != FVM_S_INVALID) return 1;
     FVM_SMeasure measurement;
     if (fvm_smeasure_init(&measurement, 7, 1, 1, 1, 100) != FVM_S_OK) return 1;
 

@@ -4,12 +4,18 @@ import ctypes as C
 import random
 import sys
 from sadapt_oracle import Feedback
+from smedia_oracle import Info, Profile, Receiver
 from srecord_oracle import frame, integer
 
 class Measure(C.Structure):
     _fields_ = [('struct_size',C.c_size_t), ('report',Feedback),
                 ('deadline_ms',C.c_ulong), ('last_ms',C.c_ulong), ('closed',C.c_int),
                 ('categories',C.c_ubyte*1024)]
+
+
+class MediaMeasure(C.Structure):
+    _fields_ = [('struct_size',C.c_size_t),('measurement',Measure),
+                ('receiver',C.POINTER(Receiver)),('info',Info),('profile',Profile),('tag',C.c_ulong)]
 
 
 def main():

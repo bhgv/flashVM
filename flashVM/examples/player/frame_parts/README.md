@@ -143,6 +143,7 @@ python3 flashVM/examples/player/frame_parts/make_feedback.py reports.srecords
 ```
 
 [make_feedback.py](make_feedback.py) writes the controlled three-window trace without importing tests or loading the SDK. Expected adaptive stdout: `exported_frames=4`.
+The independent test also derives native reports from actual UDP arrivals and monotonic host time, measures TCP echo RTT, then drives a second real player export. / Независимый тест также строит native отчёты по настоящим UDP поступлениям и монотонному времени, измеряет TCP echo RTT и управляет повторным экспортом настоящего плеера. [Contract](../../../doc/RECEIVE_WINDOWS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -1,4 +1,4 @@
-Версия разработки: **0.747** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.748** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.748: [Verified receiver measurements drive actual player profile changes](doc/RECEIVE_WINDOWS.ru.md).
 
 v0.747: [Unique-part receive windows with frozen feedback](doc/RECEIVE_WINDOWS.ru.md).
 

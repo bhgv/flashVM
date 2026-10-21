@@ -8,4 +8,6 @@
 #define EXAMPLE_CONTROL_TAG 44UL /* Independent compact control type for this example only. */
 #define EXAMPLE_MEDIA_CEILING 4096UL /* Local advertised bulk-buffer capacity, before negotiation. */
 #define EXAMPLE_NEGOTIATION_ID 1UL /* First monotonically increasing request in this fresh session. */
+#define EXAMPLE_MEASURE_DEADLINE 100UL /* Host-relative demo deadline, not a wall-clock reading. */
+#define EXAMPLE_MEASURE_RTT 20UL /* Explicit controlled RTT input; not measured by the codec. */
 #endif /* End example geometry. */

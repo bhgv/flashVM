@@ -1138,7 +1138,7 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   # Direct objects preserve automatic C-symbol exports in Windows oracle DLLs as well.
   add_library(flashvm_resource_frame_oracle SHARED common/resource_frame.c common/frame.c
     ../src/protocol/srecord.c ../src/protocol/rdispatch.c ../src/protocol/sslot.c
-    ../src/protocol/scontrol.c ../src/protocol/smedia.c)
+    ../src/protocol/scontrol.c ../src/protocol/smedia.c ../src/protocol/sadapt.c ../src/protocol/smeasure.c)
   target_include_directories(flashvm_resource_frame_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_resource_frame_oracle PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF WINDOWS_EXPORT_ALL_SYMBOLS ON)
   add_test(NAME flashvm_resource_frame_wire COMMAND ${Python3_EXECUTABLE}

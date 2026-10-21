@@ -7,9 +7,12 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'tests'/'protocol'))
 from srecord_oracle import frame as encode, integer as encode_integer
 from smedia_oracle import Info, Profile, Receiver
+from smeasure_oracle import MediaMeasure
+from sadapt_oracle import Feedback
 
 
 def integer(data, offset=0):
@@ -50,7 +53,7 @@ def expected(sequence):
                  for v in (color if left <= x < left+8 and 4 <= y < 12 else (255,255,255,255)))
 
 
-def parse(data, mode, adaptive=False):
+def parse(data, mode, adaptive=False, feedback_reports=None):
     tag, declaration, offset = record(data)
     assert tag == 0
     values, names = fields(declaration, 2)
@@ -67,7 +70,7 @@ def parse(data, mode, adaptive=False):
         if adaptive and sequence > 1:
             tag, payload, offset = record(data,offset)
             values, tail = fields(payload,11)
-            assert tag == 0 and not tail and values == reports()[sequence-2]
+            assert tag == 0 and not tail and values == (feedback_reports or reports())[sequence-2]
 
         tag, metadata, offset = record(data,offset)
         values, source = fields(metadata,17)
@@ -147,6 +150,73 @@ def transport(lib, objects, mode):
         assert complete.value == 1 and image.raw == expected(sequence)
 
 
+def measure_link(lib, objects, mode):
+    """Measure actual exported slots on UDP, encode host feedback, then drive another player run."""
+    init = lib.fvm_smedia_receiver_init_profile
+    init.argtypes = [C.POINTER(Receiver),C.POINTER(Profile),C.c_ulong,C.POINTER(Info),C.c_void_p,C.c_size_t]
+    begin, accept, finish = lib.fvm_smeasure_media_init,lib.fvm_smeasure_media_accept,lib.fvm_smeasure_media_finish
+    begin.argtypes = [C.POINTER(MediaMeasure),C.POINTER(Receiver),C.c_ulong,C.c_ulong]
+    accept.argtypes = [C.POINTER(MediaMeasure),C.c_void_p,C.c_size_t,C.c_ulong,C.POINTER(C.c_int)]
+    finish.argtypes = [C.POINTER(MediaMeasure),*([C.c_ulong]*3),C.POINTER(Feedback)]
+    write = lib.fvm_sadapt_feedback_write
+    write.argtypes = [C.POINTER(Feedback),C.c_void_p,C.c_size_t,C.POINTER(C.c_size_t)]
+    windows, wire = [],b''
+    for sequence,profile,slots in objects[:3]:
+        info = Info(mode,7,1,sequence,sequence*40,4096)
+        receiver, observation, complete = Receiver(),MediaMeasure(),C.c_int(77)
+        image = C.create_string_buffer(b'\xa5'*4096,4096)
+        assert init(C.byref(receiver),C.byref(profile),19,C.byref(info),image,4096) == 0
+        # Relative elapsed time comes from this host's monotonic clock, not packet metadata.
+        deadline = 100
+        assert begin(C.byref(observation),C.byref(receiver),sequence,deadline) == 0
+        start = time.monotonic()
+        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as rx, socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as tx:
+            rx.settimeout(3);rx.bind(('127.0.0.1',0))
+            selected = range(len(slots)-1) if sequence == 1 else range(len(slots))
+            for part in reversed(list(selected)):
+                raw = b'\x7f'*profile.slot_bytes if sequence == 1 and part == 0 else slots[part]
+                tx.sendto(raw,rx.getsockname());packet,_ = rx.recvfrom(profile.slot_bytes+1)
+                elapsed = int((time.monotonic()-start)*1000)
+                before = bytes(observation),bytes(receiver),image.raw
+                result = accept(C.byref(observation),packet,len(packet),elapsed,C.byref(complete))
+                if sequence == 1 and part == 0:
+                    assert result != 0 and before == (bytes(observation),bytes(receiver),image.raw)
+                else:
+                    assert result == 0
+                    assert accept(C.byref(observation),packet,len(packet),elapsed,C.byref(complete)) == 0
+        # A real TCP request/echo supplies RTT, independently of the media presentation timestamp.
+        with socket.socket() as listener:
+            listener.settimeout(3);listener.bind(('127.0.0.1',0));listener.listen(1)
+            with socket.create_connection(listener.getsockname(),timeout=3) as client:
+                server,_ = listener.accept()
+                with server:
+                    server.settimeout(3);probe = time.monotonic();client.sendall(b'probe')
+                    data = b''
+                    while len(data)<5:data += server.recv(5-len(data))
+                    server.sendall(data);data = b''
+                    while len(data)<5:data += client.recv(5-len(data))
+                    rtt = int((time.monotonic()-probe)*1000)
+                    assert data == b'probe'
+        remaining = deadline/1000-(time.monotonic()-start)
+        if remaining>0:time.sleep(remaining)  # Close at the actual host deadline, never fabricate elapsed time.
+        elapsed = max(deadline,int((time.monotonic()-start)*1000))
+        feedback = Feedback()
+        assert finish(C.byref(observation),elapsed,1,rtt,C.byref(feedback)) == 0
+        values = [3,1]+[getattr(feedback,name) for name,_ in Feedback._fields_]
+        expected_count = len(slots)-2 if sequence == 1 else len(slots)
+        assert feedback.expected == len(slots) and feedback.on_time == expected_count
+        assert feedback.late == feedback.damaged == 0  # A corrupt unidentified datagram remains missing.
+        output = C.create_string_buffer(128);used = C.c_size_t()
+        assert write(C.byref(feedback),output,128,C.byref(used)) == 0
+        encoded = output.raw[:used.value]
+        assert encoded == trace([values])
+        windows.append(values);wire += encoded
+        before = bytes(observation); complete.value = 77
+        assert accept(C.byref(observation),slots[-1],len(slots[-1]),elapsed,C.byref(complete)) == 5
+        assert bytes(observation) == before and complete.value == 77
+    return windows,wire
+
+
 def reports():
     # Controlled host windows: six normal pieces with two unusable, then clean smaller/normal images.
     return [[3,1,7,1,1,6,4,0,1,1,20], [3,1,7,1,2,11,11,0,0,1,20],
@@ -177,7 +247,14 @@ def main():
                                     env=env,capture_output=True,text=True,timeout=8)
             assert result.returncode == 0,(result.stdout,result.stderr)
             assert result.stdout.strip() == 'exported_frames=4'
-            transport(lib,parse(output.read_bytes(),mode,True),mode)
+            objects = parse(output.read_bytes(),mode,True)
+            transport(lib,objects,mode)
+            measured, encoded = measure_link(lib,objects,mode)
+            measured_path = Path(temporary)/'measured.srecords';measured_path.write_bytes(encoded)
+            result = subprocess.run([executable,'--feedback',str(measured_path),*(['--live'] if mode==2 else []),str(output)],
+                                    env=env,capture_output=True,text=True,timeout=8)
+            assert result.returncode == 0 and result.stdout.strip() == 'exported_frames=4',(result.stdout,result.stderr)
+            transport(lib,parse(output.read_bytes(),mode,True,measured),mode)
         valid = feedback.read_bytes()
         for bad in (b'',b'\x80'*385,valid[:-1],valid+b'\x80',valid+valid,valid[:8]+b'\x00'+valid[9:]):
             feedback.write_bytes(bad);output.write_bytes(b'preserve destination')
