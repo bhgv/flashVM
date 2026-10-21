@@ -1,10 +1,12 @@
-Development version: **0.766** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.766 ` and an English description. Increase the subversion before each
+Development version: **0.767** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.767 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.767: [Apply an aggregate prepared-stream memory ceiling before player startup](doc/PLAYER_STREAM_BUDGETS.md).
 
 v0.766: [Bound prepared stream snapshots and expose native storage charges](doc/STREAM_STORAGE.md).
 

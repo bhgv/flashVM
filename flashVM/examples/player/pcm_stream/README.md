@@ -73,3 +73,5 @@ integer arithmetic and checks all 71332 accepted 48000 Hz stereo frames.
 This is SDL dummy-queue evidence, not speaker recording or physical-device acceptance.
 The normal C API source is `fvm_desktop_run_memory`; pass the same bundled bytes
 through the [existing C89 embedding example](../embedded_movie/README.md).
+
+Since v0.767 these commands also use the default [64-MiB aggregate preparation budget](../../../doc/PLAYER_STREAM_BUDGETS.md). Input files and expected samples are unchanged. The cap includes source expansion and retained predecessor ownership; it is not a process RSS limit.

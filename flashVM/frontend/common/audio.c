@@ -4,10 +4,44 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* Include the retained segment table before preparing any individual snapshot. */
+static FVM_Result stream_budget(size_t streams, size_t *remaining)
+{
+    size_t budget = FVM_DESKTOP_AUDIO_PREPARED_BYTES;
+    if (streams > budget / sizeof(FVM_DesktopStreamSegment))
+        return FVM_OUT_OF_MEMORY;
+    *remaining = budget - streams * sizeof(FVM_DesktopStreamSegment);
+    return FVM_OK;
+}
+
+/* Charge retained predecessors plus this snapshot's temporary peak before native allocation. */
+static FVM_Result prepare_segment(FVM_Context *context, size_t index, size_t *remaining,
+                                  FVM_SWFStreamSoundSnapshot **out)
+{
+    FVM_SWFStreamSoundStorageInfo storage;
+    FVM_Result result =
+        fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, index, *remaining, out);
+    if (result != FVM_OK)
+        return result;
+    storage.struct_size = sizeof(storage);
+    result = fvm_swf_stream_sound_snapshot_storage_info(*out, &storage);
+    if (result == FVM_OK && storage.retained_bytes <= *remaining)
+        *remaining -= storage.retained_bytes;
+    else
+    {
+        fvm_swf_stream_sound_snapshot_close(*out);
+        *out = 0;
+        if (result == FVM_OK)
+            result = FVM_OUT_OF_MEMORY;
+    }
+    return result;
+}
+
 /* Reject unsupported combinations before a window or audio endpoint can be opened. */
 static FVM_Result validate_headers(FVM_Context *context, int decode)
 {
     size_t streams = 0, events = 0, index;
+    size_t remaining = 0;
     FVM_SWFStreamSoundInfo info;
     FVM_Result result = fvm_swf_stream_sound_count(context, &streams);
     if (result != FVM_OK || !streams)
@@ -19,30 +53,31 @@ static FVM_Result validate_headers(FVM_Context *context, int decode)
         return result;
     if (events)
         return FVM_UNSUPPORTED;
+    result = stream_budget(streams, &remaining);
+    if (result != FVM_OK)
+        return result;
     for (index = 0; index < streams; ++index)
     {
         info.struct_size = sizeof(info);
         result = fvm_swf_stream_sound_at(context, index, &info);
         if (result != FVM_OK)
             return result;
-        if (info.format == FVM_SWF_SOUND_ADPCM)
-        {
-            if (decode)
-            {
-                FVM_SWFStreamSoundSnapshot *prepared = 0;
-                result = fvm_swf_stream_sound_snapshot_open_pcm(context, index, &prepared);
-                fvm_swf_stream_sound_snapshot_close(prepared);
-                if (result != FVM_OK)
-                    return result;
-            }
-        }
-        else if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
+        if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE &&
+            info.format != FVM_SWF_SOUND_ADPCM)
             return FVM_UNSUPPORTED;
+        if (decode)
+        {
+            FVM_SWFStreamSoundSnapshot *prepared = 0;
+            result = prepare_segment(context, index, &remaining, &prepared);
+            fvm_swf_stream_sound_snapshot_close(prepared);
+            if (result != FVM_OK)
+                return result;
+        }
     }
     return FVM_OK;
 }
 
-/* Validate/decode compressed payload before window/device acquisition; no result is retained. */
+/* Validate aggregate preparation before window/device acquisition; no snapshot is retained. */
 FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
 {
     return validate_headers(context, 1);
@@ -254,7 +289,10 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         return result;
     if (streams)
     {
-        size_t index;
+        size_t index, remaining = 0;
+        result = stream_budget(streams, &remaining);
+        if (result != FVM_OK)
+            return result;
         audio->stream_segments =
             (FVM_DesktopStreamSegment *)calloc(streams, sizeof(*audio->stream_segments));
         if (!audio->stream_segments)
@@ -267,7 +305,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
             info.struct_size = sizeof(info);
             result = fvm_swf_stream_sound_at(context, index, &info);
             if (result == FVM_OK)
-                result = fvm_swf_stream_sound_snapshot_open_pcm(context, index, &segment->source);
+                result = prepare_segment(context, index, &remaining, &segment->source);
             if (result != FVM_OK)
                 return result;
             segment->frame = info.frame;

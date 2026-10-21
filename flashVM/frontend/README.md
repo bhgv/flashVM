@@ -135,3 +135,7 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 ## Whole-packet ADPCM root streams (v0.764)
 
 [Player contract and bounded decoder](../doc/PLAYER_PCM_STREAMS.md); [runnable ADPCM example](../examples/player/pcm_stream/README.md#whole-packet-adpcm-variant-v0764). No FFmpeg runtime dependency; other codecs/partial packets and root event mixing remain unsupported.
+
+## Aggregate stream budget (v0.767)
+
+[64-MiB prepared-source policy](../doc/PLAYER_STREAM_BUDGETS.md) includes retained snapshots, the segment table and ADPCM expansion peaks. Rejection occurs before native startup; mute prepares no snapshots.

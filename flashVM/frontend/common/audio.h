@@ -6,6 +6,7 @@
 #include "flashvm/swf_stream_output.h"
 #include <SDL.h>
 #include "audio_trace.h"
+#include "audio_memory.h"
 #define FVM_DESKTOP_AUDIO_RELEASE_DIVISOR 200U /* Five-millisecond native stop release. */
 #define FVM_DESKTOP_AUDIO_RATE 48000U          /* Native frame clock, independent of movie FPS. */
 #define FVM_DESKTOP_AUDIO_CHANNELS 2U          /* Stereo native S16. */
@@ -20,6 +21,7 @@
     2000UL /* Extra finite-run completion budget after the final frame deadline. */
 #define FVM_DESKTOP_AUDIO_MAX_SEGMENTS                                                             \
     64U /* Bound owner-side snapshot preparation and seek work. */
+
 /* Native immutable source ownership and an independently resettable conversion grid per header. */
 typedef struct FVM_DesktopStreamSegment
 {
@@ -68,15 +70,15 @@ extern "C"
 #endif
     /* Validate supported unmuted root stream policy before native presentation/device acquisition.
      * Up to MAX_SEGMENTS PCM or whole-packet ADPCM headers without root StartSound; other
-     * codec/mixed/excess UNSUPPORTED. Owner only; may allocate/decode temporary ADPCM; no device or
-     * callbacks. Core stream alignment errors propagate. */
+     * codec/mixed/excess UNSUPPORTED. Owner only; may allocate/copy/decode temporary sources; no
+     * device or callbacks. Core stream alignment errors propagate. */
     FVM_Result fvm_desktop_audio_validate(FVM_Context *);
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
      * Changed navigation token or pending/backward/skipped frame clears old FIFO and resets phase;
      * repeated observations do not rewind. No VM pointer reaches worker. Host pause remains
      * independent. */
     FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
-    /* Acquire native ownership for root events or one supported PCM stream; never both. */
+    /* Acquire native ownership for root events or supported prepared root streams; never both. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
     FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);

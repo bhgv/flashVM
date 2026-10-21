@@ -117,7 +117,7 @@ After successful content publication, the owner detaches root sound delivery and
 joins/releases the old PCM worker, mixer, queue and device. This happens before a
 possibly slow network cancellation join. Audio event/stop/underrun counters stay
 cumulative. Close is still safe afterwards. A muted source needs no audio device.
-The helper [fvm_desktop_audio_clear](../frontend/common/audio.h#L102) is private player
+The helper [fvm_desktop_audio_clear](../frontend/common/audio.h#L104) is private player
 integration, not a new exported host ABI or a change to independent C API unload.
 
 Core allocation failure leaves contents and native producers unchanged. An error

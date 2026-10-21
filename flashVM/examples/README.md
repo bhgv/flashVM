@@ -1943,7 +1943,8 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [RU](player/pcm_stream/README.ru.md), [генератор](player/pcm_stream/make_movie.py),
 [фильм](player/pcm_stream/pcm-stream.swf),
 [смена формата](player/pcm_stream/pcm-segments.swf),
-[ADPCM](player/pcm_stream/adpcm-stream.swf), [ADPCM-генератор](player/pcm_stream/make_adpcm.py), [контракт](../doc/PLAYER_PCM_STREAMS.ru.md).
+[ADPCM](player/pcm_stream/adpcm-stream.swf), [ADPCM-генератор](player/pcm_stream/make_adpcm.py),
+[бюджет подготовки](../doc/PLAYER_STREAM_BUDGETS.ru.md), [контракт](../doc/PLAYER_PCM_STREAMS.ru.md).
 
 <a id="example-player-playback_control"></a>
 ### playback_control

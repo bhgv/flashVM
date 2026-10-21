@@ -1,4 +1,5 @@
 /* C89 CLI parsing independent of SDL/VM lifetime and process numeric locale. */
+#include "audio_memory.h"
 #include "options.h"
 #include <errno.h>
 #include <float.h>
@@ -366,5 +367,7 @@ void fvm_desktop_help(const char *program)
     puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM StartSound uses "
          "optional SDL audio.");
     puts("Finite stream playback finishes authorized PCM and drains the queue, with a 2000 ms extra deadline.");
+    printf("Prepared streaming sources: %lu-byte aggregate snapshot/index/table and expansion budget.\n",
+           (unsigned long)FVM_DESKTOP_AUDIO_PREPARED_BYTES);
     puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM segments without StartSound; other codecs/mixing unsupported.");
 }
