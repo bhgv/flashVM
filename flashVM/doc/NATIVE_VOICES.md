@@ -129,6 +129,17 @@ still need bounded adoption. The desktop now uses this constructor before audio
 device acquisition. Host template/queue and allocator memory remain separate.
 `swf_sound_mixer_storage` additionally checks exact and one-byte-short creation.
 
+## v0.790: runnable C89 template replay
+
+The [swf_voice_reuse tutorial](../examples/multimedia/swf_voice_reuse/README.md)
+prepares one bounded template, destroys its VM, parks it at EOF, then clones,
+restarts and adopts it twice. Its aggregate budget reserves template, mixer and
+incoming clone together. Native finite reads preserve authored loops/envelopes;
+there is no repeat decoding or implicit movie/device clock. The independent
+checker passes 24 FWS/CWS sample cases: mono/stereo PCM styles, empty playback,
+ADPCM and six effective MPEG geometries. Both output halves match exactly;
+FFmpeg checks every MP3 sample when installed. Errors/replacement are explicit.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

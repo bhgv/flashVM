@@ -157,6 +157,7 @@
     - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline, 48 kHz stereo и stop</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
+    - [swf_voice_reuse](#example-multimedia-swf_voice_reuse) — <small><em>Шаблон PCM, clone/seek и два воспроизведения после VM teardown</em></small>
   - [speech](#group-multimedia-speech)
     - [speech_android](#example-multimedia-speech_android) — <small><em>Android: Context, permissions, JNI и речевые службы</em></small>
     - [speech_macos](#example-multimedia-speech_macos) — <small><em>macOS: реальные speech и microphone permissions</em></small>
@@ -1783,6 +1784,18 @@ context-wide no-multiple и остановка всех голосов по soun
 Stop-by-ID закрывает два совпадения, stop_all закрывает оставшееся. NO_MEDIA
 достаточен; это stdio/синхронизация, не слышимое смешивание/автоматический clock.
 
+<a id="example-multimedia-swf_voice_reuse"></a>
+#### swf_voice_reuse
+
+Исполняемый strict-C89 пример: [README](multimedia/swf_voice_reuse/README.md),
+[main.c](multimedia/swf_voice_reuse/main.c), [границы](multimedia/swf_voice_reuse/example_constants.h).
+Декодирует первый StartSound один раз, уничтожает VM и хранит шаблон на EOF.
+Две глубокие копии независимо перезапускаются и передаются микшеру; выводятся
+ровно два одинаковых конечных PCM-повтора. Общий бюджет шаблона/микшера/копии,
+явные ошибки, владение после передачи и построчные комментарии. NO_MEDIA достаточен;
+устройство и таймлайн не открываются. [Контракт EN](../doc/NATIVE_VOICES.md) /
+[RU](../doc/NATIVE_VOICES.ru.md).
+
 <a id="group-multimedia-speech"></a>
 ### speech
 
@@ -2216,6 +2229,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_stream_adpcm — multimedia/swf_stream_adpcm](#example-multimedia-swf_stream_adpcm)
 - [swf_stream_mix — multimedia/swf_stream_mix](#example-multimedia-swf_stream_mix)
 - [swf_stream_mp3 — multimedia/swf_stream_mp3](#example-multimedia-swf_stream_mp3)
+- [swf_voice_reuse — multimedia/swf_voice_reuse](#example-multimedia-swf_voice_reuse)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)
