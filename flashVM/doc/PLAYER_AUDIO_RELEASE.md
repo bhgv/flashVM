@@ -26,7 +26,7 @@ An exhausted source can finish earlier; no artificial source extension is promis
 Releasing voices count toward active_voices and capacity. They do not suppress
 a later SyncNoMultiple start, but a full slot table still returns
 [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), without stealing a voice. The original
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L61) remains immediate, including with DECLICK enabled.
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L72) remains immediate, including with DECLICK enabled.
 Strict geometry/rate validation is unchanged without CONVERT. All operations
 still require host serialization; submission uses the source context's owning
 thread. The player selects both flags; applications must opt in explicitly.
@@ -118,7 +118,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:72](../include/flashvm/swf_sound_mixer.h#L72) |
 | `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:63](../include/flashvm/swf_sound_output.h#L63) |
 | `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:67](../include/flashvm/swf_sound_output.h#L67) |

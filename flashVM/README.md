@@ -1,10 +1,12 @@
-Development version: **0.770** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.770 ` and an English description. Increase the subversion before each
+Development version: **0.771** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.771 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.771: [Mix event voices into prepared stream PCM before a single clipping pass](doc/STREAM_EVENT_MIX.md).
 
 v0.770: [Cross-build the Windows x64 player with explicit Zig and static target SDL](doc/CROSS_WINDOWS_ZIG.md).
 

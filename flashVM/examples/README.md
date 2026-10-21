@@ -146,6 +146,7 @@
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
+    - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM и event-голоса, один clip, хвосты после VM teardown</em></small>
     - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и сжатый снимок после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
@@ -1652,6 +1653,17 @@ source geometry от advisory playback и среднего числа samples. �
 декодирует compressed streams и не исполняет MovieClip timeline. Контракты:
 [SWF_STREAM_SOUND.md](../doc/SWF_STREAM_SOUND.md).
 
+<a id="example-multimedia-swf_stream_mix"></a>
+#### swf_stream_mix
+
+Исполняемый C89 пример: [README](multimedia/swf_stream_mix/README.md),
+[main.c](multimedia/swf_stream_mix/main.c), [constants](multimedia/swf_stream_mix/example_constants.h).
+Один настоящий SWF содержит PCM stream и два StartSound. После подготовки VM
+уничтожается; native converter/mixer экспортируют 16 stereo кадров 48000 Hz,
+с одним насыщением и хвостом более длинного голоса. Python oracle проверяет все
+отсчёты, replacement и native errors. Desktop mixed policy остаётся открытой.
+[EN](../doc/STREAM_EVENT_MIX.md) / [RU](../doc/STREAM_EVENT_MIX.ru.md).
+
 <a id="example-multimedia-swf_stream_mp3"></a>
 #### swf_stream_mp3
 
@@ -2169,6 +2181,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)
+- [swf_stream_mix — multimedia/swf_stream_mix](#example-multimedia-swf_stream_mix)
 - [swf_stream_mp3 — multimedia/swf_stream_mp3](#example-multimedia-swf_stream_mp3)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)

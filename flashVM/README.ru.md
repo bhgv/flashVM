@@ -1,4 +1,4 @@
-Версия разработки: **0.770** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.771** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.771: [Смешивание событийных голосов с потоковым PCM до единственного насыщения](doc/STREAM_EVENT_MIX.ru.md).
 
 v0.770: [Кросс-сборка Windows x64 плеера через Zig и целевую статическую SDL](doc/CROSS_WINDOWS_ZIG.ru.md).
 

@@ -294,8 +294,8 @@ static bool converted_slice(FVM_SWFSoundMixer *mixer, FVM_SWFSoundMixerSlot &slo
 
 /* Mix in bounded passes: wide addition precedes one final saturation, independent of voice order.
  */
-extern "C" FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *mixer, size_t frames, short *out,
-                                               size_t capacity, size_t *written)
+static FVM_Result mixer_read(FVM_SWFSoundMixer *mixer, size_t frames, short *out,
+                              size_t capacity, size_t *written, bool additive)
 {
     if (!written)
         return FVM_INVALID_ARGUMENT;
@@ -310,7 +310,7 @@ extern "C" FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *mixer, size_t 
             count = FVM_SWF_SOUND_MIXER_CHUNK;
         size_t values = count * mixer->info.channels;
         for (size_t j = 0; j < values; ++j)
-            mixer->sum[j] = 0;
+            mixer->sum[j] = additive ? out[at * mixer->info.channels + j] : 0;
         for (size_t i = 0; i < mixer->slots.size(); ++i)
         {
             FVM_SWFSoundVoice *voice = mixer->slots[i].voice;
@@ -362,6 +362,20 @@ extern "C" FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *mixer, size_t 
     }
     *written = frames * mixer->info.channels;
     return FVM_OK;
+}
+
+/* Preserve legacy zero-base output, including silence after the last prepared voice. */
+extern "C" FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *mixer, size_t frames, short *out,
+                                               size_t capacity, size_t *written)
+{
+    return mixer_read(mixer, frames, out, capacity, written, false);
+}
+
+/* Add all native event voices to caller PCM in wide precision before the only clipping pass. */
+extern "C" FVM_Result fvm_swf_sound_mixer_add(FVM_SWFSoundMixer *mixer, size_t frames, short *pcm,
+                                              size_t capacity, size_t *written)
+{
+    return mixer_read(mixer, frames, pcm, capacity, written, true);
 }
 
 /* Return copied activity without consulting a source context or a hardware clock. */

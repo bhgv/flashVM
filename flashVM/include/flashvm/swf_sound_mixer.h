@@ -55,6 +55,17 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *, size_t frames,
                                                 short *destination, size_t capacity_values,
                                                 size_t *written_values);
+    /* Add current event voices to initialized caller PCM in place, at the configured geometry.
+     * Accumulate base plus every voice in wide precision, saturate once; no allocation/callback/VM.
+     * frames count interleaved frames; capacity/written count scalar S16 values. Clear *written
+     * first. Null mixer/bad storage/capacity INVALID_ARGUMENT without touching PCM/voice progress;
+     * null written INVALID_ARGUMENT. Zero frames permits null PCM, advances nothing. No voices
+     * leaves base PCM unchanged. Success consumes voice time exactly once, including zero base.
+     * Caller owns initialized aligned PCM; keep it disjoint from written and private mixer state.
+     * Serialize mixer and PCM externally. For backend retry retain the already mixed bytes;
+     * calling add again would advance voices and mix twice. Tails require explicit zero base. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_add(FVM_SWFSoundMixer *, size_t frames, short *pcm,
+                                               size_t capacity_values, size_t *written_values);
     /* Copy fixed geometry and current activity, preserving output on invalid input. */
     FVM_API FVM_Result fvm_swf_sound_mixer_info(const FVM_SWFSoundMixer *, FVM_SWFSoundMixerInfo *);
     /* Discard every voice immediately; no device stop or context callback is entered. */
