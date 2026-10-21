@@ -49,7 +49,8 @@ PCM хост должен отменять/перематывать самост
 ```sh
 cmake -S flashVM -B build-stream-reader -DFVM_BUILD_TESTS=ON
 cmake --build build-stream-reader --target flashvm_tests_swf_stream_pcm_reader \
-  flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot_allocation
+  flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot \
+  flashvm_tests_swf_stream_sound_snapshot_allocation
 ctest --test-dir build-stream-reader -R 'swf_stream_(pcm_reader|sound_snapshot)' --output-on-failure
 ```
 
@@ -58,6 +59,24 @@ Raw SWF fixtures проверяют версии 3–8, native/little-endian PCM
 seek/end/EOF и атомарные ошибки буфера. Allocation-тест запрещает новые выделения
 во время init/read/seek после уничтожения исходных context/runtime. Это не
 закрывает sound-device/reference-player/platform приёмку.
+
+## Исполняемый экспорт native курсором (v0.750)
+
+[Прокомментированный swf_stream](../examples/multimedia/swf_stream/README.md)
+добавляет `OUTPUT.pcm --cursor`. Он готовит поток встроенного SWF, уничтожает
+context/runtime и использует только native reader и прямые C file callbacks.
+Новая output VM/channel в этом режиме не создаётся. Пустой блок показывается,
+но не вызывает write; source geometry сохраняется. Файл и metadata отчёт точно
+совпадают с live и прежним `--prepared` экспортом. Несуществующий выходной каталог
+даёт обычную ошибку с очисткой, без скрытого устройства.
+
+Native OS-port тест запускает четыре настоящих worker после уничтожения VM/runtime.
+Каждый владеет reader и делает 500 циклов rewind/read/EOF по одному неизменяемому
+снимку, сравнивая каждое значение. Main присоединяет всех worker до закрытия
+source. Это проверка Linux native threads, не foreign OS concurrency, слышимого
+звука, real-time audio callback или A/V sync.
+
+Проверка v0.750: прошли 72 выбранные native регрессионные проверки и 14 shared-host. Reader/snapshot пути и настоящий file tutorial прошли ASan/UBSan с независимым FFmpeg PCM эталоном; leak detection отключён ограничениями хоста, вся VM не инструментирована. Новый implementation и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution или полная cross-сборка плеера этим не заявляются. Worker target требует включённого OS_PORTS. Все девять стадий открыты.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -50,7 +50,8 @@ The module is part of the core SDK and needs neither SDL nor an audio device:
 ```sh
 cmake -S flashVM -B build-stream-reader -DFVM_BUILD_TESTS=ON
 cmake --build build-stream-reader --target flashvm_tests_swf_stream_pcm_reader \
-  flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot_allocation
+  flashvm_tests_swf_stream_pcm_reader_api flashvm_tests_swf_stream_sound_snapshot \
+  flashvm_tests_swf_stream_sound_snapshot_allocation
 ctest --test-dir build-stream-reader -R 'swf_stream_(pcm_reader|sound_snapshot)' --output-on-failure
 ```
 
@@ -59,6 +60,24 @@ Raw SWF fixtures exercise versions 3–8, native/little-endian PCM, mono/stereo,
 seek/end/EOF and atomic capacity failures. Snapshot allocation tests prohibit
 new allocation during init/read/seek after original context/runtime destruction.
 This evidence does not complete sound-device/reference-player/platform acceptance.
+
+## Executable native cursor export (v0.750)
+
+The [annotated swf_stream tutorial](../examples/multimedia/swf_stream/README.md)
+adds `OUTPUT.pcm --cursor`. It prepares the same linked SWF stream, destroys its
+context and runtime, then uses only the native reader and direct C file callbacks.
+It does not recreate an output VM/channel in this mode. Each empty block is
+reported but causes no write; chunks use actual source geometry. The file and
+metadata report match both the live and older `--prepared` export paths exactly.
+Missing output directories fail through ordinary cleanup, with no hidden device.
+
+The native OS-port test starts four actual workers after VM/runtime destruction.
+Each owns a reader and performs 500 rewind/read/EOF passes over the same immutable
+snapshot, comparing every scalar value. Main joins all workers before closing
+source storage. This is Linux native thread evidence; it does not certify foreign
+OS concurrency, audible output, a real-time audio callback or A/V synchronization.
+
+Validation at v0.750: 72 selected native regression checks and 14 shared-host checks pass. Reader/snapshot paths and the real file tutorial pass ASan/UBSan with an independent FFmpeg PCM oracle; leak detection is disabled by host restrictions and the whole VM is not instrumented. New implementation and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW, without claiming foreign execution or a complete cross-built player. The native OS-port worker target requires OS_PORTS enabled. All nine roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -145,7 +145,7 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
-    - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, независимый индекс и native FILE</em></small>
+    - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
     - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и сжатый снимок после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
@@ -1631,6 +1631,8 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 
 <a id="example-multimedia-swf_stream"></a>
 #### swf_stream
+
+Режим `--cursor` экспортирует PCM прямыми C callbacks после уничтожения source VM/runtime; [EN контракт](../doc/STREAM_PCM_READER.md) / [RU](../doc/STREAM_PCM_READER.ru.md). Сравниваются все значения с live и prepared путями.
 
 Исполняемый C89 учебник: [README](multimedia/swf_stream/README.md), включая `--prepared`: независимый индекс PCM после уничтожения исходной VM.
 [main.c](multimedia/swf_stream/main.c), [constants](multimedia/swf_stream/example_constants.h).

@@ -1,4 +1,4 @@
-Версия разработки: **0.749** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.750** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.750: [Native stream PCM export after VM teardown](doc/STREAM_PCM_READER.ru.md).
 
 v0.749: [Frame-aware prepared PCM reader](doc/STREAM_PCM_READER.ru.md).
 

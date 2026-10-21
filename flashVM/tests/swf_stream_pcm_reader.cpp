@@ -63,10 +63,21 @@ int main()
         assert(fvm_swf_stream_pcm_reader_seek(&r,0,6)==FVM_INVALID_ARGUMENT);
         assert(fvm_swf_stream_pcm_reader_seek(&r,0,5)==FVM_OK);
         assert(fvm_swf_stream_pcm_reader_next(&r,1,0,0,&chunk,&written)==FVM_OK && !written && chunk.flags==FVM_STREAM_PCM_END);
+        assert(fvm_swf_stream_pcm_reader_seek(&r,0,3)==FVM_OK);
+        assert(fvm_swf_stream_pcm_reader_next(&r,(size_t)-1,out,4,&chunk,&written)==FVM_OK && chunk.frames==2 && written==2*channels);
         assert(fvm_swf_stream_pcm_reader_seek(&r,3,0)==FVM_OK);
         assert(fvm_swf_stream_pcm_reader_next(&independent,1,out,4,&chunk,&written)==FVM_OK && written==channels && chunk.first==0);
         fvm_swf_stream_sound_snapshot_close(snapshot);
     }
+    Bytes no_blocks;tag(no_blocks,45,header(12));load(c,movie(no_blocks));
+    FVM_SWFStreamSoundSnapshot *empty_snapshot=0;
+    assert(fvm_swf_stream_sound_snapshot_open(c,0,&empty_snapshot)==FVM_OK);
+    FVM_SWFStreamPCMReader empty_reader;
+    assert(fvm_swf_stream_pcm_reader_init(&empty_reader,empty_snapshot)==FVM_OK && !empty_reader.block_count);
+    FVM_SWFStreamPCMChunk empty_chunk;empty_chunk.struct_size=sizeof(empty_chunk);size_t empty_written=999;
+    assert(fvm_swf_stream_pcm_reader_next(&empty_reader,1,0,0,&empty_chunk,&empty_written)==FVM_NOT_FOUND && empty_written==999);
+    assert(fvm_swf_stream_pcm_reader_seek(&empty_reader,0,0)==FVM_OK);
+    fvm_swf_stream_sound_snapshot_close(empty_snapshot);
     Bytes tags;tag(tags,18,header(0x1e));load(c,movie(tags));FVM_SWFStreamSoundSnapshot *s=0;
     assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_OK);
     FVM_SWFStreamPCMReader r;std::memset(&r,0xa5,sizeof(r));FVM_SWFStreamPCMReader saved=r;

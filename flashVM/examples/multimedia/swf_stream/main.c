@@ -1,4 +1,5 @@
 /* Tutorial: inspect root streaming PCM blocks and send bounded copies through a real stdio bridge. */
+#include "flashvm/swf_stream_pcm.h" /* Sequential native reader, independent of a live VM or output registration. */
 #include "flashvm/swf_stream_sound.h" /* Import stream metadata, PCM conversion and channel output. */
 #include "example_constants.h" /* Name the explicit output and bounded caller geometry. */
 #include <stdio.h> /* Use actual fopen/fwrite/fclose calls in the replaceable output bridge. */
@@ -39,6 +40,39 @@ static int checked(FVM_Result result, const char *operation) /* Borrow only a di
     fprintf(stderr, "%s failed: %d\n", operation, (int)result); /* Identify the failing API and result. */
     return 0; /* Request normal ownership cleanup. */
 } /* Finish error handling without assertions. */
+/* Run solely on copied encoded storage and ordinary C file callbacks after source VM teardown. */
+static FVM_Result export_cursor(const FVM_SWFStreamSoundSnapshot *snapshot, StreamFile *host, size_t *total) /* Serial native owner. */
+{ /* Source snapshot and host file state outlive this synchronous export. */
+    FVM_SWFStreamPCMReader reader; /* Caller-owned position; init allocates no storage. */
+    FVM_SWFStreamPCMChunk chunk; /* Owned metadata separates block/frame identity from sample offsets. */
+    FVM_SWFStreamSoundBlock block; /* Query full source block length only for the human report. */
+    FVM_MediaFrame frame; /* Borrow decoded scalar values only through synchronous write_pcm. */
+    short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Fixed one-stereo-frame output. */
+    size_t written; FVM_Result result; /* Publish only acknowledged caller-buffer values. */
+    result = fvm_swf_stream_pcm_reader_init(&reader, snapshot); /* Borrow independent immutable native bytes. */
+    if (result != FVM_OK) return result; /* No output has been opened yet. */
+    for (;;) { /* Successful reads always advance, including explicit empty blocks. */
+        chunk.struct_size = sizeof(chunk); /* Supply the exact native metadata ABI. */
+        result = fvm_swf_stream_pcm_reader_next(&reader, TUTORIAL_STREAM_CHUNK_FRAMES, samples, sizeof(samples) / sizeof(samples[0]), &chunk, &written); /* No VM, I/O or allocation inside reader. */
+        if (result == FVM_NOT_FOUND) break; /* EOF leaves PCM/cursor metadata unchanged. */
+        if (result != FVM_OK) return result; /* No retry of a failed descriptor or source. */
+        if (chunk.flags & FVM_STREAM_PCM_BEGIN) { /* Print one line for each actual encoded block. */
+            block.struct_size = sizeof(block); /* Full length is metadata, not playback advice. */
+            result = fvm_swf_stream_sound_snapshot_block_at(snapshot, chunk.block_index, &block); /* Constant-time owned index. */
+            if (result != FVM_OK) return result; /* Preserve a real metadata failure. */
+            printf("Frame %u: %lu sample frames\n", chunk.frame, (unsigned long)block.sample_count); /* Gaps and empty blocks stay visible. */
+        } /* Chunk offsets may continue within the same movie frame. */
+        if (!written) continue; /* Explicit empty block advances but causes no file write. */
+        memset(&frame, 0, sizeof(frame)); /* No hidden timing or scheduling fields. */
+        frame.kind = FVM_MEDIA_AUDIO; frame.data = (const unsigned char *)samples; /* Borrow native PCM only for this call. */
+        frame.size = written * sizeof(samples[0]); frame.samples = chunk.frames; /* Distinguish scalar values and stereo pairs. */
+        frame.sample_rate = chunk.sample_rate; frame.channels = chunk.channels; /* Use actual source geometry. */
+        result = write_pcm(host, &frame); /* Direct C callback, without creating an output VM/channel. */
+        if (result != FVM_OK) return result; /* Centralized main cleanup owns any open file. */
+        *total += chunk.frames; /* Count only successfully written sample frames. */
+    } /* No silence is synthesized for absent movie-frame blocks. */
+    return stop_pcm(host); /* Flush/close the actual file before successful return. */
+} /* No reader destructor exists; caller closes snapshot after this function returns. */
 /* Independent FWS4 fixture: one Head2, variable PCM blocks, a frame gap and an empty block. */
 static const unsigned char movie[] = /* Keep the wire input reproducible without an encoder. */
 { /* Begin one exact 42-byte root movie. */
@@ -64,12 +98,13 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     StreamFile host; /* Keep output userdata alive through context destruction. */
     short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Bound caller-owned native-S16 output. */
     size_t streams, blocks, ordinal, first, frames, written, total = 0; /* Distinguish ordinals, sample frames and channel values. */
-    int prepared = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--prepared"); /* Select explicit native indexing before any side effects. */
+    int cursor = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--cursor"); /* Direct native export after original VM destruction. */
+    int prepared = cursor || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--prepared")); /* Select explicit native indexing before any side effects. */
     int exit_code = 1; /* Report success only after actual output stopping. */
     memset(&host, 0, sizeof(host)); /* Make partial-setup and failed-write cleanup safe. */
     if (argc != TUTORIAL_STREAM_ARGUMENT_COUNT && !prepared) /* Require an explicit replaceable output path. */
     { /* Keep no-argument smoke runs side-effect free. */
-        printf("Usage: %s OUTPUT.pcm [--prepared]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
+        printf("Usage: %s OUTPUT.pcm [--prepared|--cursor]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
         return 0; /* No VM, file or device ownership exists yet. */
     } /* Finish explicit output selection. */
     host.path = argv[1]; /* Borrow the caller-selected path. */
@@ -90,13 +125,18 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
         context = 0; /* Keep partial reacquisition cleanup safe. */
         fvm_runtime_destroy(runtime); /* Prove no runtime pointer is retained by the snapshot. */
         runtime = 0; /* Mark the old owner released. */
-        if (!checked(fvm_runtime_create(&config, &runtime), "output_runtime") || !checked(fvm_context_create(runtime, &context), "output_context")) /* Create an unloaded VM only for output registration. */
+        if (!cursor && (!checked(fvm_runtime_create(&config, &runtime), "output_runtime") || !checked(fvm_context_create(runtime, &context), "output_context"))) /* Create an unloaded VM only for output registration. */
             goto cleanup; /* The independent snapshot still has its own cleanup. */
         if (!checked(fvm_swf_stream_sound_snapshot_info(snapshot, &info), "snapshot_info") || !checked(fvm_swf_stream_sound_snapshot_block_count(snapshot, &blocks), "snapshot_count")) /* Obtain copied metadata after original VM teardown. */
             goto cleanup; /* No movie has been loaded into the output VM. */
     } /* Finish independent source preparation. */
     if (info.channels != TUTORIAL_STREAM_CHANNELS) /* Require the layout promised by the bounded stereo buffer. */
         goto cleanup; /* Do not silently reinterpret channel geometry. */
+    if (cursor) { /* This path never recreates a runtime/context or audio-channel registration. */
+        if (!checked(export_cursor(snapshot, &host, &total), "native cursor export")) goto cleanup; /* Bounded C callbacks only. */
+        printf("Exported %lu sample frames from %lu blocks.\n", (unsigned long)total, (unsigned long)blocks); /* Identical PCM and human report. */
+        exit_code = 0; goto cleanup; /* Close snapshot only after the reader is quiesced. */
+    } /* Live and older prepared modes retain their registered-channel demonstration. */
     output.struct_size = sizeof(output); /* Supply the complete host bridge ABI. */
     output.userdata = &host; /* Retain native ownership outside the VM heap. */
     output.write = write_pcm; /* Use real fwrite for every submitted block. */

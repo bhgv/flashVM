@@ -1,5 +1,7 @@
 # swf_stream — frame-addressed streaming PCM into a native file bridge
 
+[Русский контракт](../../../doc/STREAM_PCM_READER.ru.md) / [English contract](../../../doc/STREAM_PCM_READER.md).
+
 Sources: [main.c](main.c), [example_constants.h](example_constants.h).
 
 ## Назначение
@@ -159,6 +161,61 @@ The host checker runs both modes, compares exact stdout/native-S16 bytes and che
 actual missing-directory write failure cleanup in both modes. This is file bridge
 acceptance, not physical audio-device or automatic MovieClip clock acceptance.
 
+## Direct native cursor / Прямой native курсор
+
+```sh
+# From the repository root / Из корня репозитория:
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --cursor
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+`--cursor` prepares copied encoded storage and destroys the source runtime/context
+before any file output. Direct C functions then read one stereo pair at a time,
+preserve frame/block boundaries and write native S16. No output VM is recreated.
+The caller owns the FILE and snapshot until export completes; cleanup closes
+both even on errors. Reader has no destructor or allocation. This is explicit
+export, not clocked audio playback. Expected report and exact PCM remain identical
+to default/`--prepared`; native byte order is intentional for this raw file.
+
+`--cursor` готовит копию encoded source и уничтожает VM до вывода файла. Прямые
+C функции читают по стереопаре с границами кадров/блоков и пишут native S16;
+новая output VM не создаётся. Caller владеет FILE/snapshot до завершения,
+cleanup закрывает их и при ошибке. Reader не выделяет память и не требует
+деструктора. Это экспорт, не синхронизированное воспроизведение. Отчёт и PCM
+совпадают с default/`--prepared`; raw файл намеренно имеет native byte order.
+
+| API | Purpose, ownership and execution / Назначение и владение |
+| --- | --- |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller config synchronously before ownership acquisition. Подготавливает descriptor без запуска VM. |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire runtime; caller destroys after contexts. Получает runtime до context, ошибки идут в cleanup. |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire source or older prepared-mode output context; runtime borrowed. Создаёт context с явно живым runtime. |
+| [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) | Copy/validate embedded SWF on VM owner before preparing native storage. Копирует SWF, источник массива статический. |
+| [`fvm_swf_stream_sound_count`](../../../include/flashvm/swf_stream_sound.h#L53) | Validate root stream controls and copy count before output. Проверяет весь поток до side effects. |
+| [`fvm_swf_stream_sound_at`](../../../include/flashvm/swf_stream_sound.h#L55) | Copy actual source/advisory header; no payload ownership transfer. Копирует геометрию. |
+| [`fvm_swf_stream_sound_block_count`](../../../include/flashvm/swf_stream_sound.h#L57) | Copy encoded block count, not movie-frame count. Различает блоки и кадры. |
+| [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L65) | Own independent encoded bytes/index; allocation may fail before output. Создаёт native копию с отдельным владением. |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release source before cursor output, or context callbacks before userdata cleanup. Уничтожает context до runtime. |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release only after its contexts; copied snapshot survives. Снимок не заимствует runtime. |
+| [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L67) | Copy source geometry after original VM teardown. Без VM и allocation. |
+| [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L69) | Query immutable indexed count after teardown. Заимствует snapshot лишь на вызов. |
+| [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L40) | Borrow immutable snapshot, initialize native cursor without allocation. Caller keeps snapshot alive. [Contract](../../../doc/STREAM_PCM_READER.md). |
+| [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L48) | Copy bounded S16 and owned metadata; EOF/errors preserve outputs. Single owner, no VM/I/O. [Contract](../../../doc/STREAM_PCM_READER.md). |
+| [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L71) | Borrow indexed block metadata/data while snapshot lives; cursor uses only copied frame/count for reporting. Не хранит data после закрытия. |
+| [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82) | Older modes copy host callbacks into a context-owned channel; cursor mode bypasses registration. Состояние FILE живёт до context cleanup. |
+| [`fvm_swf_stream_sound_block_at`](../../../include/flashvm/swf_stream_sound.h#L59) | Live mode borrows block while source context remains loaded. Не переживает reload. |
+| [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L75) | Older prepared mode copies a chosen block range without source VM. Заполняет caller samples. |
+| [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L61) | Live mode reads source-relative range synchronously on VM owner. Без удержания borrowed payload. |
+| [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84) | Older modes synchronously borrow PCM through file callback; no implicit retry. Cursor calls C callback directly. |
+| [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L92) | Older modes flush/close active registered file output before context cleanup. Не управляет cursor. |
+| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L77) | Close native source once all readers stop; null accepted. Не обращается к уничтоженной VM. |
+
+All source/stream APIs above: [inspection contract](../../../doc/SWF_STREAM_SOUND.md).
+No socket/audio device or worker is started by this tutorial. The separate
+native thread test demonstrates independent cursors; full player scheduling,
+codec, audible-device and reference-platform acceptance remains open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -178,6 +235,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
+| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
 | `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:59](../../../include/flashvm/swf_stream_sound.h#L59) |
 | `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:57](../../../include/flashvm/swf_stream_sound.h#L57) |

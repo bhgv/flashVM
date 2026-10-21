@@ -3,6 +3,7 @@
 Usage: python3 scripts/check_swf_stream_example.py BUILD/flashvm_examples_multimedia_swf_stream_main [--ffmpeg]
 """
 import pathlib
+import re
 import struct
 import subprocess
 import sys
@@ -10,6 +11,15 @@ import tempfile
 
 
 def main():
+    tutorial = pathlib.Path(__file__).resolve().parents[1]/'examples/multimedia/swf_stream'
+    source = (tutorial/'main.c').read_text()
+    manual = (tutorial/'README.md').read_text()
+    for path in [tutorial/'main.c',tutorial/'example_constants.h']:
+        for line,text in enumerate(path.read_text().splitlines(),1):
+            assert not text.strip() or '/*' in text or '*/' in text,(path,line)
+    assert 'assert(' not in source
+    for api in set(re.findall(r'\b(fvm_\w+)\s*\(',source)):
+        assert re.search(r'\|[^\n]*'+api+r'[^\n]*\|',manual),api
     executable = str(pathlib.Path(sys.argv[1]).resolve())
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory)
@@ -27,6 +37,9 @@ def main():
         prepared = subprocess.run([executable, str(output), '--prepared'], cwd=directory,
                                   check=True, stdout=subprocess.PIPE, universal_newlines=True)
         assert prepared.stdout == result.stdout and output.read_bytes() == expected
+        cursor = subprocess.run([executable, str(output), '--cursor'], cwd=directory,
+                                check=True, stdout=subprocess.PIPE, universal_newlines=True)
+        assert cursor.stdout == result.stdout and output.read_bytes() == expected
         if '--ffmpeg' in sys.argv[2:]:
             # Decode independently known raw payload, not a reimplementation of the SWF parser.
             (root/'source.u8').write_bytes(bytes([0, 255, 128, 128, 255, 0]))
@@ -40,6 +53,9 @@ def main():
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
         result = subprocess.run([executable, str(missing), '--prepared'], cwd=directory,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert result.returncode and not missing.exists() and not missing.parent.exists()
+        result = subprocess.run([executable, str(missing), '--cursor'], cwd=directory,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
     print('PASS streaming tutorial: exact PCM, frame gap, empty block, replacement and native error cleanup')
