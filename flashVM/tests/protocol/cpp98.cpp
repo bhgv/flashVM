@@ -3,6 +3,7 @@
 #include "flashvm/sstream.h"
 #include "flashvm/smedia.h"
 #include "flashvm/scontrol.h"
+#include "flashvm/sadapt.h"
 #include "flashvm/revents.h"
 #include "flashvm/rheartbeat.h"
 #include "flashvm/rdebug.h"
@@ -42,6 +43,10 @@ int main()
     FVM_SControlLimits limits = {3, 63, 0, 0};
     FVM_SControlExchange exchange;
     if (fvm_scontrol_init(&exchange, &limits) != FVM_S_OK || exchange.active_id)
+        return 1;
+    FVM_SAdaptConfig adaptive_config;
+    if (fvm_sadapt_config_init(&adaptive_config) != FVM_S_OK || adaptive_config.profiles ||
+        adaptive_config.struct_size != sizeof(adaptive_config))
         return 1;
     FVM_RHeartbeatPolicy policy;
     FVM_RHeartbeat heartbeat;

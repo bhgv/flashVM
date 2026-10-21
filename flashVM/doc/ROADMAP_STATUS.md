@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.744
+# FlashVM stage status / Состояние стадий — v0.745
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.745: Choose bounded bulk profiles from authenticated channel feedback. See [slot contracts](CHANNEL_ADAPTATION.md) / [контракты](CHANNEL_ADAPTATION.ru.md).
 
 v0.744: Exercise negotiated frame parts with real player clients and transport loss. See [slot contracts](PLAYER_FRAME_PARTS.md) / [контракты](PLAYER_FRAME_PARTS.ru.md).
 

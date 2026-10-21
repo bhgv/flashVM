@@ -31,9 +31,9 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp src/jit/*.cpp
                                  src/multimedia/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
-add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
+add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/sadapt.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
 target_include_directories(flashvm_srecord PUBLIC ${PROJECT_SOURCE_DIR}/include)
-add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
+add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/sadapt.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
@@ -552,7 +552,7 @@ endif()
 
 # Standalone wire-format oracle needs no VM, SDL, devices or socket provider.
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
-  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
+  add_library(flashvm_srecord_oracle SHARED src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/sadapt.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
   target_include_directories(flashvm_srecord_oracle PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(flashvm_srecord_oracle PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS YES)
   add_test(NAME flashvm_srecord_wire_oracle COMMAND ${Python3_EXECUTABLE}
@@ -742,4 +742,16 @@ if(FVM_BUILD_TESTS)
   add_executable(flashvm_srecord_control_contract tests/protocol/scontrol_contract.c)
   target_link_libraries(flashvm_srecord_control_contract PRIVATE flashvm_srecord)
   add_test(NAME flashvm_srecord_control_contract COMMAND flashvm_srecord_control_contract)
+endif()
+
+# Link-quality policy is standalone and consumes trusted host measurements, never VM objects.
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_srecord_adapt_contract tests/protocol/sadapt_contract.c)
+  target_link_libraries(flashvm_srecord_adapt_contract PRIVATE flashvm_srecord)
+  add_test(NAME flashvm_srecord_adapt_contract COMMAND flashvm_srecord_adapt_contract)
+endif()
+if(TARGET flashvm_srecord_oracle)
+  add_test(NAME flashvm_srecord_adapt_oracle COMMAND ${Python3_EXECUTABLE}
+    ${PROJECT_SOURCE_DIR}/tests/protocol/sadapt_oracle.py $<TARGET_FILE:flashvm_srecord_oracle>)
+  set_tests_properties(flashvm_srecord_adapt_oracle PROPERTIES TIMEOUT 30)
 endif()
