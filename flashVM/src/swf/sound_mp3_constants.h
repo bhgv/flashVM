@@ -33,6 +33,19 @@
 #define FVM_MP3_MPEG2_SAMPLES 576U /* MPEG-2 and MPEG-2.5 Layer-III frame length. */
 #define FVM_MP3_CHANNELS 2U /* Maximum MPEG Layer-III decoded channel count. */
 #define FVM_MP3_MAX_VALUES (FVM_MP3_MPEG1_SAMPLES * FVM_MP3_CHANNELS) /* Fixed decoded block. */
+#define FVM_MP3_PROTECTION_MASK 1U /* A cleared low header bit enables Layer-III CRC protection. */
+#define FVM_MP3_CRC_STORED_OFFSET 4U /* Big-endian transmitted CRC follows the MPEG header. */
+#define FVM_MP3_CRC_SIDE_OFFSET 6U /* Protected side information follows the two CRC bytes. */
+#define FVM_MP3_CRC_HEADER_OFFSET 2U /* The last two MPEG header bytes participate in the CRC. */
+#define FVM_MP3_CRC_INITIAL 65535UL /* MPEG CRC-16 initial register value. */
+#define FVM_MP3_CRC_POLYNOMIAL 32773UL /* x^16 + x^15 + x^2 + 1, without the implicit top bit. */
+#define FVM_MP3_CRC_TOP 32768UL /* Register bit tested before each left shift. */
+#define FVM_MP3_CRC_MASK 65535UL /* Keep all CRC arithmetic unsigned and exactly sixteen bits. */
+#define FVM_MP3_CRC_BYTE_BITS 8U /* Number of protected bits consumed from each octet. */
+#define FVM_MP3_SIDE_MPEG1_MONO 17U /* MPEG-1 mono side information, excluding header and CRC. */
+#define FVM_MP3_SIDE_MPEG1_STEREO 32U /* MPEG-1 stereo side information. */
+#define FVM_MP3_SIDE_MPEG2_MONO 9U /* MPEG-2/2.5 mono side information. */
+#define FVM_MP3_SIDE_MPEG2_STEREO 17U /* MPEG-2/2.5 stereo side information. */
 #define FVM_MP3_SEEK_BYTES 2U /* Signed SWF event SeekSamples prefix before MPEG frames. */
 #define FVM_MP3_MIN_SWF_VERSION 4U /* First SWF version supporting MP3. */
 #endif

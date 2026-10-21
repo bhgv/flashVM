@@ -1,0 +1,34 @@
+# Защищённые MPEG Layer-III пакеты
+
+[English](MP3_CRC.md).
+
+## Нативная проверка CRC (v0.813)
+
+Приватная [fvm_swf_mp3_verify_crc](../src/swf/sound_mp3.cpp#L58) проверяет один точный MPEG-пакет без выделений,
+VM, изменения декодера и callbacks. Бит protection включает CRC последних
+шестнадцати бит заголовка и side information, размер которой зависит от версии
+и каналов. Переданная CRC имеет порядок big-endian. Размер side information:
+17/32 байта для MPEG-1 моно/стерео и 9/17 для MPEG-2/2.5. Несовпадение CRC
+или короткая защищённая область дают INVALID_ARGUMENT. Незащищённые пакеты
+сохраняют прежнее поведение. Main audio data не входят в эту CRC: целостность
+всего пакета и проверка Huffman этим не обеспечиваются.
+
+Восемь оригинальных аналитических LAME 3.100 наборов покрывают три MPEG-версии,
+моно/стерео и обычный/free-format битрейт. CRC оставлены как выдал encoder,
+FlashVM их не генерирует. Независимый mpg123 даёт выборочные PCM-эталоны.
+Проверяются все защищённые биты и короткие префиксы; изменения main data явно
+показывают предел покрытия. Обычная сборка не требует внешних кодеков.
+scripts/generate_crc_mp3_test_fixture.py --check побайтно воспроизводит набор
+на проверочном Linux-хосте.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_swf_mp3_verify_crc` | function | [src/swf/sound_mp3.cpp:58](../src/swf/sound_mp3.cpp#L58) |
+<!-- source-links:end -->

@@ -16,11 +16,11 @@ private prefixes; scalar C++98 code avoids ISA-dependent dispatch, containers,
 allocations, VM references, callbacks or devices. The public host ABI remains C89.
 This first checkpoint does not yet route public SWF resource reads to the decoder.
 
-[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L52) validates a complete contiguous MPEG-1/2/2.5 Layer-III packet
+[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L94) validates a complete contiguous MPEG-1/2/2.5 Layer-III packet
 before exposing its exact bytes/rate/channels/576-or-1152 frame count. It rejects
 reserved fields, short packets and synchronization gaps; Layer I/II and free-format
 bitrate return UNSUPPORTED. CBR and variable standard bitrate indices are allowed.
-[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L26) retains reservoir/filter history across packets and publishes PCM
+[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L29) retains reservoir/filter history across packets and publishes PCM
 only after matching exact geometry. A failed decode is terminal for that decoder;
 no search over junk bytes or missing-reservoir concealment is presented as success.
 CRC verification, free-format bitrate inference and complete corrupt-Huffman
@@ -208,11 +208,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:52](../src/swf/sound_mp3.cpp#L52) |
+| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:94](../src/swf/sound_mp3.cpp#L94) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:110](../include/flashvm/swf_sound_mixer.h#L110) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
-| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:26](../src/swf/sound_mp3.hpp#L26) |
+| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:29](../src/swf/sound_mp3.hpp#L29) |
 <!-- source-links:end -->

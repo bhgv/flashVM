@@ -4,7 +4,7 @@
 
 ## Строгая разметка (v0.806)
 
-Приватная [fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L52) принимает нулевой индекс битрейта, если три
+Приватная [fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L94) принимает нулевой индекс битрейта, если три
 последовательных согласованных заголовка задают наименьшую подтверждённую длину пакета с позиции
 ноль. Мусор перед пакетом не пропускается. Частота, число отсчётов и каналов
 должны совпадать; padding добавляет байт отдельно для каждого пакета. Длина
@@ -106,5 +106,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:52](../src/swf/sound_mp3.cpp#L52) |
+| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:94](../src/swf/sound_mp3.cpp#L94) |
 <!-- source-links:end -->

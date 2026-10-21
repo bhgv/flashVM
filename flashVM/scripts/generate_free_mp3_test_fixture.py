@@ -22,7 +22,7 @@ class Encoder:
         self.lib.lame_init.restype = C.c_void_p
         for name in ['lame_set_in_samplerate', 'lame_set_out_samplerate', 'lame_set_num_channels',
                      'lame_set_brate', 'lame_set_mode', 'lame_set_quality', 'lame_set_free_format',
-                     'lame_set_bWriteVbrTag', 'lame_init_params', 'lame_close']:
+                     'lame_set_bWriteVbrTag', 'lame_set_error_protection', 'lame_init_params', 'lame_close']:
             function = getattr(self.lib, name)
             function.argtypes = [C.c_void_p] if name in ['lame_init_params', 'lame_close'] else [C.c_void_p, C.c_int]
             function.restype = C.c_int
@@ -30,14 +30,14 @@ class Encoder:
         self.lib.lame_encode_buffer.argtypes = [C.c_void_p, C.POINTER(C.c_short), C.POINTER(C.c_short), C.c_int, C.POINTER(C.c_ubyte), C.c_int]
         self.lib.lame_encode_flush.argtypes = [C.c_void_p, C.POINTER(C.c_ubyte), C.c_int]
 
-    def encode(self, rate, channels, kbps):
+    def encode(self, rate, channels, kbps, free_format=True, crc=False):
         """Encode original two-frequency analytical input without Info/ID3 or third-party media."""
         handle = self.lib.lame_init()
         assert handle
         try:
             for name, value in [('in_samplerate', rate), ('out_samplerate', rate), ('num_channels', channels),
                                 ('brate', kbps), ('mode', 3 if channels == 1 else 0), ('quality', 2),
-                                ('free_format', 1), ('bWriteVbrTag', 0)]:
+                                ('free_format', int(free_format)), ('bWriteVbrTag', 0), ('error_protection', int(crc))]:
                 assert getattr(self.lib, 'lame_set_'+name)(handle, value) == 0
             assert self.lib.lame_init_params(handle) == 0
             source = (C.c_short*(INPUT_FRAMES*channels))(*[

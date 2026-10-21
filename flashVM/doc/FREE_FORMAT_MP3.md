@@ -4,7 +4,7 @@
 
 ## Strict framing (v0.806)
 
-The private [fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L52) accepts bitrate index zero when three consecutive
+The private [fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L94) accepts bitrate index zero when three consecutive
 matching headers establish the smallest verified packet span at offset zero. It never skips
 junk to synchronize. Rate, sample count and channel count must match; padding adds
 one byte independently per packet. The exclusive packet-span ceiling is 2304 bytes,
@@ -106,5 +106,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:52](../src/swf/sound_mp3.cpp#L52) |
+| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:94](../src/swf/sound_mp3.cpp#L94) |
 <!-- source-links:end -->

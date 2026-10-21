@@ -18,6 +18,9 @@ struct FVM_SWFMP3Frame
 };
 /* Reject skipped bytes/reserved fields; infer free-format from three consecutive matching headers. */
 FVM_Result fvm_swf_mp3_probe(const unsigned char *, size_t, FVM_SWFMP3Frame *);
+/* Validate one exact packet's MPEG header/side-information CRC when protection is enabled.
+ * Main audio data is outside this CRC. No allocation or decoder-state modification. */
+FVM_Result fvm_swf_mp3_verify_crc(const unsigned char *, size_t);
 /* Validate complete event MPEG data before decoding the selected latency-trimmed range.
  * Stack-only two-pass extraction; metadata and output storage remain caller-owned. */
 FVM_Result fvm_swf_mp3_read(const FVM_SWFSoundInfo &, unsigned long first, size_t frames,

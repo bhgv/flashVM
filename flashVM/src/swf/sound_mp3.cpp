@@ -41,6 +41,48 @@ static FVM_Result mp3_header(const unsigned char *data, size_t size, FVM_SWFMP3F
     *out = info;
     return FVM_OK;
 }
+/* Consume one protected octet using unsigned, bounded MPEG CRC-16 arithmetic. */
+static unsigned long mp3_crc_byte(unsigned long crc, unsigned int byte)
+{
+    crc ^= (unsigned long)byte << FVM_MP3_CRC_BYTE_BITS;
+    for (unsigned int bit = 0; bit < FVM_MP3_CRC_BYTE_BITS; ++bit)
+    {
+        bool high = (crc & FVM_MP3_CRC_TOP) != 0;
+        crc = (crc << 1) & FVM_MP3_CRC_MASK;
+        if (high)
+            crc ^= FVM_MP3_CRC_POLYNOMIAL;
+    }
+    return crc;
+}
+/* Check only the MPEG-protected region; do not confuse this with whole-packet authentication. */
+FVM_Result fvm_swf_mp3_verify_crc(const unsigned char *data, size_t size)
+{
+    FVM_SWFMP3Frame packet;
+    FVM_Result result = mp3_header(data, size, &packet);
+    if (result != FVM_OK)
+        return result;
+    if (packet.bytes && packet.bytes != size)
+        return FVM_INVALID_ARGUMENT;
+    if (!packet.bytes && size >= FVM_MP3_FREE_MAX_BYTES)
+        return FVM_UNSUPPORTED;
+    if (data[1] & FVM_MP3_PROTECTION_MASK)
+        return FVM_OK;
+    size_t side = packet.samples == FVM_MP3_MPEG1_SAMPLES
+                      ? (packet.channels == FVM_SWF_SOUND_MONO_CHANNELS ? FVM_MP3_SIDE_MPEG1_MONO
+                                                                        : FVM_MP3_SIDE_MPEG1_STEREO)
+                      : (packet.channels == FVM_SWF_SOUND_MONO_CHANNELS ? FVM_MP3_SIDE_MPEG2_MONO
+                                                                        : FVM_MP3_SIDE_MPEG2_STEREO);
+    if (size < FVM_MP3_CRC_SIDE_OFFSET + side)
+        return FVM_INVALID_ARGUMENT;
+    unsigned long crc = FVM_MP3_CRC_INITIAL;
+    for (size_t i = FVM_MP3_CRC_HEADER_OFFSET; i < FVM_MP3_HEADER_BYTES; ++i)
+        crc = mp3_crc_byte(crc, data[i]);
+    for (size_t i = FVM_MP3_CRC_SIDE_OFFSET; i < FVM_MP3_CRC_SIDE_OFFSET + side; ++i)
+        crc = mp3_crc_byte(crc, data[i]);
+    unsigned long expected = ((unsigned long)data[FVM_MP3_CRC_STORED_OFFSET] << FVM_MP3_CRC_BYTE_BITS) |
+                             data[FVM_MP3_CRC_STORED_OFFSET + 1];
+    return crc == expected ? FVM_OK : FVM_INVALID_ARGUMENT;
+}
 /* Require exact free-format geometry, without accepting a skipped byte or a different source clock. */
 static bool free_header(const unsigned char *data, size_t size, const FVM_SWFMP3Frame &first)
 {
