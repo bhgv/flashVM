@@ -276,6 +276,16 @@ endif()
 
 # Native-only producer progress is independent of a deliberately stalled VM/render thread.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_stream_prepare_failure tests/stream_prepare_failure.cpp common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_stream_prepare_failure PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_stream_prepare_failure PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_stream_prepare_failure PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_stream_prepare_failure PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_stream_prepare_failure COMMAND flashvm_frontend_stream_prepare_failure)
+  set_tests_properties(flashvm_frontend_stream_prepare_failure PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 20)
   add_executable(flashvm_frontend_stream_worker tests/stream_worker.cpp common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_stream_worker PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_stream_worker PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
@@ -395,6 +405,9 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_player_stream_segments COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_segments.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_player_stream_segments PROPERTIES TIMEOUT 30)
   add_test(NAME flashvm_player_stream_audio COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_audio.py $<TARGET_FILE:flashvm_player>)
   set_tests_properties(flashvm_player_stream_audio PROPERTIES TIMEOUT 30)

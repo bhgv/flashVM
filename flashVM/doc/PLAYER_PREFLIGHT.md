@@ -2,7 +2,7 @@
 
 [Русский](PLAYER_PREFLIGHT.ru.md).
 
-Current v0.758 policy: [one PCM root stream plays](PLAYER_PCM_STREAMS.md); unsupported codecs/mixed/multiple streams still fail before native setup. The section below records the original muted-import contract.
+Current v0.761 policy: [bounded PCM header sequences play](PLAYER_PCM_STREAMS.md); unsupported codecs/mixed/excess header counts still fail before native setup. The section below records the original muted-import contract.
 
 ## SWF5 cursor namespace (v0.662)
 

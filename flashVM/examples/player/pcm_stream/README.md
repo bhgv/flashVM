@@ -6,6 +6,16 @@ and 441 Hz triangle tone, the second orange and 882 Hz. Integer-only generation 
 deterministic and requires no compiler or third-party package. The movie is runnable;
 physical output has not been verified in this environment.
 
+The additional [pcm-segments.swf](pcm-segments.swf) changes its source at one second:
+44100 Hz mono becomes 22050 Hz stereo, with an empty intermediate header in the
+same frame. After the switch the left triangle is 882 Hz, the right 441 Hz.
+The player retains one 48000 Hz stereo SDL queue and re-primes all headers on loop.
+Generate it with `python3 flashVM/examples/player/pcm_stream/make_movie.py --segments`
+and run the same player commands below with pcm-segments.swf instead of pcm-stream.swf.
+Both generators are the same standalone script; default generation preserves the
+original single-header bytes. Native queue tests compare every sample in both
+movies against independent integer oracles. See the [header-sequence contract](../../../doc/PLAYER_PCM_STREAMS.md).
+
 ```sh
 python3 flashVM/examples/player/pcm_stream/make_movie.py
 cmake --build build/player --target flashvm_player

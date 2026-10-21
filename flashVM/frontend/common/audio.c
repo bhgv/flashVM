@@ -2,29 +2,33 @@
 #include "audio.h"
 #include "flashvm/movieclip.h"
 #include <string.h>
+#include <stdlib.h>
 
 /* Reject unsupported combinations before a window or audio endpoint can be opened. */
 FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
 {
-    size_t streams = 0, events = 0;
+    size_t streams = 0, events = 0, index;
     FVM_SWFStreamSoundInfo info;
     FVM_Result result = fvm_swf_stream_sound_count(context, &streams);
     if (result != FVM_OK || !streams)
         return result;
-    if (streams != 1)
+    if (streams > FVM_DESKTOP_AUDIO_MAX_SEGMENTS)
         return FVM_UNSUPPORTED;
     result = fvm_swf_sound_event_count(context, &events);
     if (result != FVM_OK)
         return result;
     if (events)
         return FVM_UNSUPPORTED;
-    info.struct_size = sizeof(info);
-    result = fvm_swf_stream_sound_at(context, 0, &info);
-    if (result != FVM_OK)
-        return result;
-    return info.format == FVM_SWF_SOUND_PCM_NATIVE || info.format == FVM_SWF_SOUND_PCM_LE
-               ? FVM_OK
-               : FVM_UNSUPPORTED;
+    for (index = 0; index < streams; ++index)
+    {
+        info.struct_size = sizeof(info);
+        result = fvm_swf_stream_sound_at(context, index, &info);
+        if (result != FVM_OK)
+            return result;
+        if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
+            return FVM_UNSUPPORTED;
+    }
+    return FVM_OK;
 }
 
 /* Forward the actual write, recording only blocks accepted by the real SDL adapter. */
@@ -88,8 +92,9 @@ static FVM_Result stop_context_audio(void *raw)
         return FVM_ERROR;
     if (audio->stream_source)
     {
-        result = fvm_swf_stream_output_seek(&audio->stream_output,
-                                            audio->stream_converter.block_count, 0);
+        result = fvm_swf_stream_output_seek(
+            &audio->stream_output,
+            audio->stream_segments[audio->stream_index].converter.block_count, 0);
         if (result == FVM_OK)
             audio->stream_cancelled = 1;
     }
@@ -119,6 +124,25 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
         result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
         if (result == FVM_NOT_FOUND)
         {
+            info.struct_size = sizeof(info);
+            result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+            if (result != FVM_OK)
+                return result;
+            if (info.eof && audio->stream_index + 1 < audio->stream_count)
+            {
+                FVM_SWFStreamConverter *next =
+                    &audio->stream_segments[audio->stream_index + 1].converter;
+                /* Inactive cursors may remain exhausted from a prior loop/seek epoch. */
+                result = fvm_swf_stream_converter_seek(next, 0, 0);
+                if (result == FVM_OK)
+                    result = fvm_swf_stream_output_continue(&audio->stream_output, next);
+                if (result != FVM_OK)
+                    return result;
+                ++audio->stream_index;
+                fvm_desktop_trace_event(audio->trace, "stream_segment",
+                                        (unsigned long)audio->stream_index, FVM_OK);
+                continue; /* Count empty-header transitions within the same fixed work budget. */
+            }
             held = 1;
             break;
         }
@@ -212,13 +236,31 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         return result;
     if (streams)
     {
-        result = fvm_swf_stream_sound_snapshot_open(context, 0, &audio->stream_source);
-        if (result != FVM_OK)
-            return result;
-        result = fvm_swf_stream_converter_init(&audio->stream_converter, audio->stream_source,
-                                               FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS);
-        if (result != FVM_OK)
-            return result;
+        size_t index;
+        audio->stream_segments =
+            (FVM_DesktopStreamSegment *)calloc(streams, sizeof(*audio->stream_segments));
+        if (!audio->stream_segments)
+            return FVM_OUT_OF_MEMORY;
+        audio->stream_count = streams;
+        for (index = 0; index < streams; ++index)
+        {
+            FVM_DesktopStreamSegment *segment = &audio->stream_segments[index];
+            FVM_SWFStreamSoundInfo info;
+            info.struct_size = sizeof(info);
+            result = fvm_swf_stream_sound_at(context, index, &info);
+            if (result == FVM_OK)
+                result = fvm_swf_stream_sound_snapshot_open(context, index, &segment->source);
+            if (result != FVM_OK)
+                return result;
+            segment->frame = info.frame;
+            if (!index)
+                audio->stream_source = segment->source;
+            result =
+                fvm_swf_stream_converter_init(&segment->converter, segment->source,
+                                              FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS);
+            if (result != FVM_OK)
+                return result;
+        }
     }
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);
@@ -247,10 +289,10 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     }
     if (audio->stream_source)
     {
-        result =
-            fvm_swf_stream_output_init(&audio->stream_output, &audio->stream_converter, &backend,
-                                       audio->stream_pcm, sizeof(audio->stream_pcm) / sizeof(short),
-                                       FVM_DESKTOP_AUDIO_BLOCK, audio->target_frames);
+        result = fvm_swf_stream_output_init(
+            &audio->stream_output, &audio->stream_segments[0].converter, &backend,
+            audio->stream_pcm, sizeof(audio->stream_pcm) / sizeof(short), FVM_DESKTOP_AUDIO_BLOCK,
+            audio->target_frames);
         if (result != FVM_OK)
             return result;
     }
@@ -304,6 +346,20 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_De
     return fvm_desktop_audio_open_paused(context, clip, audio, 0);
 }
 
+/* Caller owns the mutex; last header at/before frame wins, or the first future header. */
+static FVM_Result stream_seek_frame(FVM_DesktopAudio *audio, unsigned int frame)
+{
+    size_t index = 0;
+    FVM_Result result;
+    while (index + 1 < audio->stream_count && audio->stream_segments[index + 1].frame <= frame)
+        ++index;
+    result = fvm_swf_stream_output_bind_frame(&audio->stream_output,
+                                              &audio->stream_segments[index].converter, frame);
+    if (result == FVM_OK)
+        audio->stream_index = index;
+    return result;
+}
+
 /* [GC:] VM inspection stays on owner; native producer receives only copied scalar policy. */
 FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
                                       FVM_DesktopAudio *audio)
@@ -331,7 +387,7 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
              info.frame < audio->stream_selected || info.frame > audio->stream_selected + 1);
     if (reset)
     {
-        result = fvm_swf_stream_output_seek_frame(&audio->stream_output, info.frame);
+        result = stream_seek_frame(audio, info.frame);
         if (result == FVM_OK)
         {
             audio->stream_cancelled = 0;
@@ -413,6 +469,8 @@ FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamO
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
     result = fvm_swf_stream_output_info(&audio->stream_output, info);
+    if (result == FVM_OK && audio->stream_index + 1 < audio->stream_count)
+        info->eof = 0; /* Source EOF is not complete sequence EOF while later headers remain. */
     SDL_UnlockMutex(audio->mutex);
     return result;
 }
@@ -448,12 +506,20 @@ void fvm_desktop_audio_close(FVM_DesktopAudio *audio)
     if (audio->thread)
         SDL_WaitThread(audio->thread, 0);
     if (audio->stream_source && audio->stream_output.struct_size)
-        fvm_swf_stream_output_seek(&audio->stream_output, audio->stream_converter.block_count, 0);
+        fvm_swf_stream_output_seek(
+            &audio->stream_output,
+            audio->stream_segments[audio->stream_index].converter.block_count, 0);
     if (audio->output)
         fvm_swf_sound_output_stop(audio->output);
     fvm_swf_sound_output_close(audio->output);
     fvm_swf_sound_mixer_close(audio->mixer);
-    fvm_swf_stream_sound_snapshot_close(audio->stream_source);
+    if (audio->stream_segments)
+    {
+        size_t index;
+        for (index = 0; index < audio->stream_count; ++index)
+            fvm_swf_stream_sound_snapshot_close(audio->stream_segments[index].source);
+        free(audio->stream_segments);
+    }
     fvm_desktop_trace_close(audio->trace);
     fvm_audio_sdl_queue_close(audio->device);
     if (audio->mutex)

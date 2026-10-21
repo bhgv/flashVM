@@ -6,6 +6,16 @@ LE/44100 stream, двадцать блоков по 4410 samples. Первая �
 библиотеки/компиляторы не нужны. Файл воспроизводится, но реальное устройство в этой среде
 не проверено.
 
+Дополнительный [pcm-segments.swf](pcm-segments.swf) через секунду меняет источник:
+44100 Hz mono → 22050 Hz stereo, с промежуточным пустым header в том же кадре.
+После смены слева 882 Hz, справа 441 Hz. Одна SDL queue остаётся 48000 Hz stereo,
+а loop заново подготавливает все headers. Генерация:
+`python3 flashVM/examples/player/pcm_stream/make_movie.py --segments`.
+Запускайте те же команды ниже с pcm-segments.swf вместо pcm-stream.swf. Это тот
+же автономный script; без опции сохраняются прежние single-header bytes.
+Каждый sample обоих фильмов проверяется независимым целочисленным oracle.
+[Контракт последовательности](../../../doc/PLAYER_PCM_STREAMS.ru.md).
+
 ```sh
 python3 flashVM/examples/player/pcm_stream/make_movie.py
 cmake --build build/player --target flashvm_player
@@ -27,4 +37,4 @@ fvm_desktop_run_memory; см. [встроенный фильм](../embedded_movi
 же аргументами. Это не слышимое устройство. FVM_AUDIO_TRACE=/absolute/path/evidence явно
 включает WAV/текстовую запись принятых PCM блоков при закрытии. Не выдавайте trace за
 запись динамиков. У worker есть frame gate, pause и bounded work; точный A/V sync,
-stream+event mixing, несколько заголовков и сжатые stream codecs остаются открытыми.
+stream+event mixing, сжатые stream codecs остаются открытыми.

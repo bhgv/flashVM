@@ -1156,7 +1156,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         goto cleanup;
     if (!options->mute &&
         !checked(fvm_desktop_audio_validate(context),
-                 "root audio policy (single PCM stream without StartSound required)", path))
+                 "root audio policy (bounded PCM segments without StartSound required)", path))
         goto cleanup;
     authored = (double)info.frame_rate_fixed8 / FVM_DESKTOP_FIXED8_UNIT;
     if (!fvm_desktop_rate(options, authored, &rate))

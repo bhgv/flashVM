@@ -365,5 +365,5 @@ void fvm_desktop_help(const char *program)
     puts("Touch: the first contact drives the pointer; additional contacts are ignored.");
     puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM StartSound uses "
          "optional SDL audio.");
-    puts("Root streaming audio: one PCM segment without StartSound; other codecs/mixing unsupported.");
+    puts("Root streaming audio: up to 64 PCM segments without StartSound; codecs/mixing unsupported.");
 }

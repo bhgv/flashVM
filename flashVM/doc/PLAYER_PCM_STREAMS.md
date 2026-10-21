@@ -1,13 +1,69 @@
-# Single root PCM stream in the SDL player
+# Root PCM header sequences in the SDL player
 
-Since v0.758 the actual desktop player accepts one validated root SoundStreamHead/Head2
+Since v0.758 the actual desktop player accepts the original single validated root
+SoundStreamHead/Head2
 segment in PCM_NATIVE or PCM_LE format, with no root StartSound events. It converts native
 source samples to 48000 Hz interleaved stereo S16 and feeds the real SDL queue.
-Unsupported codecs, multiple header segments and mixed event/stream movies fail explicitly
+In the original v0.758 checkpoint, codecs, multiple headers and mixed movies failed
+explicitly
 during preflight, before window/device creation. --mute continues to validate and omit
 root streaming controls without opening audio. Strict core scene import remains strict;
 the player uses the exact-source root-stream omission flag and separately snapshots the
 validated source before starting its worker.
+
+## Header sequences (v0.761)
+
+The player now accepts up to [FVM_DESKTOP_AUDIO_MAX_SEGMENTS](../frontend/common/audio.h#L19) (64) validated PCM
+headers, still without root StartSound. Every header must be PCM_NATIVE or PCM_LE;
+compressed codecs, root event/stream mixing and excess header count fail before
+window/device acquisition. Muting still validates arbitrary indexed root segments
+without creating snapshots or opening audio. The current limit bounds startup
+preparation and navigation scans, not the 9P packet size or media channel geometry.
+
+The owner allocates a zero-initialized array of [FVM_DesktopStreamSegment](../frontend/common/audio.h#L22) and
+prepares all snapshots/converters before starting a worker. Each entry owns its
+snapshot and independent phase grid. On partial preparation failure, close joins
+any worker first, closes every nonnull entry once and frees the array; the old
+stream_source field is only a borrowed first-entry alias. No snapshot leaks into
+VM roots, callbacks or the SDL device. Startup validates/indexes per segment and
+may allocate; worker transitions allocate nothing and never read a context.
+
+On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L89) preserves accepted queue bytes,
+pause and cumulative submitted/played clocks. The device remains open once.
+Output stays 48000 Hz stereo S16 while source width, mono/stereo and rate may
+change per header. Phase carries across blocks within one header and restarts at
+zero for a new header. Before activating an inactive successor, its cursor resets
+to block zero so earlier loops/seeks cannot leave stale EOF positions. Header
+transitions, empty/skipped markers and PCM preparation each consume one of the
+same [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L17) steps per worker iteration. A chain of 64 empty
+headers cannot become an unbounded tight loop. stream_info reports aggregate EOF
+only when the active source is the last header and is exhausted; FIFO drain and
+StopSounds cancellation remain separate concepts.
+
+Explicit/backward/skipped navigation selects the last header at/before the target
+frame (source order breaks equal-frame ties), or the first future header before
+any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L96) stages pause/clear and
+rebinds the selected converter only after acknowledged clear. It chooses the
+first block at/after the target inside that segment. Gaps still hold future data;
+no silence is synthesized. Later successors are re-primed when reached. This is
+an explicit deterministic prefix-discard policy, not certification of historical
+Flash header/seek semantics, drift correction or compressed stream decoding.
+
+[stream_segments.py](../frontend/tests/stream_segments.py) independently constructs FWS/CWS with U8 mono 11025, an empty
+header, S16 stereo 22050 and S16 mono 44100 sources, actual frame actions, gaps and
+an empty/short block. It compares every accepted sample to integer per-header
+rational arithmetic, including a second actual MovieClip loop and exactly three
+segment transitions per traversal with no intermediate FIFO clear/device reopen.
+The bundled pcm-segments.swf also changes format midway and independently checks
+all 96000 output frames. [stream_worker.cpp](../frontend/tests/stream_worker.cpp) repeats actual stop/play/GC/StopSounds,
+backward/same-frame navigation and an explicit forward cross-header seek; preflight
+checks accept 64 headers and reject 65 before native setup. Dummy output does not
+certify audible hardware, other operating systems or other CPUs. Older validation
+counts below describe v0.759 only; they are not fresh v0.761 results.
+
+The [stream_prepare_failure.cpp](../frontend/tests/stream_prepare_failure.cpp) fault sweep checks cleanup after partial source preparation, including several
+already-owned snapshots; ASan exception sweeps use one process per allocation budget on
+this restricted host.
 
 ## Build and run
 
@@ -51,7 +107,7 @@ clear/seek even when a goto selected and entered the same frame entirely between
 observations. Explicit nextFrame/prevFrame also change it; ordinary ticks/play/stop do
 not. Pending/backward/skipped frame checks remain in place, including natural loop rewind.
 Observation is still not a complete navigation history: intermediate targets and effects
-are not replayed. Clock drift/drop/stretch, multiple headers, stream+event mixing,
+are not replayed. Clock drift/drop/stretch, stream+event mixing,
 MP3/ADPCM stream decoding, video synchronization and reference Flash seek semantics remain
 open. No claim of all Flash streaming behavior is made. Root unload detaches delivery,
 joins the worker and closes snapshot/queue/device ownership before the context is
@@ -86,12 +142,12 @@ new stable plugin ABI. The existing public player C entry points retain their si
 
 | Operation | Contract |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L59) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations, malformed stream status propagates. No native device or allocation ownership is acquired. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L67) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L63) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L79) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L74) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L72) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L82) / [fvm_desktop_audio_close](../frontend/common/audio.h#L84) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L71) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or allocation ownership is acquired. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L80) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L76) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L92) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L87) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L85) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L95) / [fvm_desktop_audio_close](../frontend/common/audio.h#L97) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
 
 The [memory_movie.c](../frontend/tests/memory_movie.c) regression also plays a copied mutable `char buf[]` PCM movie through [fvm_desktop_run_memory](../frontend/common/player.h#L47) with a
 deliberately non-file source label and verifies the borrowed bytes are unchanged. It uses
@@ -122,6 +178,15 @@ Strict C89/C++98 objects compile for ARM64 Linux, RISC-V64 Linux and Windows x64
 foreign executables/devices were not run. The two-second example is also parsed
 independently and all 96000 accepted stereo output frames match an integer oracle.
 
+Validation for v0.761: 101 selected native player/frontend/stream checks, 18 shared-host
+checks and three standalone minimal-profile output/API checks pass. Edited modules
+pass ASan/UBSan with ordinary linked dependencies and leak detection disabled on this
+restricted host. Repeated exception injection in one ASan process cannot reliably
+unpoison stack frames here; isolated budgets 0 through 10 each run in a fresh process,
+while the ordinary native CTest exercises the complete in-process failure sweep.
+C89/C++98 objects compile for ARM64 Linux, RISC-V64 Linux and Windows x64; this is
+not a full foreign player build, target SDK/runtime or physical device acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -134,6 +199,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:96](../include/flashvm/swf_stream_output.h#L96) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:89](../include/flashvm/swf_stream_output.h#L89) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
 | `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:83](../include/flashvm/swf_stream_output.h#L83) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:11](../include/flashvm/swf_stream_output.h#L11) |

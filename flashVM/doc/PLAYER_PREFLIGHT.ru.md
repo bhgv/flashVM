@@ -2,7 +2,7 @@
 
 [English](PLAYER_PREFLIGHT.md).
 
-Текущая политика v0.758: [один root PCM stream воспроизводится](PLAYER_PCM_STREAMS.ru.md); остальные кодеки, смесь и несколько потоков отклоняются до native setup. Ниже сохранён исходный контракт muted import.
+Текущая политика v0.761: [последовательность root PCM headers воспроизводится](PLAYER_PCM_STREAMS.ru.md); остальные кодеки, смесь и превышение числа headers отклоняются до native setup. Ниже сохранён исходный контракт muted import.
 
 ## Namespace курсора SWF5 (v0.662)
 

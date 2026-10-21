@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Root PCM header sequences v0.761: bounded 64-header preparation, one exclusive SDL queue, source format/rate/channel changes, empty headers, cross-header seeks and loop re-prime. Independent FWS/CWS sample oracle and actual worker/GC/control tests. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Reference Flash seek/drift and physical/foreign acceptance remain open.
+
 Root PCM player v0.758: one segment, exclusive SDL queue, native owner-frame authorization and joined teardown. FWS/CWS exact PCM oracle, stop/play/seek/GC/StopSounds worker checks. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Dummy queue is not physical device or foreign platform acceptance.
 
 Hybrid heartbeat v0.731: configurable independent timers, requested TCP checks, bounded advice, replay/epoch and compact hint codec. Policy tests do not claim network acceptance. [EN](HYBRID_HEARTBEAT.md) / [RU](HYBRID_HEARTBEAT.ru.md).

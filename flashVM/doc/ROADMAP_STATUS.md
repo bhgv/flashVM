@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.760
+# FlashVM stage status / Состояние стадий — v0.761
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.761: Desktop SDL playback prepares up to 64 PCM header segments, changes source rate/channel/width without clearing accepted audio, skips empty headers under a fixed worker budget and re-primes later cursors after navigation. [EN](PLAYER_PCM_STREAMS.md) / [RU](PLAYER_PCM_STREAMS.ru.md). Codec/mixing/drift/device/platform acceptance remains open.
 
 v0.760: Native output continues across exhausted PCM converters without clearing queued samples or clocks; explicit cross-source frame bind preserves staged seek failure semantics. [EN](STREAM_PCM_OUTPUT.md) / [RU](STREAM_PCM_OUTPUT.ru.md). Host owns source ordering; desktop multi-segment integration follows separately.
 

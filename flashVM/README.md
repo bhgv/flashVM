@@ -1,10 +1,12 @@
-Development version: **0.760** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.760 ` and an English description. Increase the subversion before each
+Development version: **0.761** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.761 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.761: [Play PCM header and format changes through one SDL queue](doc/PLAYER_PCM_STREAMS.md).
 
 v0.759: [Detect same-frame navigation and reset stale stream PCM](doc/PLAYER_PCM_STREAMS.md).
 

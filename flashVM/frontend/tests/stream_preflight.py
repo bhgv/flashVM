@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Supported single PCM streams play; unsupported combinations fail before native initialization."""
+"""Supported bounded PCM segments play; unsupported combinations fail before native initialization."""
 import os
 from pathlib import Path
 import struct
@@ -22,6 +22,8 @@ def movie(kind):
         block=tag(19,b'\x01\0\0\0\xff\xe0')
     if kind=='segments':
         block+=tag(1)+header+tag(19,b'\0\x10')
+    if kind in ('limit','excess'):
+        header*=64 if kind=='limit' else 65
     if kind=='mixed':
         header=tag(14,struct.pack('<HBI',1,0x3e,1)+b'\0\x10')+header
         block+=tag(15,b'\x01\0\0')
@@ -33,10 +35,10 @@ def movie(kind):
 def main():
     executable,mode=sys.argv[1:]
     with tempfile.TemporaryDirectory() as directory:
-        for kind in ['valid','cws','mp3','mixed','segments','short_header','odd_pcm','orphan','duplicate']:
+        for kind in ['valid','cws','mp3','mixed','segments','limit','excess','short_header','odd_pcm','orphan','duplicate']:
             path=Path(directory)/'stream.swf';path.write_bytes(movie(kind))
             for mute in [False,True]:
-                supported=kind in ('valid','cws')
+                supported=kind in ('valid','cws','segments','limit')
                 env=dict(os.environ,SDL_VIDEODRIVER='dummy' if mute or supported else 'flashvm-no-video',
                          SDL_AUDIODRIVER='dummy' if supported and not mute else 'flashvm-no-audio')
                 command=[executable,mode,'--frames','1','--fps','1000','--stats']
@@ -44,12 +46,12 @@ def main():
                 result=subprocess.run(command+[str(path)],env=env,capture_output=True,text=True,timeout=15)
                 output=result.stdout+result.stderr
                 if mode=='--jit' and 'requested JIT backend unavailable' in output:return 77
-                if supported or (kind in ('mp3','mixed','segments') and mute):
+                if supported or (kind in ('mp3','mixed','excess') and mute):
                     assert result.returncode==0 and ('audio_device=0' if mute else 'audio_device=1') in output,output
                     if kind=='mixed':assert 'sound_events=1' in output,output
                 else:
                     assert result.returncode!=0,output
-                    expected='root audio policy' if kind in ('mp3','mixed','segments') else 'root stream validation failed'
+                    expected='root audio policy' if kind in ('mp3','mixed','excess') else 'root stream validation failed'
                     assert expected in output,(kind,mute,output)
                     assert 'cannot open desktop window' not in output,output
     print('PASS root stream preflight, explicit mute and malformed controls',mode)
