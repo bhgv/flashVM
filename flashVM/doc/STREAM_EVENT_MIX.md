@@ -2,6 +2,11 @@
 
 [Русский](STREAM_EVENT_MIX.ru.md) · [functional roadmap](ROADMAP.md) · [C89 example](../examples/multimedia/swf_stream_mix/README.md)
 
+Since v0.772, the [native composition adapter](MIX_QUEUE.md) provides retained
+original/mixed queue retry and acknowledged clear. The tutorial now exercises
+both direct export and a real bounded FIFO; full desktop timeline integration
+remains open.
+
 `fvm_swf_sound_mixer_add(mixer, frames, pcm, capacity_values, written_values)`
 adds prepared event voices **in place** to an initialized native-S16 base block.
 The base can come from a prepared SWF stream converter, an external native source,

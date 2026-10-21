@@ -146,7 +146,7 @@
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
-    - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM и event-голоса, один clip, хвосты после VM teardown</em></small>
+    - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, event-голоса и точный retry очереди после VM teardown</em></small>
     - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы и сжатый снимок после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
@@ -1661,7 +1661,10 @@ source geometry от advisory playback и среднего числа samples. �
 Один настоящий SWF содержит PCM stream и два StartSound. После подготовки VM
 уничтожается; native converter/mixer экспортируют 16 stereo кадров 48000 Hz,
 с одним насыщением и хвостом более длинного голоса. Python oracle проверяет все
-отсчёты, replacement и native errors. Desktop mixed policy остаётся открытой.
+отсчёты, replacement и native errors. Режим `--queue` через настоящий memory FIFO
+проверяет пять отказов и повтор без второго смешивания; file consumer отдельный.
+Desktop mixed policy остаётся открытой. [Адаптер EN](../doc/MIX_QUEUE.md) /
+[RU](../doc/MIX_QUEUE.ru.md).
 [EN](../doc/STREAM_EVENT_MIX.md) / [RU](../doc/STREAM_EVENT_MIX.ru.md).
 
 <a id="example-multimedia-swf_stream_mp3"></a>

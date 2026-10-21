@@ -2,6 +2,10 @@
 
 [English](STREAM_EVENT_MIX.md) · [Роудмап](ROADMAP.md) · [C89-пример](../examples/multimedia/swf_stream_mix/README.md)
 
+С v0.772 [нативный адаптер](MIX_QUEUE.ru.md) удерживает исходный/смешанный
+блок для точного retry и подтверждённого clear. Пример проверяет прямой экспорт
+и настоящий ограниченный FIFO; desktop timeline integration остаётся открытой.
+
 `fvm_swf_sound_mixer_add(mixer, frames, pcm, capacity_values, written_values)`
 добавляет подготовленные event-голоса **на месте** к инициализированному S16 PCM.
 Базой может быть подготовленный SWF stream, внешний нативный источник или явно

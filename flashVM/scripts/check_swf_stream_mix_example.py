@@ -45,6 +45,11 @@ def main():
         assert output.read_bytes() == struct.pack('=' + 'h' * len(expected), *expected)
         assert expected[:2] == [30000, 30000]  # Intermediate stream+positive clipping would corrupt this.
         assert expected[18:28] == [-30000] * 10 and expected[28:] == [0] * 4
+        queued_output = root / 'queue.pcm'
+        queued = subprocess.run([executable, str(queued_output), '--queue'], cwd=root, check=True,
+                                stdout=subprocess.PIPE, text=True)
+        assert 'Queue retained 5 rejected blocks.' in queued.stdout
+        assert queued_output.read_bytes() == output.read_bytes()
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

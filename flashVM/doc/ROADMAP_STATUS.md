@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.771
+# FlashVM stage status / Состояние стадий — v0.772
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,8 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.772: Retain mixed event and stream PCM across atomic queue rejection. [EN](MIX_QUEUE.md) / [RU](MIX_QUEUE.ru.md). Bounded implementation; full Flash/device/platform acceptance remains open.
 
 v0.771: Mix event voices into prepared stream PCM before a single clipping pass. [EN](STREAM_EVENT_MIX.md) / [RU](STREAM_EVENT_MIX.ru.md). Bounded implementation; full Flash/device/platform acceptance remains open.
 

@@ -3,7 +3,7 @@
 This C89 tutorial reads both source kinds from **one actual embedded SWF8** and
 mixes them after destroying the source VM. Use it as a native file-export or IDE
 integration starting point. [Detailed EN contract](../../../doc/STREAM_EVENT_MIX.md) /
-[Контракт RU](../../../doc/STREAM_EVENT_MIX.ru.md), [functional roadmap](../../../doc/ROADMAP.md).
+[Контракт RU](../../../doc/STREAM_EVENT_MIX.ru.md), [functional roadmap](../../../doc/ROADMAP.md). Queue composition: [EN](../../../doc/MIX_QUEUE.md) / [RU](../../../doc/MIX_QUEUE.ru.md).
 
 ## Input and output / Вход и выход
 
@@ -41,11 +41,16 @@ cmake -S flashVM -B build-stream-mix \
 cmake --build build-stream-mix --target flashvm_examples_multimedia_swf_stream_mix_main
 ./build-stream-mix/flashvm_examples_multimedia_swf_stream_mix_main
 ./build-stream-mix/flashvm_examples_multimedia_swf_stream_mix_main mixed.pcm
+./build-stream-mix/flashvm_examples_multimedia_swf_stream_mix_main queued.pcm --queue
 python3 flashVM/scripts/check_swf_stream_mix_example.py ./build-stream-mix/flashvm_examples_multimedia_swf_stream_mix_main
 ```
 
-No arguments prints usage without creating files; extra arguments fail before VM
-startup. An output path **replaces that file**, reporting `Mixed 16 frames after
+No arguments prints usage without creating files; unrecognized extra arguments fail
+before VM startup. `OUTPUT.pcm --queue` uses the composition adapter and a real
+bounded memory FIFO. Each new block is deliberately rejected once before copying;
+the original base is retried, yielding `Queue retained 5 rejected blocks.`. Only
+after acceptance does a separate file consumer write the complete FIFO. Both
+modes produce identical bytes; this FIFO has no real-time device consumption. An output path **replaces that file**, reporting `Mixed 16 frames after
 source VM teardown.` after successful fclose. PCM is native-endian S16, with no WAV
 header; interpret it as two channels at 48000 Hz. The independent Python oracle
 uses native-endian packing and exact integer rational positions for every sample.
@@ -62,12 +67,19 @@ the old file replacement. Source snapshot outlives its converter; mixer owns its
 voices; both close independently of the already destroyed VM. There is no live
 managed root to pin inside the native loop. All calls are serial.
 
-For an all-or-none queue backend, retain the already mixed PCM through rejection
-and retry **those bytes**. Calling mixer_add again would advance voices and mix
-the block twice. Queue retries/cancellation and general timeline policy need an
-explicit host adapter; this file consumer intentionally reports failures directly.
-Самостоятельный backend должен удерживать готовые смешанные байты до принятия или
-отмены. Пример не откатывает позицию голосов и не выдаёт частичный fwrite за retry.
+The direct file path reports errors terminally. The `--queue` path prepares its
+adapter before source VM teardown. It retains both the original base witness and
+already mixed bytes through rejection. Retrying identical original input sends
+the retained mixture without another mixer_add. It closes the adapter before its
+borrowed mixer. All calls remain serial, with no allocation during native mixing
+or retry. Successful clear would discard pending PCM without rewinding voices;
+this finite export never seeks and deliberately controls tail length itself.
+
+В режиме `--queue` FIFO действительно копирует принятые данные, а каждый новый
+блок сначала отклоняет без побочного эффекта. Пять отказов дают те же 64 байта,
+что прямой экспорт. Fwrite исполняется отдельно после принятия всей очередью:
+частичная запись файла не изображает атомарный отказ backend. Адаптер заимствует
+mixer; закрывается раньше него. Общая desktop-политика timeline/seek не добавлена.
 
 ## Demonstrated C API / Использованный C API
 
@@ -85,6 +97,9 @@ explicit host adapter; this file consumer intentionally reports failures directl
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source VM lifetime; native snapshots remain retained. |
 | [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L58) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
 | [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L67) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
+| [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L30) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
+| [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L36) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
+| [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L40) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L74) | Release native voices after all serial reads finish; null allowed. |
 | [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L115) | Release stream storage after converter use; null allowed. |
 
@@ -103,6 +118,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:40](../../../include/flashvm/swf_sound_mix_queue.h#L40) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:30](../../../include/flashvm/swf_sound_mix_queue.h#L30) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:36](../../../include/flashvm/swf_sound_mix_queue.h#L36) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:67](../../../include/flashvm/swf_sound_mixer.h#L67) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:74](../../../include/flashvm/swf_sound_mixer.h#L74) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../../../include/flashvm/swf_sound_mixer.h#L39) |
