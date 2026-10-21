@@ -95,7 +95,8 @@ static int frame_pixels(Capture *test, size_t client, const unsigned char *expec
     n += frame_number(bytes + n, 16);
     n += frame_number(bytes + n, 8);
     if (!test_9p_call(test->clients + client, test->dispatch, test->frame_target,
-                      FVM_DESKTOP_RFRAME_REGION, bytes, n, &reply) || reply.size != FVM_R_BYTES)
+                      FVM_DESKTOP_RFRAME_REGION, bytes, n, &reply) ||
+        reply.size != FVM_R_BYTES)
         return 0;
     for (offset = 0; offset < 8; ++offset)
         if (memcmp(reply.data + offset * 64, expected + ((offset + 5) * 32 + 7) * 4, 64))
@@ -285,8 +286,8 @@ static int resource_setup(Capture *test)
                                              &test->frame_target) == FVM_R_OK &&
            fvm_rdispatch_grant(test->dispatch, test->frame_target, 7, FVM_R_READ) == FVM_R_OK &&
            fvm_rdispatch_grant(test->dispatch, test->frame_target, 8, FVM_R_READ) == FVM_R_OK &&
-           test_9p_create(test->clients, test->dispatch, 7, test->state_target) &&
-           test_9p_create(test->clients + 1, test->dispatch, 8, test->state_target);
+           test_9p_create_sized(test->clients, test->dispatch, 7, test->state_target, 256) &&
+           test_9p_create_sized(test->clients + 1, test->dispatch, 8, test->state_target, 384);
 #else
     return ok;
 #endif

@@ -52,6 +52,7 @@ lease ID не даёт прав; wire uname/session claim не выбирает 
 | [FVM_DESKTOP_RFRAME_ACQUIRE](../frontend/common/resource_frame.h#L8) | Пустой request, metadata latest с новым lease ID/generation этой сессии. Заполненная/retired таблица LIMIT, ошибки pin не создают. Повторы намеренно создают независимые leases. |
 | [FVM_DESKTOP_RFRAME_CHUNK](../frontend/common/resource_frame.h#L10) | Ровно четыре канонических неотрицательных S-целых: lease ID, generation, byte offset, count. Count 1..[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9), offset не больше byte_count. До count сырых packed RGBA bytes; точный конец OK/0, дальше или неверный count INVALID. Живой чужой lease DENIED, старый/отозванный/неизвестный UNKNOWN. Выравнивание на пиксель не требуется. |
 | [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L13) | Ровно lease ID и generation как два S-целых. Освобождает только собственный pin; чужой DENIED, старый UNKNOWN. Успех — пустой ответ. При исчерпании generation слот окончательно retired. |
+| [FVM_DESKTOP_RFRAME_REGION](../frontend/common/resource_frame.h#L29) | READ: lease ID, generation, x, y, width, height. Прямоугольник packed RGBA до 512 байт; неверная геометрия INVALID, большой ответ LIMIT, старый lease UNKNOWN, чужая сессия DENIED. |
 
 Обычная resource write лишь ставит операцию в очередь, исполняет native owner
 pump. Эти пять handler используют только native cache и допустимы после
@@ -205,6 +206,26 @@ INVALID. Допустимый прямоугольник больше [FVM_R_BYT
 диспетчера. Если S-запись ответа больше согласованного msize, файл ответа
 читается несколькими Tread/Rread. Увеличение msize не увеличивает внутренний
 предел payload. См. [адаптер 9P](RESOURCE_9P.ru.md).
+## Согласованный msize v0.739
+
+Теперь клиенты live-плеера согласуют разные msize: 256 и 384 через
+Tversion/Rversion до attach. Проверяется предел каждого полного ответа 9P,
+включая заголовок. Payload 512 байт вместе с S-записью и оболочкой ресурса
+требует нескольких чтений при обоих размерах. Клиент собирает ограниченный
+по объёму файл ответа до EOF и затем разбирает полную S-запись с проверкой
+checksum. Частичная запись не интерпретируется.
+
+Так проверяются CHUNK и REGION настоящих кадров при небольших сообщениях 9P,
+включая старые leases во время новых кадров и чтение после завершения VM.
+Небольшие события таймлайна этого fixture помещаются в один Rread; клиент
+не является универсальным сборщиком потока событий или сетевым сервером.
+[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) остаётся 512, максимальный серверный msize — 4096; layout
+публичных структур и версия метаданных не изменены.
+Проверка v0.738–v0.739: прошли 48 выбранных native-тестов и 13 shared-host.
+Новый код областей и live-fixture 9P прошли AddressSanitizer/UBSan; перечисление
+утечек отключено из-за ограничений хоста. C89-контракт слинкован, клиент
+скомпилирован для ARM64 Linux, RISC-V64 Linux и Windows x64. Чужие бинарники
+не запускались; это не приёмка полного плеера на этих платформах.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -58,6 +58,7 @@ permission, and a wire uname/session claim cannot choose native authority.
 | [FVM_DESKTOP_RFRAME_ACQUIRE](../frontend/common/resource_frame.h#L8) | Empty request, return latest metadata with a new session-owned lease ID/generation. Full/retired lease table LIMIT. Errors acquire no pin. Repeated calls intentionally allocate independent leases. |
 | [FVM_DESKTOP_RFRAME_CHUNK](../frontend/common/resource_frame.h#L10) | Exactly four canonical nonnegative S integers: lease ID, generation, byte offset, count. Count 1..[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9); offset no greater than byte_count. Return up to count raw packed RGBA bytes. At exact end OK/zero bytes; beyond end or invalid count INVALID. Live lease of another session DENIED; stale/revoked/unknown lease UNKNOWN. No word/pixel alignment is required. |
 | [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L13) | Exactly lease ID and generation as two S integers. Release only this session's pin; another owner DENIED, stale handle UNKNOWN. Success has an empty result. Generation exhaustion retires that lease slot permanently. |
+| [FVM_DESKTOP_RFRAME_REGION](../frontend/common/resource_frame.h#L29) | READ: lease ID, generation, x, y, width, height. Packed RGBA rectangle, at most 512 bytes; invalid geometry INVALID, oversized reply LIMIT, stale lease UNKNOWN, other session DENIED. |
 
 Every ordinary resource write still queues an operation; its native owner must
 pump it. INFO/ACQUIRE/CHUNK/REGION/RELEASE handlers access only native cache storage.
@@ -218,6 +219,27 @@ It includes 9P headers; the dispatcher payload bound [FVM_R_BYTES](../include/fl
 A resource reply file may require multiple Tread/Rread exchanges when the
 negotiated msize is smaller than its encoded S-record. Raising msize does not
 raise the native dispatcher payload limit. See the [9P adapter](RESOURCE_9P.md).
+## Negotiated 9P reads v0.739
+
+The live player fixture now negotiates msize 256 for one reader and 384 for
+the other, using Tversion/Rversion before attach. Both values bound the complete
+9P message, including its header. Every received response is checked against
+that connection's negotiated bound. A 512-byte pixel payload plus its S-record
+and resource envelope therefore requires several reads on either connection.
+The client accumulates a bounded reply file to EOF and only then decodes its
+declaration and complete checked S-record; no partial record is interpreted.
+
+This exercises actual player CHUNK and REGION results through small-message
+9P exchanges, while retaining independent leases across presentations and VM
+teardown. The fixture's small timeline events fit a single Rread; it is not a
+general-purpose incremental event client or production network listener. Native
+[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9) remains 512, the server maximum msize remains 4096, and neither
+existing public structure layouts nor the metadata version changed.
+Verification of v0.738–v0.739: 48 selected native and 13 shared-host tests passed.
+New region code and the live 9P fixture passed AddressSanitizer/UBSan with
+leak enumeration disabled in this restricted host. The C89 region contract
+cross-linked and the sized client cross-compiled for ARM64 Linux, RISC-V64
+Linux and Windows x64; foreign binaries were not executed.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

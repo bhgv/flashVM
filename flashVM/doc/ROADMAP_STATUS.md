@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.738
+# FlashVM stage status / Состояние стадий — v0.739
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,9 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.739 runs the live player readers with independent negotiated msize values
+256 and 384. Full reply-file reads reassemble S records across Rread boundaries.
 
 v0.738 adds bounded packed rectangle reads from immutable session-owned frame leases.
 Independent cropped-pixel checks cover padded rows and invalid/oversized regions.

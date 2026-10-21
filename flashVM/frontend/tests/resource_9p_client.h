@@ -12,8 +12,10 @@ typedef struct Test9PClient
     int pending;
     unsigned char output[FVM_R9P_MSIZE];
     size_t size;
+    size_t msize; /* Negotiated complete-message bound, including 9P headers. */
 } Test9PClient;
 int test_9p_create(Test9PClient *, FVM_RDispatch *, unsigned long, FVM_RHandle);
+int test_9p_create_sized(Test9PClient *, FVM_RDispatch *, unsigned long, FVM_RHandle, size_t);
 int test_9p_command(Test9PClient *, FVM_RHandle, unsigned long);
 int test_9p_reply(Test9PClient *);
 int test_9p_call(Test9PClient *, FVM_RDispatch *, FVM_RHandle, unsigned long, const void *, size_t,

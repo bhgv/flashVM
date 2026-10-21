@@ -44,8 +44,8 @@ static int send(Test9PClient *c, unsigned int type, unsigned int tag, const void
 }
 static int response(Test9PClient *c, unsigned int type, unsigned int tag)
 {
-    return c->size >= 7 && get(c->output, 4) == c->size && c->output[4] == type &&
-           get(c->output + 5, 2) == tag;
+    return c->size <= c->msize && c->size >= 7 && get(c->output, 4) == c->size &&
+           c->output[4] == type && get(c->output + 5, 2) == tag;
 }
 static int walk(Test9PClient *c, unsigned long fid, FVM_RHandle h, const char *middle,
                 const char *leaf)
@@ -82,15 +82,26 @@ static int read_file(Test9PClient *c, unsigned long fid, unsigned long offset, u
 }
 int test_9p_create(Test9PClient *c, FVM_RDispatch *d, unsigned long session, FVM_RHandle target)
 {
+    return test_9p_create_sized(c, d, session, target, FVM_R9P_MSIZE);
+}
+/* Negotiate an explicit limit before attach; the server may lower but never raise it. */
+int test_9p_create_sized(Test9PClient *c, FVM_RDispatch *d, unsigned long session,
+                         FVM_RHandle target, size_t msize)
+{
     unsigned char bytes[64];
     size_t n;
+    c->msize = msize;
+    if (msize < FVM_R9P_MIN_MSIZE || msize > FVM_R9P_MSIZE)
+        return 0;
     if (fvm_rfs_create(d, session, &c->fs) != FVM_R_OK ||
         fvm_r9p_create(c->fs, &c->server) != FVM_R_OK)
         return 0;
-    put(bytes, FVM_R9P_MSIZE, 4);
+    put(bytes, (unsigned long)msize, 4);
     n = 4 + text(bytes + 4, "9P2000");
-    if (!send(c, 100, 65535, bytes, n) || !response(c, 101, 65535))
+    if (!send(c, 100, 65535, bytes, n) || !response(c, 101, 65535) || c->size < 13 ||
+        get(c->output + 7, 4) > msize || get(c->output + 7, 4) < FVM_R9P_MIN_MSIZE)
         return 0;
+    c->msize = (size_t)get(c->output + 7, 4);
     put(bytes, 0, 4);
     put(bytes + 4, 0xffffffffUL, 4);
     n = 8 + text(bytes + 8, "untrusted-wire-name");
@@ -110,22 +121,31 @@ int test_9p_command(Test9PClient *c, FVM_RHandle target, unsigned long operation
     return send(c, 118, 4, bytes, sizeof(bytes)) && response(c, 119, 4) &&
            get(c->output + 7, 4) == 0;
 }
+/* Read to file EOF: one S-record can span multiple negotiated-size Rread messages. */
 static int reply_payload(Test9PClient *c, FVM_RReply *reply)
 {
     FVM_SBindings bindings;
     FVM_SBinding slot;
     unsigned long id;
-    size_t used, n;
-    unsigned char clunk[4];
-    if (!read_file(c, 2, 0, 5) || !response(c, 117, 5) || c->size < 11 ||
-        get(c->output + 7, 4) != c->size - 11)
-        return 0;
-    n = c->size - 11;
+    size_t used, n, total = 0;
+    unsigned char clunk[4], data[FVM_RFS_BUFFER];
+    do
+    {
+        if (!read_file(c, 2, (unsigned long)total, 5) || !response(c, 117, 5) || c->size < 11 ||
+            get(c->output + 7, 4) != c->size - 11)
+            return 0;
+        n = c->size - 11;
+        if (n > sizeof(data) - total)
+            return 0;
+        memcpy(data + total, c->output + 11, n);
+        total += n;
+    } while (n);
     if (fvm_sbindings_init(&bindings, &slot, 1) != FVM_S_OK ||
-        fvm_sbindings_apply(&bindings, c->output + 11, n, &used) != FVM_S_OK ||
-        fvm_rreply_record_read(&bindings, c->output + 11 + used, n - used, &id, reply, &used) !=
-            FVM_S_OK ||
-        reply->result != FVM_R_OK)
+        fvm_sbindings_apply(&bindings, data, total, &used) != FVM_S_OK)
+        return 0;
+    n = used;
+    if (fvm_rreply_record_read(&bindings, data + n, total - n, &id, reply, &used) != FVM_S_OK ||
+        used != total - n || reply->result != FVM_R_OK)
         return 0;
     put(clunk, 2, 4);
     return send(c, 120, 6, clunk, sizeof(clunk)) && response(c, 121, 6);
