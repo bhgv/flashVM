@@ -109,6 +109,17 @@ short-voice queue is primed directly under the producer mutex while the worker
 is suspended; no dummy substitute backend supplies the queued observation.
 This is Linux/SDL dummy-driver ownership evidence, not physical DAC timing.
 
+## v0.799: C89 ABI and backend reentry
+
+`swf_sound_identity_c89` is compiled as strict C89 and uses an independent raw
+SWF with IDs 7 and 65535. Both voices retire in one output block yet remain
+NoMultiple-active; independent ID cancellation preserves the other registration.
+It checks all new C signatures/storage and exact eight-frame converted duration
+after VM teardown. Backend queued callbacks deliberately reenter tracking,
+storage, adoption and stop-ID APIs with live caller-owned arguments: each returns
+INVALID_ARGUMENT without changing outputs or ownership. External serialization
+is still required; reentry rejection is not a cross-thread lock.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
