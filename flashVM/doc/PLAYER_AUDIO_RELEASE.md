@@ -72,7 +72,7 @@ clear the old sound is gone even if the subsequent release write fails. That
 exact release remains pending for pump retry; counts advance only on acceptance.
 Some backends, including the fault-latching SDL adapter, require the original
 hard stop/reset before recovering from a write failure. That discards the tail.
-The original [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L105) still pauses, clears and resets immediately,
+The original [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L114) still pauses, clears and resets immediately,
 never synthesizing a release; it remains the recovery/terminal cleanup operation.
 
 ## Queue boundary and hardware limits
@@ -119,8 +119,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
 | `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:131](../include/flashvm/swf_sound_mixer.h#L131) |
-| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:107](../include/flashvm/swf_sound_output.h#L107) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:105](../include/flashvm/swf_sound_output.h#L105) |
-| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:111](../include/flashvm/swf_sound_output.h#L111) |
+| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:116](../include/flashvm/swf_sound_output.h#L116) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
+| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:122](../include/flashvm/swf_sound_output.h#L122) |
 | `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../include/flashvm/swf_sound_mixer.h#L28) |
 <!-- source-links:end -->

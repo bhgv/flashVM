@@ -95,18 +95,29 @@ extern "C"
      * Accepted and pending PCM are immutable; new voices begin at the next composition boundary. */
     FVM_API FVM_Result fvm_swf_sound_output_submit_prepared_bounded(FVM_SWFSoundOutput *,
                                                        FVM_SWFSoundVoice **voice, size_t mixer_budget);
+    /* Stop future composition for ID 1..65535 with the mixer's immediate/DECLICK policy and
+     * release that ID's NoMultiple registration. Does not change accepted/pending PCM, clear
+     * the FIFO or rewind other voices. New same-ID NoMultiple is allowed after this command;
+     * old queued/releasing PCM can still play. Missing ID OK. Tracking disabled UNSUPPORTED;
+     * null/bad ID/reentry INVALID_ARGUMENT. No allocation, callback, VM or clock observation.
+     * Keep output/mixer live and externally serialized; direct mixer stops bypass this ledger. */
+    FVM_API FVM_Result fvm_swf_sound_output_stop_id(FVM_SWFSoundOutput *, unsigned int id);
     /* Prepare/retry one block. NOT_FOUND means no complete block fits below the queue target. */
     FVM_API FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *, size_t *accepted_frames);
     /* Set queue pause state; never implicitly primes or clears PCM. */
     FVM_API FVM_Result fvm_swf_sound_output_pause(FVM_SWFSoundOutput *, int paused);
     /* Query queue and copied clock; errors preserve caller output. */
     FVM_API FVM_Result fvm_swf_sound_output_info(FVM_SWFSoundOutput *, FVM_SWFSoundOutputInfo *);
-    /* Pause, clear, stop software voices, discard pending PCM and reset this clock epoch. */
+    /* Pause, clear, stop software voices, discard pending PCM and reset this clock epoch.
+     * Enabled identity registrations reset only after successful clear. A failed clear retains
+     * old registrations/voices/pending; an acknowledged pause remains visible. */
     FVM_API FVM_Result fvm_swf_sound_output_stop(FVM_SWFSoundOutput *);
     /* Opt-in history allocation before first submission; frames=0 disables, otherwise 2..block. */
     FVM_API FVM_Result fvm_swf_sound_output_set_release(FVM_SWFSoundOutput *, size_t frames);
     /* Discard queued voices, then queue a short release from the observed consumed boundary.
      * Does not pause a running device; old immediate stop remains unchanged. Requires set_release.
+     * Successful clear cancels every enabled identity, including if release write later fails.
+     * A retained anonymous release retry does not reserve a sound ID; failed clear preserves IDs.
      */
     FVM_API FVM_Result fvm_swf_sound_output_stop_release(FVM_SWFSoundOutput *);
     /* Free pending PCM only; no callbacks, device stop/close or mixer ownership transfer. Null

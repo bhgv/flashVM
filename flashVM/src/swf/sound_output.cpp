@@ -71,6 +71,12 @@ FVM_Result observe(FVM_SWFSoundOutput *output)
     output->info.starved = !output->info.paused && output->info.submitted_frames > 0 && !queued;
     return FVM_OK;
 }
+/* Reset only after acknowledged queue discard; anonymous output release PCM has no sound ID. */
+void reset_identities(FVM_SWFSoundOutput *output)
+{
+    for (size_t i = 0; i < output->identities.size(); ++i)
+        output->identities[i] = 0;
+}
 /* Preserve only accepted blocks; rejected retries must not advance native history. */
 void remember(FVM_SWFSoundOutput *output, size_t frames)
 {
@@ -284,6 +290,20 @@ extern "C" FVM_Result fvm_swf_sound_output_submit_prepared_bounded(FVM_SWFSoundO
     }
 }
 
+/* Stop future same-ID composition and release its NoMultiple lease without editing retained PCM. */
+extern "C" FVM_Result fvm_swf_sound_output_stop_id(FVM_SWFSoundOutput *output, unsigned int id)
+{
+    if (!output || output->busy || !id || id > FVM_SWF_SOUND_ID_MAX)
+        return FVM_INVALID_ARGUMENT;
+    if (output->identities.empty())
+        return FVM_UNSUPPORTED;
+    BusyScope scope(output);
+    FVM_Result result = fvm_swf_sound_mixer_stop_id(output->mixer, id);
+    if (result == FVM_OK)
+        output->identities[id] = 0;
+    return result;
+}
+
 /* Render only when needed; a rejected complete block remains stable until acceptance or stop/close.
  */
 extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size_t *accepted)
@@ -401,6 +421,7 @@ extern "C" FVM_Result fvm_swf_sound_output_stop(FVM_SWFSoundOutput *output)
         if (status != FVM_OK)
             return status;
         fvm_swf_sound_mixer_stop_all(output->mixer);
+        reset_identities(output);
         output->history_cursor = output->history_count = 0;
         std::memset(&output->info, 0, sizeof(output->info));
         output->info.struct_size = sizeof(output->info);
@@ -471,6 +492,7 @@ extern "C" FVM_Result fvm_swf_sound_output_stop_release(FVM_SWFSoundOutput *outp
                             */
         int paused = output->info.paused;
         fvm_swf_sound_mixer_stop_all(output->mixer);
+        reset_identities(output);
         std::memset(&output->info, 0, sizeof(output->info));
         output->info.struct_size = sizeof(output->info);
         output->info.paused = paused;

@@ -64,6 +64,24 @@ UNSUPPORTED; ошибки микшера/backend передаются вызыв
 с точным retry, подавление без бюджета и сохранение владельца при отказе запроса
 очереди после уничтожения VM.
 
+## v0.796: владение при stop и clear
+
+[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L104) применяет immediate/DECLICK-политику будущего
+микширования и снимает регистрацию NoMultiple этого ID. Отсутствующий ID — успех,
+неверный ID/null/reentry — INVALID_ARGUMENT, выключенный tracking — UNSUPPORTED.
+Аллокаций, callbacks и VM нет. Принятый и pending PCM неизменяем: команда не
+вынимает уже поставленные в очередь сэмплы этого ID. Новый NoMultiple разрешён
+после команды, даже пока звучит прежний PCM/release-хвост. Сериализуйте выход/
+микшер внешним mutex.
+
+Общие stop и stop_release сбрасывают регистрации только ПОСЛЕ подтверждённого
+backend clear. Ошибка pause/clear сохраняет ID, старые голоса и pending PCM;
+успешная pause остаётся видимой. Успешный clear отменяет ID даже при последующем
+отказе записи release. Такой retained release анонимен; новые голоса начинаются
+после точного числа его pending кадров, без повторного микширования при retry.
+`swf_sound_output_identity_stop` проверяет эти отказы, явный повторный старт,
+отсутствующие/неверные ID и неизменность уже принятых PCM-байтов.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -75,6 +93,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
+| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:104](../include/flashvm/swf_sound_output.h#L104) |
 | `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
 | `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:96](../include/flashvm/swf_sound_output.h#L96) |
 | `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |

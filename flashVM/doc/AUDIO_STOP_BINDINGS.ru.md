@@ -13,7 +13,7 @@
 [`FVM_AudioStopCallback`](../include/flashvm/audio_stop.h#L10) принимает заимствованный native userdata, возвращает
 [`FVM_Result`](../include/flashvm/flashvm.h#L40) и идемпотентно останавливает принадлежащие ему голоса/pending PCM/
 очереди. Binding не открывает устройство и не навязывает формат/ОС/микшер.
-SDL-плеер вызывает [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L105): pause/clear/reset своего вывода.
+SDL-плеер вызывает [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L114): pause/clear/reset своего вывода.
 
 [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L92) сначала пытается остановить активные PCM channels в порядке
 регистрации, затем **все** bindings в их порядке регистрации, даже без принятого
@@ -120,5 +120,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:105](../include/flashvm/swf_sound_output.h#L105) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
 <!-- source-links:end -->
