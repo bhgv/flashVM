@@ -88,7 +88,7 @@ No automatic script eligibility or OS selection policy is exercised.
 
 | Function | Purpose and contract / Назначение и контракт |
 | --- | --- |
-| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L86) | Create a native scene receiver; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L95) | Create a native scene receiver; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
 | [`fvm_input_set_keyboard_focus`](../../../include/flashvm/keyboard.h#L83) | Replace/clear a strongly rooted native clip selection without sending events; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#fvm_input_set_keyboard_focus), [RU](../../../doc/KEYBOARD_FOCUS.ru.md#fvm_input_set_keyboard_focus). |
 | [`fvm_input_get_keyboard_focus`](../../../include/flashvm/keyboard.h#L86) | Borrow the selection, lazily clearing detached clips; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#fvm_input_get_keyboard_focus), [RU](../../../doc/KEYBOARD_FOCUS.ru.md#fvm_input_get_keyboard_focus). |
 
@@ -126,7 +126,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../../../include/flashvm/keyboard.h#L86) |
 | `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:80](../../../include/flashvm/keyboard.h#L80) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../../../include/flashvm/keyboard.h#L83) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:86](../../../include/flashvm/movieclip.h#L86) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:95](../../../include/flashvm/movieclip.h#L95) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |

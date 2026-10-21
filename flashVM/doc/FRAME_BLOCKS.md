@@ -6,7 +6,7 @@ non-MovieClip receiver) and a valid [`FVM_Value`](../include/flashvm/value.h#L24
 wraps to Uint32; other operands undergo AVM1 string coercion. Counted `clip:frame`
 paths resolve before selecting actions. A missing target/frame is a no-op; unsupported
 slash-only selector syntax returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). The private
-[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3383) receives an already resolved clip and numeric/string selector.
+[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3387) receives an already resolved clip and numeric/string selector.
 Neither route seeks the playhead, applies scene controls, emits onEnterFrame, polls
 timers or advances children. Caller ownership of context/arguments lasts through return.
 
@@ -14,7 +14,7 @@ Previously direct native frame calls could restart the instruction counter for e
 DoAction block, while the tick route had separate copying logic. Both now use
 [`snapshot_frame_blocks`](../src/standard/movieclip.cpp#L2350). An absent `segments` field selects one legacy `code` value.
 A present field is authoritative: it must refer to a same-context object containing
-at most [`FVM_MOVIECLIP_MAX_FRAME_BLOCKS`](../src/standard/movieclip_constants.h#L23) (65536) indexed slots. Keys must be the dense
+at most [`FVM_MOVIECLIP_MAX_FRAME_BLOCKS`](../src/standard/movieclip_constants.h#L24) (65536) indexed slots. Keys must be the dense
 zero-based sequence 0..N-1; insertion order is irrelevant. An empty table is valid.
 The old placeholder `code` field is not required when `segments` is present.
 Snapshot all code values before entering the first block. A callback replacing or
@@ -50,7 +50,7 @@ the debug cursor and nesting saved at frame entry on every return/exception. It 
 permits real script GC after a callback detaches the source segment object. The
 existing tick native barrier retains its different GC restriction. No host callback
 pointer is serialized; re-register host callbacks on a receiving context. The named
-[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L29) retains the existing 64-activation recursion bound.
+[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L30) retains the existing 64-activation recursion bound.
 This adds no concurrent-context access or new C ABI.
 
 Tests cover direct/private and public native entry, interpreted and actual native
@@ -101,9 +101,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3383](../src/standard/movieclip.cpp#L3383) |
-| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
-| `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
+| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3387](../src/standard/movieclip.cpp#L3387) |
+| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:30](../src/standard/movieclip_constants.h#L30) |
+| `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:24](../src/standard/movieclip_constants.h#L24) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |

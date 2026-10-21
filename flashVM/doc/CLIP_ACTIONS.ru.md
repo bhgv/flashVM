@@ -2,7 +2,7 @@
 
 [English](CLIP_ACTIONS.md). Загрузчик PlaceObject2 теперь сохраняет ClipActions
 экземпляра sprite вместо отказа на всём optional-поле. Код копируется и проверяется
-без исполнения. [fvm_movieclip_advance](../include/flashvm/movieclip.h#L116) доставляет EnterFrame после frame actions
+без исполнения. [fvm_movieclip_advance](../include/flashvm/movieclip.h#L125) доставляет EnterFrame после frame actions
 клипа, перед необязательным onEnterFrame. Остальные события доступны явным C89 API;
 плеер не выбирает и не планирует их автоматически.
 
@@ -26,7 +26,7 @@ marker не выходят за границу placement. Для KeyPress Action
 неявный ActionEnd точно на границе блока. Неподдерживаемый AVM1 остаётся unsupported.
 
 Ограничения одной таблицы: [FVM_SWF_CLIP_ACTION_MAX_RECORDS](../src/swf/clip_action_constants.h#L15) записей,
-[FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES](../src/standard/movieclip_constants.h#L21) байтов actions в записи и
+[FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES](../src/standard/movieclip_constants.h#L22) байтов actions в записи и
 [FVM_SWF_CLIP_ACTION_MAX_BYTES](../src/swf/clip_action_constants.h#L16) байтов actions суммарно. Это границы реализации.
 Повреждённые/слишком большие записи дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); события вне профиля
 версии и ClipActions статической графики — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Отдельное поле clipDepth
@@ -149,9 +149,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
 | `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
-| `FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES` | macro / define | [src/standard/movieclip_constants.h:21](../src/standard/movieclip_constants.h#L21) |
+| `FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES` | macro / define | [src/standard/movieclip_constants.h:22](../src/standard/movieclip_constants.h#L22) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_SWF_CLIP_ACTION_MAX_BYTES` | macro / define | [src/swf/clip_action_constants.h:16](../src/swf/clip_action_constants.h#L16) |

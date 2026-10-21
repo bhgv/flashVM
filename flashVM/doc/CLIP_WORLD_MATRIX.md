@@ -12,7 +12,7 @@ ancestor order, converts each local snapshot to binary32/twips and composes at
 each level. The first local matrix is copied before ancestor multiplication;
 the final scene-local identity composition is retained, including nonfinite
 coefficient propagation. Cyclic/excessive ancestry is bounded by the existing
-[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L111) (1024). Errors preserve the output descriptor.
+[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L112) (1024). Errors preserve the output descriptor.
 A temporary receiver root and native barrier protect old/mutated parent graphs
 through getters; the result contains only copied numbers, no managed edges.
 _lockroot does not shorten physical projection. The explicit query returns this
@@ -98,5 +98,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_clip_world_matrix` | function | [include/flashvm/execution.h:55](../include/flashvm/execution.h#L55) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_matrix_multiply_twips` | function | [include/flashvm/matrix.h:31](../include/flashvm/matrix.h#L31) |
-| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:111](../src/standard/movieclip_constants.h#L111) |
+| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:112](../src/standard/movieclip_constants.h#L112) |
 <!-- source-links:end -->

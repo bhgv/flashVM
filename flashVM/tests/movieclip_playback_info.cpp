@@ -4,6 +4,8 @@
 #undef main
 #include "flashvm/movieclip.h"
 #include "flashvm/gc.h"
+#include "../src/standard/movieclip_state.hpp"
+#include "../src/standard/movieclip_constants.h"
 #include <cstring>
 static void call(FVM_Context *c,FVM_Object *o,const char *name,unsigned target=0)
 {
@@ -25,7 +27,8 @@ int main()
     assert(fvm_movieclip_get_playback_info(c,plain,&info)==FVM_INVALID_ARGUMENT && !std::memcmp(&info,&before,sizeof(info)));
     assert(fvm_movieclip_get_playback_info(c,o,0)==FVM_INVALID_ARGUMENT);
     info.struct_size=0;before=info;assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_INVALID_ARGUMENT && !std::memcmp(&info,&before,sizeof(info)));info.struct_size=sizeof(info);
-    allowance=0;assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK);allowance=-1;
+    unsigned long token=91;
+    allowance=0;assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK && fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==0);allowance=-1;
     assert(info.frame==1 && info.total_frames==4 && info.playing && !info.entered);
     assert(fvm_movieclip_advance(c,o,1)==FVM_OK && fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK && info.frame==1 && info.entered);
     call(c,o,"stop");assert(fvm_movieclip_advance(c,o,2)==FVM_OK && fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK && info.frame==1 && info.entered && !info.playing);
@@ -36,6 +39,27 @@ int main()
     allowance=0;assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK && info.frame==1);allowance=-1;
     FVM_Object *data=o->resource_result.object;FVM_Value old=data->properties["entered"];data->properties["entered"]=fake;before=info;
     assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_INVALID_ARGUMENT && !std::memcmp(&info,&before,sizeof(info)));data->properties["entered"]=old;
+    assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==1);
+    call(c,o,"gotoAndPlay",1);assert(fvm_movieclip_advance(c,o,1)==FVM_OK);
+    assert(fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK && info.frame==1 && info.entered);
+    allowance=0;assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==2);allowance=-1;
+    call(c,o,"nextFrame");assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==3);
+    call(c,o,"prevFrame");assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==4);
+    call(c,o,"play");call(c,o,"stop");assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==4);
+    FVM_Value label,result;assert(fvm_value_string(&label,"missing-label")==FVM_OK);
+    assert(fvm_object_call(c,o,"gotoAndPlay",1,&label,&result)==FVM_NOT_FOUND);
+    assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==4);
+    token=91;assert(fvm_movieclip_get_navigation(foreign,o,&token)==FVM_INVALID_ARGUMENT && token==91);
+    assert(fvm_movieclip_get_navigation(c,o,0)==FVM_INVALID_ARGUMENT);
+    fvm_value_number(&data->properties[FVM_MOVIECLIP_NAVIGATION_KEY],FVM_MOVIECLIP_NAVIGATION_MAX);
+    call(c,o,"gotoAndPlay",1);assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==1);
+    FVM_Value saved=data->properties[FVM_MOVIECLIP_NAVIGATION_KEY];fvm_value_number(&data->properties[FVM_MOVIECLIP_NAVIGATION_KEY],-1);
+    token=91;assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_INVALID_ARGUMENT && token==91);
+    data->properties[FVM_MOVIECLIP_NAVIGATION_KEY]=saved;
+    data->properties.erase(FVM_MOVIECLIP_NAVIGATION_KEY);
+    allowance=0;assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==0);
+    assert(fvm_movieclip_note_navigation(data)==FVM_OUT_OF_MEMORY);
+    assert(fvm_movieclip_get_navigation(c,o,&token)==FVM_OK && token==0);allowance=-1;
     assert(fvm_gc_step(c,0)==FVM_OK && fvm_movieclip_get_playback_info(c,o,&info)==FVM_OK);
     assert(fvm_gc_unpin(c,o)==FVM_OK);fvm_context_destroy(foreign);fvm_context_destroy(c);fvm_runtime_destroy(r);return 0;
 }

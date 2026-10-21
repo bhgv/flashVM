@@ -1,6 +1,7 @@
 /* FlashVM: MovieClip timeline, geometry, display units and stable callback constants. */
 #ifndef FVM_MOVIECLIP_CONSTANTS_H
 #define FVM_MOVIECLIP_CONSTANTS_H       /* Private MovieClip-state guard. */
+#define FVM_MOVIECLIP_NAVIGATION_KEY "host_navigation" /* Private optional explicit-seek token. */
 #define FVM_MOVIECLIP_PLAYBACK_STOPPED 0.0 /* Detached clips stop native timeline playback. */
 #define FVM_MOVIECLIP_DEFAULT_FRAMES 1U /* Empty native MovieClips expose one initial frame. */
 /* UI16 timeline frame count accepted by native construction and frame metadata. */

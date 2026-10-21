@@ -44,6 +44,9 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *, FVM_Object *, unsign
 /* Publish an already-coerced intrinsic scalar; unsupported dimensions/system fields stay gated. */
 FVM_Result fvm_movieclip_set_action_property(FVM_Context *, FVM_Object *, unsigned int,
                                             const FVM_Value &);
+/* Increment optional private navigation token after target validation, before seek publication.
+ * No scripts/callbacks; allocation failure preserves the previous token. Caller retains state. */
+FVM_Result fvm_movieclip_note_navigation(FVM_Object *data);
 /* Apply a semantic timeline command directly, independently from replaceable script methods. */
 FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
                                      const FVM_Value *, int playing);

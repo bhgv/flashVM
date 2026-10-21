@@ -7,11 +7,18 @@
 #include <assert.h>
 #include <string.h>
 static const unsigned char compressed[] = {67,87,83,8,44,0,0,0,120,156,107,96,96,56,193,192,192,80,203,192,32,193,200,224,204,100,16,80,224,194,205,103,199,204,112,140,5,40,42,192,240,193,1,72,1,0,111,18,5,188};
+#ifdef FVM_TEST_PCM_QUEUE
+/* Independent complete PCM root movie, copied to a mutable stack buffer before playback. */
+static const unsigned char root_pcm[] = {70,87,83,8,44,0,0,0,128,0,0,200,0,0,0,125,0,0,24,1,0,67,2,48,80,112,68,11,14,62,3,0,198,4,0,0,0,16,0,240,64,0,0,0};
+#endif
 /* An intentionally invalid diagnostic location proves the buffer path does not open files. */
 int main(int argc, char **argv)
 {
     FVM_DesktopOptions options;
     char buf[sizeof(embedded_movie)];
+#ifdef FVM_TEST_PCM_QUEUE
+    char pcm[sizeof(root_pcm)];
+#endif
     const char *error = 0;
     assert(fvm_desktop_options_init(&options));
     options.mode = argc > 1 && !strcmp(argv[1], "--jit") ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER;
@@ -27,6 +34,12 @@ int main(int argc, char **argv)
     assert(fvm_desktop_run_memory(&options, buf, sizeof(buf), "not-a-file://memory", &error) == 0 && !error);
     assert(!memcmp(buf, embedded_movie, sizeof(buf)));
     assert(fvm_desktop_run_memory(&options, compressed, sizeof(compressed), "not-a-file://compressed", &error) == 0 && !error);
+#ifdef FVM_TEST_PCM_QUEUE
+    assert(SDL_setenv("SDL_AUDIODRIVER","dummy",1)==0);
+    memcpy(pcm,root_pcm,sizeof(pcm));options.mute=0;options.fps=10;
+    assert(fvm_desktop_run_memory(&options,pcm,sizeof(pcm),"not-a-file://pcm-stream",&error)==0 && !error);
+    assert(!memcmp(pcm,root_pcm,sizeof(pcm)));
+#endif
     SDL_Quit();
     return 0;
 }

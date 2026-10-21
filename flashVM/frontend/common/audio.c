@@ -311,6 +311,7 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
     FVM_MovieClipPlaybackInfo info;
     FVM_Result result = FVM_OK;
     int reset;
+    unsigned long navigation = 0;
     if (!audio)
         return FVM_INVALID_ARGUMENT;
     if (!audio->stream_source)
@@ -319,10 +320,14 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
     result = fvm_movieclip_get_playback_info(context, clip, &info);
     if (result != FVM_OK)
         return result;
+    result = fvm_movieclip_get_navigation(context, clip, &navigation);
+    if (result != FVM_OK)
+        return result;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
     reset = audio->stream_selected &&
-            ((!info.entered && (audio->stream_entered || info.frame != audio->stream_selected)) ||
+            (navigation != audio->stream_navigation ||
+             (!info.entered && (audio->stream_entered || info.frame != audio->stream_selected)) ||
              info.frame < audio->stream_selected || info.frame > audio->stream_selected + 1);
     if (reset)
     {
@@ -335,6 +340,7 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
     }
     if (result == FVM_OK)
     {
+        audio->stream_navigation = navigation;
         audio->stream_selected = info.frame;
         audio->stream_entered = info.entered;
         audio->stream_frame = info.entered ? info.frame : 0;

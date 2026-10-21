@@ -1,6 +1,6 @@
 # Native timeline depth snapshots — v0.629
 
-[Русский](TIMELINE_DEPTH_ORDER.ru.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) now actually visits
+[Русский](TIMELINE_DEPTH_ORDER.ru.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) now actually visits
 children in ascending native depth order. Earlier tick documentation promised
 that order, but the copied native hash table iterated in insertion order. This
 revision corrects the traversal and checks pending descendant detachment.
@@ -49,7 +49,7 @@ actual child eligibility query now charges an additional unit. AVM1, parent meth
 nested calls and multiple requested ticks still share the original outer budget.
 A childless single-frame tick remains two units. Zero ticks still does no work.
 
-Each post-handler child table is capped at [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32)
+Each post-handler child table is capped at [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33)
 (65,536 slots), including static artwork and stale links. Oversized tables fail
 before scanning/copying that table. Existing maximum descendant depth and ticks per
 call remain. There is no new total-node cap across a complete multi-tick call.
@@ -140,6 +140,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 <!-- source-links:end -->

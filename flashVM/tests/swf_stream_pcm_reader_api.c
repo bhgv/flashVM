@@ -2,13 +2,21 @@
 #include "flashvm/swf_stream_pcm.h"
 #include "flashvm/swf_stream_convert.h"
 #include "flashvm/swf_stream_output.h"
+#include "flashvm/movieclip.h"
 /* Invalid input must remain callable without initializing a VM or audio device. */
 int main(void)
 {
+    FVM_MovieClipPlaybackInfo playback;
+    unsigned long navigation = 91;
     FVM_SWFStreamConverter converter;
     FVM_SWFStreamPCMReader reader;
     FVM_SWFStreamPCMChunk chunk;
     size_t written = 999;
+    playback.struct_size = sizeof(playback);
+    if (fvm_movieclip_get_playback_info(0, 0, &playback) != FVM_INVALID_ARGUMENT ||
+        fvm_movieclip_get_navigation(0, 0, &navigation) != FVM_INVALID_ARGUMENT || navigation != 91)
+        return 1;
+
     if (fvm_swf_stream_converter_init(&converter, 0, 48000, 2) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_converter_next(0, 1, 0, 0, 0, 0) != FVM_INVALID_ARGUMENT ||
         fvm_swf_stream_converter_seek(0, 0, 0) != FVM_INVALID_ARGUMENT) return 1;

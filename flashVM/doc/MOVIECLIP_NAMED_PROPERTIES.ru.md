@@ -69,7 +69,7 @@ SDL, сеть и кодеки для этого теста не требуютс
 источника возвращает пустую строку; прототип класса — undefined. Чтение не
 создаёт сетевой запрос; `_lockroot` не становится границей поиска источника.
 
-[`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L153) копирует строку. Геттер возвращает заимствованное
+[`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L162) копирует строку. Геттер возвращает заимствованное
 управляемое хранилище по обычным правилам object API. Выгрузка сохраняет адрес,
 отсоединённые потомки удерживают прежний адрес, успешная замена содержимого
 атомарно публикует новый. Ошибка замены сохраняет прежний источник. Сериализация
@@ -111,7 +111,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:153](../include/flashvm/movieclip.h#L153) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:162](../include/flashvm/movieclip.h#L162) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 <!-- source-links:end -->

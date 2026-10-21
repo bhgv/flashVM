@@ -176,14 +176,14 @@ child разрешается относительно каталога child, а
 
 ### C89 API ядра
 
-[fvm_movieclip_set_source](../include/flashvm/movieclip.h#L153) копирует counted location (1..4096, без NUL) в приватный
+[fvm_movieclip_set_source](../include/flashvm/movieclip.h#L162) копирует counted location (1..4096, без NUL) в приватный
 управляемый граф клипа. Требуются same-context clip и живой основной поток;
-script не вызывается. [fvm_movieclip_get_source](../include/flashvm/movieclip.h#L157) читает ближайшую native ancestor
+script не вызывается. [fvm_movieclip_get_source](../include/flashvm/movieclip.h#L166) читает ближайшую native ancestor
 base, возвращая заимствованную строку; NOT_FOUND/ошибки сохраняют out. Удерживайте
 клип через GC. Приватные метаданные входят в обычный граф; callback-код хоста
 и транспортные сеансы не сериализуются.
 
-[fvm_movieclip_replace_swf](../include/flashvm/movieclip.h#L164) импортирует в тот же контекст, сохраняя объект target,
+[fvm_movieclip_replace_swf](../include/flashvm/movieclip.h#L173) импортирует в тот же контекст, сохраняя объект target,
 родительский depth slot, transform/shear и существующие host/script own properties.
 Удаляются только именные bindings прежних display children; прочие сохранённые
 ссылки остаются. Старые children отделяются. Root новой библиотеки указывает на
@@ -194,7 +194,7 @@ GC/teardown; вложенная замена даёт INVALID_ARGUMENT. Стро
 отклоняет неподдержанные теги и root streaming sound дочернего фильма. Успех
 запрашивает перерисовку.
 
-[fvm_object_load_variables](../include/flashvm/movieclip.h#L205) принимает same-context target и counted form до 64 MiB.
+[fvm_object_load_variables](../include/flashvm/movieclip.h#L214) принимает same-context target и counted form до 64 MiB.
 Сначала декодируются все percent escapes/plus/пробелы и WTF-8, до 65536 полей, включая игнорируемые пустые сегменты. NUL в декодированных ключах/значениях остаётся counted. Повторные
 ключи присваиваются по порядку, последний выигрывает; без equals значение пустое,
 пустой ключ игнорируется. Ошибка декодирования не меняет свойства. Публичные
@@ -259,10 +259,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:157](../include/flashvm/movieclip.h#L157) |
-| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:164](../include/flashvm/movieclip.h#L164) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:153](../include/flashvm/movieclip.h#L153) |
-| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:205](../include/flashvm/movieclip.h#L205) |
+| `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:166](../include/flashvm/movieclip.h#L166) |
+| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:173](../include/flashvm/movieclip.h#L173) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:162](../include/flashvm/movieclip.h#L162) |
+| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:214](../include/flashvm/movieclip.h#L214) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 <!-- source-links:end -->

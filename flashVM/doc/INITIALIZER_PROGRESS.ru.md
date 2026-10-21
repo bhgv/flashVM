@@ -1,8 +1,8 @@
 # Прогресс и бюджет инициализации — v0.632
 
 Сохраняется отложенная политика корневого DoInitAction SWF6–8 из
-[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L93) проверяет/сохраняет
-код без исполнения, а [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) запускает инициализаторы библиотеки
+[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L102) проверяет/сохраняет
+код без исполнения, а [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) запускает инициализаторы библиотеки
 в исходном корне перед сценой/кадром, в том числе при первом advance общего потомка.
 ActionCall по-прежнему исполняет только выбранные действия кадра и не запускает
 инициализацию. Полная Player preload/sprite-ID семантика остаётся открытой.
@@ -13,7 +13,7 @@ ActionCall по-прежнему исполняет только выбранн�
 суффикс; завершённая таблица не требует единиц копирования/входа и памяти для снимка кода.
 Обычные расходы node/optional-handler и следующая работа сцены/кадра сохраняются.
 
-Вся таблица ограничена отдельным [`FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS`](../src/standard/movieclip_constants.h#L27) (65536).
+Вся таблица ограничена отдельным [`FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS`](../src/standard/movieclip_constants.h#L28) (65536).
 Библиотека, таблица и исходный корень должны принадлежать контексту; эти edges
 проверяются и при завершённом cursor. Для зафиксированного размера N и cursor P < N
 до первого исполнения копируются ordinal P..N-1. Дырка в оставшемся диапазоне даёт
@@ -97,9 +97,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
-| `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
+| `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:28](../src/standard/movieclip_constants.h#L28) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

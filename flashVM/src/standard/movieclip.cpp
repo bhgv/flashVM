@@ -1255,6 +1255,10 @@ FVM_Result seek(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
             desired = total;
     }
 
+    /* Publish explicit navigation even when a selected/entered frame number stays identical. */
+    r = fvm_movieclip_note_navigation(data);
+    if (r != FVM_OK)
+        return r;
     /* Computation / Вычисление и обновление состояния. */
     data->properties["frame"] = number(desired);
     data->properties["playing"] = number(play ? 1 : 0);

@@ -276,10 +276,10 @@ exactly, including empty source markers. No audio device, worker or clock starts
 | [`fvm_swf_stream_output_next_frame`](../../../include/flashvm/swf_stream_output.h#L57) | Query next pending/indexed source frame without callbacks or decoding; distinguish future-frame hold from FIFO pressure. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_swf_stream_output_pump_until`](../../../include/flashvm/swf_stream_output.h#L64) | Authorize only actual root frames; future data stays untouched, no implicit backward reset. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install MovieClip methods on the owner before importing the controlled timeline. Managed prototypes remain context-owned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_movieclip_load_swf_ex`](../../../include/flashvm/movieclip.h#L142) | Import exact same source with explicit stream omission; native snapshot/FIFO handle PCM separately. Returned clip is borrowed until pinned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_movieclip_load_swf_ex`](../../../include/flashvm/movieclip.h#L151) | Import exact same source with explicit stream omission; native snapshot/FIFO handle PCM separately. Returned clip is borrowed until pinned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain managed root/library through explicit owner GC safe points; cleanup owns one unpin. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | Release only a successful clip pin before context destruction, after producer quiescence. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L116) | Advance actual owner timeline; stopped ticks do not authorize later PCM. Never called from backend/worker callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L125) | Advance actual owner timeline; stopped ticks do not authorize later PCM. Never called from backend/worker callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read actual _currentframe on owner, validate copied scalar and authorize native output; may enter object semantics, never worker-safe VM access. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Controlled stop/play calls demonstrate explicit MovieClip pause/resume outside audio callbacks. Effects are not rolled back on later failure. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_step`](../../../include/flashvm/gc.h#L90) | Owner safe point between completed ticks; pinned root survives, no callback/worker GC. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
@@ -328,8 +328,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../../../include/flashvm/movieclip.h#L116) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:142](../../../include/flashvm/movieclip.h#L142) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../../../include/flashvm/movieclip.h#L125) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:151](../../../include/flashvm/movieclip.h#L151) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |

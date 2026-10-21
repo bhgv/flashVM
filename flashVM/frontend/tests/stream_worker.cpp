@@ -45,6 +45,11 @@ int main()
     assert(fvm_desktop_audio_pause(&audio,1)==FVM_OK && fvm_movieclip_advance(c,clip,1)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK);
     SDL_Delay(20);assert(observe(&audio).submitted_frames==0); /* Host/session pause wins over play. */
     assert(fvm_desktop_audio_tick(&audio)==FVM_OK);wait_frames(&audio,4800);
+    /* Same-frame seek enters entirely between observations; token still forces queue reset. */
+    assert(fvm_desktop_audio_pause(&audio,1)==FVM_OK);
+    method(c,clip,"gotoAndPlay",1);assert(fvm_movieclip_advance(c,clip,1)==FVM_OK);
+    assert(fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK && observe(&audio).submitted_frames==0);
+    assert(fvm_desktop_audio_tick(&audio)==FVM_OK);wait_frames(&audio,4800);
     assert(fvm_desktop_audio_clear(c,&audio)==FVM_OK && !audio.thread && !audio.device && !audio.stream_source);
     assert(fvm_gc_unpin(c,clip)==FVM_OK);fvm_context_destroy(c);fvm_runtime_destroy(runtime);
  }

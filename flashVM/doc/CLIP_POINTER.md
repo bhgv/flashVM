@@ -10,7 +10,7 @@ so a getter changing pointer state cannot mix two different input positions.
 The clip is rooted and the existing geometry native barrier blocks collection
 through transform getters. Allocation failures and script exceptions restore
 root/native state. The physical ancestry walk now uses the separately documented
-[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L111) macro instead of a numeric literal.
+[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L112) macro instead of a numeric literal.
 
 MovieClip._xmouse and _ymouse use separate one-function adapters. The prototype
 returns undefined; instances read the shared query. Stable callback IDs 1008 and
@@ -90,5 +90,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_exec_clip_pointer` | function | [include/flashvm/execution.h:286](../include/flashvm/execution.h#L286) |
-| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:111](../src/standard/movieclip_constants.h#L111) |
+| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:112](../src/standard/movieclip_constants.h#L112) |
 <!-- source-links:end -->

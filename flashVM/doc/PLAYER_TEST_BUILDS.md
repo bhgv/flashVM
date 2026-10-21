@@ -53,7 +53,7 @@ S16 stereo and ADPCM tones are supplied, with no external copyrighted media.
 
 The C89 host [player.c](../frontend/common/player.c) creates a pinned object bound
 as global HostInput and copies [SDL state](../frontend/common/sdl_window.c) into
-its scalar fields immediately before each [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116). All VM/input/
+its scalar fields immediately before each [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125). All VM/input/
 render calls stay serialized on the SDL application thread. Managed root/input
 objects are pinned, then unpinned before context destruction. Native event queues
 and PCM ownership remain outside GC.
@@ -185,7 +185,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |

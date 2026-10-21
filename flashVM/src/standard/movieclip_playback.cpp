@@ -4,6 +4,7 @@
 #include "movieclip_storage.hpp"
 #include <cstring>
 #include <cmath>
+#include <new>
 /* Compare stored keys directly: no temporary owning string or allocation in an observation. */
 static bool playback_integer(FVM_Object *data, const char *name, unsigned int limit,
                              unsigned int &out)
@@ -49,4 +50,63 @@ extern "C" FVM_Result fvm_movieclip_get_playback_info(FVM_Context *c, FVM_Object
     next.entered = (int)entered;
     *out = next;
     return FVM_OK;
+}
+
+/* Locate the optional legacy-compatible token without constructing a temporary owning key. */
+static FVM_Result playback_navigation(FVM_Object *data, unsigned long &out)
+{
+    typedef fvm_movieclip_storage::Properties Properties;
+    for (Properties::const_iterator i = data->properties.begin(); i != data->properties.end(); ++i)
+    {
+        if (i->first.size() != sizeof(FVM_MOVIECLIP_NAVIGATION_KEY) - 1 ||
+            std::memcmp(i->first.data(), FVM_MOVIECLIP_NAVIGATION_KEY, i->first.size()))
+            continue;
+        const FVM_Value &value = i->second;
+        if (value.type != FVM_VALUE_NUMBER ||
+            !(value.number >= 0 && value.number <= FVM_MOVIECLIP_NAVIGATION_MAX) ||
+            value.number != std::floor(value.number))
+            return FVM_INVALID_ARGUMENT;
+        out = (unsigned long)value.number;
+        return FVM_OK;
+    }
+    out = 0;
+    return FVM_OK;
+}
+/* [GC:] Publish only a numeric private value; the existing enclosing native seek barrier retains
+ * data. */
+FVM_Result fvm_movieclip_note_navigation(FVM_Object *data)
+{
+    unsigned long previous = 0;
+    FVM_Result result = playback_navigation(data, previous);
+    if (result != FVM_OK)
+        return result;
+    try
+    {
+        data->properties[FVM_MOVIECLIP_NAVIGATION_KEY] = fvm_movieclip_storage::number(
+            previous == FVM_MOVIECLIP_NAVIGATION_MAX ? 1 : previous + 1);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+/* [GC:] Validate native ownership/lifecycle through the scalar query, then copy no managed edges.
+ */
+extern "C" FVM_Result fvm_movieclip_get_navigation(FVM_Context *context, FVM_Object *clip,
+                                                   unsigned long *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_MovieClipPlaybackInfo info;
+    info.struct_size = sizeof(info);
+    FVM_Result result = fvm_movieclip_get_playback_info(context, clip, &info);
+    if (result != FVM_OK)
+        return result;
+    FVM_Object *data = clip->resource_result.object;
+    unsigned long token = 0;
+    result = playback_navigation(data, token);
+    if (result == FVM_OK)
+        *out = token;
+    return result;
 }

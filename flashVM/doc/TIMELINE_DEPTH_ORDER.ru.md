@@ -1,6 +1,6 @@
 # Снимки глубин native timeline — v0.629
 
-[English](TIMELINE_DEPTH_ORDER.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) теперь действительно
+[English](TIMELINE_DEPTH_ORDER.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) теперь действительно
 обходит детей по возрастанию native depth. Прежняя документация tick обещала это,
 но копия hash-таблицы обходилась в порядке вставки. Исправлен порядок и проверка
 эффективного удаления ещё не посещённых потомков.
@@ -47,7 +47,7 @@ insertion sort не добавлены. Каждый sift comparison block и ex
 calls и несколько ticks по-прежнему делят outer budget. Childless single-frame tick
 остаётся двухъединичным; zero ticks не делает работы.
 
-Каждая post-handler таблица ограничена [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32)
+Каждая post-handler таблица ограничена [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33)
 (65 536 slots), включая static artwork и stale links. Oversized отвергается до
 сканирования/копирования таблицы. Прежние maximum depth и ticks per call сохраняются;
 нового общего node cap на весь multi-tick call нет. Removal query использует свой
@@ -135,6 +135,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 <!-- source-links:end -->

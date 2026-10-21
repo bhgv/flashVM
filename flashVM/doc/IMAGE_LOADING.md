@@ -32,13 +32,13 @@ arguments return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); all
 
 Encoded bytes and each decoded RGBA payload are bounded by [`FVM_SWF_DEFAULT_LIMIT`](../include/flashvm/swf.h#L15);
 codec dimensions are at most 2880 × 2880. Source names are nonempty counted text,
-no embedded NUL, at most [`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L145). Temporary decode/vector/bitmap
+no embedded NUL, at most [`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L154). Temporary decode/vector/bitmap
 copies can make peak memory larger than one payload; this is not a process memory
 quota. C decoder allocations are released on C++ allocation failure as well.
 
-[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L179) selects FWS/CWS versus supported image bytes and
+[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L188) selects FWS/CWS versus supported image bytes and
 uses the corresponding atomic operation. Invalid SWF never falls back to image
-decoding. The existing [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L164) remains SWF-only. These additive
+decoding. The existing [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L173) remains SWF-only. These additive
 functions do not change any existing public descriptor or callback structure.
 Desktop child delivery is described below.
 
@@ -117,10 +117,10 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:145](../include/flashvm/movieclip.h#L145) |
-| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:175](../include/flashvm/movieclip.h#L175) |
-| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
-| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:164](../include/flashvm/movieclip.h#L164) |
+| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:154](../include/flashvm/movieclip.h#L154) |
+| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:184](../include/flashvm/movieclip.h#L184) |
+| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:188](../include/flashvm/movieclip.h#L188) |
+| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:173](../include/flashvm/movieclip.h#L173) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

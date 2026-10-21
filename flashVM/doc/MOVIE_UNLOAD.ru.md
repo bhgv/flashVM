@@ -33,7 +33,7 @@ lockroot и сохранённые обработчики клипа. Новое
 семантики `_lockroot`. Все указатели обязательны; оба экземпляра принадлежат
 контексту. Живой экземпляр включает себя. Отсоединённый узел на выбранном пути
 или завершение пути до предка дают ноль. Успех записывает ноль либо единицу.
-Ошибки состояния, выделения памяти и превышение [`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L183)
+Ошибки состояния, выделения памяти и превышение [`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L192)
 не изменяют выход. Ограничение также останавливает циклы. Поток владельца,
 вне GC/уничтожения; оба объекта удерживаются вызывающей стороной до возврата.
 Это моментальная проверка, а не подписка на изменения.
@@ -171,9 +171,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:188](../include/flashvm/movieclip.h#L188) |
-| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:183](../include/flashvm/movieclip.h#L183) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:198](../include/flashvm/movieclip.h#L198) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:197](../include/flashvm/movieclip.h#L197) |
+| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:192](../include/flashvm/movieclip.h#L192) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:207](../include/flashvm/movieclip.h#L207) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

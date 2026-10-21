@@ -1,6 +1,6 @@
 # Ticks MovieClip и необязательные обработчики — v0.624
 
-[English](MOVIECLIP_TICKS.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L116) синхронно исполняет ticks в потоке
+[English](MOVIECLIP_TICKS.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L125) синхронно исполняет ticks в потоке
 владельца контекста: начальные блоки, переход кадра, действия, onEnterFrame и обход
 снимка детей по глубине. Остановленный и однокадровый клип также получает обработчик.
 Здесь нет poll таймеров, растеризации или показа устройства; отдельный контракт
@@ -25,7 +25,7 @@
 или отдельного action segment. AVM1-инструкции сохраняют свой учёт. Записи детей
 оплачиваются до выделения снимка. Однокадровый клип без scripts и детей расходует
 две единицы на tick, даже без обработчика. Ноль ticks ничего не исполняет.
-Пределы [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L39) и [FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L31)
+Пределы [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L40) и [FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L32)
 ограничивают размер запроса и глубину; превышение даёт [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
 
 Это границы учёта и кооперативной остановки, а не real-time preemption. Внутренняя
@@ -113,9 +113,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:31](../src/standard/movieclip_constants.h#L31) |
-| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:39](../src/standard/movieclip_constants.h#L39) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
+| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:40](../src/standard/movieclip_constants.h#L40) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1368](../src/capi/value_c.cpp#L1368) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

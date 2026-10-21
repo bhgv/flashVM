@@ -1,13 +1,13 @@
 # Снимки управляющих записей сцены — v0.634
 
-[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L116) размещение символа SWF
+[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) размещение символа SWF
 может вызвать зарегистрированный конструктор. Раньше он мог заменить будущий
 элемент списка, изменить его скалярные поля, очистить список или добавить новое
 размещение прямо в текущий обход. Теперь значимые поля управляющих записей кадра
 копируются до применения первого размещения.
 
 Список кадра — плотная последовательность индексов от нуля, независимо от порядка
-вставки, не более [`FVM_MOVIECLIP_MAX_SCENE_CONTROLS`](../src/standard/movieclip_constants.h#L25) элементов. Пропуск, null,
+вставки, не более [`FVM_MOVIECLIP_MAX_SCENE_CONTROLS`](../src/standard/movieclip_constants.h#L26) элементов. Пропуск, null,
 значение не Object или ссылка на чужой контекст дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45)
 до применения любой записи этого локального списка. Семантическая ошибка внутри
 структурно допустимой записи может возникнуть после уже применённых записей.
@@ -57,7 +57,7 @@ matrix/color/clip_actions этот поверхностный снимок не 
 старого child и перед применением каждого итогового размещения/обновления.
 Для F кадров, K controls, M старых children и D итоговых элементов стоимость равна
 F+2K+2M+D без вложенных конструкторов и прочей работы исполнения. Старый список
-ограничен [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32), копирование предварительно оплачено.
+ограничен [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33), копирование предварительно оплачено.
 Сортировка глубин в эту версию не входит. Протокольные флаги, цвета и идентификаторы
 именованы в [scene_constants.h](../src/standard/scene_constants.h) отдельно от лимитов обхода.
 
@@ -77,8 +77,8 @@ children/пропусков/вложенности/насыщения. Два н
 
 ## Граф сцены и старые глубины (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2898) проверяет владельца private state/таблицы и лимит
-[`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32) до нормализации старых глубин. Выходной указатель
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2902) проверяет владельца private state/таблицы и лимит
+[`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33) до нормализации старых глубин. Выходной указатель
 публикуется только при успехе. Непустая ненормализованная таблица предварительно
 расходует единицу на child; исчерпание бюджета сохраняет прежние индексы и отсутствие
 bias. Существующая миграция готовит новую map до публикации bias и swap slots.
@@ -130,9 +130,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
-| `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2898](../src/standard/movieclip.cpp#L2898) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
+| `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2902](../src/standard/movieclip.cpp#L2902) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

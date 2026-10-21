@@ -82,6 +82,15 @@ extern "C"
      * This is an observation, not a navigation event log or source-content identity token. */
     FVM_API FVM_Result fvm_movieclip_get_playback_info(FVM_Context *, FVM_Object *,
                                                         FVM_MovieClipPlaybackInfo *);
+#define FVM_MOVIECLIP_NAVIGATION_MAX 4294967295UL /* Portable cyclic navigation token bound. */
+    /* Copy the intrinsic explicit-navigation token without allocation/getters/VM advancement.
+     * Initially/legacy absent=0; successful goto/nextFrame/prevFrame selects increment it, even
+     * for the same frame, wrapping MAX to 1. Ordinary play/stop/advance do not increment it.
+     * Same owner/context/retention/GC/error-output rules as get_playback_info. No pointers escape.
+     * Compare equality only for the same retained instance/content; this is not an event count,
+     * ordered clock or identity across reload/transfer. An OOM after token publication may leave
+     * a changed token before later frame fields commit, matching partial native seek effects. */
+    FVM_API FVM_Result fvm_movieclip_get_navigation(FVM_Context *, FVM_Object *, unsigned long *);
     /* Create movieclip. */
     FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
                                             FVM_Object **);

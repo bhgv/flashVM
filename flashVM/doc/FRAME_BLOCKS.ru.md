@@ -6,7 +6,7 @@
 селектор приводится к Uint32, остальные — к строке по правилам AVM1. Counted-путь
 `clip:frame` разрешается до выбора действий. Отсутствующий target/кадр — no-op;
 неподдерживаемая slash-only форма даёт [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Внутренний
-[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3383) получает уже выбранный клип и число/строку.
+[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3387) получает уже выбранный клип и число/строку.
 Оба пути не перемещают playhead, не применяют scene controls, не вызывают onEnterFrame,
 не опрашивают таймеры и не двигают детей. Контекст и аргументы сохраняются до возврата.
 
@@ -14,7 +14,7 @@
 DoAction, а tick имел собственный механизм копирования. Теперь оба используют
 [`snapshot_frame_blocks`](../src/standard/movieclip.cpp#L2350). При отсутствии `segments` выбирается одно значение `code`.
 Если поле присутствует, оно является основным и должно указывать на объект того же
-контекста с максимум [`FVM_MOVIECLIP_MAX_FRAME_BLOCKS`](../src/standard/movieclip_constants.h#L23) (65536) индексированными слотами.
+контекста с максимум [`FVM_MOVIECLIP_MAX_FRAME_BLOCKS`](../src/standard/movieclip_constants.h#L24) (65536) индексированными слотами.
 Ключи обязаны составлять плотную последовательность 0..N-1; порядок добавления не
 влияет на исполнение. Пустой список допустим. Старое placeholder-поле `code` при
 наличии `segments` больше не требуется. Все значения копируются до первого блока:
@@ -51,7 +51,7 @@ debug cursor и вложенность, сохранённые на входе �
 реальный script GC после удаления исходной таблицы callback-ом. У tick сохраняется
 другое ограничение существующего native barrier. Указатели host callbacks не передаются
 при сериализации; в получающем контексте их регистрируют заново.
-[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L29) именует прежнюю границу рекурсии 64 activation.
+[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L30) именует прежнюю границу рекурсии 64 activation.
 Конкурентный доступ к контексту и новый C ABI не добавляются.
 
 Проверки охватывают private/public native входы, интерпретатор, настоящий native JIT
@@ -95,9 +95,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3383](../src/standard/movieclip.cpp#L3383) |
-| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
-| `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
+| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3387](../src/standard/movieclip.cpp#L3387) |
+| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:30](../src/standard/movieclip_constants.h#L30) |
+| `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:24](../src/standard/movieclip_constants.h#L24) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |

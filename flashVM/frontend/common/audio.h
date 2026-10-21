@@ -24,7 +24,8 @@ typedef struct FVM_DesktopAudio
     short stream_pcm[FVM_DESKTOP_AUDIO_BLOCK * FVM_DESKTOP_AUDIO_CHANNELS]; /* Owned retry bytes. */
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
-    int stream_entered;           /* Prior entry flag, used to detect pending navigation. */
+    unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
+    int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
     int stream_movie_paused;  /* Native clip stop flag, independent of foreground/session pause. */
     int stream_cancelled;     /* StopSounds holds this stream until a detected navigation reset. */
     FVM_SWFSoundMixer *mixer; /* Owned native voices; every access is serialized by mutex. */
@@ -57,7 +58,7 @@ extern "C"
      * propagate. */
     FVM_Result fvm_desktop_audio_validate(FVM_Context *);
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
-     * Pending/backward/skipped navigation clears old FIFO and resets phase; repeated observations
+     * Changed navigation token or pending/backward/skipped frame clears old FIFO and resets phase; repeated observations
      * do not rewind. No VM pointer reaches worker. Host pause remains independent. */
     FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Acquire native ownership for root events or one supported PCM stream; never both. */
