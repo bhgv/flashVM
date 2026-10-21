@@ -12,9 +12,9 @@ import tempfile
 
 def main():
     tutorial = pathlib.Path(__file__).resolve().parents[1]/'examples/multimedia/swf_stream'
-    source = (tutorial/'main.c').read_text()
+    source = (tutorial/'main.c').read_text()+(tutorial/'queue.inc').read_text()
     manual = (tutorial/'README.md').read_text()
-    for path in [tutorial/'main.c',tutorial/'example_constants.h']:
+    for path in [tutorial/'main.c',tutorial/'example_constants.h',tutorial/'queue.inc']:
         for line,text in enumerate(path.read_text().splitlines(),1):
             assert not text.strip() or '/*' in text or '*/' in text,(path,line)
     assert 'assert(' not in source
@@ -52,6 +52,8 @@ def main():
                 numerator = source[left][channel]*(48000-phase)+source[right][channel]*phase
                 values.append((-1 if numerator<0 else 1)*(abs(numerator)//48000))
         assert output.read_bytes() == struct.pack('=8h',*values)
+        queued = subprocess.run([executable,str(output),'--queue'],cwd=directory,check=True,stdout=subprocess.PIPE,universal_newlines=True)
+        assert queued.stdout == converted.stdout and output.read_bytes() == struct.pack('=8h',*values)
         # Restore native-rate output before its independent raw FFmpeg comparison.
         subprocess.run([executable,str(output),'--cursor'],cwd=directory,check=True,stdout=subprocess.PIPE)
         if '--ffmpeg' in sys.argv[2:]:
@@ -74,6 +76,8 @@ def main():
         assert result.returncode and not missing.exists() and not missing.parent.exists()
         result = subprocess.run([executable, str(missing), '--convert'], cwd=directory,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert result.returncode and not missing.exists() and not missing.parent.exists()
+        result = subprocess.run([executable,str(missing),'--queue'],cwd=directory,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert result.returncode and not missing.exists() and not missing.parent.exists()
     print('PASS streaming tutorial: exact PCM, frame gap, empty block, replacement and native error cleanup')
     return 0

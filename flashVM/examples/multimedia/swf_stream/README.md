@@ -243,6 +243,34 @@ anti-alias filter. [Full EN contract](../../../doc/STREAM_PCM_CONVERSION.md).
 ./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --convert
 ```
 
+| API | Queue ownership / Владение очередью |
+| --- | --- |
+| [`fvm_swf_stream_output_init`](../../../include/flashvm/swf_stream_output.h#L44) | Borrow converter, retry buffer and empty native FIFO; copy backend, pause on success, no allocation. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pump`](../../../include/flashvm/swf_stream_output.h#L53) | Prepare/retry one block; all-or-none FIFO acceptance, no file writes inside callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_info`](../../../include/flashvm/swf_stream_output.h#L59) | Observe FIFO backlog and copy source metadata/dequeue clock; EOF is separate from drain. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pause`](../../../include/flashvm/swf_stream_output.h#L55) | Explicitly resume/stop this host's consumer without clearing or priming data. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+
+## Bounded FIFO / Ограниченная FIFO
+
+`OUTPUT.pcm --queue` uses [queue.inc](queue.inc): a two-frame caller-owned FIFO,
+all-or-none native writes and an explicit serial file consumer. Conversion and
+retry state never perform partial file writes; the consumer aborts on a file error.
+All native objects outlive source VM teardown and remain owned until quiescence.
+EOF is separate from draining accepted data. The file/report match `--convert`
+exactly, including empty source markers. No audio device, worker or clock starts.
+[EN contract](../../../doc/STREAM_PCM_OUTPUT.md).
+
+`OUTPUT.pcm --queue` использует native FIFO на два frames: backend write атомарно
+копирует данные, отдельный host consumer пишет файл. Частичная ошибка файла
+прерывает экспорт, а не повторяется producer. Source VM уже уничтожена; native
+объекты живут до quiescence. EOF не заменяет drain; файл/отчёт совпадают с
+`--convert`, включая пустые markers. Audio device/thread/clock не запускаются.
+[RU контракт](../../../doc/STREAM_PCM_OUTPUT.ru.md).
+
+```sh
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --queue
+```
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -264,6 +292,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:47](../../../include/flashvm/swf_stream_convert.h#L47) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:58](../../../include/flashvm/swf_stream_convert.h#L58) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:59](../../../include/flashvm/swf_stream_output.h#L59) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../../../include/flashvm/swf_stream_output.h#L44) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:55](../../../include/flashvm/swf_stream_output.h#L55) |
+| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:53](../../../include/flashvm/swf_stream_output.h#L53) |
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |

@@ -25,7 +25,7 @@ int main()
     backend.userdata=&count;backend.write=queue_write;backend.queued=queue_count;backend.pause=queue_pause;backend.clear=queue_clear;
     FVM_SWFStreamOutput output;assert(fvm_swf_stream_output_init(&output,&converter,&backend,pcm,2,2,2)==FVM_OK);
     assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==2 && pcm[0]==32512 && pcm[1]==32512);
-    count=0;assert(fvm_swf_stream_output_pause(&output,0)==FVM_OK);
+    assert(fvm_swf_stream_output_pause(&output,0)==FVM_OK);count=0;
     FVM_SWFStreamOutputInfo info;info.struct_size=sizeof(info);
     assert(fvm_swf_stream_output_info(&output,&info)==FVM_OK && info.played_frames==2);
     assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_NOT_FOUND && output.info.eof);

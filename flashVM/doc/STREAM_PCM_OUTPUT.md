@@ -70,6 +70,36 @@ empty/EOF markers, seek/clear failure and pending cancellation. Allocation injec
 forbids new allocation after source VM/runtime teardown. A model backend proves
 these contracts; it is not audible-device or full player/platform acceptance.
 
+## Executable native FIFO/file adapter (v0.754)
+
+The [C89 swf_stream tutorial](../examples/multimedia/swf_stream/README.md)
+adds `OUTPUT.pcm --queue`. The annotated [queue.inc](../examples/multimedia/swf_stream/queue.inc)
+is part of that executable, not a sketch. It binds the prepared 48000 Hz stereo
+converter to a two-frame caller-owned FIFO. Backend write only copies into native
+storage, atomically; it never writes the file. Once full, or at source EOF, the
+serial host consumer drains the FIFO through actual fwrite. A file failure aborts
+without pretending the producer can retry a partially written external file.
+
+The source VM/runtime have already been destroyed; native snapshot, retry storage,
+FIFO and callback userdata remain owned until producer/consumer quiescence. Empty
+blocks remain visible in the source report. EOF plus a nonempty FIFO is not treated
+as completion: final bytes must drain before pause and file close. Output and report
+match `--convert` exactly (four stereo frames, sixteen raw native-endian bytes).
+The independent integer oracle checks all bytes; failed open/cleanup is tested.
+
+This example starts no audio device, thread or socket. It demonstrates a real
+bounded native FIFO and actual file consumption, not audible output, real-time
+queue scheduling, a DAC clock or SWF timeline/A/V synchronization.
+
+```sh
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --queue
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+Validation at v0.754: 75 selected native regression checks and 14 shared-host checks pass. New output/converter/reader/snapshot paths, worker contracts and all five export modes pass ASan/UBSan; allocation-injection contracts pass natively. Leak detection is disabled by host restrictions; whole-VM instrumentation is not claimed. New C++98 implementations and C89 consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; no foreign execution or full cross-built player/device acceptance. All nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

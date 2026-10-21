@@ -67,8 +67,20 @@ int main()
     queue.fail_clear=0;assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_OK && output.info.submitted_frames==0 && !output.info.eof && converter.first==0);
     size_t clears=queue.clears;assert(fvm_swf_stream_output_seek(&output,99,0)==FVM_INVALID_ARGUMENT && queue.clears==clears);
     queue.fail=1;assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_ERROR && output.info.pending_frames==2);
+    queue.fail_clear=1;position=converter;std::memcpy(retry,pcm,sizeof(retry));
+    assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_ERROR && output.info.pending_frames==2 && output.info.paused);
+    assert(!std::memcmp(&position,&converter,sizeof(position)) && !std::memcmp(retry,pcm,sizeof(retry)));
+    queue.fail_clear=0;
     assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_OK && !output.info.pending_frames);
     queue.fail=0;assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==2);
+    assert(fvm_swf_stream_output_seek(&output,0,0)==FVM_OK);
+    assert(fvm_swf_stream_output_init(&output,&converter,&backend,pcm,4,2,4)==FVM_OK);
+    assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==2);
+    assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && accepted==1);
+    assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_OK && !accepted);
+    assert(fvm_swf_stream_output_pump(&output,&accepted)==FVM_NOT_FOUND && output.info.eof);
+    assert(fvm_swf_stream_output_info(&output,&info)==FVM_OK && info.eof && info.queued_frames==3 && info.played_frames==0);
+    assert(fvm_swf_stream_output_pause(&output,0)==FVM_OK);queue.count=0;assert(fvm_swf_stream_output_info(&output,&info)==FVM_OK && info.played_frames==3);
     fvm_swf_stream_sound_snapshot_close(snapshot);
     return 0;
 }

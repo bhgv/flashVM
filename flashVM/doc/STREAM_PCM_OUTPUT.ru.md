@@ -70,6 +70,35 @@ seek/clear failure и отмену pending. Allocation injection запреща�
 выделения после уничтожения source VM/runtime. Model backend проверяет контракт,
 не слышимое устройство или полную player/platform приёмку.
 
+## Исполняемый native FIFO/file адаптер (v0.754)
+
+[C89 swf_stream](../examples/multimedia/swf_stream/README.md) добавляет
+`OUTPUT.pcm --queue`. Прокомментированный [queue.inc](../examples/multimedia/swf_stream/queue.inc)
+входит в executable, это не эскиз. Подготовленный converter 48000 Hz stereo
+привязан к собственной FIFO на два frames. Backend write атомарно копирует лишь
+в native storage, не пишет файл. При заполнении или source EOF последовательный
+host consumer выводит FIFO через настоящий fwrite. Ошибка файла прерывает экспорт:
+producer не получает ложной возможности повторить частично записанный файл.
+
+Source VM/runtime уже уничтожены. Хост владеет snapshot/retry storage/FIFO/userdata
+до quiescence producer/consumer. Пустые блоки видны в отчёте. EOF с непустой FIFO
+не означает завершение: последние байты выводятся до pause/close. Файл и отчёт
+совпадают с `--convert`: четыре stereo frames, шестнадцать raw native-endian байт.
+Независимый integer oracle сравнивает все байты; ошибка открытия/cleanup проверяется.
+
+Пример не запускает audio device, thread или socket. Это настоящая ограниченная
+native FIFO и file consumption, не слышимый звук, real-time queue scheduling,
+DAC clock или SWF timeline/A/V synchronization.
+
+```sh
+cmake -S flashVM -B build-stream -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/minimal.defs"
+cmake --build build-stream --target flashvm_examples_multimedia_swf_stream_main
+./build-stream/flashvm_examples_multimedia_swf_stream_main OUTPUT.pcm --queue
+python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examples_multimedia_swf_stream_main
+```
+
+Проверка v0.754: прошли 75 выбранных native регрессионных проверок и 14 shared-host. Новые output/converter/reader/snapshot пути, worker контракты и все пять export режимов прошли ASan/UBSan; allocation injection — native. Leak detection отключён ограничениями хоста, вся VM не инструментирована. Новые C++98 implementations и C89 consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution или полная player/device приёмка не заявляются. Все девять стадий открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

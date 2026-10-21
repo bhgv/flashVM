@@ -86,6 +86,7 @@ static FVM_Result export_cursor(const FVM_SWFStreamSoundSnapshot *snapshot, Stre
     } /* No silence is synthesized for absent movie-frame blocks. */
     return stop_pcm(host); /* Flush/close the actual file before successful return. */
 } /* No reader destructor exists; caller closes snapshot after this function returns. */
+#include "queue.inc" /* Owned native FIFO and real file consumer for explicit --queue mode. */
 /* Independent FWS4 fixture: one Head2, variable PCM blocks, a frame gap and an empty block. */
 static const unsigned char movie[] = /* Keep the wire input reproducible without an encoder. */
 { /* Begin one exact 42-byte root movie. */
@@ -111,14 +112,15 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     StreamFile host; /* Keep output userdata alive through context destruction. */
     short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Bound caller-owned native-S16 output. */
     size_t streams, blocks, ordinal, first, frames, written, total = 0; /* Distinguish ordinals, sample frames and channel values. */
-    int convert = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--convert"); /* Explicit 48000 Hz stereo native export. */
+    int queue_mode = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--queue"); /* Native FIFO before irreversible file output. */
+    int convert = queue_mode || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--convert")); /* Explicit 48000 Hz stereo native export. */
     int cursor = convert || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--cursor")); /* Direct native export after original VM destruction. */
     int prepared = cursor || (argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--prepared")); /* Select explicit native indexing before any side effects. */
     int exit_code = 1; /* Report success only after actual output stopping. */
     memset(&host, 0, sizeof(host)); /* Make partial-setup and failed-write cleanup safe. */
     if (argc != TUTORIAL_STREAM_ARGUMENT_COUNT && !prepared) /* Require an explicit replaceable output path. */
     { /* Keep no-argument smoke runs side-effect free. */
-        printf("Usage: %s OUTPUT.pcm [--prepared|--cursor|--convert]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
+        printf("Usage: %s OUTPUT.pcm [--prepared|--cursor|--convert|--queue]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
         return 0; /* No VM, file or device ownership exists yet. */
     } /* Finish explicit output selection. */
     host.path = argv[1]; /* Borrow the caller-selected path. */
@@ -147,7 +149,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     if (info.channels != TUTORIAL_STREAM_CHANNELS) /* Require the layout promised by the bounded stereo buffer. */
         goto cleanup; /* Do not silently reinterpret channel geometry. */
     if (cursor) { /* This path never recreates a runtime/context or audio-channel registration. */
-        if (!checked(export_cursor(snapshot, &host, &total, convert), "native cursor export")) goto cleanup; /* Bounded C callbacks only. */
+        if (!checked(queue_mode ? export_queue(snapshot, &host, &total) : export_cursor(snapshot, &host, &total, convert), "native cursor export")) goto cleanup; /* Bounded C callbacks only. */
         printf("Exported %lu sample frames from %lu blocks.\n", (unsigned long)total, (unsigned long)blocks); /* Identical PCM and human report. */
         exit_code = 0; goto cleanup; /* Close snapshot only after the reader is quiesced. */
     } /* Live and older prepared modes retain their registered-channel demonstration. */
