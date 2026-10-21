@@ -63,6 +63,14 @@ extern "C"
     typedef struct FVM_SWFStreamSoundSnapshot FVM_SWFStreamSoundSnapshot;
     /* Copy and index one encoded segment; clear *out first, subject to the runtime memory budget. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *, size_t, FVM_SWFStreamSoundSnapshot **);
+    /* Owner-only encoded copy with an explicit object/index/payload peak-byte ceiling.
+     * Preserve codec bytes and metadata; never decode or validate compressed codec payloads.
+     * Same source validation and runtime payload limit as snapshot_open. Clear *out first;
+     * zero/insufficient budget returns OUT_OF_MEMORY before allocating the snapshot.
+     * Allocation failure frees temporary ownership. No callback/device/VM execution.
+     * Immutable result survives source teardown; use existing block/MP3 views and close. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_bounded(
+        FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **);
     /* Owner-only preparation: copy PCM unchanged or expand whole 4096-frame ADPCM packets.
      * ADPCM output is normalized PCM_NATIVE/S16 with exact per-block counts; source/frame/header
      * identity and advisory playback fields persist. Zero-byte/width-only empty blocks allowed.

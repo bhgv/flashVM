@@ -366,6 +366,13 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, s
 {
     return snapshot_open(context, stream, 0, out);
 }
+/* [GC:] Bound independent encoded ownership before any native snapshot allocation. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_open_bounded(FVM_Context *context, size_t stream, size_t budget,
+                                          FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open(context, stream, &budget, out);
+}
 /* Infer only whole 4096-frame ADPCM packets; an average header is never a sample count.
  * Partial packets have no explicit count in this format and remain deliberately unsupported. */
 static FVM_Result stream_adpcm_frames(const unsigned char *data, size_t size, unsigned int channels,

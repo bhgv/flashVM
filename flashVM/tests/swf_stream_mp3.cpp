@@ -49,6 +49,14 @@ int main()
                         assert(view.data[0] == 0xff && view.data[1] == 0 && view.data[2] == 0x7e);
                         FVM_SWFStreamSoundSnapshot *snapshot = 0;
                         assert(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot) == FVM_OK);
+                        FVM_SWFStreamSoundStorageInfo charge;
+                        charge.struct_size = sizeof(charge);
+                        assert(fvm_swf_stream_sound_snapshot_storage_info(snapshot, &charge) == FVM_OK);
+                        fvm_swf_stream_sound_snapshot_close(snapshot);
+                        assert(fvm_swf_stream_sound_snapshot_open_bounded(context, 0,
+                            charge.peak_bytes - 1, &snapshot) == FVM_OUT_OF_MEMORY && !snapshot);
+                        assert(fvm_swf_stream_sound_snapshot_open_bounded(context, 0,
+                            charge.peak_bytes, &snapshot) == FVM_OK);
                         Bytes empty;
                         load(context, movie(empty));
                         assert(fvm_swf_stream_sound_snapshot_mp3_block_at(snapshot, 0, &view) == FVM_OK);

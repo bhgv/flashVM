@@ -35,6 +35,19 @@ int main()
     assert(fvm_swf_stream_sound_snapshot_storage_info(pcm, &b) == FVM_OK);
     assert(b.peak_bytes - b.retained_bytes == bits.bytes.size());
     assert(b.peak_bytes - a.retained_bytes == 4096 * sizeof(short));
+    /* Encoded and normalized budgets charge different ownership, with no codec conversion. */
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, a.peak_bytes - 1, &bounded) ==
+               FVM_OUT_OF_MEMORY && !bounded);
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, 0, &bounded) ==
+               FVM_OUT_OF_MEMORY && !bounded);
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, a.peak_bytes, &bounded) == FVM_OK);
+    FVM_SWFStreamSoundBlock encoded;
+    encoded.struct_size = sizeof(encoded);
+    assert(fvm_swf_stream_sound_snapshot_block_at(bounded, 0, &encoded) == FVM_OK &&
+           encoded.data_size == bits.bytes.size() &&
+           !std::memcmp(encoded.data, bits.bytes.begin(), bits.bytes.size()));
+    fvm_swf_stream_sound_snapshot_close(bounded);
+    bounded = 0;
     assert(fvm_swf_stream_sound_snapshot_open_pcm_bounded(c, 0, b.peak_bytes, &bounded) == FVM_OK);
     FVM_SWFStreamSoundStorageInfo exact;
     exact.struct_size = sizeof(exact);
@@ -52,7 +65,15 @@ int main()
     assert(fvm_swf_stream_sound_snapshot_open_pcm_bounded(c, 0, (size_t)-1, &bounded) ==
                FVM_OUT_OF_MEMORY &&
            !bounded);
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, (size_t)-1, &bounded) == FVM_OK);
+    fvm_swf_stream_sound_snapshot_close(bounded);
+    rt->config.memory_limit_bytes = 1;
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, (size_t)-1, &bounded) ==
+               FVM_OUT_OF_MEMORY && !bounded);
     rt->config.memory_limit_bytes = old;
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(0, 0, 0, &bounded) ==
+               FVM_INVALID_ARGUMENT && !bounded);
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, 0, 0) == FVM_INVALID_ARGUMENT);
     exact.struct_size = 0;
     exact.retained_bytes = 123;
     exact.peak_bytes = 456;

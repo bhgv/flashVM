@@ -9,9 +9,10 @@ int main(int argc, char **argv)
 {
     long begin = 0, end = 32;
     bool isolated = argc == 3;
+    bool encoded_only = isolated && !std::strcmp(argv[1], "--encoded-allocation-budget");
     if (isolated)
     {
-        assert(!std::strcmp(argv[1], "--allocation-budget"));
+        assert(encoded_only || !std::strcmp(argv[1], "--allocation-budget"));
         char *tail = 0;
         begin = std::strtol(argv[2], &tail, 10);
         assert(tail && !*tail && begin >= 0 && begin < 32);
@@ -38,6 +39,45 @@ int main(int argc, char **argv)
     }
     Bytes swf = swf_block(bits.bytes, 1);
     assert(fvm_load_memory(c, swf.begin(), swf.size()) == FVM_OK);
+    /* A rejected ownership ceiling must not consume even the first allocation attempt. */
+    FVM_SWFStreamSoundSnapshot *encoded = reinterpret_cast<FVM_SWFStreamSoundSnapshot *>(1);
+    allowance = 1;
+    assert(fvm_swf_stream_sound_snapshot_open_bounded(c, 0, 0, &encoded) ==
+               FVM_OUT_OF_MEMORY && !encoded && allowance == 1);
+    allowance = -1;
+    bool raw_success = false;
+    for (long raw_budget = encoded_only ? begin : (isolated ? 3 : 0);
+         raw_budget < (encoded_only ? end : 4); ++raw_budget)
+    {
+        allowance = raw_budget;
+        FVM_Result result = fvm_swf_stream_sound_snapshot_open_bounded(c, 0, (size_t)-1, &encoded);
+        allowance = -1;
+        if (raw_budget < 3)
+            assert(result == FVM_OUT_OF_MEMORY && !encoded);
+        else
+        {
+            assert(result == FVM_OK && encoded);
+            raw_success = true;
+        }
+    }
+    if (encoded_only)
+    {
+        fvm_context_destroy(c);
+        fvm_runtime_destroy(rt);
+        if (raw_success)
+        {
+            allowance = 0;
+            FVM_SWFStreamSoundBlock block;
+            block.struct_size = sizeof(block);
+            assert(fvm_swf_stream_sound_snapshot_block_at(encoded, 0, &block) == FVM_OK &&
+                   block.data_size == bits.bytes.size() &&
+                   !std::memcmp(block.data, bits.bytes.begin(), bits.bytes.size()));
+            fvm_swf_stream_sound_snapshot_close(encoded);
+            allowance = -1;
+        }
+        return raw_success ? 0 : 77;
+    }
+    assert(raw_success);
     FVM_SWFStreamSoundSnapshot *snapshot = 0;
     bool success = false;
     unsigned failed = 0;
@@ -59,6 +99,14 @@ int main(int argc, char **argv)
         assert(success && failed == 4);
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);
+    allowance = 0;
+    FVM_SWFStreamSoundBlock raw_block;
+    raw_block.struct_size = sizeof(raw_block);
+    assert(fvm_swf_stream_sound_snapshot_block_at(encoded, 0, &raw_block) == FVM_OK &&
+           raw_block.data_size == bits.bytes.size() &&
+           !std::memcmp(raw_block.data, bits.bytes.begin(), bits.bytes.size()));
+    fvm_swf_stream_sound_snapshot_close(encoded);
+    allowance = -1;
     if (success)
     {
         allowance = 0;

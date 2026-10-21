@@ -16,6 +16,8 @@ int main(void)
     size_t written = 999;
     if (fvm_swf_stream_sound_snapshot_open_pcm(0, 0, &snapshot) != FVM_INVALID_ARGUMENT || snapshot)
         return 1;
+    if (fvm_swf_stream_sound_snapshot_open_bounded(0, 0, 0, &snapshot) != FVM_INVALID_ARGUMENT || snapshot)
+        return 1;
     storage.struct_size = sizeof(storage);
     storage.retained_bytes = 91;
     if (fvm_swf_stream_sound_snapshot_storage_info(0, &storage) != FVM_INVALID_ARGUMENT ||

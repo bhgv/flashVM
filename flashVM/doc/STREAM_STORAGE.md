@@ -5,7 +5,7 @@
 `fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, stream, budget_bytes, out)`
 adds a caller-selected **peak ownership** ceiling to native PCM preparation. It
 accepts the same PCM and whole-packet ADPCM subset as
-[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L73); no codec support changes. The context
+[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L81); no codec support changes. The context
 owner calls preparation before publishing immutable native storage to workers.
 The result is cleared first. Null output/context or invalid source arguments
 follow the existing invalid/missing-source statuses; a valid zero-byte budget
@@ -24,7 +24,7 @@ unbounded-normalization entry points retain their original payload-budget policy
 They also record storage charges but do not acquire a new caller ceiling.
 
 `fvm_swf_stream_sound_snapshot_storage_info(snapshot, out)` copies
-[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L77):
+[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L85):
 
 | Field | Meaning |
 | --- | --- |
@@ -40,13 +40,41 @@ allocation-free and requires no callback, device or original VM. It remains vali
 after context/runtime teardown. Null snapshot/output or wrong `struct_size`
 returns INVALID_ARGUMENT and preserves output. Multiple const readers can observe
 a safely published snapshot; synchronize close and retain ownership until return.
-Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L107) exactly once after all readers stop.
+Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L115) exactly once after all readers stop.
 
 This is a deterministic charge for requested owned allocation sizes, **not RSS**.
 Allocator bookkeeping/alignment overhead, stack objects, original VM SWF bytes,
 managed heap, the host's segment table, other snapshots, retry buffers and device
 memory are excluded. The implementation allocates exact initial array extents;
 no speculative reserve or growing worker cache is hidden behind the observation.
+
+## Encoded copies without decoding (v0.768)
+
+`fvm_swf_stream_sound_snapshot_open_bounded(context, stream, budget_bytes, out)`
+provides the same explicit ownership ceiling for the original encoded snapshot.
+Use it for an external decoder, archival, diagnostics or transport of blocks. It
+preserves the original codec identifier, payload bytes, header and frame metadata;
+it does not accept a compressed stream as playable PCM. In particular MP3 prefix
+views remain available after VM teardown, without adding an MP3 decoder.
+
+Call on the context owner before publication. Supply a valid loaded context,
+segment index, native byte budget and nonnull output pointer. The output is cleared
+before validation. Source scanning retains the legacy raw API statuses; it validates
+SWF structure and PCM alignment, not compressed codec contents. For example a short
+MP3 block may be copied successfully and then rejected by the MP3-prefix view.
+An insufficient/zero budget returns OUT_OF_MEMORY before ownership allocation;
+allocation failures release every temporary allocation. Null arguments return
+INVALID_ARGUMENT; absent indices keep the raw API's missing-source status.
+No allocation, callback, decoder, device operation or VM execution occurs on later
+immutable queries. Opening itself allocates and copies; it never calls user code.
+The runtime payload limit remains independent and unchanged. On successful raw
+preparation, retained and peak charges are equal. Use ordinary snapshot_close after
+all readers finish, including when the source context/runtime have been destroyed.
+Concurrent reads require safe publication and externally synchronized destruction.
+
+The C89 tutorial now explicitly uses the encoded bounded entry point for its PCM
+fixture, illustrating that unchanged PCM does not require the normalization path.
+ADPCM playback continues to use open_pcm_bounded so worker input remains native S16.
 
 ## Bound a group of snapshots
 
@@ -82,13 +110,22 @@ python3 scripts/check_swf_stream_example.py build/flashvm_examples_multimedia_sw
 runtime payload limit, raw versus normalized charges, unchanged PCM, invalid-output
 preservation and observation/reads after VM teardown. The allocation-failure fixture
 uses the bounded path and queries storage with allocation allowance zero after
-teardown. Public C89 header/link checks include both APIs. Native charge checks do
+teardown. Public C89 header/link checks include the observation and both bounded APIs. Native charge checks do
 not certify allocator RSS, audible devices or execution on untested platforms.
 Revision checks: all 21 selected native core stream/ADPCM tests and the C89 tutorial
 checks passed, including exact FFmpeg output. Edited stream modules and storage/
 ADPCM fixtures passed ASan/UBSan; allocation budgets 0–4 used isolated processes.
 Leak enumeration is unavailable on this restricted host, and the full VM/dependency
 tree was not sanitizer-instrumented.
+Revision v0.768 extends raw boundary and allocation-failure checks, and MP3 byte/
+prefix preservation across source replacement. Earlier revision results above
+remain historical; see the delivered revision report for rerun scope.
+
+
+Revision v0.768 rerun: 21 native core stream/ADPCM tests, exact C89 tutorial and
+FFmpeg oracles passed. Edited modules passed ASan/UBSan, with raw failure budgets
+0–3 and PCM budgets 0–4 isolated per process. This host cannot enumerate leaks;
+the complete VM and SDL were not instrumented.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -99,9 +136,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:107](../include/flashvm/swf_stream_sound.h#L107) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:73](../include/flashvm/swf_stream_sound.h#L73) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:93](../include/flashvm/swf_stream_sound.h#L93) |
-| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:77](../include/flashvm/swf_stream_sound.h#L77) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:115](../include/flashvm/swf_stream_sound.h#L115) |
+| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../include/flashvm/swf_stream_sound.h#L72) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:81](../include/flashvm/swf_stream_sound.h#L81) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:96](../include/flashvm/swf_stream_sound.h#L96) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:101](../include/flashvm/swf_stream_sound.h#L101) |
+| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:85](../include/flashvm/swf_stream_sound.h#L85) |
 <!-- source-links:end -->

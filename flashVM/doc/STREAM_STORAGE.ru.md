@@ -4,7 +4,7 @@
 
 `fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, stream, budget_bytes, out)`
 добавляет задаваемый вызывающим предел **пиковой владеемой памяти**. Поддерживаются
-те же PCM и целые ADPCM-пакеты, что у [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L73);
+те же PCM и целые ADPCM-пакеты, что у [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L81);
 новых кодеков здесь нет. Владелец контекста подготавливает снимок до публикации
 неизменяемых данных worker. Указатель результата сначала обнуляется. Ошибки
 контекста/индекса и null output сохраняют прежние статусы; корректный нулевой
@@ -22,7 +22,7 @@ OUT_OF_MEMORY с освобождением временных данных. У�
 нового явно задаваемого вызывающим предела.
 
 `fvm_swf_stream_sound_snapshot_storage_info(snapshot, out)` копирует
-[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L77):
+[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L85):
 
 | Поле | Смысл |
 | --- | --- |
@@ -85,6 +85,41 @@ C89-примера, включая точный FFmpeg-оракул. Измен�
 прошли ASan/UBSan; бюджеты 0–4 проверялись в отдельных процессах. Перечисление
 утечек здесь недоступно; вся VM/зависимости под sanitizer не пересобирались.
 
+## Исходные блоки без декодирования (v0.768)
+
+`fvm_swf_stream_sound_snapshot_open_bounded(context, stream, budget_bytes, out)`
+ограничивает владение копией исходного закодированного сегмента. Подходит для
+внешнего декодера, архивирования, диагностики и передачи блоков. Сохраняет кодек,
+байты и метаданные кадров; не добавляет декодер MP3 или воспроизведение сжатых данных.
+
+Вызывать на владельце context до публикации worker. Аргументы: загруженный контекст,
+индекс сегмента, бюджет в нативных байтах и ненулевой выходной указатель. Выход
+обнуляется до проверки. Сканер проверяет структуру SWF и выравнивание PCM, но не
+содержимое сжатого кодека: короткий блок MP3 может успешно копироваться, а затем
+отклоняться отдельным MP3 prefix API. Нулевой/малый бюджет возвращает OUT_OF_MEMORY
+до выделения объекта; отказ любого выделения освобождает временное владение.
+Нулевые аргументы дают INVALID_ARGUMENT, отсутствующий сегмент сохраняет статус
+старого raw API. Лимит payload/index runtime действует независимо и не изменяется.
+Вызов копирует и выделяет память без callback, устройства, декодирования и исполнения
+VM. Для raw снимка retained_bytes равен peak_bytes.
+
+После уничтожения context/runtime доступны неизменяемые блоки и MP3 prefix views.
+Публикацию между потоками синхронизирует хост; close вызывается один раз после
+всех читателей. Запросы снимка не требуют VM или выделений памяти. C89-пример
+использует этот ограниченный raw-вход для своего PCM; плеер ADPCM сохраняет
+open_pcm_bounded, чтобы worker получал уже декодированный S16.
+
+Новые проверки: точный бюджет и на байт меньше, нулевой бюджет до выделения,
+независимый runtime limit, отказы трёх выделений raw, чтение после teardown,
+сохранение MP3 байтов и префиксов после замены SWF. Ранее приведённые результаты
+относятся к соответствующим ревизиям, а не автоматически к новому запуску.
+
+
+Повторный прогон v0.768: 21 нативный core-тест, C89-пример и точные FFmpeg
+проверки пройдены. Изменённые модули проверены ASan/UBSan; raw-бюджеты отказов
+0–3 и PCM 0–4 запускались отдельными процессами. Перечисление утечек на хосте
+недоступно; полная VM и SDL не инструментированы.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -94,8 +129,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:73](../include/flashvm/swf_stream_sound.h#L73) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:93](../include/flashvm/swf_stream_sound.h#L93) |
-| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:77](../include/flashvm/swf_stream_sound.h#L77) |
+| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../include/flashvm/swf_stream_sound.h#L72) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:81](../include/flashvm/swf_stream_sound.h#L81) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:96](../include/flashvm/swf_stream_sound.h#L96) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:101](../include/flashvm/swf_stream_sound.h#L101) |
+| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:85](../include/flashvm/swf_stream_sound.h#L85) |
 <!-- source-links:end -->
