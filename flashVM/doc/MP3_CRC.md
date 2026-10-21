@@ -21,6 +21,16 @@ explicitly demonstrate checksum coverage limits. Normal builds need no external
 encoder or decoder. scripts/generate_crc_mp3_test_fixture.py --check reproduces
 the complete fixture on the validation Linux host.
 
+
+## Decode admission (v0.814)
+
+Every protected packet now passes CRC validation before decoder state or PCM can
+change. A failed checksum preserves packet metadata, native reservoir/history and
+the previous PCM buffer, so a caller may retry the intact packet. This extra atomic
+retry guarantee applies to pre-decode CRC rejection; failures inside the codec remain
+terminal as before. DefineSound full-source validation rejects a damaged final CRC
+even for an early or zero-length selected read, without publishing partial PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

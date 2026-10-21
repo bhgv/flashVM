@@ -216,6 +216,10 @@ FVM_Result FVM_SWFMP3Decoder::decode(const unsigned char *data, size_t size, FVM
         SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX || SHRT_MIN != FVM_SWF_SOUND_SHORT_MIN ||
         sizeof(mp3d_sample_t) != sizeof(short) || packet.bytes > INT_MAX)
         return FVM_UNSUPPORTED;
+    /* Reject protected corruption before priming geometry, reservoir or caller-visible PCM. */
+    result = fvm_swf_mp3_verify_crc(data, packet.bytes);
+    if (result != FVM_OK)
+        return result;
     if (free_format && !state.free_format_bytes)
     {
         /* Seed only verified geometry into the pinned decoder; reservoir/history remain zero. */
