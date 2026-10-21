@@ -5,6 +5,7 @@
 #define main stream_reference_main
 #include "swf_stream_sound.cpp"
 #undef main
+#include "flashvm/swf_stream_pcm.h"
 int main()
 {
  FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
@@ -23,6 +24,13 @@ int main()
  assert(fvm_swf_stream_sound_snapshot_block_count(s,&n)==FVM_OK && n==1);
  assert(fvm_swf_stream_sound_snapshot_block_at(s,0,&block)==FVM_OK && block.data[0]==255);
  assert(fvm_swf_stream_sound_snapshot_read_pcm(s,0,0,1,&out,1,&n)==FVM_OK && n==1 && out==32512);
+ FVM_SWFStreamPCMReader reader;
+ assert(fvm_swf_stream_pcm_reader_init(&reader,s)==FVM_OK);
+ FVM_SWFStreamPCMChunk chunk;chunk.struct_size=sizeof(chunk);
+ assert(fvm_swf_stream_pcm_reader_next(&reader,1,&out,1,&chunk,&n)==FVM_OK && n==1 && out==32512);
+ assert(fvm_swf_stream_pcm_reader_seek(&reader,0,0)==FVM_OK);
+ assert(fvm_swf_stream_pcm_reader_next(&reader,1,&out,1,&chunk,&n)==FVM_OK && n==1);
+ assert(fvm_swf_stream_pcm_reader_next(&reader,1,&out,1,&chunk,&n)==FVM_NOT_FOUND);
  fvm_swf_stream_sound_snapshot_close(s);allowance=-1;
  return 0;
 }

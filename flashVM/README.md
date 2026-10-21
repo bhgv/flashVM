@@ -1,10 +1,12 @@
-Development version: **0.748** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.748 ` and an English description. Increase the subversion before each
+Development version: **0.749** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.749 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.749: [Frame-aware prepared PCM reader](doc/STREAM_PCM_READER.md).
 
 v0.748: [Verified receiver measurements drive actual player profile changes](doc/RECEIVE_WINDOWS.md).
 

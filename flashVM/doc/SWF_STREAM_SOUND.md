@@ -284,6 +284,7 @@ The [swf_stream tutorial](../examples/multimedia/swf_stream/README.md) demonstra
 [`fvm_swf_stream_sound_snapshot_mp3_block_at`](../include/flashvm/swf_stream_sound.h#L73) inspect declared count, signed seek
 and the MPEG span after the prefix; they do not decode it. Полные контракты,
 владение, статусы и ограничения: [SWF_STREAM_MP3.md](SWF_STREAM_MP3.md).
+[Sequential native PCM reader / Последовательный native PCM reader](STREAM_PCM_READER.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
