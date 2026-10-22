@@ -36,6 +36,10 @@ def main():
         actual = re.match(pattern, indented.stdout)
         assert actual and actual.groups() == ('2', '7', advance, '92.00')
         assert indented.stdout.splitlines()[-1] == 'indent first_x='+origin+' next_x=0.00'
+    tabbed = subprocess.run([sys.argv[1], '--tabs'], capture_output=True, text=True, check=True)
+    actual = re.match(pattern, tabbed.stdout)
+    assert actual and actual.groups() == ('1', '5', '104.00', '44.00')
+    assert tabbed.stdout.splitlines()[-1] == 'tabs first_stop=40.00 second_stop=80.00'
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)
     assert bad.returncode != 0 and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking, underline contours/pixel oracle and actual RGBA rasterization')

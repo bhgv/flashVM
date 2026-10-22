@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    int tabbed = 0; /* Explicit custom tab table mode keeps borrowed storage local. */
     int indented = 0; /* Optional first-line mode selects positive or hanging indentation. */
     int justified = 0; /* Optional LTR paragraph demonstration keeps the same owned-layout API. */
     int underline = 0; /* Optional line decoration is separate from glyph shaping. */
@@ -33,11 +34,12 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--justify")) { justified = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Expand only internal ASCII spaces on wrapped nonfinal lines. */
     else if (argc == 2 && !strcmp(argv[1], "--indent")) { indented = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Offset only each paragraph first line by 30px. */
     else if (argc == 2 && !strcmp(argv[1], "--hanging-indent")) { indented = -1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Allow a native first-line origin at x=-18. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking|--justify|--indent|--hanging-indent]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--tabs")) { tabbed = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Use explicit 40/80px tab stops. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking|--justify|--indent|--hanging-indent|--tabs]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
-    const char *text = justified || indented ? "A V A V" : ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
+    const char *text = tabbed ? "A\tV\tA" : justified || indented ? "A V A V" : ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
     FVM_Font *font = 0;
     /* Сохраняем вычисленное значение: FVM_TextLayout *layout. */
@@ -46,6 +48,7 @@ int main(int argc, char **argv)
     FVM_TextLayoutOptions options = {120, 48, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_TextLayoutMetrics metrics;
+    double tab_stops[] = {40, 80}; /* Native creation borrows these two initialized positions only during the call. */
     FVM_Result created; /* Retain the selected creation call result for ordinary error handling. */
     FVM_FontUnderlineMetrics decoration = {0, 0}; /* Copy the font metrics before destroying the face. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -76,6 +79,12 @@ int main(int argc, char **argv)
         options.direction = FVM_TEXT_LTR; /* Nonzero indentation requires bounded LTR paragraphs. */
         options.alignment = FVM_TEXT_ALIGN_LEFT; /* Keep intrinsic positioning directly observable. */
     } /* Subsequent lines retain the full 102px width. */
+    if (tabbed) /* Keep stops relative to an unaligned, unlimited paragraph content origin. */
+    { /* Tab paragraphs currently require bounded LTR support. */
+        options.max_width = 0; /* Observe both custom positions without wrapping. */
+        options.direction = FVM_TEXT_LTR; /* No mixed bidi paragraph is claimed. */
+        options.alignment = FVM_TEXT_ALIGN_LEFT; /* Leave anchor positions directly visible. */
+    } /* Existing explicit natural line height remains unchanged. */
     /* Вызываем fvm_font_read: загружаем шрифтовые байты в собственный дескриптор.
      * fvm_test_font — байты шрифтового файла.
      * sizeof(fvm_test_font) — размер входного текста или ресурса в байтах.
@@ -103,7 +112,8 @@ int main(int argc, char **argv)
      * spacing — дополнительные пиксели после каждого поддержанного символа.
      * &layout — адрес или буфер для результата.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
-    created = indented ? fvm_text_layout_create_indented(font, text, strlen(text), &options, flags, spacing, indented > 0 ? 30 : -18, &layout) /* Borrow all inputs, receive an independent owned layout. */
+    created = tabbed ? fvm_text_layout_create_tabbed(font, text, strlen(text), &options, flags, spacing, 0, tab_stops, 2, &layout) /* Copy tab positions into independently owned layout geometry. */
+                     : indented ? fvm_text_layout_create_indented(font, text, strlen(text), &options, flags, spacing, indented > 0 ? 30 : -18, &layout) /* Borrow all inputs, receive an independent owned layout. */
                        : fvm_text_layout_create_spaced(font, text, strlen(text), &options, flags, spacing, &layout); /* Existing modes keep their zero-indent call. */
     if (!(created == FVM_OK)) /* Both creation APIs clear output on failure. */
     /* Начинаем обработку неуспешного вызова или неверного результата. */
@@ -116,6 +126,7 @@ int main(int argc, char **argv)
             __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (tabbed) tab_stops[0] = tab_stops[1] = 0; /* Borrowed table mutation cannot change already placed glyphs. */
     if (underline && fvm_font_underline_metrics(font, &decoration) != FVM_OK) /* Borrow the face; publish copied y-down pixel metrics. */
         fvm_example_fail("fvm_font_underline_metrics", __FILE__, __LINE__); /* Stop explicitly if the font lacks usable decoration data. */
     /* Вызываем fvm_font_destroy: освобождаем шрифтовой дескриптор.
@@ -180,6 +191,16 @@ int main(int argc, char **argv)
         next = line.x; /* Continuations have no first-line offset. */
         printf("indent first_x=%.2f next_x=%.2f\n", first, next); /* The executable checker verifies both signed modes. */
     } /* Existing separately owned path export and rasterization follow. */
+    if (tabbed) /* Inspect placed word origins after table mutation and font release. */
+    { /* Both glyph queries borrow the immutable layout. */
+        FVM_TextLayoutGlyph glyph; /* Copy each shaped record rather than retaining an internal pointer. */
+        double first, second; /* Save the two actual post-tab word positions. */
+        if (fvm_text_layout_glyph(layout, 2, &glyph) != FVM_OK) fvm_example_fail("first tab anchor", __FILE__, __LINE__); /* Tab records retain their own source glyph slots. */
+        first = glyph.x; /* The V begins at the original 40px stop. */
+        if (fvm_text_layout_glyph(layout, 4, &glyph) != FVM_OK) fvm_example_fail("second tab anchor", __FILE__, __LINE__); /* Read the final word independently. */
+        second = glyph.x; /* The final A begins at the original 80px stop. */
+        printf("tabs first_stop=%.2f second_stop=%.2f\n", first, second); /* Expected 40.00 and 80.00 despite table mutation. */
+    } /* Empty tab outlines and real word paths share the same owned layout. */
     /* Вызываем fvm_text_layout_path: получаем контуры всего текстового блока.
      * layout — ранее созданная текстовая раскладка.
      * &path — адрес или буфер для результата.
@@ -306,6 +327,7 @@ int main(int argc, char **argv)
     } /* Release the font-enabled declaration scope after native cleanup. */
 #else
     /* Выводим строку с завершающим переводом строки. */
+    (void)tabbed; /* Parsing remains available without fonts. */
     (void)indented; /* Keep both modes parseable in a NO_FONTS build. */
     (void)justified; /* Mode parsing remains available in a NO_FONTS build. */
     (void)underline; /* The option still parses without a font backend. */
