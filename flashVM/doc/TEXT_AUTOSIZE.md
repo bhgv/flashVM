@@ -1,3 +1,5 @@
+v0.856: actual AVM1 SetMember/GetMember tests cover all anchors and signed y in interpreter, attached native code and automatic JIT. Four OS workers perform 64 edits/GC passes each using separate runtimes, contexts and font registrations; all three anchors participate.
+
 v0.855: eighteen ordinary-build allocation sweeps cover all three anchors across activation, assignment, replaceText, current format, wrapping and wrapped-width edits. Failed calls preserve x/y and prior text/mode/dimensions; GC frames/native depth remain balanced.
 
 # Native TextField horizontal anchors — v0.853
