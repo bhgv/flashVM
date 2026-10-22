@@ -44,6 +44,8 @@ Old readers do not support the new flagged records. No public ABI or graph
 header version changes. Transfer byte accounting includes the optional number.
 This adds uniform styles only, not styled ranges, system fonts or full SWF text.
 
+v0.832: `textfield_spacing_transfer.cpp` checks signed current/future binary and channel transfer, legacy zero records, inconsistent state rejection, source destruction and receiver GC. `text_layout_spacing_boundaries.c` checks RTL original byte clusters, center/right alignment, kerning composition, embedded NUL, CRLF/trailing empty lines, zero adjusted advances and combining-sequence rejection.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
