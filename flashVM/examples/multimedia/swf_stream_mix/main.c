@@ -161,8 +161,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     if (clock_mode && !checked(fvm_swf_sound_mix_queue_clock_begin(mix_queue), "shared clock begin")) goto cleanup; /* Explicitly require an empty real FIFO before counting accepted frames. */
     if (identity_mode) /* Preallocate the optional ID table before native output starts. */
     { /* Keep adapter table storage separate from mixer/voice/queue budgets. */
-        if (FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS > (size_t)-1 / sizeof(double) || queue_budget > (size_t)-1 - FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS * sizeof(double)) goto cleanup; /* Check representable exact fixed requests. */
-        queue_budget += FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS * sizeof(double); /* Include all deadline slots in the adapter-only ceiling. */
+        if (!checked(fvm_swf_sound_mix_queue_storage_required_for_tracking(EXAMPLE_MIX_CHANNELS, EXAMPLE_MIX_BLOCK, 1, &queue_budget), "tracked storage")) goto cleanup; /* Predict owner, PCM and optional deadlines with checked native arithmetic. */
         if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 1, queue_budget), "identity tracking")) goto cleanup; /* Require zero epoch and no voices before enabling. */
         for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) /* Adopt every start through the tracked queue. */
             if (!checked(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix_queue, &prepared[event], EXAMPLE_MIX_EVENT_BYTES), "tracked event")) goto cleanup; /* Success clears the caller handle and registers its exact end. */
@@ -248,7 +247,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             { /* Cancel the expired registration and disable at a drained safe point. */
                 if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "drained identity")) goto cleanup; /* Retain the historical end in this copied snapshot. */
                 printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected end14 played16 active0. */
-                if (!checked(fvm_swf_sound_mix_queue_stop_id(mix_queue, EXAMPLE_MIX_LONG_ID), "cancel identity")) goto cleanup; /* Cancel future same-ID registration without rewriting accepted PCM. */
+                if (!checked(fvm_swf_sound_mix_queue_stop_all(mix_queue), "cancel identities")) goto cleanup; /* Cancel every future event registration without rewriting accepted PCM. */
                 if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 0, 0), "disable identities")) goto cleanup; /* Free optional deadlines only after voices/retries/FIFO have drained. */
             } /* Clock end is now permitted. */
             if (!checked(fvm_swf_sound_mix_queue_clock_end(mix_queue), "shared clock end")) goto cleanup; /* End only after retry ownership and FIFO have drained. */

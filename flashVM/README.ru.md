@@ -1,4 +1,4 @@
-Версия разработки: **0.970** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.971** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.971: [Исполняемый C89-пример использует точный бюджет с ID и общую остановку событий.](doc/MIX_QUEUE_IDENTITIES.ru.md).
 
 v0.970: [Выполнены 256 stop/retry/restart циклов на четырёх OS-потоках с независимыми PCM и ID.](doc/MIX_QUEUE_IDENTITIES.ru.md).
 

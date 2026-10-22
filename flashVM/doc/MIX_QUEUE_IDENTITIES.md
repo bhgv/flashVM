@@ -78,6 +78,9 @@ v0.969: Instrument global new/new[] with zero allowance across prediction, resta
 
 v0.970: Run 256 independent stop/retry/restart epochs with per-worker exact PCM and ID checks.
 
+
+v0.971: Use the checked tracked predictor and event stop_all in the executable six-mode C89 tutorial.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -162,6 +162,17 @@ NoMultiple suppression is tested by native fixtures; this embedded example uses
 ordinary starts. Режим проверяет queued-ID до/после drain, не физическую слышимость.
 [EN contract](../../../doc/MIX_QUEUE_IDENTITIES.md) / [RU](../../../doc/MIX_QUEUE_IDENTITIES.ru.md).
 
+
+The `--identities` path predicts the full adapter ceiling before enabling deadlines,
+then uses event-only global cancellation after the exported FIFO drains. This control
+retains accepted PCM and does not stop or rewind a base producer. It is immediate,
+including existing DECLICK voices; device-wide cancellation still requires acknowledged clear.
+
+| API | Contract and ownership |
+| --- | --- |
+| [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L52) | Predict owner/PCM/optional ID bytes into a required scalar without allocation, callbacks or VM access; invalid geometry/mode preserves output. Excludes mixer, voices and device. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
+| [`fvm_swf_sound_mix_queue_stop_all`](../../../include/flashvm/swf_sound_mix_queue.h#L162) | Retire all future events and reset ID deadlines on a live tracked owner; preserve pending/FIFO bytes and clock. Requires external serialization; no callback/allocation/VM/GC. Disabled tracking is UNSUPPORTED. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -188,9 +199,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:206](../../../include/flashvm/swf_sound_mix_queue.h#L206) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../../../include/flashvm/swf_sound_mix_queue.h#L109) |
+| `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../../../include/flashvm/swf_sound_mix_queue.h#L162) |
 | `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:154](../../../include/flashvm/swf_sound_mix_queue.h#L154) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:57](../../../include/flashvm/swf_sound_mix_queue.h#L57) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../../../include/flashvm/swf_sound_mix_queue.h#L44) |
+| `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../../../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:123](../../../include/flashvm/swf_sound_mix_queue.h#L123) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:126](../../../include/flashvm/swf_sound_mixer.h#L126) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
