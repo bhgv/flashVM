@@ -43,11 +43,12 @@ struct Style
 {
     fvm_detail::string font;
     double size, leading;
+    double letter_spacing; /* Signed extra pixels after each supported character. */
     unsigned long color;
     FVM_TextAlignment alignment;
     bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : size(12), leading(2), color(0), alignment(FVM_TEXT_ALIGN_LEFT), kerning(false)
+    Style() : size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), kerning(false)
     {
     }
     /* Exchange the current value. */
@@ -62,6 +63,9 @@ struct Style
         d = leading;
         leading = s.leading;
         s.leading = d;
+        d = letter_spacing;
+        letter_spacing = s.letter_spacing;
+        s.letter_spacing = d;
         unsigned long c = color;
 
         /* Computation / Вычисление и обновление состояния. */
@@ -259,6 +263,12 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                     return FVM_INVALID_ARGUMENT;
                 style.leading = d;
             }
+            else if (std::strcmp(name, "letterSpacing") == 0)
+            {
+                if (!finite_range(d, -FVM_TEXT_STYLE_MAX_SPACING, FVM_TEXT_STYLE_MAX_SPACING))
+                    return FVM_INVALID_ARGUMENT;
+                style.letter_spacing = d;
+            }
             else if (std::strcmp(name, "color") == 0)
             {
                 if (!finite_range(d, 0, 16777215) || d != std::floor(d))
@@ -324,11 +334,25 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     options.max_width = width;
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
-    result = fvm_text_layout_create_configured(font.font, text, size, &options,
-                                               style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, out);
+    result = fvm_text_layout_create_spaced(font.font, text, size, &options,
+                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, out);
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;
     return result;
+}
+
+/* Validate tracked geometry before publishing a new style or text. Zero spacing
+ * keeps existing lazy-layout behavior; the tracked subset cannot defer ambiguity. */
+static FVM_Result validate_tracking(FVM_Context *c, Field *field, const Style &style,
+                                     const char *text, size_t size)
+{
+    if (style.letter_spacing == 0)
+        return FVM_OK;
+    double width = field->wrap && field->multiline ? field->width - 4 : 0;
+    if (field->wrap && field->multiline && width <= 0)
+        return FVM_INVALID_ARGUMENT;
+    LayoutOwner trial;
+    return build_layout(c, style, text, size, width, field->multiline, &trial.layout, 0);
 }
 
 /* Compute and return ensure layout. */
@@ -485,6 +509,8 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["size"] = v;
     fvm_value_number(&v, style.leading);
     object->properties["leading"] = v;
+    fvm_value_number(&v, style.letter_spacing);
+    object->properties["letterSpacing"] = v;
     fvm_value_number(&v, style.color);
     object->properties["color"] = v;
     fvm_value_boolean(&v, style.kerning);
@@ -622,6 +648,9 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         /* Preserve the uniform current format. In an empty field the first
          * inserted text uses the future format. Styled spans are not simulated. */
         Style next = length ? field->current : field->future;
+        result = validate_tracking(c, field, next, joined.begin(), total);
+        if (result != FVM_OK)
+            return result;
         char *owned = new (std::nothrow) char[total + 1];
         if (!owned)
             return FVM_OUT_OF_MEMORY;
@@ -697,6 +726,12 @@ static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
         return result;
     if (!finite_range(metrics.ascent + metrics.descent + next.leading, 1.0 / 64, 1000000))
         return FVM_INVALID_ARGUMENT;
+    if (!future)
+    {
+        result = validate_tracking(c, field, next, field->text, field->text_size);
+        if (result != FVM_OK)
+            return result;
+    }
     if (future)
         field->future.swap(next);
     else
@@ -792,6 +827,9 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
             return FVM_OK;
         }
         Style next = field->future;
+        FVM_Result result = validate_tracking(c, field, next, args[0].string, size);
+        if (result != FVM_OK)
+            return result;
         field->current.swap(next);
         field->text = args[0].string;
         field->text_size = size;
@@ -1308,9 +1346,11 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.font = style.font;
     out.size = style.size;
     out.leading = style.leading;
+    out.letter_spacing = style.letter_spacing;
     out.color = style.color;
     out.alignment = (unsigned long)style.alignment |
-                    (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING);
+                    (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
+                    (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL);
     out.source = *context->fonts.find(style.font)->second;
 }
 
@@ -1318,8 +1358,10 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
     if (src.font.empty() || src.font.size() > 255 || !finite_range(src.size, 1, 4096) ||
-        !finite_range(src.leading, -4096, 4096) || src.color > 16777215UL ||
-        (src.alignment & ~FVM_TEXT_STYLE_NO_KERNING) > 2)
+        !finite_range(src.leading, -4096, 4096) ||
+        !finite_range(src.letter_spacing, -FVM_TEXT_STYLE_MAX_SPACING, FVM_TEXT_STYLE_MAX_SPACING) ||
+        ((src.letter_spacing != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_SPACING) != 0)) || src.color > 16777215UL ||
+        (src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING)) > 2)
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing =
         context->fonts.find(src.font);
@@ -1344,8 +1386,9 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.font = src.font;
     out.size = src.size;
     out.leading = src.leading;
+    out.letter_spacing = src.letter_spacing;
     out.color = src.color;
-    out.alignment = (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_NO_KERNING);
+    out.alignment = (FVM_TextAlignment)(src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING));
     out.kerning = (src.alignment & FVM_TEXT_STYLE_NO_KERNING) == 0;
     return FVM_OK;
 }

@@ -31,6 +31,7 @@
 #include "../core/native_call_guard.hpp"
 #include "flashvm/serialization.h"
 #include "../standard/text_state.hpp"
+#include "../standard/text_constants.h"
 #include "zlib.h"
 #include <cstring>
 #include <cstdlib>
@@ -692,6 +693,8 @@ struct Writer
         number(s.leading);
         u32(s.color);
         u32(s.alignment);
+        if (s.alignment & FVM_TEXT_STYLE_HAS_SPACING)
+            number(s.letter_spacing);
         require(s.source.index >= (-2147483647L - 1L) && s.source.index <= 2147483647L,
                 FVM_UNSUPPORTED);
         u32(s.source.index < 0 ? (unsigned long)(s.source.index + 2147483647L) + 1UL
@@ -939,6 +942,8 @@ struct Reader
         s.leading = number();
         s.color = u32();
         s.alignment = u32();
+        if (s.alignment & FVM_TEXT_STYLE_HAS_SPACING)
+            s.letter_spacing = number();
         unsigned long index = u32();
         s.source.index =
             index >= 0x80000000UL ? (long)(index - 0x80000000UL) : (long)index - 2147483647L - 1L;

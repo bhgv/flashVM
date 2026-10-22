@@ -1,10 +1,12 @@
-Development version: **0.830** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.830 ` and an English description. Increase the subversion before each
+Development version: **0.831** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.831 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.831: [Apply signed TextFormat spacing and preserve it in field transfers](doc/TEXT_SPACING.md).
 
 v0.830: [Add signed native text tracking with consistent wrapping and paths](doc/TEXT_SPACING.md).
 

@@ -27,6 +27,23 @@ has two 24-pixel advances without kerning. Spacing 2.5 gives 53 pixels; -2 gives
 44 pixels. Width 50 wraps positive tracking into two lines. Paths outlive the
 font/layout. These are native analytical checks, not physical-device acceptance.
 
+## AS2 uniform fields and transfers (v0.831)
+
+TextFormat `letterSpacing` is null on construction; uniform field formats expose
+zero by default. Numeric coercion accepts signed fractional values within the
+native limit. Null/undefined leave the selected style unchanged. Current and
+future styles are independent: setNewTextFormat does not alter current metrics,
+while replacing text applies future tracking. Failed style or text admission
+preserves the previous field and cache. `textWidth`, getTextExtent, wrapping and
+path export share the native layout path. Complex clusters remain UNSUPPORTED.
+
+Native field snapshots and binary/channel transfers retain both tracking values.
+A HAS_SPACING bit in private packed alignment announces one optional encoded
+number; zero spacing retains the old byte layout. Old records restore zero.
+Old readers do not support the new flagged records. No public ABI or graph
+header version changes. Transfer byte accounting includes the optional number.
+This adds uniform styles only, not styled ranges, system fonts or full SWF text.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
