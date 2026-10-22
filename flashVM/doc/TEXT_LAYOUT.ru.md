@@ -121,6 +121,8 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 C89 API [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121) добавляет знаковые отступы первой строки непустого абзаца без изменения структуры параметров. Нулевой отступ сохраняет shaping, независимые пути и диапазоны байтов; ненулевые значения пока требуют ограниченного LTR. [Аргументы, размеры, ошибки и владение](TEXT_INDENT.ru.md).
 
+[fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L140) добавляет явную ограниченную таблицу к раскладке с отступом без изменения прежних структур. Tab сохраняет кластер, пустой контур и реальный advance; таблица начинается заново на каждой визуальной строке. [Аргументы, ошибки, владение и границы](TEXT_TABS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -136,6 +138,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |

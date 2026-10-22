@@ -1,10 +1,12 @@
-Development version: **0.913** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.913 ` and an English description. Increase the subversion before each
+Development version: **0.914** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.914 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.914: [Bound synthetic tab records and record custom-table regression evidence](doc/TEXT_TABS.md).
 
 v0.913: [Demonstrate managed tab tables and fitted TextField geometry in C89](doc/TEXT_TABS.md).
 

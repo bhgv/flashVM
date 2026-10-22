@@ -66,6 +66,14 @@ allocation; restore checks table bounds/order/integer values and exact flag/tabl
 agreement before that style's font import. Existing graph-import font lifetime
 rules still apply. No public C structure or wire version changes.
 
+Ordinary native collector barriers remain in force during getters; recursive [fvm_gc_collect](../include/flashvm/gc.h#L44) is rejected there. Getter side effects/errors and post-call collection are tested without weakening those barriers. Tab-bearing text is validated even when a candidate table is empty, so unsupported default-tab edits reject before publication. Unwrapped TextField justify retains its existing left-aligned natural-layout policy; the unsupported native tab+JUSTIFY combination matters when justification is actually selected for layout.
+
+v0.914 verification: 132 native/tutorial checks pass, including 14 new tests in this series. Thirty-nine targeted ASan/UBSan checks pass (27 previous checks plus 12 new tab-layout/state checks). Seven new C++ allocation-failure sweeps run in the ordinary build only. Seventeen NO_FONTS checks pass, including the new C89 table/admission calls; both tutorials compile in that profile. LeakSanitizer remains disabled because /proc is unavailable, so leak acceptance is not claimed.
+
+Cases cover stop exhaustion and wrapping, empty tab outlines/source clusters, all supported alignments, indentation/fractional tracking, preserved word ligatures, four real faces/underline, automatic fitting, independent source/snapshot Arrays, getter side effects/errors with preserved native collector barriers, post-call GC and malformed tables. The 64-position wire oracle checks 1672 added bytes for both styles, including number metadata references; graph reservation tracks that exact variable payload. Oversize wire counts and truncation reject. Current/future binary and channel transfer survive sender teardown and receiver GC. Four OS workers each own a native font and perform 64 layout/path iterations while mutating the borrowed input table after creation. AVM1 tests interpreter, attached native and automatic JIT with entry counters; native JIT availability is checked separately.
+
+The synthetic tab branch shares the aggregate glyph cap before insertion. Both annotated C89 tutorials execute their new modes and preserve the earlier checks. A renamed detached component configures and both copied tutorial checkers pass against the native executables; a separate detached build is not claimed. Source-link and annotated-example/catalog checks pass. Default/repeating stops, full bidi/tab+justify semantics, styled spans, original Flash reference comparison, SWF font loading, physical devices/platforms and all nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -75,6 +83,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `FVM_Path` | struct | [src/capi/path_c.cpp:26](../src/capi/path_c.cpp#L26) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |

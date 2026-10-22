@@ -61,7 +61,7 @@ negative leading is accepted when resulting baseline spacing stays positive.
 Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
 styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
-([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Bullets, hyperlinks and tab stops are rejected
+([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Bullets and hyperlinks are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
 
@@ -166,6 +166,8 @@ SWF8 `align="justify"` is supported for bounded LTR paragraphs with unambiguous 
 Paragraph leftMargin/rightMargin/blockIndent now accept bounded nonnegative integers and affect wrapping, alignment, automatic fitting and graph transfer. [Contract and limits](TEXT_INSETS.md).
 
 First-line integer indent now affects each nonempty hard paragraph, intrinsic width, paths and fitting. Hanging values require SWF8 and sufficient left inset. [Contract and native API](TEXT_INDENT.md).
+
+Explicit tabStops Arrays now copy bounded increasing integer positions into current/future styles. Tabs retain real advances and empty outlines, work with wrapping/tracking/indent and transfer independently. Default/repeating stops, bidi tab paragraphs and wrapped justify remain unsupported. [Contract](TEXT_TABS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

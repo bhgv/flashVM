@@ -497,6 +497,7 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
         const Segment &s = segments[n];
         if (p.chars[s.start] == FVM_TEXT_LAYOUT_TAB)
         {
+            if (glyphs.size() == FVM_TEXT_LAYOUT_MAX_GLYPHS) return FVM_UNSUPPORTED;
             FVM_TextLayoutGlyph tab;
             std::memset(&tab, 0, sizeof(tab));
             tab.shaped.cluster = (unsigned int)p.bytes[s.start];
@@ -527,7 +528,7 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
                 g.shaped.y_advance != 0)
                 return FVM_UNSUPPORTED;
             advance += g.shaped.x_advance;
-            if (!(advance <= 1000000) || glyphs.size() == 65536)
+            if (!(advance <= 1000000) || glyphs.size() == FVM_TEXT_LAYOUT_MAX_GLYPHS)
                 return FVM_UNSUPPORTED;
             glyphs.push_back(g);
         }
@@ -791,7 +792,7 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
     line.glyph_count = glyphs.size();
     line.advance = advance;
     line.baseline = metrics.ascent + layout.lines.size() * options.line_height;
-    if (!(line.baseline <= 1000000) || glyphs.size() > 65536 - layout.glyphs.size())
+    if (!(line.baseline <= 1000000) || glyphs.size() > FVM_TEXT_LAYOUT_MAX_GLYPHS - layout.glyphs.size())
         return FVM_UNSUPPORTED;
     double available = options.max_width > advance ? options.max_width - advance : 0;
     if (options.alignment == FVM_TEXT_ALIGN_CENTER)

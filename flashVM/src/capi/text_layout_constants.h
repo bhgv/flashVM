@@ -1,6 +1,7 @@
 /* Native text tracking limits, independent of font size and public option ABI. */
 #ifndef FVM_TEXT_LAYOUT_CONSTANTS_H
 #define FVM_TEXT_LAYOUT_CONSTANTS_H /* Scope native layout admission constants. */
+#define FVM_TEXT_LAYOUT_MAX_GLYPHS 65536U /* Aggregate owned glyph cap, including synthetic tab records. */
 #define FVM_TEXT_LAYOUT_TAB 0x09U /* Explicit tab cluster has a synthetic empty glyph outline. */
 #define FVM_TEXT_LAYOUT_JUSTIFY_SPACE 0x20U /* Only ASCII interword spaces are expanded. */
 #define FVM_TEXT_LAYOUT_MAX_INDENT 4096.0 /* Maximum absolute first-line paragraph offset in pixels. */

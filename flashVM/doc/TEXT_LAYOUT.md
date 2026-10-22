@@ -120,6 +120,8 @@ clusters still return UNSUPPORTED. [Contract and evidence](TEXT_LIGATURE_TRACKIN
 
 The C89 [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121) API adds signed first-line offsets per nonempty hard paragraph without changing option structures. It preserves zero-indent shaping, owned paths and existing byte ranges; nonzero values currently require bounded LTR paragraphs. [Arguments, metrics, errors and ownership](TEXT_INDENT.md).
 
+[fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L140) adds an explicit bounded custom table to indented layout without changing existing option structures. Tabs carry source clusters, empty outlines and real advances; tables restart on each visual line. [Full arguments, errors, ownership and limits](TEXT_TABS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -136,6 +138,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
