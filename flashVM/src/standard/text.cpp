@@ -54,7 +54,9 @@ static fvm_detail::string font_source_key(const char *name, size_t length, unsig
 /* Define Style struct and its representation. */
 struct Style
 {
-    fvm_detail::string font;
+    fvm_detail::string font; /* Public family name retained by the format. */
+    fvm_detail::string source_key; /* Precomputed private slot key; layout lookup cannot allocate. */
+    unsigned int variant; /* Explicit regular/bold/italic family selection. */
     double size, leading;
     double letter_spacing; /* Signed extra pixels after each supported character. */
     unsigned long color;
@@ -62,13 +64,15 @@ struct Style
     bool underline; /* Uniform line decoration, independent of glyph shaping. */
     bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
+    Style() : variant(FVM_TEXT_FONT_REGULAR), size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
     {
     }
     /* Exchange the current value. */
     void swap(Style &s)
     {
         font.swap(s.font);
+        source_key.swap(s.source_key);
+        unsigned int v = variant; variant = s.variant; s.variant = v;
         double d = size;
 
         /* Computation / Вычисление и обновление состояния. */
@@ -255,13 +259,20 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
             if (v.type != FVM_VALUE_STRING || fvm_string_size(v))
                 return FVM_UNSUPPORTED;
         }
-        else if (std::strcmp(name, "kerning") == 0 || std::strcmp(name, "underline") == 0)
+        else if (std::strcmp(name, "kerning") == 0 || std::strcmp(name, "underline") == 0 ||
+                 std::strcmp(name, "bold") == 0 || std::strcmp(name, "italic") == 0)
         {
             FVM_Value converted;
             result = fvm_exec_to_boolean(c, &v, &converted);
             if (result != FVM_OK)
                 return result;
-            if (std::strcmp(name, "underline") == 0)
+            if (std::strcmp(name, "bold") == 0 || std::strcmp(name, "italic") == 0)
+            {
+                unsigned int bit = std::strcmp(name, "bold") == 0 ? FVM_TEXT_FONT_BOLD : FVM_TEXT_FONT_ITALIC;
+                if (converted.boolean) style.variant |= bit;
+                else style.variant &= ~bit;
+            }
+            else if (std::strcmp(name, "underline") == 0)
                 style.underline = converted.boolean != 0;
             else
                 style.kerning = converted.boolean != 0;
@@ -302,6 +313,10 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                 return FVM_UNSUPPORTED;
         }
     }
+    if (style.font.size() > FVM_TEXT_FONT_MAX_NAME ||
+        std::memchr(style.font.c_str(), 0, style.font.size()))
+        return FVM_INVALID_ARGUMENT;
+    style.source_key = font_source_key(style.font.c_str(), style.font.size(), style.variant);
     return FVM_OK;
 }
 
@@ -315,7 +330,7 @@ static FVM_Result open_font(FVM_Context *c, const Style &style, FVM_Font **out)
     return FVM_UNSUPPORTED;
 #else
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator source =
-        c->fonts.find(style.font);
+        c->fonts.find(style.source_key);
     if (source == c->fonts.end())
         return FVM_NOT_FOUND;
     return fvm_font_read(source->second->bytes.begin(), source->second->bytes.size(),
@@ -593,6 +608,10 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["letterSpacing"] = v;
     fvm_value_number(&v, style.color);
     object->properties["color"] = v;
+    fvm_value_boolean(&v, (style.variant & FVM_TEXT_FONT_BOLD) != 0);
+    object->properties["bold"] = v;
+    fvm_value_boolean(&v, (style.variant & FVM_TEXT_FONT_ITALIC) != 0);
+    object->properties["italic"] = v;
     fvm_value_boolean(&v, style.underline);
     object->properties["underline"] = v;
     fvm_value_boolean(&v, style.kerning);
@@ -1299,6 +1318,7 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
     {
         field = new Field;
         field->current.font = font_name ? font_name : c->default_font.c_str();
+        field->current.source_key = field->current.font;
         field->future = field->current;
         field->width = width;
         field->height = height;
@@ -1488,21 +1508,26 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.alignment = (unsigned long)style.alignment |
                     (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
                     (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
-                    (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL);
-    out.source = *context->fonts.find(style.font)->second;
+                    (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL) |
+                    (style.variant & FVM_TEXT_FONT_BOLD ? FVM_TEXT_STYLE_BOLD : 0UL) |
+                    (style.variant & FVM_TEXT_FONT_ITALIC ? FVM_TEXT_STYLE_ITALIC : 0UL);
+    out.source = *context->fonts.find(style.source_key)->second;
 }
 
 /* Restore style. */
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
-    if (src.font.empty() || src.font.size() > 255 || !finite_range(src.size, 1, 4096) ||
+    if (src.font.empty() || src.font.size() > FVM_TEXT_FONT_MAX_NAME ||
+        std::memchr(src.font.c_str(), 0, src.font.size()) || !finite_range(src.size, 1, 4096) ||
         !finite_range(src.leading, -4096, 4096) ||
         !finite_range(src.letter_spacing, -FVM_TEXT_STYLE_MAX_SPACING, FVM_TEXT_STYLE_MAX_SPACING) ||
         ((src.letter_spacing != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_SPACING) != 0)) || src.color > 16777215UL ||
-        (src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE)) > 2)
+        (src.alignment & ~FVM_TEXT_STYLE_FLAGS) > 2)
         return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing =
-        context->fonts.find(src.font);
+    unsigned int variant = (src.alignment & FVM_TEXT_STYLE_BOLD ? FVM_TEXT_FONT_BOLD : 0U) |
+                           (src.alignment & FVM_TEXT_STYLE_ITALIC ? FVM_TEXT_FONT_ITALIC : 0U);
+    fvm_detail::string key = font_source_key(src.font.c_str(), src.font.size(), variant);
+    fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing = context->fonts.find(key);
     if (existing != context->fonts.end())
     {
         FVM_FontSource *face = existing->second;
@@ -1514,7 +1539,7 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     else
     {
         FVM_Result result =
-            fvm_standard_text_register_font(context, src.font.c_str(), src.source.bytes.begin(),
+            fvm_standard_text_register_font_variant(context, src.font.c_str(), variant, src.source.bytes.begin(),
                                             src.source.bytes.size(), src.source.index);
         if (result != FVM_OK)
             return result;
@@ -1522,11 +1547,13 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
 
     /* Computation / Вычисление и обновление состояния. */
     out.font = src.font;
+    out.source_key = key;
+    out.variant = variant;
     out.size = src.size;
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
     out.color = src.color;
-    out.alignment = (FVM_TextAlignment)(src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE));
+    out.alignment = (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_FLAGS);
     out.underline = (src.alignment & FVM_TEXT_STYLE_UNDERLINE) != 0;
     out.kerning = (src.alignment & FVM_TEXT_STYLE_NO_KERNING) == 0;
     return FVM_OK;
@@ -1586,9 +1613,9 @@ size_t fvm_textfield_snapshot_size(FVM_Object *object)
     /* Initialization / Инициализация локального состояния. */
     FVM_Context *context = object->owner;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator a =
-        context->fonts.find(field->current.font);
+        context->fonts.find(field->current.source_key);
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator b =
-        context->fonts.find(field->future.font);
+        context->fonts.find(field->future.source_key);
     if (a == context->fonts.end() || b == context->fonts.end())
         return (size_t)-1;
     return 128 + field->text_size + field->current.font.size() + field->future.font.size() +

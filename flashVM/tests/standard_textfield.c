@@ -89,7 +89,7 @@ int main(void)
         assert(get_number(c, out.object, "size") == 20);
         fvm_value_boolean(&v, 1);
         assert(fvm_object_set(c, fmt, "bold", &v) == FVM_OK);
-        assert(fvm_object_call(c, field, "setTextFormat", 1, args, &out) == FVM_UNSUPPORTED);
+        assert(fvm_object_call(c, field, "setTextFormat", 1, args, &out) == FVM_NOT_FOUND);
         assert(get_number(c, field, "textWidth") == 14);
         fvm_value_undefined(&v);
         v.type = FVM_VALUE_NULL;

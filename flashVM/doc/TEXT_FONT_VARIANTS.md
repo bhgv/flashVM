@@ -29,6 +29,25 @@ complete Flash conformance remain open. All roadmap stages remain open.
 requires separate embedded faces for bold/italic. This implementation uses explicit
 host registration to provide those faces; physical devices/platforms are separate.
 
+## Native TextFormat selection — v0.870
+
+bold/italic now use the existing primitive Boolean conversion and independently
+select their family-slot bits. Null/undefined properties retain the previous
+selection when merging a format. Field getTextFormat/getNewTextFormat snapshots
+return actual Boolean selections; a new unattached TextFormat still starts null.
+Current/future format changes validate the selected face before publication.
+Missing variants return NOT_FOUND without changing text, formatting or geometry.
+Both measurement and glyph/underline export use the same precomputed face key.
+No mutable font handles are retained across calls, and no layout-time key
+allocation or system fallback is introduced.
+
+Native graph snapshots pack bold/italic into separate style bits, embedding each
+selected current/future face. No new payload numbers or public structure layout
+changes are needed. Legacy records restore regular; old readers reject new bits.
+Same family/style already present in a receiver must match source bytes/index;
+other styles in that family remain independent. Full old-reader compatibility is
+not promised. The owner-thread, GC and rollback contracts remain unchanged.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -13,6 +13,9 @@
 #define FVM_TEXT_STYLE_HAS_SPACING 16UL /* Optional signed spacing number follows packed alignment. */
 #define FVM_TEXT_STYLE_MAX_SPACING 4096.0 /* Bounded native extra pixels after each supported character. */
 #define FVM_TEXT_STYLE_UNDERLINE 32UL /* Packed uniform underline; absent legacy records restore false. */
+#define FVM_TEXT_STYLE_BOLD 64UL /* Select the explicit bold family face in snapshots. */
+#define FVM_TEXT_STYLE_ITALIC 128UL /* Select the explicit italic family face in snapshots. */
+#define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC) /* Packed non-alignment bits. */
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
 #define FVM_TEXT_FIELD_MIN_INNER_WIDTH (1.0 / 64.0) /* Progress on oversized graphemes. */
 #define FVM_TEXT_FIELD_MAX_EXTENT 1000000.0 /* Maximum admitted outer field dimension. */
