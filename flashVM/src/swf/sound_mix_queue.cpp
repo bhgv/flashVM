@@ -129,13 +129,9 @@ FVM_Result write_mixed(void *raw, const short *pcm, size_t frames)
 {
     return write_composed(raw, pcm, frames, false);
 }
-/* Forward only acknowledged queue counts; preserve caller output after callback failure. */
-FVM_Result observe(void *raw, size_t *out)
+/* Observe while the public operation already holds the native callback reentry guard. */
+FVM_Result observe_locked(FVM_SWFSoundMixQueue *queue, size_t *out)
 {
-    FVM_SWFSoundMixQueue *queue = static_cast<FVM_SWFSoundMixQueue *>(raw);
-    if (!queue || queue->busy || !out)
-        return FVM_INVALID_ARGUMENT;
-    MixBusyScope scope(queue);
     try
     {
         size_t frames = 0;
@@ -158,6 +154,14 @@ FVM_Result observe(void *raw, size_t *out)
     {
         return FVM_ERROR;
     }
+}
+/* Forward acknowledged counts with one externally serialized callback reentry scope. */
+FVM_Result observe(void *raw, size_t *out)
+{
+    FVM_SWFSoundMixQueue *queue = static_cast<FVM_SWFSoundMixQueue *>(raw);
+    if (!queue || queue->busy || !out) return FVM_INVALID_ARGUMENT;
+    MixBusyScope scope(queue);
+    return observe_locked(queue, out);
 }
 /* Pause never changes pending ownership or consumes voice time. */
 FVM_Result pause_queue(void *raw, int paused)
