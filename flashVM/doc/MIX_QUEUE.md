@@ -1,5 +1,7 @@
 # Retained stream/event queue composition (v0.772)
 
+Optional queued sound identities now cover pending and accepted stream/event output: [EN](MIX_QUEUE_IDENTITIES.md) / [RU](MIX_QUEUE_IDENTITIES.ru.md). This opt-in mode adds budgeted deadline storage, tracked admission/query/stop and acknowledged full clear that stops tracked mixer voices; default untracked behavior is unchanged.
+
 Opt-in shared base/tail frame accounting is now available: [EN](MIX_QUEUE_CLOCK.md) / [RU](MIX_QUEUE_CLOCK.ru.md). Explicit begin requires no pending retry and an empty FIFO; accepted-minus-queued observations cover both producers and end requires drain. Existing public structures and unclocked behavior are preserved.
 
 Current additive tail and byte-budget APIs: [EN](AUDIO_MIX_TAILS.md) / [RU](AUDIO_MIX_TAILS.ru.md). After actual producer quiescence, pump_tail owns its zero-base retry independently of adapted.write. Backend NOT_FOUND may mean a retained rejected block; inspect pending origin rather than treating that status as EOF. Desktop stream/event integration remains separate.
@@ -132,9 +134,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:197](../include/flashvm/swf_sound_mix_queue.h#L197) |
-| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:158](../include/flashvm/swf_sound_mix_queue.h#L158) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:193](../include/flashvm/swf_sound_mix_queue.h#L193) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:198](../include/flashvm/swf_sound_mix_queue.h#L198) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:159](../include/flashvm/swf_sound_mix_queue.h#L159) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:194](../include/flashvm/swf_sound_mix_queue.h#L194) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 <!-- source-links:end -->

@@ -1,10 +1,12 @@
-Development version: **0.961** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.961 ` and an English description. Increase the subversion before each
+Development version: **0.962** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.962 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.962: [Complete queued identity contracts and regression evidence](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.961: [Verify identity C89 limits progress and release contracts](doc/MIX_QUEUE_IDENTITIES.md).
 

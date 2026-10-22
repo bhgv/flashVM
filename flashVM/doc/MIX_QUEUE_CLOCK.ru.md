@@ -1,5 +1,7 @@
 # Общий счётчик FIFO смешивания
 
+При включённых [queued-ID](MIX_QUEUE_IDENTITIES.ru.md) clock_begin/clock_end отклоняются; сначала безопасно отключают tracking после drain. Успешная adapted.clear сбрасывает общий отсчёт и отменяет tracked-голоса/deadlines. Это opt-in политика, не изменение прежней untracked clear.
+
 v0.939 добавляет явно включаемый счётчик в native-адаптер stream/event. [fvm_swf_sound_mix_queue_clock_begin](../include/flashvm/swf_sound_mix_queue.h#L69) требует живой сериализованный адаптер, отсутствие pending retry и пустую настоящую FIFO. После успешного наблюдения backend начинается новый нулевой отсчёт. Создание остаётся без callbacks, учёт выключен до begin. Пустой дренированный отсчёт можно начать заново. Pause, clear, seek конвертера и сброс голосов автоматически не выполняются.
 
 [fvm_swf_sound_mix_queue_clock_info](../include/flashvm/swf_sound_mix_queue.h#L86) заполняет структуру точного размера [FVM_SWFSoundMixQueueClock](../include/flashvm/swf_sound_mix_queue.h#L52): submitted_frames учитывает каждый реально принятый блок adapted.write и pump_tail; played_frames — submitted минус свежий проверенный queued_frames; seconds делит удалённые из FIFO кадры на частоту выхода. Отказы записи не учитываются до успешного точного retry. Максимум точного счётчика [FVM_SWF_SOUND_OUTPUT_MAX_CLOCK](../include/flashvm/swf_sound_output.h#L14); переполнение даёт UNSUPPORTED до render/write. Это не DAC timestamp, EOF источника, разрешение кадра или полная A/V-синхронизация.

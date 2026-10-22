@@ -91,7 +91,8 @@ extern "C"
      * only in a zero epoch, disable only after observed drain and expired registrations.
      * On enable, adapter_budget covers native owner, both PCM arrays and ID_SLOTS doubles;
      * insufficient/overflow -> OUT_OF_MEMORY before allocation, failure preserves old mode.
-     * No backend callback/VM/GC. ALL voice starts/stops must use this queue's tracked APIs;
+     * No backend callback/VM/GC. One root dictionary ID namespace per epoch; child dictionaries are not remapped.
+     * ALL voice starts/stops must use this queue's tracked APIs;
      * direct mixer mutation invalidates the accounting contract. While enabled, clock_begin/
      * clock_end reject INVALID_ARGUMENT; disable first at a drained safe point.
      * Opt-in adapted.clear stops every mixer voice and resets deadlines/clock/pending only
