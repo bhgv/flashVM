@@ -114,6 +114,10 @@ spacing, using the same feature policy for wrapping and final placement. Its
 zero-spacing path and configured flags remain explicit. Required/ambiguous
 clusters still return UNSUPPORTED. [Contract and evidence](TEXT_LIGATURE_TRACKING.md).
 
+## Bounded paragraph justification (v0.877–0.884)
+
+[`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L24) expands internal U+0020 spaces on nonfinal wrapped LTR lines. Trailing spaces retain their records with zero advance; final/hard-ended/no-gap lines stay natural. Bidi and ambiguous space clusters reject explicitly. Measurement, glyph positions, tracking, underline and separately owned paths agree. [Arguments, statuses, ownership and evidence](TEXT_JUSTIFY.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -126,6 +130,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:128](../include/flashvm/text_layout.h#L128) |

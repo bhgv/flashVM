@@ -61,6 +61,8 @@ v0.882 drives actual AVM1 alignment writes and method/property calls in interpre
 
 v0.883 adds the annotated C89 `--justify` tutorial and executes its two-line 90/60px observation in the example checker. The path remains separately owned after the font/layout release.
 
+v0.884 validation: 96 native/tutorial, nine targeted ASan/UBSan and 12 NO_FONTS checks pass. The seven allocation sweeps run in the ordinary build. Native JIT availability was checked separately and the AVM1 fixture verifies native entry counters. LeakSanitizer is disabled because /proc is unavailable; this is no leak-acceptance claim. A tracked-file copy under a renamed component configures; its copied checker passes against the native tutorial executable, without claiming a detached build. Source-link and annotated-example checks pass. Full Unicode/bidi justification, Flash reference comparisons, devices/platforms and all nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

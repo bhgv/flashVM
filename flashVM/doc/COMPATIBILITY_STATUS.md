@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Bounded paragraph justification v0.877–v0.884 adds native LTR internal-space expansion and SWF8 TextFormat admission, preserving current/future styles, packed-state transfer, GC ownership, tracking and real-face underline. The regression run passes 96 native/tutorial tests, nine targeted ASan/UBSan tests and 12 NO_FONTS tests. Seven new allocation-failure sweeps run only in the ordinary build. LeakSanitizer is disabled because this environment cannot inspect /proc; no leak-check claim is made. A renamed detached component configures and its copied tutorial checker passes against the native executable; it was not separately built. [EN](TEXT_JUSTIFY.md) / [RU](TEXT_JUSTIFY.ru.md). Full Unicode/bidi justification, original Flash reference acceptance, real devices/platforms and all nine roadmap stages remain open.
+
 Real embedded font variants v0.869–v0.876: explicit regular/bold/italic/combined
 family slots, Boolean TextFormat selection, source-specific metrics/contours,
 wrapping, snapshots and current/future graph transfer. 85 native/tutorial, seven

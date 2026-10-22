@@ -1,10 +1,12 @@
-Development version: **0.883** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.883 ` and an English description. Increase the subversion before each
+Development version: **0.884** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.884 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.884: [Record bounded paragraph justification contracts and regression evidence](doc/TEXT_JUSTIFY.md).
 
 v0.883: [Demonstrate justified layout in the checked C89 embedding tutorial](doc/TEXT_JUSTIFY.md).
 

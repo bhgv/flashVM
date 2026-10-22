@@ -62,7 +62,7 @@ Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
 styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
 ([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Nonzero margins/indents,
-bullets, hyperlinks, tab stops and justify are rejected
+bullets, hyperlinks and tab stops are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
 
@@ -161,6 +161,8 @@ See [counted text and checks](TEXTFIELD_COUNTED_TEXT.md).
 ## Automatic field geometry (v0.845–0.852)
 
 TextField.autoSize supports none/left and false/true. Edits and current formatting fit dimensions before publication; wordWrap preserves width while fitting height. Future format changes stay independent. Transfers retain mode, validate measured dimensions and upgrade retired rootless built-in stubs. Center/right, manual height and unwrapped width writes while active remain UNSUPPORTED. [Contract and evidence](TEXT_AUTOSIZE.md).
+
+SWF8 `align="justify"` is supported for bounded LTR paragraphs with unambiguous ASCII-space clusters. Current/future formatting, snapshots and graph transfer retain it. Final/hard-ended lines remain natural; bidi and general Unicode justification remain unsupported. [Contract and evidence](TEXT_JUSTIFY.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
