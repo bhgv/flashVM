@@ -1,6 +1,6 @@
 # FlashVM workspace
 
-Development version: **0.871**. [Русская версия](README.ru.md).
+Development version: **0.872**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 

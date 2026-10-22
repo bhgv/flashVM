@@ -50,6 +50,8 @@ not promised. The owner-thread, GC and rollback contracts remain unchanged.
 
 v0.871 adds three original CC0 styled faces with independent AV advances at 40px: regular 48, bold 56, italic 52, bold-italic 60. Field/TextFormat metrics and exported bounds prove actual source selection; enabling kerning subtracts 3.2 for each face. Registry tests also exercise the aggregate 16-face limit across all family slots.
 
+v0.872 verifies bold current/italic future transfer through binary graphs and channels, source teardown, receiver GC and later auto-size edits. Only selected faces transfer; switching to absent regular remains NOT_FOUND. A conflicting future source rolls back an earlier current-face import. Four actual faces drive wrapped line counts and underline paths: outer width 60 gives heights 94/94/94/186; width 64 gives 94 for every face.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
