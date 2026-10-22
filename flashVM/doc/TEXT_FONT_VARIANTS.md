@@ -48,6 +48,8 @@ Same family/style already present in a receiver must match source bytes/index;
 other styles in that family remain independent. Full old-reader compatibility is
 not promised. The owner-thread, GC and rollback contracts remain unchanged.
 
+v0.871 adds three original CC0 styled faces with independent AV advances at 40px: regular 48, bold 56, italic 52, bold-italic 60. Field/TextFormat metrics and exported bounds prove actual source selection; enabling kerning subtracts 3.2 for each face. Registry tests also exercise the aggregate 16-face limit across all family slots.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

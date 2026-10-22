@@ -21,3 +21,15 @@ committed bytes and do not need Python/fontTools.
 Отдельный CC0 geometry_ligatures.ttf проверяет liga f+i→fi, clig f+f→fi и rlig
 V+A→fi. Последние два правила намеренно синтетические, для проверки выбора
 features; это не шрифт естественного языка. Старые fixtures не изменены.
+
+geometry_bold.ttf, geometry_italic.ttf and geometry_bold_italic.ttf (with matching
+font_*_data.h headers) are separate original CC0 faces. At 40px, AV advances are
+56, 52 and 60 pixels respectively, versus 48 regular with kerning disabled.
+Their AV contours are embedded wider/slanted outlines, not runtime simulation.
+Other glyphs remain simple probe geometry; this is no typographic quality oracle.
+The generator reproduces all six faces; builds do not require fontTools.
+
+Отдельные CC0 bold/italic/bold-italic лица при 40px дают AV advance 56/52/60
+против 48 у regular без кернинга. Широкие/наклонные AV-контуры находятся в самих
+лицах, не синтезируются во время исполнения. Остальные glyphs — простые probes;
+это не проверка качества типографики. Генератор воспроизводит все шесть лиц.

@@ -97,3 +97,29 @@ feature fina { sub beh by beh.fina; } fina;
 ''')
 save_fixture('geometry_ligatures.ttf', 'font_ligature_data.h', 'fvm_test_font_ligatures', 'FVM_TEST_FONT_LIGATURE_DATA_H')
 fb.font.close()
+
+# Separate real styled faces exercise explicit family binding, never runtime synthesis.
+# Only the AV probe outlines/advances differ; the ordinary source is reloaded per face.
+for suffix, symbol, weight, italic, advance, xscale, slant in [
+    ('bold', 'fvm_test_font_bold', 700, False, 700, 1.25, 0),
+    ('italic', 'fvm_test_font_italic', 400, True, 650, 1, 0.2),
+    ('bold_italic', 'fvm_test_font_bold_italic', 700, True, 750, 1.25, 0.2),
+]:
+    fb.font = TTFont(root/'tests/fixtures/geometry.ttf', recalcTimestamp=False)
+    for glyph_name in ('A', 'V'):
+        probe = TTGlyphPen(fb.font['glyf'])
+        fb.font['glyf'][glyph_name].draw(TransformPen(probe, (xscale, 0, slant, 1, 0, 0)), fb.font['glyf'])
+        fb.font['glyf'][glyph_name] = probe.glyph()
+        fb.font['hmtx'][glyph_name] = (advance, round(100*xscale))
+    bold = weight == 700
+    fb.font['OS/2'].usWeightClass = weight
+    fb.font['OS/2'].fsSelection = (32 if bold else 0) | (1 if italic else 0)
+    fb.font['head'].macStyle = (1 if bold else 0) | (2 if italic else 0)
+    fb.font['post'].italicAngle = -12 if italic else 0
+    style_name = 'Bold Italic' if bold and italic else 'Bold' if bold else 'Italic'
+    for name_id, text in [(2, style_name), (3, 'FlashVM-CC0-'+suffix),
+                          (4, 'FlashVM Test Geometry '+style_name),
+                          (6, 'FlashVMTestGeometry-'+suffix)]:
+        fb.font['name'].setName(text, name_id, 3, 1, 0x409)
+    save_fixture('geometry_'+suffix+'.ttf', 'font_'+suffix+'_data.h', symbol, 'FVM_TEST_FONT_'+suffix.upper()+'_DATA_H')
+    fb.font.close()
