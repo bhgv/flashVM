@@ -28,6 +28,12 @@ extern "C"
             line_height;          /* Recommended or configured distance between baselines. */
         unsigned int glyph_count; /* Number of glyph entries. */
     } FVM_FontMetrics;
+    /* Font-defined underline geometry in pixel coordinates, positive y downward. */
+    typedef struct FVM_FontUnderlineMetrics
+    {
+        double center_y; /* Bar center relative to the text baseline. */
+        double thickness; /* Positive full vertical bar thickness. */
+    } FVM_FontUnderlineMetrics;
     /* Define FVM_ShapedGlyph struct and its representation. */
     typedef struct FVM_ShapedGlyph
     {
@@ -49,6 +55,12 @@ extern "C"
     /* Read ascender, descender, line height and glyph count of this font face. */
     FVM_API FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *out);
     /* Map a Unicode code point to a font glyph identifier. */
+    /* Read scaled unhinted underline metrics from the borrowed scalable face.
+     * Clears out on failure; NULL output/font is INVALID_ARGUMENT with fonts enabled.
+     * Missing/nonpositive metrics -> UNSUPPORTED, without inventing a fallback.
+     * NO_FONTS clears valid output and returns UNSUPPORTED. No allocation/VM/GC;
+     * serialize access to a shared mutable font; copied scalar results are independent. */
+    FVM_API FVM_Result fvm_font_underline_metrics(const FVM_Font *, FVM_FontUnderlineMetrics *out);
     FVM_API unsigned int fvm_font_char(const FVM_Font *font, unsigned int unicode);
     /* Copies an unhinted glyph outline into editable, font-independent vectors.
      * Coordinates are pixels, x right/y down; advance is separate from ink bounds. */

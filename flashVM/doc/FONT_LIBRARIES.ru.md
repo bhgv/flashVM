@@ -43,12 +43,12 @@ flashvm/font.h владеет копией байтов шрифта, face и р
 
 | Операция | API |
 | --- | --- |
-| Метрики и Unicode → глиф | [fvm_font_metrics](../include/flashvm/font.h#L50) / [fvm_font_char](../include/flashvm/font.h#L52); отсутствующий символ даёт glyph 0 |
-| Независимый контур глифа | [fvm_font_glyph](../include/flashvm/font.h#L56): прямые, квадратичные/кубические Безье, закрытые контуры |
-| OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L62): глифы, продвижения, смещения, кластеры UTF-8 |
-| Контуры размещённого текста | [fvm_text_run_path](../include/flashvm/font.h#L82): объединение расположенных глифов |
-| Допустимые переносы | [fvm_text_breaks](../include/flashvm/font.h#L88): классификации libunibreak на каждый входной байт |
-| Bidi одной строки | [fvm_text_bidi](../include/flashvm/font.h#L103): направление, логические уровни, карта визуальных индексов |
+| Метрики и Unicode → глиф | [fvm_font_metrics](../include/flashvm/font.h#L56) / [fvm_font_char](../include/flashvm/font.h#L64); отсутствующий символ даёт glyph 0 |
+| Независимый контур глифа | [fvm_font_glyph](../include/flashvm/font.h#L68): прямые, квадратичные/кубические Безье, закрытые контуры |
+| OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L74): глифы, продвижения, смещения, кластеры UTF-8 |
+| Контуры размещённого текста | [fvm_text_run_path](../include/flashvm/font.h#L94): объединение расположенных глифов |
+| Допустимые переносы | [fvm_text_breaks](../include/flashvm/font.h#L100): классификации libunibreak на каждый входной байт |
+| Bidi одной строки | [fvm_text_bidi](../include/flashvm/font.h#L115): направление, логические уровни, карта визуальных индексов |
 
 Координаты — пиксели, x вправо/y вниз. Масштабированные контуры FreeType имеют
 точность 26.6; double в экспортированных точках не создаёт дополнительную
@@ -58,7 +58,7 @@ flashvm/font.h владеет копией байтов шрифта, face и р
 Продвижение текста и геометрические границы видимых контуров —
 разные величины.
 
-[fvm_font_shape](../include/flashvm/font.h#L62) принимает однородный по письменности/направлению фрагмент
+[fvm_font_shape](../include/flashvm/font.h#L74) принимает однородный по письменности/направлению фрагмент
 корректного UTF-8, максимум 4 МиБ. AUTO определяет свойства фрагмента, но не
 выполняет раскладку многоязычного абзаца. Bidi принимает UTF-32, максимум
 1 000 000 скалярных Unicode-значений; визуальный массив только переставляется,
@@ -134,7 +134,7 @@ PROVENANCE.json содержит источники и SHA-256 архивов, f
 
 ## Проверка входа bidi и срок жизни результатов (v0.827)
 
-[`fvm_text_bidi`](../include/flashvm/font.h#L103) принимает заимствованный UTF-32 абзац до 1 000 000 Unicode-скаляров
+[`fvm_text_bidi`](../include/flashvm/font.h#L115) принимает заимствованный UTF-32 абзац до 1 000 000 Unicode-скаляров
 и направление AUTO/LTR/RTL. Представление enum из C проверяется до чтения
 значения C++ enum. Суррогаты, неверные скаляры, отсутствующие обязательные массивы
 и превышение длины дают INVALID_ARGUMENT до изменения результатов.
@@ -160,14 +160,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_char` | function | [include/flashvm/font.h:52](../include/flashvm/font.h#L52) |
-| `fvm_font_glyph` | function | [include/flashvm/font.h:56](../include/flashvm/font.h#L56) |
-| `fvm_font_metrics` | function | [include/flashvm/font.h:50](../include/flashvm/font.h#L50) |
-| `fvm_font_shape` | function | [include/flashvm/font.h:62](../include/flashvm/font.h#L62) |
+| `fvm_font_char` | function | [include/flashvm/font.h:64](../include/flashvm/font.h#L64) |
+| `fvm_font_glyph` | function | [include/flashvm/font.h:68](../include/flashvm/font.h#L68) |
+| `fvm_font_metrics` | function | [include/flashvm/font.h:56](../include/flashvm/font.h#L56) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:74](../include/flashvm/font.h#L74) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../include/flashvm/path.h#L81) |
 | `fvm_path_mask` | function | [include/flashvm/path.h:86](../include/flashvm/path.h#L86) |
-| `fvm_text_bidi` | function | [include/flashvm/font.h:103](../include/flashvm/font.h#L103) |
-| `fvm_text_breaks` | function | [include/flashvm/font.h:88](../include/flashvm/font.h#L88) |
-| `fvm_text_run_path` | function | [include/flashvm/font.h:82](../include/flashvm/font.h#L82) |
+| `fvm_text_bidi` | function | [include/flashvm/font.h:115](../include/flashvm/font.h#L115) |
+| `fvm_text_breaks` | function | [include/flashvm/font.h:100](../include/flashvm/font.h#L100) |
+| `fvm_text_run_path` | function | [include/flashvm/font.h:94](../include/flashvm/font.h#L94) |
 <!-- source-links:end -->

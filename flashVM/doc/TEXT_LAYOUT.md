@@ -8,7 +8,7 @@ the selected feature consistently. [Contract and evidence](TEXT_KERNING.md).
 It uses the static FreeType/HarfBuzz/libunibreak/FriBidi targets selected by
 [`FONTS`](../cmake/BuildDefinitions.cmake#L15) in DEFS.txt. No platform font lookup or downloaded dependency is used.
 
-Create a font with [`fvm_font_read`](../include/flashvm/font.h#L45), then call [`fvm_text_layout_create`](../include/flashvm/text_layout.h#L72). NULL
+Create a font with [`fvm_font_read`](../include/flashvm/font.h#L51), then call [`fvm_text_layout_create`](../include/flashvm/text_layout.h#L72). NULL
 options select unlimited width, the font's natural line height, AUTO paragraph
 direction and START alignment. The example in
 `examples/embedding/text_layout/main.c` shows wrapping, mixed Latin/Hebrew/Arabic,
@@ -113,7 +113,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
-| `fvm_font_read` | function | [include/flashvm/font.h:45](../include/flashvm/font.h#L45) |
+| `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../include/flashvm/text_layout.h#L107) |

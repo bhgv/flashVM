@@ -44,7 +44,9 @@ fb.setupNameTable({'familyName':'FlashVM Test Geometry', 'styleName':'Regular',
                   'psName':'FlashVMTestGeometry', 'version':'Version 1.0'})
 fb.setupOS2(sTypoAscender=900, sTypoDescender=-200, sTypoLineGap=100,
             usWinAscent=900, usWinDescent=200)
-fb.setupPost()
+# TrueType post stores a top-edge position; FreeType normalizes it to bar center.
+# At 40px: center 4px below baseline, thickness 2px, independent of glyph outlines.
+fb.setupPost(underlinePosition=-75, underlineThickness=50)
 fb.setupMaxp()
 addOpenTypeFeaturesFromString(fb.font, '''languagesystem DFLT dflt;
 languagesystem latn dflt; languagesystem arab dflt;

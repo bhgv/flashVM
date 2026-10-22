@@ -191,6 +191,27 @@ extern "C" FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *ou
     return FVM_OK;
 }
 
+/* Scale the face's underline center/thickness, keeping y-down output consistent
+ * with glyph outlines. FreeType normalizes source-format post metrics for us. */
+extern "C" FVM_Result fvm_font_underline_metrics(const FVM_Font *font, FVM_FontUnderlineMetrics *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    std::memset(out, 0, sizeof(*out));
+    if (!font)
+        return FVM_INVALID_ARGUMENT;
+    if (!FT_IS_SCALABLE(font->face))
+        return FVM_UNSUPPORTED;
+    double center = -FT_MulFix(font->face->underline_position, font->face->size->metrics.y_scale) / 64.0;
+    double thickness = FT_MulFix(font->face->underline_thickness, font->face->size->metrics.y_scale) / 64.0;
+    if (!(center >= -FVM_FONT_UNDERLINE_MAX_EXTENT && center <= FVM_FONT_UNDERLINE_MAX_EXTENT &&
+          thickness > 0 && thickness <= FVM_FONT_UNDERLINE_MAX_EXTENT))
+        return FVM_UNSUPPORTED;
+    out->center_y = center;
+    out->thickness = thickness;
+    return FVM_OK;
+}
+
 /* Compute and return font char. */
 extern "C" unsigned int fvm_font_char(const FVM_Font *font, unsigned int unicode)
 {
@@ -564,6 +585,15 @@ extern "C" void fvm_font_destroy(FVM_Font *)
 /* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *, FVM_FontMetrics *)
 {
+    return FVM_UNSUPPORTED;
+}
+
+/* Preserve the underline ABI with explicit empty output in a NO_FONTS build. */
+extern "C" FVM_Result fvm_font_underline_metrics(const FVM_Font *, FVM_FontUnderlineMetrics *out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    std::memset(out, 0, sizeof(*out));
     return FVM_UNSUPPORTED;
 }
 

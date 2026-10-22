@@ -27,8 +27,8 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_font_destroy`](../../../include/flashvm/font.h#L48) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_font_read`](../../../include/flashvm/font.h#L45) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_font_destroy`](../../../include/flashvm/font.h#L54) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_font_read`](../../../include/flashvm/font.h#L51) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
@@ -94,8 +94,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_destroy` | function | [include/flashvm/font.h:48](../../../include/flashvm/font.h#L48) |
-| `fvm_font_read` | function | [include/flashvm/font.h:45](../../../include/flashvm/font.h#L45) |
+| `fvm_font_destroy` | function | [include/flashvm/font.h:54](../../../include/flashvm/font.h#L54) |
+| `fvm_font_read` | function | [include/flashvm/font.h:51](../../../include/flashvm/font.h#L51) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |

@@ -8,4 +8,5 @@
 #define FVM_FONT_UNICODE_MAX 0x10FFFFU /* Largest Unicode scalar representation. */
 #define FVM_FONT_SURROGATE_BEGIN 0xD800U /* First non-scalar UTF-16 surrogate code point. */
 #define FVM_FONT_SURROGATE_END 0xDFFFU /* Last non-scalar UTF-16 surrogate code point. */
+#define FVM_FONT_UNDERLINE_MAX_EXTENT 1000000.0 /* Absolute pixel bound for scalable underline metrics. */
 #endif

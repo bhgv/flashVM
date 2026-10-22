@@ -4,9 +4,9 @@
 
 ## Нативное формирование (v0.820)
 
-[fvm_font_shape_configured](../include/flashvm/font.h#L74) добавляет flags к прежнему контракту владения native
+[fvm_font_shape_configured](../include/flashvm/font.h#L86) добавляет flags к прежнему контракту владения native
 run. Ноль сохраняет HarfBuzz defaults; [FVM_FONT_SHAPE_NO_KERNING](../include/flashvm/font.h#L9) отключает kern,
-сохраняя лигатуры и размещение marks. Старый [fvm_font_shape](../include/flashvm/font.h#L62) не меняется.
+сохраняя лигатуры и размещение marks. Старый [fvm_font_shape](../include/flashvm/font.h#L74) не меняется.
 Неизвестные flags дают INVALID_ARGUMENT и очищают выходной owner. В NO_FONTS
 корректные flags дают UNSUPPORTED. UTF-8, direction и владение font соответствуют
 прежнему API; font handle нельзя использовать конкурентно. Возвращённый run
@@ -97,8 +97,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_shape` | function | [include/flashvm/font.h:62](../include/flashvm/font.h#L62) |
-| `fvm_font_shape_configured` | function | [include/flashvm/font.h:74](../include/flashvm/font.h#L74) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:74](../include/flashvm/font.h#L74) |
+| `fvm_font_shape_configured` | function | [include/flashvm/font.h:86](../include/flashvm/font.h#L86) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
 | `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../include/flashvm/text_layout.h#L80) |
 | `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
