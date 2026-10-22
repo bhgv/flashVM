@@ -50,6 +50,11 @@ def main():
                                 stdout=subprocess.PIPE, text=True)
         assert 'Queue retained 5 rejected blocks.' in queued.stdout
         assert queued_output.read_bytes() == output.read_bytes()
+        tails_output = root / 'tails.pcm'
+        tails = subprocess.run([executable, str(tails_output), '--tails'], cwd=root, check=True,
+                               stdout=subprocess.PIPE, text=True)
+        assert 'Queue retained 5 rejected blocks.' in tails.stdout
+        assert tails_output.read_bytes() == output.read_bytes()
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

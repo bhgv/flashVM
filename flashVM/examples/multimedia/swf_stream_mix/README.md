@@ -97,11 +97,23 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source VM lifetime; native snapshots remain retained. |
 | [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L67) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
 | [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L126) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
+| [`fvm_swf_sound_mix_queue_pump_tail`](../../../include/flashvm/swf_sound_mix_queue.h#L93) | Authorize one event-only zero-base block after producer EOF/quiescence; fixed frames/target, accepted cleared on failure. Retains mixed bytes on queue rejection, no allocation/VM/GC; host serializes adapter/mixer and owns both until quiescence. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L63) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L97) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
 | [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L101) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L133) | Release native voices after all serial reads finish; null allowed. |
 | [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Release stream storage after converter use; null allowed. |
+
+## Native tail pump / Подача хвостов
+
+`OUTPUT.pcm --tails` uses the retained adapter for stream input and
+[fvm_swf_sound_mix_queue_pump_tail](../../../include/flashvm/swf_sound_mix_queue.h#L93) only after actual converter EOF. It keeps the
+explicit 16-frame export budget, retries each rejection and verifies that exhausted
+voices do not enqueue further silence. The resulting 64 bytes equal both existing
+modes under the independent Python oracle. No clock, frontend or physical device
+is introduced. Режим использует настоящий tail API после EOF, сохраняет конечный
+бюджет и проверяет точный повтор и исчерпание. [EN contract](../../../doc/AUDIO_MIX_TAILS.md) /
+[RU](../../../doc/AUDIO_MIX_TAILS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -121,6 +133,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:101](../../../include/flashvm/swf_sound_mix_queue.h#L101) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:63](../../../include/flashvm/swf_sound_mix_queue.h#L63) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:97](../../../include/flashvm/swf_sound_mix_queue.h#L97) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:93](../../../include/flashvm/swf_sound_mix_queue.h#L93) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:126](../../../include/flashvm/swf_sound_mixer.h#L126) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |

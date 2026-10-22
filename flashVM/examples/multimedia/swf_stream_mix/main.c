@@ -84,15 +84,16 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_AudioQueueBackend backend, adapted; /* Borrow real FIFO callbacks and wrapped composition. */
     FVM_SWFSoundMixQueueInfo pending; /* Observe retained retry ownership without a callback. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
-    int queue_mode = argc == 3 && !strcmp(argv[2], "--queue"); /* Explicit queue/retry tutorial. */
+    int tail_mode = argc == 3 && !strcmp(argv[2], "--tails"); /* Select explicit pump_tail after actual converter EOF. */
+    int queue_mode = (argc == 3 && !strcmp(argv[2], "--queue")) || tail_mode; /* Explicit queue/retry tutorial. */
     FILE *output = 0; /* No file exists until successful source preparation and teardown. */
-    size_t total = 0, count, values, mixed, event; /* Distinguish frames from channel values. */
+    size_t total = 0, count, values, mixed, event, accepted = 0; /* Distinguish frames from channel values. */
     int eof = 0, status = 1; /* Stop stream reads at EOF; report failure until fclose succeeds. */
     FVM_Result result; /* Distinguish normal converter EOF from actual failure. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -163,12 +164,16 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         if (queue_mode) /* Queue accepts only the retained mixture, never a second mixer advance. */
         { /* Deliberately reject each new base before accepting its identical retry. */
             queue.reject = 1; /* Arm the native consumer before the first write attempt. */
-            result = adapted.write(adapted.userdata, pcm, count); /* Mix once, then retain on reject. */
+            result = tail_mode && eof ? fvm_swf_sound_mix_queue_pump_tail(mix_queue, count, EXAMPLE_MIX_TOTAL, &accepted) /* Render a zero-base event block only after converter exhaustion. */
+                                     : adapted.write(adapted.userdata, pcm, count); /* Base input keeps its original-byte retry contract. */
             if (result != FVM_NOT_FOUND) goto cleanup; /* Require actual controlled backpressure. */
             pending.struct_size = sizeof(pending); /* Match native retry observation geometry. */
             if (!checked(fvm_swf_sound_mix_queue_info(mix_queue, &pending), "pending")) goto cleanup; /* No device poll. */
             if (pending.pending_frames != count) goto cleanup; /* The adapter owns exactly this retry. */
-            if (!checked(adapted.write(adapted.userdata, pcm, count), "retry")) goto cleanup; /* Reuse the original base unchanged. */
+            result = tail_mode && eof ? fvm_swf_sound_mix_queue_pump_tail(mix_queue, count, EXAMPLE_MIX_TOTAL, &accepted) /* Resend retained tail bytes without another voice advance. */
+                                     : adapted.write(adapted.userdata, pcm, count); /* Base retry reuses the original bytes unchanged. */
+            if (!checked(result, "retry")) goto cleanup; /* Never count a rejected block as accepted time. */
+            if (tail_mode && eof && accepted != count) goto cleanup; /* Require the complete authorized tail block. */
         } /* Retained mixed bytes have now moved to the native FIFO. */
         else /* The original direct-file demonstration still uses explicit in-place mixing. */
         { /* A file write failure remains terminal rather than a queue retry. */
@@ -182,6 +187,8 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     } /* End bounded serial export; a retrying backend must retain pcm instead of mixing again. */
     if (queue_mode) /* The file is a separate final consumer, outside queue retry semantics. */
     { /* Consume exactly the acknowledged native FIFO prefix once. */
+        if (tail_mode && fvm_swf_sound_mix_queue_pump_tail(mix_queue, 1, EXAMPLE_MIX_TOTAL, &accepted) != FVM_NOT_FOUND) goto cleanup; /* Exhausted voices must not enqueue more silence. */
+        if (tail_mode && accepted) goto cleanup; /* Exhaustion clears accepted without draining the FIFO. */
         if (queue.frames != EXAMPLE_MIX_TOTAL) goto cleanup; /* Reject incomplete native export. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
         if (fwrite(queue.pcm, sizeof(short), mixed, output) != mixed) goto cleanup; /* Terminal I/O. */
