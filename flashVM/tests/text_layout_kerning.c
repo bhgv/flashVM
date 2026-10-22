@@ -6,7 +6,7 @@
 int main(void)
 {
     FVM_TextLayout *layout=(FVM_TextLayout*)1;
-    assert(fvm_text_layout_create_configured(0,"AV",2,0,2,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_configured(0,"AV",2,0,4,&layout)==FVM_INVALID_ARGUMENT && !layout);
 #ifdef FVM_HAS_FONTS
     {
         FVM_Font *font=0;FVM_TextLayout *enabled=0,*disabled=0;

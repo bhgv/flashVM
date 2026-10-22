@@ -18,7 +18,7 @@ int main()
  fvm_value_boolean(&value,0);assert(fvm_object_set(c,format,"kerning",&value)==FVM_OK);fvm_value_number(&value,20);assert(fvm_object_set(c,format,"size",&value)==FVM_OK);fvm_value_number(&value,-1);assert(fvm_object_set(c,format,"letterSpacing",&value)==FVM_OK && fvm_object_call(c,field,"setNewTextFormat",1,&arg,&out)==FVM_OK);
  assert(std::fabs(counted_metric(c,field,"_width")-53.8)<0.02);
  assert(fvm_value_string_bytes(&value,"A\0B",3)==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_OK && counted_metric(c,field,"_width")==37 && counted_metric(c,field,"_height")==26);
- assert(fvm_value_string(&value,"fi")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_UNSUPPORTED);counted_text(c,field,"A\0B",3);
+ assert(fvm_value_string(&value,"A\xcc\x81")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_UNSUPPORTED);counted_text(c,field,"A\0B",3);
  assert(counted_metric(c,field,"_width")==37 && counted_metric(c,field,"_height")==26);
  assert(fvm_value_string(&value,"")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_OK && counted_metric(c,field,"_width")==4 && counted_metric(c,field,"_height")==26);
  fvm_value_number(args,0);fvm_value_number(args+1,0);assert(fvm_value_string(args+2,"AV")==FVM_OK && fvm_object_call(c,field,"replaceText",3,args,&out)==FVM_OK && counted_metric(c,field,"_width")==26);

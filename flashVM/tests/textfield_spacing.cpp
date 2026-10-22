@@ -25,7 +25,7 @@ int main()
  assert(std::fabs(counted_metric(c,field,"textWidth")-48)<0.02);
  assert(fvm_value_string(&value,"AVA")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_OK && std::fabs(counted_metric(c,field,"textWidth")-81)<0.02);
  /* Failed edits and failed styles retain text, current style and cached geometry. */
- assert(fvm_value_string(&value,"fi")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_UNSUPPORTED);
+ assert(fvm_value_string(&value,"A\xcc\x81")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_UNSUPPORTED);
  assert(std::fabs(counted_metric(c,field,"textWidth")-81)<0.02);
  fvm_value_number(&value,-25);assert(fvm_object_set(c,format,"letterSpacing",&value)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_UNSUPPORTED);
  fvm_value_number(&value,4097);assert(fvm_object_set(c,format,"letterSpacing",&value)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_INVALID_ARGUMENT);

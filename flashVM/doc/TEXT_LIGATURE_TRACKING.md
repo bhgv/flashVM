@@ -25,6 +25,23 @@ all four flag combinations and verify that later legacy calls retain ligatures.
 describes whole-buffer feature overrides. Flash reference conformance and actual
 platform/device acceptance remain separate; all roadmap stages remain open.
 
+## Tracking policy — v0.862
+
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L94) automatically adds the optional-ligature flag when
+spacing is nonzero. The same effective flags are used for trial wrapping and
+final lines, including paths and underline advances. Zero spacing retains the
+caller's configured flags exactly. [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L80) accepts the
+new flag even without tracking. Existing output cleanup, borrowing, independent
+layout ownership, thread serialization and INVALID_ARGUMENT/OUT_OF_MEMORY/
+UNSUPPORTED contracts in text_layout.h apply unchanged.
+
+Tracking still requires one glyph per scalar, distinct clusters and nonnegative
+adjusted advances. Required ligatures, combining clusters and other ambiguous
+runs remain UNSUPPORTED. No codepoint-by-codepoint shaping fallback is used.
+TextField and TextFormat use this same layout path, so genuine fi text edits now
+work with letterSpacing; failed combining-cluster edits still preserve prior state.
+Current/future formatting and graph wire format are unchanged.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -38,6 +55,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_shape_configured` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../include/flashvm/font.h#L10) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../include/flashvm/text_layout.h#L80) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:94](../include/flashvm/text_layout.h#L94) |
 | `fvm_text_run_destroy` | function | [include/flashvm/font.h:94](../include/flashvm/font.h#L94) |
 | `fvm_text_run_path` | function | [include/flashvm/font.h:98](../include/flashvm/font.h#L98) |
 | `FVM_TextRun` | struct | [src/capi/font_c.cpp:75](../src/capi/font_c.cpp#L75) |

@@ -8,7 +8,7 @@ int main(void)
     FVM_TextLayout *layout=(FVM_TextLayout*)1;
     assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,4097,&layout)==FVM_INVALID_ARGUMENT && !layout);
     assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,-4097,&layout)==FVM_INVALID_ARGUMENT && !layout);
-    assert(fvm_text_layout_create_spaced(0,"AV",2,0,2,0,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_spaced(0,"AV",2,0,4,0,&layout)==FVM_INVALID_ARGUMENT && !layout);
     assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,HUGE_VAL,&layout)==FVM_INVALID_ARGUMENT && !layout);
     assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,0,0)==FVM_INVALID_ARGUMENT);
 #ifdef FVM_HAS_FONTS
@@ -28,7 +28,8 @@ int main(void)
         assert(fvm_text_layout_create_spaced(font,"AV",2,&o,FVM_FONT_SHAPE_NO_KERNING,-2,&layout)==FVM_OK);
         assert(fvm_text_layout_metrics(layout,&m)==FVM_OK && fabs(m.advance_width-44)<0.02);fvm_text_layout_destroy(layout);
         assert(fvm_text_layout_create_spaced(font,"AV",2,&o,FVM_FONT_SHAPE_NO_KERNING,-25,&layout)==FVM_UNSUPPORTED && !layout);
-        assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,1,&layout)==FVM_UNSUPPORTED && !layout);
+        assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,1,&layout)==FVM_OK);
+        assert(fvm_text_layout_metrics(layout,&m)==FVM_OK && m.glyph_count==2 && fabs(m.advance_width-26)<0.02);fvm_text_layout_destroy(layout);
         assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,0,&layout)==FVM_OK);fvm_text_layout_destroy(layout);
         fvm_font_destroy(font);assert(fvm_path_bounds(path,&box)==FVM_OK);fvm_path_destroy(path);
     }

@@ -29,7 +29,7 @@ int main()
  state.current.alignment&=~FVM_TEXT_STYLE_HAS_SPACING;
  FVM_Object *bad=0;assert(fvm_object_create(other,&bad)==FVM_OK && fvm_textfield_restore(other,bad,state)==FVM_INVALID_ARGUMENT);
  /* Forged valid metadata must not publish unsupported tracked text. */
- state.current.alignment|=FVM_TEXT_STYLE_HAS_SPACING;state.text="fi";
+ state.current.alignment|=FVM_TEXT_STYLE_HAS_SPACING;state.text="A\xcc\x81";
  assert(fvm_textfield_restore(other,bad,state)==FVM_UNSUPPORTED && !bad->resource);
  state.text="AV";
  /* Legacy zero-spacing records still restore the pre-spacing geometry. */

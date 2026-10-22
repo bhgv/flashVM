@@ -703,7 +703,7 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font ||
+    if ((flags & ~FVM_FONT_SHAPE_FLAGS) || !font ||
         !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING))
         return FVM_INVALID_ARGUMENT;
     FVM_TextLayoutOptions options = {0, 0, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
@@ -718,6 +718,11 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
         options.direction < FVM_TEXT_AUTO || options.direction > FVM_TEXT_RTL ||
         options.alignment < FVM_TEXT_ALIGN_LEFT || options.alignment > FVM_TEXT_ALIGN_START)
         return FVM_INVALID_ARGUMENT;
+    /* Tracking needs independently placed characters: suppress only optional
+     * ligatures in both trial shaping and final lines. Required clusters still
+     * pass through the existing unambiguous-cluster admission below. */
+    if (spacing != 0)
+        flags |= FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES;
     try
     {
         fvm_detail::vector<FriBidiChar> chars;
@@ -810,7 +815,7 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *, const char *, si
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return (flags & ~FVM_FONT_SHAPE_NO_KERNING) ||
+    return (flags & ~FVM_FONT_SHAPE_FLAGS) ||
            !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING)
                ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }

@@ -83,8 +83,9 @@ extern "C"
     /* Configured layout with signed extra pixels after each supported character,
      * including the final character of each line. Finite spacing in [-4096,4096].
      * Zero exactly preserves configured shaping. Nonzero spacing currently requires
-     * one glyph per scalar with unique clusters, and nonnegative adjusted advances;
-     * ambiguous ligatures/combining clusters return UNSUPPORTED. Wrapping, alignment,
+     * one glyph per scalar with unique clusters, and nonnegative adjusted advances.
+     * Nonzero spacing disables optional liga/clig substitutions; required ligatures
+     * and ambiguous combining clusters still return UNSUPPORTED. Wrapping, alignment,
      * glyph advances and exported paths use the same spacing. Failures clear out.
      * Font/input/options are borrowed only for the call; owned layout outlives them.
      * No VM or GC state; a mutable font handle requires caller serialization.

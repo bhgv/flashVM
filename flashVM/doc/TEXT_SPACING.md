@@ -1,6 +1,8 @@
 # Signed text tracking
 
-[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L93) adds finite pixels after each supported character,
+Since v0.862 nonzero tracking disables optional liga/clig so decomposable ligatures work; required/ambiguous clusters remain unsupported. [Contract](TEXT_LIGATURE_TRACKING.md).
+
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L94) adds finite pixels after each supported character,
 including the last character on a line. The native limit is -4096 to 4096 pixels.
 This follows the [Adobe AS2 Flash 8 letterSpacing description](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html).
 The original C layout APIs keep zero spacing and unchanged option structure ABI.
@@ -67,6 +69,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:94](../include/flashvm/text_layout.h#L94) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../include/flashvm/text_layout.h#L75) |
 <!-- source-links:end -->
