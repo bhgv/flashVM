@@ -35,6 +35,11 @@ mode disabling, signed bounds and field-local path export. The previous v0.845â€
 v0.852 report below is historical; its unsupported center/right restriction is
 superseded by this section. All nine roadmap stages remain open.
 
+v0.854: binary/channel transfer tests exercise every anchor after source teardown,
+GC and later edits, and reject invalid restored positions/anchor combinations.
+Wrapped-mode tests preserve x/y and width, re-anchor when wrapping is disabled,
+and shrink empty text to its gutter.
+
 Reference: [Adobe AS2 TextField reference mirror](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#autoSize).
 
 # Left-anchored TextField automatic sizing

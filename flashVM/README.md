@@ -1,10 +1,12 @@
-Development version: **0.853** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.853 ` and an English description. Increase the subversion before each
+Development version: **0.854** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.854 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.854: [Verify wrapped anchors and graph ownership across contexts](doc/TEXT_AUTOSIZE.md).
 
 v0.853: [Add native horizontal auto-size anchors and position transport](doc/TEXT_AUTOSIZE.md).
 
