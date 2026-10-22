@@ -22,7 +22,7 @@ style; replacement retains the current uniform style except initial insertion in
 an empty field. Admission and candidate geometry finish before publication. Fonts,
 layout limits, UTF-8/UTF-16 restrictions and context ownership are unchanged.
 
-Native graph state uses [FVM_TEXT_STYLE_HAS_INSETS](../src/standard/text_constants.h#L20) with three optional numbers after
+Native graph state uses [FVM_TEXT_STYLE_HAS_INSETS](../src/standard/text_constants.h#L21) with three optional numbers after
 optional letterSpacing. Legacy records default to zero; no wire version or public
 C structure changes. Current/future values transfer separately. Unknown older
 readers reject the new flag rather than silently discarding visible formatting.
@@ -57,6 +57,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:20](../src/standard/text_constants.h#L20) |
+| `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:21](../src/standard/text_constants.h#L21) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

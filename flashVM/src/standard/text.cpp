@@ -513,7 +513,8 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
                       const char *text, size_t size, PreparedGeometry &next)
 {
     if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY &&
-        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0 && style.indent == 0 && style.tab_stops.empty())
+        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0 && style.indent == 0 && style.tab_stops.empty() &&
+        !std::memchr(text, FVM_TEXT_FIELD_TAB, size))
         return FVM_OK;
     double width = next.wrap && next.multiline ? next.width - FVM_TEXT_FIELD_GUTTER : 0;
     if (next.wrap && next.multiline && width <= 0)
@@ -1768,7 +1769,8 @@ size_t fvm_textfield_snapshot_size(FVM_Object *object)
         context->fonts.find(field->future.source_key);
     if (a == context->fonts.end() || b == context->fonts.end())
         return (size_t)-1;
-    return FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD + FVM_TEXT_STYLE_TAB_WIRE_HEADER * 2 +
+    return FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD + FVM_TEXT_STYLE_TAB_WIRE_HEADER *
+           ((field->current.tab_stops.empty() ? 0 : 1) + (field->future.tab_stops.empty() ? 0 : 1)) +
            FVM_TEXT_STYLE_TAB_WIRE_BYTES * (field->current.tab_stops.size() + field->future.tab_stops.size()) + field->text_size + field->current.font.size() + field->future.font.size() +
            a->second->bytes.size() + b->second->bytes.size();
 }

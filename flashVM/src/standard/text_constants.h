@@ -6,6 +6,7 @@
 #define FVM_TEXT_FONT_KEY_PREFIX 2U /* Leading NUL plus nonzero variant isolates private slots. */
 #define FVM_TEXT_FONT_MAX_FACES 16U /* Aggregate regular/styled registrations per context. */
 #define FVM_TEXT_FONT_MAX_BYTES (64UL * 1024UL * 1024UL) /* Aggregate owned font-source budget. */
+#define FVM_TEXT_FIELD_TAB 0x09U /* Stored tabs require actual layout admission before edits publish. */
 #define FVM_TEXT_FIELD_MAX_BYTES 16384UL
 #define FVM_TEXT_FIELD_MAX_SCALARS 4096UL
 #define FVM_TEXT_FIELD_MAX_UNITS 8192UL
@@ -19,14 +20,14 @@
 #define FVM_TEXT_JUSTIFY_MIN_VERSION 8U /* AS2 justified paragraphs became available in SWF8. */
 #define FVM_TEXT_STYLE_HAS_INSETS 512UL /* Optional left/right/block inset numbers after spacing. */
 #define FVM_TEXT_STYLE_MAX_INSET 4096.0 /* Nonnegative integral paragraph inset envelope. */
-#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 224U /* Conservative fixed fields plus optional inset/indent numbers. */
+#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 320U /* Conservative fixed fields plus optional inset/indent numbers. */
 #define FVM_TEXT_STYLE_HAS_INDENT 1024UL /* Optional signed first-line number after paragraph insets. */
 #define FVM_TEXT_STYLE_MAX_INDENT 4096.0 /* Maximum absolute integral first-line indent. */
 #define FVM_TEXT_INDENT_NEGATIVE_MIN_VERSION 8U /* Hanging indentation became available in Flash8. */
 #define FVM_TEXT_STYLE_HAS_TABS 2048UL /* Optional counted tab table after first-line indent. */
 #define FVM_TEXT_STYLE_MAX_TABS 64U /* Maximum copied AS2 tab positions. */
 #define FVM_TEXT_STYLE_MAX_TAB_STOP 1000000.0 /* Nonnegative whole-pixel custom tab coordinate. */
-#define FVM_TEXT_STYLE_TAB_WIRE_BYTES 9U /* Tagged IEEE double in native graph payloads. */
+#define FVM_TEXT_STYLE_TAB_WIRE_BYTES 13U /* Type byte, IEEE double and four-byte metadata reference. */
 #define FVM_TEXT_STYLE_TAB_WIRE_HEADER 4U /* Count prefix for each optional tab table. */
 #define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY | FVM_TEXT_STYLE_HAS_INSETS | FVM_TEXT_STYLE_HAS_INDENT | FVM_TEXT_STYLE_HAS_TABS) /* Packed non-alignment bits. */
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
