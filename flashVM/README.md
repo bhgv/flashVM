@@ -1,10 +1,12 @@
-Development version: **0.893** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.893 ` and an English description. Increase the subversion before each
+Development version: **0.894** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.894 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.894: [Verify first-line paragraph boundaries signed offsets and C ABI admission](doc/TEXT_INDENT.md).
 
 v0.893: [Add bounded first-line paragraph indentation to native text layout](doc/TEXT_INDENT.md).
 
