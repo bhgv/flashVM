@@ -12,6 +12,8 @@ v0.917: TextField and TextFormat.getTextExtent now use four declared average wid
 
 v0.918: repeating stop extent exhaustion participates in wrap trials, so two million-pixel tabs can occupy separate million-pixel visual lines instead of failing before a valid break. Native boundary/admission tests cover this recovery, oversized tabs, CRLF resets, signed indentation, tracking, four alignments, fractional periods, tiny/nonfinite inputs, bidi/justify rejection and independently owned empty tab paths. Unlimited overflowing text remains UNSUPPORTED.
 
+v0.919: independent mutated-font fixtures check missing OS/2, its FreeType sentinel, zero and negative average widths; ordinary shaping remains usable. TextField assignment, replaceText and clearing an explicit table reject missing default metrics while preserving text, current table, path, autoSize dimensions and right anchor. An explicit table still works with that font and text without tabs adds no average-metric dependency.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
