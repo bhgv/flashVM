@@ -1,4 +1,4 @@
-/* Exact budget rejects before new; every adapter allocation unwinds; tail hot paths allocate nothing. */
+/* Optional ID table budget/allocation errors preserve mode; tracked hot paths allocate nothing. */
 #include <new>
 #include <cstdlib>
 static long tail_allowance=-1;
