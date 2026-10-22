@@ -44,6 +44,8 @@ Current/future formatting and graph wire format are unchanged.
 
 v0.863 adds a separate deterministic CC0 GSUB oracle: optional clig ff decomposes under the new flag; required rlig VA remains one glyph under every flag combination and nonzero tracking rejects it. Existing ordinary/mixed fixture bytes remain unchanged.
 
+v0.864 verifies TextFormat extents, current/future tracking, centered auto-size, binary/channel transfer after source destruction, wrapped right anchoring, underline ownership and combining-cluster rollback. Expected fi at 40px/+1 is 26px advance and 30px outer width; later 20px/-1 fifi is 20px advance and 24px outer width. Wrapped 40px/+1 fifi at outer width 30 gives height 94; disabling wrapping restores width 56 while preserving the right edge.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

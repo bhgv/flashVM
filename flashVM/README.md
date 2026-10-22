@@ -1,10 +1,12 @@
-Development version: **0.863** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.863 ` and an English description. Increase the subversion before each
+Development version: **0.864** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.864 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.864: [Verify tracked ligature fields through wrapping and graph transfer](doc/TEXT_LIGATURE_TRACKING.md).
 
 v0.863: [Distinguish contextual and required ligatures with an original font oracle](doc/TEXT_LIGATURE_TRACKING.md).
 
