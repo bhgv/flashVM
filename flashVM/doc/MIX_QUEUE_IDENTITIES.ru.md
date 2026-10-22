@@ -63,6 +63,9 @@ v0.964: Добавлен точный storage_required_for_tracking без со�
 
 v0.965: Проверены точный base/tail retry и новый NoMultiple после сохранённого pending PCM.
 
+
+v0.966: stop_all отвергает callback-reentry; независимый расчёт памяти разрешён внутри callback.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

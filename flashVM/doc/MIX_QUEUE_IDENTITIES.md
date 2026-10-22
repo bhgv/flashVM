@@ -63,6 +63,9 @@ v0.964: Expose checked storage_required_for_tracking without owner allocation or
 
 v0.965: Verify exact retained base/tail retry and new NoMultiple placement beyond pending PCM.
 
+
+v0.966: Reject stop_all reentry while allowing independent storage prediction inside callbacks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
