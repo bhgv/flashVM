@@ -52,6 +52,8 @@ v0.871 adds three original CC0 styled faces with independent AV advances at 40px
 
 v0.872 verifies bold current/italic future transfer through binary graphs and channels, source teardown, receiver GC and later auto-size edits. Only selected faces transfer; switching to absent regular remains NOT_FOUND. A conflicting future source rolls back an earlier current-face import. Four actual faces drive wrapped line counts and underline paths: outer width 60 gives heights 94/94/94/186; width 64 gives 94 for every face.
 
+v0.873 adds eight ordinary-build C++ allocation sweeps: four registration slots and current/future format, assignment and replaceText edits. Failed registration preserves the map/default; failed field edits preserve text, selected faces and anchored geometry, with balanced GC/native scopes. Existing replaceText on nonempty uniform text preserves the current face; ordinary text assignment uses the future face. Bundled C-library malloc failures are not injected.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -1,10 +1,12 @@
-Development version: **0.872** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.872 ` and an English description. Increase the subversion before each
+Development version: **0.873** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.873 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.873: [Verify transactional font registration and style edits under allocation failure](doc/TEXT_FONT_VARIANTS.md).
 
 v0.872: [Preserve selected font faces across layout and graph ownership](doc/TEXT_FONT_VARIANTS.md).
 
