@@ -60,6 +60,9 @@ v0.963: Add immediate tracked event stop_all; retain pending/FIFO PCM and the sh
 
 v0.964: Expose checked storage_required_for_tracking without owner allocation or callbacks.
 
+
+v0.965: Verify exact retained base/tail retry and new NoMultiple placement beyond pending PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

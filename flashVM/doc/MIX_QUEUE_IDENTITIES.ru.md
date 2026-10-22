@@ -60,6 +60,9 @@ v0.963: Добавлен немедленный stop_all событий: pending
 
 v0.964: Добавлен точный storage_required_for_tracking без создания владельца и callbacks.
 
+
+v0.965: Проверены точный base/tail retry и новый NoMultiple после сохранённого pending PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
