@@ -50,6 +50,9 @@ struct FVM_TextFieldState
     }
 };
 
+/* [GC:] Restore retired rootless built-in accessors while preserving host captures. */
+void fvm_textfield_upgrade_accessor(const char *, FVM_AccessorEntry &);
+
 /* Capture snapshot of textfield size. */
 size_t fvm_textfield_snapshot_size(FVM_Object *);
 

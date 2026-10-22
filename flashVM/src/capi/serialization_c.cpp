@@ -1837,6 +1837,9 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 a.userdata = get.callback ? get.userdata : set.userdata;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                /* [GC:] Only retired rootless built-in stubs are upgraded; host captures survive. */
+                if (src.kind == FVM_RESOURCE_TEXT_FIELD)
+                    fvm_textfield_upgrade_accessor(p->first.c_str(), a);
                 dst->accessors[p->first] = a;
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }

@@ -44,6 +44,8 @@ v0.849: `jit_textfield_autosize.cpp` drives actual AVM1 string/Boolean mode writ
 
 v0.850: the [C89 tutorial](../examples/embedding/standard_text/README.md) demonstrates --auto-size with exact 52x48, width 76 and wrapped 30x140 observations, followed by independent path export. The executable checker validates all dimensions and early invalid-option rejection. The AS companion remains uncompiled host-integration source.
 
+v0.851: restored automatic dimensions must match a fresh measurement within one 1/64-pixel font subpixel; mismatches are INVALID_ARGUMENT before native attachment. Only retired rootless built-in autoSize accessors are upgraded, both in native restore and graph callback restoration. Captured roots/custom userdata remain untouched. `textfield_autosize_restore.cpp` checks legacy stubs, malformed dimensions and host-capture preservation.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

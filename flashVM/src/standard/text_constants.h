@@ -18,4 +18,5 @@
 #define FVM_TEXT_STATE_MULTILINE 1UL /* Legacy low bit of the first field policy byte. */
 #define FVM_TEXT_STATE_AUTO_SIZE_LEFT 2UL /* Automatic fitting without adding payload bytes. */
 #define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT)
+#define FVM_TEXT_FIELD_GEOMETRY_TOLERANCE (1.0 / 64.0) /* One native font subpixel on restored automatic dimensions. */
 #endif

@@ -1542,6 +1542,19 @@ void *fvm_text_callback_userdata(unsigned long id, const char *name)
     return (void *)fvm_text_callback_selector(fvm_text_callback_from_id(id), (void *)name);
 }
 
+/* [GC:] Upgrade only the rootless retired built-in autoSize stub. Host callbacks,
+ * custom userdata and captured roots retain their original graph semantics. */
+void fvm_textfield_upgrade_accessor(const char *name, FVM_AccessorEntry &entry)
+{
+    if (name && !std::strcmp(name, "autoSize") && entry.getter == unsupported &&
+        entry.setter == unsupported && !entry.userdata && !entry.root)
+    {
+        entry.getter = field_get;
+        entry.setter = field_set;
+        entry.userdata = (void *)"autoSize";
+    }
+}
+
 /* [GC:] Retain native TextField text only when its owning managed object is reachable. */
 const char *fvm_textfield_string_root(FVM_Object *object)
 {
@@ -1658,6 +1671,15 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
             delete field;
             return result;
         }
+        if (state.auto_size_left &&
+            (std::fabs(geometry.width - state.width) > FVM_TEXT_FIELD_GEOMETRY_TOLERANCE ||
+             std::fabs(geometry.height - state.height) > FVM_TEXT_FIELD_GEOMETRY_TOLERANCE))
+        {
+            delete field;
+            return FVM_INVALID_ARGUMENT;
+        }
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_auto =
+            object->accessors.find("autoSize");
         char *text = new char[state.text.size() + 1];
         std::memcpy(text, state.text.c_str(), state.text.size() + 1);
         try
@@ -1674,6 +1696,8 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         field->text = text;
         field->text_size = state.text.size();
         geometry.commit(*field);
+        if (legacy_auto != object->accessors.end())
+            fvm_textfield_upgrade_accessor("autoSize", legacy_auto->second);
         object->resource = field;
         object->release_resource = release_field;
         return FVM_OK;
