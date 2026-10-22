@@ -57,6 +57,8 @@ hyperlink behavior, full SWF display integration or Flash pixel equivalence.
 
 v0.840: `textfield_underline_transfer.cpp` checks current/future binary and channel transfer, unchanged wire size, legacy false restoration, receiver GC and source destruction. `textfield_underline_alignment.cpp` checks both wrapped and unwrapped left/center/right placement on multiple lines with signed tracking and a trailing empty line.
 
+v0.841: `textfield_underline_missing.cpp` edits the fixture post thickness to zero/negative values and verifies explicit UNSUPPORTED from metrics, current/future format admission and extent measurement without field changes. `textfield_underline_allocation.cpp` sweeps current/future admission and decorated path allocation boundaries, checks cleared failed outputs, balanced GC state and immediately usable fields. Fault injection is ordinary-build evidence.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
