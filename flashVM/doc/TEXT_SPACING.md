@@ -46,6 +46,8 @@ This adds uniform styles only, not styled ranges, system fonts or full SWF text.
 
 v0.832: `textfield_spacing_transfer.cpp` checks signed current/future binary and channel transfer, legacy zero records, inconsistent state rejection, source destruction and receiver GC. `text_layout_spacing_boundaries.c` checks RTL original byte clusters, center/right alignment, kerning composition, embedded NUL, CRLF/trailing empty lines, zero adjusted advances and combining-sequence rejection.
 
+v0.833: `textfield_spacing_allocation.cpp` sweeps current-format, assignment and replaceText allocation boundaries, preserving text/style/cached width and balanced GC scopes on failure. `text_layout_spacing_allocation.cpp` checks cleared output, partial-path cleanup and immediate font reuse after failed construction. Fault injection runs in the ordinary native build; it is not sanitizer fault-unwind acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
