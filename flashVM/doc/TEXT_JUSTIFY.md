@@ -53,6 +53,8 @@ Space/combining ambiguity and bidi runs reject with a cleared output.
 
 v0.879 verifies current justification with future right-aligned bold text through binary/channel transfer, sender teardown, receiver GC and later edits. Font-face and +1 tracking tests check the same 90px underline span for all four faces, plus zero-width all-space paths. Selected fonts, current/future alignment and automatic height remain independent.
 
+v0.880 verifies actual loaded SWF6/7 rejection and SWF8 admission, plus native restoration of the same state. Conflicting low alignment bits, reserved and unknown flags reject before native attachment. A C caller tests unknown enum bytes and explicit RTL admission; NO_FONTS retains its documented opaque-options behavior.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
