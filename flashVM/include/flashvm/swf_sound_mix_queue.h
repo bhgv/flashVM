@@ -65,6 +65,18 @@ extern "C"
                                                       size_t block_frames,
                                                       FVM_SWFSoundMixQueue **out,
                                                       FVM_AudioQueueBackend *adapted);
+    /* Same ownership/validation as create, with a requested native-storage byte ceiling.
+     * Validate descriptors/mixer geometry before comparing budget; zero or insufficient
+     * budget -> OUT_OF_MEMORY before any allocation/callback. Counts only this owner
+     * and its fixed buffers as reported by storage_required/storage_info; excludes
+     * allocator, mixer/voices, VM and device. Clears *out first, preserves adapted on
+     * failure, including allocation failure. No callbacks/VM/GC. Original create uses
+     * an unrestricted ceiling and retains its ABI. Keep outputs live and disjoint. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_create_bounded(FVM_SWFSoundMixer *,
+                                                               const FVM_AudioQueueBackend *,
+                                                               size_t block_frames, size_t budget_bytes,
+                                                               FVM_SWFSoundMixQueue **out,
+                                                               FVM_AudioQueueBackend *adapted);
     /* Authorize one event-only zero-base block after quiescing the stream/base producer.
      * frames is 1..capacity, target is frames..SOUND_OUTPUT_MAX_QUEUE. Observe the real
      * FIFO first; insufficient headroom or no active voices/pending tail -> NOT_FOUND.

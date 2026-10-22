@@ -181,9 +181,9 @@ FVM_Result clear_queue(void *raw)
 } // namespace
 /* Prepare complete native storage without touching the real queue or publishing partial ownership.
  */
-extern "C" FVM_Result fvm_swf_sound_mix_queue_create(FVM_SWFSoundMixer *mixer,
+extern "C" FVM_Result fvm_swf_sound_mix_queue_create_bounded(FVM_SWFSoundMixer *mixer,
                                                      const FVM_AudioQueueBackend *backend,
-                                                     size_t block, FVM_SWFSoundMixQueue **out,
+                                                     size_t block, size_t budget, FVM_SWFSoundMixQueue **out,
                                                      FVM_AudioQueueBackend *adapted)
 {
     if (!out)
@@ -201,8 +201,10 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_create(FVM_SWFSoundMixer *mixer,
         return result;
     if (backend->sample_rate != info.sample_rate || backend->channels != info.channels)
         return FVM_INVALID_ARGUMENT;
-    if (block > (size_t)-1 / info.channels / sizeof(short))
-        return FVM_OUT_OF_MEMORY;
+    FVM_SWFSoundMixQueueStorageInfo storage;
+    result = storage_bytes(info.channels, block, storage);
+    if (result != FVM_OK) return result;
+    if (storage.retained_bytes > budget) return FVM_OUT_OF_MEMORY;
     FVM_SWFSoundMixQueue *queue = 0;
     try
     {
@@ -228,6 +230,15 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_create(FVM_SWFSoundMixer *mixer,
         return FVM_OUT_OF_MEMORY;
     }
 }
+/* Preserve the original acquisition ABI with an unrestricted native-request ceiling. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_create(FVM_SWFSoundMixer *mixer,
+                                                     const FVM_AudioQueueBackend *backend,
+                                                     size_t block, FVM_SWFSoundMixQueue **out,
+                                                     FVM_AudioQueueBackend *adapted)
+{
+    return fvm_swf_sound_mix_queue_create_bounded(mixer, backend, block, (size_t)-1, out, adapted);
+}
+
 /* Authorize one event-only block after the host has quiesced its base producer. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *queue,
                                                        size_t frames, size_t target,
