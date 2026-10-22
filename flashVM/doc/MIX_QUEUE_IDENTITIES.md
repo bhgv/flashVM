@@ -72,6 +72,9 @@ v0.967: Verify immediate global stop retires DECLICK tails and restarts NoMultip
 
 v0.968: Cancel both converted root IDs and restart their independent deadlines after accepted PCM.
 
+
+v0.969: Instrument global new/new[] with zero allowance across prediction, restart and stop_all.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
