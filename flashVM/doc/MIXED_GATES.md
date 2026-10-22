@@ -20,3 +20,5 @@ v0.994: Keep held BASE retries intact, drain accepted lead, preserve failed clea
 v0.995: Add a seventh gated export mode with exact 17-frame PCM, held converter witness and deliberately rejected tail-to-base gate transitions.
 
 v0.996: Exercise real SDL host pause, authored Stop, GC/native-JIT execution, event-only drain and subsequent base resume without converter rewind.
+
+v0.997: Check exact event-only WAV for FWS/CWS in both VM modes under future stream gates and root Stop, plus mute without an audio device.

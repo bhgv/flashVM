@@ -20,3 +20,5 @@ v0.994: Удержанный BASE сохранён; проверены drain п�
 v0.995: Добавлен седьмой gated-режим C89: 17 точных кадров, неизменный converter при удержании и failed TAIL-to-BASE переходы.
 
 v0.996: Настоящий SDL worker проверен: host pause, authored Stop, GC/native JIT, event-only drain и последующий base resume без rewind.
+
+v0.997: Проверен точный event-only WAV FWS/CWS в обоих VM-режимах при future gate и root Stop, а также mute без аудиоустройства.
