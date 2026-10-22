@@ -28,6 +28,8 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | Функция | Где читать подробнее |
 | --- | --- |
 | [`fvm_font_destroy`](../../../include/flashvm/font.h#L56) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_font_average_width`](../../../include/flashvm/font.h#L65) | Borrow a caller-serialized font and copy its declared positive average advance; no allocation/VM/GC. Clear output on failure, missing metric gives UNSUPPORTED. [EN](../../../doc/TEXT_DEFAULT_TABS.md) / [RU](../../../doc/TEXT_DEFAULT_TABS.ru.md); [declaration](../../../include/flashvm/font.h). |
+| [`fvm_text_layout_create_periodic`](../../../include/flashvm/text_layout.h#L155) | Borrow counted text/options/font with a positive repeating interval, return an owned independent layout; destroy normally. Invalid input clears output, unsupported geometry and allocation errors propagate. No VM/GC; serialize font access. [EN](../../../doc/TEXT_DEFAULT_TABS.md) / [RU](../../../doc/TEXT_DEFAULT_TABS.ru.md); [declaration](../../../include/flashvm/text_layout.h). |
 | [`fvm_font_underline_metrics`](../../../include/flashvm/font.h#L72) | Borrow the font and copy scaled center/thickness before face destruction; missing metrics fail explicitly with cleared output. No allocation/VM/GC, serialized font access. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_font_read`](../../../include/flashvm/font.h#L53) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_append`](../../../include/flashvm/path.h#L67) | Borrow destination/source paths and identity transform; synchronously copy line bars into caller-owned geometry, then release the temporary source. Status is checked before continuation. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
@@ -184,6 +186,17 @@ NO_FONTS reports its existing limit. This is not device acceptance.
 [Аргументы, ошибки и ограничения EN](../../../doc/TEXT_TABS.md) /
 [RU](../../../doc/TEXT_TABS.ru.md).
 
+## Default tabs / Стандартная табуляция
+
+Run `flashvm_examples_embedding_text_layout_main --default-tabs` with FONTS.
+The declared average at 40px is 21.875px, the interval 87.5px; expected
+`lines=1 glyphs=5 advance=199.00 height=44.00` and
+`default-tabs first_stop=87.50 second_stop=175.00`.
+The font is destroyed before inspecting the owned layout and exporting paths.
+Input without a usable declared metric fails explicitly; no Flash/device parity is claimed.
+Режим читает настоящую среднюю ширину, умножает на четыре и использует periodic API.
+Шрифт освобождается до чтения раскладки; контуры освобождаются отдельно.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -193,6 +206,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_font_average_width` | function | [include/flashvm/font.h:65](../../../include/flashvm/font.h#L65) |
 | `fvm_font_destroy` | function | [include/flashvm/font.h:56](../../../include/flashvm/font.h#L56) |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../../../include/flashvm/font.h#L53) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../../../include/flashvm/font.h#L10) |
@@ -204,6 +218,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
 | `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../../../include/flashvm/text_layout.h#L26) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../../../include/flashvm/text_layout.h#L121) |
+| `fvm_text_layout_create_periodic` | function | [include/flashvm/text_layout.h:155](../../../include/flashvm/text_layout.h#L155) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../../../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../../../include/flashvm/text_layout.h#L140) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../../../include/flashvm/text_layout.h#L84) |
