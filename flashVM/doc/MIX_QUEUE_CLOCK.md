@@ -22,6 +22,8 @@ v0.945: the instrumented ordinary-build allocation test still rejects insufficie
 
 v0.946: four actual OS workers independently perform 64 shared-clock epochs each after source VM teardown. Every block is rejected/retried, exact PCM remains independent, submitted=8 with queued=2 reports played=6, simulated consumer drain reports played=8 and then clock_end succeeds. Owners/templates/mixers/backend state are never shared; no new shared-handle thread-safety promise is made.
 
+v0.948: three actual native stream segments preserve the shared accepted count across continuous binding without clearing FIFO. Staged discontinuity/rebind resets the epoch only on acknowledged clear; failed clear preserves old converter binding, source pending PCM, BASE ownership and shared counts. The subsequent successful binding accepts into a fresh epoch, while an EOF binding resets it again. The ordinary test forbids allocation throughout producer transitions; no automatic event-voice seek/replay is inferred.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
