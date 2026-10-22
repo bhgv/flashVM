@@ -38,6 +38,8 @@ formatting and exact wire length. v0.847 adds `textfield_autosize_wrap.cpp` and
 `textfield_autosize_formats.cpp`: width-constrained height, policy rollback,
 kerning/tracking/underline composition, NUL, empty text and insertion.
 
+v0.848: `textfield_autosize_allocation.cpp` sweeps six C++ allocation paths: enabling automatic mode, text assignment, replaceText, current formatting, wordWrap and wrapped width changes. Failed calls preserve text/mode/dimensions and balanced GC frames/native depth; successful calls publish measured geometry. Fault injection runs in the ordinary build.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
