@@ -30,6 +30,9 @@ v0.983: Base и EOF-tail удерживаются до конца frame callback
 
 v0.984: Один predictor используется в preflight/open: отдельный composition-бюджет отвергается до устройства, partial-владение очищается.
 
+
+v0.985: Проверены переходы источников, future gates, rewind-эпохи и точный PCM противоположных голосов в C89 worker после VM teardown.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

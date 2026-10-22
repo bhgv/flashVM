@@ -30,6 +30,9 @@ v0.983: Withhold base and EOF-tail production during event preparation; verify r
 
 v0.984: Apply the same separate composition predictor during preflight and open, with partial-owner cleanup and no endpoint on insufficient budget.
 
+
+v0.985: Check source transitions, future gates, rewind epochs and exact opposite-voice composition through the production C89 worker after VM teardown.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
