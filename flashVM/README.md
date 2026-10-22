@@ -1,10 +1,12 @@
-Development version: **0.898** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.898 ` and an English description. Increase the subversion before each
+Development version: **0.899** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.899 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.899: [Exercise indented shaping through AVM1 JIT and independent native workers](doc/TEXT_INDENT.md).
 
 v0.898: [Verify transactional first-line indentation at seven allocation failure paths](doc/TEXT_INDENT.md).
 
