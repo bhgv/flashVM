@@ -17,9 +17,10 @@ struct FVM_SWFSoundMixQueue
         mixed;       /* Fixed actual mixed block; backend must copy before returning OK. */
     size_t capacity; /* Immutable maximum interleaved frames. */
     size_t pending;  /* Zero or initialized mixed frames whose voice time is already consumed. */
+    bool tail; /* Pending block was prepared by the event-only tail pump. */
     bool busy;       /* Reject callback reentry, independent of external thread synchronization. */
     /* Initialize callback state before any fallible vector acquisition. */
-    FVM_SWFSoundMixQueue() : mixer(0), capacity(0), pending(0), busy(false)
+    FVM_SWFSoundMixQueue() : mixer(0), capacity(0), pending(0), tail(false), busy(false)
     {
     }
 };
@@ -41,10 +42,10 @@ struct MixBusyScope
     }
 };
 /* Validate new input or match its complete original witness; never remix a rejected block. */
-FVM_Result write_mixed(void *raw, const short *pcm, size_t frames)
+FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
 {
     FVM_SWFSoundMixQueue *queue = static_cast<FVM_SWFSoundMixQueue *>(raw);
-    if (!queue || queue->busy || frames > queue->capacity || (frames && !pcm))
+    if (!queue || queue->busy || frames > queue->capacity || (frames && !pcm && !tail))
         return FVM_INVALID_ARGUMENT;
     if (!frames)
         return queue->pending ? FVM_INVALID_ARGUMENT : FVM_OK;
@@ -55,13 +56,22 @@ FVM_Result write_mixed(void *raw, const short *pcm, size_t frames)
         size_t bytes = values * sizeof(short);
         if (queue->pending)
         {
-            if (frames != queue->pending || std::memcmp(pcm, queue->original.begin(), bytes))
+            if (tail != queue->tail || frames != queue->pending ||
+                (!tail && std::memcmp(pcm, queue->original.begin(), bytes)))
                 return FVM_INVALID_ARGUMENT;
         }
         else
         {
-            std::memcpy(queue->original.begin(), pcm, bytes);
-            std::memcpy(queue->mixed.begin(), pcm, bytes);
+            if (tail)
+            {
+                std::memset(queue->original.begin(), 0, bytes);
+                std::memset(queue->mixed.begin(), 0, bytes);
+            }
+            else
+            {
+                std::memcpy(queue->original.begin(), pcm, bytes);
+                std::memcpy(queue->mixed.begin(), pcm, bytes);
+            }
             size_t written = 0;
             FVM_Result result = fvm_swf_sound_mixer_add(queue->mixer, frames, queue->mixed.begin(),
                                                         queue->mixed.size(), &written);
@@ -70,17 +80,26 @@ FVM_Result write_mixed(void *raw, const short *pcm, size_t frames)
             if (written != values)
                 return FVM_ERROR;
             queue->pending = frames;
+            queue->tail = tail;
         }
         FVM_Result result =
             queue->backend.write(queue->backend.userdata, queue->mixed.begin(), frames);
         if (result == FVM_OK)
+        {
             queue->pending = 0;
+            queue->tail = false;
+        }
         return result;
     }
     catch (...)
     {
         return FVM_ERROR;
     }
+}
+/* Stream writes retain their original byte witness and cannot consume a tail retry. */
+FVM_Result write_mixed(void *raw, const short *pcm, size_t frames)
+{
+    return write_composed(raw, pcm, frames, false);
 }
 /* Forward only acknowledged queue counts; preserve caller output after callback failure. */
 FVM_Result observe(void *raw, size_t *out)
@@ -129,7 +148,10 @@ FVM_Result clear_queue(void *raw)
     {
         FVM_Result result = queue->backend.clear(queue->backend.userdata);
         if (result == FVM_OK)
+        {
             queue->pending = 0;
+            queue->tail = false;
+        }
         return result;
     }
     catch (...)
@@ -187,6 +209,34 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_create(FVM_SWFSoundMixer *mixer,
         return FVM_OUT_OF_MEMORY;
     }
 }
+/* Authorize one event-only block after the host has quiesced its base producer. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *queue,
+                                                       size_t frames, size_t target,
+                                                       size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!queue || queue->busy || !frames || frames > queue->capacity || target < frames ||
+        target > FVM_SWF_SOUND_OUTPUT_MAX_QUEUE ||
+        (queue->pending && (!queue->tail || queue->pending != frames)))
+        return FVM_INVALID_ARGUMENT;
+    if (!queue->pending)
+    {
+        FVM_SWFSoundMixerInfo info;
+        info.struct_size = sizeof(info);
+        FVM_Result result = fvm_swf_sound_mixer_info(queue->mixer, &info);
+        if (result != FVM_OK) return result;
+        if (!info.active_voices) return FVM_NOT_FOUND;
+    }
+    size_t queued = 0;
+    FVM_Result result = observe(queue, &queued);
+    if (result != FVM_OK) return result;
+    if (queued > FVM_SWF_SOUND_OUTPUT_MAX_QUEUE) return FVM_INVALID_ARGUMENT;
+    if (queued > target || frames > target - queued) return FVM_NOT_FOUND;
+    result = write_composed(queue, 0, frames, true);
+    if (result == FVM_OK && accepted) *accepted = frames;
+    return result;
+}
+
 /* Inspect retry ownership without polling the device or using source VM state. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_info(const FVM_SWFSoundMixQueue *queue,
                                                    FVM_SWFSoundMixQueueInfo *out)

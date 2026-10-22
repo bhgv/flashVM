@@ -32,6 +32,22 @@ extern "C"
                                                       size_t block_frames,
                                                       FVM_SWFSoundMixQueue **out,
                                                       FVM_AudioQueueBackend *adapted);
+    /* Authorize one event-only zero-base block after quiescing the stream/base producer.
+     * frames is 1..capacity, target is frames..SOUND_OUTPUT_MAX_QUEUE. Observe the real
+     * FIFO first; insufficient headroom or no active voices/pending tail -> NOT_FOUND.
+     * No voice time is consumed on backpressure/observation failure. A rejected write
+     * retains exactly mixed bytes; retry the same frames, never advance voices twice.
+     * Pending base input or a different pending tail size -> INVALID_ARGUMENT before
+     * callbacks. Adapted write cannot consume a tail retry, even with identical zeros.
+     * accepted is optional and cleared first; on OK it receives frames. No implicit
+     * pause/clear/seek or device clock; output may include final block padding silence.
+     * Queued data may remain after NOT_FOUND for exhausted voices. Serialize all owners,
+     * retain mixer/backend/adapter, no allocation/VM/GC. Reentry INVALID_ARGUMENT;
+     * real callback statuses propagate and exceptions become ERROR. Successful adapted
+     * clear cancels pending ownership without restoring consumed voice time. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *,
+                                                         size_t frames, size_t target,
+                                                         size_t *accepted);
     /* No allocation/callback/VM. Null/wrong-size/reentry INVALID_ARGUMENT, output intact. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_info(const FVM_SWFSoundMixQueue *,
                                                     FVM_SWFSoundMixQueueInfo *);
