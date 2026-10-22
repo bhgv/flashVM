@@ -1,3 +1,5 @@
+v0.855: eighteen ordinary-build allocation sweeps cover all three anchors across activation, assignment, replaceText, current format, wrapping and wrapped-width edits. Failed calls preserve x/y and prior text/mode/dimensions; GC frames/native depth remain balanced.
+
 # Native TextField horizontal anchors — v0.853
 
 The native field now accepts autoSize left, center and right. When wrapping is
