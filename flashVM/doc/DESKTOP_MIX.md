@@ -18,6 +18,9 @@ v0.979: Pump paired tails only at final source EOF, include active/pending event
 
 v0.980: Exercise production C89 refill against an explicit software FIFO, retained base retry and exact 5 base-plus-event/4 tail PCM frames.
 
+
+v0.981: Execute actual root actions through interpreter/native JIT, queued ID suppression, failed clear, GC and post-StopSounds event restart.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

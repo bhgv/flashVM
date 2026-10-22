@@ -18,6 +18,9 @@ v0.979: Worker подаёт согласованные хвосты после �
 
 v0.980: Production C89 refill проверен на явном FIFO: base retry, 5 кадров base+event и 4 кадра хвоста с точными PCM.
 
+
+v0.981: Root-действия проверены interpreter/native JIT: queued NoMultiple, failed clear, GC и новые события после StopSounds.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
