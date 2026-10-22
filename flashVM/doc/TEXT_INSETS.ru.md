@@ -23,7 +23,7 @@ left/center/right/justify используют эту область. Без п�
 поле. Все проверки и подготовка геометрии завершаются до публикации. Ограничения
 шрифтов, раскладки, UTF-8/UTF-16 и владения контекстом сохраняются.
 
-[FVM_TEXT_STYLE_HAS_INSETS](../src/standard/text_constants.h#L21) добавляет три необязательных числа после необязательного
+[FVM_TEXT_STYLE_HAS_INSETS](../src/standard/text_constants.h#L22) добавляет три необязательных числа после необязательного
 letterSpacing в native-снимке. Старые записи получают нули; версия wire и
 публичные C-структуры не меняются. Текущие/будущие значения передаются отдельно.
 Старые readers отклоняют новый флаг вместо потери видимого форматирования.
@@ -58,6 +58,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:21](../src/standard/text_constants.h#L21) |
+| `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:22](../src/standard/text_constants.h#L22) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

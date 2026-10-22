@@ -6,6 +6,7 @@
 #define FVM_TEXT_FONT_KEY_PREFIX 2U /* Leading NUL plus nonzero variant isolates private slots. */
 #define FVM_TEXT_FONT_MAX_FACES 16U /* Aggregate regular/styled registrations per context. */
 #define FVM_TEXT_FONT_MAX_BYTES (64UL * 1024UL * 1024UL) /* Aggregate owned font-source budget. */
+#define FVM_TEXT_FIELD_TAB_AVERAGE_MULTIPLIER 4.0 /* AS2 default tab interval in average character widths. */
 #define FVM_TEXT_FIELD_TAB 0x09U /* Stored tabs require actual layout admission before edits publish. */
 #define FVM_TEXT_FIELD_MAX_BYTES 16384UL
 #define FVM_TEXT_FIELD_MAX_SCALARS 4096UL

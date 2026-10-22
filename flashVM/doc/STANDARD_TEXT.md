@@ -167,7 +167,7 @@ Paragraph leftMargin/rightMargin/blockIndent now accept bounded nonnegative inte
 
 First-line integer indent now affects each nonempty hard paragraph, intrinsic width, paths and fitting. Hanging values require SWF8 and sufficient left inset. [Contract and native API](TEXT_INDENT.md).
 
-Explicit tabStops Arrays now copy bounded increasing integer positions into current/future styles. Tabs retain real advances and empty outlines, work with wrapping/tracking/indent and transfer independently. Default/repeating stops, bidi tab paragraphs and wrapped justify remain unsupported. [Contract](TEXT_TABS.md).
+Explicit tabStops Arrays now copy bounded increasing integer positions into current/future styles. Tabs retain real advances and empty outlines, work with wrapping/tracking/indent and transfer independently. Default stops now use four declared average font widths; see [default contract](TEXT_DEFAULT_TABS.md). Bidi tab paragraphs and wrapped justify remain unsupported. [Contract](TEXT_TABS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

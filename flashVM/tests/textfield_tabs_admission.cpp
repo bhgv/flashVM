@@ -1,4 +1,4 @@
-/* Packed table bounds, integer/order rules, clearing and unsupported defaults are transactional. */
+/* Packed table bounds, integer/order rules, clearing and real default stops are transactional. */
 #include "textfield_tabs_fixture.hpp"
 #include "../src/standard/text_state.hpp"
 #include "../src/standard/text_constants.h"
@@ -23,7 +23,7 @@ int main()
  const double invalid[]={-1,0.5,80,std::numeric_limits<double>::quiet_NaN()};for(unsigned i=0;i<6;++i){double entries[]={i<4?invalid[i]:40,80};FVM_Object *array=tabs_array(c,entries,i==4?0:2);if(i==4){fvm_value_number(&check_value,80);assert(fvm_table_set_index(c,array,1,&check_value)==FVM_OK);}if(i==5)inset_number(c,array,"length",65);fvm_value_undefined(&check_value);check_value.type=FVM_VALUE_OBJECT;check_value.object=array;assert(fvm_object_set(c,format,"tabStops",&check_value)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&check_arg,&check_out)==FVM_INVALID_ARGUMENT && counted_metric(c,field,"textWidth")==64);}
  fvm_value_number(&check_value,0);assert(fvm_object_set(c,format,"tabStops",&check_value)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&check_arg,&check_out)==FVM_UNSUPPORTED);check_value.type=FVM_VALUE_OBJECT;check_value.object=tabs_array(c,stops,2);assert(fvm_object_set(c,format,"tabStops",&check_value)==FVM_OK);
  inset_bool(c,field,"multiline",true);inset_bool(c,field,"wordWrap",true);
- FVM_Value arg,out,v;fvm_value_undefined(&arg);arg.type=FVM_VALUE_OBJECT;arg.object=format;inset_string(c,format,"align","justify");assert(fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_UNSUPPORTED);inset_string(c,format,"align","left");FVM_Object *empty=tabs_array(c,0,0);v=arg;v.object=empty;assert(fvm_object_set(c,format,"tabStops",&v)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_UNSUPPORTED);counted_text(c,field,"A\tV",3);assert(counted_metric(c,field,"textWidth")==64);inset_string(c,field,"text","AV");inset_apply(c,field,format,"setTextFormat");inset_apply(c,field,format,"setNewTextFormat");assert(fvm_value_string(&v,"A\tV")==FVM_OK && fvm_object_set(c,field,"text",&v)==FVM_UNSUPPORTED);counted_text(c,field,"AV",2);
+ FVM_Value arg,out,v;fvm_value_undefined(&arg);arg.type=FVM_VALUE_OBJECT;arg.object=format;inset_string(c,format,"align","justify");assert(fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_UNSUPPORTED);inset_string(c,format,"align","left");FVM_Object *empty=tabs_array(c,0,0);v=arg;v.object=empty;assert(fvm_object_set(c,format,"tabStops",&v)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_OK);counted_text(c,field,"A\tV",3);assert(counted_metric(c,field,"textWidth")==87.5);inset_string(c,field,"text","AV");inset_apply(c,field,format,"setTextFormat");inset_apply(c,field,format,"setNewTextFormat");assert(fvm_value_string(&v,"A\tV")==FVM_OK && fvm_object_set(c,field,"text",&v)==FVM_OK);counted_text(c,field,"A\tV",3);
  fvm_context_destroy(c);fvm_runtime_destroy(rt);
 #endif
  return 0;

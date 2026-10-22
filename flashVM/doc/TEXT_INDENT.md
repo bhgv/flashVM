@@ -48,7 +48,7 @@ before manual or automatic edits publish. Cached layout reads recheck the negati
 version gate. TextWidth/extent.width include intrinsic first-line indent, excluding
 paragraph margins; autoSize includes margins and gutter as before.
 
-[FVM_TEXT_STYLE_HAS_INDENT](../src/standard/text_constants.h#L24) stores one optional signed number after optional insets.
+[FVM_TEXT_STYLE_HAS_INDENT](../src/standard/text_constants.h#L25) stores one optional signed number after optional insets.
 Legacy records restore zero; public structures and wire versions stay unchanged.
 Current/future styles transfer separately; old readers reject the unknown flag.
 Restore checks exact flag/value agreement, integer range and negative policy before
@@ -78,6 +78,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:24](../src/standard/text_constants.h#L24) |
+| `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:25](../src/standard/text_constants.h#L25) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->

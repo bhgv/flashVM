@@ -468,9 +468,23 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     }
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
+    if (style.tab_stops.empty() && std::memchr(text, FVM_TEXT_FIELD_TAB, size))
+    {
+        double average = 0;
+        result = fvm_font_average_width(font.font, &average);
+        if (result != FVM_OK) return result;
+        double period = average * FVM_TEXT_FIELD_TAB_AVERAGE_MULTIPLIER;
+        if (!(period > 0 && period <= FVM_TEXT_FIELD_MAX_EXTENT)) return FVM_UNSUPPORTED;
+        result = fvm_text_layout_create_periodic(font.font, text, size, &options,
+                style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing,
+                style.indent, period, out);
+    }
+    else
+    {
     result = fvm_text_layout_create_tabbed(font.font, text, size, &options,
                               style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, style.indent, style.tab_stops.empty() ? 0 : style.tab_stops.begin(),
                               style.tab_stops.size(), out);
+    }
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;
     return result;

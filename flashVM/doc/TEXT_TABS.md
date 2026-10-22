@@ -1,5 +1,7 @@
 # Explicit custom tab stops
 
+Current v0.917 behavior: empty AS2 tables now select font-derived default stops; see [default contract](TEXT_DEFAULT_TABS.md). The zero-count native create_tabbed contract below is unchanged. Default restrictions below describe the v0.903–v0.914 checkpoint.
+
 v0.903 adds [fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L140). It borrows the same font, counted UTF-8,
 options, shaping flags, signed letterSpacing and first-line indent as
 [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121), plus stops and count. The table contains at most
@@ -59,7 +61,7 @@ getTextFormat/getNewTextFormat return fresh managed Arrays (including an empty
 Array for no custom table); mutation of source/snapshot Arrays does not edit the
 native field. Keep managed results rooted across GC on the context owner thread.
 
-[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L27) adds a bounded u32 count and tagged numeric positions after
+[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L28) adds a bounded u32 count and tagged numeric positions after
 optional indent. Legacy records restore an empty table, current/future transfer
 separately and old readers reject the unknown flag. Reader count is checked before
 allocation; restore checks table bounds/order/integer values and exact flag/table
@@ -92,6 +94,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:27](../src/standard/text_constants.h#L27) |
+| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:28](../src/standard/text_constants.h#L28) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->

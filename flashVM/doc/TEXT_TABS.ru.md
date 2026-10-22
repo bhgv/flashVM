@@ -1,5 +1,7 @@
 # Пользовательские позиции табуляции
 
+Актуально с v0.917: пустая AS2-таблица включает default из метрик шрифта: [контракт](TEXT_DEFAULT_TABS.ru.md). Native create_tabbed с count=0 не изменён. Ограничения default ниже описывают контрольную точку v0.903–v0.914.
+
 v0.903 добавляет [fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L140). Аргументы шрифта, UTF-8 с длиной,
 параметров, флагов shaping, знаковых letterSpacing и отступа первой строки — как
 у [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121); дополнительно stops и count. Таблица содержит
@@ -57,7 +59,7 @@ tab неподдержанным. Полное присваивание испо
 Изменение исходного массива/снимка не редактирует поле. Управляемые результаты
 нужно удерживать корнями через GC в потоке-владельце.
 
-[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L27) добавляет ограниченный u32 count и tagged числа после
+[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L28) добавляет ограниченный u32 count и tagged числа после
 необязательного indent. Старые записи получают пустую таблицу, текущий/будущий
 стили передаются отдельно, старые readers отклоняют новый флаг. Count проверяется
 до выделения; восстановление проверяет границы/порядок/целые значения и
@@ -90,6 +92,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:27](../src/standard/text_constants.h#L27) |
+| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:28](../src/standard/text_constants.h#L28) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->
