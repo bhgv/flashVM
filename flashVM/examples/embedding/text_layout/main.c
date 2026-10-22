@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    int indented = 0; /* Optional first-line mode selects positive or hanging indentation. */
     int justified = 0; /* Optional LTR paragraph demonstration keeps the same owned-layout API. */
     int underline = 0; /* Optional line decoration is separate from glyph shaping. */
     int ligatures = 0; /* Select a short fi probe for explicit or tracking-driven decomposition. */
@@ -30,11 +31,13 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--no-ligatures")) { ligatures = 1; flags = FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES; } /* Decompose fi without adding tracking. */
     else if (argc == 2 && !strcmp(argv[1], "--ligature-tracking")) { ligatures = 1; spacing = 1; } /* Nonzero tracking requests decomposition automatically. */
     else if (argc == 2 && !strcmp(argv[1], "--justify")) { justified = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Expand only internal ASCII spaces on wrapped nonfinal lines. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking|--justify]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--indent")) { indented = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Offset only each paragraph first line by 30px. */
+    else if (argc == 2 && !strcmp(argv[1], "--hanging-indent")) { indented = -1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Allow a native first-line origin at x=-18. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking|--justify|--indent|--hanging-indent]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
-    const char *text = justified ? "A V A V" : ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
+    const char *text = justified || indented ? "A V A V" : ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
     FVM_Font *font = 0;
     /* Сохраняем вычисленное значение: FVM_TextLayout *layout. */
@@ -43,6 +46,7 @@ int main(int argc, char **argv)
     FVM_TextLayoutOptions options = {120, 48, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_TextLayoutMetrics metrics;
+    FVM_Result created; /* Retain the selected creation call result for ordinary error handling. */
     FVM_FontUnderlineMetrics decoration = {0, 0}; /* Copy the font metrics before destroying the face. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_TextLayoutLine line;
@@ -66,6 +70,12 @@ int main(int argc, char **argv)
         options.direction = FVM_TEXT_LTR; /* This bounded policy requires a left-to-right paragraph. */
         options.alignment = FVM_TEXT_ALIGN_JUSTIFY; /* Select the new native enum without changing structure layout. */
     } /* Font/layout/path ownership remains the ordinary tutorial contract. */
+    if (indented) /* Reserve a different width on the first visual line only. */
+    { /* The native API accepts signed offsets without field margin policy. */
+        options.max_width = 102; /* Positive mode leaves 72px on the first line. */
+        options.direction = FVM_TEXT_LTR; /* Nonzero indentation requires bounded LTR paragraphs. */
+        options.alignment = FVM_TEXT_ALIGN_LEFT; /* Keep intrinsic positioning directly observable. */
+    } /* Subsequent lines retain the full 102px width. */
     /* Вызываем fvm_font_read: загружаем шрифтовые байты в собственный дескриптор.
      * fvm_test_font — байты шрифтового файла.
      * sizeof(fvm_test_font) — размер входного текста или ресурса в байтах.
@@ -93,7 +103,9 @@ int main(int argc, char **argv)
      * spacing — дополнительные пиксели после каждого поддержанного символа.
      * &layout — адрес или буфер для результата.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
-    if (!(fvm_text_layout_create_spaced(font, text, strlen(text), &options, flags, spacing, &layout) == FVM_OK))
+    created = indented ? fvm_text_layout_create_indented(font, text, strlen(text), &options, flags, spacing, indented > 0 ? 30 : -18, &layout) /* Borrow all inputs, receive an independent owned layout. */
+                       : fvm_text_layout_create_spaced(font, text, strlen(text), &options, flags, spacing, &layout); /* Existing modes keep their zero-indent call. */
+    if (!(created == FVM_OK)) /* Both creation APIs clear output on failure. */
     /* Начинаем обработку неуспешного вызова или неверного результата. */
     {
         /* Выводим исходное условие, имя файла и номер строки; этот вызов не возвращается. */
@@ -159,6 +171,15 @@ int main(int argc, char **argv)
         last = line.advance; /* Two 24-pixel letters and a 12-pixel internal space give 60 pixels. */
         printf("justify first=%.2f last=%.2f\n", first, last); /* The executable checker verifies both independent oracle values. */
     } /* Existing path export/rasterization continues below using the same owned layout. */
+    if (indented) /* Inspect source-owned line geometry after releasing the font. */
+    { /* Copy observations because each line query overwrites its output. */
+        double first, next; /* Signed x is independent of glyph advance. */
+        if (fvm_text_layout_line(layout, 0, &line) != FVM_OK) fvm_example_fail("indented first line", __FILE__, __LINE__); /* Query the first paragraph line. */
+        first = line.x; /* Expected 30 or -18 pixels. */
+        if (fvm_text_layout_line(layout, 1, &line) != FVM_OK) fvm_example_fail("indented continuation", __FILE__, __LINE__); /* Query the wrapped continuation. */
+        next = line.x; /* Continuations have no first-line offset. */
+        printf("indent first_x=%.2f next_x=%.2f\n", first, next); /* The executable checker verifies both signed modes. */
+    } /* Existing separately owned path export and rasterization follow. */
     /* Вызываем fvm_text_layout_path: получаем контуры всего текстового блока.
      * layout — ранее созданная текстовая раскладка.
      * &path — адрес или буфер для результата.
@@ -285,6 +306,7 @@ int main(int argc, char **argv)
     } /* Release the font-enabled declaration scope after native cleanup. */
 #else
     /* Выводим строку с завершающим переводом строки. */
+    (void)indented; /* Keep both modes parseable in a NO_FONTS build. */
     (void)justified; /* Mode parsing remains available in a NO_FONTS build. */
     (void)underline; /* The option still parses without a font backend. */
     (void)ligatures; /* The short probe remains parseable without fonts. */

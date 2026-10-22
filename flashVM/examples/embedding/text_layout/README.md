@@ -35,6 +35,7 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_create_indented`](../../../include/flashvm/text_layout.h#L119) | Borrow font, counted UTF-8/options and shaping parameters during synchronous layout; signed first-line offsets change first-line width and paths. Returns independently owned layout, clears output on invalid/unsupported/allocation errors. Serialize mutable font access; no VM/GC. [EN](../../../doc/TEXT_INDENT.md) / [RU](../../../doc/TEXT_INDENT.ru.md). |
 | [`fvm_text_layout_create_spaced`](../../../include/flashvm/text_layout.h#L101) | Borrow font, counted UTF-8 and options during synchronous bounded shaping with flags and signed pixel spacing; return an owned independent layout. Nonzero spacing disables optional liga/clig; required/ambiguous clusters are UNSUPPORTED. Invalid flags/spacing clear output. No VM/GC; serialize shared mutable font access. [EN](../../../doc/TEXT_LIGATURE_TRACKING.md) / [RU](../../../doc/TEXT_LIGATURE_TRACKING.ru.md). |
 | [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L82) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L147) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
@@ -152,6 +153,22 @@ font/text/options only during construction, return owned layouts and clear the
 output on failure; flags/spacing, statuses, threading and scope are detailed in
 [EN](../../../doc/TEXT_JUSTIFY.md) / [RU](../../../doc/TEXT_JUSTIFY.ru.md).
 
+## First-line modes / Отступ первой строки
+
+Run `flashvm_examples_embedding_text_layout_main --indent` or `--hanging-indent`.
+The CC0 font at 40px produces two lines and seven glyphs. Expected positive mode:
+`lines=2 glyphs=7 advance=102.00 height=92.00`, then
+`indent first_x=30.00 next_x=0.00`. Hanging mode gives advance=90.00 and
+first_x=-18.00. Font release precedes the line observations; owned path export
+and actual headless rasterization still run. The host chooses clipping for negative
+native coordinates. FONTS is required; NO_FONTS reports the existing profile limit.
+
+Режимы показывают положительный и отрицательный отступ первой строки при
+неизменном продолжении. Наблюдения выполняются после освобождения шрифта;
+путь экспортируется отдельно и растеризуется без окна. Это не проверка устройства.
+Аргументы, ошибки, границы и владение: [EN](../../../doc/TEXT_INDENT.md) /
+[RU](../../../doc/TEXT_INDENT.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -171,6 +188,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
 | `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../../../include/flashvm/text_layout.h#L24) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../../../include/flashvm/text_layout.h#L119) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../../../include/flashvm/text_layout.h#L101) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../../../include/flashvm/text_layout.h#L82) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../../../include/flashvm/text_layout.h#L147) |

@@ -31,6 +31,11 @@ def main():
     actual = re.match(pattern, justified.stdout)
     assert actual and actual.groups() == ('2', '7', '90.00', '92.00')
     assert justified.stdout.splitlines()[-1] == 'justify first=90.00 last=60.00'
+    for option, advance, origin in [('--indent', '102.00', '30.00'), ('--hanging-indent', '90.00', '-18.00')]:
+        indented = subprocess.run([sys.argv[1], option], capture_output=True, text=True, check=True)
+        actual = re.match(pattern, indented.stdout)
+        assert actual and actual.groups() == ('2', '7', advance, '92.00')
+        assert indented.stdout.splitlines()[-1] == 'indent first_x='+origin+' next_x=0.00'
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)
     assert bad.returncode != 0 and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking, underline contours/pixel oracle and actual RGBA rasterization')
