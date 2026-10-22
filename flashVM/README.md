@@ -1,10 +1,12 @@
-Development version: **0.844** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.844 ` and an English description. Increase the subversion before each
+Development version: **0.845** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.845 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.845: [Implement transactional left-anchored automatic TextField geometry](doc/TEXT_AUTOSIZE.md).
 
 v0.844: [Preserve nonzero glyph fill where underline bars overlap outlines](doc/TEXT_UNDERLINE.md).
 
