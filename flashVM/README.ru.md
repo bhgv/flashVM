@@ -1,4 +1,4 @@
-Версия разработки: **0.935** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.936** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.936: [Пример точного бюджета и владения tail-адаптера](doc/AUDIO_MIX_TAILS.ru.md).
 
 v0.935: [Пример native tail-pump на C89](doc/AUDIO_MIX_TAILS.ru.md).
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check actual C89 stream/event export using independent absolute rational sample positions."""
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -55,6 +56,13 @@ def main():
                                stdout=subprocess.PIPE, text=True)
         assert 'Queue retained 5 rejected blocks.' in tails.stdout
         assert tails_output.read_bytes() == output.read_bytes()
+        bounded_output = root / 'bounded.pcm'
+        bounded = subprocess.run([executable, str(bounded_output), '--bounded-tails'], cwd=root, check=True,
+                                 stdout=subprocess.PIPE, text=True)
+        storage = re.search(r'Mix queue buffers=(\d+) fixed=(\d+) retained=(\d+)', bounded.stdout)
+        assert storage and int(storage[1]) == 32 and int(storage[2]) > 0
+        assert int(storage[3]) == int(storage[1]) + int(storage[2])
+        assert bounded_output.read_bytes() == output.read_bytes()
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

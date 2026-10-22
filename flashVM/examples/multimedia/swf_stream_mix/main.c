@@ -83,8 +83,12 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueue *mix_queue = 0; /* Own retry storage before native publication. */
     FVM_AudioQueueBackend backend, adapted; /* Borrow real FIFO callbacks and wrapped composition. */
     FVM_SWFSoundMixQueueInfo pending; /* Observe retained retry ownership without a callback. */
+    FVM_SWFSoundMixQueuePending ownership; /* Observe whether base or tail owns a rendered retry. */
+    FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
+    size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
-    int tail_mode = argc == 3 && !strcmp(argv[2], "--tails"); /* Select explicit pump_tail after actual converter EOF. */
+    int bounded_mode = argc == 3 && !strcmp(argv[2], "--bounded-tails"); /* Use an exact adapter-only allocation ceiling. */
+    int tail_mode = (argc == 3 && !strcmp(argv[2], "--tails")) || bounded_mode; /* Select explicit pump_tail after actual converter EOF. */
     int queue_mode = (argc == 3 && !strcmp(argv[2], "--queue")) || tail_mode; /* Explicit queue/retry tutorial. */
     FILE *output = 0; /* No file exists until successful source preparation and teardown. */
     size_t total = 0, count, values, mixed, event, accepted = 0; /* Distinguish frames from channel values. */
@@ -93,7 +97,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -131,9 +135,20 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         backend.userdata = &queue; /* Borrow stable stack ownership until adapter close. */
         backend.write = queue_write; backend.queued = queue_count; /* Native copy/observe contract. */
         backend.pause = queue_pause; backend.clear = queue_clear; /* Explicit native controls. */
-        result = fvm_swf_sound_mix_queue_create( /* Allocate original/mixed retry witnesses once. */
-            mixer, &backend, EXAMPLE_MIX_BLOCK, &mix_queue, &adapted); /* Publish only complete state. */
+        if (bounded_mode) /* Plan the exact fixed adapter requests before acquiring them. */
+        { /* This does not include borrowed mixer, voices or software FIFO memory. */
+            if (!checked(fvm_swf_sound_mix_queue_storage_required(EXAMPLE_MIX_CHANNELS, EXAMPLE_MIX_BLOCK, &queue_budget), "mix queue required")) goto cleanup; /* No allocation, callback or VM access. */
+            result = fvm_swf_sound_mix_queue_create_bounded(mixer, &backend, EXAMPLE_MIX_BLOCK, queue_budget, &mix_queue, &adapted); /* Exact-fit native acquisition. */
+        } /* An insufficient budget would fail before any adapter allocation. */
+        else result = fvm_swf_sound_mix_queue_create(mixer, &backend, EXAMPLE_MIX_BLOCK, &mix_queue, &adapted); /* Existing modes retain unrestricted adapter acquisition. */
         if (!checked(result, "mix queue")) goto cleanup; /* Release earlier source/mixer on failure. */
+        if (bounded_mode) /* Observe portable requested bytes rather than claiming process RSS. */
+        { /* Require the documented storage descriptor size. */
+            storage.struct_size = sizeof(storage); /* Preserve native ABI validation. */
+            if (!checked(fvm_swf_sound_mix_queue_storage_info(mix_queue, &storage), "mix queue storage")) goto cleanup; /* No backend observation occurs. */
+            if (storage.retained_bytes != queue_budget) goto cleanup; /* Predict and observe the same fixed requests. */
+            printf("Mix queue buffers=%lu fixed=%lu retained=%lu\n", (unsigned long)storage.buffer_bytes, (unsigned long)storage.fixed_bytes, (unsigned long)storage.retained_bytes); /* Sizes are platform-dependent except for the fixed PCM arrays. */
+        } /* Native hot-path buffers never grow. */
     } /* End owner-side preparation. */
     fvm_context_destroy(context); /* [GC:] End canonical ownership before the native loop. */
     context = 0; /* [GC:] Prevent cleanup from destroying the former context again. */
@@ -169,6 +184,9 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             if (result != FVM_NOT_FOUND) goto cleanup; /* Require actual controlled backpressure. */
             pending.struct_size = sizeof(pending); /* Match native retry observation geometry. */
             if (!checked(fvm_swf_sound_mix_queue_info(mix_queue, &pending), "pending")) goto cleanup; /* No device poll. */
+            ownership.struct_size = sizeof(ownership); /* Copy retry origin separately from the legacy Info ABI. */
+            if (!checked(fvm_swf_sound_mix_queue_pending(mix_queue, &ownership), "pending origin")) goto cleanup; /* No queue callback or voice movement. */
+            if (ownership.frames != count || ownership.origin != (tail_mode && eof ? FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL : FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE)) goto cleanup; /* Never let one producer steal the other's retry. */
             if (pending.pending_frames != count) goto cleanup; /* The adapter owns exactly this retry. */
             result = tail_mode && eof ? fvm_swf_sound_mix_queue_pump_tail(mix_queue, count, EXAMPLE_MIX_TOTAL, &accepted) /* Resend retained tail bytes without another voice advance. */
                                      : adapted.write(adapted.userdata, pcm, count); /* Base retry reuses the original bytes unchanged. */
