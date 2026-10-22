@@ -1,6 +1,6 @@
 # Подчёркивание по метрикам шрифта
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) копирует центр и полную толщину подчёркивания
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) копирует центр и полную толщину подчёркивания
 масштабируемого шрифта в пикселях без хинтинга; положительная y направлена вниз
 от базовой линии. FreeType нормализует метрики исходного формата:
 [руководство](https://freetype.org/freetype2/docs/tutorial/step2.html) описывает
@@ -105,7 +105,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:34](../include/flashvm/font.h#L34) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |

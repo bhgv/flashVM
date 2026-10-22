@@ -12,4 +12,6 @@
 #define FVM_FONT_SURROGATE_BEGIN 0xD800U /* First non-scalar UTF-16 surrogate code point. */
 #define FVM_FONT_SURROGATE_END 0xDFFFU /* Last non-scalar UTF-16 surrogate code point. */
 #define FVM_FONT_UNDERLINE_MAX_EXTENT 1000000.0 /* Absolute pixel bound for scalable underline metrics. */
+#define FVM_FONT_OS2_MISSING_VERSION 0xFFFFU /* FreeType sentinel for an absent OS/2 table. */
+#define FVM_FONT_AVERAGE_MAX_EXTENT 1000000.0 /* Positive average width pixel admission bound. */
 #endif

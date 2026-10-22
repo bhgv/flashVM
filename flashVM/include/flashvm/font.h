@@ -57,6 +57,13 @@ extern "C"
     /* Read ascender, descender, line height and glyph count of this font face. */
     FVM_API FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *out);
     /* Map a Unicode code point to a font glyph identifier. */
+    /* Read the positive OS/2 xAvgCharWidth scaled to unhinted pixels (26.6).
+     * Borrow font on its owner thread; no allocations, VM calls or GC roots.
+     * out is required and reset to zero. Missing/nonpositive/scalable metrics
+     * return UNSUPPORTED; NULL font is INVALID_ARGUMENT in enabled builds.
+     * NO_FONTS returns UNSUPPORTED with a valid out. No inferred fallback. */
+    FVM_API FVM_Result fvm_font_average_width(const FVM_Font *font, double *out);
+
     /* Read scaled unhinted underline metrics from the borrowed scalable face.
      * Clears out on failure; NULL output/font is INVALID_ARGUMENT with fonts enabled.
      * Missing/nonpositive metrics -> UNSUPPORTED, without inventing a fallback.

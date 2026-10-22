@@ -28,7 +28,7 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | Функция | Где читать подробнее |
 | --- | --- |
 | [`fvm_font_destroy`](../../../include/flashvm/font.h#L56) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_font_underline_metrics`](../../../include/flashvm/font.h#L65) | Borrow the font and copy scaled center/thickness before face destruction; missing metrics fail explicitly with cleared output. No allocation/VM/GC, serialized font access. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
+| [`fvm_font_underline_metrics`](../../../include/flashvm/font.h#L72) | Borrow the font and copy scaled center/thickness before face destruction; missing metrics fail explicitly with cleared output. No allocation/VM/GC, serialized font access. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_font_read`](../../../include/flashvm/font.h#L53) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_append`](../../../include/flashvm/path.h#L67) | Borrow destination/source paths and identity transform; synchronously copy line bars into caller-owned geometry, then release the temporary source. Status is checked before continuation. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_path_count`](../../../include/flashvm/path.h#L56) | Read an owned path command count without allocation or mutation, to measure the added rectangle commands. No VM/GC or retained borrow. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
@@ -196,7 +196,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_destroy` | function | [include/flashvm/font.h:56](../../../include/flashvm/font.h#L56) |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../../../include/flashvm/font.h#L53) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../../../include/flashvm/font.h#L10) |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../../../include/flashvm/font.h#L65) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../../../include/flashvm/font.h#L72) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../../../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../../../include/flashvm/path.h#L56) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |

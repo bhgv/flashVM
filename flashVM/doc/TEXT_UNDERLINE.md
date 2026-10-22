@@ -1,6 +1,6 @@
 # Font-defined underline geometry
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies the scalable font's underline center and full
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) copies the scalable font's underline center and full
 thickness in unhinted pixels, with positive y downward relative to the baseline.
 FreeType normalizes source-format metrics; [its tutorial](https://freetype.org/freetype2/docs/tutorial/step2.html)
 explains underline centers and font-unit scaling. No guessed thickness is used.
@@ -101,7 +101,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:34](../include/flashvm/font.h#L34) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |

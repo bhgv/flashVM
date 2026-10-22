@@ -106,7 +106,7 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 ## Независимые полосы подчёркивания (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
 
 ## Необязательные лигатуры при трекинге (v0.861–v0.868)
 
@@ -133,7 +133,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
 | `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |

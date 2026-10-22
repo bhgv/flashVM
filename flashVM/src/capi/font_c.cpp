@@ -42,6 +42,7 @@ static bool valid_bidi_input(const unsigned int *logical, size_t count,
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
+#include FT_TRUETYPE_TABLES_H
 #include "hb.h"
 #include "hb-ft.h"
 #include "linebreak.h"
@@ -188,6 +189,22 @@ extern "C" FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *ou
     out->descent = -font->face->size->metrics.descender / 64.0;
     out->line_height = font->face->size->metrics.height / 64.0;
     out->glyph_count = (unsigned int)font->face->num_glyphs;
+    return FVM_OK;
+}
+
+/* Use the face's declared average horizontal advance, never a sampled string. */
+extern "C" FVM_Result fvm_font_average_width(const FVM_Font *font, double *out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!font) return FVM_INVALID_ARGUMENT;
+    if (!FT_IS_SCALABLE(font->face)) return FVM_UNSUPPORTED;
+    const TT_OS2 *table = (const TT_OS2 *)FT_Get_Sfnt_Table(font->face, ft_sfnt_os2);
+    if (!table || table->version == FVM_FONT_OS2_MISSING_VERSION || table->xAvgCharWidth <= 0)
+        return FVM_UNSUPPORTED;
+    double width = FT_MulFix(table->xAvgCharWidth, font->face->size->metrics.x_scale) / 64.0;
+    if (!(width > 0 && width <= FVM_FONT_AVERAGE_MAX_EXTENT)) return FVM_UNSUPPORTED;
+    *out = width;
     return FVM_OK;
 }
 
@@ -598,6 +615,14 @@ extern "C" void fvm_font_destroy(FVM_Font *)
 /* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *, FVM_FontMetrics *)
 {
+    return FVM_UNSUPPORTED;
+}
+
+/* Disabled profiles return an empty scalar rather than an invented font metric. */
+extern "C" FVM_Result fvm_font_average_width(const FVM_Font *, double *out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    *out = 0;
     return FVM_UNSUPPORTED;
 }
 

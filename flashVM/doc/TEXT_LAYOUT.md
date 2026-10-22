@@ -105,7 +105,7 @@ See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
 ## Independent underline bars (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
 
 ## Optional ligatures in tracking (v0.861–v0.868)
 
@@ -133,7 +133,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
 | `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |

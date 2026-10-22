@@ -1,16 +1,16 @@
 # Optional ligatures and tracking
 
-v0.861 adds [FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES](../include/flashvm/font.h#L10) to [fvm_font_shape_configured](../include/flashvm/font.h#L90).
+v0.861 adds [FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES](../include/flashvm/font.h#L10) to [fvm_font_shape_configured](../include/flashvm/font.h#L97).
 It disables the OpenType liga and clig features for the complete input run.
 Required rlig substitutions, joining and mark positioning retain their defaults.
 [FVM_FONT_SHAPE_NO_KERNING](../include/flashvm/font.h#L9) remains independent; bitwise OR selects both policies.
-Flags zero and [fvm_font_shape](../include/flashvm/font.h#L76) preserve legacy shaping. Flags are per call and do
+Flags zero and [fvm_font_shape](../include/flashvm/font.h#L83) preserve legacy shaping. Flags are per call and do
 not mutate the font's persistent state. This is OpenType feature selection, not
 a promise to split every script cluster or every font technology.
 
 The API borrows font/text/language only during the call and returns an owned
-[FVM_TextRun](../src/capi/font_c.cpp#L75) released by [fvm_text_run_destroy](../include/flashvm/font.h#L94). Use the same font/size when exporting
-its path with [fvm_text_run_path](../include/flashvm/font.h#L98). Mutable font handles require caller serialization;
+[FVM_TextRun](../src/capi/font_c.cpp#L76) released by [fvm_text_run_destroy](../include/flashvm/font.h#L101). Use the same font/size when exporting
+its path with [fvm_text_run_path](../include/flashvm/font.h#L105). Mutable font handles require caller serialization;
 independent handles may run on separate threads. No VM, GC, callback or device
 is used. Unknown flags, invalid UTF-8/direction/input are INVALID_ARGUMENT and
 clear a valid output pointer. Allocation failure is OUT_OF_MEMORY. NO_FONTS
@@ -78,13 +78,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_shape` | function | [include/flashvm/font.h:76](../include/flashvm/font.h#L76) |
-| `fvm_font_shape_configured` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:83](../include/flashvm/font.h#L83) |
+| `fvm_font_shape_configured` | function | [include/flashvm/font.h:97](../include/flashvm/font.h#L97) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../include/flashvm/font.h#L10) |
 | `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
-| `fvm_text_run_destroy` | function | [include/flashvm/font.h:94](../include/flashvm/font.h#L94) |
-| `fvm_text_run_path` | function | [include/flashvm/font.h:98](../include/flashvm/font.h#L98) |
-| `FVM_TextRun` | struct | [src/capi/font_c.cpp:75](../src/capi/font_c.cpp#L75) |
+| `fvm_text_run_destroy` | function | [include/flashvm/font.h:101](../include/flashvm/font.h#L101) |
+| `fvm_text_run_path` | function | [include/flashvm/font.h:105](../include/flashvm/font.h#L105) |
+| `FVM_TextRun` | struct | [src/capi/font_c.cpp:76](../src/capi/font_c.cpp#L76) |
 <!-- source-links:end -->
