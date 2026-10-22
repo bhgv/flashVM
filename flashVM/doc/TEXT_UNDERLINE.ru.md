@@ -64,6 +64,8 @@ v0.841: `textfield_underline_missing.cpp` изменяет толщину post �
 
 v0.842: `jit_textfield_underline.cpp` выполняет AVM1 SetMember/CallMethod в интерпретаторе, подключённом нативном коде и автоматическом JIT, проверяя полосу из пяти команд, неизменные метрики, счётчики нативного входа и баланс GC. `text_underline_os_ports.cpp` разделяет одну неизменяемую раскладку между четырьмя настоящими OS-потоками после уничтожения шрифта; по 128 итераций экспортируют независимые полосы с разными параметрами.
 
+v0.843: [C89-пример](../examples/embedding/text_layout/README.md) добавляет --underline, копии метрик шрифта, независимые полосы и проверку реального RGBA-пикселя (1,40), alpha 255. Метаданные глифов/bidi и метрики прежние; три полосы добавляют 15 команд. Новые демонстрируемые API: [`fvm_path_append`](../include/flashvm/path.h#L67) копирует временные полосы с единичной матрицей, после возврата источник освобождается; [`fvm_path_count`](../include/flashvm/path.h#L56) читает число команд без выделений. Контуры переживают шрифт/раскладку; VM, окно и устройство не нужны.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -76,6 +78,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
+| `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
 <!-- source-links:end -->

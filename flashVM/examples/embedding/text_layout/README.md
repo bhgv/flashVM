@@ -28,7 +28,10 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | Функция | Где читать подробнее |
 | --- | --- |
 | [`fvm_font_destroy`](../../../include/flashvm/font.h#L54) | Release the owned face after layout creation; copied layout/path storage survives. No VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_font_underline_metrics`](../../../include/flashvm/font.h#L63) | Borrow the font and copy scaled center/thickness before face destruction; missing metrics fail explicitly with cleared output. No allocation/VM/GC, serialized font access. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_font_read`](../../../include/flashvm/font.h#L51) | Copy and validate embedded TTF at 40 pixels; caller destroys the returned single-owner font. Errors publish null. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_path_append`](../../../include/flashvm/path.h#L67) | Borrow destination/source paths and identity transform; synchronously copy line bars into caller-owned geometry, then release the temporary source. Status is checked before continuation. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
+| [`fvm_path_count`](../../../include/flashvm/path.h#L56) | Read an owned path command count without allocation or mutation, to measure the added rectangle commands. No VM/GC or retained borrow. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
@@ -36,6 +39,7 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L118) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L99) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_line_underline_path`](../../../include/flashvm/text_layout.h#L115) | Borrow a placed layout, line index and copied center/thickness; return an independent bar path or an owned empty path for zero advance. Errors clear output; caller destroys it. Independent immutable readers are allowed. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L97) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L105) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 
@@ -85,6 +89,25 @@ ownership and concurrency: [EN](../../../doc/TEXT_SPACING.md) / [RU](../../../do
 независимых контуров и отрисовку RGBA, как основной режим. Сложные кластеры
 не входят в поддержку ненулевого интервала; окна и устройства не используются.
 
+## Underline / Подчёркивание (v0.843)
+
+```sh
+./build-text/flashvm_examples_embedding_text_layout_main --underline
+```
+
+The original three-line sample keeps identical glyph/byte/bidi metadata and
+metrics. Copied font metrics are center=4.00/thickness=2.00; three closed bars
+add 15 path commands. The font and layout are destroyed before RGBA rendering.
+An interior pixel (1,40) independently confirms alpha 255 below glyph outlines.
+All storage is caller-owned; no window, file or physical device is used.
+[Contracts](../../../doc/TEXT_UNDERLINE.md).
+
+Исходный текст из трёх строк сохраняет глифы, метаданные байтов/bidi и метрики.
+Скопированные метрики: центр 4.00, толщина 2.00; три полосы добавляют 15 команд.
+Шрифт и раскладка уничтожены до RGBA-отрисовки. Пиксель (1,40) подтверждает
+alpha 255 ниже контуров глифов. Память принадлежит примеру, окон и устройств нет.
+[Контракты](../../../doc/TEXT_UNDERLINE.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -96,6 +119,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_font_destroy` | function | [include/flashvm/font.h:54](../../../include/flashvm/font.h#L54) |
 | `fvm_font_read` | function | [include/flashvm/font.h:51](../../../include/flashvm/font.h#L51) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../../../include/flashvm/font.h#L63) |
+| `fvm_path_append` | function | [include/flashvm/path.h:67](../../../include/flashvm/path.h#L67) |
+| `fvm_path_count` | function | [include/flashvm/path.h:56](../../../include/flashvm/path.h#L56) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
@@ -103,6 +129,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../../../include/flashvm/text_layout.h#L118) |
 | `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:99](../../../include/flashvm/text_layout.h#L99) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../../../include/flashvm/text_layout.h#L115) |
 | `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:97](../../../include/flashvm/text_layout.h#L97) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../../../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

@@ -61,6 +61,8 @@ v0.841: `textfield_underline_missing.cpp` edits the fixture post thickness to ze
 
 v0.842: `jit_textfield_underline.cpp` drives AVM1 SetMember/CallMethod through interpreter, attached native code and automatic JIT. It checks the exported five-command bar and unchanged metrics, native entry counts and GC scope balance. `text_underline_os_ports.cpp` shares one immutable layout across four actual OS workers after font destruction; 128 iterations per worker export independently parameterized owned bars.
 
+v0.843: the [C89 tutorial](../examples/embedding/text_layout/README.md) adds --underline, copied font metrics, independent bars and an actual RGBA pixel oracle at (1,40), alpha 255. Original glyph/bidi metadata and metrics stay identical; three bars add 15 commands. New demonstrated APIs include [`fvm_path_append`](../include/flashvm/path.h#L67) (copy temporary bars with an identity transform, release source after return) and [`fvm_path_count`](../include/flashvm/path.h#L56) (allocation-free command inspection). Paths outlive font/layout; no VM, window or device is required.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -73,6 +75,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
+| `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
 <!-- source-links:end -->

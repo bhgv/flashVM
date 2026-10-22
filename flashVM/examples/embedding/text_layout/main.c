@@ -19,11 +19,13 @@ int main(int argc, char **argv)
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    int underline = 0; /* Optional line decoration is separate from glyph shaping. */
     double spacing = 0; /* Zero preserves all legacy shaping, including complex clusters. */
     if (argc == 2 && !strcmp(argv[1], "--no-kerning")) flags = FVM_FONT_SHAPE_NO_KERNING; /* Disable pair kerning only. */
     else if (argc == 2 && !strcmp(argv[1], "--tracking")) { spacing = 2.5; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Show fractional positive spacing on simple AV. */
     else if (argc == 2 && !strcmp(argv[1], "--condensed")) { spacing = -2; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Condense the same characters with a negative interval. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--underline")) underline = 1; /* Add font-defined bars without changing text metrics. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
@@ -36,6 +38,7 @@ int main(int argc, char **argv)
     FVM_TextLayoutOptions options = {120, 48, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_TextLayoutMetrics metrics;
+    FVM_FontUnderlineMetrics decoration = {0, 0}; /* Copy the font metrics before destroying the face. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_TextLayoutLine line;
     /* Сохраняем вычисленное значение: FVM_Path *path. */
@@ -90,6 +93,8 @@ int main(int argc, char **argv)
             __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (underline && fvm_font_underline_metrics(font, &decoration) != FVM_OK) /* Borrow the face; publish copied y-down pixel metrics. */
+        fvm_example_fail("fvm_font_underline_metrics", __FILE__, __LINE__); /* Stop explicitly if the font lacks usable decoration data. */
     /* Вызываем fvm_font_destroy: освобождаем шрифтовой дескриптор.
      * font — шрифтовой дескриптор. */
     fvm_font_destroy(font);
@@ -145,6 +150,20 @@ int main(int argc, char **argv)
         fvm_example_fail("fvm_text_layout_path(layout, &path) == FVM_OK", __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (underline) /* Add separate line contours to the owned whole-text path. */
+    { /* Keep all C89 block declarations before statements. */
+        size_t original = fvm_path_count(path); /* Observe glyph-only commands without allocation. */
+        FVM_Affine identity = {1, 0, 0, 1, 0, 0}; /* The layout already placed each line. */
+        for (i = 0; i < metrics.line_count; ++i) /* Visit each placed line, including empty lines. */
+        { /* Own one temporary bar per iteration. */
+            FVM_Path *bar = 0; /* The helper returns independent path storage. */
+            FVM_Result status = fvm_text_layout_line_underline_path(layout, i, decoration.center_y, decoration.thickness, &bar); /* Borrow the layout; empty lines yield empty paths. */
+            if (status == FVM_OK) status = fvm_path_append(path, bar, &identity); /* Copy the placed rectangle into the whole-text path. */
+            fvm_path_destroy(bar); /* Release the temporary path even if append failed. */
+            if (status != FVM_OK) fvm_example_fail("line underline export", __FILE__, __LINE__); /* Do not continue after partial geometry failure. */
+        } /* All temporary bar borrows and ownership end here. */
+        printf("underline center=%.2f thickness=%.2f commands=%lu\n", decoration.center_y, decoration.thickness, (unsigned long)(fvm_path_count(path) - original)); /* Expose the analytical fixture geometry. */
+    } /* The combined owned path no longer depends on bar storage. */
     /* Вызываем fvm_text_layout_glyph_path: получаем векторный контур выбранного глифа.
      * layout — ранее созданная текстовая раскладка.
      * 0 — индекс выбираемого элемента.
@@ -210,6 +229,12 @@ int main(int argc, char **argv)
                          __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (underline) /* Probe an interior pixel in the first bar, below all glyph outlines. */
+    { /* The 40px fixture puts the first bar at y=[39,41], spanning x=[0,96.8]. */
+        unsigned int alpha = pixels[40 * surface.stride + 7]; /* Read RGBA alpha at pixel (1,40), safely inside the caller buffer. */
+        if (alpha != color.a) fvm_example_fail("underline raster pixel", __FILE__, __LINE__); /* Require actual opaque bar coverage. */
+        printf("underline probe_alpha=%u\n", alpha); /* Let the executable tutorial checker inspect the independent pixel oracle. */
+    } /* Pixel storage remains owned by this stack frame. */
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Вызываем fvm_path_draw: отрисовываем путь с указанной заливкой и границей.
@@ -240,6 +265,7 @@ int main(int argc, char **argv)
     } /* Release the font-enabled declaration scope after native cleanup. */
 #else
     /* Выводим строку с завершающим переводом строки. */
+    (void)underline; /* The option still parses without a font backend. */
     (void)flags; /* Feature parsing remains available when native fonts are disabled. */
     puts("Text layout requires FONTS in DEFS.txt.");
 /* Завершаем условный блок компиляции. */

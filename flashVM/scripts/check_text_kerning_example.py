@@ -23,9 +23,13 @@ def main():
         tracked = subprocess.run([sys.argv[1], option], capture_output=True, text=True, check=True)
         actual = re.match(pattern, tracked.stdout)
         assert actual and actual.groups()[:3] == ('1', '2', expected)
+    underlined = subprocess.run([sys.argv[1], '--underline'], capture_output=True, text=True, check=True)
+    assert underlined.stdout.splitlines()[:-2] == on.stdout.splitlines()
+    assert underlined.stdout.splitlines()[-2:] == [
+        'underline center=4.00 thickness=2.00 commands=15', 'underline probe_alpha=255']
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)
     assert bad.returncode != 0 and not bad.stdout and 'usage:' in bad.stderr
-    print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking and actual RGBA rasterization')
+    print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking, underline contours/pixel oracle and actual RGBA rasterization')
     return 0
 
 
