@@ -18,6 +18,8 @@ v0.943: настоящий преобразуемый SWF stream-producer даё
 
 v0.944: настоящие MovieClip frame-actions выполняются интерпретатором и доступным native JIT с проверкой native-entry counters. Общий учёт следует разрешённым stream-кадрам, остановке/gap и GC safe points. Явные goto/stream seek вызывают clear адаптера и начинают согласованный нулевой отсчёт; проверяются повторные source bytes и итоговые метрики. В native JIT-профиле выполнены оба режима. Это ограниченная root timeline/seek-проверка, не полная Flash seek-совместимость и не дочерние клипы.
 
+v0.945: инструментированный обычный тест по-прежнему отклоняет недостаточный byte-budget до new/new[] и проверяет три границы создания. При запрете выделений clock begin/info/end/restart, tail отказ/retry, приём base, dequeue, pause и clear не делают попыток. Новые private-счётчики включены в required/observed fixed storage без роста hot-path буферов.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

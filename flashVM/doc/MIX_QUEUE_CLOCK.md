@@ -18,6 +18,8 @@ v0.943: a real converted SWF stream producer contributes nine accepted frames; r
 
 v0.944: actual MovieClip frame actions execute in interpreter and available native JIT modes with native-entry counters asserted. Shared accounting follows authorized stream frames, stopped ticks/gaps and GC safe points. Explicit goto/stream seek clears through the adapter and starts a matching zero epoch; replayed source bytes and final submitted/dequeued values are checked. Both modes ran in the native JIT profile. This is bounded root timeline/seek coordination, not complete Flash seek or child-clip scheduling.
 
+v0.945: the instrumented ordinary-build allocation test still rejects insufficient adapter byte budget before any new/new[] attempt and checks all three acquisition boundaries. With allocation forbidden, explicit clock begin/info/end/restart, tail rejection/retry, base acceptance, dequeue, pause and clear make zero allocation attempts. Updated private counters are included in required/observed fixed storage without growing hot-path buffers.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
