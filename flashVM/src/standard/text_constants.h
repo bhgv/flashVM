@@ -12,11 +12,18 @@
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
 #define FVM_TEXT_FIELD_MIN_INNER_WIDTH (1.0 / 64.0) /* Progress on oversized graphemes. */
 #define FVM_TEXT_FIELD_MAX_EXTENT 1000000.0 /* Maximum admitted outer field dimension. */
-#define FVM_TEXT_FIELD_WRITABLE_PROPERTIES 7U /* Text, policies, dimensions, color and autoSize. */
+#define FVM_TEXT_FIELD_WRITABLE_PROPERTIES 9U /* Text, policies, dimensions, color, autoSize and position. */
 #define FVM_TEXT_FIELD_METHOD_SELECTORS 4U /* Stable format-method selector prefix length. */
 #define FVM_TEXT_FIELD_WRITABLE_SELECTORS (FVM_TEXT_FIELD_METHOD_SELECTORS + FVM_TEXT_FIELD_WRITABLE_PROPERTIES)
 #define FVM_TEXT_STATE_MULTILINE 1UL /* Legacy low bit of the first field policy byte. */
 #define FVM_TEXT_STATE_AUTO_SIZE_LEFT 2UL /* Automatic fitting without adding payload bytes. */
-#define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT)
+#define FVM_TEXT_STATE_HAS_POSITION 4UL /* Optional x/y numbers follow policy bytes. */
+#define FVM_TEXT_STATE_CENTER 8UL /* Center automatic anchor, requires fitting bit. */
+#define FVM_TEXT_STATE_RIGHT 16UL /* Right automatic anchor, exclusive with center. */
+#define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT | FVM_TEXT_STATE_HAS_POSITION | FVM_TEXT_STATE_CENTER | FVM_TEXT_STATE_RIGHT)
+#define FVM_TEXT_ANCHOR_LEFT 0UL /* Preserve left edge while fitting. */
+#define FVM_TEXT_ANCHOR_CENTER 1UL /* Preserve horizontal center while fitting. */
+#define FVM_TEXT_ANCHOR_RIGHT 2UL /* Preserve right edge while fitting. */
+#define FVM_TEXT_FIELD_MAX_POSITION 1000000.0 /* Signed parent-space translation envelope. */
 #define FVM_TEXT_FIELD_GEOMETRY_TOLERANCE (1.0 / 64.0) /* One native font subpixel on restored automatic dimensions. */
 #endif

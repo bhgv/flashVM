@@ -21,8 +21,8 @@ int main()
  assert(counted_metric(c,field,"_width")==40 && counted_metric(c,field,"_height")==26);
  fvm_value_boolean(&value,0);assert(fvm_object_set(c,field,"autoSize",&value)==FVM_OK);
  assert(fvm_value_string(&value,"AV")==FVM_OK && fvm_object_set(c,field,"text",&value)==FVM_OK && counted_metric(c,field,"_width")==40 && counted_metric(c,field,"_height")==26);
- assert(fvm_value_string(&value,"center")==FVM_OK && fvm_object_set(c,field,"autoSize",&value)==FVM_UNSUPPORTED);
- assert(fvm_value_string(&value,"right")==FVM_OK && fvm_object_set(c,field,"autoSize",&value)==FVM_UNSUPPORTED);
+ assert(fvm_value_string(&value,"invalid-center")==FVM_OK && fvm_object_set(c,field,"autoSize",&value)==FVM_UNSUPPORTED);
+ assert(fvm_value_string(&value,"invalid-right")==FVM_OK && fvm_object_set(c,field,"autoSize",&value)==FVM_UNSUPPORTED);
  fvm_value_boolean(&value,1);assert(fvm_object_set(c,field,"autoSize",&value)==FVM_OK && counted_metric(c,field,"_width")==52);
  FVM_Path *path=0;assert(fvm_gc_collect(c,0)==FVM_OK && fvm_textfield_path(c,field,&path)==FVM_OK);fvm_path_destroy(path);
  fvm_context_destroy(c);fvm_runtime_destroy(rt);

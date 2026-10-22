@@ -23,7 +23,7 @@ int main()
    assert(out.type==FVM_VALUE_NUMBER && out.number==(step==0?52:76));
    assert(counted_metric(c,field,"_height")==48 && fvm_gc_collect(c,0)==FVM_OK && !c->gc_frames && !c->gc_native_depth);
   }
-  Program bad;bad.variable("field");bad.text("autoSize");bad.text("right");bad.op(0x4f);bad.number(1);bad.finish();class_run(c,bad,FVM_UNSUPPORTED);
+  Program bad;bad.variable("field");bad.text("autoSize");bad.text("invalid");bad.op(0x4f);bad.number(1);bad.finish();class_run(c,bad,FVM_UNSUPPORTED);
   assert(counted_metric(c,field,"_width")==76);fvm_context_destroy(c);
  }
  fvm_runtime_destroy(rt);

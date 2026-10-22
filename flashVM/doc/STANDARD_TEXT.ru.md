@@ -1,3 +1,5 @@
+Native _x/_y и опоры left/center/right поддержаны в пределах [контракта геометрии](TEXT_AUTOSIZE.ru.md). Остальные преобразования display остаются неподдержанными.
+
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
 [fvm_standard_text_install](../include/flashvm/standard_text.h#L17) отдельно от числовой библиотеки устанавливает

@@ -94,10 +94,12 @@ struct Field
     size_t text_size; /* Counted UTF-8 bytes, including embedded NUL. */
     double width /* Current outer width including gutter. */, height; /* Current outer height. */
     bool multiline /* Allow hard line separators. */, wrap; /* Wrap inside the outer width. */
-    bool auto_size_left; /* Keep native field origin fixed while fitting measured content. */
+    bool auto_size_left; /* Automatic fitting enabled; anchor chooses the horizontal invariant. */
+    double x, y; /* Parent-space translation; exported outlines remain field-local. */
+    unsigned long anchor; /* Left, center or right automatic horizontal anchor. */
     FVM_TextLayout *layout; /* Owned cache, replaced only after a successful measured edit. */
     /* Initialize Field and its owned state. */
-    Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), layout(0)
+    Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), x(0), y(0), anchor(FVM_TEXT_ANCHOR_LEFT), layout(0)
     {
     }
     /* Release the resources owned by this Field instance. */
@@ -362,10 +364,12 @@ struct PreparedGeometry
     LayoutOwner owned; /* Unpublished layout; cleanup unwinds failed measurements. */
     double width, height; /* Candidate outer dimensions including the field gutter. */
     bool multiline, wrap; /* Candidate layout policies. */
-    bool automatic; /* Left-anchored fitting is active for this candidate. */
+    bool automatic; /* Fitting is active for this candidate. */
+    double x; /* Candidate horizontal origin, published with measured width. */
+    unsigned long anchor; /* Candidate horizontal fitting policy. */
     /* Copy only scalar policies; never copy a field's owned layout pointer. */
     PreparedGeometry(const Field &field) : width(field.width), height(field.height),
-        multiline(field.multiline), wrap(field.wrap), automatic(field.auto_size_left) {}
+        multiline(field.multiline), wrap(field.wrap), automatic(field.auto_size_left), x(field.x), anchor(field.anchor) {}
     /* Publish without allocation after text/style admission and ownership succeed. */
     void commit(Field &field)
     {
@@ -375,6 +379,8 @@ struct PreparedGeometry
         field.multiline = multiline;
         field.wrap = wrap;
         field.auto_size_left = automatic;
+        field.x = x;
+        field.anchor = anchor;
         if (automatic)
         {
             field.layout = owned.layout;
@@ -401,9 +407,16 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
     if (result != FVM_OK)
         return result;
     if (!next.wrap)
-        next.width = metrics.advance_width + FVM_TEXT_FIELD_GUTTER;
+    {
+        double measured = metrics.advance_width + FVM_TEXT_FIELD_GUTTER;
+        double fraction = next.anchor == FVM_TEXT_ANCHOR_RIGHT ? 1.0 :
+                          next.anchor == FVM_TEXT_ANCHOR_CENTER ? 0.5 : 0.0;
+        next.x += (next.width - measured) * fraction;
+        next.width = measured;
+    }
     next.height = metrics.height + FVM_TEXT_FIELD_GUTTER;
-    if (!finite_range(next.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
+    if (!finite_range(next.x, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION) ||
+        !finite_range(next.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
         !finite_range(next.height, 0, FVM_TEXT_FIELD_MAX_EXTENT))
         return FVM_UNSUPPORTED;
     return FVM_OK;
@@ -826,7 +839,13 @@ static FVM_Result field_get(FVM_Context *c, FVM_Object *self, unsigned int, cons
     Field *field = (Field *)self->resource;
     const char *name = (const char *)userdata;
     if (std::strcmp(name, "autoSize") == 0)
-        return fvm_value_string(out, field->auto_size_left ? "left" : "none");
+        return fvm_value_string(out, !field->auto_size_left ? "none" : field->anchor == FVM_TEXT_ANCHOR_RIGHT ? "right" :
+            field->anchor == FVM_TEXT_ANCHOR_CENTER ? "center" : "left");
+    if (std::strcmp(name, "_x") == 0 || std::strcmp(name, "_y") == 0)
+    {
+        fvm_value_number(out, std::strcmp(name, "_x") == 0 ? field->x : field->y);
+        return FVM_OK;
+    }
     if (std::strcmp(name, "text") == 0)
         return fvm_value_string_bytes(out, field->text, field->text_size);
     if (std::strcmp(name, "multiline") == 0)
@@ -922,7 +941,8 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         bool automatic;
         if (args[0].type == FVM_VALUE_BOOLEAN)
             automatic = args[0].boolean != 0;
-        else if (style_keyword(args[0], "left"))
+        else if (style_keyword(args[0], "left") || style_keyword(args[0], "center") ||
+                 style_keyword(args[0], "right"))
             automatic = true;
         else if (style_keyword(args[0], "none"))
             automatic = false;
@@ -930,6 +950,8 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
             return FVM_UNSUPPORTED;
         PreparedGeometry geometry(*field);
         geometry.automatic = automatic;
+        geometry.anchor = style_keyword(args[0], "right") ? FVM_TEXT_ANCHOR_RIGHT :
+                          style_keyword(args[0], "center") ? FVM_TEXT_ANCHOR_CENTER : FVM_TEXT_ANCHOR_LEFT;
         if (automatic)
         {
             FVM_Result result = prepare_field_geometry(c, field->current, field->text, field->text_size, geometry);
@@ -944,7 +966,14 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         FVM_Result result = number(c, args[0], d);
         if (result != FVM_OK)
             return result;
-        if (std::strcmp(name, "textColor") == 0)
+        if (std::strcmp(name, "_x") == 0 || std::strcmp(name, "_y") == 0)
+        {
+            if (!finite_range(d, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION))
+                return FVM_INVALID_ARGUMENT;
+            if (std::strcmp(name, "_x") == 0) field->x = d;
+            else field->y = d;
+        }
+        else if (std::strcmp(name, "textColor") == 0)
         {
             if (!finite_range(d, 0, 16777215) || d != std::floor(d))
                 return FVM_INVALID_ARGUMENT;
@@ -1320,7 +1349,7 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
             return FVM_INVALID_ARGUMENT;
         object->prototype = prototype.object;
         const char *names[] = {"text",      "multiline", "wordWrap",  "_width",    "_height",
-                               "textColor", "autoSize", "length",    "textWidth", "textHeight"};
+                               "textColor", "autoSize", "_x", "_y", "length",    "textWidth", "textHeight"};
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
         {
             result = fvm_object_define_accessor_rooted(c, object, names[i], field_get,
@@ -1347,7 +1376,7 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
             "restrict",   "scroll",       "hscroll",       "maxscroll",
             "maxhscroll", "bottomScroll", "antiAliasType", "gridFitType",
             "sharpness",  "thickness",    "condenseWhite", "filters",
-            "_x",         "_y",           "_alpha",        "_visible"};
+            "_alpha",        "_visible"};
         for (size_t i = 0; i < sizeof(unimplemented) / sizeof(unimplemented[0]); ++i)
         {
             result = fvm_object_define_accessor_rooted(c, object, unimplemented[i], unsupported,
@@ -1463,7 +1492,7 @@ namespace
 const char *field_selectors[] = {
     "getTextFormat", "getNewTextFormat", "setTextFormat", "setNewTextFormat", "text",
     "multiline",     "wordWrap",         "_width",        "_height",          "textColor",
-    "autoSize", "length",        "textWidth",        "textHeight"};
+    "autoSize", "_x", "_y", "length",        "textWidth",        "textHeight"};
 
 /* Capture snapshot of style. */
 void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState &out)
@@ -1542,16 +1571,18 @@ void *fvm_text_callback_userdata(unsigned long id, const char *name)
     return (void *)fvm_text_callback_selector(fvm_text_callback_from_id(id), (void *)name);
 }
 
-/* [GC:] Upgrade only the rootless retired built-in autoSize stub. Host callbacks,
+/* [GC:] Upgrade only the rootless retired built-in geometry stubs. Host callbacks,
  * custom userdata and captured roots retain their original graph semantics. */
 void fvm_textfield_upgrade_accessor(const char *name, FVM_AccessorEntry &entry)
 {
-    if (name && !std::strcmp(name, "autoSize") && entry.getter == unsupported &&
+    if (name && (!std::strcmp(name, "autoSize") || !std::strcmp(name, "_x") ||
+                 !std::strcmp(name, "_y")) && entry.getter == unsupported &&
         entry.setter == unsupported && !entry.userdata && !entry.root)
     {
         entry.getter = field_get;
         entry.setter = field_set;
-        entry.userdata = (void *)"autoSize";
+        entry.userdata = (void *)(!std::strcmp(name, "_x") ? "_x" :
+                                 !std::strcmp(name, "_y") ? "_y" : "autoSize");
     }
 }
 
@@ -1599,6 +1630,8 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     out.multiline = field->multiline;
     out.wrap = field->wrap;
     out.auto_size_left = field->auto_size_left;
+    out.x = field->x; out.y = field->y;
+    out.anchor = field->auto_size_left ? field->anchor : FVM_TEXT_ANCHOR_LEFT;
     return FVM_OK;
 }
 
@@ -1611,6 +1644,9 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
     size_t scalar_count = 0;
     /* Validate the same storage envelope as editing before allocating native state or fonts. */
     if (!finite_range(state.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) || !finite_range(state.height, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
+        !finite_range(state.x, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION) ||
+        !finite_range(state.y, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION) ||
+        state.anchor > FVM_TEXT_ANCHOR_RIGHT || (!state.auto_size_left && state.anchor != FVM_TEXT_ANCHOR_LEFT) ||
         state.text.size() > FVM_TEXT_FIELD_MAX_BYTES ||
         fvm_utf8_validate(state.text.c_str(), state.text.size(), &scalar_count) != FVM_UTF8_OK ||
         scalar_count > FVM_TEXT_FIELD_MAX_SCALARS)
@@ -1664,6 +1700,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         field->multiline = state.multiline;
         field->wrap = state.wrap;
         field->auto_size_left = state.auto_size_left;
+        field->x = state.x; field->y = state.y; field->anchor = state.anchor;
         PreparedGeometry geometry(*field);
         result = prepare_field_geometry(context, field->current, state.text.c_str(), state.text.size(), geometry);
         if (result != FVM_OK)
@@ -1680,6 +1717,9 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         }
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_auto =
             object->accessors.find("autoSize");
+        geometry.x = state.x; /* Rebuild caches without reapplying a serialized anchor shift. */
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_x = object->accessors.find("_x");
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_y = object->accessors.find("_y");
         char *text = new char[state.text.size() + 1];
         std::memcpy(text, state.text.c_str(), state.text.size() + 1);
         try
@@ -1698,6 +1738,8 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         geometry.commit(*field);
         if (legacy_auto != object->accessors.end())
             fvm_textfield_upgrade_accessor("autoSize", legacy_auto->second);
+        if (legacy_x != object->accessors.end()) fvm_textfield_upgrade_accessor("_x", legacy_x->second);
+        if (legacy_y != object->accessors.end()) fvm_textfield_upgrade_accessor("_y", legacy_y->second);
         object->resource = field;
         object->release_resource = release_field;
         return FVM_OK;

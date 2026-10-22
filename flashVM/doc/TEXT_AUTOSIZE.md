@@ -1,3 +1,42 @@
+# Native TextField horizontal anchors — v0.853
+
+The native field now accepts autoSize left, center and right. When wrapping is
+inactive, fitting preserves respectively x, x+width/2 or x+width. Setting the mode
+measures immediately; later text/current-format edits preserve the selected
+anchor. The top edge y remains fixed. With wordWrap enabled, horizontal geometry
+stays fixed and only height fits. Boolean true selects left, false selects none.
+Changing mode chooses its anchor from the current box. Disabling retains geometry.
+TextFormat alignment continues to control individual lines independently.
+
+_x and _y are numeric parent-space translations, initially zero, admitted within
+finite ±1,000,000. Invalid coordinates return INVALID_ARGUMENT without mutation.
+An automatic edit that would move x beyond this envelope returns UNSUPPORTED
+without publishing text/style/geometry. Dimension-write restrictions still apply.
+All calls require the owning context thread; native roots and GC rules are
+unchanged. Position writes do not invalidate the local layout cache.
+
+The existing [fvm_textfield_path](../include/flashvm/standard_text.h#L33) API returns an independently owned field-local
+path, including its normal gutter. Hosts apply x/y once when placing that path.
+This does not implement MovieClip.createTextField, parent/display-list attachment,
+rotation, scale, clipping, input, HTML or full SWF text decoding. No public ABI was
+added. Native analytical evidence does not certify Flash/device conformance.
+
+Binary/channel state stores center/right in exclusive policy bits, requiring the
+automatic bit. Nonzero x/y adds two numbers after policy bytes under a presence
+flag. Zero-position left/manual payloads retain their previous field-state layout.
+Old records restore x=y=0 and left anchoring; old readers reject unknown flags or
+new accessor selectors. No old-reader compatibility is promised. Restored geometry
+is validated before attachment and its serialized origin is not fitted twice.
+Only retired rootless built-in autoSize/_x/_y stubs are upgraded; host captures
+and userdata are preserved. Layout/font ownership remains context-local.
+
+Analytical anchor tests cover activation, grow/shrink edits, manual movement,
+mode disabling, signed bounds and field-local path export. The previous v0.845–
+v0.852 report below is historical; its unsupported center/right restriction is
+superseded by this section. All nine roadmap stages remain open.
+
+Reference: [Adobe AS2 TextField reference mirror](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#autoSize).
+
 # Left-anchored TextField automatic sizing
 
 TextField autoSize supports "none" (default), "left", false and true. Booleans

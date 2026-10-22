@@ -714,8 +714,12 @@ struct Writer
         number(s.width);
         number(s.height);
         byte((s.multiline ? FVM_TEXT_STATE_MULTILINE : 0UL) |
-             (s.auto_size_left ? FVM_TEXT_STATE_AUTO_SIZE_LEFT : 0UL));
+             (s.auto_size_left ? FVM_TEXT_STATE_AUTO_SIZE_LEFT : 0UL) |
+             (s.x != 0 || s.y != 0 ? FVM_TEXT_STATE_HAS_POSITION : 0UL) |
+             (s.anchor == FVM_TEXT_ANCHOR_CENTER ? FVM_TEXT_STATE_CENTER : 0UL) |
+             (s.anchor == FVM_TEXT_ANCHOR_RIGHT ? FVM_TEXT_STATE_RIGHT : 0UL));
         byte(s.wrap ? 1 : 0);
+        if (s.x != 0 || s.y != 0) { number(s.x); number(s.y); }
     }
     /* Implement callback for this subsystem. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -977,6 +981,11 @@ struct Reader
         s.multiline = (multiline & FVM_TEXT_STATE_MULTILINE) != 0;
         s.auto_size_left = (multiline & FVM_TEXT_STATE_AUTO_SIZE_LEFT) != 0;
         s.wrap = wrap != 0;
+        unsigned long anchor = multiline & (FVM_TEXT_STATE_CENTER | FVM_TEXT_STATE_RIGHT);
+        require(anchor != (FVM_TEXT_STATE_CENTER | FVM_TEXT_STATE_RIGHT) && (!anchor || s.auto_size_left));
+        s.anchor = anchor == FVM_TEXT_STATE_RIGHT ? FVM_TEXT_ANCHOR_RIGHT :
+                   anchor == FVM_TEXT_STATE_CENTER ? FVM_TEXT_ANCHOR_CENTER : FVM_TEXT_ANCHOR_LEFT;
+        if (multiline & FVM_TEXT_STATE_HAS_POSITION) { s.x = number(); s.y = number(); }
         return s;
     }
     /* Compute and return callback. */
