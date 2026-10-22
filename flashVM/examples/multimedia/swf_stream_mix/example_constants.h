@@ -9,5 +9,9 @@
 #define EXAMPLE_MIX_BUDGET 65536UL /* Bound native stream snapshot preparation to 64 KiB. */
 #define EXAMPLE_MIX_VOICE_BYTES 65536UL /* Bound each temporary prepared voice separately. */
 #define EXAMPLE_MIX_EVENT_BYTES 65536UL /* Bound aggregate mixer object/slots/adopted voices. */
+#define EXAMPLE_MIX_QUEUE_FRAMES 32U /* Hold both legacy 16-frame exports and the gated 17-frame sequence. */
+#define EXAMPLE_MIX_GATE_FRAMES 8U /* Hold base for two explicit four-frame event-only blocks. */
+#define EXAMPLE_MIX_GATED_TOTAL 17U /* Eight held frames plus nine converted base frames. */
+#define EXAMPLE_MIX_OPEN_FRAME 1U /* Authorize the embedded source's only movie frame. */
 #define EXAMPLE_MIX_LONG_ID 8U /* The embedded event with the longer converted output interval. */
 #endif /* End example-only geometry. */

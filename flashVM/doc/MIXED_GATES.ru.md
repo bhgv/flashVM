@@ -16,3 +16,5 @@ v0.992: Проверены seeded границы 2^53, backend/clock rejection �
 v0.993: Выполнены 256 native-эпох на четырёх OS-потоках: VM teardown, failed tail retry, смена gates, точный PCM и dequeue/ID.
 
 v0.994: Удержанный BASE сохранён; проверены drain принятого lead, failed clear и новые события остановленного корня после staged cancellation.
+
+v0.995: Добавлен седьмой gated-режим C89: 17 точных кадров, неизменный converter при удержании и failed TAIL-to-BASE переходы.

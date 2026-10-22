@@ -16,3 +16,5 @@ v0.992: Exercise seeded 2^53 frame boundaries, backend/clock rejection and zero-
 v0.993: Run 256 native source-teardown epochs with rejected tail retries, alternating gates, exact PCM witnesses and coherent dequeue/ID state.
 
 v0.994: Keep held BASE retries intact, drain accepted lead, preserve failed clear and admit fresh stopped-root events only after staged cancellation.
+
+v0.995: Add a seventh gated export mode with exact 17-frame PCM, held converter witness and deliberately rejected tail-to-base gate transitions.

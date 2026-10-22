@@ -1,4 +1,5 @@
 /* Tutorial: mix real SWF stream PCM and StartSound snapshots after source VM teardown. */
+#include "flashvm/swf_stream_output.h" /* Coordinate source frames and event-only gates with one FIFO. */
 #include "flashvm/swf_stream_convert.h" /* Read native stream blocks on an explicit output clock. */
 #include "flashvm/swf_sound_mix_queue.h" /* Retain mixed bytes through explicit queue rejection. */
 #include "flashvm/swf_sound_mixer.h" /* Add event voices before a single saturation pass. */
@@ -15,7 +16,7 @@ static int checked(FVM_Result result, const char *operation) /* All error paths 
 /* A bounded real native FIFO accepts all frames or none; file consumption happens later. */
 typedef struct ExampleQueue /* Keep all callback userdata alive until adapter close. */
 { /* Begin explicit queue ownership. */
-    short pcm[EXAMPLE_MIX_TOTAL * EXAMPLE_MIX_CHANNELS]; /* Own the finite accepted-frame store. */
+    short pcm[EXAMPLE_MIX_QUEUE_FRAMES * EXAMPLE_MIX_CHANNELS]; /* Own the finite accepted-frame store. */
     size_t frames; /* Current initialized complete-frame count. */
     size_t rejected; /* Count deliberate transient rejections before any sample copy. */
     int reject; /* Owner arms one controlled rejection for the next input block. */
@@ -30,7 +31,7 @@ static FVM_Result queue_write(void *raw, const short *pcm, size_t frames) /* Ser
         queue->reject = 0; ++queue->rejected; /* Record one rejection without consuming samples. */
         return FVM_NOT_FOUND; /* No frames were accepted; identical retry is permitted. */
     } /* End deliberate rejection. */
-    if (frames > EXAMPLE_MIX_TOTAL - queue->frames) return FVM_OUT_OF_MEMORY; /* Preserve bounds. */
+    if (frames > EXAMPLE_MIX_QUEUE_FRAMES - queue->frames) return FVM_OUT_OF_MEMORY; /* Preserve bounds. */
     memcpy(queue->pcm + queue->frames * EXAMPLE_MIX_CHANNELS, pcm, /* Copy accepted source bytes. */
         frames * EXAMPLE_MIX_CHANNELS * sizeof(short)); /* Retain no pointer into adapter storage. */
     queue->frames += frames; /* Publish count only after the complete copy. */
@@ -75,6 +76,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_Runtime *runtime = 0; /* Own until all independent snapshots have been prepared. */
     FVM_Context *context = 0; /* Canonical SWF owner, never published to a native worker. */
     FVM_SWFStreamSoundSnapshot *source = 0; /* Own the independently bounded stream copy. */
+    FVM_SWFStreamOutput gated_output; /* Coordinate base and events without modifying private producer fields. */
     FVM_SWFStreamConverter converter; /* Borrow source until export completes. */
     FVM_SWFStreamConvertedChunk chunk; /* Receive per-block source/frame metadata. */
     FVM_SWFSoundMixerConfig geometry; /* Select explicit conversion of both event voices. */
@@ -90,7 +92,8 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
     size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
-    int identity_mode = argc == 3 && !strcmp(argv[2], "--identities"); /* Keep sound IDs active through queued/pending PCM. */
+    int gated_mode = argc == 3 && !strcmp(argv[2], "--gated"); /* Hold base while event voices advance, then open its frame gate. */
+    int identity_mode = (argc == 3 && !strcmp(argv[2], "--identities")) || gated_mode; /* Keep sound IDs active through queued/pending PCM. */
     int clock_mode = (argc == 3 && !strcmp(argv[2], "--clock")) || identity_mode; /* Observe one shared accepted/dequeued epoch across base and tails. */
     int bounded_mode = (argc == 3 && !strcmp(argv[2], "--bounded-tails")) || clock_mode; /* Use an exact adapter-only allocation ceiling. */
     int tail_mode = (argc == 3 && !strcmp(argv[2], "--tails")) || bounded_mode; /* Select explicit pump_tail after actual converter EOF. */
@@ -102,7 +105,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities|--gated]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz (17 with --gated).\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -166,6 +169,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) /* Adopt every start through the tracked queue. */
             if (!checked(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix_queue, &prepared[event], EXAMPLE_MIX_EVENT_BYTES), "tracked event")) goto cleanup; /* Success clears the caller handle and registers its exact end. */
     } /* All later ID controls also use this tracked owner. */
+    if (gated_mode && !checked(fvm_swf_stream_output_init(&gated_output, &converter, &adapted, pcm, sizeof(pcm) / sizeof(short), EXAMPLE_MIX_BLOCK, EXAMPLE_MIX_QUEUE_FRAMES), "gated producer")) goto cleanup; /* Initialize against the exact tracked backend with an empty FIFO. */
     fvm_context_destroy(context); /* [GC:] End canonical ownership before the native loop. */
     context = 0; /* [GC:] Prevent cleanup from destroying the former context again. */
     fvm_runtime_destroy(runtime); /* Independent native sources no longer need their runtime. */
@@ -176,7 +180,22 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         perror(argv[1]); /* Report the explicit path and native failure reason. */
         goto cleanup; /* No retry pretends to undo file side effects. */
     } /* Finish failed native acquisition. */
-    while (total < EXAMPLE_MIX_TOTAL) /* Host chooses finite duration, including an event tail. */
+    if (gated_mode) /* Advance events over zero base, then resume the same untouched converter. */
+    { /* Keep every rejected block owned by its original producer. */
+        FVM_SWFStreamConverter held = converter; /* Copy only for an independent no-advance witness. */
+        while (total < EXAMPLE_MIX_GATED_TOTAL) /* Bound all native work and accepted storage. */
+        { /* Authorize one known block and deliberately reject it once. */
+            queue.reject = 1; /* The actual backend accepts no bytes on this failure. */
+            result = fvm_swf_stream_output_pump_mix_until(&gated_output, mix_queue, total < EXAMPLE_MIX_GATE_FRAMES ? 0 : EXAMPLE_MIX_OPEN_FRAME, &accepted); /* Gate zero holds base but permits events. */
+            if (result != FVM_NOT_FOUND || accepted) goto cleanup; /* This fixture's armed rejection is expected. */
+            if (!checked(fvm_swf_stream_output_pump_mix_until(&gated_output, mix_queue, EXAMPLE_MIX_OPEN_FRAME, &accepted), "gated retry")) goto cleanup; /* An opening gate cannot turn retained TAIL into BASE. */
+            if (!accepted || accepted > EXAMPLE_MIX_GATED_TOTAL - total) goto cleanup; /* Require finite forward progress. */
+            total += accepted; /* Count accepted event-only and base frames together. */
+            if (total <= EXAMPLE_MIX_GATE_FRAMES && memcmp(&held, &converter, sizeof(held))) goto cleanup; /* Held event blocks must leave every converter field intact. */
+        } /* All source and voice frames now fit the explicit software FIFO. */
+        if (fvm_swf_stream_output_pump_mix_until(&gated_output, mix_queue, EXAMPLE_MIX_OPEN_FRAME, &accepted) != FVM_NOT_FOUND || accepted) goto cleanup; /* Exhaustion must not enqueue extra silence. */
+    } /* The common file consumer below runs only after every retry has been accepted. */
+    while (!gated_mode && total < EXAMPLE_MIX_TOTAL) /* Host chooses finite duration, including an event tail. */
     { /* Produce a new unmixed base exactly once for this output block. */
         count = EXAMPLE_MIX_TOTAL - total; /* Limit the final block to the finite export budget. */
         if (count > EXAMPLE_MIX_BLOCK) count = EXAMPLE_MIX_BLOCK; /* Preserve caller buffer bounds. */
@@ -221,9 +240,9 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     } /* End bounded serial export; a retrying backend must retain pcm instead of mixing again. */
     if (queue_mode) /* The file is a separate final consumer, outside queue retry semantics. */
     { /* Consume exactly the acknowledged native FIFO prefix once. */
-        if (tail_mode && fvm_swf_sound_mix_queue_pump_tail(mix_queue, 1, EXAMPLE_MIX_TOTAL, &accepted) != FVM_NOT_FOUND) goto cleanup; /* Exhausted voices must not enqueue more silence. */
+        if (tail_mode && !gated_mode && fvm_swf_sound_mix_queue_pump_tail(mix_queue, 1, EXAMPLE_MIX_TOTAL, &accepted) != FVM_NOT_FOUND) goto cleanup; /* Exhausted voices must not enqueue more silence. */
         if (tail_mode && accepted) goto cleanup; /* Exhaustion clears accepted without draining the FIFO. */
-        if (queue.frames != EXAMPLE_MIX_TOTAL) goto cleanup; /* Reject incomplete native export. */
+        if (queue.frames != (gated_mode ? EXAMPLE_MIX_GATED_TOTAL : EXAMPLE_MIX_TOTAL)) goto cleanup; /* Reject incomplete native export. */
         if (clock_mode) /* All accepted base and tail blocks are still waiting in this software FIFO. */
         { /* Read a fresh validated observation without changing voice time. */
             shared_clock.struct_size = sizeof(shared_clock); /* Required public clock descriptor size. */

@@ -75,10 +75,21 @@ def main():
         assert 'Identity id=8 end=14 played=0 active=1' in tracked.stdout
         assert 'Identity id=8 end=14 played=16 active=0' in tracked.stdout
         assert identity_output.read_bytes() == output.read_bytes()
+        gated_output = root / 'gated.pcm'
+        gated = subprocess.run([executable, str(gated_output), '--gated'], cwd=root, check=True,
+                               stdout=subprocess.PIPE, text=True)
+        gated_values = []
+        for frame in range(17):
+            wide = (sample(base, frame - 8) if frame >= 8 else 0) + sample([30000] * 8, frame) + sample([-30000] * 12, frame)
+            gated_values.extend([max(-32768, min(32767, wide))] * 2)
+        assert gated_output.read_bytes() == struct.pack('=' + 'h' * len(gated_values), *gated_values)
+        assert 'Mixed 17 frames after source VM teardown.' in gated.stdout
+        assert 'Queue retained 5 rejected blocks.' in gated.stdout
+        assert 'Identity id=8 end=14 played=17 active=0' in gated.stdout
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()
-    print('PASS exact stream/event C89 output, unclipped cancellation, event tail and native cleanup')
+    print('PASS seven-mode stream/event C89 output, gated retry, single saturation and native cleanup')
 
 
 if __name__ == '__main__':

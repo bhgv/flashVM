@@ -175,6 +175,26 @@ including existing DECLICK voices; device-wide cancellation still requires ackno
 
 Desktop player integration now uses the same native mixer/ID ownership with a paired stream-output tail operation. This executable remains the six-mode memory-FIFO exporter; it does not run the desktop worker. [Production integration and remaining limits](../../../doc/DESKTOP_MIX.md).
 
+
+## Gated C89 export / Экспорт с удержанием base
+
+`OUTPUT.pcm --gated` adds a seventh executable mode: two four-frame event-only
+blocks hold the source converter unchanged, then frame one resumes its nine base
+frames. Exactly 17 stereo frames (68 bytes) are exported after source VM teardown.
+Every actual write is rejected once; retry opens the gate immediately, proving
+retained TAIL ownership takes priority over newly authorized BASE. This is an
+explicit memory-FIFO policy, not a device timer or automatic movie synchronization.
+[Gate contract EN](../../../doc/MIXED_GATES.md) / [RU](../../../doc/MIXED_GATES.ru.md).
+
+Режим `--gated`: восемь event-only кадров без продвижения stream, затем девять
+base-кадров. Всего 17 stereo кадров; каждый failed write повторяется без remix,
+даже если между отказом и retry разрешить base. Файловый consumer отдельный.
+
+| API | Purpose, ownership and restrictions |
+| --- | --- |
+| [`fvm_swf_stream_output_init`](../../../include/flashvm/swf_stream_output.h#L45) | Borrow converter, PCM retry buffer and the exact adapted backend into caller-owned producer; empty FIFO, matching geometry, no allocation/VM. All dependencies outlive serial use. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pump_mix_until`](../../../include/flashvm/swf_stream_output.h#L101) | Select authorized BASE or event-only gate work and accept retained TAIL before changed gate input; optional accepted cleared first. No allocation/VM/GC, external serialization, keep both owners and retry bytes live on failure. [Contract](../../../doc/MIXED_GATES.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -214,6 +234,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../../../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:45](../../../include/flashvm/swf_stream_output.h#L45) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:101](../../../include/flashvm/swf_stream_output.h#L101) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->
