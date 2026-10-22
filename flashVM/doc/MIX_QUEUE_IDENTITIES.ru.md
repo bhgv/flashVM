@@ -75,6 +75,9 @@ v0.968: Проверены отмена двух root-ID и независимы
 
 v0.969: При нулевом allowance проверены new/new[] для расчёта памяти, нового голоса и stop_all.
 
+
+v0.970: Выполнены 256 stop/retry/restart циклов на четырёх OS-потоках с независимыми PCM и ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

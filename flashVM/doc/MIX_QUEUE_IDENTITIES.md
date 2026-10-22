@@ -75,6 +75,9 @@ v0.968: Cancel both converted root IDs and restart their independent deadlines a
 
 v0.969: Instrument global new/new[] with zero allowance across prediction, restart and stop_all.
 
+
+v0.970: Run 256 independent stop/retry/restart epochs with per-worker exact PCM and ID checks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -1,10 +1,12 @@
-Development version: **0.969** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.969 ` and an English description. Increase the subversion before each
+Development version: **0.970** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.970 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.970: [Run 256 independent stop/retry/restart epochs with per-worker exact PCM and ID checks.](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.969: [Instrument global new/new[] with zero allowance across prediction, restart and stop_all.](doc/MIX_QUEUE_IDENTITIES.md).
 
