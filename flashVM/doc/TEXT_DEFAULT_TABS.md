@@ -14,6 +14,8 @@ v0.918: repeating stop extent exhaustion participates in wrap trials, so two mil
 
 v0.919: independent mutated-font fixtures check missing OS/2, its FreeType sentinel, zero and negative average widths; ordinary shaping remains usable. TextField assignment, replaceText and clearing an explicit table reject missing default metrics while preserving text, current table, path, autoSize dimensions and right anchor. An explicit table still works with that font and text without tabs adds no average-metric dependency.
 
+v0.920: binary and channel tests transfer default current styles with either default or explicit future styles. They verify absent custom-table wire bits, size-dependent recomputation after source-context destruction and receiver GC, preserved right anchors and independent exported paths. Font transfer uses the existing validated embedded-font protocol; this change adds no wire format.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
