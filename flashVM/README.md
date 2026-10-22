@@ -1,10 +1,12 @@
-Development version: **0.891** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.891 ` and an English description. Increase the subversion before each
+Development version: **0.892** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.892 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.892: [Record paragraph inset profile contracts and regression evidence](doc/TEXT_INSETS.md).
 
 v0.891: [Demonstrate paragraph insets in the checked C89 TextField tutorial](doc/TEXT_INSETS.md).
 

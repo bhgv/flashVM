@@ -26,8 +26,9 @@ Native graph state uses [FVM_TEXT_STYLE_HAS_INSETS](../src/standard/text_constan
 optional letterSpacing. Legacy records default to zero; no wire version or public
 C structure changes. Current/future values transfer separately. Unknown older
 readers reject the new flag rather than silently discarding visible formatting.
-Restoration validates integer bounds and exact flag/payload consistency before
-font registration or native attachment. Cached layouts are rebuilt, never shared.
+Each style is validated for integer bounds and exact flag/payload consistency
+before its own font registration; native attachment happens after both styles.
+Already admitted context font sources follow the existing graph-import lifetime. Cached layouts are rebuilt, never shared.
 
 Use [fvm_object_set](../include/flashvm/value.h#L74) on a TextFormat to store values, then [fvm_object_call](../include/flashvm/value.h#L126) with
 setTextFormat or setNewTextFormat to apply them. These borrowed context-owned
@@ -41,6 +42,8 @@ No new C API is introduced. Native context concurrency still requires separate o
 [Adobe TextFormat reference](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html)
 describes paragraph margins and whole-block indentation. Original Player reference
 comparisons, full SWF font loading, real devices/platforms and all nine stages remain open.
+
+v0.892 verification: 106 native/tutorial checks pass, including eight runtime/transfer/admission tests, a positional-constructor fixture and the C89 enabled/disabled profile test added by this series. Seventeen targeted ASan/UBSan checks pass (nine preceding justification checks plus eight inset/profile checks); six new C++ allocation-failure sweeps run in the ordinary build only. Thirteen NO_FONTS checks pass, and both C89 tutorials compile there. LeakSanitizer stays disabled because /proc is unavailable; leak acceptance is not claimed. Four OS workers each own a separate runtime, context and font sources and perform 32 edit/GC/path cycles. AVM1 checks interpreter, attached native and automatic JIT with native entry assertions. Source links and annotated example/catalog checks pass. A renamed detached component configures, and its copied checker passes against the native tutorial executable; a separate detached build is not claimed. Original Flash reference, full SWF font loading, first-line indent, bullets/tabStops, physical devices/platforms and all nine roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

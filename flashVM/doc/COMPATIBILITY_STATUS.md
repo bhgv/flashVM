@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Paragraph insets v0.885–v0.892: bounded leftMargin/rightMargin/blockIndent now affect wrapping, alignment, owned glyph/underline paths, automatic geometry and independent current/future graph transfer. 106 native/tutorial, 17 targeted ASan/UBSan and 13 NO_FONTS checks pass; six new allocation-failure sweeps run in the ordinary build. LeakSanitizer is disabled. [EN](TEXT_INSETS.md) / [RU](TEXT_INSETS.ru.md). First-line indent, full Flash text semantics, original Player comparisons, physical devices/platforms and all nine stages remain open.
+
 Bounded paragraph justification v0.877–v0.884 adds native LTR internal-space expansion and SWF8 TextFormat admission, preserving current/future styles, packed-state transfer, GC ownership, tracking and real-face underline. The regression run passes 96 native/tutorial tests, nine targeted ASan/UBSan tests and 12 NO_FONTS tests. Seven new allocation-failure sweeps run only in the ordinary build. LeakSanitizer is disabled because this environment cannot inspect /proc; no leak-check claim is made. A renamed detached component configures and its copied tutorial checker passes against the native executable; it was not separately built. [EN](TEXT_JUSTIFY.md) / [RU](TEXT_JUSTIFY.ru.md). Full Unicode/bidi justification, original Flash reference acceptance, real devices/platforms and all nine roadmap stages remain open.
 
 Real embedded font variants v0.869–v0.876: explicit regular/bold/italic/combined
