@@ -22,7 +22,7 @@ evidence, not complete Flash text or platform/device acceptance.
 
 ## Owned per-line paths (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L144) borrows an immutable layout and line index,
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) borrows an immutable layout and line index,
 font-derived center/thickness and required output pointer. It returns one owned
 closed rectangle spanning line.x through line.x+advance at baseline+center.
 Whitespace and signed tracking are included. A zero-advance line returns an
@@ -106,6 +106,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:144](../include/flashvm/text_layout.h#L144) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

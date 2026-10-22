@@ -2,7 +2,7 @@
 
 Since v0.862 nonzero tracking disables optional liga/clig so decomposable ligatures work; required/ambiguous clusters remain unsupported. [Contract](TEXT_LIGATURE_TRACKING.md).
 
-[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L101) adds finite pixels after each supported character,
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L103) adds finite pixels after each supported character,
 including the last character on a line. The native limit is -4096 to 4096 pixels.
 This follows the [Adobe AS2 Flash 8 letterSpacing description](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html).
 The original C layout APIs keep zero spacing and unchanged option structure ABI.
@@ -11,7 +11,7 @@ The arguments are the borrowed font, counted UTF-8 input, optional existing layo
 options, shaping flags, signed spacing and output pointer. Unknown flags, invalid
 spacing or missing output return INVALID_ARGUMENT; successful construction returns
 an independently owned layout. Allocation failure returns OUT_OF_MEMORY. Failure
-clears the output. Destroy it with [`fvm_text_layout_destroy`](../include/flashvm/text_layout.h#L82); exported paths have
+clears the output. Destroy it with [`fvm_text_layout_destroy`](../include/flashvm/text_layout.h#L84); exported paths have
 independent ownership. NO_FONTS validates flags/spacing and returns UNSUPPORTED.
 No VM or GC roots are involved. Calls with independent fonts/buffers may run
 concurrently; a mutable font handle needs caller serialization.
@@ -70,6 +70,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../include/flashvm/text_layout.h#L82) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
 <!-- source-links:end -->

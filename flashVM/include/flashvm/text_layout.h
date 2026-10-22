@@ -10,6 +10,8 @@
 extern "C"
 {
 #endif
+    /* Bound the borrowed custom tab table for synchronous layout. */
+#define FVM_TEXT_LAYOUT_MAX_TAB_STOPS 64U
     /* Horizontal, single-font layout. Whitespace is preserved. Width zero disables
      * wrapping; an indivisible oversized grapheme is allowed to exceed the width.
      * START follows the resolved paragraph direction. Coordinates are x right/y down. */
@@ -120,6 +122,25 @@ extern "C"
                                              const FVM_TextLayoutOptions *, unsigned int flags,
                                              double letter_spacing, double first_line_indent,
                                              FVM_TextLayout **out);
+    /* Indented layout with explicit increasing custom tab stops, measured from the
+     * unaligned paragraph content origin. Borrow stops[0..count) only during this call;
+     * 0..64 finite strictly increasing positions in [0,1000000], NULL only if count=0.
+     * Count zero exactly preserves indented layout, including unsupported ASCII tabs.
+     * Custom U+0009 advances to the first stop strictly beyond the current pen,
+     * including first-line indent and prior tracking; it receives no extra tracking.
+     * Tables restart on each visual line. Exhausted stops may force wrapping;
+     * an unrepresentable first tab returns UNSUPPORTED. No implicit repeating stops.
+     * Tab paragraphs currently require LTR levels zero and reject JUSTIFY.
+     * Each tab retains a source cluster and a synthetic glyph-0 record with empty
+     * outline and real advance. Word shaping remains unchanged across other segments.
+     * Lifetime/thread/GC, spacing/indent/byte bounds and owned output match indented.
+     * Invalid table/count/geometry -> INVALID_ARGUMENT; unsupported layout -> UNSUPPORTED;
+     * allocation failure -> OUT_OF_MEMORY. Failures clear out. NO_FONTS validates
+     * table/flags/spacing/indent, then returns UNSUPPORTED without reading text/options. */
+    FVM_API FVM_Result fvm_text_layout_create_tabbed(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags,
+                                             double letter_spacing, double first_line_indent,
+                                             const double *stops, size_t count, FVM_TextLayout **out);
     /* Implement text layout metrics for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *, FVM_TextLayoutMetrics *);
     /* Implement text layout line for this subsystem. */

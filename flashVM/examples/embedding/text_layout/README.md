@@ -35,14 +35,14 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_create_indented`](../../../include/flashvm/text_layout.h#L119) | Borrow font, counted UTF-8/options and shaping parameters during synchronous layout; signed first-line offsets change first-line width and paths. Returns independently owned layout, clears output on invalid/unsupported/allocation errors. Serialize mutable font access; no VM/GC. [EN](../../../doc/TEXT_INDENT.md) / [RU](../../../doc/TEXT_INDENT.ru.md). |
-| [`fvm_text_layout_create_spaced`](../../../include/flashvm/text_layout.h#L101) | Borrow font, counted UTF-8 and options during synchronous bounded shaping with flags and signed pixel spacing; return an owned independent layout. Nonzero spacing disables optional liga/clig; required/ambiguous clusters are UNSUPPORTED. Invalid flags/spacing clear output. No VM/GC; serialize shared mutable font access. [EN](../../../doc/TEXT_LIGATURE_TRACKING.md) / [RU](../../../doc/TEXT_LIGATURE_TRACKING.ru.md). |
-| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L82) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L147) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L126) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_line_underline_path`](../../../include/flashvm/text_layout.h#L144) | Borrow a placed layout, line index and copied center/thickness; return an independent bar path or an owned empty path for zero advance. Errors clear output; caller destroys it. Independent immutable readers are allowed. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
-| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L124) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L132) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_create_indented`](../../../include/flashvm/text_layout.h#L121) | Borrow font, counted UTF-8/options and shaping parameters during synchronous layout; signed first-line offsets change first-line width and paths. Returns independently owned layout, clears output on invalid/unsupported/allocation errors. Serialize mutable font access; no VM/GC. [EN](../../../doc/TEXT_INDENT.md) / [RU](../../../doc/TEXT_INDENT.ru.md). |
+| [`fvm_text_layout_create_spaced`](../../../include/flashvm/text_layout.h#L103) | Borrow font, counted UTF-8 and options during synchronous bounded shaping with flags and signed pixel spacing; return an owned independent layout. Nonzero spacing disables optional liga/clig; required/ambiguous clusters are UNSUPPORTED. Invalid flags/spacing clear output. No VM/GC; serialize shared mutable font access. [EN](../../../doc/TEXT_LIGATURE_TRACKING.md) / [RU](../../../doc/TEXT_LIGATURE_TRACKING.ru.md). |
+| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L84) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L168) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L147) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_line_underline_path`](../../../include/flashvm/text_layout.h#L165) | Borrow a placed layout, line index and copied center/thickness; return an independent bar path or an owned empty path for zero advance. Errors clear output; caller destroys it. Independent immutable readers are allowed. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
+| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L145) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L153) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 
 [Описание в общем каталоге](../../README.md#example-embedding-text_layout).
 <!-- example-catalog-api:end -->
@@ -132,20 +132,20 @@ Contracts/API ownership and statuses: [EN](../../../doc/TEXT_LIGATURE_TRACKING.m
 ## Justified paragraph / Абзац по ширине (v0.883)
 
 Run `--justify` with the same text-jit build. The C89 tutorial selects
-[FVM_TEXT_ALIGN_JUSTIFY](../../../include/flashvm/text_layout.h#L24), LTR, inner width 90 and the original CC0 40px font. It
+[FVM_TEXT_ALIGN_JUSTIFY](../../../include/flashvm/text_layout.h#L26), LTR, inner width 90 and the original CC0 40px font. It
 prints `lines=2 glyphs=7 advance=90.00 height=92.00` and
 `justify first=90.00 last=60.00`. The second line remains natural. The existing
 font destruction, independent layout/path export and native rasterization still
 run; no window/device is required. Only unambiguous U+0020 gaps in LTR paragraphs
 are justified; exact Flash/CJK/bidi conformance remains open.
 
-`--justify` в той же text-jit сборке выбирает [FVM_TEXT_ALIGN_JUSTIFY](../../../include/flashvm/text_layout.h#L24), LTR и
+`--justify` в той же text-jit сборке выбирает [FVM_TEXT_ALIGN_JUSTIFY](../../../include/flashvm/text_layout.h#L26), LTR и
 внутреннюю ширину 90 при исходном CC0-шрифте 40px. Вывод: две строки, семь
 глифов, advance 90.00 и высота 92.00; первая строка 90.00, последняя 60.00.
 Прежний порядок font/layout/path и растеризация выполняются без окна/устройства.
 Поддержаны однозначные U+0020 в LTR; точная совместимость Flash/CJK/bidi открыта.
 
-[fvm_text_layout_line](../../../include/flashvm/text_layout.h#L126) borrows an immutable layout and copies scalar/byte/glyph
+[fvm_text_layout_line](../../../include/flashvm/text_layout.h#L147) borrows an immutable layout and copies scalar/byte/glyph
 ranges into caller storage; no allocation or ownership transfer occurs. Invalid
 layout/output/index returns INVALID_ARGUMENT. No VM/GC is involved; independent
 readers may query immutable layout data. The three layout constructors borrow
@@ -187,13 +187,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
-| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../../../include/flashvm/text_layout.h#L24) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../../../include/flashvm/text_layout.h#L119) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../../../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../../../include/flashvm/text_layout.h#L82) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../../../include/flashvm/text_layout.h#L147) |
-| `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:126](../../../include/flashvm/text_layout.h#L126) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:144](../../../include/flashvm/text_layout.h#L144) |
-| `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:124](../../../include/flashvm/text_layout.h#L124) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:132](../../../include/flashvm/text_layout.h#L132) |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../../../include/flashvm/text_layout.h#L26) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../../../include/flashvm/text_layout.h#L121) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../../../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../../../include/flashvm/text_layout.h#L84) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../../../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:147](../../../include/flashvm/text_layout.h#L147) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../../../include/flashvm/text_layout.h#L165) |
+| `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:145](../../../include/flashvm/text_layout.h#L145) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../../../include/flashvm/text_layout.h#L153) |
 <!-- source-links:end -->

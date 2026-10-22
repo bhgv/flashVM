@@ -16,8 +16,8 @@ No VM, GC, callbacks or device access is involved.
 
 ## Layout and wrapping (v0.821)
 
-[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L87) accepts the same font shaping flags without
-changing [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L27) or the legacy create API. Every candidate line
+[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L89) accepts the same font shaping flags without
+changing [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L29) or the legacy create API. Every candidate line
 and final script/bidi segment uses identical features. Width, alignment, glyph
 positions and exported paths therefore agree. The result owns all copied paths
 and survives font destruction; mutable fonts still have a single owner. Failures
@@ -104,6 +104,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_shape` | function | [include/flashvm/font.h:76](../include/flashvm/font.h#L76) |
 | `fvm_font_shape_configured` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
-| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:27](../include/flashvm/text_layout.h#L27) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:29](../include/flashvm/text_layout.h#L29) |
 <!-- source-links:end -->

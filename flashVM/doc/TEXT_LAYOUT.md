@@ -8,7 +8,7 @@ the selected feature consistently. [Contract and evidence](TEXT_KERNING.md).
 It uses the static FreeType/HarfBuzz/libunibreak/FriBidi targets selected by
 [`FONTS`](../cmake/BuildDefinitions.cmake#L15) in DEFS.txt. No platform font lookup or downloaded dependency is used.
 
-Create a font with [`fvm_font_read`](../include/flashvm/font.h#L53), then call [`fvm_text_layout_create`](../include/flashvm/text_layout.h#L79). NULL
+Create a font with [`fvm_font_read`](../include/flashvm/font.h#L53), then call [`fvm_text_layout_create`](../include/flashvm/text_layout.h#L81). NULL
 options select unlimited width, the font's natural line height, AUTO paragraph
 direction and START alignment. The example in
 `examples/embedding/text_layout/main.c` shows wrapping, mixed Latin/Hebrew/Arabic,
@@ -67,8 +67,8 @@ successful call. Neither metrics nor path export uses those resources again.
 The resulting layout can be queried concurrently while no thread destroys it;
 font use during construction still follows the per-handle serialization rule.
 
-[`fvm_text_layout_path`](../include/flashvm/text_layout.h#L132) returns an independent block path;
-[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L147) returns an independent glyph path at its final
+[`fvm_text_layout_path`](../include/flashvm/text_layout.h#L153) returns an independent block path;
+[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L168) returns an independent glyph path at its final
 position. Editing either cannot change the layout or another exported path.
 Select words using original cluster byte ranges and append selected glyph
 paths. A ligature is one indivisible outline: splitting its component letters
@@ -101,24 +101,24 @@ See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
 ## Signed tracking (v0.830–0.836)
 
-[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L101) adds bounded signed fractional pixels after each supported character while preserving the existing option ABI. Wrapping, alignment, glyph advances and owned paths agree. Zero retains legacy shaping; nonzero ambiguous clusters and negative adjusted advances return UNSUPPORTED. Arguments, statuses, lifetime, thread restrictions and tests: [contract](TEXT_SPACING.md).
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L103) adds bounded signed fractional pixels after each supported character while preserving the existing option ABI. Wrapping, alignment, glyph advances and owned paths agree. Zero retains legacy shaping; nonzero ambiguous clusters and negative adjusted advances return UNSUPPORTED. Arguments, statuses, lifetime, thread restrictions and tests: [contract](TEXT_SPACING.md).
 
 ## Independent underline bars (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L144) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
 
 ## Optional ligatures in tracking (v0.861–v0.868)
 
-[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101) disables optional OpenType liga/clig for nonzero
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103) disables optional OpenType liga/clig for nonzero
 spacing, using the same feature policy for wrapping and final placement. Its
 zero-spacing path and configured flags remain explicit. Required/ambiguous
 clusters still return UNSUPPORTED. [Contract and evidence](TEXT_LIGATURE_TRACKING.md).
 
 ## Bounded paragraph justification (v0.877–0.884)
 
-[`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L24) expands internal U+0020 spaces on nonfinal wrapped LTR lines. Trailing spaces retain their records with zero advance; final/hard-ended/no-gap lines stay natural. Bidi and ambiguous space clusters reject explicitly. Measurement, glyph positions, tracking, underline and separately owned paths agree. [Arguments, statuses, ownership and evidence](TEXT_JUSTIFY.md).
+[`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L26) expands internal U+0020 spaces on nonfinal wrapped LTR lines. Trailing spaces retain their records with zero advance; final/hard-ended/no-gap lines stay natural. Bidi and ambiguous space clusters reject explicitly. Measurement, glyph positions, tracking, underline and separately owned paths agree. [Arguments, statuses, ownership and evidence](TEXT_JUSTIFY.md).
 
-The C89 [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L119) API adds signed first-line offsets per nonempty hard paragraph without changing option structures. It preserves zero-indent shaping, owned paths and existing byte ranges; nonzero values currently require bounded LTR paragraphs. [Arguments, metrics, errors and ownership](TEXT_INDENT.md).
+The C89 [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121) API adds signed first-line offsets per nonempty hard paragraph without changing option structures. It preserves zero-indent shaping, owned paths and existing byte ranges; nonzero values currently require bounded LTR paragraphs. [Arguments, metrics, errors and ownership](TEXT_INDENT.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -132,11 +132,11 @@ Source line links describe the current checkout, including in historical notes.
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
-| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
-| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../include/flashvm/text_layout.h#L119) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../include/flashvm/text_layout.h#L147) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:144](../include/flashvm/text_layout.h#L144) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:132](../include/flashvm/text_layout.h#L132) |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
 <!-- source-links:end -->

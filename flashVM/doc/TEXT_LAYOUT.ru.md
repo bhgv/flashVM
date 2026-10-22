@@ -8,7 +8,7 @@ API `flashvm/text_layout.h` строит блок текста из провер
 шрифтом. Используются статические FreeType/HarfBuzz/libunibreak/FriBidi,
 включаемые ключом FONTS в DEFS.txt. Поиск системных шрифтов не выполняется.
 
-Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L53), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L79).
+Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L53), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L81).
 При NULL options выбираются неограниченная ширина, естественный межстрочный
 интервал, AUTO-направление абзаца и выравнивание START. Пример
 examples/embedding/text_layout/main.c показывает переносы, смешанный текст
@@ -67,8 +67,8 @@ FriBidi разрешает уровни всего абзаца до перен�
 чтение при отсутствии одновременного уничтожения; создание требует обычной
 сериализации доступа к конкретному шрифтовому дескриптору.
 
-[fvm_text_layout_path](../include/flashvm/text_layout.h#L132) возвращает независимый контур блока,
-[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L147) — независимый контур глифа в итоговой позиции.
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L153) возвращает независимый контур блока,
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L168) — независимый контур глифа в итоговой позиции.
 Изменение контрольных точек и преобразования не затрагивают исходную компоновку
 или другие копии. Для слова выберите глифы по исходному диапазону кластеров и
 объедините их контуры. Лигатура — один неделимый контур: выделение отдельных
@@ -102,24 +102,24 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 ## Знаковый интервал (v0.830–0.836)
 
-[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L101) добавляет ограниченный знаковый дробный интервал после каждого поддержанного символа без изменения ABI параметров. Переносы, выравнивание, advances и независимые контуры согласованы. Ноль сохраняет прежний shaping; неоднозначные кластеры с интервалом и отрицательные итоговые advances дают UNSUPPORTED. Аргументы, статусы, время жизни, ограничения потоков и тесты: [контракт](TEXT_SPACING.ru.md).
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L103) добавляет ограниченный знаковый дробный интервал после каждого поддержанного символа без изменения ABI параметров. Переносы, выравнивание, advances и независимые контуры согласованы. Ноль сохраняет прежний shaping; неоднозначные кластеры с интервалом и отрицательные итоговые advances дают UNSUPPORTED. Аргументы, статусы, время жизни, ограничения потоков и тесты: [контракт](TEXT_SPACING.ru.md).
 
 ## Независимые полосы подчёркивания (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L144) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
 
 ## Необязательные лигатуры при трекинге (v0.861–v0.868)
 
-[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101) отключает необязательные OpenType liga/clig при
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103) отключает необязательные OpenType liga/clig при
 ненулевом интервале, с одинаковой политикой пробных переносов и итоговой раскладки.
 Нулевой интервал сохраняет заданные флаги. Обязательные/неоднозначные кластеры
 ещё дают UNSUPPORTED. [Контракт и проверки](TEXT_LIGATURE_TRACKING.ru.md).
 
 ## Ограниченное выравнивание по ширине (v0.877–0.884)
 
-[`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L24) расширяет внутренние U+0020 на непоследних перенесённых LTR-строках. Концевые пробелы сохраняют записи с нулевым advance; последние строки, явные концы абзаца и строки без промежутков остаются естественной ширины. Bidi и неоднозначные кластеры пробелов отклоняются. Измерение, позиции глифов, интервалы, подчёркивание и независимые пути согласованы. [Аргументы, статусы, владение и проверки](TEXT_JUSTIFY.ru.md).
+[`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L26) расширяет внутренние U+0020 на непоследних перенесённых LTR-строках. Концевые пробелы сохраняют записи с нулевым advance; последние строки, явные концы абзаца и строки без промежутков остаются естественной ширины. Bidi и неоднозначные кластеры пробелов отклоняются. Измерение, позиции глифов, интервалы, подчёркивание и независимые пути согласованы. [Аргументы, статусы, владение и проверки](TEXT_JUSTIFY.ru.md).
 
-C89 API [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L119) добавляет знаковые отступы первой строки непустого абзаца без изменения структуры параметров. Нулевой отступ сохраняет shaping, независимые пути и диапазоны байтов; ненулевые значения пока требуют ограниченного LTR. [Аргументы, размеры, ошибки и владение](TEXT_INDENT.ru.md).
+C89 API [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121) добавляет знаковые отступы первой строки непустого абзаца без изменения структуры параметров. Нулевой отступ сохраняет shaping, независимые пути и диапазоны байтов; ненулевые значения пока требуют ограниченного LTR. [Аргументы, размеры, ошибки и владение](TEXT_INDENT.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -132,11 +132,11 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
-| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
-| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../include/flashvm/text_layout.h#L119) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../include/flashvm/text_layout.h#L147) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:144](../include/flashvm/text_layout.h#L144) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:132](../include/flashvm/text_layout.h#L132) |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
 <!-- source-links:end -->

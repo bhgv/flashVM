@@ -1,11 +1,11 @@
 # Bounded native paragraph justification
 
-v0.877 adds [FVM_TEXT_ALIGN_JUSTIFY](../include/flashvm/text_layout.h#L24) to [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L27) for the existing
-[fvm_text_layout_create](../include/flashvm/text_layout.h#L79), [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L87) and
-[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101) calls. Public structure layout and previous enum
+v0.877 adds [FVM_TEXT_ALIGN_JUSTIFY](../include/flashvm/text_layout.h#L26) to [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L29) for the existing
+[fvm_text_layout_create](../include/flashvm/text_layout.h#L81), [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L89) and
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103) calls. Public structure layout and previous enum
 values are unchanged. These calls borrow the font, counted UTF-8 and options;
 they return independently owned [FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) data, destroyed with
-[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L82). Exported paths remain separately owned after layout/font
+[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Exported paths remain separately owned after layout/font
 teardown. Mutable font handles require caller serialization; immutable layouts
 may be read by independent threads. No VM, GC or device is involved.
 
@@ -72,11 +72,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
-| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../include/flashvm/text_layout.h#L82) |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:81](../include/flashvm/text_layout.h#L81) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
-| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:27](../include/flashvm/text_layout.h#L27) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:29](../include/flashvm/text_layout.h#L29) |
 <!-- source-links:end -->

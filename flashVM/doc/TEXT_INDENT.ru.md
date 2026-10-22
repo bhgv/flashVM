@@ -1,8 +1,8 @@
 # Отступ первой строки абзаца
 
-v0.893 добавляет [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L119). Аргументы — заимствованный
+v0.893 добавляет [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121). Аргументы — заимствованный
 шрифт, UTF-8 с явной длиной, параметры раскладки, флаги shaping и letterSpacing
-как у [fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101), плюс конечный first_line_indent в
+как у [fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103), плюс конечный first_line_indent в
 [-4096,4096] native-пикселей. C API принимает дробные отступы. Публичные
 структуры и прежние сигнатуры не меняются; ноль сохраняет прежнее поведение.
 
@@ -26,7 +26,7 @@ max(0, advance + отступ первой строки) без выравнив
 бюджета shaping проверяются.
 
 [FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) владеет копиями глифов, метаданными и контурами; освобождение —
-[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L82). [fvm_text_layout_path](../include/flashvm/text_layout.h#L132)/fvm_text_layout_glyph_path
+[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L153)/fvm_text_layout_glyph_path
 возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L26), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные
 пережить шрифт/раскладку. Шрифт, текст и параметры заимствуются только на вызов.
 VM/GC не участвуют. Изменяемый шрифт требует сериализации доступа; неизменяемая
@@ -75,11 +75,11 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_FONT_SHAPE_FLAGS` | macro / define | [include/flashvm/font.h:11](../include/flashvm/font.h#L11) |
 | `FVM_Path` | struct | [src/capi/path_c.cpp:26](../src/capi/path_c.cpp#L26) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../include/flashvm/text_layout.h#L119) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../include/flashvm/text_layout.h#L82) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../include/flashvm/text_layout.h#L147) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:132](../include/flashvm/text_layout.h#L132) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
 | `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:23](../src/standard/text_constants.h#L23) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
 <!-- source-links:end -->
