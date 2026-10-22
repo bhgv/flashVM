@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+Mixed events now advance through future stream gates and authored root Stop; host pause still holds the whole queue. [Current contract](../doc/MIXED_GATES.md).
+
 Root stream and StartSound now share a tracked queue; [current contract and limits](../doc/DESKTOP_MIX.md).
 v0.819 validates MP3 header/side-information CRC and preflights every statically
 referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only

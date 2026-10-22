@@ -253,7 +253,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         { /* ID8 is the longer event in the embedded SWF. */
             identity.struct_size = sizeof(identity); /* Require the exact copied observation ABI. */
             if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "queued identity")) goto cleanup; /* Observe real FIFO before publishing its deadline. */
-            printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected ID8 end14 played0 active1. */
+            printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected ID8 end14 played0 active1 in both tracked modes. */
         } /* This reports dequeue registration, not physical audibility. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
         if (fwrite(queue.pcm, sizeof(short), mixed, output) != mixed) goto cleanup; /* Terminal I/O. */
@@ -261,11 +261,11 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         { /* Only acknowledge drain after every queued scalar was copied. */
             queue.frames = 0; /* Publish the actual software dequeue; this is not a device playhead. */
             if (!checked(fvm_swf_sound_mix_queue_clock_info(mix_queue, &shared_clock), "shared drained clock")) goto cleanup; /* Observe submitted-minus-backlog after consumption. */
-            printf("Shared clock submitted=%.0f queued=%lu played=%.0f seconds=%.9f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames, shared_clock.seconds); /* The count is 16 and seconds is 16/48000. */
+            printf("Shared clock submitted=%.0f queued=%lu played=%.0f seconds=%.9f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames, shared_clock.seconds); /* The count is 16 normally or 17 when gated; seconds uses the same 48000 Hz. */
             if (identity_mode) /* Observe expiry only after the software consumer acknowledged drain. */
             { /* Cancel the expired registration and disable at a drained safe point. */
                 if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "drained identity")) goto cleanup; /* Retain the historical end in this copied snapshot. */
-                printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected end14 played16 active0. */
+                printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected end14, played16 normally or played17 when gated, active0. */
                 if (!checked(fvm_swf_sound_mix_queue_stop_all(mix_queue), "cancel identities")) goto cleanup; /* Cancel every future event registration without rewriting accepted PCM. */
                 if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 0, 0), "disable identities")) goto cleanup; /* Free optional deadlines only after voices/retries/FIFO have drained. */
             } /* Clock end is now permitted. */

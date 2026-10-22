@@ -48,7 +48,7 @@ typedef struct FVM_DesktopAudio
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
     int stream_frame_ready; /* Completed owner frame; zero holds both producers during callbacks. */
     int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
-    int stream_movie_paused;  /* Native clip stop flag, independent of foreground/session pause. */
+    int stream_movie_paused;  /* Holds base only in composition mode; host suspension holds all output. */
     int stream_waiting; /* Prior native observation was a frame gate/EOF or explicit pause. */
     int stream_cancelled;     /* StopSounds holds this stream until a detected navigation reset. */
     FVM_SWFSoundMixer *mixer; /* Owned native voices; every access is serialized by mutex. */
@@ -93,8 +93,10 @@ extern "C"
      * Event preparation runs on owner outside worker mutex; aggregate native mixer/voice storage
      * obeys EVENT_BYTES. SyncNoMultiple includes queued/pending identity time until dequeue end.
      * Native output/ID/device/trace storage and VM memory are separate budgets; composition
-     * owner+PCM+ID obeys MIX_BYTES. Final EOF tails share both accepted-frame epochs.
-     * Root pause holds the composition; independent events through stream gaps remain open. */
+     * owner+PCM+ID obeys MIX_BYTES. Gated/EOF event blocks share both accepted epochs.
+     * Authored root Stop holds new base work while events drain; host pause holds everything.
+     * Retained BASE cannot be replaced while its frame is held; resume or acknowledged clear
+     * resolves it. Accepted mixed lead is not selectively recalled on authored root Stop. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
     FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
@@ -112,9 +114,10 @@ extern "C"
     FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
     /* Copy whether a running stream has authorized PCM/markers or accepted queued frames left.
      * Inactive future sources are inspected from their initial block; no decoding or VM access.
-     * Mixed voices and retained mixed retry count after final source EOF. StopSounds holds
-     * the base cancelled but later events may play. No audio, suspension or movie stop
-     * reports zero. Query is mutex-serialized;
+     * Mixed voices and processable mixed retry count through source gates/EOF/authored Stop.
+     * A BASE retry held by authored Stop cannot advance and does not keep completion alive
+     * after accepted lead drains. StopSounds holds base cancelled but later events may play.
+     * No audio or host suspension reports zero. Query is mutex-serialized;
      * errors preserve output. Owner must retain initialized audio throughout the call. */
     FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *, int *);
     /* Owner safe point: detach sound delivery and join/release old root audio while keeping

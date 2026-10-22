@@ -373,5 +373,6 @@ void fvm_desktop_help(const char *program)
            (unsigned long)FVM_DESKTOP_AUDIO_EVENT_BYTES);
     puts("Event SyncNoMultiple includes unplayed queued PCM; native identity/output buffers are separate from source budgets.");
     printf("Root composition adapter: %lu-byte separate PCM/ID budget.\n", (unsigned long)FVM_DESKTOP_AUDIO_MIX_BYTES);
+    puts("Mixed root Stop holds new stream PCM while event voices continue; host pause suspends the whole queue.");
     puts("Root streaming audio: up to 64 PCM/whole-packet ADPCM/supported MP3 segments with tracked root StartSound mixing.");
 }

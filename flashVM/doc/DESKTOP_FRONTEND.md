@@ -1,5 +1,7 @@
 # Desktop SWF application — v0.577
 
+Current gate/authored-Stop scheduling: [contract](MIXED_GATES.md). The final-EOF-only and root-pause limitations below describe the original v0.986 integration checkpoint, superseded for mixed scheduling.
+
 Current root stream/event composition and its remaining gate/pause/device limits: [desktop mix contract](DESKTOP_MIX.md). Earlier versioned stream-only statements below are historical.
 v0.819 validates MP3 header/side-information CRC and preflights every statically
 referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only

@@ -230,6 +230,9 @@ source rate/channel geometry, nonempty FIFO continuity, callback-free transition
 zero-allocation calls after VM teardown, invalid output geometry, reentry and
 failed-clear preservation of pending retry bytes and both source positions.
 
+
+Gated mixed scheduling is additive: [fvm_swf_stream_output_pump_mix_until](../include/flashvm/swf_stream_output.h#L101) handles authorized base and held/EOF events with ordered retry. Original stream-only entry points retain their contracts. [Current contract](MIXED_GATES.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -249,6 +252,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:58](../include/flashvm/swf_stream_output.h#L58) |
 | `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 | `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:54](../include/flashvm/swf_stream_output.h#L54) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:101](../include/flashvm/swf_stream_output.h#L101) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
 | `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:113](../include/flashvm/swf_stream_output.h#L113) |
 | `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |

@@ -343,7 +343,7 @@ static FVM_Result stream_continue_segment(FVM_DesktopAudio *audio)
     return FVM_OK;
 }
 
-/* Caller holds mutex; one authorized base producer and optional EOF event tails share the FIFO. */
+/* Caller holds mutex; one authorized base producer and gated/EOF event contributions share the FIFO. */
 static FVM_Result refill_stream(FVM_DesktopAudio *audio)
 {
     FVM_SWFStreamOutputInfo info;

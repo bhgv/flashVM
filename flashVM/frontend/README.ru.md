@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+Mixed-события продолжаются при future stream gates и authored root Stop; host pause удерживает всю очередь. [Текущий контракт](../doc/MIXED_GATES.ru.md).
+
 Root stream и StartSound используют общую tracked-очередь: [контракт и ограничения](../doc/DESKTOP_MIX.ru.md).
 v0.819 проверяет CRC заголовка/side information MP3 и все статические корневые
 MP3-ссылки до unmuted-аудиоустройства, один раз на ID. Stop-only ссылки и mute

@@ -227,6 +227,9 @@ pending bytes и cursor цели сохраняются, подтверждён�
 callbacks, отсутствие выделений после VM teardown, geometry errors, reentry и
 сохранение pending retry bytes/обоих cursors при failed clear.
 
+
+Аддитивный [fvm_swf_stream_output_pump_mix_until](../include/flashvm/swf_stream_output.h#L101) согласует разрешённый base, события на hold/EOF и порядок retry. Прежние stream-only API сохраняют контракты. [Текущий контракт](MIXED_GATES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -246,6 +249,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:58](../include/flashvm/swf_stream_output.h#L58) |
 | `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 | `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:54](../include/flashvm/swf_stream_output.h#L54) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:101](../include/flashvm/swf_stream_output.h#L101) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
 | `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:113](../include/flashvm/swf_stream_output.h#L113) |
 | `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |

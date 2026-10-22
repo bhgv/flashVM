@@ -1,5 +1,7 @@
 # Desktop root stream/event composition
 
+Current gate/authored-Stop scheduling: [contract](MIXED_GATES.md). The final-EOF-only and root-pause limitations below describe the original v0.986 integration checkpoint, superseded for mixed scheduling.
+
 Current scope: the desktop owner accepts supported root stream segments together
 with root StartSound voices. The stream writes base PCM through one tracked native
 composition adapter into the existing SDL queue. The mixer adds all current event

@@ -1,5 +1,7 @@
 # Desktop-композиция корневого stream и событий
 
+Текущее gate/authored-Stop планирование: [контракт](MIXED_GATES.ru.md). Ограничения final-EOF-only/root-pause ниже относятся к исходному checkpoint v0.986 и заменены новым mixed scheduling.
+
 Текущий объём: desktop-владелец принимает поддержанные корневые stream-сегменты
 вместе с root StartSound. Base PCM поступает через tracked native-адаптер в прежнюю
 SDL-очередь. Микшер складывает все событийные голоса перед единственным насыщением
