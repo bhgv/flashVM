@@ -16,6 +16,8 @@ v0.930: create_bounded validates the original descriptors and matching mixer geo
 
 v0.931: real backend callbacks attempt recursive pumping, pending observation and clear; all are rejected while busy with preserved observation outputs. Failed queued/pause/clear and a thrown write preserve exact pending tail bytes. Accepted clear discards that block without rewinding voices, so the next accepted PCM begins at the later sample. The ordinary build checks exceptions; --no-throw supports a separately selected sanitizer path.
 
+v0.932: an instrumented ordinary-build allocation sweep counts new/new[] attempts. Insufficient byte budget makes zero attempts; each of the three owner/array allocation boundaries fails cleanly, then exact-fit acquisition succeeds. With allocation forbidden, rejected/accepted tail writes, pending/storage observations, pause and clear perform zero attempts and preserve exact samples after source VM teardown. This is a native allocation test, separate from ASan/UBSan.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
