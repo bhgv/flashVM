@@ -100,6 +100,20 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_mix_queue_set_identity_tracking(FVM_SWFSoundMixQueue *,
                                                                      int enabled,
                                                                      size_t adapter_budget);
+    /* Adopt a prepared voice with queued SyncNoMultiple semantics; tracking must be enabled.
+     * Observe FIFO, include retained pending frames before the new start, then register exact
+     * converted duration at phase zero. NoMultiple consumes/closes/clears an unused voice
+     * while same-ID registered time is unplayed, even after mixer retirement. Ordinary
+     * same-ID starts overlap and extend the largest deadline; finished voices add none.
+     * Success consumes *voice; errors preserve ownership/progress/old voices/deadlines,
+     * though a valid queue poll may refresh played time. mixer_budget covers mixer/voices
+     * only, excludes adapter/table/backend/VM. No allocation/VM/GC; callbacks may block.
+     * Disabled UNSUPPORTED; null/busy/invalid voice INVALID_ARGUMENT; time overflow
+     * UNSUPPORTED; budget/full mixer OUT_OF_MEMORY; backend errors propagate, exceptions
+     * ERROR. Serialize all owners; direct mixer starts/stops invalidate tracked accounting. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_submit_prepared_bounded(FVM_SWFSoundMixQueue *,
+                                                                       FVM_SWFSoundVoice **,
+                                                                       size_t mixer_budget);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

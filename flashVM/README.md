@@ -1,10 +1,12 @@
-Development version: **0.952** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.952 ` and an English description. Increase the subversion before each
+Development version: **0.953** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.953 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.953: [Adopt prepared voices with queued NoMultiple semantics](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.952: [Bound optional composition identity tracking](doc/MIX_QUEUE_IDENTITIES.md).
 

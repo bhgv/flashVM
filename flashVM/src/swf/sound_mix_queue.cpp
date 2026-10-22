@@ -454,6 +454,48 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_set_identity_tracking(FVM_SWFSound
     catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
 }
 
+/* Track actual future composition from the far side of every already rendered retry. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_submit_prepared_bounded(FVM_SWFSoundMixQueue *queue,
+                                                                      FVM_SWFSoundVoice **voice,
+                                                                      size_t budget)
+{
+    if (!queue || queue->busy || !voice || !*voice) return FVM_INVALID_ARGUMENT;
+    if (queue->identities.empty()) return FVM_UNSUPPORTED;
+    FVM_SWFSoundVoiceInfo source;
+    source.struct_size = sizeof(source);
+    FVM_Result result = fvm_swf_sound_voice_info(*voice, &source);
+    if (result != FVM_OK) return result;
+    if (!source.sound_id || source.sound_id > FVM_SWF_SOUND_ID_MAX) return FVM_INVALID_ARGUMENT;
+    MixBusyScope scope(queue);
+    try
+    {
+        size_t queued = 0;
+        result = observe_locked(queue, &queued);
+        if (result != FVM_OK) return result;
+        if ((source.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE) &&
+            queue->identities[source.sound_id] > queue->clock_played)
+        {
+            fvm_swf_sound_voice_close(*voice);
+            *voice = 0;
+            return FVM_OK;
+        }
+        double duration = 0;
+        result = fvm_swf_sound_voice_output_frames(*voice, queue->backend.sample_rate, &duration);
+        if (result != FVM_OK) return result;
+        if (queue->clock_submitted > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - (double)queue->pending)
+            return FVM_UNSUPPORTED;
+        double start = queue->clock_submitted + (double)queue->pending;
+        if (start > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - duration) return FVM_UNSUPPORTED;
+        double end = start + duration;
+        result = fvm_swf_sound_mixer_submit_prepared_bounded(queue->mixer, voice, budget);
+        if (result == FVM_OK && duration && end > queue->identities[source.sound_id])
+            queue->identities[source.sound_id] = end;
+        return result;
+    }
+    catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
+    catch (...) { return FVM_ERROR; }
+}
+
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */
 extern "C" void fvm_swf_sound_mix_queue_close(FVM_SWFSoundMixQueue *queue)
 {

@@ -2,7 +2,7 @@
 
 Для общего accepted/dequeued отсчёта base и tail есть [shared clock](MIX_QUEUE_CLOCK.ru.md). Он не объединяет прежние счётчики stream-producer и не разрешает таймлайн. Перед tail старый producer останавливают; далее читают общий счётчик, а новый rebind/seek согласуют через успешную clear.
 
-v0.927 добавляет [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L146)(queue, frames, target, accepted). После остановки производителя stream/base владелец явно разрешает один событийный блок с нулевой основой. frames положителен и не больше ёмкости адаптера; target от frames до [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). Часы, дедлайны, пауза, seek и переход EOF не угадываются.
+v0.927 добавляет [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L160)(queue, frames, target, accepted). После остановки производителя stream/base владелец явно разрешает один событийный блок с нулевой основой. frames положителен и не больше ёмкости адаптера; target от frames до [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). Часы, дедлайны, пауза, seek и переход EOF не угадываются.
 
 Перед смешиванием читается настоящая длина очереди. Недостаток места либо отсутствие активных голосов/pending-tail дают NOT_FOUND. Ошибка наблюдения и нехватка места, найденная до render, не двигают голоса. Последний блок может дополниться тишиной; исчерпание голосов не означает опустошение очереди. Необязательный accepted сначала обнуляется и получает frames только после реального приёма.
 
@@ -40,6 +40,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:146](../include/flashvm/swf_sound_mix_queue.h#L146) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:160](../include/flashvm/swf_sound_mix_queue.h#L160) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_QUEUE` | macro / define | [include/flashvm/swf_sound_output.h:12](../include/flashvm/swf_sound_output.h#L12) |
 <!-- source-links:end -->
