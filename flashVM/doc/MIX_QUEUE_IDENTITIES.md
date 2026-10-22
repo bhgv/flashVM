@@ -84,6 +84,9 @@ v0.971: Use the checked tracked predictor and event stop_all in the executable s
 
 v0.972: Exercise real StopSounds bindings, failed clear retry, GC and interpreter/JIT root actions.
 
+
+v0.973: Verify real stream conversion continues unchanged after stop_all while retained mixture retries exactly.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

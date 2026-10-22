@@ -84,6 +84,9 @@ v0.971: Исполняемый C89-пример использует точны�
 
 v0.972: Проверены root StopSounds, failed clear/retry, GC и interpreter/JIT; event stop_all сохраняет FIFO.
 
+
+v0.973: Проверено продолжение настоящего stream после stop_all событий и точный retry готового микса.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

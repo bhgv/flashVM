@@ -48,6 +48,7 @@ static FVM_Result clear_native(void *p)
     q->count = 0;
     return FVM_OK;
 }
+ #ifndef FVM_MIX_IDENTITY_STREAM_FIXTURE_ONLY
 int main(int argc, char **argv)
 {
     bool throwing = argc == 1;
@@ -164,3 +165,5 @@ int main(int argc, char **argv)
     fvm_swf_sound_mix_queue_close(mix);fvm_swf_sound_mixer_close(mixer);fvm_swf_stream_sound_snapshot_close(source);
     return 0;
 }
+
+#endif
