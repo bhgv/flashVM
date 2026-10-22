@@ -18,6 +18,8 @@ v0.931: real backend callbacks attempt recursive pumping, pending observation an
 
 v0.932: an instrumented ordinary-build allocation sweep counts new/new[] attempts. Insufficient byte budget makes zero attempts; each of the three owner/array allocation boundaries fails cleanly, then exact-fit acquisition succeeds. With allocation forbidden, rejected/accepted tail writes, pending/storage observations, pause and clear perform zero attempts and preserve exact samples after source VM teardown. This is a native allocation test, separate from ASan/UBSan.
 
+v0.933: an actual root stream-output producer and two converted event voices run after VM teardown. A zero frame gate holds without cursor movement and is explicitly not EOF. Only observed source EOF with no pending source block authorizes handoff. Rejected first tail retains exact mixed bytes, then a rational PCM oracle verifies the complete 15-frame stream/tail result including one final padding frame. The stream producer still reports only its nine accepted base frames: tail pumping supplies no shared timeline/device clock. Production frontend handoff remains separate.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
