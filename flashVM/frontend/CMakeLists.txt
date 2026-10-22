@@ -1335,7 +1335,7 @@ endif()
 
 # Deterministic FIFO tests compile the actual worker as C89 and use the real SDL mutex SDK.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
-  foreach(mixed_test IN ITEMS mixed_refill mixed_controls mixed_navigation mixed_segments mixed_clipping)
+  foreach(mixed_test IN ITEMS mixed_refill mixed_controls mixed_navigation mixed_segments mixed_clipping mixed_authored_stop)
     add_executable(flashvm_frontend_${mixed_test} tests/${mixed_test}.cpp tests/mixed_worker.c common/audio_trace.c)
     target_link_libraries(flashvm_frontend_${mixed_test} PRIVATE flashvm SDL2::SDL2)
     set_target_properties(flashvm_frontend_${mixed_test} PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)

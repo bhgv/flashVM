@@ -8,3 +8,5 @@ v0.988: Добавлен paired pump_mix_until: разрешённый base ил
 v0.989: Проверены TAIL retry перед новым base, удержание BASE, callback-reentry и исключения backend.
 
 v0.990: Mixed worker использует paired gate scheduling: события идут через future gates, retry приоритетен, источники переключаются до event-only подачи.
+
+v0.991: Публикация завершённого кадра отделена от base-разрешения: root Stop держит stream phase, события продолжаются, host pause останавливает очередь.

@@ -287,6 +287,8 @@ static FVM_Result mixed_work(FVM_DesktopAudio *audio, int *out)
     pending.struct_size = sizeof(pending);
     result = fvm_swf_sound_mixer_info(audio->mixer, &voices);
     if (result == FVM_OK) result = fvm_swf_sound_mix_queue_pending(audio->composition, &pending);
+    if (result == FVM_OK && audio->stream_movie_paused &&
+        pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE) return FVM_OK;
     if (result == FVM_OK) *out = voices.active_voices != 0 || pending.frames != 0;
     return result;
 }
@@ -298,12 +300,13 @@ static FVM_Result stream_authorized(FVM_DesktopAudio *audio, int *out)
     unsigned int frame = 0;
     size_t index;
     FVM_Result result;
-    if (audio->composition && !audio->stream_frame)
+    if (audio->composition && !audio->stream_frame_ready)
     {
         *out = 0;
         return FVM_OK;
     }
-    if (audio->stream_cancelled) return mixed_work(audio, out);
+    if (audio->stream_cancelled || (audio->composition && audio->stream_movie_paused))
+        return mixed_work(audio, out);
     result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
     if (result == FVM_OK)
     {
@@ -347,8 +350,9 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
     FVM_Result result;
     unsigned int attempt;
     int held = 0, authorized = 0;
-    if (audio->stream_movie_paused || (audio->stream_cancelled && !audio->composition) ||
-        (audio->composition && !audio->stream_frame))
+    if ((audio->stream_movie_paused && !audio->composition) ||
+        (audio->stream_cancelled && !audio->composition) ||
+        (audio->composition && !audio->stream_frame_ready))
     {
         audio->was_starved = 0;
         audio->stream_waiting = 1;
@@ -390,7 +394,8 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
             result = fvm_swf_sound_mix_queue_pending(audio->composition, &pending);
             if (result != FVM_OK) return result;
             if (pending.origin != FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL &&
-                !audio->stream_cancelled && audio->stream_index + 1 < audio->stream_count)
+                !audio->stream_cancelled && !audio->stream_movie_paused &&
+                audio->stream_index + 1 < audio->stream_count)
             {
                 unsigned int next_frame = 0;
                 result = fvm_swf_stream_output_next_frame(&audio->stream_output, &next_frame);
@@ -403,7 +408,8 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
                 if (result != FVM_OK) return result;
             }
             result = fvm_swf_stream_output_pump_mix_until(
-                &audio->stream_output, audio->composition, audio->stream_frame, 0);
+                &audio->stream_output, audio->composition,
+                audio->stream_movie_paused ? 0 : audio->stream_frame, 0);
         }
         else
             result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
@@ -413,7 +419,8 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
             result = fvm_swf_stream_output_info(&audio->stream_output, &info);
             if (result != FVM_OK)
                 return result;
-            if (info.eof && !audio->stream_cancelled && audio->stream_index + 1 < audio->stream_count)
+            if (info.eof && !audio->composition && !audio->stream_cancelled &&
+                audio->stream_index + 1 < audio->stream_count)
             {
                 result = stream_continue_segment(audio);
                 if (result != FVM_OK) return result;
@@ -719,11 +726,12 @@ static FVM_Result sync_timeline(FVM_Context *context, FVM_Object *clip,
         audio->stream_navigation = navigation;
         audio->stream_selected = info.frame;
         audio->stream_entered = info.entered;
-        audio->stream_frame = authorize && info.entered ? info.frame : 0;
+        audio->stream_frame_ready = authorize && info.entered;
+        audio->stream_frame = audio->stream_frame_ready ? info.frame : 0;
         /* Frame events may allocate outside the mutex. The owner publishes permission only
          * after the complete frame, so the worker cannot render before all starts arrive. */
         audio->stream_movie_paused = !info.playing;
-        if (!info.playing || !info.entered)
+        if ((!info.playing && !audio->composition) || !info.entered)
             result = fvm_swf_stream_output_pause(&audio->stream_output, 1);
     }
     SDL_UnlockMutex(audio->mutex);
@@ -828,7 +836,7 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
     result = (FVM_Result)SDL_AtomicGet(&audio->error);
-    if (result == FVM_OK && !audio->suspended && !audio->stream_movie_paused &&
+    if (result == FVM_OK && !audio->suspended && (!audio->stream_movie_paused || audio->composition) &&
         (!audio->stream_cancelled || audio->composition))
     {
         info.struct_size = sizeof(info);

@@ -46,6 +46,7 @@ typedef struct FVM_DesktopAudio
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
+    int stream_frame_ready; /* Completed owner frame; zero holds both producers during callbacks. */
     int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
     int stream_movie_paused;  /* Native clip stop flag, independent of foreground/session pause. */
     int stream_waiting; /* Prior native observation was a frame gate/EOF or explicit pause. */

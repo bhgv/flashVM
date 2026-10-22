@@ -8,3 +8,5 @@ v0.988: Add paired pump_mix_until: choose authorized base or event-only work whi
 v0.989: Verify tail retry before newly authorized base, held base retention, callback recursion and backend exception containment.
 
 v0.990: Route mixed worker steps through paired gate scheduling, preserve retry priority and activate source successors before synthetic events.
+
+v0.991: Separate completed-frame publication from base authorization; root Stop holds stream phase while events continue and host pause still suspends the queue.
