@@ -14,6 +14,10 @@
 #include <limits>
 
 #include "text_state.hpp"
+#include "base_state.hpp"
+#include "../core/object_root_scope.hpp"
+#include "../core/execution_work_scope.hpp"
+#include "flashvm/table.h"
 #include "text_constants.h"
 /* Release standard text state owned by the destroyed context. */
 void fvm_standard_text_cleanup(FVM_Context *context)
@@ -64,6 +68,7 @@ struct Style
     fvm_detail::string source_key; /* Precomputed private slot key; layout lookup cannot allocate. */
     unsigned int variant; /* Explicit regular/bold/italic family selection. */
     double size, leading;
+    fvm_detail::vector<double> tab_stops; /* Native owned copy, independent of the source managed Array. */
     double indent; /* First visual line only; zero for empty hard paragraphs. */
     double left_margin, right_margin, block_indent; /* Nonnegative whole-pixel paragraph insets. */
     double letter_spacing; /* Signed extra pixels after each supported character. */
@@ -78,6 +83,7 @@ struct Style
     /* Exchange the current value. */
     void swap(Style &s)
     {
+        tab_stops.swap(s.tab_stops);
         font.swap(s.font);
         source_key.swap(s.source_key);
         unsigned int v = variant; variant = s.variant; s.variant = v;
@@ -240,6 +246,36 @@ static bool style_keyword(const FVM_Value &value, const char *expected)
            !std::memcmp(value.string, expected, size);
 }
 
+/* [GC:] Root the borrowed Array through length/index getters; retain copied numbers only. */
+static FVM_Result read_tab_stops(FVM_Context *c, const FVM_Value &value, fvm_detail::vector<double> &out)
+{
+    if (value.type != FVM_VALUE_OBJECT || !value.object || value.object->owner != c ||
+        value.object->resource_kind != FVM_RESOURCE_ARRAY) return FVM_UNSUPPORTED;
+    FVM_ObjectRootScope root(c, value.object);
+    FVM_ExecutionWorkScope work(c);
+    FVM_Value length;
+    FVM_Result result = fvm_object_get(c, value.object, "length", &length);
+    if (result != FVM_OK) return result;
+    if (length.type != FVM_VALUE_NUMBER || !finite_range(length.number, 0, FVM_TEXT_STYLE_MAX_TABS) ||
+        length.number != std::floor(length.number)) return FVM_INVALID_ARGUMENT;
+    size_t count = (size_t)length.number;
+    fvm_detail::vector<double> next;
+    for (size_t i = 0; i < count; ++i)
+    {
+        result = work.step();
+        if (result != FVM_OK) return result;
+        FVM_Value stop;
+        result = fvm_table_get_index(c, value.object, (unsigned long)i, &stop);
+        if (result != FVM_OK) return result;
+        if (stop.type != FVM_VALUE_NUMBER || !finite_range(stop.number, 0, FVM_TEXT_STYLE_MAX_TAB_STOP) ||
+            stop.number != std::floor(stop.number) || (i && stop.number <= next[i - 1]))
+            return FVM_INVALID_ARGUMENT;
+        next.push_back(stop.number);
+    }
+    out.swap(next);
+    return FVM_OK;
+}
+
 /* Only explicitly implemented formatting is applied. Null/undefined properties
  * leave the previous style unchanged; unsupported visible effects are rejected. */
 /* Compute and return merge style. */
@@ -302,7 +338,10 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                 style.kerning = converted.boolean != 0;
         }
         else if (std::strcmp(name, "tabStops") == 0)
-            return FVM_UNSUPPORTED;
+        {
+            result = read_tab_stops(c, v, style.tab_stops);
+            if (result != FVM_OK) return result;
+        }
         else
         {
             double d;
@@ -429,8 +468,9 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     }
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
-    result = fvm_text_layout_create_indented(font.font, text, size, &options,
-                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, style.indent, out);
+    result = fvm_text_layout_create_tabbed(font.font, text, size, &options,
+                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, style.indent, style.tab_stops.empty() ? 0 : style.tab_stops.begin(),
+                              style.tab_stops.size(), out);
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;
     return result;
@@ -473,7 +513,7 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
                       const char *text, size_t size, PreparedGeometry &next)
 {
     if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY &&
-        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0 && style.indent == 0)
+        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0 && style.indent == 0 && style.tab_stops.empty())
         return FVM_OK;
     double width = next.wrap && next.multiline ? next.width - FVM_TEXT_FIELD_GUTTER : 0;
     if (next.wrap && next.multiline && width <= 0)
@@ -650,8 +690,21 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     if (result != FVM_OK)
         return result;
 
-    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Keep both fresh managed snapshots reachable while native property storage allocates. */
+    FVM_ObjectRootScope format_root(c, object);
+    FVM_Object *tabs = 0;
+    result = fvm_array_create_like(c, 0, (unsigned long)style.tab_stops.size(), &tabs, true);
+    if (result != FVM_OK) return result;
+    FVM_ObjectRootScope tabs_root(c, tabs);
     FVM_Value v;
+    for (size_t i = 0; i < style.tab_stops.size(); ++i)
+    {
+        fvm_value_number(&v, style.tab_stops[i]);
+        result = fvm_array_store_own(c, tabs, (unsigned long)i, v);
+        if (result != FVM_OK) return result;
+    }
+    object_value(&v, tabs);
+    object->properties["tabStops"] = v;
     fvm_value_string(&v, style.font.c_str());
     result = fvm_object_set(c, object, "font", &v);
     if (result != FVM_OK)
@@ -1566,6 +1619,7 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.size = style.size;
     out.leading = style.leading;
     out.letter_spacing = style.letter_spacing;
+    out.tab_stops = style.tab_stops;
     out.indent = style.indent;
     out.left_margin = style.left_margin; out.right_margin = style.right_margin; out.block_indent = style.block_indent;
     out.color = style.color;
@@ -1575,6 +1629,7 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
                     (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
                     (style.left_margin || style.right_margin || style.block_indent ? FVM_TEXT_STYLE_HAS_INSETS : 0UL) |
                     (style.indent != 0 ? FVM_TEXT_STYLE_HAS_INDENT : 0UL) |
+                    (!style.tab_stops.empty() ? FVM_TEXT_STYLE_HAS_TABS : 0UL) |
                     (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL) |
                     (style.variant & FVM_TEXT_FONT_BOLD ? FVM_TEXT_STYLE_BOLD : 0UL) |
                     (style.variant & FVM_TEXT_FONT_ITALIC ? FVM_TEXT_STYLE_ITALIC : 0UL);
@@ -1584,6 +1639,13 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
 /* Restore style. */
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
+    if (src.tab_stops.size() > FVM_TEXT_STYLE_MAX_TABS ||
+        (!src.tab_stops.empty() != ((src.alignment & FVM_TEXT_STYLE_HAS_TABS) != 0)))
+        return FVM_INVALID_ARGUMENT;
+    for (size_t i = 0; i < src.tab_stops.size(); ++i)
+        if (!finite_range(src.tab_stops[i], 0, FVM_TEXT_STYLE_MAX_TAB_STOP) ||
+            src.tab_stops[i] != std::floor(src.tab_stops[i]) ||
+            (i && src.tab_stops[i] <= src.tab_stops[i - 1])) return FVM_INVALID_ARGUMENT;
     if (!finite_range(src.indent, -FVM_TEXT_STYLE_MAX_INDENT, FVM_TEXT_STYLE_MAX_INDENT) ||
         src.indent != std::floor(src.indent) ||
         ((src.indent != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_INDENT) != 0)))
@@ -1636,6 +1698,7 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.size = src.size;
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
+    out.tab_stops = src.tab_stops;
     out.indent = src.indent;
     out.left_margin = src.left_margin; out.right_margin = src.right_margin; out.block_indent = src.block_indent;
     out.color = src.color;
@@ -1705,7 +1768,8 @@ size_t fvm_textfield_snapshot_size(FVM_Object *object)
         context->fonts.find(field->future.source_key);
     if (a == context->fonts.end() || b == context->fonts.end())
         return (size_t)-1;
-    return FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD + field->text_size + field->current.font.size() + field->future.font.size() +
+    return FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD + FVM_TEXT_STYLE_TAB_WIRE_HEADER * 2 +
+           FVM_TEXT_STYLE_TAB_WIRE_BYTES * (field->current.tab_stops.size() + field->future.tab_stops.size()) + field->text_size + field->current.font.size() + field->future.font.size() +
            a->second->bytes.size() + b->second->bytes.size();
 }
 

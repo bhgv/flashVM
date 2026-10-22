@@ -1,10 +1,12 @@
-Development version: **0.905** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.905 ` and an English description. Increase the subversion before each
+Development version: **0.906** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.906 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.906: [Apply owned custom tab tables to TextFormat geometry and graph state](doc/TEXT_TABS.md).
 
 v0.905: [Preserve word shaping tracking and first-line offsets around custom tabs](doc/TEXT_TABS.md).
 

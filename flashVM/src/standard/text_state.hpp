@@ -22,6 +22,7 @@ struct FVM_TextStyleState
     fvm_detail::string font; /* Font name, handle or source used by this text state. */
     double size /* Size of the associated payload or collection. */,
         leading; /* Extra spacing added between text lines. */
+    fvm_detail::vector<double> tab_stops; /* Owned optional custom positions, never managed Array pointers. */
     double indent; /* Optional signed first-line paragraph offset. */
     double left_margin, right_margin, block_indent; /* Optional whole-pixel paragraph insets. */
     double letter_spacing; /* Signed extra pixels, absent legacy payloads restore zero. */

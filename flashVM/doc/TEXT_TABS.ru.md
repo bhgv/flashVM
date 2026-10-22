@@ -41,6 +41,29 @@ advance и пустым контуром. Экспорт не рисует .notd
 UNSUPPORTED без чтения текста/параметров/шрифта. Автоматический шаг tab, полные
 Unicode/bidi-табуляторы, сравнение с Flash и устройства/платформы остаются открытыми.
 
+v0.906 применяет TextFormat.tabStops из native Array того же контекста. Длина
+считывается один раз (0..64), затем индексы читаются по порядку через обычный
+property bridge. Позиции — целые Number в [0,1000000], строго возрастающие.
+Пустые слоты и неверные числа дают INVALID_ARGUMENT, другой тип — UNSUPPORTED.
+Ошибки getters/отмена работы передаются вызывающему. [GC:] массив удерживается
+корнем во время getters; сохраняются только числа. Побочные действия getters
+наблюдаемы и при отказе применения поля не откатываются.
+
+Null/undefined сохраняют стиль; пустой Array очищает таблицу, оставляя default
+tab неподдержанным. Полное присваивание использует будущий стиль; текущее
+форматирование/замена — текущий однородный. Непустая таблица заставляет проверить
+геометрию до публикации, в том числе ручного поля. getTextFormat/getNewTextFormat
+возвращают новые управляемые Arrays (пустой Array при отсутствии таблицы).
+Изменение исходного массива/снимка не редактирует поле. Управляемые результаты
+нужно удерживать корнями через GC в потоке-владельце.
+
+[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L26) добавляет ограниченный u32 count и tagged числа после
+необязательного indent. Старые записи получают пустую таблицу, текущий/будущий
+стили передаются отдельно, старые readers отклоняют новый флаг. Count проверяется
+до выделения; восстановление проверяет границы/порядок/целые значения и
+соответствие флага до импорта шрифта этого стиля. Прежнее время жизни шрифтов при
+импорте графа сохраняется. Публичные C-структуры и версия wire прежние.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -58,5 +81,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:26](../src/standard/text_constants.h#L26) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
 <!-- source-links:end -->

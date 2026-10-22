@@ -703,6 +703,11 @@ struct Writer
         }
         if (s.alignment & FVM_TEXT_STYLE_HAS_INDENT)
             number(s.indent);
+        if (s.alignment & FVM_TEXT_STYLE_HAS_TABS)
+        {
+            u32((unsigned long)s.tab_stops.size());
+            for (size_t i = 0; i < s.tab_stops.size(); ++i) number(s.tab_stops[i]);
+        }
         require(s.source.index >= (-2147483647L - 1L) && s.source.index <= 2147483647L,
                 FVM_UNSUPPORTED);
         u32(s.source.index < 0 ? (unsigned long)(s.source.index + 2147483647L) + 1UL
@@ -965,6 +970,13 @@ struct Reader
         }
         if (s.alignment & FVM_TEXT_STYLE_HAS_INDENT)
             s.indent = number();
+        if (s.alignment & FVM_TEXT_STYLE_HAS_TABS)
+        {
+            size_t count = (size_t)u32();
+            require(count <= FVM_TEXT_STYLE_MAX_TABS);
+            s.tab_stops.resize(count);
+            for (size_t i = 0; i < count; ++i) s.tab_stops[i] = number();
+        }
         unsigned long index = u32();
         s.source.index =
             index >= 0x80000000UL ? (long)(index - 0x80000000UL) : (long)index - 2147483647L - 1L;
