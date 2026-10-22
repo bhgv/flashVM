@@ -1,10 +1,12 @@
-Development version: **0.896** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.896 ` and an English description. Increase the subversion before each
+Development version: **0.897** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.897 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.897: [Preserve first-line indentation through transfer and enforce Flash8 hanging admission](doc/TEXT_INDENT.md).
 
 v0.896: [Verify first-line alignment underline extent and automatic anchors across real font faces](doc/TEXT_INDENT.md).
 
