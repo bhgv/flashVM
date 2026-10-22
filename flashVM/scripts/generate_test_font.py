@@ -80,3 +80,20 @@ pen = TTGlyphPen(glyphs)
 fb.font['glyf']['V'].draw(TransformPen(pen, (-1, 0, 0, 1, 600, 0)), fb.font['glyf'])
 fb.font['glyf']['V'] = pen.glyph()
 save_fixture('geometry_mixed.ttf', 'font_mixed_data.h', 'fvm_test_font_mixed', 'FVM_TEST_FONT_MIXED_DATA_H')
+
+# A separate synthetic OpenType oracle distinguishes optional clig from required rlig.
+# Reload the ordinary face so this fixture retains consistent outline winding.
+from fontTools.ttLib import TTFont
+fb.font = TTFont(root/'tests/fixtures/geometry.ttf', recalcTimestamp=False)
+addOpenTypeFeaturesFromString(fb.font, '''languagesystem DFLT dflt;
+languagesystem latn dflt; languagesystem arab dflt;
+feature liga { sub f i by fi; } liga;
+feature clig { sub f f by fi; } clig;
+feature rlig { sub V A by fi; } rlig;
+feature kern { pos A V -80; } kern;
+feature init { sub beh by beh.init; } init;
+feature medi { sub beh by beh.medi; } medi;
+feature fina { sub beh by beh.fina; } fina;
+''')
+save_fixture('geometry_ligatures.ttf', 'font_ligature_data.h', 'fvm_test_font_ligatures', 'FVM_TEST_FONT_LIGATURE_DATA_H')
+fb.font.close()

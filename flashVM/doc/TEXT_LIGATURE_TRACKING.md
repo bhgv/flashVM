@@ -42,6 +42,8 @@ TextField and TextFormat use this same layout path, so genuine fi text edits now
 work with letterSpacing; failed combining-cluster edits still preserve prior state.
 Current/future formatting and graph wire format are unchanged.
 
+v0.863 adds a separate deterministic CC0 GSUB oracle: optional clig ff decomposes under the new flag; required rlig VA remains one glyph under every flag combination and nonzero tracking rejects it. Existing ordinary/mixed fixture bytes remain unchanged.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
