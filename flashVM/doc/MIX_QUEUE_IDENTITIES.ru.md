@@ -66,6 +66,9 @@ v0.965: Проверены точный base/tail retry и новый NoMultiple
 
 v0.966: stop_all отвергает callback-reentry; независимый расчёт памяти разрешён внутри callback.
 
+
+v0.967: Проверены удаление DECLICK-хвостов и новый NoMultiple после сохранённого retry.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

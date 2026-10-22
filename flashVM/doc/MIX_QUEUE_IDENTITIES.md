@@ -66,6 +66,9 @@ v0.965: Verify exact retained base/tail retry and new NoMultiple placement beyon
 
 v0.966: Reject stop_all reentry while allowing independent storage prediction inside callbacks.
 
+
+v0.967: Verify immediate global stop retires DECLICK tails and restarts NoMultiple after the retry.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
