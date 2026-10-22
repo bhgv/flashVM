@@ -21,6 +21,23 @@ static bool valid_shape_direction(const FVM_TextDirection &direction)
     return false;
 }
 
+/* Validate borrowed UTF-32 input before allocations or any writes to caller buffers.
+ * Inspect enum bytes first: arbitrary C representations must never be loaded as C++ enums. */
+static bool valid_bidi_input(const unsigned int *logical, size_t count,
+                             const FVM_TextDirection *direction, const unsigned int *visual,
+                             const size_t *map, const unsigned char *levels)
+{
+    if (!direction || !valid_shape_direction(*direction) ||
+        (!logical && count) || (!visual && count) || (!map && count) ||
+        (!levels && count) || count > FVM_FONT_BIDI_MAX_SCALARS)
+        return false;
+    for (size_t i = 0; i < count; ++i)
+        if (logical[i] > FVM_FONT_UNICODE_MAX ||
+            (logical[i] >= FVM_FONT_SURROGATE_BEGIN && logical[i] <= FVM_FONT_SURROGATE_END))
+            return false;
+    return true;
+}
+
 #ifdef FVM_HAS_FONTS
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -480,9 +497,7 @@ extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
                                     FVM_TextDirection *direction, unsigned int *visual, size_t *map,
                                     unsigned char *levels)
 {
-    if (!direction || (!logical && count) || (!visual && count) || (!map && count) ||
-        (!levels && count) || count > 1000000 || *direction < FVM_TEXT_AUTO ||
-        *direction > FVM_TEXT_RTL)
+    if (!valid_bidi_input(logical, count, direction, visual, map, levels))
         return FVM_INVALID_ARGUMENT;
     if (!count)
     {
@@ -490,9 +505,6 @@ extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
             *direction = FVM_TEXT_LTR;
         return FVM_OK;
     }
-    for (size_t i = 0; i < count; ++i)
-        if (logical[i] > 0x10ffff || (logical[i] >= 0xd800 && logical[i] <= 0xdfff))
-            return FVM_INVALID_ARGUMENT;
     try
     {
         fvm_detail::vector<FriBidiChar> chars(count);
@@ -626,9 +638,11 @@ extern "C" FVM_Result fvm_text_breaks(const char *, size_t, const char *, char *
 }
 
 /* Compute and return text bidi. */
-extern "C" FVM_Result fvm_text_bidi(const unsigned int *, size_t, FVM_TextDirection *,
-                                    unsigned int *, size_t *, unsigned char *)
+extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
+                                    FVM_TextDirection *direction, unsigned int *visual,
+                                    size_t *map, unsigned char *levels)
 {
-    return FVM_UNSUPPORTED;
+    return valid_bidi_input(logical, count, direction, visual, map, levels)
+               ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
 }
 #endif

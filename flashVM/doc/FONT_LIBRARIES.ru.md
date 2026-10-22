@@ -48,7 +48,7 @@ flashvm/font.h владеет копией байтов шрифта, face и р
 | OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L62): глифы, продвижения, смещения, кластеры UTF-8 |
 | Контуры размещённого текста | [fvm_text_run_path](../include/flashvm/font.h#L82): объединение расположенных глифов |
 | Допустимые переносы | [fvm_text_breaks](../include/flashvm/font.h#L88): классификации libunibreak на каждый входной байт |
-| Bidi одной строки | [fvm_text_bidi](../include/flashvm/font.h#L96): направление, логические уровни, карта визуальных индексов |
+| Bidi одной строки | [fvm_text_bidi](../include/flashvm/font.h#L103): направление, логические уровни, карта визуальных индексов |
 
 Координаты — пиксели, x вправо/y вниз. Масштабированные контуры FreeType имеют
 точность 26.6; double в экспортированных точках не создаёт дополнительную
@@ -132,6 +132,21 @@ PROVENANCE.json содержит источники и SHA-256 архивов, f
 
 Компоновка строк и абзацев с собственными контурами: [TEXT_LAYOUT.ru.md](TEXT_LAYOUT.ru.md).
 
+## Проверка входа bidi и срок жизни результатов (v0.827)
+
+[`fvm_text_bidi`](../include/flashvm/font.h#L103) принимает заимствованный UTF-32 абзац до 1 000 000 Unicode-скаляров
+и направление AUTO/LTR/RTL. Представление enum из C проверяется до чтения
+значения C++ enum. Суррогаты, неверные скаляры, отсутствующие обязательные массивы
+и превышение длины дают INVALID_ARGUMENT до изменения результатов.
+NO_FONTS проверяет тот же вход, затем возвращает UNSUPPORTED.
+
+Направление, визуальный текст, индексы visual-to-logical и логические уровни
+публикуются только при успехе. Для пустого входа разрешены нулевые массивы;
+с поддержкой шрифтов AUTO становится LTR. Вход и визуальный массив могут
+совпадать; остальные выходные массивы должны быть раздельными. Память не
+удерживается; независимые буферы не требуют VM, корней GC или общего шрифта.
+Границы проверяет `text_bidi_admission.c`. Полная приёмка Unicode/SWF остаётся открытой.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -148,7 +163,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../include/flashvm/path.h#L81) |
 | `fvm_path_mask` | function | [include/flashvm/path.h:86](../include/flashvm/path.h#L86) |
-| `fvm_text_bidi` | function | [include/flashvm/font.h:96](../include/flashvm/font.h#L96) |
+| `fvm_text_bidi` | function | [include/flashvm/font.h:103](../include/flashvm/font.h#L103) |
 | `fvm_text_breaks` | function | [include/flashvm/font.h:88](../include/flashvm/font.h#L88) |
 | `fvm_text_run_path` | function | [include/flashvm/font.h:82](../include/flashvm/font.h#L82) |
 <!-- source-links:end -->

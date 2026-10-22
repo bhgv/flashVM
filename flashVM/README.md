@@ -1,10 +1,12 @@
-Development version: **0.826** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.826 ` and an English description. Increase the subversion before each
+Development version: **0.827** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.827 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.827: [Validate bidi C input before enum loads and output publication](doc/FONT_LIBRARIES.md).
 
 v0.826: [Validate native shaping directions and isolate feature selection across workers](doc/TEXT_KERNING.md).
 

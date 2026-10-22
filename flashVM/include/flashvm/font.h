@@ -91,7 +91,14 @@ extern "C"
      * Direction is requested and resolved in-place; levels remain in logical order.
      * map[visual_index] is a logical index. Visual code points are reordered,
      * without mirroring or Arabic presentation-form substitution:
-     * shape logical script/direction runs with HarfBuzz before arranging visually. */
+     * shape logical script/direction runs with HarfBuzz before arranging visually.
+     * At most 1,000,000 Unicode scalars; surrogate/non-Unicode values and invalid
+     * direction representations return INVALID_ARGUMENT before changing any output.
+     * All arrays are borrowed for the call; logical and visual may be the same array.
+     * Other output arrays must be disjoint. Errors leave direction/outputs unchanged.
+     * Empty input permits NULL arrays; AUTO resolves to LTR with fonts enabled.
+     * NO_FONTS validates inputs then returns UNSUPPORTED without writing outputs.
+     * No VM/GC state is accessed; independent caller buffers can run concurrently. */
     /* Resolve bidi levels and the visual-to-logical mapping of a paragraph. */
     FVM_API FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
                                      FVM_TextDirection *direction, unsigned int *visual,

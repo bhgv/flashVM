@@ -48,7 +48,7 @@ through the libraries' native APIs.
 | OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L62) returns glyph IDs, advances, offsets and UTF-8 byte clusters |
 | Positioned text contours | [fvm_text_run_path](../include/flashvm/font.h#L82) combines positioned glyph contours in a new path |
 | Allowed Unicode breaks | [fvm_text_breaks](../include/flashvm/font.h#L88) outputs native libunibreak classifications per input byte |
-| One-line bidi resolution | [fvm_text_bidi](../include/flashvm/font.h#L96) returns resolved direction, logical levels and visual→logical map |
+| One-line bidi resolution | [fvm_text_bidi](../include/flashvm/font.h#L103) returns resolved direction, logical levels and visual→logical map |
 
 Positions are pixels, x right/y down. FreeType's scaled unhinted outlines use 26.6
 precision; exported double coordinates do not add precision that was absent in
@@ -128,6 +128,21 @@ facilities remain necessary for upstream internals. See
 
 Native owned paragraph/line layout: [TEXT_LAYOUT.md](TEXT_LAYOUT.md).
 
+## Bidi admission and output lifetime (v0.827)
+
+[`fvm_text_bidi`](../include/flashvm/font.h#L103) accepts one borrowed UTF-32 paragraph of at most 1,000,000
+Unicode scalars and a valid AUTO/LTR/RTL direction. Invalid enum representations
+from C are checked without a C++ enum load. Invalid scalars, missing required
+arrays and over-limit lengths return INVALID_ARGUMENT before output changes.
+NO_FONTS performs the same admission then returns UNSUPPORTED.
+
+Direction, visual text, visual-to-logical indices and logical embedding levels
+are published only on success. Empty input permits null arrays; enabled fonts
+resolve AUTO to LTR. Logical and visual arrays may coincide; other output arrays
+must be disjoint. No input/output memory is retained. Independent buffers need no
+VM, GC roots or shared font handle. `text_bidi_admission.c` checks these boundaries.
+This does not complete Unicode layout or SWF acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -144,7 +159,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../include/flashvm/path.h#L81) |
 | `fvm_path_mask` | function | [include/flashvm/path.h:86](../include/flashvm/path.h#L86) |
-| `fvm_text_bidi` | function | [include/flashvm/font.h:96](../include/flashvm/font.h#L96) |
+| `fvm_text_bidi` | function | [include/flashvm/font.h:103](../include/flashvm/font.h#L103) |
 | `fvm_text_breaks` | function | [include/flashvm/font.h:88](../include/flashvm/font.h#L88) |
 | `fvm_text_run_path` | function | [include/flashvm/font.h:82](../include/flashvm/font.h#L82) |
 <!-- source-links:end -->

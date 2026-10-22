@@ -4,4 +4,8 @@
 #define FVM_FONT_KERN_TAG 0x6B65726EUL /* Big-endian OpenType 'kern' feature identity. */
 #define FVM_FONT_FEATURE_BEGIN 0U /* Apply explicit feature selection from the first cluster. */
 #define FVM_FONT_FEATURE_END ((unsigned int)-1) /* HarfBuzz whole-buffer terminal cluster sentinel. */
+#define FVM_FONT_BIDI_MAX_SCALARS 1000000UL /* Maximum UTF-32 paragraph length accepted by the C bridge. */
+#define FVM_FONT_UNICODE_MAX 0x10FFFFU /* Largest Unicode scalar representation. */
+#define FVM_FONT_SURROGATE_BEGIN 0xD800U /* First non-scalar UTF-16 surrogate code point. */
+#define FVM_FONT_SURROGATE_END 0xDFFFU /* Last non-scalar UTF-16 surrogate code point. */
 #endif
