@@ -46,6 +46,8 @@ v0.863 adds a separate deterministic CC0 GSUB oracle: optional clig ff decompose
 
 v0.864 verifies TextFormat extents, current/future tracking, centered auto-size, binary/channel transfer after source destruction, wrapped right anchoring, underline ownership and combining-cluster rollback. Expected fi at 40px/+1 is 26px advance and 30px outer width; later 20px/-1 fifi is 20px advance and 24px outer width. Wrapped 40px/+1 fifi at outer width 30 gives height 94; disabling wrapping restores width 56 while preserving the right edge.
 
+v0.865 adds four ordinary-build C++ allocation sweeps: tracked fifi layout plus current-format, assignment and replaceText field paths. Failed construction clears outputs; failed field edits preserve counted text, spacing and measured geometry, with balanced GC/native scopes and reusable fonts. These sweeps do not inject failures into bundled C-library malloc sites.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
