@@ -1,8 +1,8 @@
 # Доигрывание событий через очередь смешивания
 
-v0.927 добавляет [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L93)(queue, frames, target, accepted). После остановки производителя stream/base владелец явно разрешает один событийный блок с нулевой основой. frames положителен и не больше ёмкости адаптера; target от frames до [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). Часы, дедлайны, пауза, seek и переход EOF не угадываются.
+v0.927 добавляет [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L94)(queue, frames, target, accepted). После остановки производителя stream/base владелец явно разрешает один событийный блок с нулевой основой. frames положителен и не больше ёмкости адаптера; target от frames до [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). Часы, дедлайны, пауза, seek и переход EOF не угадываются.
 
-Перед смешиванием читается настоящая длина очереди. Недостаток места либо отсутствие активных голосов/pending-tail дают NOT_FOUND. Ошибка наблюдения и backpressure не двигают голоса. Последний блок может дополниться тишиной; исчерпание голосов не означает опустошение очереди. Необязательный accepted сначала обнуляется и получает frames только после реального приёма.
+Перед смешиванием читается настоящая длина очереди. Недостаток места либо отсутствие активных голосов/pending-tail дают NOT_FOUND. Ошибка наблюдения и нехватка места, найденная до render, не двигают голоса. Последний блок может дополниться тишиной; исчерпание голосов не означает опустошение очереди. Необязательный accepted сначала обнуляется и получает frames только после реального приёма.
 
 Отказ записи сохраняет точные смешанные байты и уже потреблённое время голосов. Повторять нужно тот же размер. Pending base PCM либо другой размер tail дают INVALID_ARGUMENT до callbacks. Обычная adapted.write не может принять tail-retry даже при нулевых входных байтах. Успешная clear отменяет pending без перемотки голосов; pause сохраняет его. Ошибки backend передаются, исключения становятся ERROR, рекурсивные callbacks дают INVALID_ARGUMENT.
 
@@ -24,6 +24,10 @@ v0.934: четыре настоящих OS-потока независимо в�
 
 v0.937: немедленный stop-by-ID сохраняет уже смешанный pending PCM; stop-all с успешной clear отбрасывает его. Независимый oracle на 44100 Hz проверяет все 220 samples пяти-миллисекундного DECLICK, финальный ноль и padding; tail продолжает release до исчерпания. Неверные frame/target и невозможный backend count не двигают голос. C89 link-тест покрывает все новые API, обнуление accepted и сохранность выходов наблюдений/backend.
 
+Порядок завершения на стороне хоста: остановить base-producer и разрешить BASE-retry через него либо успешную clear; отличать EOF от frame-gate и backpressure. Разрешать tail-кадры явно с ограниченным target. При NOT_FOUND смотреть pending origin: отказ backend может оставить TAIL-блок с уже потреблённым временем, повторять нужно тот же размер. Без pending активные голоса могут ждать места; исчерпание голоса и опустошение FIFO — разные наблюдения. Stop/seek согласуют микшер, pending/accepted PCM и converter под блокировкой хоста; API не даёт общей транзакции владельцев и не разрешает таймлайн автоматически.
+
+Доказательства v0.938: 103/103 native Release NO_MEDIA/NO_FONTS регрессий звука/потоков/каналов/stop-binding и примера; 19/19 выбранных ASan/UBSan плюс три явных --no-throw запуска queue/control/настоящего stream. Обычная сборка проверяет исключения и fault-sweep, включая инструментированный bounded-tail тест. LeakSanitizer отключён из-за недоступного /proc; проверка утечек не заявлена. Переименованный отделённый компонент конфигурируется со своим minimal-профилем, его скопированный PCM-checker проходит на native-бинарнике; отдельной detached-сборки нет. Ссылки и checker каталога/примеров проходят. Не подтверждаются физическое аудио, production desktop mixing, дочерние клипы, новые кодеки, полная A/V/seek-совместимость и остальные text/JIT/debugger стадии. Все девять стадий остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -34,6 +38,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:93](../include/flashvm/swf_sound_mix_queue.h#L93) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:94](../include/flashvm/swf_sound_mix_queue.h#L94) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_QUEUE` | macro / define | [include/flashvm/swf_sound_output.h:12](../include/flashvm/swf_sound_output.h#L12) |
 <!-- source-links:end -->

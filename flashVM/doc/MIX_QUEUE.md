@@ -1,5 +1,7 @@
 # Retained stream/event queue composition (v0.772)
 
+Current additive tail and byte-budget APIs: [EN](AUDIO_MIX_TAILS.md) / [RU](AUDIO_MIX_TAILS.ru.md). After actual producer quiescence, pump_tail owns its zero-base retry independently of adapted.write. Backend NOT_FOUND may mean a retained rejected block; inspect pending origin rather than treating that status as EOF. Desktop stream/event integration remains separate.
+
 [Русский](MIX_QUEUE.ru.md) · [additive mixer](STREAM_EVENT_MIX.md) · [C89 example](../examples/multimedia/swf_stream_mix/README.md)
 
 The native composition adapter wraps one exclusive all-or-none PCM queue backend.
@@ -128,9 +130,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:101](../include/flashvm/swf_sound_mix_queue.h#L101) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:102](../include/flashvm/swf_sound_mix_queue.h#L102) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:63](../include/flashvm/swf_sound_mix_queue.h#L63) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:97](../include/flashvm/swf_sound_mix_queue.h#L97) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:98](../include/flashvm/swf_sound_mix_queue.h#L98) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 <!-- source-links:end -->

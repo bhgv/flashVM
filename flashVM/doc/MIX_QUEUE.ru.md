@@ -1,5 +1,7 @@
 # Сохранение смешанного stream/event PCM при retry (v0.772)
 
+Новые API хвостов и байтового бюджета: [EN](AUDIO_MIX_TAILS.md) / [RU](AUDIO_MIX_TAILS.ru.md). После настоящей остановки производителя pump_tail владеет нулевой основой отдельно от adapted.write. Backend NOT_FOUND может означать сохранённый отклонённый блок: нужно смотреть pending origin, а не принимать статус за EOF. Desktop stream/event-интеграция остаётся отдельной.
+
 [English](MIX_QUEUE.md) · [Сложение PCM](STREAM_EVENT_MIX.ru.md) · [C89-пример](../examples/multimedia/swf_stream_mix/README.md)
 
 Нативный адаптер оборачивает один эксклюзивный all-or-none PCM backend. Новый блок
@@ -43,7 +45,7 @@ backend обязан соблюдать прежний атомарный кон
 
 `fvm_swf_sound_mix_queue_info(adapter, out)` копирует struct_size, capacity_frames,
 pending_frames без устройства/выделений/VM. Null/wrong-size/reentry дают
-INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L101) освобождает
+INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L102) освобождает
 только объект/массивы без callback, stop голосов и device close; null допустим.
 Вызывать после quiescence всех пользователей table. Нужна внешняя сериализация:
 busy-флаг защищает callback recursion, а не гонки потоков. Managed-указателей нет.
@@ -113,9 +115,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:101](../include/flashvm/swf_sound_mix_queue.h#L101) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:102](../include/flashvm/swf_sound_mix_queue.h#L102) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:63](../include/flashvm/swf_sound_mix_queue.h#L63) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:97](../include/flashvm/swf_sound_mix_queue.h#L97) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:98](../include/flashvm/swf_sound_mix_queue.h#L98) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 <!-- source-links:end -->

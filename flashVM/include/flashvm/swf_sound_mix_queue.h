@@ -80,8 +80,9 @@ extern "C"
     /* Authorize one event-only zero-base block after quiescing the stream/base producer.
      * frames is 1..capacity, target is frames..SOUND_OUTPUT_MAX_QUEUE. Observe the real
      * FIFO first; insufficient headroom or no active voices/pending tail -> NOT_FOUND.
-     * No voice time is consumed on backpressure/observation failure. A rejected write
-     * retains exactly mixed bytes; retry the same frames, never advance voices twice.
+     * No voice time is consumed by headroom checks/observation failure. A rejected write
+     * retains exactly mixed bytes even on backend NOT_FOUND; retry the same frames,
+     * never advance voices twice. NOT_FOUND alone does not imply voice/source EOF.
      * Pending base input or a different pending tail size -> INVALID_ARGUMENT before
      * callbacks. Adapted write cannot consume a tail retry, even with identical zeros.
      * accepted is optional and cleared first; on OK it receives frames. No implicit

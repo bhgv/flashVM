@@ -1,8 +1,8 @@
 # Event tails through the composition queue
 
-v0.927 adds [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L93)(queue, frames, target, accepted). After the stream/base producer is quiescent, the host authorizes one zero-base event-only block. frames is positive and at most the fixed adapter capacity; target is at least frames and at most [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). No clock, frame deadline, pause, seek or EOF transition is inferred.
+v0.927 adds [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L94)(queue, frames, target, accepted). After the stream/base producer is quiescent, the host authorizes one zero-base event-only block. frames is positive and at most the fixed adapter capacity; target is at least frames and at most [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). No clock, frame deadline, pause, seek or EOF transition is inferred.
 
-The pump observes actual queued frames before rendering. Insufficient room or no active voices/pending tail returns NOT_FOUND. Observation errors and backpressure consume no voice time. Successful final blocks may include padding silence; exhaustion does not mean that accepted audio has drained. accepted is optional, cleared first and receives frames only after real acceptance.
+The pump observes actual queued frames before rendering. Insufficient room or no active voices/pending tail returns NOT_FOUND. Observation errors and failed pre-render headroom checks consume no voice time. Successful final blocks may include padding silence; exhaustion does not mean that accepted audio has drained. accepted is optional, cleared first and receives frames only after real acceptance.
 
 A rejected tail write retains exact mixed bytes and already-consumed voice time. Retry the same frame count. Pending base PCM or a different tail size is INVALID_ARGUMENT before callbacks. Ordinary adapted writes cannot consume a tail retry even when their bytes are all zero. Acknowledged clear cancels pending ownership without rewinding voices; pause preserves it. Backend errors propagate, exceptions become ERROR, recursive callbacks are INVALID_ARGUMENT.
 
@@ -24,6 +24,10 @@ v0.934: four actual OS workers each own an independent native voice template, mi
 
 v0.937: immediate stop-by-ID preserves already mixed pending PCM, while stop-all plus acknowledged clear discards it. An independent 44100-Hz oracle checks all 220 five-millisecond DECLICK release samples, final zero and block padding; tail pumping continues releasing voices until exhaustion. Invalid frame/target geometry and impossible backend counts consume no voice time. The C89 link test covers every new API, cleared accepted output and preserved observation/backend outputs.
 
+Host completion sequence: quiesce the base producer and resolve any BASE retry through that producer or acknowledged clear; distinguish source EOF from frame gates and queue backpressure. Pump only explicitly authorized tail frames with a bounded queue target. On NOT_FOUND inspect pending origin: a rejected backend write may own a TAIL block and consumed voice time, so retry that same size. With no pending block, active voices may still be waiting for queue headroom; voice exhaustion and FIFO drain are separate observations. Stop/seek must coordinate mixer controls, pending/accepted PCM and converter state under the host lock; this API supplies no cross-owner transaction or implicit timeline authorization.
+
+v0.938 evidence: 103/103 native Release NO_MEDIA/NO_FONTS sound/stream/channel/stop-binding regression and tutorial checks; 19/19 targeted ASan/UBSan checks plus three explicit --no-throw queue/control/actual-stream executions. Ordinary builds run callback exceptions and allocation sweeps, including the instrumented bounded-tail test. LeakSanitizer is disabled because /proc access is unavailable; no leak-check claim is made. The renamed detached component configures with its own minimal profile and copied PCM checker passes against the native executable, without a separate detached build. Source links and the frontend/example catalog checker pass. No physical audio, production desktop mixed playback, child-clip scheduling, new codec support, A/V/seek conformance or unrelated text/JIT/debugger stage is certified by this series. All nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -34,6 +38,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:93](../include/flashvm/swf_sound_mix_queue.h#L93) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:94](../include/flashvm/swf_sound_mix_queue.h#L94) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_QUEUE` | macro / define | [include/flashvm/swf_sound_output.h:12](../include/flashvm/swf_sound_output.h#L12) |
 <!-- source-links:end -->
