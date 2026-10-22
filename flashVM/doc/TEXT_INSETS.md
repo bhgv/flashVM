@@ -4,7 +4,7 @@ v0.885 applies TextFormat `leftMargin`, `rightMargin` and `blockIndent` to the
 uniform native TextField style and TextFormat.getTextExtent. Each accepts finite
 integers in [0,4096] native pixels; null/undefined preserves the previous value.
 Negative, fractional, NaN and infinite values return INVALID_ARGUMENT without
-changing a field. First-line `indent`, bullets and tabStops remain unsupported.
+changing a field. First-line `indent` is now supported separately: [contract](TEXT_INDENT.md). Bullets and tabStops remain unsupported.
 This is a bounded uniform-style implementation, not full Flash conformance.
 
 The left origin is leftMargin + blockIndent. Wrapped multiline layout subtracts

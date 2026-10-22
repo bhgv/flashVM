@@ -119,6 +119,8 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 [`FVM_TEXT_ALIGN_JUSTIFY`](../include/flashvm/text_layout.h#L24) расширяет внутренние U+0020 на непоследних перенесённых LTR-строках. Концевые пробелы сохраняют записи с нулевым advance; последние строки, явные концы абзаца и строки без промежутков остаются естественной ширины. Bidi и неоднозначные кластеры пробелов отклоняются. Измерение, позиции глифов, интервалы, подчёркивание и независимые пути согласованы. [Аргументы, статусы, владение и проверки](TEXT_JUSTIFY.ru.md).
 
+C89 API [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L119) добавляет знаковые отступы первой строки непустого абзаца без изменения структуры параметров. Нулевой отступ сохраняет shaping, независимые пути и диапазоны байтов; ненулевые значения пока требуют ограниченного LTR. [Аргументы, размеры, ошибки и владение](TEXT_INDENT.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -132,6 +134,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
 | `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../include/flashvm/text_layout.h#L119) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../include/flashvm/text_layout.h#L147) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:144](../include/flashvm/text_layout.h#L144) |

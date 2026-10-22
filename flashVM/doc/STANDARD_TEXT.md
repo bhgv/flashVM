@@ -61,8 +61,7 @@ negative leading is accepted when resulting baseline spacing stays positive.
 Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
 styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
-([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Nonzero first-line indent,
-bullets, hyperlinks and tab stops are rejected
+([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Bullets, hyperlinks and tab stops are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
 
@@ -165,6 +164,8 @@ TextField.autoSize supports none/left and false/true. Edits and current formatti
 SWF8 `align="justify"` is supported for bounded LTR paragraphs with unambiguous ASCII-space clusters. Current/future formatting, snapshots and graph transfer retain it. Final/hard-ended lines remain natural; bidi and general Unicode justification remain unsupported. [Contract and evidence](TEXT_JUSTIFY.md).
 
 Paragraph leftMargin/rightMargin/blockIndent now accept bounded nonnegative integers and affect wrapping, alignment, automatic fitting and graph transfer. [Contract and limits](TEXT_INSETS.md).
+
+First-line integer indent now affects each nonempty hard paragraph, intrinsic width, paths and fitting. Hanging values require SWF8 and sufficient left inset. [Contract and native API](TEXT_INDENT.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

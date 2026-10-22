@@ -4,7 +4,7 @@ v0.885 применяет TextFormat `leftMargin`, `rightMargin`, `blockIndent` 
 однородному native-стилю TextField и TextFormat.getTextExtent. Значения — конечные
 целые числа [0,4096] в native-пикселях; null/undefined сохраняют прежнее значение.
 Отрицательные, дробные, NaN и бесконечные дают INVALID_ARGUMENT без изменения поля.
-Отступ только первой строки `indent`, bullets и tabStops пока не поддержаны.
+Отступ только первой строки `indent` теперь поддержан отдельно: [контракт](TEXT_INDENT.ru.md). Bullets и tabStops пока не поддержаны.
 Это ограниченная реализация однородного стиля, не полное соответствие Flash.
 
 Левое начало равно leftMargin + blockIndent. Перенос многострочного текста

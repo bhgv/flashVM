@@ -6,6 +6,8 @@ counted UTF-8, layout options, shaping flags and letterSpacing as
 native pixels. The C API accepts fractional offsets. No public structure or
 previous function signature changes; zero forwards the old spaced behavior.
 
+The font must be a valid live handle. text may be NULL only for size zero; size is the complete counted UTF-8 byte length, including any embedded NUL. Invalid UTF-8 returns INVALID_ARGUMENT, while existing byte/scalar limits return UNSUPPORTED. options may be NULL for unlimited width, natural line height and AUTO/START. flags must be a subset of [FVM_FONT_SHAPE_FLAGS](../include/flashvm/font.h#L11); letterSpacing retains its signed finite [-4096,4096] contract. out must be non-NULL and receives the independent layout only on success.
+
 Every nonempty hard paragraph offsets only its first visual line. CRLF remains
 one separator, other existing hard separators and trailing empty lines retain
 their ranges. Empty paragraphs have no offset. First-line wrapping/alignment
@@ -53,6 +55,12 @@ Restore checks exact flag/value agreement, integer range and negative policy bef
 that style's font import. Native attachment follows both styles and geometry.
 Already imported fonts retain existing context graph-import lifetime rules.
 
+v0.902 verification: 118 native/tutorial checks pass, including 12 new tests in this series. Twenty-seven targeted ASan/UBSan checks pass (17 preceding justification/inset checks and ten new indentation checks); seven new C++ allocation-failure sweeps run only in the ordinary build. Fifteen NO_FONTS checks pass, including new C89 indentation/admission calls, and both tutorials compile in that profile. LeakSanitizer is disabled because /proc is unavailable; leak acceptance is not claimed.
+
+The new cases cover first/continuation origins, all supported alignments, CRLF/empty paragraphs, fractional/hanging native offsets, ligature/tracking preservation, four real faces and underline, automatic anchors, independent current/future binary and channel transfer, sender teardown/receiver GC, malformed packed state and actual loaded SWF6/7/8 admission. Direct restoration rejects negative offsets in SWF6/7 before attachment. A cached SWF8 hanging field rejects measurement/path reads after loading SWF7 and recovers through valid positive formatting. Native JIT availability is checked separately; AVM1 tests assert native entry counters in attached/automatic modes. Four OS workers each own a font and perform 64 layout/path iterations.
+
+Both annotated C89 tutorials execute the new modes and retain the previous checks. A renamed detached component configures and both copied tutorial checkers pass against the native executables; a separate detached build is not claimed. Source-link and annotated-example/catalog checks pass. Original Flash reference comparison, full bidi paragraph indentation, styled spans, bullets/tabStops, SWF font loading, physical devices/platforms and all nine roadmap stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -62,6 +70,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_FONT_SHAPE_FLAGS` | macro / define | [include/flashvm/font.h:11](../include/flashvm/font.h#L11) |
 | `FVM_Path` | struct | [src/capi/path_c.cpp:26](../src/capi/path_c.cpp#L26) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:119](../include/flashvm/text_layout.h#L119) |

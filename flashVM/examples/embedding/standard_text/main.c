@@ -484,12 +484,12 @@ int main(int argc, char **argv)
         fvm_value_boolean(&value, 1); /* Enable the left automatic anchor. */
         if (fvm_object_set(context, field, "autoSize", &value) != FVM_OK) fvm_example_fail("inset fitting", __FILE__, __LINE__); /* Wrapped fitting changes height only. */
         if (fvm_object_get(context, field, "textWidth", &result) != FVM_OK) fvm_example_fail("inset advance", __FILE__, __LINE__); /* Read glyph-only width. */
-        width = result.number; /* First wrapped line advances 72px. */
+        width = result.number; /* Natural first-line advance is 72px; first-line mode adds 18px to its intrinsic extent. */
         if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("inset height", __FILE__, __LINE__); /* Read two-line outer height. */
         height = result.number; /* Ascent/descent and leading produce 94px with gutter. */
         printf("%s wrap: advance=%.2f height=%.2f\n", insets == 2 ? "indent" : "insets", width, height); /* Expected 90 or 72 advance, with 94 height. */
         fvm_value_boolean(&value, 0); /* Disable wrapping for horizontal fitting. */
-        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK || fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("inset fit width", __FILE__, __LINE__); /* Fit includes 132px text, 30px insets and 4px gutter. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK || fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("inset fit width", __FILE__, __LINE__); /* Fit includes 132px text, 30px insets, 4px gutter and the optional 18px first-line offset. */
         printf("%s fit: width=%.2f\n", insets == 2 ? "indent" : "insets", result.number); /* Expected 184 or 166; exported outlines remain field-local. */
     } /* The ordinary path export and context cleanup below retain their ownership. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
