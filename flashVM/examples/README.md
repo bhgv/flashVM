@@ -1693,6 +1693,8 @@ clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
 с одним насыщением и хвостом более длинного голоса. Python oracle проверяет все
 отсчёты, replacement и native errors. Режим `--queue` через настоящий memory FIFO
 проверяет пять отказов и повтор без второго смешивания; file consumer отдельный.
+Режим `--identities` рассчитывает полный бюджет адаптера через tracked predictor
+и после software-drain отменяет все событийные ID через stop_all без изменения PCM.
 Desktop mixed policy остаётся открытой. [Адаптер EN](../doc/MIX_QUEUE.md) /
 [RU](../doc/MIX_QUEUE.ru.md).
 [EN](../doc/STREAM_EVENT_MIX.md) / [RU](../doc/STREAM_EVENT_MIX.ru.md).

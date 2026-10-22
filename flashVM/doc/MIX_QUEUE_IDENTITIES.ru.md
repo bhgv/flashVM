@@ -87,6 +87,52 @@ v0.972: Проверены root StopSounds, failed clear/retry, GC и interprete
 
 v0.973: Проверено продолжение настоящего stream после stop_all событий и точный retry готового микса.
 
+## Общая остановка событий и расчёт памяти адаптера
+
+[`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) немедленно удаляет все голоса микшера, включая
+DECLICK-хвосты, и сбрасывает сроки всех ID. В отличие от
+[`fvm_swf_sound_mix_queue_stop_id`](../include/flashvm/swf_sound_mix_queue.h#L154), общая остановка не начинает release-ramp.
+Принятый и pending PCM сохраняется побайтно, как и курсор base-producer,
+состояние паузы и общий отсчёт. Новый NoMultiple разрешён сразу, но начинает
+смешиваться после уже подготовленных pending-кадров. Повтор безопасен.
+Это управление будущими событиями, а не очистка устройства или полный StopSounds.
+
+Для context StopSounds хост регистрирует callback с подтверждённым `adapted.clear`
+и согласует его с base-producer. Только успешный clear удаляет pending/FIFO,
+голоса, ID и общий отсчёт. Ошибка clear сохраняет всё это состояние.
+После остановки только событий нельзя сообщать об отмене всего вывода.
+Root-тест использует настоящий AVM1 StopSounds, ошибку clear, повтор, закреплённый
+MovieClip, GC safe points и исполнение interpreter/native JIT.
+
+[`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../include/flashvm/swf_sound_mix_queue.h#L52) заранее вычисляет точный
+объём запросов адаптера для обоих режимов. Channels — 1 или 2, block — в существующем
+пределе вывода, tracking — строго 0/1. Обязательный выходной scalar сохраняется
+при неверных аргументах и переполнении. Нет callbacks, выделений, VM или GC;
+вызывать расчёт можно и из backend callback. Включены владелец, оба PCM-массива
+и optional ID-таблица; память allocator/device/mixer/voices/VM считается отдельно.
+Создание по-прежнему начинается без tracking; таблица включается отдельно в
+нулевой эпохе без голосов. Расчёт не резервирует память и не гарантирует её выделение.
+
+| API | Ошибки, владение и сериализация |
+| --- | --- |
+| [`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) | Нужны живой tracked queue и заимствованные владельцы, внешняя сериализация всех операций микшера/очереди. Null/reentry: INVALID_ARGUMENT; tracking отключён: UNSUPPORTED. Ошибка микшера предшествует изменению ID. Без callbacks/выделений/VM/GC, передачи владения и неявных pause/clear. |
+| [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../include/flashvm/swf_sound_mix_queue.h#L52) | Обязательный scalar out, допустимые геометрия и режим. Неверные аргументы: INVALID_ARGUMENT; переполнение размера: OUT_OF_MEMORY; выход сохраняется. Владелец не нужен; параллельным вызовам нужны независимые выходные ячейки. |
+
+Новые native-тесты проверяют принятый PCM, pending BASE/TAIL retry, разные
+конвертированные ID, удаление release-хвостов, немедленный повтор NoMultiple,
+отсутствие выделений и четыре OS-потока по 64 цикла. Потоки владеют отдельными
+адаптерами; несинхронизированный доступ к общему микшеру не заявлен.
+
+
+## v0.974 regression evidence
+
+Общее управление событиями v0.963–v0.974: tracked stop_all немедленно удаляет все event/release-голоса и ID-сроки, сохраняя pending/FIFO PCM, base-курсор и общий счётчик. Добавлен точный расчёт памяти для выбранного режима до создания адаптера. Проверены BASE/TAIL retry, новый NoMultiple, разные конвертированные ID, release, отсутствие выделений, четыре независимых OS-потока и настоящий root StopSounds/GC/JIT binding. Прошли 134 native проверки с примером, 43 выбранных ASan/UBSan и семь --no-throw запусков. Отдельный native JIT-профиль проверяет interpreter/native entries root StopSounds. Исключения и allocation-failures проверены обычной сборкой; LeakSanitizer отключён. Отделённый переименованный компонент сконфигурирован, скопированный PCM-checker прошёл на native-бинарнике; отдельной сборки не было. Desktop mixing, дочерние словари/таймлайны, автоматические A/V/seek, реальные устройства/платформы и все девять стадий остаются открытыми. [Контракт](MIX_QUEUE_IDENTITIES.ru.md).
+
+The converted-stream cancellation oracle uses a single positive event so its retained first block clips; later samples are checked against independent base-only rational interpolation. / Оракул отмены stream использует один положительный event: первый сохранённый блок насыщается, последующие отсчёты сверяются с независимой рациональной интерполяцией только base.
+
+
+v0.974: Описаны tracked stop_all, расчёт памяти, подтверждённый StopSounds и границы проверок.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -99,8 +145,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:141](../include/flashvm/swf_sound_mix_queue.h#L141) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../include/flashvm/swf_sound_mix_queue.h#L109) |
 | `fvm_swf_sound_mix_queue_sound_active` | function | [include/flashvm/swf_sound_mix_queue.h:146](../include/flashvm/swf_sound_mix_queue.h#L146) |
+| `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../include/flashvm/swf_sound_mix_queue.h#L162) |
 | `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:154](../include/flashvm/swf_sound_mix_queue.h#L154) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:57](../include/flashvm/swf_sound_mix_queue.h#L57) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../include/flashvm/swf_sound_mix_queue.h#L44) |
+| `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:123](../include/flashvm/swf_sound_mix_queue.h#L123) |
 <!-- source-links:end -->

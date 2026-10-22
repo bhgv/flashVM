@@ -87,6 +87,53 @@ v0.972: Exercise real StopSounds bindings, failed clear retry, GC and interprete
 
 v0.973: Verify real stream conversion continues unchanged after stop_all while retained mixture retries exactly.
 
+## Global event cancellation and predicted adapter budgets
+
+[`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) immediately retires all mixer voices, including
+DECLICK release tails, and resets every ID deadline. Unlike [`fvm_swf_sound_mix_queue_stop_id`](../include/flashvm/swf_sound_mix_queue.h#L154),
+it does not begin a release ramp. Existing accepted and pending mixed PCM remains
+byte-for-byte intact, as do the base producer cursor, pause policy and shared epoch.
+A new NoMultiple start may therefore register immediately, but begins after every
+already-rendered pending frame. Repeating cancellation is harmless. This is a
+future-event control, not device flushing or the complete StopSounds contract.
+
+For context StopSounds, bind a host callback that acknowledges `adapted.clear`
+(and coordinates its base producer). Only successful clear removes pending/FIFO
+bytes and resets tracked voices, deadlines and the clock. A failed clear preserves
+all of them. A host must not report whole-output cancellation after event-only stop.
+The root binding regression covers actual AVM1 StopSounds, failed clear, retry,
+a pinned MovieClip, GC safe points and interpreter/native-JIT execution.
+
+[`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../include/flashvm/swf_sound_mix_queue.h#L52) predicts exact requested
+adapter bytes for either mode before owner acquisition. Channels are 1 or 2,
+block is within the existing output bound, and tracking is strictly 0 or 1.
+The required output scalar is preserved on invalid arguments or checked overflow.
+No callback, allocation, VM or GC is involved, even inside a backend callback.
+Prediction includes the owner, both PCM arrays and the optional fixed table; it
+excludes allocator overhead, device, mixer, voice and VM memory. Creation still
+starts untracked; enable the table separately at the existing zero-epoch safe point.
+A prediction does not reserve storage or guarantee later allocation succeeds.
+
+| API | Errors, ownership and serialization |
+| --- | --- |
+| [`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) | Required live tracked queue and borrowed owners, externally serialized with every mixer/queue operation. Null or callback reentry: INVALID_ARGUMENT; disabled tracking: UNSUPPORTED. Mixer failure precedes deadline mutation. No callbacks/allocation/VM/GC; no ownership transfer or implicit pause/clear. |
+| [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../include/flashvm/swf_sound_mix_queue.h#L52) | Required scalar out and valid geometry/mode. Invalid input: INVALID_ARGUMENT; representational overflow: OUT_OF_MEMORY, output unchanged. Independent of any owner; concurrent callers need separate output storage. |
+
+The new native tests cover accepted PCM, pending BASE and TAIL retries, multiple
+converted IDs, global retirement of release tails, immediate NoMultiple restart,
+zero-allocation paths and four distinct OS workers with 64 epochs each. The workers
+own separate adapters; they do not certify unsynchronized access to a shared mixer.
+
+
+## v0.974 regression evidence
+
+Global event control v0.963–v0.974: tracked stop_all immediately retires every event/release voice and cancels ID deadlines while preserving pending and accepted PCM, base cursors and shared clock. A checked mode-aware predictor reports exact adapter allocation requests before acquisition. Tests cover BASE/TAIL retry, NoMultiple restart, distinct converted IDs, release retirement, zero-allocation paths, four independent workers and actual root StopSounds/GC/JIT binding. 134 native regression/tutorial checks pass; ASan/UBSan passes 43 selected checks plus seven explicit --no-throw runs. A separate native JIT profile asserts interpreter/native entries for the root StopSounds test. Ordinary builds cover allocation failures and exceptions; LeakSanitizer is disabled. A renamed detached component configures and its copied PCM checker passes against the native executable; no separate detached build. Production desktop mixing, child dictionary/timeline routing, automatic A/V/seek, real devices/platforms and all nine stages remain open. [Contract](MIX_QUEUE_IDENTITIES.md).
+
+The converted-stream cancellation oracle uses a single positive event so its retained first block clips; later samples are checked against independent base-only rational interpolation. / Оракул отмены stream использует один положительный event: первый сохранённый блок насыщается, последующие отсчёты сверяются с независимой рациональной интерполяцией только base.
+
+
+v0.974: Document tracked stop_all, preflight storage, acknowledged StopSounds and regression limits.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -99,8 +146,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:141](../include/flashvm/swf_sound_mix_queue.h#L141) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../include/flashvm/swf_sound_mix_queue.h#L109) |
 | `fvm_swf_sound_mix_queue_sound_active` | function | [include/flashvm/swf_sound_mix_queue.h:146](../include/flashvm/swf_sound_mix_queue.h#L146) |
+| `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../include/flashvm/swf_sound_mix_queue.h#L162) |
 | `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:154](../include/flashvm/swf_sound_mix_queue.h#L154) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:57](../include/flashvm/swf_sound_mix_queue.h#L57) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../include/flashvm/swf_sound_mix_queue.h#L44) |
+| `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:123](../include/flashvm/swf_sound_mix_queue.h#L123) |
 <!-- source-links:end -->

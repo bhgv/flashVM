@@ -48,7 +48,7 @@ static FVM_Result clear_native(void *p)
     q->count = 0;
     return FVM_OK;
 }
- #ifndef FVM_MIX_IDENTITY_STREAM_FIXTURE_ONLY
+#ifndef FVM_MIX_IDENTITY_STREAM_FIXTURE_ONLY
 int main(int argc, char **argv)
 {
     bool throwing = argc == 1;

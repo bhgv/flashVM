@@ -1,10 +1,12 @@
-Development version: **0.973** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.973 ` and an English description. Increase the subversion before each
+Development version: **0.974** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.974: [Document tracked stop_all, preflight storage, acknowledged StopSounds and regression limits.](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.973: [Verify real stream conversion continues unchanged after stop_all while retained mixture retries exactly.](doc/MIX_QUEUE_IDENTITIES.md).
 
