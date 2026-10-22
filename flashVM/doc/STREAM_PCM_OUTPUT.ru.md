@@ -51,9 +51,9 @@ Seek проверяет абсолютный source block/offset на копии
 | --- | --- |
 | [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L45) | Копирует backend и заимствует native объекты; нужны пустая queue/совпадающая геометрия. INVALID_ARGUMENT при неверных descriptor/bounds, UNSUPPORTED при недостаточной точности double, backend статусы передаются. Без allocation/advance. |
 | [`fvm_swf_stream_output_pump`](../include/flashvm/swf_stream_output.h#L54) | Проверяет budget, готовит/повторяет один блок, отдаёт backend. Ошибка write сохраняет pending; пустые markers OK/0; EOF/backpressure NOT_FOUND. Accepted обнуляется первым; новая pending подготовка намеренно сохраняется при write error. |
-| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L88) | Подтверждает pause 0/1, без clear/priming. Ошибка сохраняет подтверждённый pause. |
-| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L92) | Копирует clock/chunk лишь после корректного queued observation. Точный struct_size, ошибка сохраняет output. Без source read/allocation. |
-| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L97) | Проверяет source position, pause/clear, затем reset source grid/pending/epoch. Поэтапный контракт ошибки выше; неверная позиция не вызывает backend side effects. |
+| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L104) | Подтверждает pause 0/1, без clear/priming. Ошибка сохраняет подтверждённый pause. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L108) | Копирует clock/chunk лишь после корректного queued observation. Точный struct_size, ошибка сохраняет output. Без source read/allocation. |
+| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L113) | Проверяет source position, pause/clear, затем reset source grid/pending/epoch. Поэтапный контракт ошибки выше; неверная позиция не вызывает backend side effects. |
 
 ## Сборка и проверка
 
@@ -172,7 +172,7 @@ PCM лишь после нужной safe point собственных frame act
 
 ## Явный source seek по movie frame
 
-[`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L103) принимает положительный movie frame, бинарным
+[`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L119) принимает положительный movie frame, бинарным
 поиском выбирает первый блок сегмента с frame не меньше запрошенного и вызывает
 прежний staged pause/clear/seek. Пропуск выбирает поздний блок, который gate всё
 равно удерживает до разрешения. После последнего блока выбирается source EOF.
@@ -189,7 +189,7 @@ helper для gotoAndStop.
 
 | API | Владение и ошибки |
 | --- | --- |
-| [`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L103) | Без VM/allocation находит первый indexed block >= positive frame, затем pause/clear/reset epoch. Пропуск ждёт, позиция после конца даёт EOF. Неверные metadata/args не вызывают backend effects; поздние ошибки callbacks следуют staged seek контракту. |
+| [`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L119) | Без VM/allocation находит первый indexed block >= positive frame, затем pause/clear/reset epoch. Пропуск ждёт, позиция после конца даёт EOF. Неверные metadata/args не вызывают backend effects; поздние ошибки callbacks следуют staged seek контракту. |
 
 Проверка v0.756: прошли 77 выбранных native проверок (один ранее собранный MP3 тест повторён после восстановления права исполнения), а также 14 shared-host. Обновлённые frame-seek/gating/C89 контракты прошли финальный focused набор. ASan/UBSan проверяет native output/reader/snapshot и настоящую MovieClip authorization с interpreter/native-JIT actions; вся VM не инструментирована, leak detection отключён хостом. Все шесть export режимов совпадают по PCM; minimal build работает без desktop frontend/device. Новые C++98/C89 implementation/consumer/tutorial objects собираются для ARM64 Linux/musl, RISC-V64 Linux/musl и Windows x64/MinGW; foreign execution/full cross-player не заявляются. Все девять стадий открыты.
 
@@ -239,14 +239,14 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:116](../include/flashvm/swf_stream_output.h#L116) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:109](../include/flashvm/swf_stream_output.h#L109) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:132](../include/flashvm/swf_stream_output.h#L132) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:125](../include/flashvm/swf_stream_output.h#L125) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:108](../include/flashvm/swf_stream_output.h#L108) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:45](../include/flashvm/swf_stream_output.h#L45) |
 | `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:58](../include/flashvm/swf_stream_output.h#L58) |
-| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:88](../include/flashvm/swf_stream_output.h#L88) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 | `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:54](../include/flashvm/swf_stream_output.h#L54) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
-| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:97](../include/flashvm/swf_stream_output.h#L97) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:103](../include/flashvm/swf_stream_output.h#L103) |
+| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:113](../include/flashvm/swf_stream_output.h#L113) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
 <!-- source-links:end -->

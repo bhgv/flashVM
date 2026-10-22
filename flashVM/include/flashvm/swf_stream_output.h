@@ -84,6 +84,22 @@ extern "C"
      * future stream frames. Only call after the host has chosen final sequence EOF. */
     FVM_API FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *,
         FVM_SWFSoundMixQueue *, size_t *accepted);
+    /* Coordinate one mixed block through a host-selected movie-frame gate. Zero holds all
+     * base source frames but still permits event-only output. Prefer authorized base; when
+     * its next block is gated or source EOF, mix voices over zero base. Silence is not
+     * emitted without active voices or an existing mixed retry. Uses producer block/target.
+     * Retained TAIL retry is accepted before newly authorized base, unchanged by gate moves;
+     * retained BASE retry stays held if its source frame is disallowed. Never reinterpret
+     * retries or advance their voices twice. Same exact backend/shared-clock pairing,
+     * lifetime/serialization and statuses as pump_mix_tail, but observed EOF is not required.
+     * accepted optional/cleared first; OK may consume a zero-frame source marker. NOT_FOUND
+     * can mean backpressure, exhaustion, missing clock or held BASE retry: inspect both
+     * producers. On failed write, keep all owners and retry this operation; seek/clear may
+     * cancel only after acknowledgement. No allocation/VM/GC, implicit pause or A/V retiming.
+     * Successful event-only blocks count in both clocks, preserve source cursor/chunk/EOF;
+     * output padding and already queued lead are not reference Flash timestamp semantics. */
+    FVM_API FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *,
+        FVM_SWFSoundMixQueue *, unsigned int max_movie_frame, size_t *accepted);
     /* Acknowledge pause/resume without clearing, priming or advancing converter position. */
     FVM_API FVM_Result fvm_swf_stream_output_pause(FVM_SWFStreamOutput *, int paused);
     /* Observe backend backlog and copy clock/metadata; failures preserve caller output. Reject

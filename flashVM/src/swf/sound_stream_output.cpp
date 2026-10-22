@@ -202,21 +202,26 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *s, u
 {
     return stream_pump(s, &frame, accepted);
 }
-/* Keep both accepted-frame epochs coherent when the final base source yields to events. */
-extern "C" FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *s,
-    FVM_SWFSoundMixQueue *mix, size_t *accepted)
+/* Validate that neither producer has independently advanced the exclusive composition epoch. */
+static FVM_Result stream_mix_clock(FVM_SWFStreamOutput *s, FVM_SWFSoundMixQueue *mix,
+                                   FVM_SWFSoundMixQueueClock &clock)
 {
-    if (accepted) *accepted = 0;
-    if (!stream_output(s) || !s->info.eof || s->info.pending_frames ||
-        !fvm_swf_sound_mix_queue_matches(mix, &s->backend)) return FVM_INVALID_ARGUMENT;
-    StreamBusy guard(s);
-    FVM_SWFSoundMixQueueClock clock;
     clock.struct_size = sizeof(clock);
     FVM_Result result = fvm_swf_sound_mix_queue_clock_info(mix, &clock);
     if (result != FVM_OK) return result;
     if (clock.submitted_frames != s->info.submitted_frames ||
         clock.played_frames < s->info.played_frames || clock.queued_frames > s->target)
         return FVM_INVALID_ARGUMENT;
+    return FVM_OK;
+}
+
+/* Caller holds StreamBusy; account exactly one acknowledged zero-base event block. */
+static FVM_Result stream_mix_tail_locked(FVM_SWFStreamOutput *s, FVM_SWFSoundMixQueue *mix,
+                                         size_t *accepted)
+{
+    FVM_SWFSoundMixQueueClock clock;
+    FVM_Result result = stream_mix_clock(s, mix, clock);
+    if (result != FVM_OK) return result;
     size_t count = 0;
     result = fvm_swf_sound_mix_queue_pump_tail(mix, s->block, s->target, &count);
     if (result != FVM_OK) return result;
@@ -226,6 +231,49 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *s
     s->info.queued_frames = clock.queued_frames + count;
     if (accepted) *accepted = count;
     return FVM_OK;
+}
+
+/* Preserve the explicit final-EOF entry point and its original source validation. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!stream_output(s) || !s->info.eof || s->info.pending_frames ||
+        !fvm_swf_sound_mix_queue_matches(mix, &s->backend)) return FVM_INVALID_ARGUMENT;
+    StreamBusy guard(s);
+    return stream_mix_tail_locked(s, mix, accepted);
+}
+
+/* Choose authorized base or gated events without allowing a tail retry to become base input. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, unsigned int frame, size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!stream_output(s) || !fvm_swf_sound_mix_queue_matches(mix, &s->backend))
+        return FVM_INVALID_ARGUMENT;
+    StreamBusy guard(s);
+    FVM_SWFSoundMixQueueClock clock;
+    FVM_Result result = stream_mix_clock(s, mix, clock);
+    if (result != FVM_OK) return result;
+    FVM_SWFSoundMixQueuePending pending;
+    pending.struct_size = sizeof(pending);
+    result = fvm_swf_sound_mix_queue_pending(mix, &pending);
+    if (result != FVM_OK) return result;
+    if (pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL)
+    {
+        if (s->info.pending_frames) return FVM_INVALID_ARGUMENT;
+        return stream_mix_tail_locked(s, mix, accepted);
+    }
+    if (pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE &&
+        pending.frames != s->info.pending_frames) return FVM_INVALID_ARGUMENT;
+    result = stream_pump_locked(s, &frame, accepted);
+    if (result != FVM_NOT_FOUND || s->info.pending_frames) return result;
+    unsigned int next = 0;
+    result = stream_next_frame(s, &next);
+    if (result != FVM_NOT_FOUND && result != FVM_OK) return result;
+    if (result == FVM_OK && next <= frame) return FVM_NOT_FOUND;
+    /* Only a true frame hold or source EOF authorizes zero-base events, never base backpressure. */
+    return stream_mix_tail_locked(s, mix, accepted);
 }
 
 /* Pause is explicit: priming/resume policy belongs to the embedding host. */
