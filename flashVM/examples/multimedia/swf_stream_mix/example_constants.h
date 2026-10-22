@@ -7,4 +7,7 @@
 #define EXAMPLE_MIX_BLOCK 4U /* Bound caller PCM/retry storage to four output frames. */
 #define EXAMPLE_MIX_TOTAL 16U /* Explicit finite export includes the longer event tail and silence. */
 #define EXAMPLE_MIX_BUDGET 65536UL /* Bound native stream snapshot preparation to 64 KiB. */
+#define EXAMPLE_MIX_VOICE_BYTES 65536UL /* Bound each temporary prepared voice separately. */
+#define EXAMPLE_MIX_EVENT_BYTES 65536UL /* Bound aggregate mixer object/slots/adopted voices. */
+#define EXAMPLE_MIX_LONG_ID 8U /* The embedded event with the longer converted output interval. */
 #endif /* End example-only geometry. */

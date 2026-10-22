@@ -1,10 +1,12 @@
-Development version: **0.958** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.958 ` and an English description. Increase the subversion before each
+Development version: **0.959** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.959 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.959: [Demonstrate queued identities and bounded adoption in C89](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.958: [Exercise queued identities on independent OS workers](doc/MIX_QUEUE_IDENTITIES.md).
 

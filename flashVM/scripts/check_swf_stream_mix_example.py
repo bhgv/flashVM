@@ -69,6 +69,12 @@ def main():
         assert 'Shared clock submitted=16 queued=16 played=0' in clocked.stdout
         assert 'Shared clock submitted=16 queued=0 played=16 seconds=0.000333333' in clocked.stdout
         assert clock_output.read_bytes() == output.read_bytes()
+        identity_output = root / 'identities.pcm'
+        tracked = subprocess.run([executable, str(identity_output), '--identities'], cwd=root, check=True,
+                                 stdout=subprocess.PIPE, text=True)
+        assert 'Identity id=8 end=14 played=0 active=1' in tracked.stdout
+        assert 'Identity id=8 end=14 played=16 active=0' in tracked.stdout
+        assert identity_output.read_bytes() == output.read_bytes()
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

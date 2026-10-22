@@ -103,6 +103,12 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [`fvm_swf_sound_mix_queue_clock_begin`](../../../include/flashvm/swf_sound_mix_queue.h#L69) | Begin/restart explicit shared frame accounting only with no pending retry and an empty backend; no pause/clear/voice change, allocation/VM/GC. Borrow/serialize all owners; backend failures preserve the old epoch. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_clock_info`](../../../include/flashvm/swf_sound_mix_queue.h#L86) | Copy exact-size fresh submitted/queued/played/seconds values for accepted base and tails; caller owns snapshot. Invalid/backend/regression errors preserve out; no allocation/VM/GC and no DAC timestamp. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_clock_end`](../../../include/flashvm/swf_sound_mix_queue.h#L78) | After quiescing producers and draining FIFO, disable shared accounting. Pending/busy rejects, nonempty/inactive returns NOT_FOUND; no implicit ownership transfer, pause/clear, allocation/VM/GC. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_set_identity_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L100) | Preallocate bounded optional ID deadlines in a zero epoch, or free them after observed drain and voice retirement. No callbacks/VM/GC; old mode survives allocation failure; all controls must use the tracked owner. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_submit_prepared_bounded`](../../../include/flashvm/swf_sound_mix_queue.h#L114) | Adopt a caller-owned native voice after accepted/pending frames and register its deadline. Success clears its handle; failure preserves ownership/progress. Queued NoMultiple consumes unused starts; mixer budget excludes adapter/table. No allocation/VM/GC; backend observation can block. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_identity_info`](../../../include/flashvm/swf_sound_mix_queue.h#L132) | Copy exact-size ID/dequeue/end/until/active diagnostics using a fresh FIFO observation; errors preserve out. No allocation/VM/GC; caller owns snapshot, not native state. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_stop_id`](../../../include/flashvm/swf_sound_mix_queue.h#L145) | Stop future same-ID mixing and cancel its registration without modifying queued/pending bytes. Uses mixer immediate/DECLICK policy; no callback/allocation/VM/GC, serialize all owners. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_voice_open_bounded`](../../../include/flashvm/swf_sound.h#L97) | Decode/copy one event under a separate voice-snapshot ceiling on source owner; return an independent native handle. Allocation/codec errors preserve null out. Adopt or close before losing ownership; no device/thread acquired. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound.h). |
+| [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L128) | Release a still caller-owned prepared voice; null after successful adoption is safe. Quiesce readers first; do not close a consumed mixer-owned handle. No device/VM callback. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md); [declaration](../../../include/flashvm/swf_sound.h). |
 | [`fvm_swf_sound_mix_queue_create_bounded`](../../../include/flashvm/swf_sound_mix_queue.h#L170) | Validate geometry then acquire fixed adapter storage within the exact byte ceiling; clear native out, preserve adapted on failure. Borrow mixer/backend; no callbacks/VM, quiesce before close. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_pending`](../../../include/flashvm/swf_sound_mix_queue.h#L31) | Copy exact-size NONE/BASE/TAIL retry ownership without callbacks, allocation or voice advance; preserve out on invalid/reentry. Observation is not a reservation; host serializes all owners. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L158) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
@@ -143,6 +149,19 @@ terminal and do not pretend to restore consumed voice time.
 полного fwrite и завершает отсчёт. [EN](../../../doc/MIX_QUEUE_CLOCK.md) /
 [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md).
 
+## Queued identities / Очередные ID
+
+`OUTPUT.pcm --identities` prepares independent native voices, enables shared clock
+and an exactly budgeted ID table, then adopts every event through tracked APIs.
+The longer event prints `Identity id=8 end=14 played=0 active=1` even after mixer
+retirement, then `Identity id=8 end=14 played=16 active=0` after software drain.
+It cancels the expired ID, safely disables tracking and ends the clock. Exact PCM
+equals all five earlier modes. Each temporary voice and aggregate adopted mixer
+has its own explicit ceiling; these exclude adapter/table/software FIFO/VM memory.
+NoMultiple suppression is tested by native fixtures; this embedded example uses
+ordinary starts. Режим проверяет queued-ID до/после drain, не физическую слышимость.
+[EN contract](../../../doc/MIX_QUEUE_IDENTITIES.md) / [RU](../../../doc/MIX_QUEUE_IDENTITIES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -164,15 +183,21 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:197](../../../include/flashvm/swf_sound_mix_queue.h#L197) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:158](../../../include/flashvm/swf_sound_mix_queue.h#L158) |
 | `fvm_swf_sound_mix_queue_create_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:170](../../../include/flashvm/swf_sound_mix_queue.h#L170) |
+| `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:132](../../../include/flashvm/swf_sound_mix_queue.h#L132) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:193](../../../include/flashvm/swf_sound_mix_queue.h#L193) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:189](../../../include/flashvm/swf_sound_mix_queue.h#L189) |
+| `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:100](../../../include/flashvm/swf_sound_mix_queue.h#L100) |
+| `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:145](../../../include/flashvm/swf_sound_mix_queue.h#L145) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:49](../../../include/flashvm/swf_sound_mix_queue.h#L49) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../../../include/flashvm/swf_sound_mix_queue.h#L44) |
+| `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:114](../../../include/flashvm/swf_sound_mix_queue.h#L114) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:126](../../../include/flashvm/swf_sound_mixer.h#L126) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../../../include/flashvm/swf_sound_mixer.h#L66) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../../../include/flashvm/swf_sound.h#L128) |
+| `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../../../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |

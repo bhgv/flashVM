@@ -78,6 +78,8 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFStreamConverter converter; /* Borrow source until export completes. */
     FVM_SWFStreamConvertedChunk chunk; /* Receive per-block source/frame metadata. */
     FVM_SWFSoundMixerConfig geometry; /* Select explicit conversion of both event voices. */
+    FVM_SWFSoundVoice *prepared[EXAMPLE_MIX_VOICES] = {0}; /* Optional tracked voices stay caller-owned until adoption succeeds. */
+    FVM_SWFSoundMixQueueIdentityInfo identity; /* Copy one sound-ID deadline before and after software drain. */
     FVM_SWFSoundMixer *mixer = 0; /* Own event snapshots and their independent clocks. */
     short pcm[EXAMPLE_MIX_BLOCK * EXAMPLE_MIX_CHANNELS]; /* Own base, mixed output and retry bytes. */
     FVM_SWFSoundMixQueue *mix_queue = 0; /* Own retry storage before native publication. */
@@ -88,7 +90,8 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
     size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
-    int clock_mode = argc == 3 && !strcmp(argv[2], "--clock"); /* Observe one shared accepted/dequeued epoch across base and tails. */
+    int identity_mode = argc == 3 && !strcmp(argv[2], "--identities"); /* Keep sound IDs active through queued/pending PCM. */
+    int clock_mode = (argc == 3 && !strcmp(argv[2], "--clock")) || identity_mode; /* Observe one shared accepted/dequeued epoch across base and tails. */
     int bounded_mode = (argc == 3 && !strcmp(argv[2], "--bounded-tails")) || clock_mode; /* Use an exact adapter-only allocation ceiling. */
     int tail_mode = (argc == 3 && !strcmp(argv[2], "--tails")) || bounded_mode; /* Select explicit pump_tail after actual converter EOF. */
     int queue_mode = (argc == 3 && !strcmp(argv[2], "--queue")) || tail_mode; /* Explicit queue/retry tutorial. */
@@ -99,7 +102,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -122,8 +125,11 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     if (!checked(fvm_swf_sound_mixer_create_configured(&geometry, &mixer), "mixer")) /* Reserve voices. */
         goto cleanup; /* No file side effect occurs on mixer failure. */
     for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) /* This fixture schedules both starts at frame one. */
-        if (!checked(fvm_swf_sound_mixer_submit(mixer, context, event), "event")) /* Owner snapshots event. */
-            goto cleanup; /* Release any earlier successfully prepared voice. */
+    { /* Tracked mode delays adoption until the empty queue clock and ID table exist. */
+        result = identity_mode ? fvm_swf_sound_voice_open_bounded(context, event, EXAMPLE_MIX_VOICE_BYTES, &prepared[event]) /* Bound each temporary native voice snapshot independently. */
+                               : fvm_swf_sound_mixer_submit(mixer, context, event); /* Existing modes retain direct owner-side admission. */
+        if (!checked(result, "event preparation")) goto cleanup; /* Cleanup releases any caller-owned prepared handle. */
+    } /* No source VM pointer is retained by native voices. */
     result = fvm_swf_stream_converter_init( /* Borrow source without converter allocation. */
         &converter, source, EXAMPLE_MIX_RATE, EXAMPLE_MIX_CHANNELS); /* Match the mixer clock. */
     if (!checked(result, "converter")) goto cleanup; /* Preserve source/geometry errors. */
@@ -153,6 +159,14 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         } /* Native hot-path buffers never grow. */
     } /* End owner-side preparation. */
     if (clock_mode && !checked(fvm_swf_sound_mix_queue_clock_begin(mix_queue), "shared clock begin")) goto cleanup; /* Explicitly require an empty real FIFO before counting accepted frames. */
+    if (identity_mode) /* Preallocate the optional ID table before native output starts. */
+    { /* Keep adapter table storage separate from mixer/voice/queue budgets. */
+        if (FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS > (size_t)-1 / sizeof(double) || queue_budget > (size_t)-1 - FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS * sizeof(double)) goto cleanup; /* Check representable exact fixed requests. */
+        queue_budget += FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS * sizeof(double); /* Include all deadline slots in the adapter-only ceiling. */
+        if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 1, queue_budget), "identity tracking")) goto cleanup; /* Require zero epoch and no voices before enabling. */
+        for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) /* Adopt every start through the tracked queue. */
+            if (!checked(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix_queue, &prepared[event], EXAMPLE_MIX_EVENT_BYTES), "tracked event")) goto cleanup; /* Success clears the caller handle and registers its exact end. */
+    } /* All later ID controls also use this tracked owner. */
     fvm_context_destroy(context); /* [GC:] End canonical ownership before the native loop. */
     context = 0; /* [GC:] Prevent cleanup from destroying the former context again. */
     fvm_runtime_destroy(runtime); /* Independent native sources no longer need their runtime. */
@@ -217,6 +231,12 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             if (!checked(fvm_swf_sound_mix_queue_clock_info(mix_queue, &shared_clock), "shared queued clock")) goto cleanup; /* No DAC position is claimed. */
             printf("Shared clock submitted=%.0f queued=%lu played=%.0f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames); /* Expected 16, 16, zero before software consumption. */
         } /* Clock snapshots are owned values. */
+        if (identity_mode) /* Mixer retirement alone cannot expire queued sound identity. */
+        { /* ID8 is the longer event in the embedded SWF. */
+            identity.struct_size = sizeof(identity); /* Require the exact copied observation ABI. */
+            if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "queued identity")) goto cleanup; /* Observe real FIFO before publishing its deadline. */
+            printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected ID8 end14 played0 active1. */
+        } /* This reports dequeue registration, not physical audibility. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
         if (fwrite(queue.pcm, sizeof(short), mixed, output) != mixed) goto cleanup; /* Terminal I/O. */
         if (clock_mode) /* The successful file write is the explicit software FIFO consumer. */
@@ -224,6 +244,13 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             queue.frames = 0; /* Publish the actual software dequeue; this is not a device playhead. */
             if (!checked(fvm_swf_sound_mix_queue_clock_info(mix_queue, &shared_clock), "shared drained clock")) goto cleanup; /* Observe submitted-minus-backlog after consumption. */
             printf("Shared clock submitted=%.0f queued=%lu played=%.0f seconds=%.9f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames, shared_clock.seconds); /* The count is 16 and seconds is 16/48000. */
+            if (identity_mode) /* Observe expiry only after the software consumer acknowledged drain. */
+            { /* Cancel the expired registration and disable at a drained safe point. */
+                if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "drained identity")) goto cleanup; /* Retain the historical end in this copied snapshot. */
+                printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected end14 played16 active0. */
+                if (!checked(fvm_swf_sound_mix_queue_stop_id(mix_queue, EXAMPLE_MIX_LONG_ID), "cancel identity")) goto cleanup; /* Cancel future same-ID registration without rewriting accepted PCM. */
+                if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 0, 0), "disable identities")) goto cleanup; /* Free optional deadlines only after voices/retries/FIFO have drained. */
+            } /* Clock end is now permitted. */
             if (!checked(fvm_swf_sound_mix_queue_clock_end(mix_queue), "shared clock end")) goto cleanup; /* End only after retry ownership and FIFO have drained. */
         } /* The adapter remains alive until centralized cleanup. */
         printf("Queue retained %lu rejected blocks.\n", (unsigned long)queue.rejected); /* Report real callbacks. */
@@ -232,6 +259,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     output = 0; /* A failed fclose still ends FILE ownership. */
     if (!status) printf("Mixed %lu frames after source VM teardown.\n", (unsigned long)total); /* Report the actual completed finite export. */
 cleanup: /* Centralized cleanup also handles partial source preparation. */
+    for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) fvm_swf_sound_voice_close(prepared[event]); /* Release only handles not consumed by successful tracked adoption. */
     if (output) fclose(output); /* Close any file acquired before a later native error. */
     fvm_swf_sound_mix_queue_close(mix_queue); /* Quiesce wrapped callbacks before borrowed owners. */
     fvm_swf_sound_mixer_close(mixer); /* Release all remaining event voices; null is accepted. */
