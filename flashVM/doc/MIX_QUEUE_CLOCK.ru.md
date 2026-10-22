@@ -20,6 +20,8 @@ v0.944: настоящие MovieClip frame-actions выполняются инт
 
 v0.945: инструментированный обычный тест по-прежнему отклоняет недостаточный byte-budget до new/new[] и проверяет три границы создания. При запрете выделений clock begin/info/end/restart, tail отказ/retry, приём base, dequeue, pause и clear не делают попыток. Новые private-счётчики включены в required/observed fixed storage без роста hot-path буферов.
 
+v0.946: четыре настоящих OS-потока независимо выполняют по 64 общих отсчёта после удаления source VM. Каждый блок отклоняется/повторяется, PCM остаётся независимым; submitted=8 и queued=2 дают played=6, модель дренирования — played=8 и успешный clock_end. Владельцы/шаблоны/микшеры/backend не разделяются; безопасность общих изменяемых handles не заявляется.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

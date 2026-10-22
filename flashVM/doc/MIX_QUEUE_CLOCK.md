@@ -20,6 +20,8 @@ v0.944: actual MovieClip frame actions execute in interpreter and available nati
 
 v0.945: the instrumented ordinary-build allocation test still rejects insufficient adapter byte budget before any new/new[] attempt and checks all three acquisition boundaries. With allocation forbidden, explicit clock begin/info/end/restart, tail rejection/retry, base acceptance, dequeue, pause and clear make zero allocation attempts. Updated private counters are included in required/observed fixed storage without growing hot-path buffers.
 
+v0.946: four actual OS workers independently perform 64 shared-clock epochs each after source VM teardown. Every block is rejected/retried, exact PCM remains independent, submitted=8 with queued=2 reports played=6, simulated consumer drain reports played=8 and then clock_end succeeds. Owners/templates/mixers/backend state are never shared; no new shared-handle thread-safety promise is made.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
