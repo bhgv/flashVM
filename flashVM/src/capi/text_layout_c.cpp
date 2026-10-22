@@ -4,6 +4,7 @@
 
 #include "flashvm/text_layout.h"
 #include "font_internal.hpp"
+#include "text_layout_constants.h"
 #include "../details/vector.hpp"
 #include <cstring>
 #include <new>
@@ -325,7 +326,7 @@ struct Segment
  * combining marks and ligature clusters keep HarfBuzz's within-run ordering. */
 /* Compute and return shape line. */
 static FVM_Result shape_line(FVM_Font *font, const char *text, const char *language,
-                             const Paragraph &p, size_t start, size_t end, unsigned int flags, size_t &budget,
+                             const Paragraph &p, size_t start, size_t end, unsigned int flags, double spacing, size_t &budget,
                              fvm_detail::vector<FVM_TextLayoutGlyph> &glyphs, double &advance)
 {
 
@@ -405,6 +406,38 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
             glyphs.push_back(g);
         }
     }
+    if (spacing != 0)
+    {
+        /* Until complex-cluster tracking has a reference oracle, accept exactly
+         * one glyph per scalar with unique source clusters. Never split a ligature
+         * or silently add spacing inside a combining sequence. */
+        if (glyphs.size() != end - start)
+            return FVM_UNSUPPORTED;
+        fvm_detail::vector<unsigned char> seen(end - start);
+        std::memset(seen.begin(), 0, seen.size());
+        for (size_t i = 0; i < glyphs.size(); ++i)
+        {
+            FVM_TextLayoutGlyph &g = glyphs[i];
+            size_t low = start, high = end;
+            while (low < high)
+            {
+                size_t middle = low + (high - low) / 2;
+                if (p.bytes[middle] < g.shaped.cluster)
+                    low = middle + 1;
+                else
+                    high = middle;
+            }
+            if (low == end || p.bytes[low] != g.shaped.cluster || seen[low - start] ||
+                !(g.shaped.x_advance + spacing >= 0))
+                return FVM_UNSUPPORTED;
+            seen[low - start] = 1;
+            g.x += i * spacing;
+            g.shaped.x_advance += spacing;
+        }
+        advance += glyphs.size() * spacing;
+        if (!(advance >= 0 && advance <= FVM_TEXT_LAYOUT_MAX_EXTENT))
+            return FVM_UNSUPPORTED;
+    }
     return FVM_OK;
 }
 
@@ -417,7 +450,7 @@ static bool allowed(const fvm_detail::vector<char> &breaks, const Paragraph &p, 
 
 /* Compute and return choose line. */
 static FVM_Result choose_line(FVM_Font *font, const char *text, const char *language,
-                              const Paragraph &p, size_t start, double width, unsigned int flags,
+                              const Paragraph &p, size_t start, double width, unsigned int flags, double spacing,
                               const fvm_detail::vector<char> &line,
                               const fvm_detail::vector<char> &grapheme, size_t &budget, size_t &end)
 {
@@ -434,7 +467,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             continue;
         double advance;
         FVM_Result result =
-            shape_line(font, text, language, p, start, candidate, flags, budget, trial, advance);
+            shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance);
         if (result != FVM_OK)
             return result;
         if (advance > width)
@@ -458,7 +491,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             continue;
         double advance;
         FVM_Result result =
-            shape_line(font, text, language, p, start, candidate, flags, budget, trial, advance);
+            shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance);
         if (result != FVM_OK)
             return result;
         if (advance > width)
@@ -476,14 +509,14 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
 static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char *text,
                               const FVM_TextLayoutOptions &options, const FVM_FontMetrics &metrics,
                               const Paragraph &p, size_t start, size_t end, size_t next,
-                              unsigned int flags, size_t &budget)
+                              unsigned int flags, double spacing, size_t &budget)
 {
 
     /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<FVM_TextLayoutGlyph> glyphs;
     double advance;
     FVM_Result result =
-        shape_line(font, text, options.language, p, start, end, flags, budget, glyphs, advance);
+        shape_line(font, text, options.language, p, start, end, flags, spacing, budget, glyphs, advance);
     if (result != FVM_OK)
         return result;
     FVM_TextLayoutLine line;
@@ -552,14 +585,15 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
 }
 
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *font, const char *text, size_t size,
-                                             const FVM_TextLayoutOptions *provided, unsigned int flags,
+extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *provided, unsigned int flags, double spacing,
                                              FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font)
+    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font ||
+        !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING))
         return FVM_INVALID_ARGUMENT;
     FVM_TextLayoutOptions options = {0, 0, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     if (provided)
@@ -624,13 +658,13 @@ extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *font, const ch
             do
             {
                 size_t line_end;
-                result = choose_line(font, text, options.language, p, line_start, options.max_width, flags,
+                result = choose_line(font, text, options.language, p, line_start, options.max_width, flags, spacing,
                                      line, grapheme, budget, line_end);
                 if (result != FVM_OK)
                     return result;
                 size_t next_byte = line_end == p.chars.size() ? bytes[next] : p.bytes[line_end];
                 result = append_line(*layout.value, font, text, options, metrics, p, line_start,
-                                     line_end, next_byte, flags, budget);
+                                     line_end, next_byte, flags, spacing, budget);
                 if (result != FVM_OK)
                     return result;
                 line_start = line_end;
@@ -659,13 +693,15 @@ extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *font, const ch
 }
 #else
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *, const char *, size_t,
-                                             const FVM_TextLayoutOptions *, unsigned int flags, FVM_TextLayout **out)
+extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags, double spacing, FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return flags & ~FVM_FONT_SHAPE_NO_KERNING ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    return (flags & ~FVM_FONT_SHAPE_NO_KERNING) ||
+           !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING)
+               ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 #endif
 
@@ -675,4 +711,12 @@ extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, s
                                              FVM_TextLayout **out)
 {
     return fvm_text_layout_create_configured(font, text, size, options, 0, out);
+}
+
+/* Keep the legacy configured ABI and its zero-spacing shaping behavior unchanged. */
+extern "C" FVM_Result fvm_text_layout_create_configured(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *options, unsigned int flags,
+                                             FVM_TextLayout **out)
+{
+    return fvm_text_layout_create_spaced(font, text, size, options, flags, 0, out);
 }

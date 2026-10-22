@@ -34,10 +34,10 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_create_configured`](../../../include/flashvm/text_layout.h#L80) | Borrow the font during bounded shaping/wrapping with explicit flags; own independent layout paths. Unknown flags fail and clear output. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L94) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L86) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L84) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L92) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L107) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L99) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L97) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L105) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 
 [Описание в общем каталоге](../../README.md#example-embedding-text_layout).
 <!-- example-catalog-api:end -->
@@ -83,8 +83,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
 | `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../../../include/flashvm/text_layout.h#L80) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:94](../../../include/flashvm/text_layout.h#L94) |
-| `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:86](../../../include/flashvm/text_layout.h#L86) |
-| `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:84](../../../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:92](../../../include/flashvm/text_layout.h#L92) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../../../include/flashvm/text_layout.h#L107) |
+| `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:99](../../../include/flashvm/text_layout.h#L99) |
+| `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:97](../../../include/flashvm/text_layout.h#L97) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../../../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->
