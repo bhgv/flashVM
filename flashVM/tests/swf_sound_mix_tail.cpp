@@ -14,4 +14,5 @@ int main()
  size_t accepted=91;q.fail=1;assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_ERROR && !accepted);q.fail=0;assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_OK && accepted==2 && q.saved[0]==100 && q.saved[1]==101);
  assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_OK && accepted==2);assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_NOT_FOUND && !accepted);q.count=0;assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_OK && q.saved[4]==104 && q.saved[5]==0);assert(fvm_swf_sound_mix_queue_pump_tail(queue,2,4,&accepted)==FVM_NOT_FOUND && !accepted && q.count==2);
  fvm_swf_sound_mix_queue_close(queue);fvm_swf_sound_mixer_close(mixer);
+ return 0;
 }

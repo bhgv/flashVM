@@ -15,6 +15,21 @@ extern "C"
         size_t capacity_frames; /* Maximum input frames in one callback, fixed at creation. */
         size_t pending_frames;  /* Mixed and voice-advanced frames awaiting real acceptance. */
     } FVM_SWFSoundMixQueueInfo;
+#define FVM_SWF_SOUND_MIX_QUEUE_PENDING_NONE 0U /* No rendered retry is owned. */
+#define FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE 1U /* Retry belongs to adapted.write input. */
+#define FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL 2U /* Retry belongs to pump_tail. */
+    /* Additive ownership observation; existing Info structure and ABI stay unchanged. */
+    typedef struct FVM_SWFSoundMixQueuePending
+    {
+        size_t struct_size; /* Caller supplies exact sizeof. */
+        size_t frames; /* Rendered frames awaiting real acceptance, zero when idle. */
+        unsigned int origin; /* PENDING_NONE, PENDING_BASE or PENDING_TAIL. */
+    } FVM_SWFSoundMixQueuePending;
+    /* Copy pending ownership without polling backend, allocating or changing voice time.
+     * Required live queue/out with exact size; invalid/reentry -> INVALID_ARGUMENT,
+     * output unchanged. Serialize queue/mixer externally; no VM/GC or reservation. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_pending(const FVM_SWFSoundMixQueue *,
+                                                       FVM_SWFSoundMixQueuePending *);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

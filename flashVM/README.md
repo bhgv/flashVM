@@ -1,10 +1,12 @@
-Development version: **0.927** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.927 ` and an English description. Increase the subversion before each
+Development version: **0.928** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.928 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.928: [Expose pending composition ownership](doc/AUDIO_MIX_TAILS.md).
 
 v0.927: [Pump event tails through the retained mix queue](doc/AUDIO_MIX_TAILS.md).
 

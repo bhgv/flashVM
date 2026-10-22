@@ -250,6 +250,22 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_info(const FVM_SWFSoundMixQueue *q
     *out = info;
     return FVM_OK;
 }
+/* Expose input ownership independently of any device queue or playback observation. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_pending(const FVM_SWFSoundMixQueue *queue,
+                                                      FVM_SWFSoundMixQueuePending *out)
+{
+    if (!queue || queue->busy || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueuePending info;
+    info.struct_size = sizeof(info);
+    info.frames = queue->pending;
+    info.origin = !queue->pending ? FVM_SWF_SOUND_MIX_QUEUE_PENDING_NONE :
+                  queue->tail ? FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL :
+                                FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE;
+    *out = info;
+    return FVM_OK;
+}
+
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */
 extern "C" void fvm_swf_sound_mix_queue_close(FVM_SWFSoundMixQueue *queue)
 {
