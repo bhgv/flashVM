@@ -17,7 +17,10 @@
 #define FVM_TEXT_STYLE_ITALIC 128UL /* Select the explicit italic family face in snapshots. */
 #define FVM_TEXT_STYLE_JUSTIFY 256UL /* Justified paragraph policy, distinct from low alignment/kerning bits. */
 #define FVM_TEXT_JUSTIFY_MIN_VERSION 8U /* AS2 justified paragraphs became available in SWF8. */
-#define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY) /* Packed non-alignment bits. */
+#define FVM_TEXT_STYLE_HAS_INSETS 512UL /* Optional left/right/block inset numbers after spacing. */
+#define FVM_TEXT_STYLE_MAX_INSET 4096.0 /* Nonnegative integral paragraph inset envelope. */
+#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 192U /* Conservative fixed fields plus six optional inset numbers. */
+#define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY | FVM_TEXT_STYLE_HAS_INSETS) /* Packed non-alignment bits. */
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
 #define FVM_TEXT_FIELD_MIN_INNER_WIDTH (1.0 / 64.0) /* Progress on oversized graphemes. */
 #define FVM_TEXT_FIELD_MAX_EXTENT 1000000.0 /* Maximum admitted outer field dimension. */

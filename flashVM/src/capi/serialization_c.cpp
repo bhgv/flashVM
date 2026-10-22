@@ -695,6 +695,12 @@ struct Writer
         u32(s.alignment);
         if (s.alignment & FVM_TEXT_STYLE_HAS_SPACING)
             number(s.letter_spacing);
+        if (s.alignment & FVM_TEXT_STYLE_HAS_INSETS)
+        {
+            number(s.left_margin);
+            number(s.right_margin);
+            number(s.block_indent);
+        }
         require(s.source.index >= (-2147483647L - 1L) && s.source.index <= 2147483647L,
                 FVM_UNSUPPORTED);
         u32(s.source.index < 0 ? (unsigned long)(s.source.index + 2147483647L) + 1UL
@@ -949,6 +955,12 @@ struct Reader
         s.alignment = u32();
         if (s.alignment & FVM_TEXT_STYLE_HAS_SPACING)
             s.letter_spacing = number();
+        if (s.alignment & FVM_TEXT_STYLE_HAS_INSETS)
+        {
+            s.left_margin = number();
+            s.right_margin = number();
+            s.block_indent = number();
+        }
         unsigned long index = u32();
         s.source.index =
             index >= 0x80000000UL ? (long)(index - 0x80000000UL) : (long)index - 2147483647L - 1L;

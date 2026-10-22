@@ -64,13 +64,14 @@ struct Style
     fvm_detail::string source_key; /* Precomputed private slot key; layout lookup cannot allocate. */
     unsigned int variant; /* Explicit regular/bold/italic family selection. */
     double size, leading;
+    double left_margin, right_margin, block_indent; /* Nonnegative whole-pixel paragraph insets. */
     double letter_spacing; /* Signed extra pixels after each supported character. */
     unsigned long color;
     FVM_TextAlignment alignment;
     bool underline; /* Uniform line decoration, independent of glyph shaping. */
     bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : variant(FVM_TEXT_FONT_REGULAR), size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
+    Style() : variant(FVM_TEXT_FONT_REGULAR), size(12), leading(2), left_margin(0), right_margin(0), block_indent(0), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
     {
     }
     /* Exchange the current value. */
@@ -87,6 +88,9 @@ struct Style
         d = leading;
         leading = s.leading;
         s.leading = d;
+        d = left_margin; left_margin = s.left_margin; s.left_margin = d;
+        d = right_margin; right_margin = s.right_margin; s.right_margin = d;
+        d = block_indent; block_indent = s.block_indent; s.block_indent = d;
         d = letter_spacing;
         letter_spacing = s.letter_spacing;
         s.letter_spacing = d;
@@ -311,6 +315,15 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                     return FVM_INVALID_ARGUMENT;
                 style.letter_spacing = d;
             }
+            else if (std::strcmp(name, "leftMargin") == 0 || std::strcmp(name, "rightMargin") == 0 ||
+                     std::strcmp(name, "blockIndent") == 0)
+            {
+                if (!finite_range(d, 0, FVM_TEXT_STYLE_MAX_INSET) || d != std::floor(d))
+                    return FVM_INVALID_ARGUMENT;
+                if (!std::strcmp(name, "leftMargin")) style.left_margin = d;
+                else if (!std::strcmp(name, "rightMargin")) style.right_margin = d;
+                else style.block_indent = d;
+            }
             else if (std::strcmp(name, "color") == 0)
             {
                 if (!finite_range(d, 0, 16777215) || d != std::floor(d))
@@ -387,6 +400,11 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
 
     /* Computation / Вычисление и обновление состояния. */
     options.max_width = width;
+    if (width > 0)
+    {
+        options.max_width -= style.left_margin + style.right_margin + style.block_indent;
+        if (options.max_width <= 0) options.max_width = FVM_TEXT_FIELD_MIN_INNER_WIDTH;
+    }
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
     result = fvm_text_layout_create_spaced(font.font, text, size, &options,
@@ -432,7 +450,8 @@ struct PreparedGeometry
 static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
                       const char *text, size_t size, PreparedGeometry &next)
 {
-    if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY)
+    if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY &&
+        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0)
         return FVM_OK;
     double width = next.wrap && next.multiline ? next.width - FVM_TEXT_FIELD_GUTTER : 0;
     if (next.wrap && next.multiline && width <= 0)
@@ -446,7 +465,8 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
         return result;
     if (!next.wrap)
     {
-        double measured = metrics.advance_width + FVM_TEXT_FIELD_GUTTER;
+        double measured = metrics.advance_width + FVM_TEXT_FIELD_GUTTER +
+                          style.left_margin + style.right_margin + style.block_indent;
         double fraction = next.anchor == FVM_TEXT_ANCHOR_RIGHT ? 1.0 :
                           next.anchor == FVM_TEXT_ANCHOR_CENTER ? 0.5 : 0.0;
         next.x += (next.width - measured) * fraction;
@@ -515,7 +535,7 @@ static FVM_Result get_extent(FVM_Context *c, FVM_Object *self, unsigned int n, c
     const char *names[] = {"ascent", "descent",        "width",
                            "height", "textFieldWidth", "textFieldHeight"};
     const double values[] = {font_metrics.ascent, font_metrics.descent,      metrics.advance_width,
-                             metrics.height,      metrics.advance_width + 4, metrics.height + 4};
+                             metrics.height,      metrics.advance_width + FVM_TEXT_FIELD_GUTTER + style.left_margin + style.right_margin + style.block_indent, metrics.height + FVM_TEXT_FIELD_GUTTER};
     for (size_t i = 0; i < 6; ++i)
     {
         FVM_Value value;
@@ -618,6 +638,9 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["leading"] = v;
     fvm_value_number(&v, style.letter_spacing);
     object->properties["letterSpacing"] = v;
+    fvm_value_number(&v, style.left_margin); object->properties["leftMargin"] = v;
+    fvm_value_number(&v, style.right_margin); object->properties["rightMargin"] = v;
+    fvm_value_number(&v, style.block_indent); object->properties["blockIndent"] = v;
     fvm_value_number(&v, style.color);
     object->properties["color"] = v;
     fvm_value_boolean(&v, (style.variant & FVM_TEXT_FONT_BOLD) != 0);
@@ -1420,14 +1443,16 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
  * alignment once to both glyph outlines and underline bars. */
 static double field_line_shift(const Field *field, const FVM_TextLayoutLine &line)
 {
+    double left = field->current.left_margin + field->current.block_indent;
     if (field->wrap && field->multiline)
-        return 0;
-    double available = field->width - FVM_TEXT_FIELD_GUTTER - line.advance;
+        return left;
+    double available = field->width - FVM_TEXT_FIELD_GUTTER - left -
+                       field->current.right_margin - line.advance;
     if (available <= 0)
-        return 0;
+        return left;
     if (field->current.alignment == FVM_TEXT_ALIGN_CENTER)
-        return available / 2;
-    return field->current.alignment == FVM_TEXT_ALIGN_RIGHT ? available : 0;
+        return left + available / 2;
+    return left + (field->current.alignment == FVM_TEXT_ALIGN_RIGHT ? available : 0);
 }
 
 /* Compute and return textfield path. */
@@ -1516,11 +1541,13 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.size = style.size;
     out.leading = style.leading;
     out.letter_spacing = style.letter_spacing;
+    out.left_margin = style.left_margin; out.right_margin = style.right_margin; out.block_indent = style.block_indent;
     out.color = style.color;
     out.alignment = (style.alignment == FVM_TEXT_ALIGN_JUSTIFY ? 0UL : (unsigned long)style.alignment) |
                     (style.alignment == FVM_TEXT_ALIGN_JUSTIFY ? FVM_TEXT_STYLE_JUSTIFY : 0UL) |
                     (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
                     (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
+                    (style.left_margin || style.right_margin || style.block_indent ? FVM_TEXT_STYLE_HAS_INSETS : 0UL) |
                     (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL) |
                     (style.variant & FVM_TEXT_FONT_BOLD ? FVM_TEXT_STYLE_BOLD : 0UL) |
                     (style.variant & FVM_TEXT_FONT_ITALIC ? FVM_TEXT_STYLE_ITALIC : 0UL);
@@ -1530,6 +1557,12 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
 /* Restore style. */
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
+    if (!finite_range(src.left_margin, 0, FVM_TEXT_STYLE_MAX_INSET) || src.left_margin != std::floor(src.left_margin) ||
+        !finite_range(src.right_margin, 0, FVM_TEXT_STYLE_MAX_INSET) || src.right_margin != std::floor(src.right_margin) ||
+        !finite_range(src.block_indent, 0, FVM_TEXT_STYLE_MAX_INSET) || src.block_indent != std::floor(src.block_indent) ||
+        ((src.left_margin != 0 || src.right_margin != 0 || src.block_indent != 0) !=
+         ((src.alignment & FVM_TEXT_STYLE_HAS_INSETS) != 0)))
+        return FVM_INVALID_ARGUMENT;
     if (src.font.empty() || src.font.size() > FVM_TEXT_FONT_MAX_NAME ||
         std::memchr(src.font.c_str(), 0, src.font.size()) || !finite_range(src.size, 1, 4096) ||
         !finite_range(src.leading, -4096, 4096) ||
@@ -1568,6 +1601,7 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.size = src.size;
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
+    out.left_margin = src.left_margin; out.right_margin = src.right_margin; out.block_indent = src.block_indent;
     out.color = src.color;
     out.alignment = src.alignment & FVM_TEXT_STYLE_JUSTIFY ? FVM_TEXT_ALIGN_JUSTIFY :
                     (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_FLAGS);
@@ -1635,7 +1669,7 @@ size_t fvm_textfield_snapshot_size(FVM_Object *object)
         context->fonts.find(field->future.source_key);
     if (a == context->fonts.end() || b == context->fonts.end())
         return (size_t)-1;
-    return 128 + field->text_size + field->current.font.size() + field->future.font.size() +
+    return FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD + field->text_size + field->current.font.size() + field->future.font.size() +
            a->second->bytes.size() + b->second->bytes.size();
 }
 

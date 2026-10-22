@@ -22,12 +22,13 @@ struct FVM_TextStyleState
     fvm_detail::string font; /* Font name, handle or source used by this text state. */
     double size /* Size of the associated payload or collection. */,
         leading; /* Extra spacing added between text lines. */
+    double left_margin, right_margin, block_indent; /* Optional whole-pixel paragraph insets. */
     double letter_spacing; /* Signed extra pixels, absent legacy payloads restore zero. */
     unsigned long color /* Text color used for rendering. */,
         alignment;         /* Packed alignment plus explicit shaping, face and decoration flags. */
     FVM_FontSource source; /* Source name associated with this entry. */
     /* Initialize Text Style State and its owned state. */
-    FVM_TextStyleState() : size(12), leading(2), letter_spacing(0), color(0), alignment(0)
+    FVM_TextStyleState() : size(12), leading(2), left_margin(0), right_margin(0), block_indent(0), letter_spacing(0), color(0), alignment(0)
     {
         source.index = 0;
     }
