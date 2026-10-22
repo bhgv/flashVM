@@ -29,6 +29,7 @@ extern "C"
     /* Independent editable contours, including the text field's 2-pixel gutter.
      * These are not clipped to the field rectangle. */
     /* Implement textfield path for this subsystem. */
+    /* Includes uniform underline when enabled; use nonzero fill for the combined contours. */
     FVM_API FVM_Result fvm_textfield_path(FVM_Context *, FVM_Object *, FVM_Path **out);
 #ifdef __cplusplus
 }

@@ -41,7 +41,7 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 | [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L17) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
 | [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
 | [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L32) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
+| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L33) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
 | [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Записывает тег Boolean и нормализует значение: 0 становится false, любое ненулевое число — true. Подробнее: [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views). |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
@@ -73,7 +73,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../../../include/flashvm/standard_text.h#L17) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../../../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../../../include/flashvm/standard_text.h#L32) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../../../include/flashvm/standard_text.h#L33) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |

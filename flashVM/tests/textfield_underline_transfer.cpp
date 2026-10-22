@@ -25,6 +25,13 @@ int main()
  assert(fvm_textfield_path(other,out.object,&path)==FVM_OK && fvm_path_count(path)==decorated);fvm_path_destroy(path);
  fvm_value_boolean(&value,0);assert(fvm_object_set(c,format,"underline",&value)==FVM_OK && fvm_object_call(c,field,"setTextFormat",1,&arg,&out)==FVM_OK);
  size_t plain_size=0;assert(fvm_value_serialize(c,&root,&wire,&plain_size)==FVM_OK && plain_size==size);fvm_serialized_free(wire);
+ /* A separate round trip carries the opposite current/future selection. */
+ fvm_value_boolean(&value,1);assert(fvm_object_set(c,format,"underline",&value)==FVM_OK && fvm_object_call(c,field,"setNewTextFormat",1,&arg,&out)==FVM_OK);
+ assert(fvm_value_serialize(c,&root,&wire,&plain_size)==FVM_OK && fvm_value_deserialize(other,wire,plain_size,&out)==FVM_OK);fvm_serialized_free(wire);
+ FVM_Object *future_copy=out.object;assert(fvm_gc_pin(other,future_copy)==FVM_OK);
+ assert(fvm_object_call(other,future_copy,"getTextFormat",0,0,&out)==FVM_OK && fvm_object_get(other,out.object,"underline",&value)==FVM_OK && !value.boolean);
+ assert(fvm_object_call(other,future_copy,"getNewTextFormat",0,0,&out)==FVM_OK && fvm_object_get(other,out.object,"underline",&value)==FVM_OK && value.boolean);
+ assert(fvm_value_string(&value,"AVA")==FVM_OK && fvm_object_set(other,future_copy,"text",&value)==FVM_OK && fvm_object_call(other,future_copy,"getTextFormat",0,0,&out)==FVM_OK && fvm_object_get(other,out.object,"underline",&value)==FVM_OK && value.boolean);
  /* Legacy record has no underline bit and restores undecorated current geometry. */
  state.current.alignment&=~FVM_TEXT_STYLE_UNDERLINE;FVM_Object *legacy=0;
  assert(fvm_object_create(other,&legacy)==FVM_OK);legacy->resource_kind=copy->resource_kind;legacy->accessors=copy->accessors;legacy->methods=copy->methods;

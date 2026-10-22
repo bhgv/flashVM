@@ -37,7 +37,7 @@ copied into ActionScript worker contexts.
 
 Create a field through [fvm_textfield_create](../include/flashvm/standard_text.h#L27), then publish it with [fvm_set_global](../include/flashvm/value.h#L87)
 or keep it pinned/rooted. It is a GC-owned native resource, not a MovieClip
-child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L32) returns an independent path that survives
+child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L33) returns an independent path that survives
 collection of the field and destruction of the context. The host draws or masks
 it with AGG/Cairo through path.h and chooses the color, e.g. from textColor.
 The exported contours are not clipped to the field rectangle.
@@ -60,9 +60,14 @@ Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
 styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
 ([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Nonzero margins/indents,
-bold/italic/underline/bullets, hyperlinks, tab stops and justify are rejected
+bold/italic/bullets, hyperlinks, tab stops and justify are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
+
+Uniform underline now uses the embedded font's scaled center/thickness. It is
+Boolean in current/future field snapshots, preserves layout advances and appends
+owned line bars during path export. Missing metrics are explicitly UNSUPPORTED.
+Use nonzero fill for combined contours. [Contract and evidence](TEXT_UNDERLINE.md).
 
 setTextFormat changes current text; setNewTextFormat changes future text.
 Replacing text uses a copy of the future format. get methods return independent
@@ -161,5 +166,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
 <!-- source-links:end -->

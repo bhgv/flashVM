@@ -270,6 +270,15 @@ seven ASan/UBSan and five NO_FONTS checks pass. [EN](TEXT_SPACING.md) / [RU](TEX
 Complex clusters, ligature tracking, styled ranges, full Flash text equivalence
 and physical platform/device acceptance remain open. Все стадии roadmap открыты.
 
+Current v0.837–0.844 adds font-defined underline metrics, owned placed-line bars
+and uniform AS2 current/future underline styles. Paths include aligned/tracked
+bars, transfer preserves flags without extra bytes, and nonzero overlaps retain
+ordinary glyph ink. Missing metrics/conflicting contour directions are explicit
+UNSUPPORTED. 48 native regression/tutorial checks, nine ASan/UBSan and seven
+NO_FONTS checks pass. [EN](TEXT_UNDERLINE.md) / [RU](TEXT_UNDERLINE.ru.md).
+Styled ranges, unusual fonts, full Flash pixel/display integration and physical
+platform/device acceptance remain open. Все стадии roadmap остаются открытыми.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,

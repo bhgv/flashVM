@@ -37,9 +37,9 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_create_spaced`](../../../include/flashvm/text_layout.h#L93) | Borrow font, counted UTF-8 and options during synchronous bounded shaping with flags and signed pixel spacing; return an owned independent layout. Invalid flags/spacing clear output; ambiguous nonzero clusters are UNSUPPORTED. No VM/GC; serialize shared mutable font access. [EN](../../../doc/TEXT_SPACING.md) / [RU](../../../doc/TEXT_SPACING.ru.md). |
 | [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L118) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L120) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L99) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_line_underline_path`](../../../include/flashvm/text_layout.h#L115) | Borrow a placed layout, line index and copied center/thickness; return an independent bar path or an owned empty path for zero advance. Errors clear output; caller destroys it. Independent immutable readers are allowed. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
+| [`fvm_text_layout_line_underline_path`](../../../include/flashvm/text_layout.h#L117) | Borrow a placed layout, line index and copied center/thickness; return an independent bar path or an owned empty path for zero advance. Errors clear output; caller destroys it. Independent immutable readers are allowed. [EN](../../../doc/TEXT_UNDERLINE.md) / [RU](../../../doc/TEXT_UNDERLINE.ru.md). |
 | [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L97) | Copy whole-layout advances, ink bounds and counts without allocation; no VM or device. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L105) | Copy complete placed contours into a new owned path; caller releases it independently of layout. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 
@@ -127,9 +127,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../../../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../../../include/flashvm/text_layout.h#L118) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:120](../../../include/flashvm/text_layout.h#L120) |
 | `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:99](../../../include/flashvm/text_layout.h#L99) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../../../include/flashvm/text_layout.h#L115) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:117](../../../include/flashvm/text_layout.h#L117) |
 | `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:97](../../../include/flashvm/text_layout.h#L97) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../../../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

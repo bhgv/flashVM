@@ -108,6 +108,8 @@ extern "C"
      * Accept finite center/thickness within +/-1,000,000 / (0,1,000,000] pixels.
      * Spans the full logical line advance, including whitespace/tracking; zero
      * advance gives an owned empty path. Glyph outlines and layout metrics stay unchanged.
+     * Bar winding matches nondegenerate layout glyphs for nonzero compound filling;
+     * conflicting glyph orientations return UNSUPPORTED. Even-odd fill is not a union.
      * Borrow layout only for this call; output can outlive layout/font. No VM/GC;
      * immutable layout readers may run concurrently. Missing layout/output, invalid
      * index/geometry -> INVALID_ARGUMENT; allocation failure -> OUT_OF_MEMORY.

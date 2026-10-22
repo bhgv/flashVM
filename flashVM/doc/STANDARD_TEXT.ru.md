@@ -33,7 +33,7 @@
 
 Создайте поле через [fvm_textfield_create](../include/flashvm/standard_text.h#L27) и опубликуйте [fvm_set_global](../include/flashvm/value.h#L87) либо
 удерживайте pin/корень. Ресурс поля принадлежит GC; это ещё не узел MovieClip
-с глубиной отображения. [fvm_textfield_path](../include/flashvm/standard_text.h#L32) возвращает самостоятельный контур,
+с глубиной отображения. [fvm_textfield_path](../include/flashvm/standard_text.h#L33) возвращает самостоятельный контур,
 который переживает сборку поля и уничтожение контекста. Его можно рисовать или
 использовать как маску средствами path.h и AGG/Cairo; цвет выбирает приложение,
 например читая textColor. Контуры не обрезаются прямоугольником поля.
@@ -55,9 +55,15 @@ leading допустим, пока интервал положителен. Null
 текущий/будущий стили и перенос сохраняют выбор. [Контракт](TEXT_KERNING.ru.md).
 Знаковый дробный letterSpacing поддержан для ограниченного отображения один глиф
 на скаляр ([контракт](TEXT_SPACING.ru.md)); сложные кластеры с интервалом пока UNSUPPORTED.
-Ненулевые отступы/поля, bold/italic/underline/bullet, ссылки,
+Ненулевые отступы/поля, bold/italic/bullet, ссылки,
 tabStops и justify отклоняются при измерении/применении. Хранить эти значения
 в TextFormat можно; их отрисовка не имитируется.
+
+Однородное подчёркивание использует масштабированные центр/толщину встроенного
+шрифта. Снимки текущего/будущего формата возвращают Boolean; advances сохраняются,
+а экспорт контура добавляет независимые полосы строк. Отсутствующие метрики дают
+UNSUPPORTED. Итоговые контуры заполняются nonzero.
+[Контракт и проверки](TEXT_UNDERLINE.ru.md).
 
 setTextFormat меняет существующий текст; setNewTextFormat — формат будущего.
 Замена text применяет копию будущего формата. Методы get возвращают независимые
@@ -154,5 +160,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
 <!-- source-links:end -->

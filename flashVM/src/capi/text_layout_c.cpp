@@ -17,8 +17,10 @@ struct FVM_TextLayout
     fvm_detail::vector<FVM_Path *> outlines;
     FVM_TextLayoutMetrics metrics;
     FVM_Path *path;
+    int underline_winding; /* Immutable aggregate font-outline direction after construction. */
+    bool underline_conflict; /* Reject bars when nondegenerate glyph directions disagree. */
     /* Initialize Text Layout and its owned state. */
-    FVM_TextLayout() : path(0)
+    FVM_TextLayout() : path(0), underline_winding(FVM_TEXT_LAYOUT_WINDING_NONE), underline_conflict(false)
     {
         std::memset(&metrics, 0, sizeof(metrics));
     }
@@ -132,6 +134,56 @@ extern "C" FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *layout, s
     FVM_Affine matrix = {1, 0, 0, 1, g.x, g.y};
     return copy_path(layout->outlines[index], &matrix, out);
 }
+#ifdef FVM_HAS_FONTS
+/* Capture control-polygon winding once while building owned glyph outlines.
+ * The immutable layout then shares one direction across ink and whitespace lines,
+ * avoiding repeated full-glyph scans for every exported underline bar. */
+static FVM_Result outline_underline_direction(const FVM_Path *outline, int &direction)
+{
+    direction = FVM_TEXT_LAYOUT_WINDING_NONE;
+    double area = 0, first_x = 0, first_y = 0, previous_x = 0, previous_y = 0;
+    bool open = false;
+    for (size_t i = 0; i < fvm_path_count(outline); ++i)
+    {
+        FVM_PathCommand command;
+        FVM_Result result = fvm_path_get(outline, i, &command);
+        if (result != FVM_OK)
+            return result;
+        if (command.verb == FVM_PATH_MOVE)
+        {
+            if (open)
+                area += previous_x * first_y - first_x * previous_y;
+            first_x = previous_x = command.x[0];
+            first_y = previous_y = command.y[0];
+            open = true;
+        }
+        else if (command.verb == FVM_PATH_CLOSE)
+        {
+            if (open)
+                area += previous_x * first_y - first_x * previous_y;
+            open = false;
+        }
+        else
+        {
+            unsigned points = command.verb == FVM_PATH_CUBIC ? FVM_TEXT_LAYOUT_CUBIC_POINTS :
+                              command.verb == FVM_PATH_QUADRATIC ? FVM_TEXT_LAYOUT_QUADRATIC_POINTS :
+                              FVM_TEXT_LAYOUT_LINE_POINTS;
+            for (unsigned point = 0; point < points; ++point)
+            {
+                area += previous_x * command.y[point] - command.x[point] * previous_y;
+                previous_x = command.x[point];
+                previous_y = command.y[point];
+            }
+        }
+    }
+    if (open)
+        area += previous_x * first_y - first_x * previous_y;
+    if (area != 0)
+        direction = area < 0 ? FVM_TEXT_LAYOUT_WINDING_NEGATIVE : FVM_TEXT_LAYOUT_WINDING_POSITIVE;
+    return FVM_OK;
+}
+#endif
+
 /* Copy a full logical-line underline into an owned path. The caller supplies
  * font-derived metrics so the immutable layout never retains a mutable font. */
 extern "C" FVM_Result fvm_text_layout_line_underline_path(const FVM_TextLayout *layout, size_t index,
@@ -157,12 +209,15 @@ extern "C" FVM_Result fvm_text_layout_line_underline_path(const FVM_TextLayout *
         if (!(left >= -FVM_TEXT_LAYOUT_MAX_EXTENT && right <= FVM_TEXT_LAYOUT_MAX_EXTENT &&
               top >= -FVM_TEXT_LAYOUT_MAX_EXTENT && bottom <= FVM_TEXT_LAYOUT_MAX_EXTENT))
             return FVM_INVALID_ARGUMENT;
+        if (layout->underline_conflict)
+            return FVM_UNSUPPORTED;
+        bool reverse = layout->underline_winding == FVM_TEXT_LAYOUT_WINDING_NEGATIVE;
         FVM_PathCommand commands[FVM_TEXT_LAYOUT_RECT_COMMANDS];
         std::memset(commands, 0, sizeof(commands));
         commands[0].verb = FVM_PATH_MOVE; commands[0].x[0] = left; commands[0].y[0] = top;
-        commands[1].verb = FVM_PATH_LINE; commands[1].x[0] = right; commands[1].y[0] = top;
+        commands[1].verb = FVM_PATH_LINE; commands[1].x[0] = reverse ? left : right; commands[1].y[0] = reverse ? bottom : top;
         commands[2].verb = FVM_PATH_LINE; commands[2].x[0] = right; commands[2].y[0] = bottom;
-        commands[3].verb = FVM_PATH_LINE; commands[3].x[0] = left; commands[3].y[0] = bottom;
+        commands[3].verb = FVM_PATH_LINE; commands[3].x[0] = reverse ? right : left; commands[3].y[0] = reverse ? top : bottom;
         commands[4].verb = FVM_PATH_CLOSE;
         for (size_t i = 0; i < FVM_TEXT_LAYOUT_RECT_COMMANDS; ++i)
         {
@@ -594,6 +649,18 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
         result = fvm_font_glyph(font, g.shaped.glyph, &outline.value, &ax, &ay);
         if (result != FVM_OK)
             return result;
+        int direction;
+        result = outline_underline_direction(outline.value, direction);
+        if (result != FVM_OK)
+            return result;
+        if (direction != FVM_TEXT_LAYOUT_WINDING_NONE)
+        {
+            if (layout.underline_winding != FVM_TEXT_LAYOUT_WINDING_NONE &&
+                layout.underline_winding != direction)
+                layout.underline_conflict = true;
+            else
+                layout.underline_winding = direction;
+        }
         FVM_Affine matrix = {1, 0, 0, 1, g.x, g.y};
         result = fvm_path_append(layout.path, outline.value, &matrix);
         if (result != FVM_OK)

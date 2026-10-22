@@ -68,7 +68,7 @@ The resulting layout can be queried concurrently while no thread destroys it;
 font use during construction still follows the per-handle serialization rule.
 
 [`fvm_text_layout_path`](../include/flashvm/text_layout.h#L105) returns an independent block path;
-[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L118) returns an independent glyph path at its final
+[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L120) returns an independent glyph path at its final
 position. Editing either cannot change the layout or another exported path.
 Select words using original cluster byte ranges and append selected glyph
 paths. A ligature is one indivisible outline: splitting its component letters
@@ -103,6 +103,10 @@ See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
 [`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L93) adds bounded signed fractional pixels after each supported character while preserving the existing option ABI. Wrapping, alignment, glyph advances and owned paths agree. Zero retains legacy shaping; nonzero ambiguous clusters and negative adjusted advances return UNSUPPORTED. Arguments, statuses, lifetime, thread restrictions and tests: [contract](TEXT_SPACING.md).
 
+## Independent underline bars (v0.837–0.844)
+
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L63) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -114,8 +118,10 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
 | `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../include/flashvm/text_layout.h#L118) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:120](../include/flashvm/text_layout.h#L120) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:117](../include/flashvm/text_layout.h#L117) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

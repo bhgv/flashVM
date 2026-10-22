@@ -68,7 +68,7 @@ FriBidi разрешает уровни всего абзаца до перен�
 сериализации доступа к конкретному шрифтовому дескриптору.
 
 [fvm_text_layout_path](../include/flashvm/text_layout.h#L105) возвращает независимый контур блока,
-[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L118) — независимый контур глифа в итоговой позиции.
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L120) — независимый контур глифа в итоговой позиции.
 Изменение контрольных точек и преобразования не затрагивают исходную компоновку
 или другие копии. Для слова выберите глифы по исходному диапазону кластеров и
 объедините их контуры. Лигатура — один неделимый контур: выделение отдельных
@@ -104,6 +104,10 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 [`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L93) добавляет ограниченный знаковый дробный интервал после каждого поддержанного символа без изменения ABI параметров. Переносы, выравнивание, advances и независимые контуры согласованы. Ноль сохраняет прежний shaping; неоднозначные кластеры с интервалом и отрицательные итоговые advances дают UNSUPPORTED. Аргументы, статусы, время жизни, ограничения потоков и тесты: [контракт](TEXT_SPACING.ru.md).
 
+## Независимые полосы подчёркивания (v0.837–0.844)
+
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L63) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -114,8 +118,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../include/flashvm/text_layout.h#L118) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:120](../include/flashvm/text_layout.h#L120) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:117](../include/flashvm/text_layout.h#L117) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

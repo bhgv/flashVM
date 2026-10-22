@@ -22,7 +22,7 @@ evidence, not complete Flash text or platform/device acceptance.
 
 ## Owned per-line paths (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L115) borrows an immutable layout and line index,
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) borrows an immutable layout and line index,
 font-derived center/thickness and required output pointer. It returns one owned
 closed rectangle spanning line.x through line.x+advance at baseline+center.
 Whitespace and signed tracking are included. A zero-advance line returns an
@@ -45,7 +45,7 @@ field snapshots expose actual Boolean values. setTextFormat toggles current
 geometry and invalidates its cache; setNewTextFormat affects later text only.
 The current font must supply usable underline metrics before format admission.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L32) appends one bar per positive-advance line after glyph paths,
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L33) appends one bar per positive-advance line after glyph paths,
 using the same field gutter and wrapped/unwrapped alignment. Bars include spaces
 and signed letter spacing. textWidth/textHeight/getTextExtent advances and
 baseline spacing remain unchanged; glyph-only paths remain undecorated. The
@@ -63,6 +63,35 @@ v0.842: `jit_textfield_underline.cpp` drives AVM1 SetMember/CallMethod through i
 
 v0.843: the [C89 tutorial](../examples/embedding/text_layout/README.md) adds --underline, copied font metrics, independent bars and an actual RGBA pixel oracle at (1,40), alpha 255. Original glyph/bidi metadata and metrics stay identical; three bars add 15 commands. New demonstrated APIs include [`fvm_path_append`](../include/flashvm/path.h#L67) (copy temporary bars with an identity transform, release source after return) and [`fvm_path_count`](../include/flashvm/path.h#L56) (allocation-free command inspection). Paths outlive font/layout; no VM, window or device is required.
 
+## Overlapping ink and fill rules (v0.844)
+
+Line bars match the aggregate control-polygon winding of nondegenerate glyph
+outlines, so nonzero fill does not cancel ordinary glyph/bar overlaps. Conflicting
+orientations within a layout return UNSUPPORTED rather than selecting an arbitrary
+bar direction. Direction is captured once during layout construction, including a shared fallback
+for whitespace-only lines. Fully degenerate layouts use the default orientation.
+Fill combined TextField/tutorial paths with the nonzero rule. Even-odd filling
+has XOR overlap semantics and is not an ink union. Unusual self-intersecting or
+inconsistent font contours still require reference acceptance.
+A one-pixel baseline step also checks intersecting bars on an ink line and a
+whitespace-only line, so negative-leading overlap does not cancel decoration.
+The reproducible `geometry_mixed.ttf` fixture reflects V while preserving its
+rectangle bounds; the same test checks explicit conflicting-orientation rejection.
+`text_layout_underline_overlap.c` places a bar across the original A stem and
+counter and checks filled stem, filled counter, new exterior coverage and an
+unfilled point outside the bar, without relying on a graphics backend.
+
+## Verification at v0.844
+
+Release text-jit: 48 font/text/GC/transfer/JIT/tutorial tests pass. Full-core C/C++
+ASan/UBSan: nine underline runtime tests pass without injected allocation exceptions.
+NO_FONTS: seven API/standard-text tests pass. Allocation-fault sweeps run in the
+ordinary build. Both opposite current/future underline selections survive binary
+round trips. Both CC0 font fixtures regenerate byte-identically, including in a
+renamed independent component from an unrelated working directory. The C89
+example checks real RGBA coverage, not a physical display or original Flash player.
+All nine roadmap stages and physical platform/device acceptance remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -77,6 +106,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:117](../include/flashvm/text_layout.h#L117) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
 <!-- source-links:end -->

@@ -1,10 +1,12 @@
-Development version: **0.843** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.843 ` and an English description. Increase the subversion before each
+Development version: **0.844** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.844 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.844: [Preserve nonzero glyph fill where underline bars overlap outlines](doc/TEXT_UNDERLINE.md).
 
 v0.843: [Demonstrate owned underline paths and an independent C89 raster pixel oracle](doc/TEXT_UNDERLINE.md).
 

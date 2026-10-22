@@ -24,7 +24,7 @@ advances и подстановки глифов не изменены. Это н
 
 ## Независимые контуры строк (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L115) заимствует неизменяемую раскладку, индекс
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) заимствует неизменяемую раскладку, индекс
 строки, центр/толщину из метрик шрифта и обязательный выход. Результат —
 независимый замкнутый прямоугольник от line.x до line.x+advance на baseline+center.
 Пробелы и знаковый межбуквенный интервал включены. При нулевом advance результат
@@ -48,7 +48,7 @@ ToBoolean; null/undefined сохраняют стиль. Снимки текущ
 и сбрасывает кэш; setNewTextFormat влияет только на будущий текст. До принятия
 формата текущий шрифт должен предоставить пригодные метрики подчёркивания.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L32) добавляет полосу каждой строки с положительным advance
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L33) добавляет полосу каждой строки с положительным advance
 после контуров глифов, с тем же gutter и выравниванием поля с переносами и без.
 Пробелы и знаковый межбуквенный интервал включены. textWidth/textHeight,
 getTextExtent и расстояния baseline не меняются; отдельные глифы не декорируются.
@@ -66,6 +66,36 @@ v0.842: `jit_textfield_underline.cpp` выполняет AVM1 SetMember/CallMeth
 
 v0.843: [C89-пример](../examples/embedding/text_layout/README.md) добавляет --underline, копии метрик шрифта, независимые полосы и проверку реального RGBA-пикселя (1,40), alpha 255. Метаданные глифов/bidi и метрики прежние; три полосы добавляют 15 команд. Новые демонстрируемые API: [`fvm_path_append`](../include/flashvm/path.h#L67) копирует временные полосы с единичной матрицей, после возврата источник освобождается; [`fvm_path_count`](../include/flashvm/path.h#L56) читает число команд без выделений. Контуры переживают шрифт/раскладку; VM, окно и устройство не нужны.
 
+## Пересечения и правила заливки (v0.844)
+
+Направление обхода полосы соответствует суммарному обходу контрольных полигонов
+невырожденных глифов; nonzero-заливка не вычитает обычные пересечения глифа
+и полосы. Противоречивые направления глифов раскладки дают UNSUPPORTED вместо
+произвольного выбора. Направление фиксируется один раз при построении раскладки и используется также
+для пробельных строк; полностью вырожденная раскладка берёт исходное направление.
+Итоговый TextField/учебный контур заполняется правилом nonzero. Even-odd имеет
+XOR-семантику пересечений и не является объединением чернил. Необычные
+самопересекающиеся и несогласованные шрифты требуют отдельной эталонной приёмки.
+Шаг baseline в один пиксель дополнительно проверяет пересекающиеся полосы
+строки с глифом и пробельной строки при отрицательном leading без вычитания.
+Воспроизводимый `geometry_mixed.ttf` отражает V с сохранением границ прямоугольника;
+тот же тест проверяет явный отказ противоречивых направлений.
+`text_layout_underline_overlap.c` проводит полосу через штрих и внутреннее
+отверстие A, проверяя заполнение обоих, новую внешнюю область и пустую точку
+за пределами полосы без графического backend.
+
+## Проверки v0.844
+
+Release text-jit: прошли 48 проверок шрифтов/текста/GC/передачи/JIT/примера.
+Полное ядро C/C++ ASan/UBSan: прошли девять runtime-проверок подчёркивания без
+инъекций исключений выделения. NO_FONTS: прошли семь API/стандартных текстовых
+проверок. Перебор отказов памяти выполнялся в обычной сборке. Обе противоположные
+комбинации текущего/будущего подчёркивания сохраняются в бинарной передаче.
+Обе CC0-гарнитуры воспроизводятся байт-в-байт, в том числе в переименованном
+отдельном компоненте из другого рабочего каталога. C89-пример проверяет
+реальное RGBA-покрытие, а не физический экран или исходный Flash Player.
+Все девять стадий roadmap и приёмка физических платформ/устройств остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -80,6 +110,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:117](../include/flashvm/text_layout.h#L117) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
 <!-- source-links:end -->
