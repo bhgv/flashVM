@@ -57,6 +57,8 @@ v0.880 verifies actual loaded SWF6/7 rejection and SWF8 admission, plus native r
 
 v0.881 adds seven ordinary-build C++ allocation sweeps: native layout plus current-format admission, text assignment, replacement, automatic fitting, width and wrap-policy changes. Failed calls preserve text, current alignment, dimensions and cached metrics, with balanced GC/native scopes. Fonts remain reusable after failed construction. Bundled C allocator failures are not injected.
 
+v0.882 drives actual AVM1 alignment writes and method/property calls in interpreter, attached native code and automatic JIT. Justify/right alternate 90/72 widths with the same 94px automatic height. Four independent font-owner OS workers perform 64 builds each with distinct widths and fractional tracking, verifying expanded glyph positions and separately owned paths.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
