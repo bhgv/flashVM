@@ -8,7 +8,7 @@ API `flashvm/text_layout.h` строит блок текста из провер
 шрифтом. Используются статические FreeType/HarfBuzz/libunibreak/FriBidi,
 включаемые ключом FONTS в DEFS.txt. Поиск системных шрифтов не выполняется.
 
-Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L51), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L72).
+Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L53), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L72).
 При NULL options выбираются неограниченная ширина, естественный межстрочный
 интервал, AUTO-направление абзаца и выравнивание START. Пример
 examples/embedding/text_layout/main.c показывает переносы, смешанный текст
@@ -106,7 +106,7 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 ## Независимые полосы подчёркивания (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L63) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L117) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -117,8 +117,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
+| `fvm_font_read` | function | [include/flashvm/font.h:53](../include/flashvm/font.h#L53) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:120](../include/flashvm/text_layout.h#L120) |

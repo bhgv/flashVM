@@ -14,7 +14,7 @@ static double advance(FVM_TextRun *run)
 int main(void)
 {
     FVM_Font *font=0;FVM_TextRun *run=(FVM_TextRun*)1;
-    assert(fvm_font_shape_configured(0,"AV",2,FVM_TEXT_LTR,0,2,&run)==FVM_INVALID_ARGUMENT && !run);
+    assert(fvm_font_shape_configured(0,"AV",2,FVM_TEXT_LTR,0,4,&run)==FVM_INVALID_ARGUMENT && !run);
     { FVM_TextDirection bad;memset(&bad,127,sizeof(bad));
       assert(fvm_font_shape_configured(0,"AV",2,bad,0,0,&run)==FVM_INVALID_ARGUMENT && !run);
       assert(fvm_font_shape(0,"AV",2,bad,0,&run)==FVM_INVALID_ARGUMENT && !run); }

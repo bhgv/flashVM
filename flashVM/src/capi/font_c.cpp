@@ -321,7 +321,7 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if ((flags & ~FVM_FONT_SHAPE_NO_KERNING) || !font || !valid_utf8(text, size) || offset > size || length > size - offset ||
+    if ((flags & ~FVM_FONT_SHAPE_FLAGS) || !font || !valid_utf8(text, size) || offset > size || length > size - offset ||
         direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
         return FVM_INVALID_ARGUMENT;
     hb_buffer_t *buffer = hb_buffer_create();
@@ -340,10 +340,23 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
 
     /* Computation / Вычисление и обновление состояния. */
     hb_buffer_guess_segment_properties(buffer);
-    /* Restrict the selection to pair kerning; other shaping features retain their defaults. */
-    hb_feature_t feature = {FVM_FONT_KERN_TAG, 0, FVM_FONT_FEATURE_BEGIN, FVM_FONT_FEATURE_END};
-    hb_shape(font->shaper, buffer, flags & FVM_FONT_SHAPE_NO_KERNING ? &feature : 0,
-             flags & FVM_FONT_SHAPE_NO_KERNING ? 1 : 0);
+    /* Explicit whole-run overrides preserve required substitutions and mark positioning. */
+    hb_feature_t features[FVM_FONT_FEATURE_CAPACITY];
+    unsigned int feature_count = 0;
+    if (flags & FVM_FONT_SHAPE_NO_KERNING)
+        features[feature_count++].tag = FVM_FONT_KERN_TAG;
+    if (flags & FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES)
+    {
+        features[feature_count++].tag = FVM_FONT_LIGA_TAG;
+        features[feature_count++].tag = FVM_FONT_CLIG_TAG;
+    }
+    for (unsigned int i = 0; i < feature_count; ++i)
+    {
+        features[i].value = 0;
+        features[i].start = FVM_FONT_FEATURE_BEGIN;
+        features[i].end = FVM_FONT_FEATURE_END;
+    }
+    hb_shape(font->shaper, buffer, feature_count ? features : 0, feature_count);
     if (!hb_buffer_allocation_successful(buffer))
     {
         hb_buffer_destroy(buffer);
@@ -630,7 +643,7 @@ extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *, const char *, size_t
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return (flags & ~FVM_FONT_SHAPE_NO_KERNING) || !valid_shape_direction(direction)
+    return (flags & ~FVM_FONT_SHAPE_FLAGS) || !valid_shape_direction(direction)
                ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 

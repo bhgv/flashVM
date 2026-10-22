@@ -7,6 +7,8 @@
 #define FLASHVM_FONT_H
 #include "flashvm/path.h"
 #define FVM_FONT_SHAPE_NO_KERNING 1U /* Disable the OpenType kern feature for the entire run. */
+#define FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES 2U /* Disable OpenType liga/clig, preserving required ligatures. */
+#define FVM_FONT_SHAPE_FLAGS (FVM_FONT_SHAPE_NO_KERNING | FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES) /* Admitted feature mask. */
 #ifdef __cplusplus
 extern "C"
 {
@@ -80,6 +82,8 @@ extern "C"
     FVM_API FVM_Result fvm_text_run_get(const FVM_TextRun *run, size_t index, FVM_ShapedGlyph *out);
     /* Like font_shape, with explicit feature flags (zero preserves legacy shaping).
      * NO_KERNING disables pair kerning without disabling ligatures/mark positioning.
+     * NO_OPTIONAL_LIGATURES disables liga/clig without disabling rlig, marks or joining.
+     * Combine flags with bitwise OR; legacy flags zero preserve all defaults.
      * Unknown flags are INVALID_ARGUMENT; out is cleared on failure. The font is
      * single-owner and borrowed only during this call; returned run is independently owned.
      * No VM/GC/callback or device access. NO_FONTS returns UNSUPPORTED for valid flags. */

@@ -1,11 +1,11 @@
 # Font-defined underline geometry
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L63) copies the scalable font's underline center and full
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies the scalable font's underline center and full
 thickness in unhinted pixels, with positive y downward relative to the baseline.
 FreeType normalizes source-format metrics; [its tutorial](https://freetype.org/freetype2/docs/tutorial/step2.html)
 explains underline centers and font-unit scaling. No guessed thickness is used.
 
-Arguments are a borrowed font and required [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L32) output.
+Arguments are a borrowed font and required [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L34) output.
 [FVM_OK](../include/flashvm/flashvm.h#L42) publishes copied scalars that outlive the font. Output is cleared before
 failure: missing output/font is INVALID_ARGUMENT with fonts enabled; absent or
 nonpositive scaled metrics are UNSUPPORTED. NO_FONTS rejects a missing output,
@@ -101,8 +101,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
-| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
+| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:34](../include/flashvm/font.h#L34) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
