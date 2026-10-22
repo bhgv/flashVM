@@ -27,6 +27,9 @@ v0.982: Проверены pending EOF-tail, пауза без rewind, failed na
 
 v0.983: Base и EOF-tail удерживаются до конца frame callbacks; проверен настоящий SDL worker до и после stream EOF.
 
+
+v0.984: Один predictor используется в preflight/open: отдельный composition-бюджет отвергается до устройства, partial-владение очищается.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

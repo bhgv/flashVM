@@ -1340,6 +1340,22 @@ if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
 endif()
 
 
+# Root stream/event integration exercises the production C89 audio owner with an explicit dummy SDK.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_mixed_budget tests/mixed_budget.cpp common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_mixed_budget PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_mixed_budget PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_mixed_budget PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_mixed_budget PRIVATE -UNDEBUG)
+  endif()
+  target_compile_definitions(flashvm_frontend_mixed_budget PRIVATE FVM_DESKTOP_AUDIO_MIX_BYTES=1024UL)
+  add_test(NAME flashvm_frontend_mixed_budget COMMAND flashvm_frontend_mixed_budget)
+  set_tests_properties(flashvm_frontend_mixed_budget PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 15)
+endif()
+
+
 # Deterministic FIFO tests compile the actual worker as C89 and use the real SDL mutex SDK.
 if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
   foreach(mixed_test IN ITEMS mixed_refill mixed_controls mixed_navigation)

@@ -15,6 +15,18 @@ static FVM_Result stream_budget(size_t streams, size_t *remaining)
     return FVM_OK;
 }
 
+/* Predict the separate composition ceiling before native endpoint or callback acquisition. */
+static FVM_Result composition_budget(size_t streams, size_t events, size_t *out)
+{
+    FVM_Result result;
+    *out = 0;
+    if (!streams || !events) return FVM_OK;
+    result = fvm_swf_sound_mix_queue_storage_required_for_tracking(
+        FVM_DESKTOP_AUDIO_CHANNELS, FVM_DESKTOP_AUDIO_BLOCK, 1, out);
+    if (result != FVM_OK) return result;
+    return *out <= FVM_DESKTOP_AUDIO_MIX_BYTES ? FVM_OK : FVM_OUT_OF_MEMORY;
+}
+
 /* Charge retained predecessors plus this snapshot's temporary peak before native allocation. */
 static FVM_Result prepare_segment(FVM_Context *context, size_t index, size_t *remaining,
                                   FVM_SWFStreamSoundSnapshot **out)
@@ -119,8 +131,13 @@ static FVM_Result validate_mp3_events(FVM_Context *context)
 /* Validate aggregate preparation before window/device acquisition; no snapshot is retained. */
 FVM_Result fvm_desktop_audio_validate(FVM_Context *context)
 {
+    size_t streams = 0, events = 0, bytes = 0;
     FVM_Result result = validate_headers(context, 1);
-    return result == FVM_OK ? validate_mp3_events(context) : result;
+    if (result == FVM_OK) result = validate_mp3_events(context);
+    if (result == FVM_OK) result = fvm_swf_stream_sound_count(context, &streams);
+    if (result == FVM_OK) result = fvm_swf_sound_event_count(context, &events);
+    if (result == FVM_OK) result = composition_budget(streams, events, &bytes);
+    return result;
 }
 
 /* Forward the actual write, recording only blocks accepted by the real SDL adapter. */
@@ -537,13 +554,8 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
             return result;
 
     }
-    if (streams && count)
-    {
-        result = fvm_swf_sound_mix_queue_storage_required_for_tracking(
-            FVM_DESKTOP_AUDIO_CHANNELS, FVM_DESKTOP_AUDIO_BLOCK, 1, &mix_budget);
-        if (result != FVM_OK) return result;
-        if (mix_budget > FVM_DESKTOP_AUDIO_MIX_BYTES) return FVM_OUT_OF_MEMORY;
-    }
+    result = composition_budget(streams, count, &mix_budget);
+    if (result != FVM_OK) return result;
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);
     if (result != FVM_OK)

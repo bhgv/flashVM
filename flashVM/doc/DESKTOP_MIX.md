@@ -27,6 +27,9 @@ v0.982: Cover retained EOF-tail completion, pause without rewind, failed navigat
 
 v0.983: Withhold base and EOF-tail production during event preparation; verify real SDL worker handoff before and after stream EOF.
 
+
+v0.984: Apply the same separate composition predictor during preflight and open, with partial-owner cleanup and no endpoint on insufficient budget.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

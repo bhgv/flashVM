@@ -1,4 +1,4 @@
-Версия разработки: **0.983** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.984** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.984: [Один predictor используется в preflight/open: отдельный composition-бюджет отвергается до устройства, partial-владение очищается.](doc/DESKTOP_MIX.ru.md).
 
 v0.983: [Base и EOF-tail удерживаются до конца frame callbacks; проверен настоящий SDL worker до и после stream EOF.](doc/DESKTOP_MIX.ru.md).
 
