@@ -1,4 +1,4 @@
-Версия разработки: **0.908** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.909** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.909: [Текущие и будущие tabStops через binary/channel-перенос](doc/TEXT_TABS.ru.md).
 
 v0.908: [Getters tabStops, барьеры GC и откат повреждённого состояния](doc/TEXT_TABS.ru.md).
 
