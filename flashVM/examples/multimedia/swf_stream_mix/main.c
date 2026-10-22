@@ -83,11 +83,13 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueue *mix_queue = 0; /* Own retry storage before native publication. */
     FVM_AudioQueueBackend backend, adapted; /* Borrow real FIFO callbacks and wrapped composition. */
     FVM_SWFSoundMixQueueInfo pending; /* Observe retained retry ownership without a callback. */
+    FVM_SWFSoundMixQueueClock shared_clock; /* Copy shared counters rather than inferring time from stream EOF. */
     FVM_SWFSoundMixQueuePending ownership; /* Observe whether base or tail owns a rendered retry. */
     FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
     size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
-    int bounded_mode = argc == 3 && !strcmp(argv[2], "--bounded-tails"); /* Use an exact adapter-only allocation ceiling. */
+    int clock_mode = argc == 3 && !strcmp(argv[2], "--clock"); /* Observe one shared accepted/dequeued epoch across base and tails. */
+    int bounded_mode = (argc == 3 && !strcmp(argv[2], "--bounded-tails")) || clock_mode; /* Use an exact adapter-only allocation ceiling. */
     int tail_mode = (argc == 3 && !strcmp(argv[2], "--tails")) || bounded_mode; /* Select explicit pump_tail after actual converter EOF. */
     int queue_mode = (argc == 3 && !strcmp(argv[2], "--queue")) || tail_mode; /* Explicit queue/retry tutorial. */
     FILE *output = 0; /* No file exists until successful source preparation and teardown. */
@@ -97,7 +99,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz.\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -150,6 +152,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             printf("Mix queue buffers=%lu fixed=%lu retained=%lu\n", (unsigned long)storage.buffer_bytes, (unsigned long)storage.fixed_bytes, (unsigned long)storage.retained_bytes); /* Sizes are platform-dependent except for the fixed PCM arrays. */
         } /* Native hot-path buffers never grow. */
     } /* End owner-side preparation. */
+    if (clock_mode && !checked(fvm_swf_sound_mix_queue_clock_begin(mix_queue), "shared clock begin")) goto cleanup; /* Explicitly require an empty real FIFO before counting accepted frames. */
     fvm_context_destroy(context); /* [GC:] End canonical ownership before the native loop. */
     context = 0; /* [GC:] Prevent cleanup from destroying the former context again. */
     fvm_runtime_destroy(runtime); /* Independent native sources no longer need their runtime. */
@@ -208,8 +211,21 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         if (tail_mode && fvm_swf_sound_mix_queue_pump_tail(mix_queue, 1, EXAMPLE_MIX_TOTAL, &accepted) != FVM_NOT_FOUND) goto cleanup; /* Exhausted voices must not enqueue more silence. */
         if (tail_mode && accepted) goto cleanup; /* Exhaustion clears accepted without draining the FIFO. */
         if (queue.frames != EXAMPLE_MIX_TOTAL) goto cleanup; /* Reject incomplete native export. */
+        if (clock_mode) /* All accepted base and tail blocks are still waiting in this software FIFO. */
+        { /* Read a fresh validated observation without changing voice time. */
+            shared_clock.struct_size = sizeof(shared_clock); /* Required public clock descriptor size. */
+            if (!checked(fvm_swf_sound_mix_queue_clock_info(mix_queue, &shared_clock), "shared queued clock")) goto cleanup; /* No DAC position is claimed. */
+            printf("Shared clock submitted=%.0f queued=%lu played=%.0f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames); /* Expected 16, 16, zero before software consumption. */
+        } /* Clock snapshots are owned values. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
         if (fwrite(queue.pcm, sizeof(short), mixed, output) != mixed) goto cleanup; /* Terminal I/O. */
+        if (clock_mode) /* The successful file write is the explicit software FIFO consumer. */
+        { /* Only acknowledge drain after every queued scalar was copied. */
+            queue.frames = 0; /* Publish the actual software dequeue; this is not a device playhead. */
+            if (!checked(fvm_swf_sound_mix_queue_clock_info(mix_queue, &shared_clock), "shared drained clock")) goto cleanup; /* Observe submitted-minus-backlog after consumption. */
+            printf("Shared clock submitted=%.0f queued=%lu played=%.0f seconds=%.9f\n", shared_clock.submitted_frames, (unsigned long)shared_clock.queued_frames, shared_clock.played_frames, shared_clock.seconds); /* The count is 16 and seconds is 16/48000. */
+            if (!checked(fvm_swf_sound_mix_queue_clock_end(mix_queue), "shared clock end")) goto cleanup; /* End only after retry ownership and FIFO have drained. */
+        } /* The adapter remains alive until centralized cleanup. */
         printf("Queue retained %lu rejected blocks.\n", (unsigned long)queue.rejected); /* Report real callbacks. */
     } /* No file consumer pretends to be an atomic queue backend. */
     status = fclose(output) == 0 ? 0 : 1; /* Retain the actual final flush/close result. */

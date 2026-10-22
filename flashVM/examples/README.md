@@ -148,7 +148,7 @@
     - [swf_mp3](#example-multimedia-swf_mp3) — <small><em>MP3 StartSound/stream в native FILE после VM teardown</em></small>
     - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, native курсор и FILE после VM teardown</em></small>
     - [swf_stream_adpcm](#example-multimedia-swf_stream_adpcm) — <small><em>Неполный ADPCM: явные длины, native PCM и ranges после VM teardown</em></small>
-    - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, tail-pump и точный retry после VM teardown</em></small>
+    - [swf_stream_mix](#example-multimedia-swf_stream_mix) — <small><em>Потоковый PCM, tail-pump, общий FIFO-счётчик и retry</em></small>
     - [swf_stream_mp3](#example-multimedia-swf_stream_mp3) — <small><em>MP3-префиксы, проверка и экспорт PCM после уничтожения VM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
@@ -2105,6 +2105,8 @@ The `embedding/standard_text --tabs` mode roots a managed Array, copies current/
 Both `embedding/text_layout` and `embedding/standard_text` now accept `--default-tabs`: font-derived repeating stops, explicit ownership and checked metrics/wrapping. [Contract](../doc/TEXT_DEFAULT_TABS.md). / Повторяющаяся табуляция из метрик шрифта.
 
 The `multimedia/swf_stream_mix --tails` mode demonstrates actual stream EOF handoff, explicit event-only tail pumping, exact retry and exhaustion. [Contract](../doc/AUDIO_MIX_TAILS.md). / Подача хвостов после EOF, точный повтор и исчерпание.
+
+The `multimedia/swf_stream_mix --clock` mode demonstrates a single base/tail submitted-minus-queued epoch, software drain and explicit end. [Contract](../doc/MIX_QUEUE_CLOCK.md). / Общий отсчёт base/tail, подтверждённый software drain и завершение.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

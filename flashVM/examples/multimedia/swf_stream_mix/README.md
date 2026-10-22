@@ -100,6 +100,9 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [`fvm_swf_sound_mix_queue_pump_tail`](../../../include/flashvm/swf_sound_mix_queue.h#L131) | Authorize one event-only zero-base block after producer EOF/quiescence; fixed frames/target, accepted cleared on failure. Retains mixed bytes on queue rejection, no allocation/VM/GC; host serializes adapter/mixer and owns both until quiescence. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_storage_required`](../../../include/flashvm/swf_sound_mix_queue.h#L44) | Predict exact owner plus buffer requests from channels/block, preserve scalar out on invalid/overflow; no allocation/callback/VM or borrowed owner acquisition. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_storage_info`](../../../include/flashvm/swf_sound_mix_queue.h#L49) | Copy exact-size fixed/buffer/total request observations; preserve out on invalid/reentry, no allocation/callback/VM/GC. Adapter remains host-owned and serialized. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_clock_begin`](../../../include/flashvm/swf_sound_mix_queue.h#L69) | Begin/restart explicit shared frame accounting only with no pending retry and an empty backend; no pause/clear/voice change, allocation/VM/GC. Borrow/serialize all owners; backend failures preserve the old epoch. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_clock_info`](../../../include/flashvm/swf_sound_mix_queue.h#L86) | Copy exact-size fresh submitted/queued/played/seconds values for accepted base and tails; caller owns snapshot. Invalid/backend/regression errors preserve out; no allocation/VM/GC and no DAC timestamp. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
+| [`fvm_swf_sound_mix_queue_clock_end`](../../../include/flashvm/swf_sound_mix_queue.h#L78) | After quiescing producers and draining FIFO, disable shared accounting. Pending/busy rejects, nonempty/inactive returns NOT_FOUND; no implicit ownership transfer, pause/clear, allocation/VM/GC. [EN](../../../doc/MIX_QUEUE_CLOCK.md) / [RU](../../../doc/MIX_QUEUE_CLOCK.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_create_bounded`](../../../include/flashvm/swf_sound_mix_queue.h#L112) | Validate geometry then acquire fixed adapter storage within the exact byte ceiling; clear native out, preserve adapted on failure. Borrow mixer/backend; no callbacks/VM, quiesce before close. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_pending`](../../../include/flashvm/swf_sound_mix_queue.h#L31) | Copy exact-size NONE/BASE/TAIL retry ownership without callbacks, allocation or voice advance; preserve out on invalid/reentry. Observation is not a reservation; host serializes all owners. [EN](../../../doc/AUDIO_MIX_TAILS.md) / [RU](../../../doc/AUDIO_MIX_TAILS.ru.md); [declaration](../../../include/flashvm/swf_sound_mix_queue.h). |
 | [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L100) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
@@ -126,6 +129,20 @@ All four modes produce identical PCM under the independent oracle. It reports
 software FIFO, mixer/voices and VM are excluded. Режим явно разделяет бюджет
 адаптера и заимствованных источников; наблюдение pending не резервирует очередь.
 
+## Shared FIFO clock / Общий счётчик FIFO
+
+`OUTPUT.pcm --clock` uses bounded acquisition and explicit tail pumping, and begins
+shared accounting before native production. Before software consumption it prints
+`Shared clock submitted=16 queued=16 played=0`; after the complete file write,
+the software consumer acknowledges drain and it prints
+`Shared clock submitted=16 queued=0 played=16 seconds=0.000333333`, then ends the
+epoch. Exact PCM equals all existing modes. This is software FIFO dequeue,
+not a DAC timestamp or real device/A/V synchronization. File flush errors remain
+terminal and do not pretend to restore consumed voice time.
+Режим явно начинает учёт, наблюдает base+tail, подтверждает drain только после
+полного fwrite и завершает отсчёт. [EN](../../../doc/MIX_QUEUE_CLOCK.md) /
+[RU](../../../doc/MIX_QUEUE_CLOCK.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -141,6 +158,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_sound_mix_queue_clock_begin` | function | [include/flashvm/swf_sound_mix_queue.h:69](../../../include/flashvm/swf_sound_mix_queue.h#L69) |
+| `fvm_swf_sound_mix_queue_clock_end` | function | [include/flashvm/swf_sound_mix_queue.h:78](../../../include/flashvm/swf_sound_mix_queue.h#L78) |
+| `fvm_swf_sound_mix_queue_clock_info` | function | [include/flashvm/swf_sound_mix_queue.h:86](../../../include/flashvm/swf_sound_mix_queue.h#L86) |
 | `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:139](../../../include/flashvm/swf_sound_mix_queue.h#L139) |
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:100](../../../include/flashvm/swf_sound_mix_queue.h#L100) |
 | `fvm_swf_sound_mix_queue_create_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:112](../../../include/flashvm/swf_sound_mix_queue.h#L112) |

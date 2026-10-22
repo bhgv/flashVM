@@ -63,6 +63,12 @@ def main():
         assert storage and int(storage[1]) == 32 and int(storage[2]) > 0
         assert int(storage[3]) == int(storage[1]) + int(storage[2])
         assert bounded_output.read_bytes() == output.read_bytes()
+        clock_output = root / 'clock.pcm'
+        clocked = subprocess.run([executable, str(clock_output), '--clock'], cwd=root, check=True,
+                                 stdout=subprocess.PIPE, text=True)
+        assert 'Shared clock submitted=16 queued=16 played=0' in clocked.stdout
+        assert 'Shared clock submitted=16 queued=0 played=16 seconds=0.000333333' in clocked.stdout
+        assert clock_output.read_bytes() == output.read_bytes()
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

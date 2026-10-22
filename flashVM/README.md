@@ -1,10 +1,12 @@
-Development version: **0.946** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.946 ` and an English description. Increase the subversion before each
+Development version: **0.947** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.947 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.947: [Demonstrate a shared base and tail FIFO clock in C89](doc/MIX_QUEUE_CLOCK.md).
 
 v0.946: [Exercise independent clock epochs on OS workers](doc/MIX_QUEUE_CLOCK.md).
 
