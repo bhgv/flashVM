@@ -10,3 +10,5 @@ v0.989: Проверены TAIL retry перед новым base, удержан
 v0.990: Mixed worker использует paired gate scheduling: события идут через future gates, retry приоритетен, источники переключаются до event-only подачи.
 
 v0.991: Публикация завершённого кадра отделена от base-разрешения: root Stop держит stream phase, события продолжаются, host pause останавливает очередь.
+
+v0.992: Проверены seeded границы 2^53, backend/clock rejection и отсутствие выделений в gate/retry/clear после подготовки.

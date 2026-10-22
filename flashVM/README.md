@@ -1,10 +1,12 @@
-Development version: **0.991** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.992** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.992: [Exercise seeded 2^53 frame boundaries, backend/clock rejection and zero-allocation gate/retry/clear paths after native preparation.](doc/MIXED_GATES.md).
 
 v0.991: [Separate completed-frame publication from base authorization; root Stop holds stream phase while events continue and host pause still suspends the queue.](doc/MIXED_GATES.md).
 
