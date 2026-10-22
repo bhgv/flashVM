@@ -1,10 +1,12 @@
-Development version: **0.982** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.983** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.983: [Withhold base and EOF-tail production during event preparation; verify real SDL worker handoff before and after stream EOF.](doc/DESKTOP_MIX.md).
 
 v0.982: [Cover retained EOF-tail completion, pause without rewind, failed navigation clear and fresh event admission in the new epoch.](doc/DESKTOP_MIX.md).
 

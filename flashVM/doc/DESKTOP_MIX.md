@@ -24,6 +24,9 @@ v0.981: Execute actual root actions through interpreter/native JIT, queued ID su
 
 v0.982: Cover retained EOF-tail completion, pause without rewind, failed navigation clear and fresh event admission in the new epoch.
 
+
+v0.983: Withhold base and EOF-tail production during event preparation; verify real SDL worker handoff before and after stream EOF.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

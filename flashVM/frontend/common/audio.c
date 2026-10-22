@@ -159,6 +159,9 @@ static FVM_Result traced_clear(void *raw)
     return result;
 }
 
+/* Copy navigation while optionally withholding new frame authorization during event preparation. */
+static FVM_Result sync_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int authorize);
+
 /* [GC:] Resolve/copy on the context owner without holding the native producer's mutex.
  * Owner calls are serialized; the worker can only retire voices during preparation, so the
  * available-byte observation is conservative. Recheck actual adoption under the mutex. */
@@ -174,7 +177,7 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
     if (audio->composition)
     {
         /* Navigation must clear the old epoch before this frame's first new event is adopted. */
-        result = fvm_desktop_audio_timeline(context, clip, audio);
+        result = sync_timeline(context, clip, audio, 0);
         if (result != FVM_OK) return result;
     }
     event.struct_size = sizeof(event);
@@ -278,6 +281,11 @@ static FVM_Result stream_authorized(FVM_DesktopAudio *audio, int *out)
     unsigned int frame = 0;
     size_t index;
     FVM_Result result;
+    if (audio->composition && !audio->stream_frame)
+    {
+        *out = 0;
+        return FVM_OK;
+    }
     if (audio->stream_cancelled) return mixed_work(audio, out);
     result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
     if (result == FVM_OK)
@@ -310,7 +318,8 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
     FVM_Result result;
     unsigned int attempt;
     int held = 0, authorized = 0;
-    if (audio->stream_movie_paused || (audio->stream_cancelled && !audio->composition))
+    if (audio->stream_movie_paused || (audio->stream_cancelled && !audio->composition) ||
+        (audio->composition && !audio->stream_frame))
     {
         audio->was_starved = 0;
         audio->stream_waiting = 1;
@@ -640,8 +649,8 @@ static FVM_Result stream_seek_frame(FVM_DesktopAudio *audio, unsigned int frame)
 }
 
 /* [GC:] VM inspection stays on owner; native producer receives only copied scalar policy. */
-FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
-                                      FVM_DesktopAudio *audio)
+static FVM_Result sync_timeline(FVM_Context *context, FVM_Object *clip,
+                                 FVM_DesktopAudio *audio, int authorize)
 {
     FVM_MovieClipPlaybackInfo info;
     FVM_Result result = FVM_OK;
@@ -680,13 +689,22 @@ FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
         audio->stream_navigation = navigation;
         audio->stream_selected = info.frame;
         audio->stream_entered = info.entered;
-        audio->stream_frame = info.entered ? info.frame : 0;
+        audio->stream_frame = authorize && info.entered ? info.frame : 0;
+        /* Frame events may allocate outside the mutex. The owner publishes permission only
+         * after the complete frame, so the worker cannot render before all starts arrive. */
         audio->stream_movie_paused = !info.playing;
         if (!info.playing || !info.entered)
             result = fvm_swf_stream_output_pause(&audio->stream_output, 1);
     }
     SDL_UnlockMutex(audio->mutex);
     return result;
+}
+
+/* [GC:] Publish completed root frame authorization only from the VM owner's safe point. */
+FVM_Result fvm_desktop_audio_timeline(FVM_Context *context, FVM_Object *clip,
+                                      FVM_DesktopAudio *audio)
+{
+    return sync_timeline(context, clip, audio, 1);
 }
 
 /* Background suspension preserves the FIFO; worker primes again before foreground resume. */

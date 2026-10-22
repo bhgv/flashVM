@@ -24,6 +24,9 @@ v0.981: Root-действия проверены interpreter/native JIT: queued 
 
 v0.982: Проверены pending EOF-tail, пауза без rewind, failed navigation clear и свежие события в новой эпохе.
 
+
+v0.983: Base и EOF-tail удерживаются до конца frame callbacks; проверен настоящий SDL worker до и после stream EOF.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
