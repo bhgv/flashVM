@@ -10,6 +10,8 @@ The basic fixture proves opt-in behavior, exact rejection/retry counting, queue 
 
 v0.940: clock_end explicitly disables accounting after producer quiescence, no pending retry and validated FIFO drain. Inactive/nonempty returns NOT_FOUND, pending/null/busy INVALID_ARGUMENT, backend errors propagate. A valid nonempty poll may advance the last played observation while leaving accounting active. No device pause/clear, voice/source reset or ownership transfer is inferred. Tests verify rejected pending/end, unplayed/end, drained/end, legacy count forwarding after end and a fresh explicit begin.
 
+v0.941: callbacks attempt recursive begin/end/info during queue observation, write, pause and clear; every attempt rejects before state publication. Failed begin remains inactive; failed writes/clear/pause and thrown write/queued callbacks preserve retry/accounting. Impossible growth and played regression leave caller snapshots and the last valid position intact. Acknowledged clear resets the active epoch. The ordinary test covers exceptions; --no-throw supports separate sanitizer selection.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
