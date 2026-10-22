@@ -143,6 +143,8 @@ must be disjoint. No input/output memory is retained. Independent buffers need n
 VM, GC roots or shared font handle. `text_bidi_admission.c` checks these boundaries.
 This does not complete Unicode layout or SWF acceptance.
 
+v0.828: `text_bidi_allocation.cpp` sweeps C++ allocation boundaries, checks unchanged in-place input and all outputs on OOM, then retries against explicit RTL order/map/logical-level expectations. Native allocation faults are checked in the ordinary build.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
