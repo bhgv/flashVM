@@ -20,6 +20,8 @@ v0.921: ordinary C++ allocation-boundary sweeps cover periodic native constructi
 
 v0.922: actual AVM1 size writes followed by setTextFormat produce equal 40px/20px default tab measurements in interpreter, attached native JIT and automatic JIT modes (entry counters checked by the shared runner). Four real OS workers independently own fonts and derive 40px/20px intervals across 64 iterations each, checking tracking, indent and path lifetime. This does not authorize sharing a mutable font or VM context across threads.
 
+v0.925: a distinct embedded bold face with an independently changed OS/2 average proves default interval selection follows that face rather than the family regular slot or glyph maximum. Three alignments, signed indent, margins/blockIndent, fractional tracking, 40px/20px size changes and path export agree with analytic intrinsic/outer widths. Examples --default-tabs are checked in both native layout and managed-field tutorials.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
