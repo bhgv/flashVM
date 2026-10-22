@@ -12,6 +12,9 @@ v0.977: Acquire/close optional native composition ownership and route serialized
 
 v0.978: Allow bounded root mixed acquisition and synchronize navigation before adopting each frame event; preserve legacy event/stream paths.
 
+
+v0.979: Pump paired tails only at final source EOF, include active/pending events in completion and keep StopSounds-held sources cancelled.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

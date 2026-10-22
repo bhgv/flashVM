@@ -12,6 +12,9 @@ v0.977: Добавлены bounded-владение composition и маршру�
 
 v0.978: Разрешена bounded root-композиция stream/StartSound; навигация согласуется до принятия событий кадра, прежние пути сохранены.
 
+
+v0.979: Worker подаёт согласованные хвосты после финального EOF, учитывает active/pending события и сохраняет StopSounds-остановку stream.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
