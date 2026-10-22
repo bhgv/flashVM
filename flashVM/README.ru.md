@@ -1,4 +1,4 @@
-Версия разработки: **0.981** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.982** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.982: [Проверены pending EOF-tail, пауза без rewind, failed navigation clear и свежие события в новой эпохе.](doc/DESKTOP_MIX.ru.md).
 
 v0.981: [Root-действия проверены interpreter/native JIT: queued NoMultiple, failed clear, GC и новые события после StopSounds.](doc/DESKTOP_MIX.ru.md).
 

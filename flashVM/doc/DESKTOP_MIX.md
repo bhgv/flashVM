@@ -21,6 +21,9 @@ v0.980: Exercise production C89 refill against an explicit software FIFO, retain
 
 v0.981: Execute actual root actions through interpreter/native JIT, queued ID suppression, failed clear, GC and post-StopSounds event restart.
 
+
+v0.982: Cover retained EOF-tail completion, pause without rewind, failed navigation clear and fresh event admission in the new epoch.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

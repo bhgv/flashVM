@@ -21,6 +21,9 @@ v0.980: Production C89 refill проверен на явном FIFO: base retry,
 
 v0.981: Root-действия проверены interpreter/native JIT: queued NoMultiple, failed clear, GC и новые события после StopSounds.
 
+
+v0.982: Проверены pending EOF-tail, пауза без rewind, failed navigation clear и свежие события в новой эпохе.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
