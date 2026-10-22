@@ -15,3 +15,7 @@ v0.956: callbacks пробуют рекурсивные admission/query/stop/mod
 v0.957: настоящий встроенный SWF даёт преобразуемый root stream и два независимо prepared ID после source VM teardown. Tracked admission регистрирует end на output-кадрах 9 и 14; ID8 активен после stream EOF и отказа tail. Точный stereo PCM не меняется; общий выход заканчивается на 15 с padding, истёкшие регистрации сохраняют дедлайны, drained disable/end проходит. Отдельно сохраняются gate/pending/exception проверки. Это native composition-приёмка, не production desktop и не устройства.
 
 v0.958: четыре настоящих OS-потока выполняют по 64 независимых tracked-отсчёта с разным PCM и native-шаблонами после source VM teardown. Каждый отклоняет/повторяет выход, подавляет NoMultiple, сохраняет ID-active после mixer retirement, проверяет PCM, подтверждает drain и clear-сброс ID/clock. Таблицы локальны и переиспользуются; handles VM/микшера/очереди/голоса/шаблона не разделяются. Безопасность общих изменяемых handles не заявляется.
+
+
+
+v0.960: настоящие root MovieClip callbacks принимают ordinary/NoMultiple и маршрутизируют stop-ID через tracked API. Интерпретатор и native JIT выполняют frame-actions с entry counters; stopped ticks и GC safe points сохраняют доставку. Завершённый queued-ID активен, stop отменяет lease без удаления FIFO PCM, новый root-start следует за accepted. Точный stereo PCM переживает VM teardown. Перед моделью drain выполняется явный resume, затем disable/end. В JIT-профиле прошли оба режима. Это управляемая root callback-приёмка, не полный desktop/seek/дочерние клипы.
