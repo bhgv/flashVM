@@ -54,6 +54,9 @@ v0.961: a real C89 fixture links every new API and adopts/queries/stops/clears n
 
 Queued composition identities v0.951–v0.962: budgeted optional per-ID dequeue deadlines keep SyncNoMultiple active through pending and accepted FIFO audio after mixer retirement. Prepared admission, observation, stop and acknowledged clear preserve retry ownership and cancellation rules. Tracking covers one root dictionary namespace; child dictionaries are not remapped. Validation: 125 native regression/tutorial checks, 34 selected ASan/UBSan checks plus seven explicit --no-throw runs, and an interpreter/native-JIT root callback test with GC and native entries asserted. Ordinary builds cover exceptions and allocation failures; LeakSanitizer is disabled. A renamed detached component configures; its copied PCM checker passes against the native executable, without a separate detached build. Production desktop stream/event integration, child timelines, automatic A/V/seek policy, real devices/platforms and all nine roadmap stages remain open. [Details](MIX_QUEUE_IDENTITIES.md).
 
+
+v0.963: Add immediate tracked event stop_all; retain pending/FIFO PCM and the shared clock.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

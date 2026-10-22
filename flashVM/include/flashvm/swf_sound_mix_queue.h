@@ -144,6 +144,14 @@ extern "C"
      * disabled UNSUPPORTED. No allocation/callback/VM/GC; real mixer errors propagate.
      * Keep all borrowed owners live; use adapted.clear for acknowledged full cancellation. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_stop_id(FVM_SWFSoundMixQueue *, unsigned int sound_id);
+    /* Immediately retire all event voices and cancel every tracked ID deadline. This is
+     * event-only cancellation: accepted/pending mixed bytes, base stream cursors, pause
+     * and shared clock are unchanged. No DECLICK release is generated, matching mixer
+     * stop_all. Requires enabled tracking and live externally serialized borrowed owners.
+     * Null/reentry INVALID_ARGUMENT, disabled UNSUPPORTED, mixer errors propagate before
+     * deadline mutation. No allocation/backend callback/VM/GC. Use adapted.clear for
+     * acknowledged removal of pending/FIFO bytes; this operation never clears them. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_stop_all(FVM_SWFSoundMixQueue *);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

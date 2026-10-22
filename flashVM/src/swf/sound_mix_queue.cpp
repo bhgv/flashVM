@@ -541,6 +541,18 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_stop_id(FVM_SWFSoundMixQueue *queu
     return result;
 }
 
+/* Retire every future event contribution without destroying base/pending/accepted PCM. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_stop_all(FVM_SWFSoundMixQueue *queue)
+{
+    if (!queue || queue->busy) return FVM_INVALID_ARGUMENT;
+    if (queue->identities.empty()) return FVM_UNSUPPORTED;
+    MixBusyScope scope(queue);
+    FVM_Result result = fvm_swf_sound_mixer_stop_all(queue->mixer);
+    if (result == FVM_OK)
+        for (size_t i = 0; i < queue->identities.size(); ++i) queue->identities[i] = 0;
+    return result;
+}
+
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */
 extern "C" void fvm_swf_sound_mix_queue_close(FVM_SWFSoundMixQueue *queue)
 {
