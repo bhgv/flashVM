@@ -1,4 +1,6 @@
 # Desktop SWF application — v0.577
+
+Current root stream/event composition and its remaining gate/pause/device limits: [desktop mix contract](DESKTOP_MIX.md). Earlier versioned stream-only statements below are historical.
 v0.819 validates MP3 header/side-information CRC and preflights every statically
 referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only
 references and mute do not decode. [Admission and limits](MP3_CRC.md).

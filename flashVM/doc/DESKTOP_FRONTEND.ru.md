@@ -1,4 +1,6 @@
 # Десктопное приложение для SWF — v0.577
+
+Текущая root stream/event композиция и границы gate/pause/device: [контракт](DESKTOP_MIX.ru.md). Прежние versioned stream-only описания ниже исторические.
 v0.819 проверяет CRC заголовка/side information MP3 и все статические корневые
 MP3-ссылки до unmuted-аудиоустройства, один раз на ID. Stop-only ссылки и mute
 не декодируют звук. [Допуск и ограничения](MP3_CRC.ru.md).

@@ -1,5 +1,7 @@
 # Player compatibility and input preflight
 
+Current root stream/event composition and its remaining gate/pause/device limits: [desktop mix contract](DESKTOP_MIX.md). Earlier versioned stream-only statements below are historical.
+
 [Русский](PLAYER_PREFLIGHT.ru.md).
 
 Current v0.761 policy: [bounded PCM header sequences play](PLAYER_PCM_STREAMS.md); unsupported codecs/mixed/excess header counts still fail before native setup. The section below records the original muted-import contract.

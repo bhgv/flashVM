@@ -73,9 +73,15 @@ def main():
         adpcm_wire, adpcm_expected = movie(4,1,False)
         pcm_wire, pcm_expected = pcm_movie(False)
         _, first_samples = block(4,1,1,200)
+        _, later_samples = block(4,1,2,400)
+        # A gate stops future block writes, not continuous interpolation's immutable lookahead.
+        # Compute the whole same-header grid independently, then select only authorized frames.
+        isolated = converted([first_samples],44100)
+        authorized = converted([first_samples, [], later_samples],44100)[:len(isolated)]
+        assert authorized[:-4] == isolated[:-4] and authorized[-4:] != isolated[-4:]
         for name, wire, expected, frames in [('adpcm',adpcm_wire,adpcm_expected,4),
                                               ('pcm',pcm_wire,pcm_expected,8),
-                                              ('future-gate',adpcm_wire,converted([first_samples],44100),1)]:
+                                              ('future-gate',adpcm_wire,authorized,1)]:
             source = root/(name+'.swf')
             source.write_bytes(wire)
             base = root/name

@@ -1,5 +1,7 @@
 # Совместимость и предварительная проверка входа проигрывателя
 
+Текущая root stream/event композиция и границы gate/pause/device: [контракт](DESKTOP_MIX.ru.md). Прежние versioned stream-only описания ниже исторические.
+
 [English](PLAYER_PREFLIGHT.md).
 
 Текущая политика v0.761: [последовательность root PCM headers воспроизводится](PLAYER_PCM_STREAMS.ru.md); остальные кодеки, смесь и превышение числа headers отклоняются до native setup. Ниже сохранён исходный контракт muted import.

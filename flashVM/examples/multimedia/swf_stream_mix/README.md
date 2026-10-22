@@ -172,6 +172,9 @@ including existing DECLICK voices; device-wide cancellation still requires ackno
 | [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L52) | Predict owner/PCM/optional ID bytes into a required scalar without allocation, callbacks or VM access; invalid geometry/mode preserves output. Excludes mixer, voices and device. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
 | [`fvm_swf_sound_mix_queue_stop_all`](../../../include/flashvm/swf_sound_mix_queue.h#L162) | Retire all future events and reset ID deadlines on a live tracked owner; preserve pending/FIFO bytes and clock. Requires external serialization; no callback/allocation/VM/GC. Disabled tracking is UNSUPPORTED. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
 
+
+Desktop player integration now uses the same native mixer/ID ownership with a paired stream-output tail operation. This executable remains the six-mode memory-FIFO exporter; it does not run the desktop worker. [Production integration and remaining limits](../../../doc/DESKTOP_MIX.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

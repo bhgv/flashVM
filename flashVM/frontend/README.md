@@ -1,4 +1,6 @@
 # Desktop SWF frontend
+
+Root stream and StartSound now share a tracked queue; [current contract and limits](../doc/DESKTOP_MIX.md).
 v0.819 validates MP3 header/side-information CRC and preflights every statically
 referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only
 references and mute do not decode. [Admission and limits](../doc/MP3_CRC.md).

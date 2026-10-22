@@ -85,12 +85,15 @@ extern "C"
     /* Observe intrinsic root frame/play/entry on owner, then publish scalars under worker mutex.
      * Changed navigation token or pending/backward/skipped frame clears old FIFO and resets phase;
      * repeated observations do not rewind. No VM pointer reaches worker. Host pause remains
-     * independent. */
+     * independent. In composition mode, event callbacks withhold frame permission while
+     * preparing voices; call this public publication only after complete frame delivery. */
     FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Acquire native ownership for root events, prepared root streams, or their tracked composition.
      * Event preparation runs on owner outside worker mutex; aggregate native mixer/voice storage
      * obeys EVENT_BYTES. SyncNoMultiple includes queued/pending identity time until dequeue end.
-     * Native output/ID/device/trace storage and VM memory are separate budgets. */
+     * Native output/ID/device/trace storage and VM memory are separate budgets; composition
+     * owner+PCM+ID obeys MIX_BYTES. Final EOF tails share both accepted-frame epochs.
+     * Root pause holds the composition; independent events through stream gaps remain open. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
     FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
@@ -108,7 +111,9 @@ extern "C"
     FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
     /* Copy whether a running stream has authorized PCM/markers or accepted queued frames left.
      * Inactive future sources are inspected from their initial block; no decoding or VM access.
-     * No audio, suspension, movie stop or cancellation reports zero. Query is mutex-serialized;
+     * Mixed voices and retained mixed retry count after final source EOF. StopSounds holds
+     * the base cancelled but later events may play. No audio, suspension or movie stop
+     * reports zero. Query is mutex-serialized;
      * errors preserve output. Owner must retain initialized audio throughout the call. */
     FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *, int *);
     /* Owner safe point: detach sound delivery and join/release old root audio while keeping

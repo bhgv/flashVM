@@ -61,6 +61,8 @@ extern "C"
      * Zero holds all source frames. Gate/backpressure/EOF return NOT_FOUND; next_frame/info
      * distinguish them. Lowering a gate cannot recall already accepted FIFO audio: backward
      * navigation requires explicit seek/clear. A disallowed pending retry remains unchanged.
+     * Continuous interpolation may inspect the next immutable sample in the prepared same-header
+     * source; this gate does not turn an early host stop into source EOF or disable lookahead.
      * The host supplies actual timeline authorization, never a tick count or packet timestamp. */
     FVM_API FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *,
                                                         unsigned int max_movie_frame,
@@ -70,6 +72,7 @@ extern "C"
      * and identical submitted epochs. Uses this producer's block/target and updates its
      * accepted/dequeued accounting on success; source EOF/chunk/converter stay unchanged.
      * No struct ABI change. Continue/seek/pause/info remain valid after paired tails.
+     * Settle any mix TAIL retry before continue; successful adapted seek/clear cancels it.
      * Never interleave direct mix-tail/base writes: use this operation for all EOF tails.
      * accepted is optional and cleared first. Invalid/reentry/mismatched owners or epochs:
      * INVALID_ARGUMENT; missing shared clock: NOT_FOUND; mixer headroom/exhaustion:

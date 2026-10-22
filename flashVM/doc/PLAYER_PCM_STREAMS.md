@@ -1,4 +1,6 @@
 # Root PCM header sequences in the SDL player
+
+Current root stream/event composition and its remaining gate/pause/device limits: [desktop mix contract](DESKTOP_MIX.md). Earlier versioned stream-only statements below are historical.
 v0.819 validates MP3 header/side-information CRC and preflights every statically
 referenced root MP3 once per sound ID before unmuted device acquisition. Stop-only
 references and mute do not decode. [Admission and limits](MP3_CRC.md).
@@ -122,7 +124,7 @@ stream_source field is only a borrowed first-entry alias. No snapshot leaks into
 VM roots, callbacks or the SDL device. Startup validates/indexes per segment and
 may allocate; worker transitions allocate nothing and never read a context.
 
-On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L106) preserves accepted queue bytes,
+On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L109) preserves accepted queue bytes,
 pause and cumulative submitted/played clocks. The device remains open once.
 Output stays 48000 Hz stereo S16 while source width, mono/stereo and rate may
 change per header. Phase carries across blocks within one header and restarts at
@@ -136,7 +138,7 @@ StopSounds cancellation remain separate concepts.
 
 Explicit/backward/skipped navigation selects the last header at/before the target
 frame (source order breaks equal-frame ties), or the first future header before
-any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L113) stages pause/clear and
+any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L116) stages pause/clear and
 rebinds the selected converter only after acknowledged clear. It chooses the
 first block at/after the target inside that segment. Gaps still hold future data;
 no silence is synthesized. Later successors are re-primed when reached. This is
@@ -183,7 +185,7 @@ The owner imports/pins the root and calls [fvm_movieclip_get_playback_info](../i
 Selected-but-not-entered frames authorize nothing. The scalar entered frame and local play
 flag are published under the audio mutex; no context, clip or managed value is read by the
 worker. The worker owns the prepared snapshot, converter position and retry buffer, and
-calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L65) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) times per service iteration. The SDL backend copies accepted PCM; it
+calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L67) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) times per service iteration. The SDL backend copies accepted PCM; it
 never calls into VM/GC. Queue targets use the actual obtained driver quantum. Short
 authorized blocks and EOF resume with a nonempty queue even below the usual reserve,
 avoiding a startup deadlock when a frame contains little audio.
@@ -191,7 +193,7 @@ avoiding a startup deadlock when a frame contains little audio.
 Host/session/background suspension and the clip's stop flag both pause the queue and
 preserve accepted bytes. play resumes authorized data. StopSounds pauses, clears and
 cancels the stream until a detected navigation reset. There is no stream stop-release
-ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L100) under the same mutex, clearing
+ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L103) under the same mutex, clearing
 old queued/pending bytes and starting phase zero at the first block at/after the selected
 frame. Gaps hold a later block; they do not synthesize silence. Source EOF and drained
 queue are distinct.
@@ -313,9 +315,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:113](../include/flashvm/swf_stream_output.h#L113) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
-| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:65](../include/flashvm/swf_stream_output.h#L65) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:100](../include/flashvm/swf_stream_output.h#L100) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:116](../include/flashvm/swf_stream_output.h#L116) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:109](../include/flashvm/swf_stream_output.h#L109) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:103](../include/flashvm/swf_stream_output.h#L103) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->
