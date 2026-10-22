@@ -14,6 +14,8 @@ v0.941: callbacks attempt recursive begin/end/info during queue observation, wri
 
 v0.942: an explicit white-box seed tests MAX_CLOCK-2, a rejected two-frame block, exact successful retry at MAX_CLOCK and base/tail overflow rejection without voice advance or backend write. After acknowledged clear a real tail starts at the next source sample and counts from zero. The test compiles the actual adapter implementation and seeds only counters; it does not claim real-duration playback of 2^53 frames.
 
+v0.943: a real converted SWF stream producer contributes nine accepted frames; rejected tail output leaves that count unchanged, then exact tail retries bring the shared total/dequeue to 15 frames. The stream-only producer still reports its own nine frames. Frame-gate, source EOF and queue depletion remain distinct. The full stereo rational PCM oracle and independent source VM teardown are retained; drained clock_end succeeds. This proves native handoff accounting, not frontend A/V synchronization.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

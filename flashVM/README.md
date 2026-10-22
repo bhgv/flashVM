@@ -1,10 +1,12 @@
-Development version: **0.942** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.942 ` and an English description. Increase the subversion before each
+Development version: **0.943** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.943 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.943: [Verify shared stream and tail dequeue accounting](doc/MIX_QUEUE_CLOCK.md).
 
 v0.942: [Verify exact shared clock representation limits](doc/MIX_QUEUE_CLOCK.md).
 
