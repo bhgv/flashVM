@@ -24,6 +24,8 @@ v0.946: four actual OS workers independently perform 64 shared-clock epochs each
 
 v0.948: three actual native stream segments preserve the shared accepted count across continuous binding without clearing FIFO. Staged discontinuity/rebind resets the epoch only on acknowledged clear; failed clear preserves old converter binding, source pending PCM, BASE ownership and shared counts. The subsequent successful binding accepts into a fresh epoch, while an EOF binding resets it again. The ordinary test forbids allocation throughout producer transitions; no automatic event-voice seek/replay is inferred.
 
+v0.949: the real C89 fixture creates a bounded mono adapter, begins shared accounting, accepts PCM, observes dequeue/seconds and ends only after drain. Complete caller snapshots are compared byte-for-byte after null/inactive/wrong-size errors. All three new functions link in the minimal NO_MEDIA/NO_FONTS profile; no public existing structure or queue backend ABI is changed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
