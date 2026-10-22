@@ -3,6 +3,9 @@
 
 v0.975: Add [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L82) for final EOF: exact retry and coherent accepted/dequeued counters; no public struct change.
 
+
+v0.976: Verify exact backend pairing, rejected/throwing retry, stream reentry and independently advanced epoch rejection.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

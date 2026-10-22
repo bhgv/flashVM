@@ -3,6 +3,9 @@
 
 v0.975: Добавлен [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L82) после EOF: точный retry и согласованные счётчики без изменения публичных структур.
 
+
+v0.976: Проверены pairing backend, failed/throwing retry, stream-reentry и запрет рассогласованных эпох.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
