@@ -691,7 +691,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
 static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char *text,
                               const FVM_TextLayoutOptions &options, const FVM_FontMetrics &metrics,
                               const Paragraph &p, size_t start, size_t end, size_t next,
-                              unsigned int flags, double spacing, size_t &budget)
+                              unsigned int flags, double spacing, double indent, size_t &budget)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -727,6 +727,7 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
     else if (options.alignment == FVM_TEXT_ALIGN_RIGHT ||
              (options.alignment == FVM_TEXT_ALIGN_START && line.direction == FVM_TEXT_RTL))
         line.x = available;
+    line.x += indent; /* First-line offset is separate from glyph advance and alignment. */
     for (size_t i = 0; i < glyphs.size(); ++i)
     {
         FVM_TextLayoutGlyph g = glyphs[i];
@@ -759,8 +760,10 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
         layout.glyphs.push_back(g);
     }
     layout.lines.push_back(line);
-    if (advance > layout.metrics.advance_width)
-        layout.metrics.advance_width = advance;
+    double extent = advance + indent; /* Intrinsic pen extent excludes alignment padding. */
+    if (!(extent <= FVM_TEXT_LAYOUT_MAX_EXTENT)) return FVM_UNSUPPORTED;
+    if (extent > layout.metrics.advance_width)
+        layout.metrics.advance_width = extent;
     return FVM_OK;
 }
 /* A C caller can supply an out-of-range enum representation. Inspect its bytes
@@ -785,15 +788,16 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
 }
 
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *text, size_t size,
-                                             const FVM_TextLayoutOptions *provided, unsigned int flags, double spacing,
+extern "C" FVM_Result fvm_text_layout_create_indented(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *provided, unsigned int flags, double spacing, double indent,
                                              FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
     if ((flags & ~FVM_FONT_SHAPE_FLAGS) || !font ||
-        !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING))
+        !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING) ||
+        !(indent >= -FVM_TEXT_LAYOUT_MAX_INDENT && indent <= FVM_TEXT_LAYOUT_MAX_INDENT))
         return FVM_INVALID_ARGUMENT;
     FVM_TextLayoutOptions options = {0, 0, FVM_TEXT_AUTO, FVM_TEXT_ALIGN_START, 0};
     if (provided)
@@ -859,7 +863,7 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
             result = paragraph_init(p, chars, bytes, start, end, options.direction);
             if (result != FVM_OK)
                 return result;
-            if (options.alignment == FVM_TEXT_ALIGN_JUSTIFY)
+            if (indent != 0 || options.alignment == FVM_TEXT_ALIGN_JUSTIFY)
             {
                 if (FRIBIDI_IS_RTL(p.base)) return FVM_UNSUPPORTED;
                 for (size_t i = 0; i < p.levels.size(); ++i)
@@ -869,13 +873,21 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
             do
             {
                 size_t line_end;
-                result = choose_line(font, text, options.language, p, line_start, options.max_width, options.alignment == FVM_TEXT_ALIGN_JUSTIFY, flags, spacing,
+                double offset = line_start == 0 && !p.chars.empty() ? indent : 0;
+                FVM_TextLayoutOptions placed = options;
+                if (placed.max_width > 0)
+                {
+                    placed.max_width -= offset;
+                    if (placed.max_width <= 0) placed.max_width = FVM_TEXT_LAYOUT_MIN_WIDTH;
+                    if (placed.max_width > FVM_TEXT_LAYOUT_MAX_EXTENT) return FVM_UNSUPPORTED;
+                }
+                result = choose_line(font, text, options.language, p, line_start, placed.max_width, options.alignment == FVM_TEXT_ALIGN_JUSTIFY, flags, spacing,
                                      line, grapheme, budget, line_end);
                 if (result != FVM_OK)
                     return result;
                 size_t next_byte = line_end == p.chars.size() ? bytes[next] : p.bytes[line_end];
-                result = append_line(*layout.value, font, text, options, metrics, p, line_start,
-                                     line_end, next_byte, flags, spacing, budget);
+                result = append_line(*layout.value, font, text, placed, metrics, p, line_start,
+                                     line_end, next_byte, flags, spacing, offset, budget);
                 if (result != FVM_OK)
                     return result;
                 line_start = line_end;
@@ -904,17 +916,26 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
 }
 #else
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *, const char *, size_t,
-                                             const FVM_TextLayoutOptions *, unsigned int flags, double spacing, FVM_TextLayout **out)
+extern "C" FVM_Result fvm_text_layout_create_indented(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags, double spacing, double indent, FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
     return (flags & ~FVM_FONT_SHAPE_FLAGS) ||
-           !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING)
+           !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING) ||
+           !(indent >= -FVM_TEXT_LAYOUT_MAX_INDENT && indent <= FVM_TEXT_LAYOUT_MAX_INDENT)
                ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 #endif
+
+/* Preserve all existing spaced callers through the zero-indent path. */
+extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *text, size_t size,
+                                             const FVM_TextLayoutOptions *options, unsigned int flags,
+                                             double spacing, FVM_TextLayout **out)
+{
+    return fvm_text_layout_create_indented(font, text, size, options, flags, spacing, 0, out);
+}
 
 /* Preserve native callers' default HarfBuzz behavior without changing any option layout. */
 extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, size_t size,

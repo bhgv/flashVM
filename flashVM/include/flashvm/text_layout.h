@@ -101,6 +101,25 @@ extern "C"
     FVM_API FVM_Result fvm_text_layout_create_spaced(FVM_Font *, const char *, size_t,
                                              const FVM_TextLayoutOptions *, unsigned int flags,
                                              double letter_spacing, FVM_TextLayout **out);
+    /* Spaced layout with a signed first-line offset for every nonempty hard paragraph.
+     * Finite indent in [-4096,4096] native pixels; fractional values are accepted here.
+     * Nonzero indent requires LTR paragraphs with bidi levels zero; otherwise UNSUPPORTED.
+     * Wrapping/alignment use width-indent on the first line only, clamped to 1/64px.
+     * Subsequent lines use the original width; empty paragraphs have no offset.
+     * Line.x/glyph positions/paths include indent; line.advance excludes it.
+     * Metrics.advance_width is max(0, line.advance + first-line indent), without
+     * alignment padding. A negative indent may place owned paths at negative x.
+     * Zero exactly preserves spaced layout. Font/input/options borrowed during call;
+     * output independently owns glyphs/paths and is destroyed by text_layout_destroy.
+     * No VM/GC state; serialize mutable font access; immutable layout readers may run
+     * concurrently. Invalid indent/spacing/flags/options -> INVALID_ARGUMENT;
+     * bidi/complexity/extent limits -> UNSUPPORTED; allocation failure -> OUT_OF_MEMORY.
+     * Every failure clears out. NO_FONTS validates indent/spacing/flags only and
+     * returns UNSUPPORTED. Other shaping/byte/ownership limits match spaced layout. */
+    FVM_API FVM_Result fvm_text_layout_create_indented(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags,
+                                             double letter_spacing, double first_line_indent,
+                                             FVM_TextLayout **out);
     /* Implement text layout metrics for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *, FVM_TextLayoutMetrics *);
     /* Implement text layout line for this subsystem. */
