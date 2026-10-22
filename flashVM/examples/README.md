@@ -100,7 +100,7 @@
     - [os_ports](#example-embedding-os_ports) — <small><em>Native-ввод и TCP connect/send/close</em></small>
   - [text](#group-embedding-text)
     - [font_libraries](#example-embedding-font_libraries) — <small><em>Шрифты, shaping и редактируемые контуры</em></small>
-    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, начертания, размер и опоры</em></small>
+    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, отступы, начертания и авторазмер</em></small>
     - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
     - [text_layout](#example-embedding-text_layout) — <small><em>Строки, отступы, justify и контуры text layout</em></small>
     - [url_encoding](#example-embedding-url_encoding) — <small><em>URL-функции AS1/AS2, UTF-16 и NUL без потери длины</em></small>
@@ -2095,6 +2095,8 @@ context. [Contract](../doc/TEXT_INSETS.md). / Режим `--insets` демонс
 абзаца и авторазмер в том же контексте.
 
 The native `embedding/text_layout` tutorial adds `--indent` and `--hanging-indent`: first-line offsets, unchanged continuation origins and independent paths. [Contract](../doc/TEXT_INDENT.md). / Отступ первой строки и неизменное начало продолжений.
+
+The `embedding/standard_text --indent` mode combines first-line indentation with paragraph margins and checked wrapped/unwrapped fitting. [Contract](../doc/TEXT_INDENT.md). / Первая строка абзаца, поля и проверенный авторазмер.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

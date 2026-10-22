@@ -119,6 +119,22 @@ NO_FONTS reports the existing unsupported profile. No window/device is involved.
 Контракт значений, ошибок, владения и ограничений: [EN](../../../doc/TEXT_INSETS.md) /
 [RU](../../../doc/TEXT_INSETS.ru.md).
 
+## First-line mode / Отступ первой строки
+
+Run `flashvm_examples_embedding_standard_text_main --indent` in the FONTS profile.
+It adds indent=18 to the existing left/right/block values 10/12/8. Expected:
+`indent wrap: advance=90.00 height=94.00`, then `indent fit: width=184.00`.
+The same property/call APIs borrow the globally rooted managed format; candidate
+style and geometry publish only after success. Existing independent path export
+and owner-context cleanup still run. NO_FONTS reports the existing unsupported
+profile. No device or original Flash acceptance is claimed.
+
+Режим добавляет отступ 18 к полям 10/12/8. Ожидаются advance=90, height=94,
+затем ширина без переноса 184. Формат удерживается глобальным корнем; геометрия
+публикуется после проверки, путь принадлежит вызывающему отдельно.
+[Аргументы, ошибки и ограничения EN](../../../doc/TEXT_INDENT.md) /
+[RU](../../../doc/TEXT_INDENT.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

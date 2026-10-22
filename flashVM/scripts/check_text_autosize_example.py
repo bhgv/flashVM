@@ -25,6 +25,9 @@ def main():
     insets = subprocess.run([sys.argv[1], '--insets'], text=True, capture_output=True, check=True)
     assert insets.stdout.splitlines()[-2:] == [
         'insets wrap: advance=72.00 height=94.00', 'insets fit: width=166.00']
+    indented = subprocess.run([sys.argv[1], '--indent'], text=True, capture_output=True, check=True)
+    assert indented.stdout.splitlines()[-2:] == [
+        'indent wrap: advance=90.00 height=94.00', 'indent fit: width=184.00']
     bad = subprocess.run([sys.argv[1], '--unknown'], text=True, capture_output=True)
     assert bad.returncode and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 autoSize activation, text edit, constrained height and owned path export')

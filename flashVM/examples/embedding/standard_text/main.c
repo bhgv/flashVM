@@ -41,7 +41,8 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--anchors")) automatic = 2; /* Also demonstrate parent-space horizontal anchors. */
     else if (argc == 2 && !strcmp(argv[1], "--font-variants")) variants = 1; /* Select actual regular/bold/italic/bold-italic sources. */
     else if (argc == 2 && !strcmp(argv[1], "--insets")) insets = 1; /* Measure wrapped and fitted paragraph insets. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--indent")) insets = 2; /* Combine first-line indentation with paragraph margins. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -466,6 +467,11 @@ int main(int argc, char **argv)
             fvm_value_number(&value, sizes[i]); /* Borrow a stack numeric value. */
             if (fvm_object_set(context, format, names[i], &value) != FVM_OK) fvm_example_fail("store inset", __FILE__, __LINE__); /* Same-context property write may allocate. */
         } /* No native resource is transferred by these writes. */
+        if (insets == 2) /* Apply an 18px offset only to nonempty paragraph first lines. */
+        { /* Format mutation precedes future-style application and text assignment. */
+            fvm_value_number(&value, 18); /* TextFormat accepts bounded integral offsets. */
+            if (fvm_object_set(context, format, "indent", &value) != FVM_OK) fvm_example_fail("store first-line indent", __FILE__, __LINE__); /* Borrow the managed same-context format. */
+        } /* Existing zero-indent mode remains unchanged. */
         fvm_value_undefined(args); /* Prepare the one borrowed method argument. */
         args[0].type = FVM_VALUE_OBJECT; /* Select the object representation. */
         args[0].object = format; /* Existing global roots the shared format. */
@@ -481,10 +487,10 @@ int main(int argc, char **argv)
         width = result.number; /* First wrapped line advances 72px. */
         if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("inset height", __FILE__, __LINE__); /* Read two-line outer height. */
         height = result.number; /* Ascent/descent and leading produce 94px with gutter. */
-        printf("insets wrap: advance=%.2f height=%.2f\n", width, height); /* Expected 72.00 and 94.00. */
+        printf("%s wrap: advance=%.2f height=%.2f\n", insets == 2 ? "indent" : "insets", width, height); /* Expected 90 or 72 advance, with 94 height. */
         fvm_value_boolean(&value, 0); /* Disable wrapping for horizontal fitting. */
         if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK || fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("inset fit width", __FILE__, __LINE__); /* Fit includes 132px text, 30px insets and 4px gutter. */
-        printf("insets fit: width=%.2f\n", result.number); /* Expected 166.00; exported outlines remain field-local. */
+        printf("%s fit: width=%.2f\n", insets == 2 ? "indent" : "insets", result.number); /* Expected 184 or 166; exported outlines remain field-local. */
     } /* The ordinary path export and context cleanup below retain their ownership. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.

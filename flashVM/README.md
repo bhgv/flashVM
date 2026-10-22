@@ -1,10 +1,12 @@
-Development version: **0.900** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.900 ` and an English description. Increase the subversion before each
+Development version: **0.901** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.901 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.901: [Demonstrate first-line TextFormat indentation and fitting in the C89 embedding tutorial](doc/TEXT_INDENT.md).
 
 v0.900: [Demonstrate signed native first-line indentation in the checked C89 tutorial](doc/TEXT_INDENT.md).
 
