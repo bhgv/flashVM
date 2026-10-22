@@ -40,6 +40,8 @@ kerning/tracking/underline composition, NUL, empty text and insertion.
 
 v0.848: `textfield_autosize_allocation.cpp` sweeps six C++ allocation paths: enabling automatic mode, text assignment, replaceText, current formatting, wordWrap and wrapped width changes. Failed calls preserve text/mode/dimensions and balanced GC frames/native depth; successful calls publish measured geometry. Fault injection runs in the ordinary build.
 
+v0.849: `jit_textfield_autosize.cpp` drives actual AVM1 string/Boolean mode writes and text edits in interpreter, attached native code and automatic JIT, checking measured dimensions, native entry counts, unsupported-anchor propagation and GC scopes. `text_autosize_os_ports.cpp` runs four actual OS workers, each owning its runtime/context/font/field, with 64 edits and GC passes. No mutable VM state is shared.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
