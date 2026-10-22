@@ -1,10 +1,12 @@
-Development version: **0.936** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.936 ` and an English description. Increase the subversion before each
+Development version: **0.937** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.937 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.937: [Verify tail stop release and C89 contracts](doc/AUDIO_MIX_TAILS.md).
 
 v0.936: [Demonstrate exact tail adapter budgets and ownership](doc/AUDIO_MIX_TAILS.md).
 

@@ -30,7 +30,8 @@ namespace
 /* Compute requested native bytes before any storage allocation; exclude allocator overhead. */
 FVM_Result storage_bytes(unsigned int channels, size_t block, FVM_SWFSoundMixQueueStorageInfo &out)
 {
-    if ((channels != 1 && channels != 2) || !block || block > FVM_SWF_SOUND_OUTPUT_MAX_BLOCK)
+    if ((channels < FVM_SWF_SOUND_MIX_QUEUE_MIN_CHANNELS ||
+         channels > FVM_SWF_SOUND_MIX_QUEUE_MAX_CHANNELS) || !block || block > FVM_SWF_SOUND_OUTPUT_MAX_BLOCK)
         return FVM_INVALID_ARGUMENT;
     if (block > (size_t)-1 / channels / sizeof(short) / FVM_SWF_SOUND_MIX_QUEUE_BUFFERS)
         return FVM_OUT_OF_MEMORY;

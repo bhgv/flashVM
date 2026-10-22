@@ -22,6 +22,8 @@ v0.933: an actual root stream-output producer and two converted event voices run
 
 v0.934: four actual OS workers each own an independent native voice template, mixer, bounded adapter and backend. After destroying each source VM/runtime, every worker performs 64 clone/adopt/render cycles with rejection and exact retry of every two-frame tail block. Independent PCM is verified throughout. No mutable VM, voice, mixer or queue is shared; this is concurrency acceptance for separate owners, not a new shared-state thread-safety promise.
 
+v0.937: immediate stop-by-ID preserves already mixed pending PCM, while stop-all plus acknowledged clear discards it. An independent 44100-Hz oracle checks all 220 five-millisecond DECLICK release samples, final zero and block padding; tail pumping continues releasing voices until exhaustion. Invalid frame/target geometry and impossible backend counts consume no voice time. The C89 link test covers every new API, cleared accepted output and preserved observation/backend outputs.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
