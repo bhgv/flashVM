@@ -51,6 +51,12 @@ static fvm_detail::string font_source_key(const char *name, size_t length, unsig
     return fvm_detail::string(key, length + FVM_TEXT_FONT_KEY_PREFIX);
 }
 
+/* Keep the new Flash8 paragraph policy unavailable to older loaded movies. */
+static bool justify_available(FVM_Context *context)
+{
+    return !context->swf_loaded || context->swf_info.version >= FVM_TEXT_JUSTIFY_MIN_VERSION;
+}
+
 /* Define Style struct and its representation. */
 struct Style
 {
@@ -251,6 +257,8 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                 style.alignment = FVM_TEXT_ALIGN_CENTER;
             else if (style_keyword(v, "right"))
                 style.alignment = FVM_TEXT_ALIGN_RIGHT;
+            else if (style_keyword(v, "justify") && justify_available(c))
+                style.alignment = FVM_TEXT_ALIGN_JUSTIFY;
             else
                 return FVM_UNSUPPORTED;
         }
@@ -345,6 +353,8 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
 
     /* Initialization / Инициализация локального состояния. */
     *out = 0;
+    if (style.alignment == FVM_TEXT_ALIGN_JUSTIFY && !justify_available(c))
+        return FVM_UNSUPPORTED;
     FontOwner font;
     FVM_Result result = open_font(c, style, &font.font);
     if (result != FVM_OK)
@@ -422,7 +432,7 @@ struct PreparedGeometry
 static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
                       const char *text, size_t size, PreparedGeometry &next)
 {
-    if (!next.automatic && style.letter_spacing == 0)
+    if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY)
         return FVM_OK;
     double width = next.wrap && next.multiline ? next.width - FVM_TEXT_FIELD_GUTTER : 0;
     if (next.wrap && next.multiline && width <= 0)
@@ -453,6 +463,8 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
 /* Compute and return ensure layout. */
 static FVM_Result ensure_layout(FVM_Context *c, Field *field)
 {
+    if (field->current.alignment == FVM_TEXT_ALIGN_JUSTIFY && !justify_available(c))
+        return FVM_UNSUPPORTED;
     if (field->layout)
         return FVM_OK;
     double width = field->wrap && field->multiline ? field->width - FVM_TEXT_FIELD_GUTTER : 0;
@@ -620,7 +632,7 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     /* Initialization / Инициализация локального состояния. */
     const char *align = style.alignment == FVM_TEXT_ALIGN_LEFT     ? "left"
                         : style.alignment == FVM_TEXT_ALIGN_CENTER ? "center"
-                                                                   : "right";
+                        : style.alignment == FVM_TEXT_ALIGN_RIGHT ? "right" : "justify";
     fvm_value_string(&v, align);
     result = fvm_object_set(c, object, "align", &v);
     if (result != FVM_OK)
@@ -1505,7 +1517,8 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.leading = style.leading;
     out.letter_spacing = style.letter_spacing;
     out.color = style.color;
-    out.alignment = (unsigned long)style.alignment |
+    out.alignment = (style.alignment == FVM_TEXT_ALIGN_JUSTIFY ? 0UL : (unsigned long)style.alignment) |
+                    (style.alignment == FVM_TEXT_ALIGN_JUSTIFY ? FVM_TEXT_STYLE_JUSTIFY : 0UL) |
                     (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
                     (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
                     (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL) |
@@ -1522,8 +1535,11 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
         !finite_range(src.leading, -4096, 4096) ||
         !finite_range(src.letter_spacing, -FVM_TEXT_STYLE_MAX_SPACING, FVM_TEXT_STYLE_MAX_SPACING) ||
         ((src.letter_spacing != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_SPACING) != 0)) || src.color > 16777215UL ||
-        (src.alignment & ~FVM_TEXT_STYLE_FLAGS) > 2)
+        (src.alignment & ~FVM_TEXT_STYLE_FLAGS) > 2 ||
+        ((src.alignment & FVM_TEXT_STYLE_JUSTIFY) && (src.alignment & ~FVM_TEXT_STYLE_FLAGS)))
         return FVM_INVALID_ARGUMENT;
+    if ((src.alignment & FVM_TEXT_STYLE_JUSTIFY) && !justify_available(context))
+        return FVM_UNSUPPORTED;
     unsigned int variant = (src.alignment & FVM_TEXT_STYLE_BOLD ? FVM_TEXT_FONT_BOLD : 0U) |
                            (src.alignment & FVM_TEXT_STYLE_ITALIC ? FVM_TEXT_FONT_ITALIC : 0U);
     fvm_detail::string key = font_source_key(src.font.c_str(), src.font.size(), variant);
@@ -1553,7 +1569,8 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
     out.color = src.color;
-    out.alignment = (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_FLAGS);
+    out.alignment = src.alignment & FVM_TEXT_STYLE_JUSTIFY ? FVM_TEXT_ALIGN_JUSTIFY :
+                    (FVM_TextAlignment)(src.alignment & ~FVM_TEXT_STYLE_FLAGS);
     out.underline = (src.alignment & FVM_TEXT_STYLE_UNDERLINE) != 0;
     out.kerning = (src.alignment & FVM_TEXT_STYLE_NO_KERNING) == 0;
     return FVM_OK;

@@ -540,6 +540,70 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
     return FVM_OK;
 }
 
+/* Resolve an LTR source cluster without changing ligature/combining glyph order. */
+static size_t justify_scalar(const Paragraph &p, size_t start, size_t end, unsigned int cluster)
+{
+    while (start < end)
+    {
+        size_t middle = start + (end - start) / 2;
+        if (p.bytes[middle] < cluster) start = middle + 1;
+        else end = middle;
+    }
+    return start;
+}
+
+/* Apply the same trailing-space measurement in trials and final lines. Expansion
+ * changes only independent U+0020 advances; word clusters keep original shaping. */
+static FVM_Result justify_line(const Paragraph &p, size_t start, size_t end,
+                               fvm_detail::vector<FVM_TextLayoutGlyph> &glyphs,
+                               double width, bool expand, double &advance)
+{
+    size_t first = start, visible = end, gaps = 0;
+    while (first < end && p.chars[first] == FVM_TEXT_LAYOUT_JUSTIFY_SPACE) ++first;
+    while (visible > start && p.chars[visible - 1] == FVM_TEXT_LAYOUT_JUSTIFY_SPACE) --visible;
+    double removed = 0;
+    for (size_t scalar = start; scalar < end; ++scalar)
+    {
+        if (p.chars[scalar] != FVM_TEXT_LAYOUT_JUSTIFY_SPACE) continue;
+        size_t low = 0, high = glyphs.size();
+        while (low < high)
+        {
+            size_t middle = low + (high - low) / 2;
+            if (glyphs[middle].shaped.cluster < p.bytes[scalar]) low = middle + 1;
+            else high = middle;
+        }
+        if (low == glyphs.size() || glyphs[low].shaped.cluster != p.bytes[scalar] ||
+            (low + 1 < glyphs.size() && glyphs[low + 1].shaped.cluster == p.bytes[scalar]))
+            return FVM_UNSUPPORTED;
+        if (scalar >= visible) removed += glyphs[low].shaped.x_advance;
+        else if (scalar > first) ++gaps;
+    }
+    double natural = advance - removed;
+    if (!(natural >= 0 && natural <= FVM_TEXT_LAYOUT_MAX_EXTENT)) return FVM_UNSUPPORTED;
+    double extra = expand && gaps && width > natural ? (width - natural) / gaps : 0;
+    double shift = 0;
+    for (size_t i = 0; i < glyphs.size(); ++i)
+    {
+        FVM_TextLayoutGlyph &g = glyphs[i];
+        size_t scalar = justify_scalar(p, start, end, g.shaped.cluster);
+        if (scalar == end || p.bytes[scalar] != g.shaped.cluster) return FVM_UNSUPPORTED;
+        g.x += shift;
+        if (p.chars[scalar] != FVM_TEXT_LAYOUT_JUSTIFY_SPACE) continue;
+        if (scalar >= visible)
+        {
+            shift -= g.shaped.x_advance;
+            g.shaped.x_advance = 0;
+        }
+        else if (scalar > first)
+        {
+            g.shaped.x_advance += extra;
+            shift += extra;
+        }
+    }
+    advance = extra > 0 ? width : natural;
+    return FVM_OK;
+}
+
 /* Compute and return allowed. */
 static bool allowed(const fvm_detail::vector<char> &breaks, const Paragraph &p, size_t end)
 {
@@ -549,7 +613,7 @@ static bool allowed(const fvm_detail::vector<char> &breaks, const Paragraph &p, 
 
 /* Compute and return choose line. */
 static FVM_Result choose_line(FVM_Font *font, const char *text, const char *language,
-                              const Paragraph &p, size_t start, double width, unsigned int flags, double spacing,
+                              const Paragraph &p, size_t start, double width, bool justify, unsigned int flags, double spacing,
                               const fvm_detail::vector<char> &line,
                               const fvm_detail::vector<char> &grapheme, size_t &budget, size_t &end)
 {
@@ -569,6 +633,11 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance);
         if (result != FVM_OK)
             return result;
+        if (justify)
+        {
+            result = justify_line(p, start, candidate, trial, 0, false, advance);
+            if (result != FVM_OK) return result;
+        }
         if (advance > width)
         {
             first_overflow = candidate;
@@ -593,6 +662,11 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
             shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance);
         if (result != FVM_OK)
             return result;
+        if (justify)
+        {
+            result = justify_line(p, start, candidate, trial, 0, false, advance);
+            if (result != FVM_OK) return result;
+        }
         if (advance > width)
         {
             end = last == start ? candidate : last;
@@ -618,6 +692,12 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
         shape_line(font, text, options.language, p, start, end, flags, spacing, budget, glyphs, advance);
     if (result != FVM_OK)
         return result;
+    if (options.alignment == FVM_TEXT_ALIGN_JUSTIFY)
+    {
+        result = justify_line(p, start, end, glyphs, options.max_width,
+                              end < p.chars.size(), advance);
+        if (result != FVM_OK) return result;
+    }
     FVM_TextLayoutLine line;
 
     /* Computation / Вычисление и обновление состояния. */
@@ -686,7 +766,7 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
         if (std::memcmp(&options->direction, &candidate, sizeof(candidate)) == 0)
             direction = true;
     }
-    for (int i = 0; i <= 3; ++i)
+    for (int i = 0; i <= (int)FVM_TEXT_ALIGN_JUSTIFY; ++i)
     {
         FVM_TextAlignment candidate = (FVM_TextAlignment)i;
         if (std::memcmp(&options->alignment, &candidate, sizeof(candidate)) == 0)
@@ -716,7 +796,7 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
     if (!(options.max_width >= 0 && options.max_width <= 1000000) ||
         !(options.line_height >= 0 && options.line_height <= 1000000) ||
         options.direction < FVM_TEXT_AUTO || options.direction > FVM_TEXT_RTL ||
-        options.alignment < FVM_TEXT_ALIGN_LEFT || options.alignment > FVM_TEXT_ALIGN_START)
+        options.alignment < FVM_TEXT_ALIGN_LEFT || options.alignment > FVM_TEXT_ALIGN_JUSTIFY)
         return FVM_INVALID_ARGUMENT;
     /* Tracking needs independently placed characters: suppress only optional
      * ligatures in both trial shaping and final lines. Required clusters still
@@ -770,11 +850,17 @@ extern "C" FVM_Result fvm_text_layout_create_spaced(FVM_Font *font, const char *
             result = paragraph_init(p, chars, bytes, start, end, options.direction);
             if (result != FVM_OK)
                 return result;
+            if (options.alignment == FVM_TEXT_ALIGN_JUSTIFY)
+            {
+                if (FRIBIDI_IS_RTL(p.base)) return FVM_UNSUPPORTED;
+                for (size_t i = 0; i < p.levels.size(); ++i)
+                    if (p.levels[i] != 0) return FVM_UNSUPPORTED;
+            }
             size_t line_start = 0;
             do
             {
                 size_t line_end;
-                result = choose_line(font, text, options.language, p, line_start, options.max_width, flags, spacing,
+                result = choose_line(font, text, options.language, p, line_start, options.max_width, options.alignment == FVM_TEXT_ALIGN_JUSTIFY, flags, spacing,
                                      line, grapheme, budget, line_end);
                 if (result != FVM_OK)
                     return result;

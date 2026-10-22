@@ -1,0 +1,52 @@
+# Ограниченное выравнивание native-абзацев по ширине
+
+v0.877 добавляет [FVM_TEXT_ALIGN_JUSTIFY](../include/flashvm/text_layout.h#L24) в [FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L27) для прежних
+[fvm_text_layout_create](../include/flashvm/text_layout.h#L79), [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L87) и
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101). Layout публичной структуры и прежние значения enum
+не меняются. Вызовы заимствуют шрифт, counted UTF-8 и options; возвращают независимый
+[FVM_TextLayout](../src/capi/text_layout_c.cpp#L13), освобождаемый через [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L82). Экспортированные
+контуры отдельно принадлежат вызывающему и переживают font/layout. Общий изменяемый
+шрифт требует синхронизации вызывающего; неизменяемый layout читается независимо
+в потоках. VM, GC и устройства не используются.
+
+Пока допустимы LTR-абзацы с нулевыми bidi levels. Каждому ASCII U+0020 нужен
+отдельный однозначный глиф. Лигатуры слов и порядок комбинируемых глифов сохраняются.
+Конечные ASCII-пробелы получают нулевые advances, начальные сохраняют прежние,
+а внутренние пробелы непоследних перенесённых строк поровну делят свободную ширину.
+Последние строки, жёсткие концы абзацев и строки без внутренних пробелов остаются
+естественной ширины. Слишком широкий неделимый кластер не сжимается. Байтовые
+и glyph-записи пробелов остаются. Пробные переносы используют то же измерение
+без конечных пробелов. Другие выравнивания сохраняют прежнюю семантику.
+
+Неизвестный enum options даёт INVALID_ARGUMENT с очищением выхода в профиле со
+шрифтами. Неподдержанные bidi/пробельные кластеры и превышение ограничений дают
+UNSUPPORTED, ошибка памяти — OUT_OF_MEMORY. NO_FONTS сохраняет прежнюю проверку
+flags/spacing и возвращает UNSUPPORTED без чтения options. Прежние границы scalars,
+байтов, shaping-work и координат действуют. Это не полное выравнивание Arabic/CJK/
+Unicode и не подтверждение совместимости Flash.
+
+Исходный CC0-шрифт при 40px даёт A/V по 24px и пробел 12px без кернинга. При ширине
+90 строка A V A V переносится на две: первая заполняет 90, V стоит в x=66,
+конечный пробел имеет нулевой advance; последняя строка сохраняет ширину 60.
+Исходные кластеры не теряются. Все стадии roadmap и проверки устройств открыты.
+
+[Справочник Adobe AS2 TextFormat](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html)
+определяет justify как выравнивание Flash8; точное сравнение с Flash отдельно.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_TEXT_ALIGN_JUSTIFY` | enum constant | [include/flashvm/text_layout.h:24](../include/flashvm/text_layout.h#L24) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:79](../include/flashvm/text_layout.h#L79) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../include/flashvm/text_layout.h#L82) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:27](../include/flashvm/text_layout.h#L27) |
+<!-- source-links:end -->

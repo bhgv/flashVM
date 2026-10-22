@@ -15,8 +15,8 @@ run. Ноль сохраняет HarfBuzz defaults; [FVM_FONT_SHAPE_NO_KERNING](
 
 ## Размещение и переносы (v0.821)
 
-[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L80) принимает те же shaping flags без изменения
-[FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L26) и старого create. Все пробные строки и конечные script/bidi
+[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L87) принимает те же shaping flags без изменения
+[FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L27) и старого create. Все пробные строки и конечные script/bidi
 сегменты используют одинаковые features: ширина, выравнивание, позиции и пути
 согласованы. Результат владеет скопированными путями и переживает font; сам font
 остаётся однопоточным. Ошибки очищают результат, неизвестные flags дают
@@ -100,6 +100,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_shape` | function | [include/flashvm/font.h:76](../include/flashvm/font.h#L76) |
 | `fvm_font_shape_configured` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../include/flashvm/text_layout.h#L80) |
-| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:26](../include/flashvm/text_layout.h#L26) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:27](../include/flashvm/text_layout.h#L27) |
 <!-- source-links:end -->

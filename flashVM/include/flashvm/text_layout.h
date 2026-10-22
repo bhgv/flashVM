@@ -20,7 +20,8 @@ extern "C"
         FVM_TEXT_ALIGN_LEFT /* Text alignment: left. */,
         FVM_TEXT_ALIGN_CENTER /* Text alignment: center. */,
         FVM_TEXT_ALIGN_RIGHT /* Text alignment: right. */,
-        FVM_TEXT_ALIGN_START /* Text alignment: start. */
+        FVM_TEXT_ALIGN_START /* Text alignment: start. */,
+        FVM_TEXT_ALIGN_JUSTIFY /* LTR interword expansion on nonfinal wrapped lines. */
     } FVM_TextAlignment;
     /* Define FVM_TextLayoutOptions struct and its representation. */
     typedef struct FVM_TextLayoutOptions
@@ -61,6 +62,12 @@ extern "C"
         size_t line_count /* Number of laid-out lines. */,
             glyph_count; /* Number of glyph entries. */
     } FVM_TextLayoutMetrics;
+    /* JUSTIFY currently accepts LTR paragraphs with unambiguous U+0020 glyphs.
+     * It trims trailing U+0020 advances, expands internal spaces on nonfinal
+     * wrapped lines and leaves final/hard-ended lines at natural width. Leading
+     * spaces retain their advances; no-gap and oversized lines are not stretched.
+     * Other alignment values preserve their existing whitespace semantics.
+     * Unsupported bidi/space clusters clear out and return UNSUPPORTED. */
     /* Options NULL selects unlimited width, natural line height, AUTO/START.
      * Owns glyph outlines and metadata: font, input and options may then be freed.
      * Limits: 4096 Unicode scalars / 16384 bytes, 1,000,000 trial-shaped scalars;

@@ -28,10 +28,10 @@ AV=44.8px с кернингом и 48px без него. Проверяются 
 
 ## Политика трекинга — v0.862
 
-[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L94) автоматически добавляет флаг отключения необязательных
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L101) автоматически добавляет флаг отключения необязательных
 лигатур при ненулевом интервале. Одинаковые эффективные флаги применяются при
 пробных переносах и окончательной раскладке, экспорте контуров и подчёркивания.
-Нулевой интервал точно сохраняет флаги вызывающего. [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L80)
+Нулевой интервал точно сохраняет флаги вызывающего. [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L87)
 принимает новый флаг и без трекинга. Прежние контракты text_layout.h об очистке
 выхода, заимствовании, независимом владении layout, сериализации потоков и ошибках
 INVALID_ARGUMENT/OUT_OF_MEMORY/UNSUPPORTED сохраняются.
@@ -84,8 +84,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_shape_configured` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../include/flashvm/font.h#L10) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../include/flashvm/text_layout.h#L80) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:94](../include/flashvm/text_layout.h#L94) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:101](../include/flashvm/text_layout.h#L101) |
 | `fvm_text_run_destroy` | function | [include/flashvm/font.h:94](../include/flashvm/font.h#L94) |
 | `fvm_text_run_path` | function | [include/flashvm/font.h:98](../include/flashvm/font.h#L98) |
 | `FVM_TextRun` | struct | [src/capi/font_c.cpp:75](../src/capi/font_c.cpp#L75) |
