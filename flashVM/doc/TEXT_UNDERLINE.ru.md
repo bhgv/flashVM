@@ -40,6 +40,24 @@ advances и подстановки глифов не изменены. Это н
 `text_layout_underline.c` проверяет точные границы, выравнивание, интервалы,
 пустую последнюю строку, неверные параметры и срок жизни после уничтожения источника.
 
+## Однородные поля AS2 (v0.839)
+
+У нового TextFormat underline остаётся null. Применение использует AS2
+ToBoolean; null/undefined сохраняют стиль. Снимки текущего/будущего формата
+поля возвращают фактические Boolean. setTextFormat меняет текущую геометрию
+и сбрасывает кэш; setNewTextFormat влияет только на будущий текст. До принятия
+формата текущий шрифт должен предоставить пригодные метрики подчёркивания.
+
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L32) добавляет полосу каждой строки с положительным advance
+после контуров глифов, с тем же gutter и выравниванием поля с переносами и без.
+Пробелы и знаковый межбуквенный интервал включены. textWidth/textHeight,
+getTextExtent и расстояния baseline не меняются; отдельные глифы не декорируются.
+Итоговый независимый контур переживает VM и шрифт. Бит UNDERLINE в частном
+packed alignment сохраняет оба стиля в снимках и бинарной/канальной передаче
+без дополнительных байтов. Старые записи без бита дают false; старые читатели
+отклоняют новый флаг. Это однородное подчёркивание без диапазонов, поведения
+гиперссылок, полной интеграции SWF-сцены и попиксельной эквивалентности Flash.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -53,4 +71,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
 <!-- source-links:end -->

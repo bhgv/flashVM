@@ -46,9 +46,10 @@ struct Style
     double letter_spacing; /* Signed extra pixels after each supported character. */
     unsigned long color;
     FVM_TextAlignment alignment;
+    bool underline; /* Uniform line decoration, independent of glyph shaping. */
     bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), kerning(false)
+    Style() : size(12), leading(2), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
     {
     }
     /* Exchange the current value. */
@@ -76,6 +77,9 @@ struct Style
         /* Computation / Вычисление и обновление состояния. */
         alignment = s.alignment;
         s.alignment = a;
+        bool u = underline;
+        underline = s.underline;
+        s.underline = u;
         bool k = kerning;
         kerning = s.kerning;
         s.kerning = k;
@@ -235,13 +239,16 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
             if (v.type != FVM_VALUE_STRING || fvm_string_size(v))
                 return FVM_UNSUPPORTED;
         }
-        else if (std::strcmp(name, "kerning") == 0)
+        else if (std::strcmp(name, "kerning") == 0 || std::strcmp(name, "underline") == 0)
         {
             FVM_Value converted;
             result = fvm_exec_to_boolean(c, &v, &converted);
             if (result != FVM_OK)
                 return result;
-            style.kerning = converted.boolean != 0;
+            if (std::strcmp(name, "underline") == 0)
+                style.underline = converted.boolean != 0;
+            else
+                style.kerning = converted.boolean != 0;
         }
         else if (std::strcmp(name, "tabStops") == 0)
             return FVM_UNSUPPORTED;
@@ -311,6 +318,13 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     FVM_Result result = open_font(c, style, &font.font);
     if (result != FVM_OK)
         return result;
+    if (style.underline)
+    {
+        FVM_FontUnderlineMetrics underline;
+        result = fvm_font_underline_metrics(font.font, &underline);
+        if (result != FVM_OK)
+            return result;
+    }
     FVM_FontMetrics metrics;
     result = fvm_font_metrics(font.font, &metrics);
     if (result != FVM_OK)
@@ -513,6 +527,8 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["letterSpacing"] = v;
     fvm_value_number(&v, style.color);
     object->properties["color"] = v;
+    fvm_value_boolean(&v, style.underline);
+    object->properties["underline"] = v;
     fvm_value_boolean(&v, style.kerning);
     object->properties["kerning"] = v;
 
@@ -726,6 +742,13 @@ static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
         return result;
     if (!finite_range(metrics.ascent + metrics.descent + next.leading, 1.0 / 64, 1000000))
         return FVM_INVALID_ARGUMENT;
+    if (next.underline)
+    {
+        FVM_FontUnderlineMetrics underline;
+        result = fvm_font_underline_metrics(font.font, &underline);
+        if (result != FVM_OK)
+            return result;
+    }
     if (!future)
     {
         result = validate_tracking(c, field, next, field->text, field->text_size);
@@ -1275,6 +1298,20 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
     }
 }
 
+/* Unwrapped native layout has unlimited width; apply the field's gutter-relative
+ * alignment once to both glyph outlines and underline bars. */
+static double field_line_shift(const Field *field, const FVM_TextLayoutLine &line)
+{
+    if (field->wrap && field->multiline)
+        return 0;
+    double available = field->width - 4 - line.advance;
+    if (available <= 0)
+        return 0;
+    if (field->current.alignment == FVM_TEXT_ALIGN_CENTER)
+        return available / 2;
+    return field->current.alignment == FVM_TEXT_ALIGN_RIGHT ? available : 0;
+}
+
 /* Compute and return textfield path. */
 extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM_Path **out)
 {
@@ -1308,19 +1345,33 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
             result = fvm_text_layout_line(field->layout, glyph.line, &line);
         if (result == FVM_OK)
             result = fvm_text_layout_glyph_path(field->layout, i, &copy);
-        double shift = 0;
-        if (result == FVM_OK && !(field->wrap && field->multiline))
-        {
-            double available = field->width - 4 - line.advance;
-            if (available > 0 && field->current.alignment == FVM_TEXT_ALIGN_CENTER)
-                shift = available / 2;
-            else if (available > 0 && field->current.alignment == FVM_TEXT_ALIGN_RIGHT)
-                shift = available;
-        }
+        double shift = result == FVM_OK ? field_line_shift(field, line) : 0;
         FVM_Affine place = {1, 0, 0, 1, 2 + shift, 2};
         if (result == FVM_OK)
             result = fvm_path_append(path, copy, &place);
         fvm_path_destroy(copy);
+    }
+    if (result == FVM_OK && field->current.underline)
+    {
+        FontOwner font;
+        FVM_FontUnderlineMetrics underline;
+        result = open_font(c, field->current, &font.font);
+        if (result == FVM_OK)
+            result = fvm_font_underline_metrics(font.font, &underline);
+        for (size_t i = 0; result == FVM_OK && i < metrics.line_count; ++i)
+        {
+            FVM_TextLayoutLine line;
+            FVM_Path *bar = 0;
+            result = fvm_text_layout_line(field->layout, i, &line);
+            if (result == FVM_OK)
+                result = fvm_text_layout_line_underline_path(field->layout, i,
+                                      underline.center_y, underline.thickness, &bar);
+            double shift = result == FVM_OK ? field_line_shift(field, line) : 0;
+            FVM_Affine place = {1, 0, 0, 1, 2 + shift, 2};
+            if (result == FVM_OK)
+                result = fvm_path_append(path, bar, &place);
+            fvm_path_destroy(bar);
+        }
     }
     if (result != FVM_OK)
     {
@@ -1350,7 +1401,8 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.color = style.color;
     out.alignment = (unsigned long)style.alignment |
                     (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
-                    (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL);
+                    (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
+                    (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL);
     out.source = *context->fonts.find(style.font)->second;
 }
 
@@ -1361,7 +1413,7 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
         !finite_range(src.leading, -4096, 4096) ||
         !finite_range(src.letter_spacing, -FVM_TEXT_STYLE_MAX_SPACING, FVM_TEXT_STYLE_MAX_SPACING) ||
         ((src.letter_spacing != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_SPACING) != 0)) || src.color > 16777215UL ||
-        (src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING)) > 2)
+        (src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE)) > 2)
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing =
         context->fonts.find(src.font);
@@ -1388,7 +1440,8 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
     out.color = src.color;
-    out.alignment = (FVM_TextAlignment)(src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING));
+    out.alignment = (FVM_TextAlignment)(src.alignment & ~(FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE));
+    out.underline = (src.alignment & FVM_TEXT_STYLE_UNDERLINE) != 0;
     out.kerning = (src.alignment & FVM_TEXT_STYLE_NO_KERNING) == 0;
     return FVM_OK;
 }
@@ -1493,6 +1546,16 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
             {
                 delete field;
                 return result;
+            }
+            if (styles[i]->underline)
+            {
+                FVM_FontUnderlineMetrics underline;
+                result = fvm_font_underline_metrics(font.font, &underline);
+                if (result != FVM_OK)
+                {
+                    delete field;
+                    return result;
+                }
             }
             FVM_FontMetrics metrics;
             result = fvm_font_metrics(font.font, &metrics);

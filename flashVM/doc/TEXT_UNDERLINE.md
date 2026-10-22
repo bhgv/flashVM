@@ -37,6 +37,24 @@ can run concurrently, but each output path belongs to its caller.
 `text_layout_underline.c` checks exact rectangle bounds, alignment, tracking,
 empty trailing lines, invalid parameters and lifetime after source destruction.
 
+## Uniform AS2 fields (v0.839)
+
+TextFormat underline remains null on construction. Applied values use AS2
+ToBoolean; null/undefined preserve the existing style. Uniform current/future
+field snapshots expose actual Boolean values. setTextFormat toggles current
+geometry and invalidates its cache; setNewTextFormat affects later text only.
+The current font must supply usable underline metrics before format admission.
+
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L32) appends one bar per positive-advance line after glyph paths,
+using the same field gutter and wrapped/unwrapped alignment. Bars include spaces
+and signed letter spacing. textWidth/textHeight/getTextExtent advances and
+baseline spacing remain unchanged; glyph-only paths remain undecorated. The
+combined owned path outlives the VM and font. The UNDERLINE bit in private
+packed field alignment preserves both styles in snapshots and binary/channel
+transfer without extra payload bytes. Absent legacy flags restore false; older
+readers reject the new flag. This is uniform underline, not styled ranges,
+hyperlink behavior, full SWF display integration or Flash pixel equivalence.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -50,4 +68,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
 <!-- source-links:end -->
