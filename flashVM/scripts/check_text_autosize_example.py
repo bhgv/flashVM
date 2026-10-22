@@ -31,6 +31,9 @@ def main():
     tabbed = subprocess.run([sys.argv[1], '--tabs'], text=True, capture_output=True, check=True)
     assert tabbed.stdout.splitlines()[-2:] == [
         'tabs fit: advance=104.00 width=108.00', 'tabs wrap: width=54.00 height=140.00']
+    default_tabs = subprocess.run([sys.argv[1], '--default-tabs'], text=True, capture_output=True, check=True)
+    assert default_tabs.stdout.splitlines()[-2:] == [
+        'default-tabs fit: advance=199.00 width=203.00', 'default-tabs wrap: width=54.00 height=232.00']
     bad = subprocess.run([sys.argv[1], '--unknown'], text=True, capture_output=True)
     assert bad.returncode and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 autoSize activation, text edit, constrained height and owned path export')

@@ -150,6 +150,19 @@ cleanup still run. NO_FONTS reports its existing profile limit; no device is ope
 108, затем высота 140 при ширине поля 54. Путь принадлежит вызывающему отдельно.
 [Контракт EN](../../../doc/TEXT_TABS.md) / [RU](../../../doc/TEXT_TABS.ru.md).
 
+## Default tabs / Стандартная табуляция
+
+Run `flashvm_examples_embedding_standard_text_main --default-tabs` with FONTS.
+An empty managed tabStops Array selects four declared average widths, not a stored
+custom table. Future formatting, full text assignment and autoSize produce
+`default-tabs fit: advance=199.00 width=203.00`; at outer width 54 the five-line
+result is `default-tabs wrap: width=54.00 height=232.00`. The ordinary path export
+and context teardown retain their ownership rules. Missing average metrics,
+bidi tabs and wrapped justify fail explicitly; reference/device parity remains open.
+Режим сохраняет пустой Array в будущем стиле, измеряет default и переносит
+широкие tab на отдельные строки. Контракт: [EN](../../../doc/TEXT_DEFAULT_TABS.md) /
+[RU](../../../doc/TEXT_DEFAULT_TABS.ru.md). Все функции уже описаны в таблице API выше.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
