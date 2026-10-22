@@ -1,4 +1,4 @@
-Версия разработки: **0.878** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.879** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.879: [Выравнивание по ширине при композиции шрифтов и передаче графов](doc/TEXT_JUSTIFY.ru.md).
 
 v0.878: [Пробельные границы и дробный трекинг при выравнивании по ширине](doc/TEXT_JUSTIFY.ru.md).
 

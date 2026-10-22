@@ -51,6 +51,8 @@ empty final paragraphs and word ligatures. Natural width sums retained glyph
 advances directly, avoiding cancellation under fractional all-space tracking.
 Space/combining ambiguity and bidi runs reject with a cleared output.
 
+v0.879 verifies current justification with future right-aligned bold text through binary/channel transfer, sender teardown, receiver GC and later edits. Font-face and +1 tracking tests check the same 90px underline span for all four faces, plus zero-width all-space paths. Selected fonts, current/future alignment and automatic height remain independent.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
