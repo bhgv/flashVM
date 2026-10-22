@@ -48,6 +48,34 @@ extern "C"
      * No allocation/callback/VM/GC. Counts allocation requests, not actual RSS. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_info(const FVM_SWFSoundMixQueue *,
                                                             FVM_SWFSoundMixQueueStorageInfo *);
+    /* Shared accepted-minus-queued observation for base and tail writes in one explicit epoch. */
+    typedef struct FVM_SWFSoundMixQueueClock
+    {
+        size_t struct_size; /* Caller supplies exact sizeof. */
+        double submitted_frames; /* Real accepted base+tail frames, exact through OUTPUT_MAX_CLOCK. */
+        double played_frames; /* Submitted minus observed backlog, monotone within this epoch. */
+        double seconds; /* Dequeued frames divided by the adapter output sample rate; not a DAC clock. */
+        size_t queued_frames; /* Fresh validated backend backlog in complete output frames. */
+    } FVM_SWFSoundMixQueueClock;
+    /* Start/restart shared accounting only with no pending retry and an empty real FIFO.
+     * Required live serialized owner; INVALID_ARGUMENT before callbacks for null/busy/pending.
+     * Nonempty FIFO INVALID_ARGUMENT, inadequate double precision UNSUPPORTED, backend
+     * statuses propagate, exceptions ERROR. Failure preserves old epoch; success resets to
+     * zero and enables accounting of every later adapted.write and pump_tail acceptance.
+     * No pause/clear/seek/voice reset, allocation, VM or GC. Retain all borrowed owners;
+     * use only the adapted backend until quiescence. Acknowledged adapted.clear starts a
+     * fresh zero epoch while keeping accounting enabled. Create remains callback-free and
+     * leaves shared accounting disabled until this explicit call. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *);
+    /* Observe a fresh shared clock without consuming voice time or allocating. Required
+     * exact-size output is unchanged on failure. NOT_FOUND before clock_begin. Backend
+     * failures/exception preserve output and last valid played position; impossible backlog
+     * or played regression -> ERROR. Reentry INVALID_ARGUMENT. Serialize all owners; no
+     * VM/GC. Rejected writes never add submitted frames; retained retries count once on OK.
+     * MAX_CLOCK overflow is rejected with UNSUPPORTED before rendering/writing the block.
+     * Clock exhaustion is not source EOF; queued drain is not a physical playback timestamp. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_clock_info(FVM_SWFSoundMixQueue *,
+                                                          FVM_SWFSoundMixQueueClock *);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

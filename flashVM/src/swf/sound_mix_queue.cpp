@@ -5,6 +5,7 @@
 #include "sound_mix_queue_constants.h"
 #include <cstring>
 #include <new>
+#include <cfloat>
 
 /* No VM or managed reference is retained; all mutable access requires external serialization. */
 struct FVM_SWFSoundMixQueue
@@ -18,10 +19,13 @@ struct FVM_SWFSoundMixQueue
         mixed;       /* Fixed actual mixed block; backend must copy before returning OK. */
     size_t capacity; /* Immutable maximum interleaved frames. */
     size_t pending;  /* Zero or initialized mixed frames whose voice time is already consumed. */
+    bool clock_active; /* Explicit opt-in; legacy callback-only owners retain prior behavior. */
+    double clock_submitted; /* Successful real writes in the current shared frame epoch. */
+    double clock_played; /* Last valid monotone accepted-minus-queued observation. */
     bool tail; /* Pending block was prepared by the event-only tail pump. */
     bool busy;       /* Reject callback reentry, independent of external thread synchronization. */
     /* Initialize callback state before any fallible vector acquisition. */
-    FVM_SWFSoundMixQueue() : mixer(0), capacity(0), pending(0), tail(false), busy(false)
+    FVM_SWFSoundMixQueue() : mixer(0), capacity(0), pending(0), clock_active(false), clock_submitted(0), clock_played(0), tail(false), busy(false)
     {
     }
 };
@@ -69,6 +73,9 @@ FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
         return FVM_INVALID_ARGUMENT;
     if (!frames)
         return queue->pending ? FVM_INVALID_ARGUMENT : FVM_OK;
+    if (queue->clock_active &&
+        queue->clock_submitted > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - (double)frames)
+        return FVM_UNSUPPORTED;
     MixBusyScope scope(queue);
     try
     {
@@ -108,6 +115,7 @@ FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
         {
             queue->pending = 0;
             queue->tail = false;
+            if (queue->clock_active) queue->clock_submitted += (double)frames;
         }
         return result;
     }
@@ -133,7 +141,17 @@ FVM_Result observe(void *raw, size_t *out)
         size_t frames = 0;
         FVM_Result result = queue->backend.queued(queue->backend.userdata, &frames);
         if (result == FVM_OK)
+        {
+            if (queue->clock_active)
+            {
+                if (frames > FVM_SWF_SOUND_OUTPUT_MAX_QUEUE ||
+                    (double)frames > queue->clock_submitted) return FVM_ERROR;
+                double played = queue->clock_submitted - (double)frames;
+                if (played < queue->clock_played) return FVM_ERROR;
+                queue->clock_played = played;
+            }
             *out = frames;
+        }
         return result;
     }
     catch (...)
@@ -171,6 +189,8 @@ FVM_Result clear_queue(void *raw)
         {
             queue->pending = 0;
             queue->tail = false;
+            if (queue->clock_active)
+                queue->clock_submitted = queue->clock_played = 0;
         }
         return result;
     }
@@ -266,6 +286,45 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *qu
     result = write_composed(queue, 0, frames, true);
     if (result == FVM_OK && accepted) *accepted = frames;
     return result;
+}
+
+/* Explicitly begin a fresh shared epoch; do not infer a queue baseline at construction. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *queue)
+{
+    if (!queue || queue->busy || queue->pending) return FVM_INVALID_ARGUMENT;
+    if (DBL_MANT_DIG < FVM_SWF_SOUND_OUTPUT_CLOCK_BITS) return FVM_UNSUPPORTED;
+    MixBusyScope scope(queue);
+    try
+    {
+        size_t queued = 0;
+        FVM_Result result = queue->backend.queued(queue->backend.userdata, &queued);
+        if (result != FVM_OK) return result;
+        if (queued) return FVM_INVALID_ARGUMENT;
+        queue->clock_submitted = queue->clock_played = 0;
+        queue->clock_active = true;
+        return FVM_OK;
+    }
+    catch (...) { return FVM_ERROR; }
+}
+
+/* Publish only a freshly validated base-plus-tail accepted-minus-queued observation. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_info(FVM_SWFSoundMixQueue *queue,
+                                                         FVM_SWFSoundMixQueueClock *out)
+{
+    if (!queue || queue->busy || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    if (!queue->clock_active) return FVM_NOT_FOUND;
+    size_t queued = 0;
+    FVM_Result result = observe(queue, &queued);
+    if (result != FVM_OK) return result;
+    FVM_SWFSoundMixQueueClock info;
+    info.struct_size = sizeof(info);
+    info.submitted_frames = queue->clock_submitted;
+    info.played_frames = queue->clock_played;
+    info.seconds = info.played_frames / queue->backend.sample_rate;
+    info.queued_frames = queued;
+    *out = info;
+    return FVM_OK;
 }
 
 /* Inspect retry ownership without polling the device or using source VM state. */
