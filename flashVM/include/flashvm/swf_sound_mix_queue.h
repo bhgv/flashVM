@@ -114,6 +114,28 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_mix_queue_submit_prepared_bounded(FVM_SWFSoundMixQueue *,
                                                                        FVM_SWFSoundVoice **,
                                                                        size_t mixer_budget);
+    /* ID deadlines use the shared accepted-minus-queued epoch, not DAC audibility. */
+    typedef struct FVM_SWFSoundMixQueueIdentityInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof. */
+        unsigned int sound_id; /* Requested dictionary ID, 1..65535. */
+        double played_frames; /* Fresh validated shared dequeue cursor. */
+        double end_frame; /* Last registered exclusive end, retained historically after expiry. */
+        double until_end_frames; /* max(end_frame-played_frames,0), includes uncomposed/pending time. */
+        int active; /* True exactly while the registered interval remains undequeued. */
+    } FVM_SWFSoundMixQueueIdentityInfo;
+    /* Observe the real FIFO and copy one tracked identity, without allocation/VM/GC.
+     * Required exact-size out and valid ID/live serialized queue. Invalid/reentry ->
+     * INVALID_ARGUMENT; disabled UNSUPPORTED; backend statuses propagate, exceptions ERROR.
+     * Errors preserve output and deadline state; valid polls may refresh played time.
+     * No reservation or voice rewind; retain adapter/mixer/backend through callbacks. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_identity_info(FVM_SWFSoundMixQueue *,
+                                                             unsigned int sound_id,
+                                                             FVM_SWFSoundMixQueueIdentityInfo *);
+    /* Boolean identity_info view; required scalar out is preserved on every failure.
+     * Same callback/thread/ownership/status contract, no allocation/VM/GC. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_sound_active(FVM_SWFSoundMixQueue *,
+                                                            unsigned int sound_id, int *out);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

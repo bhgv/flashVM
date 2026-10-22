@@ -132,9 +132,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:168](../include/flashvm/swf_sound_mix_queue.h#L168) |
-| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:129](../include/flashvm/swf_sound_mix_queue.h#L129) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:164](../include/flashvm/swf_sound_mix_queue.h#L164) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:190](../include/flashvm/swf_sound_mix_queue.h#L190) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:151](../include/flashvm/swf_sound_mix_queue.h#L151) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:186](../include/flashvm/swf_sound_mix_queue.h#L186) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 <!-- source-links:end -->

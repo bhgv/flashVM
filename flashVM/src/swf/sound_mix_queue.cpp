@@ -496,6 +496,40 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_submit_prepared_bounded(FVM_SWFSou
     catch (...) { return FVM_ERROR; }
 }
 
+/* Publish exact per-ID deadlines only after one valid shared FIFO observation. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_identity_info(FVM_SWFSoundMixQueue *queue,
+                                       unsigned int id, FVM_SWFSoundMixQueueIdentityInfo *out)
+{
+    if (!queue || queue->busy || !out || out->struct_size != sizeof(*out) ||
+        !id || id > FVM_SWF_SOUND_ID_MAX) return FVM_INVALID_ARGUMENT;
+    if (queue->identities.empty()) return FVM_UNSUPPORTED;
+    MixBusyScope scope(queue);
+    size_t queued = 0;
+    FVM_Result result = observe_locked(queue, &queued);
+    if (result != FVM_OK) return result;
+    FVM_SWFSoundMixQueueIdentityInfo info;
+    info.struct_size = sizeof(info);
+    info.sound_id = id;
+    info.played_frames = queue->clock_played;
+    info.end_frame = queue->identities[id];
+    info.until_end_frames = info.end_frame > info.played_frames ? info.end_frame - info.played_frames : 0;
+    info.active = info.until_end_frames > 0;
+    *out = info;
+    return FVM_OK;
+}
+
+/* Keep the simple query on the same validated deadline path as copied diagnostics. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_sound_active(FVM_SWFSoundMixQueue *queue,
+                                                           unsigned int id, int *out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueueIdentityInfo info;
+    info.struct_size = sizeof(info);
+    FVM_Result result = fvm_swf_sound_mix_queue_identity_info(queue, id, &info);
+    if (result == FVM_OK) *out = info.active;
+    return result;
+}
+
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */
 extern "C" void fvm_swf_sound_mix_queue_close(FVM_SWFSoundMixQueue *queue)
 {
