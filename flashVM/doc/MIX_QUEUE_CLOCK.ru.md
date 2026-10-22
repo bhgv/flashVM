@@ -26,6 +26,10 @@ v0.948: три настоящих native stream-сегмента сохраня�
 
 v0.949: настоящий C89-тест создаёт bounded mono-адаптер, начинает общий учёт, принимает PCM, наблюдает dequeue/seconds и завершает только после drain. Полные снимки сравниваются побайтно после ошибок NULL/неактивности/размера. Три новые функции линкуются в minimal NO_MEDIA/NO_FONTS; прежние публичные структуры и ABI backend не меняются.
 
+Граница интеграции: общий счётчик наблюдает все принятые composition-записи, но не переписывает [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) и не объединяет producer-state. После подтверждённого base EOF и перехода к tail старый stream-producer останавливают; читают shared clock, а не продолжают читать/запускать stream-only clock как общий. Новый discontinuity/rebind требует согласованных pause/clear/source selection; событийные голоса учётом не перематываются и не переигрываются. Software FIFO drain и DAC/device presentation различаются.
+
+Доказательства v0.950: 113/113 native Release NO_MEDIA/NO_FONTS регрессий звука/потоков/каналов/stop-binding и примера; 25/25 выбранных ASan/UBSan плюс пять явных --no-throw queue/control/stream запусков. Native JIT root timeline отдельно прошёл с interpreter=1 native_jit=1 и реальными native-entry assertions. Исключения, instrumented fault-sweep и segmented no-allocation переходы проверяются обычными сборками. LeakSanitizer отключён из-за недоступного /proc; проверки утечек не заявлены. Переименованный компонент конфигурируется со своим minimal-профилем, его скопированный PCM-checker проходит на native-бинарнике; отдельно он не собирался. Ссылки и checker каталога/примеров проходят. Серия добавляет native-учёт, не приёмку устройств, полную frontend mixing/A/V/seek/reference-совместимость, дочерние клипы или завершение остальных graphics/text/AS/GC/debugger стадий. Все девять стадий остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -39,4 +43,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_clock_info` | function | [include/flashvm/swf_sound_mix_queue.h:86](../include/flashvm/swf_sound_mix_queue.h#L86) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
 | `FVM_SWFSoundMixQueueClock` | struct | [include/flashvm/swf_sound_mix_queue.h:52](../include/flashvm/swf_sound_mix_queue.h#L52) |
+| `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:11](../include/flashvm/swf_stream_output.h#L11) |
 <!-- source-links:end -->

@@ -1,5 +1,7 @@
 # Сохранение смешанного stream/event PCM при retry (v0.772)
 
+Доступен явно включаемый общий учёт base/tail: [EN](MIX_QUEUE_CLOCK.md) / [RU](MIX_QUEUE_CLOCK.ru.md). Begin требует отсутствие pending и пустую FIFO; accepted-minus-queued охватывает оба производителя, end требует drain. Прежние публичные структуры и режим без общего счётчика сохраняются.
+
 Новые API хвостов и байтового бюджета: [EN](AUDIO_MIX_TAILS.md) / [RU](AUDIO_MIX_TAILS.ru.md). После настоящей остановки производителя pump_tail владеет нулевой основой отдельно от adapted.write. Backend NOT_FOUND может означать сохранённый отклонённый блок: нужно смотреть pending origin, а не принимать статус за EOF. Desktop stream/event-интеграция остаётся отдельной.
 
 [English](MIX_QUEUE.md) · [Сложение PCM](STREAM_EVENT_MIX.ru.md) · [C89-пример](../examples/multimedia/swf_stream_mix/README.md)

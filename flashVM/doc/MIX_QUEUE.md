@@ -1,5 +1,7 @@
 # Retained stream/event queue composition (v0.772)
 
+Opt-in shared base/tail frame accounting is now available: [EN](MIX_QUEUE_CLOCK.md) / [RU](MIX_QUEUE_CLOCK.ru.md). Explicit begin requires no pending retry and an empty FIFO; accepted-minus-queued observations cover both producers and end requires drain. Existing public structures and unclocked behavior are preserved.
+
 Current additive tail and byte-budget APIs: [EN](AUDIO_MIX_TAILS.md) / [RU](AUDIO_MIX_TAILS.ru.md). After actual producer quiescence, pump_tail owns its zero-base retry independently of adapted.write. Backend NOT_FOUND may mean a retained rejected block; inspect pending origin rather than treating that status as EOF. Desktop stream/event integration remains separate.
 
 [Русский](MIX_QUEUE.ru.md) · [additive mixer](STREAM_EVENT_MIX.md) · [C89 example](../examples/multimedia/swf_stream_mix/README.md)

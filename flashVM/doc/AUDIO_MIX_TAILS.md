@@ -1,5 +1,7 @@
 # Event tails through the composition queue
 
+For one accepted/dequeued epoch across base and tail output, use the [shared clock](MIX_QUEUE_CLOCK.md). It does not merge the old stream producer counters or supply timeline authorization. Quiesce the old producer before tails; use the shared clock thereafter and coordinate any later rebind/seek through acknowledged clear.
+
 v0.927 adds [fvm_swf_sound_mix_queue_pump_tail](../include/flashvm/swf_sound_mix_queue.h#L131)(queue, frames, target, accepted). After the stream/base producer is quiescent, the host authorizes one zero-base event-only block. frames is positive and at most the fixed adapter capacity; target is at least frames and at most [FVM_SWF_SOUND_OUTPUT_MAX_QUEUE](../include/flashvm/swf_sound_output.h#L12). No clock, frame deadline, pause, seek or EOF transition is inferred.
 
 The pump observes actual queued frames before rendering. Insufficient room or no active voices/pending tail returns NOT_FOUND. Observation errors and failed pre-render headroom checks consume no voice time. Successful final blocks may include padding silence; exhaustion does not mean that accepted audio has drained. accepted is optional, cleared first and receives frames only after real acceptance.
