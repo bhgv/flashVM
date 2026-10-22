@@ -307,8 +307,8 @@ static FVM_Result stream_authorized(FVM_DesktopAudio *audio, int *out)
     result = fvm_swf_stream_output_next_frame(&audio->stream_output, &frame);
     if (result == FVM_OK)
     {
-        *out = frame <= audio->stream_frame;
-        return FVM_OK;
+        if (frame <= audio->stream_frame) { *out = 1; return FVM_OK; }
+        return mixed_work(audio, out);
     }
     if (result != FVM_NOT_FOUND)
         return result;
@@ -322,10 +322,22 @@ static FVM_Result stream_authorized(FVM_DesktopAudio *audio, int *out)
             continue;
         if (result != FVM_OK)
             return result;
-        *out = block.frame <= audio->stream_frame;
-        return FVM_OK;
+        if (block.frame <= audio->stream_frame) { *out = 1; return FVM_OK; }
+        return mixed_work(audio, out);
     }
     return mixed_work(audio, out);
+}
+
+/* Activate the next immutable source under the worker mutex without clearing either queue clock. */
+static FVM_Result stream_continue_segment(FVM_DesktopAudio *audio)
+{
+    FVM_SWFStreamConverter *next = &audio->stream_segments[audio->stream_index + 1].converter;
+    FVM_Result result = fvm_swf_stream_converter_seek(next, 0, 0);
+    if (result == FVM_OK) result = fvm_swf_stream_output_continue(&audio->stream_output, next);
+    if (result != FVM_OK) return result;
+    ++audio->stream_index;
+    fvm_desktop_trace_event(audio->trace, "stream_segment", (unsigned long)audio->stream_index, FVM_OK);
+    return FVM_OK;
 }
 
 /* Caller holds mutex; one authorized base producer and optional EOF event tails share the FIFO. */
@@ -371,7 +383,30 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
         audio->stream_waiting = 0;
     for (attempt = 0; attempt < FVM_DESKTOP_AUDIO_PUMPS; ++attempt)
     {
-        result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
+        if (audio->composition)
+        {
+            FVM_SWFSoundMixQueuePending pending;
+            pending.struct_size = sizeof(pending);
+            result = fvm_swf_sound_mix_queue_pending(audio->composition, &pending);
+            if (result != FVM_OK) return result;
+            if (pending.origin != FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL &&
+                !audio->stream_cancelled && audio->stream_index + 1 < audio->stream_count)
+            {
+                unsigned int next_frame = 0;
+                result = fvm_swf_stream_output_next_frame(&audio->stream_output, &next_frame);
+                if (result == FVM_NOT_FOUND)
+                {
+                    result = stream_continue_segment(audio);
+                    if (result != FVM_OK) return result;
+                    continue; /* Do not synthesize event-only time ahead of an authorized successor. */
+                }
+                if (result != FVM_OK) return result;
+            }
+            result = fvm_swf_stream_output_pump_mix_until(
+                &audio->stream_output, audio->composition, audio->stream_frame, 0);
+        }
+        else
+            result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
         if (result == FVM_NOT_FOUND)
         {
             info.struct_size = sizeof(info);
@@ -380,26 +415,9 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
                 return result;
             if (info.eof && !audio->stream_cancelled && audio->stream_index + 1 < audio->stream_count)
             {
-                FVM_SWFStreamConverter *next =
-                    &audio->stream_segments[audio->stream_index + 1].converter;
-                /* Inactive cursors may remain exhausted from a prior loop/seek epoch. */
-                result = fvm_swf_stream_converter_seek(next, 0, 0);
-                if (result == FVM_OK)
-                    result = fvm_swf_stream_output_continue(&audio->stream_output, next);
-                if (result != FVM_OK)
-                    return result;
-                ++audio->stream_index;
-                fvm_desktop_trace_event(audio->trace, "stream_segment",
-                                        (unsigned long)audio->stream_index, FVM_OK);
+                result = stream_continue_segment(audio);
+                if (result != FVM_OK) return result;
                 continue; /* Count empty-header transitions within the same fixed work budget. */
-            }
-            if (info.eof && audio->composition)
-            {
-                /* A paired tail updates both accepted epochs and owns exact TAIL retry bytes. */
-                result = fvm_swf_stream_output_pump_mix_tail(
-                    &audio->stream_output, audio->composition, 0);
-                if (result == FVM_OK) continue;
-                if (result != FVM_NOT_FOUND) return result;
             }
             held = 1;
             break;
