@@ -100,6 +100,10 @@ shaping, выключка по ширине, табуляция, условны�
 NO_FONTS сохраняет доступный API создания с UNSUPPORTED и NULL-результатом.
 Подтверждающие проверки: TEXT_LAYOUT_CHECKPOINT.ru.md.
 
+## Знаковый интервал (v0.830–0.836)
+
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L93) добавляет ограниченный знаковый дробный интервал после каждого поддержанного символа без изменения ABI параметров. Переносы, выравнивание, advances и независимые контуры согласованы. Ноль сохраняет прежний shaping; неоднозначные кластеры с интервалом и отрицательные итоговые advances дают UNSUPPORTED. Аргументы, статусы, время жизни, ограничения потоков и тесты: [контракт](TEXT_SPACING.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -111,6 +115,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_font_read` | function | [include/flashvm/font.h:45](../include/flashvm/font.h#L45) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../include/flashvm/text_layout.h#L107) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

@@ -28,8 +28,12 @@ int main()
  /* Missing optional flag must not silently drop a nonzero native state interval. */
  state.current.alignment&=~FVM_TEXT_STYLE_HAS_SPACING;
  FVM_Object *bad=0;assert(fvm_object_create(other,&bad)==FVM_OK && fvm_textfield_restore(other,bad,state)==FVM_INVALID_ARGUMENT);
+ /* Forged valid metadata must not publish unsupported tracked text. */
+ state.current.alignment|=FVM_TEXT_STYLE_HAS_SPACING;state.text="fi";
+ assert(fvm_textfield_restore(other,bad,state)==FVM_UNSUPPORTED && !bad->resource);
+ state.text="AV";
  /* Legacy zero-spacing records still restore the pre-spacing geometry. */
- state.current.letter_spacing=0;state.future.letter_spacing=0;state.future.alignment&=~FVM_TEXT_STYLE_HAS_SPACING;
+ state.current.letter_spacing=0;state.current.alignment&=~FVM_TEXT_STYLE_HAS_SPACING;state.future.letter_spacing=0;state.future.alignment&=~FVM_TEXT_STYLE_HAS_SPACING;
  FVM_Object *legacy=0;assert(fvm_object_create(other,&legacy)==FVM_OK);
  legacy->resource_kind=copy->resource_kind;legacy->accessors=copy->accessors;legacy->methods=copy->methods;
  assert(fvm_textfield_restore(other,legacy,state)==FVM_OK && std::fabs(counted_metric(other,legacy,"textWidth")-48)<0.02);

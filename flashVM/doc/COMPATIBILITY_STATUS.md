@@ -249,7 +249,7 @@ TextFormat/TextField selection, with the disabled AS2 default, consistent wrappi
 paths, transferable current/future styles, actual native JIT/GC and worker checks.
 Legacy native APIs retain their default; old field records retain their prior
 geometry. [EN](TEXT_KERNING.md) / [RU](TEXT_KERNING.ru.md).
-Styled spans, letterSpacing, tabs, full SWF text/display integration and native
+Styled spans, complex-cluster letterSpacing, tabs, full SWF text/display integration and native
 platform/device acceptance remain open. Все стадии roadmap остаются открытыми.
 
 Current v0.827–0.829 validates bidi enum representations and bounded UTF-32
@@ -259,6 +259,16 @@ LTR/RTL maps and logical levels. Six native tests, two NO_FONTS tests and two
 ASan/UBSan tests pass. [EN](FONT_LIBRARIES.md) / [RU](FONT_LIBRARIES.ru.md).
 This is bounded bidi bridge evidence; full SWF text and platform/device
 acceptance remain open. Все стадии roadmap остаются открытыми.
+
+Current v0.830–0.836 adds signed fractional native/AS2 letter spacing for the
+bounded one-glyph-per-scalar subset. Wrapping, alignment, kerning composition,
+metrics and paths agree; current/future field styles survive binary/channel
+transfer. Current style/text/restore admission rejects ambiguous tracked clusters
+before field publication. Interpreter/native JIT, worker and allocation-failure
+workloads accompany the C89 raster tutorial. 38 native regression/tutorial tests,
+seven ASan/UBSan and five NO_FONTS checks pass. [EN](TEXT_SPACING.md) / [RU](TEXT_SPACING.ru.md).
+Complex clusters, ligature tracking, styled ranges, full Flash text equivalence
+and physical platform/device acceptance remain open. Все стадии roadmap открыты.
 
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 

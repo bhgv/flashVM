@@ -99,6 +99,10 @@ macOS and Android execution is not established by the Linux tests. NO_FONTS
 retains linkable layout creation with UNSUPPORTED and null output.
 See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
+## Signed tracking (v0.830–0.836)
+
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L93) adds bounded signed fractional pixels after each supported character while preserving the existing option ABI. Wrapping, alignment, glyph advances and owned paths agree. Zero retains legacy shaping; nonzero ambiguous clusters and negative adjusted advances return UNSUPPORTED. Arguments, statuses, lifetime, thread restrictions and tests: [contract](TEXT_SPACING.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -111,6 +115,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
 | `fvm_font_read` | function | [include/flashvm/font.h:45](../include/flashvm/font.h#L45) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../include/flashvm/text_layout.h#L107) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

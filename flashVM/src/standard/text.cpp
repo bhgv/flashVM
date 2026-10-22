@@ -350,7 +350,7 @@ static FVM_Result validate_tracking(FVM_Context *c, Field *field, const Style &s
         return FVM_OK;
     double width = field->wrap && field->multiline ? field->width - 4 : 0;
     if (field->wrap && field->multiline && width <= 0)
-        return FVM_INVALID_ARGUMENT;
+        width = 1.0 / 64;
     LayoutOwner trial;
     return build_layout(c, style, text, size, width, field->multiline, &trial.layout, 0);
 }
@@ -1503,6 +1503,18 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
                 delete field;
                 return result == FVM_OK ? FVM_INVALID_ARGUMENT : result;
             }
+        }
+        /* Restore uses the same tracked-current admission as ordinary edits,
+         * before retaining text bytes or attaching any field to the receiver. */
+        field->width = state.width;
+        field->height = state.height;
+        field->multiline = state.multiline;
+        field->wrap = state.wrap;
+        result = validate_tracking(context, field, field->current, state.text.c_str(), state.text.size());
+        if (result != FVM_OK)
+        {
+            delete field;
+            return result;
         }
         char *text = new char[state.text.size() + 1];
         std::memcpy(text, state.text.c_str(), state.text.size() + 1);

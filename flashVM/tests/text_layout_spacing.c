@@ -7,6 +7,10 @@ int main(void)
 {
     FVM_TextLayout *layout=(FVM_TextLayout*)1;
     assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,4097,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,-4097,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_spaced(0,"AV",2,0,2,0,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,HUGE_VAL,&layout)==FVM_INVALID_ARGUMENT && !layout);
+    assert(fvm_text_layout_create_spaced(0,"AV",2,0,0,0,0)==FVM_INVALID_ARGUMENT);
 #ifdef FVM_HAS_FONTS
     {
         FVM_Font *font=0;FVM_TextLayoutMetrics m;FVM_TextLayoutGlyph g;

@@ -52,6 +52,12 @@ v0.834: `jit_textfield_spacing.cpp` drives actual AVM1 SetMember/CallMethod/GetM
 
 v0.835: the [C89 tutorial](../examples/embedding/text_layout/README.md) demonstrates --tracking and --condensed and rasterizes owned paths into RGBA memory. The existing executable tutorial oracle also checks the 53.00/44.00 advances and one-line/two-glyph counts. Original no-argument and --no-kerning modes preserve their complex-script sample.
 
+v0.836: native field restore validates current tracked geometry before adopting text or attaching resources. `textformat_spacing.cpp` checks signed getTextExtent width, the four-pixel gutter, wrapping height and null/reset behavior. Tracked preflight uses the same 1/64-pixel fallback for a nonpositive wrapped inner width as lazy layout.
+
+## Verification at v0.836
+
+Release text-jit: 38 font/text/GC/transfer/JIT/tutorial tests pass. Full-core C/C++ ASan/UBSan: seven new runtime tests pass, without injected allocation exceptions. NO_FONTS: five API/standard-text tests pass. Allocation-fault sweeps run in the ordinary build. These results do not close any roadmap stage or physical platform/device acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

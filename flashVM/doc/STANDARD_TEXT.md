@@ -58,7 +58,8 @@ center / right alignment, and leading. Leading is added to ascent + descent;
 negative leading is accepted when resulting baseline spacing stays positive.
 Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
-styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Nonzero letterSpacing/margins/indents,
+styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
+([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Nonzero margins/indents,
 bold/italic/underline/bullets, hyperlinks, tab stops and justify are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
