@@ -307,6 +307,19 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *
     catch (...) { return FVM_ERROR; }
 }
 
+/* Relinquish accounting only after acknowledged retry ownership and backlog are empty. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_end(FVM_SWFSoundMixQueue *queue)
+{
+    if (!queue || queue->busy || queue->pending) return FVM_INVALID_ARGUMENT;
+    if (!queue->clock_active) return FVM_NOT_FOUND;
+    size_t queued = 0;
+    FVM_Result result = observe(queue, &queued);
+    if (result != FVM_OK) return result;
+    if (queued) return FVM_NOT_FOUND;
+    queue->clock_active = false;
+    return FVM_OK;
+}
+
 /* Publish only a freshly validated base-plus-tail accepted-minus-queued observation. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_info(FVM_SWFSoundMixQueue *queue,
                                                          FVM_SWFSoundMixQueueClock *out)

@@ -67,6 +67,15 @@ extern "C"
      * fresh zero epoch while keeping accounting enabled. Create remains callback-free and
      * leaves shared accounting disabled until this explicit call. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *);
+    /* End opt-in accounting only after all producers are quiescent and FIFO has drained.
+     * Pending retry/null/busy -> INVALID_ARGUMENT before callbacks; inactive -> NOT_FOUND.
+     * Poll validated backlog; nonempty -> NOT_FOUND with accounting still enabled.
+     * Backend/error/exception rules match clock_info; a valid poll may advance the last
+     * played observation even when not drained. Success disables accounting, no pause,
+     * clear, voice/converter change or allocation/VM/GC. Subsequent clock_info is NOT_FOUND;
+     * ordinary adapted callbacks return to their legacy unclocked contract. Retain and
+     * serialize all owners; this is not an automatic backend ownership transfer. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_clock_end(FVM_SWFSoundMixQueue *);
     /* Observe a fresh shared clock without consuming voice time or allocating. Required
      * exact-size output is unchanged on failure. NOT_FOUND before clock_begin. Backend
      * failures/exception preserve output and last valid played position; impossible backlog
