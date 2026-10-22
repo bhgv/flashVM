@@ -6,6 +6,9 @@ v0.975: Add [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_
 
 v0.976: Verify exact backend pairing, rejected/throwing retry, stream reentry and independently advanced epoch rejection.
 
+
+v0.977: Acquire/close optional native composition ownership and route serialized ID controls; keep mixed preflight closed until integration checks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

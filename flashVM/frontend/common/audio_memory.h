@@ -9,4 +9,8 @@
 #define FVM_DESKTOP_AUDIO_EVENT_BYTES \
     (64UL * 1024UL * 1024UL) /* Event mixer/slots plus all retained and incoming native voices. */
 #endif /* Explicit host builds may choose a separate event-source ceiling. */
+#ifndef FVM_DESKTOP_AUDIO_MIX_BYTES
+#define FVM_DESKTOP_AUDIO_MIX_BYTES \
+    (1024UL * 1024UL) /* Separate root composition owner, PCM retries and fixed ID deadlines. */
+#endif /* Host may set a smaller ceiling; predicted requests fail before opening a device. */
 #endif                       /* FVM_DESKTOP_AUDIO_MEMORY_H */

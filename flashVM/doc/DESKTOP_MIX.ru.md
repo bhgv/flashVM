@@ -6,6 +6,9 @@ v0.975: Добавлен [fvm_swf_stream_output_pump_mix_tail](../include/flashv
 
 v0.976: Проверены pairing backend, failed/throwing retry, stream-reentry и запрет рассогласованных эпох.
 
+
+v0.977: Добавлены bounded-владение composition и маршрутизация ID; mixed preflight пока закрыт до интеграционных проверок.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

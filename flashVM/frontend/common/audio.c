@@ -185,12 +185,16 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
         return FVM_ERROR;
     if (event.flags & FVM_SWF_SOUND_EVENT_STOP)
     {
-        result = fvm_swf_sound_output_stop_id(audio->output, event.sound_id);
+        result = audio->composition
+                     ? fvm_swf_sound_mix_queue_stop_id(audio->composition, event.sound_id)
+                     : fvm_swf_sound_output_stop_id(audio->output, event.sound_id);
         handled = 1;
     }
     else if (event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE)
     {
-        result = fvm_swf_sound_output_sound_active(audio->output, event.sound_id, &active);
+        result = audio->composition
+                     ? fvm_swf_sound_mix_queue_sound_active(audio->composition, event.sound_id, &active)
+                     : fvm_swf_sound_output_sound_active(audio->output, event.sound_id, &active);
         handled = result != FVM_OK || active;
     }
     if (!handled && result == FVM_OK)
@@ -211,8 +215,11 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
         return FVM_ERROR;
     }
     if (!handled && result == FVM_OK)
-        result = fvm_swf_sound_output_submit_prepared_bounded(
-            audio->output, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES);
+        result = audio->composition
+                     ? fvm_swf_sound_mix_queue_submit_prepared_bounded(
+                           audio->composition, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES)
+                     : fvm_swf_sound_output_submit_prepared_bounded(
+                           audio->output, &voice, FVM_DESKTOP_AUDIO_EVENT_BYTES);
     fvm_desktop_trace_event(audio->trace, "event", (unsigned long)ordinal, result);
     if (result == FVM_OK)
         ++audio->events;
@@ -437,7 +444,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
     FVM_SDLAudioQueueInfo device_info;
     FVM_SWFSoundMixerConfig geometry;
     FVM_Result result;
-    size_t count = 0, streams = 0;
+    size_t count = 0, streams = 0, mix_budget = 0;
     if (!audio || (paused != 0 && paused != 1))
         return FVM_INVALID_ARGUMENT;
     memset(audio, 0, sizeof(*audio));
@@ -483,7 +490,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
                 return result;
         }
     }
-    if (!streams)
+    if (!streams || count)
     {
         geometry.struct_size = sizeof(geometry);
         geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
@@ -495,6 +502,13 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         if (result != FVM_OK)
             return result;
 
+    }
+    if (streams && count)
+    {
+        result = fvm_swf_sound_mix_queue_storage_required_for_tracking(
+            FVM_DESKTOP_AUDIO_CHANNELS, FVM_DESKTOP_AUDIO_BLOCK, 1, &mix_budget);
+        if (result != FVM_OK) return result;
+        if (mix_budget > FVM_DESKTOP_AUDIO_MIX_BYTES) return FVM_OUT_OF_MEMORY;
     }
     result = fvm_audio_sdl_queue_open(FVM_DESKTOP_AUDIO_RATE, FVM_DESKTOP_AUDIO_CHANNELS,
                                       FVM_DESKTOP_AUDIO_BLOCK, &audio->device, &backend);
@@ -520,6 +534,17 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         backend.queued = traced_queued;
         backend.pause = traced_pause;
         backend.clear = traced_clear;
+    }
+    if (mix_budget)
+    {
+        FVM_AudioQueueBackend adapted;
+        result = fvm_swf_sound_mix_queue_create_bounded(audio->mixer, &backend,
+            FVM_DESKTOP_AUDIO_BLOCK, mix_budget, &audio->composition, &adapted);
+        if (result == FVM_OK) result = fvm_swf_sound_mix_queue_clock_begin(audio->composition);
+        if (result == FVM_OK) result = fvm_swf_sound_mix_queue_set_identity_tracking(
+            audio->composition, 1, mix_budget);
+        if (result != FVM_OK) return result;
+        backend = adapted; /* Trace wraps the real device below the single saturation pass. */
     }
     if (audio->stream_source)
     {
@@ -549,7 +574,7 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
         return FVM_OUT_OF_MEMORY;
     result =
         fvm_audio_stop_binding_create(context, stop_context_audio, audio, &audio->stop_binding);
-    if (result == FVM_OK && !audio->stream_source)
+    if (result == FVM_OK && (!audio->stream_source || audio->composition))
         result = fvm_movieclip_set_sound_callback(context, sound_event, audio);
     if (result == FVM_OK)
         result = fvm_desktop_audio_timeline(context, clip, audio);
@@ -784,6 +809,7 @@ void fvm_desktop_audio_close(FVM_DesktopAudio *audio)
     if (audio->output)
         fvm_swf_sound_output_stop(audio->output);
     fvm_swf_sound_output_close(audio->output);
+    fvm_swf_sound_mix_queue_close(audio->composition);
     fvm_swf_sound_mixer_close(audio->mixer);
     if (audio->stream_segments)
     {
