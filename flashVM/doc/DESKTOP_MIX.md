@@ -15,6 +15,9 @@ v0.978: Allow bounded root mixed acquisition and synchronize navigation before a
 
 v0.979: Pump paired tails only at final source EOF, include active/pending events in completion and keep StopSounds-held sources cancelled.
 
+
+v0.980: Exercise production C89 refill against an explicit software FIFO, retained base retry and exact 5 base-plus-event/4 tail PCM frames.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

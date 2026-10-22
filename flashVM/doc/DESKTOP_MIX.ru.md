@@ -15,6 +15,9 @@ v0.978: Разрешена bounded root-композиция stream/StartSound; 
 
 v0.979: Worker подаёт согласованные хвосты после финального EOF, учитывает active/pending события и сохраняет StopSounds-остановку stream.
 
+
+v0.980: Production C89 refill проверен на явном FIFO: base retry, 5 кадров base+event и 4 кадра хвоста с точными PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
