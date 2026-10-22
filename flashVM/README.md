@@ -1,10 +1,12 @@
-Development version: **0.917** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.917 ` and an English description. Increase the subversion before each
+Development version: **0.918** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.918 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.918: [Recover periodic tab extent exhaustion at line breaks](doc/TEXT_DEFAULT_TABS.md).
 
 v0.917: [Use font-derived default tabs in text fields](doc/TEXT_DEFAULT_TABS.md).
 

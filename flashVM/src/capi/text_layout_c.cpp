@@ -594,7 +594,12 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
                     if (ordinal < 1) ordinal = 1;
                     target = ordinal * period;
                     if (!(target > pen && target <= FVM_TEXT_LAYOUT_MAX_EXTENT))
+                    {
+                        /* A bounded trial may recover by restarting the tab on
+                         * the next visual line, just like an exhausted table. */
+                        if (exhausted) *exhausted = true;
                         return FVM_UNSUPPORTED;
+                    }
                 }
                 else
                 {

@@ -10,6 +10,8 @@ v0.916: [fvm_text_layout_create_periodic](../include/flashvm/text_layout.h#L155)
 
 v0.917: TextField and TextFormat.getTextExtent now use four declared average widths when the owned custom table is empty and actual U+0009 exists. Interval is derived from the selected real face and size; missing metrics are UNSUPPORTED. No tab in the input means no extra metric requirement. Custom tables still take precedence. Empty Arrays clear to defaults; null/undefined format properties preserve the prior style. Current/future styles remain independent, snapshots still return empty Arrays for default stops. Editing eagerly validates tab geometry even without autoSize, so failures preserve text/style/cache/anchors. No new snapshot field or wire bit is required: defaults are derived again from embedded font data. Bidi/justify tabs remain unsupported. This bounded OS/2 metric policy has not been compared to a Flash Player binary. Reference: [Adobe AS2 TextFormat](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html#tabStops).
 
+v0.918: repeating stop extent exhaustion participates in wrap trials, so two million-pixel tabs can occupy separate million-pixel visual lines instead of failing before a valid break. Native boundary/admission tests cover this recovery, oversized tabs, CRLF resets, signed indentation, tracking, four alignments, fractional periods, tiny/nonfinite inputs, bidi/justify rejection and independently owned empty tab paths. Unlimited overflowing text remains UNSUPPORTED.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
