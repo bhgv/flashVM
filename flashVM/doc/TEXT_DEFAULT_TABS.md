@@ -16,6 +16,8 @@ v0.919: independent mutated-font fixtures check missing OS/2, its FreeType senti
 
 v0.920: binary and channel tests transfer default current styles with either default or explicit future styles. They verify absent custom-table wire bits, size-dependent recomputation after source-context destruction and receiver GC, preserved right anchors and independent exported paths. Font transfer uses the existing validated embedded-font protocol; this change adds no wire format.
 
+v0.921: ordinary C++ allocation-boundary sweeps cover periodic native construction, current-style size changes, text assignment and replaceText. Every failed construction clears output and keeps the font reusable; failed field edits preserve text, measured width/height, autoSize dimensions and usable paths through post-call GC. These fault sweeps are ordinary builds, separate from sanitizer acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
