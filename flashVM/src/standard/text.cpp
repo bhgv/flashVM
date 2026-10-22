@@ -64,6 +64,7 @@ struct Style
     fvm_detail::string source_key; /* Precomputed private slot key; layout lookup cannot allocate. */
     unsigned int variant; /* Explicit regular/bold/italic family selection. */
     double size, leading;
+    double indent; /* First visual line only; zero for empty hard paragraphs. */
     double left_margin, right_margin, block_indent; /* Nonnegative whole-pixel paragraph insets. */
     double letter_spacing; /* Signed extra pixels after each supported character. */
     unsigned long color;
@@ -71,7 +72,7 @@ struct Style
     bool underline; /* Uniform line decoration, independent of glyph shaping. */
     bool kerning; /* Explicit AS2 pair-kerning selection, independent of font ownership. */
     /* Initialize Style and its owned state. */
-    Style() : variant(FVM_TEXT_FONT_REGULAR), size(12), leading(2), left_margin(0), right_margin(0), block_indent(0), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
+    Style() : variant(FVM_TEXT_FONT_REGULAR), size(12), leading(2), indent(0), left_margin(0), right_margin(0), block_indent(0), letter_spacing(0), color(0), alignment(FVM_TEXT_ALIGN_LEFT), underline(false), kerning(false)
     {
     }
     /* Exchange the current value. */
@@ -88,6 +89,7 @@ struct Style
         d = leading;
         leading = s.leading;
         s.leading = d;
+        d = indent; indent = s.indent; s.indent = d;
         d = left_margin; left_margin = s.left_margin; s.left_margin = d;
         d = right_margin; right_margin = s.right_margin; s.right_margin = d;
         d = block_indent; block_indent = s.block_indent; s.block_indent = d;
@@ -112,6 +114,16 @@ struct Style
         s.kerning = k;
     }
 };
+
+/* Keep hanging text inside the paragraph's left gutter and its SWF8 version gate. */
+static FVM_Result indent_policy(FVM_Context *context, const Style &style)
+{
+    if (style.indent < 0 &&
+        ((context->swf_loaded && context->swf_info.version < FVM_TEXT_INDENT_NEGATIVE_MIN_VERSION) ||
+         style.left_margin + style.block_indent + style.indent < 0))
+        return FVM_UNSUPPORTED;
+    return FVM_OK;
+}
 
 /* Define Field struct and its representation. */
 struct Field
@@ -315,6 +327,12 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
                     return FVM_INVALID_ARGUMENT;
                 style.letter_spacing = d;
             }
+            else if (std::strcmp(name, "indent") == 0)
+            {
+                if (!finite_range(d, -FVM_TEXT_STYLE_MAX_INDENT, FVM_TEXT_STYLE_MAX_INDENT) || d != std::floor(d))
+                    return FVM_INVALID_ARGUMENT;
+                style.indent = d;
+            }
             else if (std::strcmp(name, "leftMargin") == 0 || std::strcmp(name, "rightMargin") == 0 ||
                      std::strcmp(name, "blockIndent") == 0)
             {
@@ -337,6 +355,8 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
     if (style.font.size() > FVM_TEXT_FONT_MAX_NAME ||
         std::memchr(style.font.c_str(), 0, style.font.size()))
         return FVM_INVALID_ARGUMENT;
+    FVM_Result policy = indent_policy(c, style);
+    if (policy != FVM_OK) return policy;
     style.source_key = font_source_key(style.font.c_str(), style.font.size(), style.variant);
     return FVM_OK;
 }
@@ -368,6 +388,8 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     *out = 0;
     if (style.alignment == FVM_TEXT_ALIGN_JUSTIFY && !justify_available(c))
         return FVM_UNSUPPORTED;
+    FVM_Result policy = indent_policy(c, style);
+    if (policy != FVM_OK) return policy;
     FontOwner font;
     FVM_Result result = open_font(c, style, &font.font);
     if (result != FVM_OK)
@@ -407,8 +429,8 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     }
     options.line_height = spacing;
     options.alignment = width ? style.alignment : FVM_TEXT_ALIGN_LEFT;
-    result = fvm_text_layout_create_spaced(font.font, text, size, &options,
-                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, out);
+    result = fvm_text_layout_create_indented(font.font, text, size, &options,
+                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, style.indent, out);
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;
     return result;
@@ -451,7 +473,7 @@ static FVM_Result prepare_field_geometry(FVM_Context *c, const Style &style,
                       const char *text, size_t size, PreparedGeometry &next)
 {
     if (!next.automatic && style.letter_spacing == 0 && style.alignment != FVM_TEXT_ALIGN_JUSTIFY &&
-        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0)
+        style.left_margin == 0 && style.right_margin == 0 && style.block_indent == 0 && style.indent == 0)
         return FVM_OK;
     double width = next.wrap && next.multiline ? next.width - FVM_TEXT_FIELD_GUTTER : 0;
     if (next.wrap && next.multiline && width <= 0)
@@ -485,6 +507,8 @@ static FVM_Result ensure_layout(FVM_Context *c, Field *field)
 {
     if (field->current.alignment == FVM_TEXT_ALIGN_JUSTIFY && !justify_available(c))
         return FVM_UNSUPPORTED;
+    FVM_Result policy = indent_policy(c, field->current);
+    if (policy != FVM_OK) return policy;
     if (field->layout)
         return FVM_OK;
     double width = field->wrap && field->multiline ? field->width - FVM_TEXT_FIELD_GUTTER : 0;
@@ -638,6 +662,7 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object->properties["leading"] = v;
     fvm_value_number(&v, style.letter_spacing);
     object->properties["letterSpacing"] = v;
+    fvm_value_number(&v, style.indent); object->properties["indent"] = v;
     fvm_value_number(&v, style.left_margin); object->properties["leftMargin"] = v;
     fvm_value_number(&v, style.right_margin); object->properties["rightMargin"] = v;
     fvm_value_number(&v, style.block_indent); object->properties["blockIndent"] = v;
@@ -1447,7 +1472,7 @@ static double field_line_shift(const Field *field, const FVM_TextLayoutLine &lin
     if (field->wrap && field->multiline)
         return left;
     double available = field->width - FVM_TEXT_FIELD_GUTTER - left -
-                       field->current.right_margin - line.advance;
+                       field->current.right_margin - line.advance - line.x;
     if (available <= 0)
         return left;
     if (field->current.alignment == FVM_TEXT_ALIGN_CENTER)
@@ -1541,6 +1566,7 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
     out.size = style.size;
     out.leading = style.leading;
     out.letter_spacing = style.letter_spacing;
+    out.indent = style.indent;
     out.left_margin = style.left_margin; out.right_margin = style.right_margin; out.block_indent = style.block_indent;
     out.color = style.color;
     out.alignment = (style.alignment == FVM_TEXT_ALIGN_JUSTIFY ? 0UL : (unsigned long)style.alignment) |
@@ -1548,6 +1574,7 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
                     (style.kerning ? 0UL : FVM_TEXT_STYLE_NO_KERNING) |
                     (style.letter_spacing != 0 ? FVM_TEXT_STYLE_HAS_SPACING : 0UL) |
                     (style.left_margin || style.right_margin || style.block_indent ? FVM_TEXT_STYLE_HAS_INSETS : 0UL) |
+                    (style.indent != 0 ? FVM_TEXT_STYLE_HAS_INDENT : 0UL) |
                     (style.underline ? FVM_TEXT_STYLE_UNDERLINE : 0UL) |
                     (style.variant & FVM_TEXT_FONT_BOLD ? FVM_TEXT_STYLE_BOLD : 0UL) |
                     (style.variant & FVM_TEXT_FONT_ITALIC ? FVM_TEXT_STYLE_ITALIC : 0UL);
@@ -1557,6 +1584,14 @@ void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState
 /* Restore style. */
 FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
 {
+    if (!finite_range(src.indent, -FVM_TEXT_STYLE_MAX_INDENT, FVM_TEXT_STYLE_MAX_INDENT) ||
+        src.indent != std::floor(src.indent) ||
+        ((src.indent != 0) != ((src.alignment & FVM_TEXT_STYLE_HAS_INDENT) != 0)))
+        return FVM_INVALID_ARGUMENT;
+    if (src.indent < 0 &&
+        ((context->swf_loaded && context->swf_info.version < FVM_TEXT_INDENT_NEGATIVE_MIN_VERSION) ||
+         src.left_margin + src.block_indent + src.indent < 0))
+        return FVM_UNSUPPORTED;
     if (!finite_range(src.left_margin, 0, FVM_TEXT_STYLE_MAX_INSET) || src.left_margin != std::floor(src.left_margin) ||
         !finite_range(src.right_margin, 0, FVM_TEXT_STYLE_MAX_INSET) || src.right_margin != std::floor(src.right_margin) ||
         !finite_range(src.block_indent, 0, FVM_TEXT_STYLE_MAX_INSET) || src.block_indent != std::floor(src.block_indent) ||
@@ -1601,6 +1636,7 @@ FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, St
     out.size = src.size;
     out.leading = src.leading;
     out.letter_spacing = src.letter_spacing;
+    out.indent = src.indent;
     out.left_margin = src.left_margin; out.right_margin = src.right_margin; out.block_indent = src.block_indent;
     out.color = src.color;
     out.alignment = src.alignment & FVM_TEXT_STYLE_JUSTIFY ? FVM_TEXT_ALIGN_JUSTIFY :

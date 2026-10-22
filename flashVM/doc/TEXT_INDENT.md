@@ -36,6 +36,23 @@ return UNSUPPORTED; allocation failure returns OUT_OF_MEMORY. Failures clear
 without inspecting font/input/options. Existing C89/C++98 and byte/scalar limits
 are unchanged. Physical platforms and original Flash reference remain separate.
 
+v0.895 applies integer TextFormat.indent in [-4096,4096] to current/future uniform
+styles, getTextExtent and automatic geometry. Positive values work in the existing
+SWF6+ text subset. Negative values require unloaded host/SWF8 and enough
+leftMargin + blockIndent to keep the first glyph origin inside the left gutter;
+otherwise UNSUPPORTED. Noninteger/nonfinite/out-of-range values are INVALID_ARGUMENT.
+Null/undefined preserve the prior style. Nonzero indent validates candidate layout
+before manual or automatic edits publish. Cached layout reads recheck the negative
+version gate. TextWidth/extent.width include intrinsic first-line indent, excluding
+paragraph margins; autoSize includes margins and gutter as before.
+
+[FVM_TEXT_STYLE_HAS_INDENT](../src/standard/text_constants.h#L23) stores one optional signed number after optional insets.
+Legacy records restore zero; public structures and wire versions stay unchanged.
+Current/future styles transfer separately; old readers reject the unknown flag.
+Restore checks exact flag/value agreement, integer range and negative policy before
+that style's font import. Native attachment follows both styles and geometry.
+Already imported fonts retain existing context graph-import lifetime rules.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -52,5 +69,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:82](../include/flashvm/text_layout.h#L82) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:147](../include/flashvm/text_layout.h#L147) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:132](../include/flashvm/text_layout.h#L132) |
+| `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:23](../src/standard/text_constants.h#L23) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
 <!-- source-links:end -->

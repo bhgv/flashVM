@@ -19,8 +19,11 @@
 #define FVM_TEXT_JUSTIFY_MIN_VERSION 8U /* AS2 justified paragraphs became available in SWF8. */
 #define FVM_TEXT_STYLE_HAS_INSETS 512UL /* Optional left/right/block inset numbers after spacing. */
 #define FVM_TEXT_STYLE_MAX_INSET 4096.0 /* Nonnegative integral paragraph inset envelope. */
-#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 192U /* Conservative fixed fields plus six optional inset numbers. */
-#define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY | FVM_TEXT_STYLE_HAS_INSETS) /* Packed non-alignment bits. */
+#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 224U /* Conservative fixed fields plus optional inset/indent numbers. */
+#define FVM_TEXT_STYLE_HAS_INDENT 1024UL /* Optional signed first-line number after paragraph insets. */
+#define FVM_TEXT_STYLE_MAX_INDENT 4096.0 /* Maximum absolute integral first-line indent. */
+#define FVM_TEXT_INDENT_NEGATIVE_MIN_VERSION 8U /* Hanging indentation became available in Flash8. */
+#define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY | FVM_TEXT_STYLE_HAS_INSETS | FVM_TEXT_STYLE_HAS_INDENT) /* Packed non-alignment bits. */
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
 #define FVM_TEXT_FIELD_MIN_INNER_WIDTH (1.0 / 64.0) /* Progress on oversized graphemes. */
 #define FVM_TEXT_FIELD_MAX_EXTENT 1000000.0 /* Maximum admitted outer field dimension. */
