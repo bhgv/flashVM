@@ -1,10 +1,12 @@
-Development version: **0.977** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.978** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.978: [Allow bounded root mixed acquisition and synchronize navigation before adopting each frame event; preserve legacy event/stream paths.](doc/DESKTOP_MIX.md).
 
 v0.977: [Acquire/close optional native composition ownership and route serialized ID controls; keep mixed preflight closed until integration checks.](doc/DESKTOP_MIX.md).
 

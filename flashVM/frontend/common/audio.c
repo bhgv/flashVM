@@ -41,18 +41,13 @@ static FVM_Result prepare_segment(FVM_Context *context, size_t index, size_t *re
 /* Reject unsupported combinations before a window or audio endpoint can be opened. */
 static FVM_Result validate_headers(FVM_Context *context, int decode)
 {
-    size_t streams = 0, events = 0, index;
+    size_t streams = 0, index;
     size_t remaining = 0;
     FVM_SWFStreamSoundInfo info;
     FVM_Result result = fvm_swf_stream_sound_count(context, &streams);
     if (result != FVM_OK || !streams)
         return result;
     if (streams > FVM_DESKTOP_AUDIO_MAX_SEGMENTS)
-        return FVM_UNSUPPORTED;
-    result = fvm_swf_sound_event_count(context, &events);
-    if (result != FVM_OK)
-        return result;
-    if (events)
         return FVM_UNSUPPORTED;
     result = stream_budget(streams, &remaining);
     if (result != FVM_OK)
@@ -176,7 +171,12 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
     FVM_Result result;
     size_t remaining = 0;
     int handled = 0, active = 0;
-    (void)clip;
+    if (audio->composition)
+    {
+        /* Navigation must clear the old epoch before this frame's first new event is adopted. */
+        result = fvm_desktop_audio_timeline(context, clip, audio);
+        if (result != FVM_OK) return result;
+    }
     event.struct_size = sizeof(event);
     result = fvm_swf_sound_event_at(context, ordinal, &event);
     if (result != FVM_OK)

@@ -50,7 +50,7 @@ def main():
         for kind in ['valid','cws','adpcm','adpcm_partial','adpcm_padding','mp3','mixed','segments','limit','excess','short_header','odd_pcm','orphan','duplicate']:
             path=Path(directory)/'stream.swf';path.write_bytes(movie(kind))
             for mute in [False,True]:
-                supported=kind in ('valid','cws','adpcm','segments','limit')
+                supported=kind in ('valid','cws','adpcm','mixed','segments','limit')
                 env=dict(os.environ,SDL_VIDEODRIVER='dummy' if mute or supported else 'flashvm-no-video',
                          SDL_AUDIODRIVER='dummy' if supported and not mute else 'flashvm-no-audio')
                 command=[executable,mode,'--frames','1','--fps','1000','--stats']

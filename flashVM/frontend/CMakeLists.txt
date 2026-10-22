@@ -1310,3 +1310,17 @@ if(TARGET flashvm_example_frame_parts AND FVM_BUILD_TESTS AND Python3_Interprete
     $<TARGET_FILE:flashvm_resource_frame_oracle>)
   set_tests_properties(flashvm_resource_frame_parts_example PROPERTIES TIMEOUT 30)
 endif()
+
+# Root stream/event integration exercises the production C89 audio owner with an explicit dummy SDK.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_mixed_open tests/mixed_open.cpp common/audio.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_mixed_open PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_mixed_open PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_mixed_open PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_mixed_open PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_mixed_open COMMAND flashvm_frontend_mixed_open)
+  set_tests_properties(flashvm_frontend_mixed_open PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 15)
+endif()

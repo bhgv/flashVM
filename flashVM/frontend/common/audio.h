@@ -76,8 +76,8 @@ extern "C"
 {
 #endif
     /* Validate supported unmuted root stream policy before native presentation/device acquisition.
-     * Up to MAX_SEGMENTS PCM, whole-packet ADPCM or supported MP3 headers without root StartSound; other
-     * codec/mixed/excess UNSUPPORTED. Owner only; may allocate/copy/decode temporary sources; no
+     * Up to MAX_SEGMENTS PCM, whole-packet ADPCM or supported MP3 headers, optionally with root StartSound; other
+     * codec/excess UNSUPPORTED. Owner only; may allocate/copy/decode temporary sources; no
      * device or callbacks. Referenced root MP3 events are fully validated once per distinct
      * sound ID before acquisition, including CRC; metadata-only and muted paths stay separate.
      * Core stream alignment errors propagate. */
@@ -87,7 +87,7 @@ extern "C"
      * repeated observations do not rewind. No VM pointer reaches worker. Host pause remains
      * independent. */
     FVM_Result fvm_desktop_audio_timeline(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
-    /* Acquire native ownership for root events or supported prepared root streams; never both.
+    /* Acquire native ownership for root events, prepared root streams, or their tracked composition.
      * Event preparation runs on owner outside worker mutex; aggregate native mixer/voice storage
      * obeys EVENT_BYTES. SyncNoMultiple includes queued/pending identity time until dequeue end.
      * Native output/ID/device/trace storage and VM memory are separate budgets. */

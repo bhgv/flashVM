@@ -9,6 +9,9 @@ v0.976: Проверены pairing backend, failed/throwing retry, stream-reentr
 
 v0.977: Добавлены bounded-владение composition и маршрутизация ID; mixed preflight пока закрыт до интеграционных проверок.
 
+
+v0.978: Разрешена bounded root-композиция stream/StartSound; навигация согласуется до принятия событий кадра, прежние пути сохранены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

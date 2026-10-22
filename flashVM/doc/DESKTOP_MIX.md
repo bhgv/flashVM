@@ -9,6 +9,9 @@ v0.976: Verify exact backend pairing, rejected/throwing retry, stream reentry an
 
 v0.977: Acquire/close optional native composition ownership and route serialized ID controls; keep mixed preflight closed until integration checks.
 
+
+v0.978: Allow bounded root mixed acquisition and synchronize navigation before adopting each frame event; preserve legacy event/stream paths.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
