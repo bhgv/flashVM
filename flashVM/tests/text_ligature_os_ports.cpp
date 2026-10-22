@@ -1,0 +1,34 @@
+/* Independent font handles alternate legacy fi ligatures with decomposed tracking on OS workers. */
+#include "flashvm/text_layout.h"
+#include "fixtures/font_data.h"
+#include "../ports/thread_port.h"
+#include <cassert>
+#include <cmath>
+#ifdef FVM_HAS_FONTS
+struct Job { double spacing; bool failed; unsigned passes; };
+/* Own every mutable font, run and layout; share only immutable original font bytes. */
+static void worker(void *raw)
+{
+ Job *job=(Job*)raw;FVM_Font *font=0;FVM_TextLayout *layout=0;FVM_TextRun *run=0;
+ if(fvm_font_read(fvm_test_font,sizeof(fvm_test_font),0,40,&font)!=FVM_OK){job->failed=true;return;}
+ for(unsigned pass=0;pass<64;++pass){
+  if(fvm_font_shape_configured(font,"fi",2,FVM_TEXT_LTR,0,0,&run)!=FVM_OK || fvm_text_run_count(run)!=1){job->failed=true;break;}
+  fvm_text_run_destroy(run);run=0;
+  if(fvm_text_layout_create_spaced(font,"fi",2,0,FVM_FONT_SHAPE_NO_KERNING,job->spacing,&layout)!=FVM_OK){job->failed=true;break;}
+  FVM_TextLayoutMetrics metrics;
+  if(fvm_text_layout_metrics(layout,&metrics)!=FVM_OK || std::fabs(metrics.advance_width-(24+2*job->spacing))>0.02){job->failed=true;break;}
+  fvm_text_layout_destroy(layout);layout=0;++job->passes;
+ }
+ fvm_text_run_destroy(run);fvm_text_layout_destroy(layout);fvm_font_destroy(font);
+}
+#endif
+/* Join every worker before reading its result; no VM/context/font handle is shared. */
+int main()
+{
+#ifdef FVM_HAS_FONTS
+ Job jobs[4];FVM_PortThread *threads[4];
+ for(unsigned i=0;i<4;++i){jobs[i].spacing=i%2?2.5:-2;jobs[i].failed=false;jobs[i].passes=0;threads[i]=fvm_port_thread_start(worker,jobs+i);assert(threads[i]);}
+ for(unsigned i=0;i<4;++i){fvm_port_thread_join(threads[i]);assert(!jobs[i].failed && jobs[i].passes==64);}
+#endif
+ return 0;
+}

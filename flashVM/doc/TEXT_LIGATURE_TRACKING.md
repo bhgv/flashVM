@@ -48,6 +48,8 @@ v0.864 verifies TextFormat extents, current/future tracking, centered auto-size,
 
 v0.865 adds four ordinary-build C++ allocation sweeps: tracked fifi layout plus current-format, assignment and replaceText field paths. Failed construction clears outputs; failed field edits preserve counted text, spacing and measured geometry, with balanced GC/native scopes and reusable fonts. These sweeps do not inject failures into bundled C-library malloc sites.
 
+v0.866 checks actual AVM1 SetMember/CallMethod/GetMember in interpreter, attached native code and automatic JIT. At 40px, fi widths are 28 with zero spacing, 30 with +3 and 20 with -2. Four OS workers independently alternate legacy shaping and tracked layouts for 64 passes, preserving one legacy fi glyph before each tracked call.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

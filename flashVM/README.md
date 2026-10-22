@@ -1,10 +1,12 @@
-Development version: **0.865** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.865 ` and an English description. Increase the subversion before each
+Development version: **0.866** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.866 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.866: [Exercise ligature tracking through native AVM1 JIT and independent workers](doc/TEXT_LIGATURE_TRACKING.md).
 
 v0.865: [Verify ligature tracking rollback at allocation boundaries](doc/TEXT_LIGATURE_TRACKING.md).
 
