@@ -48,6 +48,8 @@ v0.832: `textfield_spacing_transfer.cpp` checks signed current/future binary and
 
 v0.833: `textfield_spacing_allocation.cpp` sweeps current-format, assignment and replaceText allocation boundaries, preserving text/style/cached width and balanced GC scopes on failure. `text_layout_spacing_allocation.cpp` checks cleared output, partial-path cleanup and immediate font reuse after failed construction. Fault injection runs in the ordinary native build; it is not sanitizer fault-unwind acceptance.
 
+v0.834: `jit_textfield_spacing.cpp` drives actual AVM1 SetMember/CallMethod/GetMember with zero, positive and negative intervals in interpreter, attached native code and automatic JIT modes, checking native entry counts and balanced GC roots. `text_spacing_os_ports.cpp` checks independent mutable fonts/layouts in four OS workers, keeping legacy fi shaping isolated from tracked AV layouts.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
