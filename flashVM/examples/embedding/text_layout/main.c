@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    int justified = 0; /* Optional LTR paragraph demonstration keeps the same owned-layout API. */
     int underline = 0; /* Optional line decoration is separate from glyph shaping. */
     int ligatures = 0; /* Select a short fi probe for explicit or tracking-driven decomposition. */
     double spacing = 0; /* Zero preserves all legacy shaping, including complex clusters. */
@@ -28,11 +29,12 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--underline")) underline = 1; /* Add font-defined bars without changing text metrics. */
     else if (argc == 2 && !strcmp(argv[1], "--no-ligatures")) { ligatures = 1; flags = FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES; } /* Decompose fi without adding tracking. */
     else if (argc == 2 && !strcmp(argv[1], "--ligature-tracking")) { ligatures = 1; spacing = 1; } /* Nonzero tracking requests decomposition automatically. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--justify")) { justified = 1; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Expand only internal ASCII spaces on wrapped nonfinal lines. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking|--justify]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
-    const char *text = ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
+    const char *text = justified ? "A V A V" : ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
     FVM_Font *font = 0;
     /* Сохраняем вычисленное значение: FVM_TextLayout *layout. */
@@ -58,6 +60,12 @@ int main(int argc, char **argv)
     size_t i;
     /* Сохраняем вычисленное значение: surface.pixels. */
     surface.pixels = pixels;
+    if (justified) /* Keep the analytical paragraph at a fixed 90-pixel inner width. */
+    { /* All declarations above precede this C89 configuration block. */
+        options.max_width = 90; /* Native justification fills this width on eligible nonfinal lines. */
+        options.direction = FVM_TEXT_LTR; /* This bounded policy requires a left-to-right paragraph. */
+        options.alignment = FVM_TEXT_ALIGN_JUSTIFY; /* Select the new native enum without changing structure layout. */
+    } /* Font/layout/path ownership remains the ordinary tutorial contract. */
     /* Вызываем fvm_font_read: загружаем шрифтовые байты в собственный дескриптор.
      * fvm_test_font — байты шрифтового файла.
      * sizeof(fvm_test_font) — размер входного текста или ресурса в байтах.
@@ -142,6 +150,15 @@ int main(int argc, char **argv)
                line.direction == FVM_TEXT_RTL ? "RTL" : "LTR");
         /* Завершаем текущий блок или описание объекта. */
     }
+    if (justified) /* Observe expanded and final natural advances after the font was destroyed. */
+    { /* The layout owns the copied metrics and glyph outlines. */
+        double first, last; /* Copy scalar observations before reusing the line result. */
+        if (fvm_text_layout_line(layout, 0, &line) != FVM_OK) fvm_example_fail("read justified first line", __FILE__, __LINE__); /* Read an existing zero-based line index. */
+        first = line.advance; /* The nonfinal line expands to exactly 90 pixels. */
+        if (fvm_text_layout_line(layout, metrics.line_count - 1, &line) != FVM_OK) fvm_example_fail("read final line", __FILE__, __LINE__); /* The final paragraph line is not stretched. */
+        last = line.advance; /* Two 24-pixel letters and a 12-pixel internal space give 60 pixels. */
+        printf("justify first=%.2f last=%.2f\n", first, last); /* The executable checker verifies both independent oracle values. */
+    } /* Existing path export/rasterization continues below using the same owned layout. */
     /* Вызываем fvm_text_layout_path: получаем контуры всего текстового блока.
      * layout — ранее созданная текстовая раскладка.
      * &path — адрес или буфер для результата.
@@ -268,6 +285,7 @@ int main(int argc, char **argv)
     } /* Release the font-enabled declaration scope after native cleanup. */
 #else
     /* Выводим строку с завершающим переводом строки. */
+    (void)justified; /* Mode parsing remains available in a NO_FONTS build. */
     (void)underline; /* The option still parses without a font backend. */
     (void)ligatures; /* The short probe remains parseable without fonts. */
     (void)spacing; /* Numeric option parsing does not require a font handle. */

@@ -59,6 +59,8 @@ v0.881 adds seven ordinary-build C++ allocation sweeps: native layout plus curre
 
 v0.882 drives actual AVM1 alignment writes and method/property calls in interpreter, attached native code and automatic JIT. Justify/right alternate 90/72 widths with the same 94px automatic height. Four independent font-owner OS workers perform 64 builds each with distinct widths and fractional tracking, verifying expanded glyph positions and separately owned paths.
 
+v0.883 adds the annotated C89 `--justify` tutorial and executes its two-line 90/60px observation in the example checker. The path remains separately owned after the font/layout release.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

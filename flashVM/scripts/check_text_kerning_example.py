@@ -27,6 +27,10 @@ def main():
     assert underlined.stdout.splitlines()[:-2] == on.stdout.splitlines()
     assert underlined.stdout.splitlines()[-2:] == [
         'underline center=4.00 thickness=2.00 commands=15', 'underline probe_alpha=255']
+    justified = subprocess.run([sys.argv[1], '--justify'], capture_output=True, text=True, check=True)
+    actual = re.match(pattern, justified.stdout)
+    assert actual and actual.groups() == ('2', '7', '90.00', '92.00')
+    assert justified.stdout.splitlines()[-1] == 'justify first=90.00 last=60.00'
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)
     assert bad.returncode != 0 and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking, underline contours/pixel oracle and actual RGBA rasterization')
