@@ -17,6 +17,8 @@ int main(void)
   o.max_width=0;assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,-1,&layout)==FVM_OK && fvm_text_layout_metrics(layout,&m)==FVM_OK && m.glyph_count==2 && fabs(m.advance_width-22)<0.02);fvm_text_layout_destroy(layout);
   assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,0,&layout)==FVM_OK && fvm_text_layout_metrics(layout,&m)==FVM_OK && m.glyph_count==1 && fabs(m.advance_width-28)<0.02);fvm_text_layout_destroy(layout);
   assert(fvm_text_layout_create_configured(font,"fi",2,&o,FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES,&layout)==FVM_OK && fvm_text_layout_metrics(layout,&m)==FVM_OK && m.glyph_count==2 && fabs(m.advance_width-24)<0.02);fvm_text_layout_destroy(layout);
+  assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,-10,&layout)==FVM_OK && fvm_text_layout_metrics(layout,&m)==FVM_OK && m.glyph_count==2 && fabs(m.advance_width-4)<0.02);fvm_text_layout_destroy(layout);
+  assert(fvm_text_layout_create_spaced(font,"fi",2,&o,0,-10.01,&layout)==FVM_UNSUPPORTED && !layout);
   assert(fvm_text_layout_create_spaced(font,"A\xcc\x81",3,&o,0,1,&layout)==FVM_UNSUPPORTED && !layout);
   fvm_font_destroy(font);assert(fvm_path_count(path)>0);fvm_path_destroy(path);
  }

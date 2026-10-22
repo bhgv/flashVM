@@ -20,16 +20,19 @@ int main(int argc, char **argv)
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
     int underline = 0; /* Optional line decoration is separate from glyph shaping. */
+    int ligatures = 0; /* Select a short fi probe for explicit or tracking-driven decomposition. */
     double spacing = 0; /* Zero preserves all legacy shaping, including complex clusters. */
     if (argc == 2 && !strcmp(argv[1], "--no-kerning")) flags = FVM_FONT_SHAPE_NO_KERNING; /* Disable pair kerning only. */
     else if (argc == 2 && !strcmp(argv[1], "--tracking")) { spacing = 2.5; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Show fractional positive spacing on simple AV. */
     else if (argc == 2 && !strcmp(argv[1], "--condensed")) { spacing = -2; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Condense the same characters with a negative interval. */
     else if (argc == 2 && !strcmp(argv[1], "--underline")) underline = 1; /* Add font-defined bars without changing text metrics. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--no-ligatures")) { ligatures = 1; flags = FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES; } /* Decompose fi without adding tracking. */
+    else if (argc == 2 && !strcmp(argv[1], "--ligature-tracking")) { ligatures = 1; spacing = 1; } /* Nonzero tracking requests decomposition automatically. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed|--underline|--no-ligatures|--ligature-tracking]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
-    const char *text = spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Restrict nonzero tracking to supported one-to-one clusters. */
+    const char *text = ligatures ? "fi" : spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Tracking decomposes optional fi while retaining unambiguous per-character placement. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
     FVM_Font *font = 0;
     /* Сохраняем вычисленное значение: FVM_TextLayout *layout. */
@@ -266,6 +269,8 @@ int main(int argc, char **argv)
 #else
     /* Выводим строку с завершающим переводом строки. */
     (void)underline; /* The option still parses without a font backend. */
+    (void)ligatures; /* The short probe remains parseable without fonts. */
+    (void)spacing; /* Numeric option parsing does not require a font handle. */
     (void)flags; /* Feature parsing remains available when native fonts are disabled. */
     puts("Text layout requires FONTS in DEFS.txt.");
 /* Завершаем условный блок компиляции. */
