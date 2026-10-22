@@ -55,6 +55,8 @@ transfer without extra payload bytes. Absent legacy flags restore false; older
 readers reject the new flag. This is uniform underline, not styled ranges,
 hyperlink behavior, full SWF display integration or Flash pixel equivalence.
 
+v0.840: `textfield_underline_transfer.cpp` checks current/future binary and channel transfer, unchanged wire size, legacy false restoration, receiver GC and source destruction. `textfield_underline_alignment.cpp` checks both wrapped and unwrapped left/center/right placement on multiple lines with signed tracking and a trailing empty line.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
