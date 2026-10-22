@@ -1,10 +1,12 @@
-Development version: **0.967** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.967 ` and an English description. Increase the subversion before each
+Development version: **0.968** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.968 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.968: [Cancel both converted root IDs and restart their independent deadlines after accepted PCM.](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.967: [Verify immediate global stop retires DECLICK tails and restarts NoMultiple after the retry.](doc/MIX_QUEUE_IDENTITIES.md).
 

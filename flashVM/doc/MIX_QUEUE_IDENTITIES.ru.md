@@ -69,6 +69,9 @@ v0.966: stop_all отвергает callback-reentry; независимый р�
 
 v0.967: Проверены удаление DECLICK-хвостов и новый NoMultiple после сохранённого retry.
 
+
+v0.968: Проверены отмена двух root-ID и независимые сроки новых голосов после принятого PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

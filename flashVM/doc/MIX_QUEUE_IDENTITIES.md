@@ -69,6 +69,9 @@ v0.966: Reject stop_all reentry while allowing independent storage prediction in
 
 v0.967: Verify immediate global stop retires DECLICK tails and restarts NoMultiple after the retry.
 
+
+v0.968: Cancel both converted root IDs and restart their independent deadlines after accepted PCM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
