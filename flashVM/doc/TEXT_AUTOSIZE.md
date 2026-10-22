@@ -46,6 +46,24 @@ v0.850: the [C89 tutorial](../examples/embedding/standard_text/README.md) demons
 
 v0.851: restored automatic dimensions must match a fresh measurement within one 1/64-pixel font subpixel; mismatches are INVALID_ARGUMENT before native attachment. Only retired rootless built-in autoSize accessors are upgraded, both in native restore and graph callback restoration. Captured roots/custom userdata remain untouched. `textfield_autosize_restore.cpp` checks legacy stubs, malformed dimensions and host-capture preservation.
 
+v0.852: `textfield_autosize_limits.cpp` exercises large-font paragraphs beyond native width/height limits, verifies unchanged automatic fields on rejected edits, rejects enabling automatic mode over already-stored oversized manual text and proves recovery after valid text replacement. Field extent/gutter limits are scoped constants shared by measurement and lazy layout.
+
+## Verification at v0.852
+
+Release text-jit: 58 font/text/GC/transfer/JIT/tutorial tests pass. Full-core C/C++
+ASan/UBSan: eight new runtime tests pass without injected allocation exceptions.
+NO_FONTS: seven API/standard-text tests pass. Six allocation-failure sweeps run
+in the ordinary build. A renamed detached component configures and registers its
+own tutorial checker; the copied checker runs against the tested native binary.
+This is a path/configuration check, not another full detached native build.
+
+The native policy bit adds no state payload bytes, but new autoSize getter/setter
+selectors also require updated callback tables: old readers are not guaranteed
+to accept new field graphs even with autoSize disabled. New-reader restoration
+of retired built-in stubs is explicitly tested. All nine roadmap stages,
+center/right anchors, full Flash display/reference and physical-device acceptance
+remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

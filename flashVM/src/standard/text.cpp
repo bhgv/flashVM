@@ -92,10 +92,10 @@ struct Field
     Style current, future;
     const char *text; /* [GC:] Context-owned text retained by the reachable field. */
     size_t text_size; /* Counted UTF-8 bytes, including embedded NUL. */
-    double width, height;
-    bool multiline, wrap;
+    double width /* Current outer width including gutter. */, height; /* Current outer height. */
+    bool multiline /* Allow hard line separators. */, wrap; /* Wrap inside the outer width. */
     bool auto_size_left; /* Keep native field origin fixed while fitting measured content. */
-    FVM_TextLayout *layout;
+    FVM_TextLayout *layout; /* Owned cache, replaced only after a successful measured edit. */
     /* Initialize Field and its owned state. */
     Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), layout(0)
     {
@@ -414,9 +414,9 @@ static FVM_Result ensure_layout(FVM_Context *c, Field *field)
 {
     if (field->layout)
         return FVM_OK;
-    double width = field->wrap && field->multiline ? field->width - 4 : 0;
+    double width = field->wrap && field->multiline ? field->width - FVM_TEXT_FIELD_GUTTER : 0;
     if (field->wrap && field->multiline && width <= 0)
-        width = 1.0 / 64;
+        width = FVM_TEXT_FIELD_MIN_INNER_WIDTH;
     return build_layout(c, field->current, field->text, field->text_size, width,
                         field->multiline, &field->layout, 0);
 }
@@ -952,7 +952,7 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         }
         else
         {
-            if (!finite_range(d, 0, 1000000))
+            if (!finite_range(d, 0, FVM_TEXT_FIELD_MAX_EXTENT))
                 return FVM_INVALID_ARGUMENT;
             PreparedGeometry geometry(*field);
             if (field->auto_size_left && (std::strcmp(name, "_width") != 0 || !field->wrap))
@@ -1282,7 +1282,7 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
     *out = 0;
     /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
     if (!c || !c->standard_text_library || c->destroying || c->gc_releasing ||
-        !finite_range(width, 0, 1000000) || !finite_range(height, 0, 1000000))
+        !finite_range(width, 0, FVM_TEXT_FIELD_MAX_EXTENT) || !finite_range(height, 0, FVM_TEXT_FIELD_MAX_EXTENT))
         return FVM_INVALID_ARGUMENT;
     Field *field = 0;
     try
@@ -1380,7 +1380,7 @@ static double field_line_shift(const Field *field, const FVM_TextLayoutLine &lin
 {
     if (field->wrap && field->multiline)
         return 0;
-    double available = field->width - 4 - line.advance;
+    double available = field->width - FVM_TEXT_FIELD_GUTTER - line.advance;
     if (available <= 0)
         return 0;
     if (field->current.alignment == FVM_TEXT_ALIGN_CENTER)
@@ -1610,7 +1610,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         return FVM_UNSUPPORTED;
     size_t scalar_count = 0;
     /* Validate the same storage envelope as editing before allocating native state or fonts. */
-    if (!finite_range(state.width, 0, 1000000) || !finite_range(state.height, 0, 1000000) ||
+    if (!finite_range(state.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) || !finite_range(state.height, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
         state.text.size() > FVM_TEXT_FIELD_MAX_BYTES ||
         fvm_utf8_validate(state.text.c_str(), state.text.size(), &scalar_count) != FVM_UTF8_OK ||
         scalar_count > FVM_TEXT_FIELD_MAX_SCALARS)

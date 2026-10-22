@@ -279,6 +279,15 @@ NO_FONTS checks pass. [EN](TEXT_UNDERLINE.md) / [RU](TEXT_UNDERLINE.ru.md).
 Styled ranges, unusual fonts, full Flash pixel/display integration and physical
 platform/device acceptance remain open. Все стадии roadmap остаются открытыми.
 
+Current v0.845–0.852 adds left-anchored TextField.autoSize and Boolean synonyms,
+transactional fitting on edits/current formatting, fixed-width wrapped height,
+prepared layout caching and graph/channel policy transfer. Legacy native stubs
+upgrade without replacing host captures; forged automatic dimensions are rejected.
+58 native regression/tutorial checks, eight ASan/UBSan and seven NO_FONTS checks
+pass. [EN](TEXT_AUTOSIZE.md) / [RU](TEXT_AUTOSIZE.ru.md).
+Center/right, unrestricted manual dimensions while active, full Flash display/
+reference and physical platform/device acceptance remain open. Все стадии открыты.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,

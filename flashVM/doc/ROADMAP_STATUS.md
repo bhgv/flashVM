@@ -9,6 +9,12 @@ counts are historical unless explicitly rerun for this revision.
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
+v0.852: Left-anchored automatic TextField geometry with transactional edits,
+wrapping, native JIT/GC/worker checks, graph transfer and legacy accessor recovery.
+58 native, eight ASan/UBSan and seven NO_FONTS checks pass.
+[EN](TEXT_AUTOSIZE.md) / [RU](TEXT_AUTOSIZE.ru.md). Center/right anchors, full
+Flash reference/display and physical platform/device acceptance remain open.
+
 v0.844: Uniform AS2 underline with scaled font metrics, independently owned line
 bars, current/future transfer flags, nonzero overlap preservation, JIT/GC/OS-worker
 and allocation-failure evidence. 48 native, nine ASan/UBSan and seven NO_FONTS

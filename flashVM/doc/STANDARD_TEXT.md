@@ -90,7 +90,7 @@ byte positions. See TEXT_LAYOUT.md for greedy wrapping, whitespace, work limits
 and script-itemization restrictions. Tabs/soft hyphens and unsupported layout
 requests can be stored as text but fail when measured/exported.
 
-Known unsupported display/input properties (html/htmlText, autoSize, border,
+Known unsupported display/input properties (html/htmlText, border,
 background, embedFonts, password, selectable, scrolling, antialias settings,
 filters and display transforms) explicitly return UNSUPPORTED on access/write.
 Likewise replaceSel, listener and display-node methods are blocked.
@@ -151,6 +151,10 @@ v0.393–v0.396: counted NUL content now survives editing, layout and graph
 transport; formatting keywords use full counted values; restore enforces the
 native text envelope; identical loaded assignments preserve current formatting.
 See [counted text and checks](TEXTFIELD_COUNTED_TEXT.md).
+
+## Automatic field geometry (v0.845–0.852)
+
+TextField.autoSize supports none/left and false/true. Edits and current formatting fit dimensions before publication; wordWrap preserves width while fitting height. Future format changes stay independent. Transfers retain mode, validate measured dimensions and upgrade retired rootless built-in stubs. Center/right, manual height and unwrapped width writes while active remain UNSUPPORTED. [Contract and evidence](TEXT_AUTOSIZE.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
