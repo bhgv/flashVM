@@ -43,6 +43,14 @@ extern "C"
      * size overflow -> OUT_OF_MEMORY. Required scalar out is preserved on errors. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required(unsigned int channels,
                                                                 size_t block, size_t *out);
+    /* Predict owner+PCM+optional ID-table allocation requests before acquiring any owner.
+     * identity_tracking must be 0/1; geometry and statuses match storage_required. Required
+     * out is unchanged on invalid arguments or checked size overflow. No allocation,
+     * mixer/backend/VM/GC access; thread independent when out storage is not shared.
+     * This is retained adapter bytes, not a combined mixer/voice/device/allocator budget.
+     * Creation remains initially untracked; enable tracking separately at its safe point. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required_for_tracking(
+        unsigned int channels, size_t block, int identity_tracking, size_t *out);
     /* Copy fixed storage observation, independent of pending/accepted queue frames.
      * Live serialized queue and exact-size out required; invalid/reentry preserves out.
      * No allocation/callback/VM/GC. Counts allocation requests, not actual RSS. */

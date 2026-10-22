@@ -410,6 +410,18 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_required(unsigned int chan
     return result;
 }
 
+/* Predict optional deadline allocation with the same checked accounting as mode admission. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_required_for_tracking(
+    unsigned int channels, size_t block, int tracking, size_t *out)
+{
+    if (!out || (tracking != 0 && tracking != 1)) return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueueStorageInfo info;
+    FVM_Result result = storage_with_identities(channels, block,
+        tracking ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, info);
+    if (result == FVM_OK) *out = info.retained_bytes;
+    return result;
+}
+
 /* Observe fixed owner and array requests; pending state never grows native storage. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_info(const FVM_SWFSoundMixQueue *queue,
                                                            FVM_SWFSoundMixQueueStorageInfo *out)
