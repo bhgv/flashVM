@@ -14,7 +14,7 @@
 #include <string.h>
 /* Initialize the example, run its API operations and release owned resources. */
 /* Точка входа: запускаем последовательность действий этого примера. */
-int main(void)
+int main(int argc, char **argv)
 /* Начинаем блок инструкций или описание объекта. */
 {
 
@@ -31,6 +31,9 @@ int main(void)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    int automatic = 0; /* Optional executable demonstration uses the same owner context. */
+    if (argc == 2 && !strcmp(argv[1], "--auto-size")) automatic = 1; /* Select measured left-anchored field dimensions. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -373,6 +376,29 @@ int main(void)
                          __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (automatic) /* Demonstrate measured geometry after the ordinary field tutorial. */
+    { /* Keep C89 declarations before statements in this optional scope. */
+        double width, height; /* Copy numeric observations before reusing the result value. */
+        fvm_value_boolean(&value, 0); /* Disable wrapping so the first edit can fit both dimensions. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("disable wrapping", __FILE__, __LINE__); /* Check the native policy write. */
+        if (fvm_value_string(&value, "AV") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("initial auto text", __FILE__, __LINE__); /* Apply the existing 40px future format. */
+        fvm_value_boolean(&value, 1); /* True selects the left anchor. */
+        if (fvm_object_set(context, field, "autoSize", &value) != FVM_OK) fvm_example_fail("enable autoSize", __FILE__, __LINE__); /* Measurement commits only on success. */
+        if (fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("read width", __FILE__, __LINE__); /* Borrow the field on its owner thread. */
+        width = result.number; /* The analytical AV width is 48 plus four pixels of gutter. */
+        if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("read height", __FILE__, __LINE__); /* Copy the measured outer height. */
+        height = result.number; /* The fixture ascent/descent is 44 plus the same gutter. */
+        printf("autoSize left: width=%.2f height=%.2f\n", width, height); /* Expected 52.00 by 48.00. */
+        if (fvm_value_string(&value, "AVA") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("grow auto text", __FILE__, __LINE__); /* A genuine edit reapplies the future style. */
+        if (fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("read edited width", __FILE__, __LINE__); /* Observe the new width without a layout call. */
+        printf("autoSize edit: width=%.2f\n", result.number); /* Expected 76.00 including gutter. */
+        fvm_value_boolean(&value, 1); /* Keep the current width as the wrapping constraint. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("enable wrapping", __FILE__, __LINE__); /* Existing multiline remains enabled. */
+        fvm_value_number(&value, 30); /* A 26px inner width holds one 24px character. */
+        if (fvm_object_set(context, field, "_width", &value) != FVM_OK) fvm_example_fail("set wrap width", __FILE__, __LINE__); /* Fit three rows before committing width. */
+        if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("read wrapped height", __FILE__, __LINE__); /* Three baseline rows fit to 140px with gutter. */
+        printf("autoSize wrap: width=30.00 height=%.2f\n", result.number); /* The executable checker verifies 140.00. */
+    } /* The field owns its measured cache; the following path export remains independent. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -390,6 +416,7 @@ int main(void)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)automatic; /* The option remains parseable in a NO_FONTS profile. */
     (void)format;
     /* Завершаем выражение с указанным значением или аргументами. */
     (void)field;

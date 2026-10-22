@@ -42,6 +42,8 @@ v0.848: `textfield_autosize_allocation.cpp` sweeps six C++ allocation paths: ena
 
 v0.849: `jit_textfield_autosize.cpp` drives actual AVM1 string/Boolean mode writes and text edits in interpreter, attached native code and automatic JIT, checking measured dimensions, native entry counts, unsupported-anchor propagation and GC scopes. `text_autosize_os_ports.cpp` runs four actual OS workers, each owning its runtime/context/font/field, with 64 edits and GC passes. No mutable VM state is shared.
 
+v0.850: the [C89 tutorial](../examples/embedding/standard_text/README.md) demonstrates --auto-size with exact 52x48, width 76 and wrapped 30x140 observations, followed by independent path export. The executable checker validates all dimensions and early invalid-option rejection. The AS companion remains uncompiled host-integration source.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

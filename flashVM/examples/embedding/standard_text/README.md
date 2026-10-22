@@ -27,28 +27,49 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 
 | Функция | Назначение и документация |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_construct`](../../../include/flashvm/value.h#L158) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_object_call`](../../../include/flashvm/value.h#L126) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Метод, receiver и аргументы. |
-| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_set_global`](../../../include/flashvm/value.h#L87) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L17) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L33) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Записывает тег Boolean и нормализует значение: 0 становится false, любое ненулевое число — true. Подробнее: [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views). |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_value_string`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration defaults before runtime creation; no VM ownership is transferred. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_construct`](../../../include/flashvm/value.h#L158) | Invoke TextFormat construction on the context owner; returned format is VM-owned and must be rooted before later GC-capable calls. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Create an independent VM context owned by the caller; keep its runtime alive and destroy the context first. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release the context and managed fields/formats after all borrows end; exported native paths remain independent. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Synchronously invoke setNewTextFormat, replaceText or getTextFormat with borrowed rooted receiver/arguments; inspect status and copy results before reuse. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read field text, autoSize or dimensions through native accessors on the context owner; result views are borrowed and may be overwritten. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Apply field text, formatting, wrap policy or autoSize; automatic geometry is measured before publication and failed writes preserve field state. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned exported path after use; null is accepted and VM destruction does not release this independent path. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Create caller-owned runtime state from borrowed initialized config; keep it alive until every context is destroyed. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release runtime resources after context destruction; do not retain runtime/context borrows afterwards. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Publish a copied value as a context global so the VM traces the managed format/field; borrowed strings are not host-owned objects. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L17) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L33) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Write a normalized local Boolean value without allocation; true/false select left/none for autoSize. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Write a local numeric value without allocation for dimensions, sizes or UTF-16 edit indices; field setters validate their own bounds. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_string`](../../../include/flashvm/value.h#L46) | Create a counted VM-compatible string value from the supplied zero-terminated text; check status before assigning it to a field. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize or reset a local value without allocation before explicitly constructing an object argument. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 
 [Описание в общем каталоге](../../README.md#example-embedding-standard_text).
 <!-- example-catalog-api:end -->
+
+## Automatic size / Автоматический размер (v0.850)
+
+```sh
+cmake -S . -B build-text -DFVM_DEFS_FILE=cmake/profiles/text-jit.defs -DFVM_BUILD_EXAMPLES=ON
+cmake --build build-text --target flashvm_examples_embedding_standard_text_main
+./build-text/flashvm_examples_embedding_standard_text_main --auto-size
+```
+
+The optional C89 path checks immediate left fitting (52x48), text growth (width
+76) and fixed-width wrapping (30x140) with the repository font. It exports owned
+paths before destroying the context/runtime; no window or physical device is used.
+Unknown arguments fail before acquisition; NO_FONTS reports its prerequisite.
+The AS companion is source for a host-created caption, not a compiled SWF or
+MovieClip display integration. Contracts, unsupported anchors/dimension writes
+and GC/thread ownership: [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md).
+
+Режим C89 показывает немедленный размер 52x48, рост ширины до 76 и переносы
+при фиксированной ширине 30 с высотой 140. Контур экспортируется до уничтожения
+контекста/runtime и освобождается отдельно; окна и устройства не используются.
+AS-файл — исходник для caption, созданного приложением, а не собранный SWF.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

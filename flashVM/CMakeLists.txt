@@ -337,6 +337,12 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING AN
             $<TARGET_FILE:flashvm_examples_embedding_text_layout_main>)
   set_tests_properties(flashvm_text_kerning_tutorial PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
 endif()
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING AND TARGET flashvm_examples_embedding_standard_text_main)
+  add_test(NAME flashvm_text_autosize_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_text_autosize_example.py
+            $<TARGET_FILE:flashvm_examples_embedding_standard_text_main>)
+  set_tests_properties(flashvm_text_autosize_tutorial PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_windows_pe_inspector
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_windows_pe_inspector.py)

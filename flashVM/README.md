@@ -1,10 +1,12 @@
-Development version: **0.849** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.849 ` and an English description. Increase the subversion before each
+Development version: **0.850** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.850 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.850: [Demonstrate automatic field geometry in the executable C89 text tutorial](doc/TEXT_AUTOSIZE.md).
 
 v0.849: [Verify automatic field dimensions in native JIT and isolated OS workers](doc/TEXT_AUTOSIZE.md).
 

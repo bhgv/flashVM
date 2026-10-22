@@ -24,3 +24,8 @@ current = caption.getTextFormat(0, 1);
 caption.replaceText(4, 4, "!");
 // caption.text is now "B fi!"; indices are UTF-16 units, end is exclusive.
 // Индексы считаются в единицах UTF-16; конечный индекс не входит в диапазон.
+
+/* Disable wrapping so automatic sizing can fit both dimensions. */
+caption.wordWrap = false;
+/* Keep the native left origin fixed; fit the existing text without creating a display node. */
+caption.autoSize = "left";
