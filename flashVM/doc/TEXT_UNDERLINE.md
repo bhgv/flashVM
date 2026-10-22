@@ -59,6 +59,8 @@ v0.840: `textfield_underline_transfer.cpp` checks current/future binary and chan
 
 v0.841: `textfield_underline_missing.cpp` edits the fixture post thickness to zero/negative values and verifies explicit UNSUPPORTED from metrics, current/future format admission and extent measurement without field changes. `textfield_underline_allocation.cpp` sweeps current/future admission and decorated path allocation boundaries, checks cleared failed outputs, balanced GC state and immediately usable fields. Fault injection is ordinary-build evidence.
 
+v0.842: `jit_textfield_underline.cpp` drives AVM1 SetMember/CallMethod through interpreter, attached native code and automatic JIT. It checks the exported five-command bar and unchanged metrics, native entry counts and GC scope balance. `text_underline_os_ports.cpp` shares one immutable layout across four actual OS workers after font destruction; 128 iterations per worker export independently parameterized owned bars.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
