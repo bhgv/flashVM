@@ -1,5 +1,13 @@
 # Реестр выполнения / Compatibility status
 
+Optional-ligature tracking v0.861–v0.868: per-call OpenType liga/clig suppression,
+independent kerning and preserved required rlig, consistent trial/final layout,
+TextField wrapping/auto-size/transfer and actual AVM1 JIT. 75 native/tutorial,
+seven full-core ASan/UBSan and nine NO_FONTS checks pass; four new C++ allocation
+sweeps run in the ordinary build. Complex clusters, Flash reference conformance
+and physical platform/device acceptance remain open.
+[EN](TEXT_LIGATURE_TRACKING.md) / [RU](TEXT_LIGATURE_TRACKING.ru.md).
+
 Native TextField anchors v0.853–v0.860: bounded signed _x/_y, left/center/right
 fitting, transactional geometry, versioned graph flags, retired-accessor recovery,
 AVM1 native JIT and independent OS workers. 66 native/tutorial, seven ASan/UBSan

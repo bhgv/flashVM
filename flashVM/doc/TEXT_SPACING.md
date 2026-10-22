@@ -19,7 +19,8 @@ concurrently; a mutable font handle needs caller serialization.
 Wrapping trials and final geometry use identical adjusted advances. Alignment,
 line metrics, glyph positions and copied paths agree. Nonzero tracking currently
 requires one glyph per scalar with unique original-byte clusters and nonnegative
-adjusted advances. Ligatures, combining sequences, ignored controls and other
+adjusted advances. Optional liga/clig now decompose under tracking. Required
+ligatures, combining sequences, ignored controls and other
 ambiguous mappings return UNSUPPORTED rather than inventing internal positions.
 Zero retains all existing shaping, including ligatures. Full complex-script
 tracking and Flash reference equivalence remain open.

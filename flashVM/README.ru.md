@@ -1,4 +1,4 @@
-Версия разработки: **0.867** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.868** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.868: [Контракты и результаты проверок трекинга необязательных лигатур](doc/TEXT_LIGATURE_TRACKING.ru.md).
 
 v0.867: [Демонстрация необязательных лигатур и трекинга fi в C89](doc/TEXT_LIGATURE_TRACKING.ru.md).
 

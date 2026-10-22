@@ -107,6 +107,13 @@ See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
 [`fvm_font_underline_metrics`](../include/flashvm/font.h#L65) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L118) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
 
+## Optional ligatures in tracking (v0.861–v0.868)
+
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L94) disables optional OpenType liga/clig for nonzero
+spacing, using the same feature policy for wrapping and final placement. Its
+zero-spacing path and configured flags remain explicit. Required/ambiguous
+clusters still return UNSUPPORTED. [Contract and evidence](TEXT_LIGATURE_TRACKING.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

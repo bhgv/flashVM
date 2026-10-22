@@ -9,6 +9,13 @@ counts are historical unless explicitly rerun for this revision.
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
+v0.868: Per-call optional liga/clig suppression makes decomposable ligatures work
+with nonzero tracking while preserving required substitutions and prior zero
+spacing. 75 native/tutorial, seven ASan/UBSan and nine NO_FONTS checks pass;
+four new C++ allocation sweeps run in the ordinary build.
+[EN](TEXT_LIGATURE_TRACKING.md) / [RU](TEXT_LIGATURE_TRACKING.ru.md).
+All nine stages, complex tracking and Flash/device reference acceptance remain open.
+
 v0.860: Native TextField _x/_y and left/center/right fitting, graph transfer,
 legacy callback recovery and subpixel-safe restoration. 66 native/tutorial,
 seven ASan/UBSan and seven NO_FONTS checks pass; 18 allocation-failure sweeps

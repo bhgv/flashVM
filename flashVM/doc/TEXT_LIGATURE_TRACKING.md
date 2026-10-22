@@ -52,6 +52,23 @@ v0.866 checks actual AVM1 SetMember/CallMethod/GetMember in interpreter, attache
 
 v0.867 extends the C89 text-layout tutorial with --no-ligatures (fi: two glyphs, 24.00px) and --ligature-tracking (two glyphs, 26.00px). Its executable checker observes both and the existing owned-path rasterization. Negative tracking permits a zero adjusted advance but rejects the next negative boundary.
 
+## Verification — v0.868
+
+Release text-jit: 75 font/text/GC/graph/JIT/tutorial checks pass, including nine
+new feature/ligature checks. Seven new success/validation tests pass with full-core
+ASan/UBSan; leak checking is unavailable here. Four new C++ allocation-failure
+sweeps run in the ordinary build. Nine NO_FONTS API checks pass, and the C89
+text-layout example builds in that profile. All three font/header pairs are
+reproduced byte-for-byte by two isolated generator runs. A renamed detached
+component configures and its copied tutorial checker passes against the tested
+native binary: configuration/path evidence, not another full detached build.
+
+The field graph format and public structure layout are unchanged. The new flags
+extend feature admission; zero flags/zero spacing preserve prior glyph selection.
+Full Flash reference conformance, complex-cluster tracking, SWF text loading,
+platform/device testing and the other roadmap stages remain open. This series
+does not certify full SWF≤8 compatibility.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
