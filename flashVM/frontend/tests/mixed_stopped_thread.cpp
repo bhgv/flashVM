@@ -1,0 +1,12 @@
+/* Real native worker drains event voices under authored Stop, respects host pause and resumes base. */
+#define FVM_TEST_MIXED_STOP_FIXTURE_ONLY
+#include "mixed_authored_stop.cpp"
+static void wait_frames(FVM_DesktopAudio *a,double frames)
+{
+ FVM_SWFStreamOutputInfo info;info.struct_size=sizeof(info);unsigned wait=0;for(;wait<400;++wait){assert(fvm_desktop_audio_stream_info(a,&info)==FVM_OK && SDL_AtomicGet(&a->error)==FVM_OK);if(info.submitted_frames==frames&&!info.queued_frames)break;SDL_Delay(5);}assert(wait<400);
+}
+int main()
+{
+ unsigned executed=0;for(unsigned mode=0;mode<2;++mode){if(mode&&!fvm_jit_available())continue;FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK && fvm_standard_install(c)==FVM_OK && fvm_execution_set_mode(c,mode?FVM_EXECUTION_JIT:FVM_EXECUTION_INTERPRETER,0)==FVM_OK);Bytes swf=stopped_movie();FVM_Object *clip=0;assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK && fvm_movieclip_load_swf_ex(c,swf.begin(),swf.size(),"root",FVM_SWF_IMPORT_MUTE_ROOT_STREAMS,&clip)==FVM_OK && fvm_gc_pin(c,clip)==FVM_OK);FVM_DesktopAudio a;assert(fvm_desktop_audio_open_paused(c,clip,&a,1)==FVM_OK);FVM_SWFStreamConverter initial=a.stream_segments[0].converter;assert(fvm_movieclip_advance(c,clip,1)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&a)==FVM_OK && a.stream_movie_paused);SDL_Delay(25);assert(SDL_LockMutex(a.mutex)==0);FVM_SWFSoundMixQueueClock clock;clock.struct_size=sizeof(clock);assert(fvm_swf_sound_mix_queue_clock_info(a.composition,&clock)==FVM_OK && !clock.submitted_frames);SDL_UnlockMutex(a.mutex);assert(fvm_gc_collect(c,0)==FVM_OK && fvm_desktop_audio_pause(&a,0)==FVM_OK);wait_frames(&a,1024);assert(SDL_LockMutex(a.mutex)==0);assert(!memcmp(&initial,&a.stream_segments[0].converter,sizeof(initial)));SDL_UnlockMutex(a.mutex);int pending=91;assert(fvm_desktop_audio_stream_pending(&a,&pending)==FVM_OK && !pending);FVM_Value out;assert(fvm_object_call(c,clip,"play",0,0,&out)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&a)==FVM_OK);wait_frames(&a,1029);FVM_ExecutionStats stats;stats.struct_size=sizeof(stats);assert(fvm_execution_get_stats(c,&stats)==FVM_OK && (mode?stats.native_entries:stats.interpreter_entries)>0);assert(fvm_movieclip_set_sound_callback(c,0,0)==FVM_OK);fvm_desktop_audio_close(&a);fvm_gc_unpin(c,clip);fvm_context_destroy(c);fvm_runtime_destroy(rt);++executed;}
+ std::printf("PASS real stopped-root worker: modes=%u\n",executed);return 0;
+}

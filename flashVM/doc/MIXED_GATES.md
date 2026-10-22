@@ -18,3 +18,5 @@ v0.993: Run 256 native source-teardown epochs with rejected tail retries, altern
 v0.994: Keep held BASE retries intact, drain accepted lead, preserve failed clear and admit fresh stopped-root events only after staged cancellation.
 
 v0.995: Add a seventh gated export mode with exact 17-frame PCM, held converter witness and deliberately rejected tail-to-base gate transitions.
+
+v0.996: Exercise real SDL host pause, authored Stop, GC/native-JIT execution, event-only drain and subsequent base resume without converter rewind.
