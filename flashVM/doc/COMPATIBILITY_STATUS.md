@@ -252,6 +252,14 @@ geometry. [EN](TEXT_KERNING.md) / [RU](TEXT_KERNING.ru.md).
 Styled spans, letterSpacing, tabs, full SWF text/display integration and native
 platform/device acceptance remain open. Все стадии roadmap остаются открытыми.
 
+Current v0.827–0.829 validates bidi enum representations and bounded UTF-32
+input before writes, including NO_FONTS. Allocation-failure sweeps preserve all
+outputs and permit in-place retry. Four actual OS workers verify explicit
+LTR/RTL maps and logical levels. Six native tests, two NO_FONTS tests and two
+ASan/UBSan tests pass. [EN](FONT_LIBRARIES.md) / [RU](FONT_LIBRARIES.ru.md).
+This is bounded bidi bridge evidence; full SWF text and platform/device
+acceptance remain open. Все стадии roadmap остаются открытыми.
+
 ## v0.37 BitmapData subset / Частичная реализация BitmapData
 
 Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,

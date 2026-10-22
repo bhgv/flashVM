@@ -145,6 +145,8 @@ This does not complete Unicode layout or SWF acceptance.
 
 v0.828: `text_bidi_allocation.cpp` sweeps C++ allocation boundaries, checks unchanged in-place input and all outputs on OOM, then retries against explicit RTL order/map/logical-level expectations. Native allocation faults are checked in the ordinary build.
 
+v0.829: `text_bidi_os_ports.cpp` runs four actual OS workers for 256 paragraphs each with independent buffers and explicit LTR/RTL maps and logical levels. No shared mutable font or VM is required. This is native concurrency evidence, not device/platform acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
