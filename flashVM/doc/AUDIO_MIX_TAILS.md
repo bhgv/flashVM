@@ -20,6 +20,8 @@ v0.932: an instrumented ordinary-build allocation sweep counts new/new[] attempt
 
 v0.933: an actual root stream-output producer and two converted event voices run after VM teardown. A zero frame gate holds without cursor movement and is explicitly not EOF. Only observed source EOF with no pending source block authorizes handoff. Rejected first tail retains exact mixed bytes, then a rational PCM oracle verifies the complete 15-frame stream/tail result including one final padding frame. The stream producer still reports only its nine accepted base frames: tail pumping supplies no shared timeline/device clock. Production frontend handoff remains separate.
 
+v0.934: four actual OS workers each own an independent native voice template, mixer, bounded adapter and backend. After destroying each source VM/runtime, every worker performs 64 clone/adopt/render cycles with rejection and exact retry of every two-frame tail block. Independent PCM is verified throughout. No mutable VM, voice, mixer or queue is shared; this is concurrency acceptance for separate owners, not a new shared-state thread-safety promise.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
