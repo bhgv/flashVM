@@ -15,7 +15,7 @@ without publishing text/style/geometry. Dimension-write restrictions still apply
 All calls require the owning context thread; native roots and GC rules are
 unchanged. Position writes do not invalidate the local layout cache.
 
-The existing [fvm_textfield_path](../include/flashvm/standard_text.h#L34) API returns an independently owned field-local
+The existing [fvm_textfield_path](../include/flashvm/standard_text.h#L48) API returns an independently owned field-local
 path, including its normal gutter. Hosts apply x/y once when placing that path.
 This does not implement MovieClip.createTextField, parent/display-list attachment,
 rotation, scale, clipping, input, HTML or full SWF text decoding. No public ABI was
@@ -96,7 +96,7 @@ checks analytical 40px AV (48px advance, 52x48 outer dimensions), edits, format
 changes, Boolean modes, unsupported anchors and GC. Full Flash reference/display
 and physical platform/device acceptance remain open.
 Native implementation uses `PreparedGeometry` and `prepare_field_geometry` before
-[`fvm_textfield_create`](../include/flashvm/standard_text.h#L27) fields publish edited state; [`fvm_textfield_path`](../include/flashvm/standard_text.h#L34) exports
+[`fvm_textfield_create`](../include/flashvm/standard_text.h#L41) fields publish edited state; [`fvm_textfield_path`](../include/flashvm/standard_text.h#L48) exports
 independent geometry through the existing public API.
 
 v0.846: snapshots and binary/channel transfers preserve auto-size in a free multiline
@@ -142,6 +142,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../include/flashvm/standard_text.h#L34) |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../include/flashvm/standard_text.h#L41) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

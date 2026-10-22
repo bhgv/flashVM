@@ -2,6 +2,10 @@
 #ifndef FVM_STANDARD_TEXT_CONSTANTS_H
 #define FVM_STANDARD_TEXT_CONSTANTS_H /* Native text storage constants guard. */
 /* Current shaping/storage envelope; these are implementation bounds, not Flash limits. */
+#define FVM_TEXT_FONT_MAX_NAME 255U /* Maximum registered family-name bytes, excluding terminator. */
+#define FVM_TEXT_FONT_KEY_PREFIX 2U /* Leading NUL plus nonzero variant isolates private slots. */
+#define FVM_TEXT_FONT_MAX_FACES 16U /* Aggregate regular/styled registrations per context. */
+#define FVM_TEXT_FONT_MAX_BYTES (64UL * 1024UL * 1024UL) /* Aggregate owned font-source budget. */
 #define FVM_TEXT_FIELD_MAX_BYTES 16384UL
 #define FVM_TEXT_FIELD_MAX_SCALARS 4096UL
 #define FVM_TEXT_FIELD_MAX_UNITS 8192UL

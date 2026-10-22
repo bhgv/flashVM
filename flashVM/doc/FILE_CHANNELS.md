@@ -35,7 +35,7 @@ Snapshots preserve named/indexed properties, prototype and metatable edges, cycl
 | Extension namespace objects (gc/thread/channel/metatable) | No namespace codec yet; rejected |
 | MovieClip and other unimplemented Flash classes | No runtime implementation/codec yet |
 
-Install the destination text bridge with [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L17) before restoring TextField. Embedded fonts are registered transactionally; an existing name must have exactly the same bytes and face index. Conflicts reject restoration. Current/future font faces are embedded separately, so records are bounded but not deduplicated. Faces use signed 32-bit indices in this format. All normal restrictions of the implemented TextField subset still apply.
+Install the destination text bridge with [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L21) before restoring TextField. Embedded fonts are registered transactionally; an existing name must have exactly the same bytes and face index. Conflicts reject restoration. Current/future font faces are embedded separately, so records are bounded but not deduplicated. Faces use signed 32-bit indices in this format. All normal restrictions of the implemented TextField subset still apply.
 
 Application native callbacks require the same stable name registered in sender and receiver with [`fvm_serialization_register_callback`](../include/flashvm/serialization.h#L30). Native code addresses are never stored. Userdata must be NULL or exactly the callback's traced root; the root is cloned and rebound. Arbitrary userdata memory and collector-entry callbacks are rejected. Built-in callback identities and TextField selector arguments use reserved internal IDs. Registration cannot override built-in code. A missing application callback rejects restore. Native callback registration does not transfer named AVM1 function definitions or executable bytecode.
 
@@ -77,7 +77,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../include/flashvm/serialization.h#L30) |
 | `fvm_serialized_free` | function | [include/flashvm/serialization.h:24](../include/flashvm/serialization.h#L24) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_value_deserialize` | function | [include/flashvm/serialization.h:21](../include/flashvm/serialization.h#L21) |

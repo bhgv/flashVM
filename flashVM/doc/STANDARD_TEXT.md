@@ -2,7 +2,7 @@
 
 Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
 
-The opt-in [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L17) adds TextFormat/TextField class metadata
+The opt-in [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L21) adds TextFormat/TextField class metadata
 and a named TextFormat constructor. Install it separately from the initial
 numeric library. It rejects conflicting bindings and validates registrations
 on repeat calls. No libraries are downloaded or linked dynamically.
@@ -29,7 +29,7 @@ geometry; SWF DefineFont/DefineText/DefineEditText integration is not implemente
 
 ## Fonts and ownership
 
-Register TTF/OpenType bytes by name with [fvm_standard_text_register_font](../include/flashvm/standard_text.h#L21). Input
+Register TTF/OpenType bytes by name with [fvm_standard_text_register_font](../include/flashvm/standard_text.h#L25). Input
 is copied and validated. A context holds at most 16 named faces / 64 MiB of source
 bytes until destruction. Names are at most 255 bytes; duplicate registration
 rejects replacement. The first registered name is the default. There is no
@@ -37,9 +37,9 @@ system-font lookup/fallback. Size selects a new unhinted FreeType face through
 the tested native font API. Registries are context-local and are not implicitly
 copied into ActionScript worker contexts.
 
-Create a field through [fvm_textfield_create](../include/flashvm/standard_text.h#L27), then publish it with [fvm_set_global](../include/flashvm/value.h#L87)
+Create a field through [fvm_textfield_create](../include/flashvm/standard_text.h#L41), then publish it with [fvm_set_global](../include/flashvm/value.h#L87)
 or keep it pinned/rooted. It is a GC-owned native resource, not a MovieClip
-child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L34) returns an independent path that survives
+child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L48) returns an independent path that survives
 collection of the field and destruction of the context. The host draws or masks
 it with AGG/Cairo through path.h and chooses the color, e.g. from textColor.
 The exported contours are not clipped to the field rectangle.
@@ -169,8 +169,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../include/flashvm/value.h#L87) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
-| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
-| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../include/flashvm/standard_text.h#L34) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
+| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../include/flashvm/standard_text.h#L25) |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../include/flashvm/standard_text.h#L41) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

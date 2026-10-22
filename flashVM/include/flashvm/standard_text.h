@@ -7,6 +7,10 @@
 #define FLASHVM_STANDARD_TEXT_H
 #include "flashvm/value.h"
 #include "flashvm/text_layout.h"
+#define FVM_TEXT_FONT_REGULAR 0U /* Explicit unstyled family slot. */
+#define FVM_TEXT_FONT_BOLD 1U /* Family slot for a supplied bold face. */
+#define FVM_TEXT_FONT_ITALIC 2U /* Family slot for a supplied italic face. */
+#define FVM_TEXT_FONT_VARIANTS (FVM_TEXT_FONT_BOLD | FVM_TEXT_FONT_ITALIC) /* Bold-italic combines both. */
 #ifdef __cplusplus
 extern "C"
 {
@@ -21,6 +25,16 @@ extern "C"
     FVM_API FVM_Result fvm_standard_text_register_font(FVM_Context *, const char *name,
                                                        const void *bytes, size_t size,
                                                        long face_index);
+    /* Copy a validated face into a named family/style slot; regular is flags zero.
+     * Same owner-thread/GC restrictions and aggregate limits as register_font.
+     * Duplicate family/variant or unknown bits -> INVALID_ARGUMENT, missing slot
+     * during text formatting -> NOT_FOUND; no synthetic or system-font fallback.
+     * Only the first regular registration sets the default family. Bytes are
+     * borrowed during this call, then independently owned by the context.
+     * Allocation failure -> OUT_OF_MEMORY; valid NO_FONTS input -> UNSUPPORTED. */
+    FVM_API FVM_Result fvm_standard_text_register_font_variant(FVM_Context *, const char *family,
+                                                       unsigned int variant, const void *bytes,
+                                                       size_t size, long face_index);
     /* Creates a dynamic host text object, not a MovieClip depth/display-list node.
      * width/height include the 2-pixel gutter. Publish it with fvm_set_global. */
     /* Create textfield. */

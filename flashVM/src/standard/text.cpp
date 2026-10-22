@@ -38,6 +38,19 @@ const char *properties[] = {"font",        "size",          "color",   "bold",  
                             "rightMargin", "indent",        "leading", "blockIndent", "bullet",
                             "kerning",     "letterSpacing", "tabStops"};
 
+/* Private counted keys cannot collide with public C family names: variant slots
+ * begin with NUL, while regular names are nonempty terminated strings. */
+static fvm_detail::string font_source_key(const char *name, size_t length, unsigned int variant)
+{
+    if (!variant)
+        return fvm_detail::string(name, length);
+    char key[FVM_TEXT_FONT_MAX_NAME + FVM_TEXT_FONT_KEY_PREFIX];
+    key[0] = 0;
+    key[1] = (char)variant;
+    std::memcpy(key + FVM_TEXT_FONT_KEY_PREFIX, name, length);
+    return fvm_detail::string(key, length + FVM_TEXT_FONT_KEY_PREFIX);
+}
+
 /* Define Style struct and its representation. */
 struct Style
 {
@@ -1215,91 +1228,59 @@ extern "C" FVM_Result fvm_standard_text_install(FVM_Context *c)
     }
 }
 
-/* Register standard text font. */
-/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-extern "C" FVM_Result fvm_standard_text_register_font(
-    FVM_Context *c, const char *name,
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    const void *bytes, size_t size, long index)
-/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+/* Register an independently owned face in one family/style slot, transactionally. */
+extern "C" FVM_Result fvm_standard_text_register_font_variant(
+    FVM_Context *c, const char *name, unsigned int variant, const void *bytes, size_t size, long index)
 {
-    /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
-    if (!c || !name || !*name || std::strlen(name) > 255 || c->destroying || c->gc_collecting ||
-        /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
-        c->gc_releasing)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    /* [GC:] Context-owned sources cannot change during teardown or collection. */
+    if (!c || !name || !*name || std::strlen(name) > FVM_TEXT_FONT_MAX_NAME ||
+        (variant & ~FVM_TEXT_FONT_VARIANTS) || c->destroying || c->gc_collecting || c->gc_releasing)
         return FVM_INVALID_ARGUMENT;
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (c->fonts.find(name) != c->fonts.end())
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return FVM_INVALID_ARGUMENT;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    size_t total = size;
-    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-    for (fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator i = c->fonts.begin();
-         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-         i != c->fonts.end(); ++i)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (total > 64 * 1024 * 1024 - i->second->bytes.size())
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return FVM_UNSUPPORTED;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        total += i->second->bytes.size();
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    }
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (total > 64 * 1024 * 1024 || c->fonts.size() >= 16)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return FVM_UNSUPPORTED;
-
-    /* Initialization / Инициализация локального состояния. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FontOwner font;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result result = fvm_font_read(bytes, size, index, 12, &font.font);
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (result != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return result;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_FontSource *source = 0;
-    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        fvm_detail::string key = font_source_key(name, std::strlen(name), variant);
+        if (c->fonts.find(key) != c->fonts.end())
+            return FVM_INVALID_ARGUMENT;
+        if (size > FVM_TEXT_FONT_MAX_BYTES || c->fonts.size() >= FVM_TEXT_FONT_MAX_FACES)
+            return FVM_UNSUPPORTED;
+        size_t total = size;
+        for (fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator i = c->fonts.begin();
+             i != c->fonts.end(); ++i)
+        {
+            if (total > FVM_TEXT_FONT_MAX_BYTES - i->second->bytes.size())
+                return FVM_UNSUPPORTED;
+            total += i->second->bytes.size();
+        }
+        FontOwner font;
+        FVM_Result result = fvm_font_read(bytes, size, index, 12, &font.font);
+        if (result != FVM_OK)
+            return result;
         source = new FVM_FontSource;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         source->index = index;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         source->bytes.resize(size);
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         std::memcpy(source->bytes.begin(), bytes, size);
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_detail::string default_name = c->default_font.empty() ? name : c->default_font.c_str();
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        c->fonts[name] = source;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        fvm_detail::string default_name = c->default_font;
+        if (!variant && default_name.empty())
+            default_name = name;
+        /* All fallible preparation precedes publication; map owns the face afterwards. */
+        c->fonts[key] = source;
         source = 0;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->default_font.swap(default_name);
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
-        /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
         delete source;
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* Preserve the original API as registration of the regular family slot. */
+extern "C" FVM_Result fvm_standard_text_register_font(
+    FVM_Context *c, const char *name, const void *bytes, size_t size, long index)
+{
+    return fvm_standard_text_register_font_variant(c, name, FVM_TEXT_FONT_REGULAR, bytes, size, index);
 }
 
 /* Create textfield. */

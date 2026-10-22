@@ -33,7 +33,7 @@
 | Пространства расширений gc/thread/channel/metatable | Кодека пространства пока нет; отвергаются |
 | MovieClip и другие ещё не реализованные классы Flash | Реализации/кодека пока нет |
 
-Перед восстановлением TextField вызовите [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L17) в получателе. Встроенные в запись шрифты регистрируются транзакционно. Если имя уже существует, байты и индекс должны полностью совпадать; конфликт отвергает восстановление. Текущий и будущий шрифты записываются отдельно без дедупликации. Индексы faces в формате — знаковые 32-битные. Ограничения реализованного подмножества TextField остаются в силе.
+Перед восстановлением TextField вызовите [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L21) в получателе. Встроенные в запись шрифты регистрируются транзакционно. Если имя уже существует, байты и индекс должны полностью совпадать; конфликт отвергает восстановление. Текущий и будущий шрифты записываются отдельно без дедупликации. Индексы faces в формате — знаковые 32-битные. Ограничения реализованного подмножества TextField остаются в силе.
 
 Пользовательский нативный callback должен иметь одинаковое устойчивое имя в обоих контекстах, зарегистрированное через [`fvm_serialization_register_callback`](../include/flashvm/serialization.h#L30). Адрес кода не записывается. Userdata может быть NULL либо в точности указателем на отслеживаемый корень callback; корень копируется и привязка восстанавливается. Произвольная нативная память и callbacks входа в сборщик отвергаются. Встроенные callbacks и селекторы TextField имеют зарезервированные внутренние ID, которые нельзя заменить регистрацией. Отсутствие пользовательского callback вызывает ошибку восстановления. Именованные определения AVM1-функций и исполняемый байткод этим механизмом не переносятся.
 
@@ -72,7 +72,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../include/flashvm/serialization.h#L30) |
 | `fvm_serialized_free` | function | [include/flashvm/serialization.h:24](../include/flashvm/serialization.h#L24) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_value_deserialize` | function | [include/flashvm/serialization.h:21](../include/flashvm/serialization.h#L21) |
