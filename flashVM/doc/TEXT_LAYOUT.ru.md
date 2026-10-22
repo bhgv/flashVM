@@ -67,8 +67,8 @@ FriBidi разрешает уровни всего абзаца до перен�
 чтение при отсутствии одновременного уничтожения; создание требует обычной
 сериализации доступа к конкретному шрифтовому дескриптору.
 
-[fvm_text_layout_path](../include/flashvm/text_layout.h#L153) возвращает независимый контур блока,
-[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L168) — независимый контур глифа в итоговой позиции.
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L168) возвращает независимый контур блока,
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L183) — независимый контур глифа в итоговой позиции.
 Изменение контрольных точек и преобразования не затрагивают исходную компоновку
 или другие копии. Для слова выберите глифы по исходному диапазону кластеров и
 объедините их контуры. Лигатура — один неделимый контур: выделение отдельных
@@ -106,7 +106,7 @@ NO_FONTS сохраняет доступный API создания с UNSUPPORT
 
 ## Независимые полосы подчёркивания (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) копирует масштабированные центр/толщину шрифта. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L180) возвращает независимую полосу размещённой строки с пробелами, интервалом и выравниванием. Метрики раскладки/глифов неизменны. Шрифт/раскладку можно уничтожить до отрисовки скопированных контуров. Контракты, ограничения nonzero, отсутствующие метрики и тесты: [подчёркивание](TEXT_UNDERLINE.ru.md).
 
 ## Необязательные лигатуры при трекинге (v0.861–v0.868)
 
@@ -139,7 +139,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 <!-- source-links:end -->

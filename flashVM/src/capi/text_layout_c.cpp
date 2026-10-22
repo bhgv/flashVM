@@ -8,6 +8,7 @@
 #include "../details/vector.hpp"
 #include <cstring>
 #include <new>
+#include <cmath>
 
 /* Define FVM_TextLayout struct and its representation. */
 struct FVM_TextLayout
@@ -440,7 +441,7 @@ static size_t justify_scalar(const Paragraph &, size_t, size_t, unsigned int);
 static FVM_Result shape_line(FVM_Font *font, const char *text, const char *language,
                              const Paragraph &p, size_t start, size_t end, unsigned int flags, double spacing, size_t &budget,
                              fvm_detail::vector<FVM_TextLayoutGlyph> &glyphs, double &advance,
-                             const double *stops, size_t stop_count, double indent, bool *exhausted)
+                             const double *stops, size_t stop_count, double indent, double period, bool *exhausted)
 {
 
     /* Computation / Вычисление и обновление состояния. */
@@ -583,14 +584,30 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
             if (p.chars[scalar] == FVM_TEXT_LAYOUT_TAB)
             {
                 double pen = g.x + indent;
-                size_t stop = 0;
-                while (stop < stop_count && stops[stop] <= pen) ++stop;
-                if (stop == stop_count)
+                double target;
+                if (period > 0)
                 {
-                    if (exhausted) *exhausted = true;
-                    return FVM_UNSUPPORTED;
+                    /* Positive multiples restart at each visual line. An exact
+                     * stop advances to the following one; negative indentation
+                     * still selects the first positive stop. No table is built. */
+                    double ordinal = std::floor(pen / period) + 1;
+                    if (ordinal < 1) ordinal = 1;
+                    target = ordinal * period;
+                    if (!(target > pen && target <= FVM_TEXT_LAYOUT_MAX_EXTENT))
+                        return FVM_UNSUPPORTED;
                 }
-                g.shaped.x_advance = stops[stop] - pen;
+                else
+                {
+                    size_t stop = 0;
+                    while (stop < stop_count && stops[stop] <= pen) ++stop;
+                    if (stop == stop_count)
+                    {
+                        if (exhausted) *exhausted = true;
+                        return FVM_UNSUPPORTED;
+                    }
+                    target = stops[stop];
+                }
+                g.shaped.x_advance = target - pen;
                 shift += g.shaped.x_advance;
             }
             else
@@ -691,7 +708,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
                               const Paragraph &p, size_t start, double width, bool justify, unsigned int flags, double spacing,
                               const fvm_detail::vector<char> &line,
                               const fvm_detail::vector<char> &grapheme, size_t &budget, size_t &end,
-                              const double *stops, size_t stop_count, double indent)
+                              const double *stops, size_t stop_count, double indent, double period)
 {
     end = p.chars.size();
     if (!width || start == end)
@@ -708,7 +725,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
         bool exhausted = false;
         FVM_Result result =
             shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance,
-                       stops, stop_count, indent, &exhausted);
+                       stops, stop_count, indent, period, &exhausted);
         if (result != FVM_OK && !exhausted) return result;
         if (exhausted) advance = FVM_TEXT_LAYOUT_MAX_EXTENT + 1;
         if (justify && !exhausted)
@@ -739,7 +756,7 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
         bool exhausted = false;
         FVM_Result result =
             shape_line(font, text, language, p, start, candidate, flags, spacing, budget, trial, advance,
-                       stops, stop_count, indent, &exhausted);
+                       stops, stop_count, indent, period, &exhausted);
         if (result != FVM_OK && !exhausted) return result;
         if (exhausted) advance = FVM_TEXT_LAYOUT_MAX_EXTENT + 1;
         if (justify && !exhausted)
@@ -763,7 +780,7 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
                               const FVM_TextLayoutOptions &options, const FVM_FontMetrics &metrics,
                               const Paragraph &p, size_t start, size_t end, size_t next,
                               unsigned int flags, double spacing, double indent, size_t &budget,
-                              const double *stops, size_t stop_count)
+                              const double *stops, size_t stop_count, double period)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -771,7 +788,7 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
     double advance;
     FVM_Result result =
         shape_line(font, text, options.language, p, start, end, flags, spacing, budget, glyphs, advance,
-                   stops, stop_count, indent, 0);
+                   stops, stop_count, indent, period, 0);
     if (result != FVM_OK)
         return result;
     if (options.alignment == FVM_TEXT_ALIGN_JUSTIFY)
@@ -865,14 +882,14 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
 }
 
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *font, const char *text, size_t size,
+static FVM_Result create_tabs(FVM_Font *font, const char *text, size_t size,
                                              const FVM_TextLayoutOptions *provided, unsigned int flags, double spacing, double indent,
-                                             const double *stops, size_t stop_count, FVM_TextLayout **out)
+                                             const double *stops, size_t stop_count, double period, FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!valid_tab_stops(stops, stop_count) || (flags & ~FVM_FONT_SHAPE_FLAGS) || !font ||
+    if (!(period >= 0 && period <= FVM_TEXT_LAYOUT_MAX_EXTENT) || !valid_tab_stops(stops, stop_count) || (flags & ~FVM_FONT_SHAPE_FLAGS) || !font ||
         !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING) ||
         !(indent >= -FVM_TEXT_LAYOUT_MAX_INDENT && indent <= FVM_TEXT_LAYOUT_MAX_INDENT))
         return FVM_INVALID_ARGUMENT;
@@ -897,7 +914,7 @@ extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *font, const char *
     {
         fvm_detail::vector<FriBidiChar> chars;
         fvm_detail::vector<size_t> bytes;
-        FVM_Result result = decode(text, size, chars, bytes, stop_count != 0);
+        FVM_Result result = decode(text, size, chars, bytes, stop_count != 0 || period > 0);
         if (result != FVM_OK)
             return result;
         FVM_FontMetrics metrics;
@@ -963,12 +980,12 @@ extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *font, const char *
                     if (placed.max_width > FVM_TEXT_LAYOUT_MAX_EXTENT) return FVM_UNSUPPORTED;
                 }
                 result = choose_line(font, text, options.language, p, line_start, placed.max_width, options.alignment == FVM_TEXT_ALIGN_JUSTIFY, flags, spacing,
-                                     line, grapheme, budget, line_end, stops, stop_count, offset);
+                                     line, grapheme, budget, line_end, stops, stop_count, offset, period);
                 if (result != FVM_OK)
                     return result;
                 size_t next_byte = line_end == p.chars.size() ? bytes[next] : p.bytes[line_end];
                 result = append_line(*layout.value, font, text, placed, metrics, p, line_start,
-                                     line_end, next_byte, flags, spacing, offset, budget, stops, stop_count);
+                                     line_end, next_byte, flags, spacing, offset, budget, stops, stop_count, period);
                 if (result != FVM_OK)
                     return result;
                 line_start = line_end;
@@ -997,18 +1014,37 @@ extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *font, const char *
 }
 #else
 /* Create text layout. */
-extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *, const char *, size_t,
-                                             const FVM_TextLayoutOptions *, unsigned int flags, double spacing, double indent, const double *stops, size_t stop_count, FVM_TextLayout **out)
+static FVM_Result create_tabs(FVM_Font *, const char *, size_t,
+                                             const FVM_TextLayoutOptions *, unsigned int flags, double spacing, double indent, const double *stops, size_t stop_count, double period, FVM_TextLayout **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    return !valid_tab_stops(stops, stop_count) || (flags & ~FVM_FONT_SHAPE_FLAGS) ||
+    return !(period >= 0 && period <= FVM_TEXT_LAYOUT_MAX_EXTENT) || !valid_tab_stops(stops, stop_count) || (flags & ~FVM_FONT_SHAPE_FLAGS) ||
            !(spacing >= -FVM_TEXT_LAYOUT_MAX_SPACING && spacing <= FVM_TEXT_LAYOUT_MAX_SPACING) ||
            !(indent >= -FVM_TEXT_LAYOUT_MAX_INDENT && indent <= FVM_TEXT_LAYOUT_MAX_INDENT)
                ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
 }
 #endif
+
+/* Explicit tables retain their bounded, nonrepeating historical contract. */
+extern "C" FVM_Result fvm_text_layout_create_tabbed(FVM_Font *font, const char *text, size_t size,
+        const FVM_TextLayoutOptions *options, unsigned int flags, double spacing, double indent,
+        const double *stops, size_t stop_count, FVM_TextLayout **out)
+{
+    return create_tabs(font, text, size, options, flags, spacing, indent, stops, stop_count, 0, out);
+}
+
+/* Construct repeated positive stops arithmetically, without a finite table limit. */
+extern "C" FVM_Result fvm_text_layout_create_periodic(FVM_Font *font, const char *text, size_t size,
+        const FVM_TextLayoutOptions *options, unsigned int flags, double spacing, double indent,
+        double period, FVM_TextLayout **out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!(period > 0 && period <= FVM_TEXT_LAYOUT_MAX_EXTENT)) return FVM_INVALID_ARGUMENT;
+    return create_tabs(font, text, size, options, flags, spacing, indent, 0, 0, period, out);
+}
 
 /* Preserve the existing indented ABI through an empty custom table. */
 extern "C" FVM_Result fvm_text_layout_create_indented(FVM_Font *font, const char *text, size_t size,

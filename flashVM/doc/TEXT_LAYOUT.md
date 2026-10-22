@@ -67,8 +67,8 @@ successful call. Neither metrics nor path export uses those resources again.
 The resulting layout can be queried concurrently while no thread destroys it;
 font use during construction still follows the per-handle serialization rule.
 
-[`fvm_text_layout_path`](../include/flashvm/text_layout.h#L153) returns an independent block path;
-[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L168) returns an independent glyph path at its final
+[`fvm_text_layout_path`](../include/flashvm/text_layout.h#L168) returns an independent block path;
+[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L183) returns an independent glyph path at its final
 position. Editing either cannot change the layout or another exported path.
 Select words using original cluster byte ranges and append selected glyph
 paths. A ligature is one indivisible outline: splitting its component letters
@@ -105,7 +105,7 @@ See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
 
 ## Independent underline bars (v0.837–0.844)
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) copies font-defined scaled center/thickness. [`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L180) returns an owned bar for a placed line, including whitespace/tracking and alignment. Layout/glyph metrics remain unchanged. Font/layout may be destroyed before rendering copied paths. Contracts, nonzero fill restrictions, missing metrics and tests: [underline](TEXT_UNDERLINE.md).
 
 ## Optional ligatures in tracking (v0.861–v0.868)
 
@@ -139,7 +139,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 <!-- source-links:end -->

@@ -24,9 +24,9 @@ excluding alignment padding. Negative indent may put native outlines at negative
 x; callers select their viewport. Height, source clusters and byte ranges retain
 the existing contract. Coordinate and shaping-work limits remain enforced.
 
-The returned [FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) owns copied glyphs, metadata and outlines and is
-released with [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L153) and
-[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L168) return independent [FVM_Path](../src/capi/path_c.cpp#L26) objects, destroyed with
+The returned [FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) owns copied glyphs, metadata and outlines and is
+released with [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L168) and
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L183) return independent [FVM_Path](../src/capi/path_c.cpp#L26) objects, destroyed with
 [fvm_path_destroy](../include/flashvm/path.h#L52); either may outlive font/layout. Font, input and options are
 borrowed only during creation. No VM/GC state is involved. Mutable font access
 requires caller serialization; immutable layout readers can run concurrently.
@@ -76,8 +76,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:24](../src/standard/text_constants.h#L24) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->

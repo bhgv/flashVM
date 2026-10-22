@@ -4,7 +4,7 @@ v0.877 добавляет [FVM_TEXT_ALIGN_JUSTIFY](../include/flashvm/text_layou
 [fvm_text_layout_create](../include/flashvm/text_layout.h#L81), [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L89) и
 [fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103). Layout публичной структуры и прежние значения enum
 не меняются. Вызовы заимствуют шрифт, counted UTF-8 и options; возвращают независимый
-[FVM_TextLayout](../src/capi/text_layout_c.cpp#L13), освобождаемый через [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Экспортированные
+[FVM_TextLayout](../src/capi/text_layout_c.cpp#L14), освобождаемый через [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Экспортированные
 контуры отдельно принадлежат вызывающему и переживают font/layout. Общий изменяемый
 шрифт требует синхронизации вызывающего; неизменяемый layout читается независимо
 в потоках. VM, GC и устройства не используются.
@@ -76,6 +76,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 | `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:29](../include/flashvm/text_layout.h#L29) |
 <!-- source-links:end -->

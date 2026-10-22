@@ -25,8 +25,8 @@ max(0, advance + отступ первой строки) без выравнив
 Высота, исходные кластеры и диапазоны байтов сохраняются. Границы координат и
 бюджета shaping проверяются.
 
-[FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) владеет копиями глифов, метаданными и контурами; освобождение —
-[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L153)/fvm_text_layout_glyph_path
+[FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет копиями глифов, метаданными и контурами; освобождение —
+[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path
 возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L26), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные
 пережить шрифт/раскладку. Шрифт, текст и параметры заимствуются только на вызов.
 VM/GC не участвуют. Изменяемый шрифт требует сериализации доступа; неизменяемая
@@ -78,8 +78,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:24](../src/standard/text_constants.h#L24) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->

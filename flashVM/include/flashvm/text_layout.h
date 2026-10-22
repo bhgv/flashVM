@@ -141,6 +141,21 @@ extern "C"
                                              const FVM_TextLayoutOptions *, unsigned int flags,
                                              double letter_spacing, double first_line_indent,
                                              const double *stops, size_t count, FVM_TextLayout **out);
+
+    /* Like create_tabbed, but U+0009 selects the first positive multiple of
+     * period strictly beyond the logical pen (including indent/tracking).
+     * Finite period must be in (0,1000000]. Stops restart on each visual line.
+     * No table limit or allocation: glyph/work/extent limits still apply.
+     * Actual tabs require LTR level zero and non-JUSTIFY. Borrow all inputs
+     * synchronously; owned output and independent paths use normal destructors.
+     * Serialize mutable font access; no VM/GC. Invalid input -> INVALID_ARGUMENT,
+     * unavailable shaping/extent -> UNSUPPORTED, allocation -> OUT_OF_MEMORY.
+     * out is required and cleared. NO_FONTS validates period/flags/spacing/indent
+     * then UNSUPPORTED without inspecting font/text/options. Existing ABI intact. */
+    FVM_API FVM_Result fvm_text_layout_create_periodic(FVM_Font *font, const char *text, size_t size,
+        const FVM_TextLayoutOptions *options, unsigned int flags, double spacing, double indent,
+        double period, FVM_TextLayout **out);
+
     /* Implement text layout metrics for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *, FVM_TextLayoutMetrics *);
     /* Implement text layout line for this subsystem. */

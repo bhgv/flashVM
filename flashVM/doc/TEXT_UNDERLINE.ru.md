@@ -24,7 +24,7 @@ advances и подстановки глифов не изменены. Это н
 
 ## Независимые контуры строк (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L165) заимствует неизменяемую раскладку, индекс
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L180) заимствует неизменяемую раскладку, индекс
 строки, центр/толщину из метрик шрифта и обязательный выход. Результат —
 независимый замкнутый прямоугольник от line.x до line.x+advance на baseline+center.
 Пробелы и знаковый межбуквенный интервал включены. При нулевом advance результат
@@ -110,6 +110,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:165](../include/flashvm/text_layout.h#L165) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
 <!-- source-links:end -->

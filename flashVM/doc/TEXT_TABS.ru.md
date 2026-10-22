@@ -25,9 +25,9 @@ advance и пустым контуром. Экспорт не рисует .notd
 смещают целую строку. Размер исключает выравнивающее заполнение, включает исходный
 отступ и сохраняет диапазоны. Подчёркивание включает реальные advances tab.
 
-Шрифт/текст/параметры/таблица заимствуются только на вызов. [FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) владеет
+Шрифт/текст/параметры/таблица заимствуются только на вызов. [FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет
 метаданными, глифами и контурами; освобождение [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Экспорт
-[fvm_text_layout_path](../include/flashvm/text_layout.h#L153)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L26),
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L26),
 освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные пережить раскладку/шрифт. Шрифт должен
 быть действующим, text может быть NULL только при нулевой длине. NULL options
 выбирает неограниченную ширину, естественную высоту и AUTO/START. Границы флагов,
@@ -87,9 +87,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:27](../src/standard/text_constants.h#L27) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->

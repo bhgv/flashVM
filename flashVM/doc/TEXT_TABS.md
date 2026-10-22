@@ -27,8 +27,8 @@ Metrics exclude alignment padding, include intrinsic indentation, and retain
 source ranges. Underline spans the real tab advances.
 
 Creation borrows font/input/options/table only for the call. The returned
-[FVM_TextLayout](../src/capi/text_layout_c.cpp#L13) independently owns metadata, glyphs and outlines and is released
-with [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L153)/fvm_text_layout_glyph_path
+[FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) independently owns metadata, glyphs and outlines and is released
+with [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path
 return separate [FVM_Path](../src/capi/path_c.cpp#L26) objects released with [fvm_path_destroy](../include/flashvm/path.h#L52), allowed to outlive
 layout/font. The font must be live; text may be NULL only for zero byte length.
 NULL options selects unlimited width, natural height and AUTO/START. Flags and
@@ -89,9 +89,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:153](../include/flashvm/text_layout.h#L153) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
 | `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:27](../src/standard/text_constants.h#L27) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:13](../src/capi/text_layout_c.cpp#L13) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
 <!-- source-links:end -->
