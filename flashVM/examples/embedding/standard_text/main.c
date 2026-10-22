@@ -34,12 +34,14 @@ int main(int argc, char **argv)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    int insets = 0; /* Optional paragraph inset demonstration on the same owner thread. */
     int variants = 0; /* Optional real-face tutorial shares the existing owner context. */
     int automatic = 0; /* Optional executable demonstration uses the same owner context. */
     if (argc == 2 && !strcmp(argv[1], "--auto-size")) automatic = 1; /* Select measured left-anchored field dimensions. */
     else if (argc == 2 && !strcmp(argv[1], "--anchors")) automatic = 2; /* Also demonstrate parent-space horizontal anchors. */
     else if (argc == 2 && !strcmp(argv[1], "--font-variants")) variants = 1; /* Select actual regular/bold/italic/bold-italic sources. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--insets")) insets = 1; /* Measure wrapped and fitted paragraph insets. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -453,6 +455,37 @@ int main(int argc, char **argv)
             printf("face %s: advance=%.2f\n", names[face], result.number); /* Expect 48,56,52,60 for the four embedded faces. */
         } /* The final combined face remains selected for owned path export. */
     } /* No source or path handle escapes the documented ownership rules. */
+    if (insets) /* Demonstrate uniform margins without changing font or ownership. */
+    { /* Keep declarations first for C89 callers. */
+        const char *names[] = {"leftMargin", "rightMargin", "blockIndent"}; /* Select whole-paragraph properties. */
+        const double sizes[] = {10, 12, 8}; /* Left origin is 18 and total reserved width is 30. */
+        unsigned int i; /* Traverse the three independently stored properties. */
+        double width, height; /* Copy observations before result is reused. */
+        for (i = 0; i < 3; ++i) /* Store values in the managed TextFormat. */
+        { /* Applying the format below validates every value before publication. */
+            fvm_value_number(&value, sizes[i]); /* Borrow a stack numeric value. */
+            if (fvm_object_set(context, format, names[i], &value) != FVM_OK) fvm_example_fail("store inset", __FILE__, __LINE__); /* Same-context property write may allocate. */
+        } /* No native resource is transferred by these writes. */
+        fvm_value_undefined(args); /* Prepare the one borrowed method argument. */
+        args[0].type = FVM_VALUE_OBJECT; /* Select the object representation. */
+        args[0].object = format; /* Existing global roots the shared format. */
+        if (fvm_object_call(context, field, "setNewTextFormat", 1, args, &result) != FVM_OK) fvm_example_fail("future insets", __FILE__, __LINE__); /* Later full assignment selects this style. */
+        fvm_value_boolean(&value, 1); /* Permit multiline wrapping. */
+        if (fvm_object_set(context, field, "multiline", &value) != FVM_OK || fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("inset wrapping", __FILE__, __LINE__); /* Both policies are required for wrapping. */
+        fvm_value_number(&value, 124); /* Reserve 4px gutter plus 30px insets, leaving 90px content. */
+        if (fvm_object_set(context, field, "_width", &value) != FVM_OK) fvm_example_fail("inset outer width", __FILE__, __LINE__); /* Preserve the manual outer width. */
+        if (fvm_value_string(&value, "A V A V") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("inset text", __FILE__, __LINE__); /* Copy counted input and apply the future style. */
+        fvm_value_boolean(&value, 1); /* Enable the left automatic anchor. */
+        if (fvm_object_set(context, field, "autoSize", &value) != FVM_OK) fvm_example_fail("inset fitting", __FILE__, __LINE__); /* Wrapped fitting changes height only. */
+        if (fvm_object_get(context, field, "textWidth", &result) != FVM_OK) fvm_example_fail("inset advance", __FILE__, __LINE__); /* Read glyph-only width. */
+        width = result.number; /* First wrapped line advances 72px. */
+        if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("inset height", __FILE__, __LINE__); /* Read two-line outer height. */
+        height = result.number; /* Ascent/descent and leading produce 94px with gutter. */
+        printf("insets wrap: advance=%.2f height=%.2f\n", width, height); /* Expected 72.00 and 94.00. */
+        fvm_value_boolean(&value, 0); /* Disable wrapping for horizontal fitting. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK || fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("inset fit width", __FILE__, __LINE__); /* Fit includes 132px text, 30px insets and 4px gutter. */
+        printf("insets fit: width=%.2f\n", result.number); /* Expected 166.00; exported outlines remain field-local. */
+    } /* The ordinary path export and context cleanup below retain their ownership. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -470,6 +503,7 @@ int main(int argc, char **argv)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)insets; /* The option remains parseable without font support. */
     (void)variants; /* The option is still parseable in a NO_FONTS profile. */
     (void)automatic; /* The option remains parseable in a NO_FONTS profile. */
     (void)format;

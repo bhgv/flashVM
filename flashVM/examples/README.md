@@ -2089,6 +2089,11 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 такой объектный скрипт. Есть реальные SDL dummy/VM тесты, а физический ввод и
 чужие ОС требуют отдельного нативного запуска.
 
+The `embedding/standard_text` example also runs `--insets`: bounded paragraph
+margins, block indentation, wrapped height and unwrapped fitting on the owner
+context. [Contract](../doc/TEXT_INSETS.md). / Режим `--insets` демонстрирует поля
+абзаца и авторазмер в том же контексте.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

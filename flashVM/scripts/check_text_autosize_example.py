@@ -22,6 +22,9 @@ def main():
     assert faces.stdout.splitlines()[-4:] == [
         'face regular: advance=48.00', 'face bold: advance=56.00',
         'face italic: advance=52.00', 'face bold-italic: advance=60.00']
+    insets = subprocess.run([sys.argv[1], '--insets'], text=True, capture_output=True, check=True)
+    assert insets.stdout.splitlines()[-2:] == [
+        'insets wrap: advance=72.00 height=94.00', 'insets fit: width=166.00']
     bad = subprocess.run([sys.argv[1], '--unknown'], text=True, capture_output=True)
     assert bad.returncode and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 autoSize activation, text edit, constrained height and owned path export')

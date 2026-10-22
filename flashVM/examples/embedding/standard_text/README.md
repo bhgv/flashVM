@@ -102,6 +102,23 @@ regular/bold/italic/bold-italic. Regular остаётся default. Копии п
 Требования text-jit, потока-владельца и GC описаны выше. Это не проверка загрузки
 шрифтов SWF, display list или реальных устройств.
 
+## Paragraph inset mode / Поля абзаца
+
+Run `flashvm_examples_embedding_standard_text_main --insets` with FONTS.
+The same owner context applies leftMargin=10, rightMargin=12, blockIndent=8.
+A 124px outer field leaves 90px of wrapping space: expected output is
+`insets wrap: advance=72.00 height=94.00`, then `insets fit: width=166.00`.
+The checked C89 source uses existing property/call APIs and ordinary errors;
+the format stays globally rooted, and the exported path is separately owned.
+NO_FONTS reports the existing unsupported profile. No window/device is involved.
+
+Режим `--insets` применяет поля 10/12 и отступ блока 8 в том же потоке-владельце.
+При ширине 124 перенос использует 90 пикселей. Ожидаются advance=72, height=94,
+затем автоматическая ширина без переноса 166. Формат сохраняется глобальным
+корнем, путь принадлежит вызывающему отдельно. Это не проверка устройства.
+Контракт значений, ошибок, владения и ограничений: [EN](../../../doc/TEXT_INSETS.md) /
+[RU](../../../doc/TEXT_INSETS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
