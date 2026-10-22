@@ -12,3 +12,5 @@ v0.990: Mixed worker использует paired gate scheduling: события
 v0.991: Публикация завершённого кадра отделена от base-разрешения: root Stop держит stream phase, события продолжаются, host pause останавливает очередь.
 
 v0.992: Проверены seeded границы 2^53, backend/clock rejection и отсутствие выделений в gate/retry/clear после подготовки.
+
+v0.993: Выполнены 256 native-эпох на четырёх OS-потоках: VM teardown, failed tail retry, смена gates, точный PCM и dequeue/ID.

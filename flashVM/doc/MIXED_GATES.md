@@ -12,3 +12,5 @@ v0.990: Route mixed worker steps through paired gate scheduling, preserve retry 
 v0.991: Separate completed-frame publication from base authorization; root Stop holds stream phase while events continue and host pause still suspends the queue.
 
 v0.992: Exercise seeded 2^53 frame boundaries, backend/clock rejection and zero-allocation gate/retry/clear paths after native preparation.
+
+v0.993: Run 256 native source-teardown epochs with rejected tail retries, alternating gates, exact PCM witnesses and coherent dequeue/ID state.
