@@ -19,9 +19,13 @@ def main():
     assert before.groups()[:2] == after.groups()[:2] == ('3', '10') and before[4] == after[4]
     assert Decimal(after[3])-Decimal(before[3]) == Decimal('3.20')
     assert on.stdout.splitlines()[1:] == off.stdout.splitlines()[1:]
+    for option, expected in [('--tracking', '53.00'), ('--condensed', '44.00')]:
+        tracked = subprocess.run([sys.argv[1], option], capture_output=True, text=True, check=True)
+        actual = re.match(pattern, tracked.stdout)
+        assert actual and actual.groups()[:3] == ('1', '2', expected)
     bad = subprocess.run([sys.argv[1], '--unknown'], capture_output=True, text=True)
     assert bad.returncode != 0 and not bad.stdout and 'usage:' in bad.stderr
-    print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines and actual RGBA rasterization')
+    print('PASS C89 explicit kerning: analytical AV delta, preserved ligature/bidi lines signed tracking and actual RGBA rasterization')
     return 0
 
 

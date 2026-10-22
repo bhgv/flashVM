@@ -50,6 +50,8 @@ v0.833: `textfield_spacing_allocation.cpp` sweeps current-format, assignment and
 
 v0.834: `jit_textfield_spacing.cpp` drives actual AVM1 SetMember/CallMethod/GetMember with zero, positive and negative intervals in interpreter, attached native code and automatic JIT modes, checking native entry counts and balanced GC roots. `text_spacing_os_ports.cpp` checks independent mutable fonts/layouts in four OS workers, keeping legacy fi shaping isolated from tracked AV layouts.
 
+v0.835: the [C89 tutorial](../examples/embedding/text_layout/README.md) demonstrates --tracking and --condensed and rasterizes owned paths into RGBA memory. The existing executable tutorial oracle also checks the 53.00/44.00 advances and one-line/two-glyph counts. Original no-argument and --no-kerning modes preserve their complex-script sample.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

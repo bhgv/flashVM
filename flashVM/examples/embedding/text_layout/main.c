@@ -19,12 +19,15 @@ int main(int argc, char **argv)
 {
 /* Выбираем ветку компиляции для указанной конфигурации. */
     unsigned int flags = 0; /* Keep legacy native shaping unless the caller selects a feature. */
+    double spacing = 0; /* Zero preserves all legacy shaping, including complex clusters. */
     if (argc == 2 && !strcmp(argv[1], "--no-kerning")) flags = FVM_FONT_SHAPE_NO_KERNING; /* Disable pair kerning only. */
-    else if (argc != 1) { fputs("usage: text_layout [--no-kerning]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--tracking")) { spacing = 2.5; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Show fractional positive spacing on simple AV. */
+    else if (argc == 2 && !strcmp(argv[1], "--condensed")) { spacing = -2; flags = FVM_FONT_SHAPE_NO_KERNING; } /* Condense the same characters with a negative interval. */
+    else if (argc != 1) { fputs("usage: text_layout [--no-kerning|--tracking|--condensed]\n", stderr); return 1; } /* Reject unknown options before allocation. */
 #ifdef FVM_HAS_FONTS
     { /* Keep all C89 declarations before the font-enabled block's statements. */
     /* Сохраняем вычисленное значение: const char text[]. */
-    const char text[] = "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8";
+    const char *text = spacing != 0 ? "AV" : "AV fi \xd7\x90\xd7\x91\n\xd8\xa8\xd8\xa8\xd8\xa8"; /* Restrict nonzero tracking to supported one-to-one clusters. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
     FVM_Font *font = 0;
     /* Сохраняем вычисленное значение: FVM_TextLayout *layout. */
@@ -67,21 +70,22 @@ int main(int argc, char **argv)
             __LINE__);
         /* Завершаем ветку ошибки. */
     }
-    /* Вызываем fvm_text_layout_create_configured: разбиваем текст на строки и размещаем глифы.
+    /* Вызываем fvm_text_layout_create_spaced: разбиваем текст на строки и размещаем глифы.
      * font — шрифтовой дескриптор.
      * text — текст UTF-8 для разбивки на строки и размещения глифов.
      * strlen(text) — размер входного текста или ресурса в байтах.
      * &options — параметры переносов, направления и выравнивания текста.
      * flags — явный выбор парного кернинга, одинаковый для измерения и вывода.
+     * spacing — дополнительные пиксели после каждого поддержанного символа.
      * &layout — адрес или буфер для результата.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
-    if (!(fvm_text_layout_create_configured(font, text, strlen(text), &options, flags, &layout) == FVM_OK))
+    if (!(fvm_text_layout_create_spaced(font, text, strlen(text), &options, flags, spacing, &layout) == FVM_OK))
     /* Начинаем обработку неуспешного вызова или неверного результата. */
     {
         /* Выводим исходное условие, имя файла и номер строки; этот вызов не возвращается. */
         fvm_example_fail(
             /* Продолжаем условие проверки или аргументы диагностического сообщения. */
-            "fvm_text_layout_create_configured(font, text, strlen(text), &options, flags, &layout) == FVM_OK",
+            "fvm_text_layout_create_spaced(font, text, strlen(text), &options, flags, spacing, &layout) == FVM_OK",
             /* Передаём имя исходного файла и номер строки неуспешной проверки. */
             __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */

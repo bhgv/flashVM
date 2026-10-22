@@ -1,10 +1,12 @@
-Development version: **0.834** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.834 ` and an English description. Increase the subversion before each
+Development version: **0.835** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.835 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.835: [Demonstrate signed tracking in the C89 raster text tutorial](doc/TEXT_SPACING.md).
 
 v0.834: [Verify tracked formats in native AVM1 JIT and independent font workers](doc/TEXT_SPACING.md).
 

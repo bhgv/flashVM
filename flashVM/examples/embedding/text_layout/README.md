@@ -32,7 +32,7 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned copied path; null is accepted. All path borrows must end before destruction. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | Synchronously rasterize copied contours into the caller RGBA buffer; caller owns pixels and paths. No device or VM. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | Modify the owned copied contours with the explicit affine matrix; font/layout are unaffected. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
-| [`fvm_text_layout_create_configured`](../../../include/flashvm/text_layout.h#L80) | Borrow the font during bounded shaping/wrapping with explicit flags; own independent layout paths. Unknown flags fail and clear output. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
+| [`fvm_text_layout_create_spaced`](../../../include/flashvm/text_layout.h#L93) | Borrow font, counted UTF-8 and options during synchronous bounded shaping with flags and signed pixel spacing; return an owned independent layout. Invalid flags/spacing clear output; ambiguous nonzero clusters are UNSUPPORTED. No VM/GC; serialize shared mutable font access. [EN](../../../doc/TEXT_SPACING.md) / [RU](../../../doc/TEXT_SPACING.ru.md). |
 | [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | Release layout glyph/outline storage after readers finish; independent exported paths survive. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L107) | Copy one positioned glyph outline into a new owned path; caller destroys it. No font or VM is needed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
 | [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L99) | Copy line bounds, baseline and direction by ordinal without allocation; layout remains borrowed. [EN](../../../doc/TEXT_KERNING.md) / [RU](../../../doc/TEXT_KERNING.ru.md). |
@@ -67,6 +67,24 @@ before native allocation. NO_FONTS prints its existing prerequisite message.
 без окон и файлов. Неизвестные параметры отвергаются до выделения; NO_FONTS печатает
 прежнее требование FONTS. Это не приёмка устройств и не полный SWF TextField.
 
+## Signed tracking / Знаковый интервал (v0.835)
+
+```sh
+./build-text/flashvm_examples_embedding_text_layout_main --tracking
+./build-text/flashvm_examples_embedding_text_layout_main --condensed
+```
+
+These modes use simple AV without kerning: +2.5 pixels after each character gives
+one line, two glyphs and advance 53.00; -2 gives 44.00. Both execute the same owned
+path export and RGBA rasterization as the default mode. Complex clusters are
+explicitly outside nonzero tracking support. Full API arguments, statuses,
+ownership and concurrency: [EN](../../../doc/TEXT_SPACING.md) / [RU](../../../doc/TEXT_SPACING.ru.md).
+
+Эти режимы используют AV без кернинга: +2.5 пикселя после каждого символа дают
+одну строку, два глифа и advance 53.00; -2 дают 44.00. Оба выполняют экспорт
+независимых контуров и отрисовку RGBA, как основной режим. Сложные кластеры
+не входят в поддержку ненулевого интервала; окна и устройства не используются.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -81,7 +99,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
 | `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:80](../../../include/flashvm/text_layout.h#L80) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../../../include/flashvm/text_layout.h#L93) |
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../../../include/flashvm/text_layout.h#L107) |
 | `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:99](../../../include/flashvm/text_layout.h#L99) |
