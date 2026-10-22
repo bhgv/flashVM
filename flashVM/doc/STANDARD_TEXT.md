@@ -62,9 +62,13 @@ Explicit null/undefined properties preserve the previous style. Pair kerning is
 explicitly selectable, with the AS2 disabled default; both current/future field
 styles and transfers preserve it. [Current contract](TEXT_KERNING.md). Signed fractional letterSpacing is supported for the bounded one-glyph-per-scalar subset
 ([contract](TEXT_SPACING.md)); complex tracked clusters remain UNSUPPORTED. Nonzero margins/indents,
-bold/italic/bullets, hyperlinks, tab stops and justify are rejected
+bullets, hyperlinks, tab stops and justify are rejected
 when the format is applied or measured. Storing these values in TextFormat is
 allowed; silent simulated rendering of them is not.
+
+bold/italic select explicitly registered real family faces, including their combined
+slot. Missing faces return NOT_FOUND with no synthetic fallback; current/future
+formats and transfers preserve the selection. [Contract](TEXT_FONT_VARIANTS.md).
 
 Uniform underline now uses the embedded font's scaled center/thickness. It is
 Boolean in current/future field snapshots, preserves layout advances and appends

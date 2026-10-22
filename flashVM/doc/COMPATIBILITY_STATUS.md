@@ -1,5 +1,14 @@
 # Реестр выполнения / Compatibility status
 
+Real embedded font variants v0.869–v0.876: explicit regular/bold/italic/combined
+family slots, Boolean TextFormat selection, source-specific metrics/contours,
+wrapping, snapshots and current/future graph transfer. 85 native/tutorial, seven
+ASan/UBSan success/validation and ten NO_FONTS checks pass; eight new C++ allocation
+sweeps and exceptional graph-conflict rollback run in the ordinary build.
+Exception-unwind sanitizer and leak-check limits are documented. Full SWF fonts,
+Flash reference conformance and physical-device/platform acceptance remain open.
+[EN](TEXT_FONT_VARIANTS.md) / [RU](TEXT_FONT_VARIANTS.ru.md).
+
 Optional-ligature tracking v0.861–v0.868: per-call OpenType liga/clig suppression,
 independent kerning and preserved required rlig, consistent trial/final layout,
 TextField wrapping/auto-size/transfer and actual AVM1 JIT. 75 native/tutorial,

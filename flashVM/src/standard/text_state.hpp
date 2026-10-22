@@ -24,7 +24,7 @@ struct FVM_TextStyleState
         leading; /* Extra spacing added between text lines. */
     double letter_spacing; /* Signed extra pixels, absent legacy payloads restore zero. */
     unsigned long color /* Text color used for rendering. */,
-        alignment;         /* Low alignment bits plus explicit NO_KERNING/HAS_SPACING/UNDERLINE flags. */
+        alignment;         /* Packed alignment plus explicit shaping, face and decoration flags. */
     FVM_FontSource source; /* Source name associated with this entry. */
     /* Initialize Text Style State and its owned state. */
     FVM_TextStyleState() : size(12), leading(2), letter_spacing(0), color(0), alignment(0)

@@ -58,6 +58,32 @@ v0.874 drives real AVM1 bold/italic writes through interpreter, attached native 
 
 v0.875 adds --font-variants to the C89 standard-text tutorial: three explicit registrations, ordinary Boolean TextFormat selection, exact 48/56/52/60 advances and independently owned final path export. Every demonstrated API has an individual ownership/status/argument contract and the executable checker covers the new mode.
 
+## Verification — v0.876
+
+Release text-jit: 85 font/text/GC/graph/JIT/tutorial checks pass, including ten new
+font-family checks. Seven new success/validation checks pass with full-core
+ASan/UBSan. Ten NO_FONTS API checks pass; both C89 text tutorials compile there.
+Eight new C++ allocation-failure sweeps run in the ordinary build. Family-name
+boundaries exercise 255-byte private keys and reject 256-byte public names.
+All six original font/header pairs reproduce byte-for-byte in two isolated runs.
+A renamed detached component configures, registers its own checker and runs the
+copied checker against the tested native binary. This is configuration/path
+evidence, not another full detached native build or physical-device execution.
+
+The exceptional conflicting-graph oracle runs separately in the ordinary build.
+After graph rejection, this environment's ASan runtime warns that the external
+__asan_handle_no_return hook was ignored and false reports may follow, then
+reports a later FreeType stack write; that path
+is not claimed as ASan acceptance. ASan success/validation coverage excludes
+that exception oracle and injected allocation failures. Leak checking is also
+unavailable here. The ordinary oracle verifies complete source-map rollback and
+subsequent successful registration, with balanced GC/native scopes.
+
+Real embedded variants are a bounded native bridge. SWF font extraction,
+style-name discovery, fallback/system fonts, mixed styled spans, HTML, full Flash
+reference equivalence and physical platforms/devices remain open. All nine
+roadmap stages remain open; version numbers do not certify SWF≤8 compatibility.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

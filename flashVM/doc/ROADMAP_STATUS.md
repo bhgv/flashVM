@@ -9,6 +9,14 @@ counts are historical unless explicitly rerun for this revision.
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
+v0.876: Explicit real embedded font variants enable native TextFormat bold/italic,
+with independent source geometry and current/future transfer. 85 native/tutorial,
+seven ASan/UBSan success/validation and ten NO_FONTS checks pass; eight new C++
+allocation sweeps and exceptional conflict rollback use the ordinary build.
+[EN](TEXT_FONT_VARIANTS.md) / [RU](TEXT_FONT_VARIANTS.ru.md).
+All nine stages, full SWF font loading, Flash reference and device/platform
+acceptance remain open.
+
 v0.868: Per-call optional liga/clig suppression makes decomposable ligatures work
 with nonzero tracking while preserving required substitutions and prior zero
 spacing. 75 native/tutorial, seven ASan/UBSan and nine NO_FONTS checks pass;
