@@ -117,13 +117,9 @@ extern "C" FVM_Result fvm_swf_stream_output_next_frame(const FVM_SWFStreamOutput
     return stream_next_frame(s, out);
 }
 /* Keep a rejected prepared block stable until a later all-or-none backend acceptance. */
-static FVM_Result stream_pump(FVM_SWFStreamOutput *s, const unsigned int *limit, size_t *accepted)
+static FVM_Result stream_pump_locked(FVM_SWFStreamOutput *s, const unsigned int *limit,
+                                       size_t *accepted)
 {
-    if (accepted)
-        *accepted = 0;
-    if (!stream_output(s))
-        return FVM_INVALID_ARGUMENT;
-    StreamBusy guard(s);
     try
     {
         FVM_Result result = stream_observe(s);
@@ -186,6 +182,15 @@ static FVM_Result stream_pump(FVM_SWFStreamOutput *s, const unsigned int *limit,
         return FVM_ERROR;
     }
 }
+/* Acquire exactly one stream callback barrier for the original public producer operations. */
+static FVM_Result stream_pump(FVM_SWFStreamOutput *s, const unsigned int *limit, size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!stream_output(s)) return FVM_INVALID_ARGUMENT;
+    StreamBusy guard(s);
+    return stream_pump_locked(s, limit, accepted);
+}
+
 /* Preserve the original unrestricted native FIFO producer entry point. */
 extern "C" FVM_Result fvm_swf_stream_output_pump(FVM_SWFStreamOutput *s, size_t *accepted)
 {
