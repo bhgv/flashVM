@@ -7,6 +7,9 @@
 /* Подключаем объявления используемых типов и функций. */
 #include "../../../tests/fixtures/font_data.h"
 /* Подключаем объявления используемых типов и функций. */
+#include "../../../tests/fixtures/font_bold_data.h" /* Original embedded bold face; no runtime synthesis. */
+#include "../../../tests/fixtures/font_italic_data.h" /* Independent italic outline and advance data. */
+#include "../../../tests/fixtures/font_bold_italic_data.h" /* Separate combined face, selected by both bits. */
 #include "../../example_support.h"
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
@@ -31,10 +34,12 @@ int main(int argc, char **argv)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    int variants = 0; /* Optional real-face tutorial shares the existing owner context. */
     int automatic = 0; /* Optional executable demonstration uses the same owner context. */
     if (argc == 2 && !strcmp(argv[1], "--auto-size")) automatic = 1; /* Select measured left-anchored field dimensions. */
     else if (argc == 2 && !strcmp(argv[1], "--anchors")) automatic = 2; /* Also demonstrate parent-space horizontal anchors. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--font-variants")) variants = 1; /* Select actual regular/bold/italic/bold-italic sources. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -100,6 +105,12 @@ int main(int argc, char **argv)
                          __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (variants) /* Copy distinct real faces before any format selects their slots. */
+    { /* Every source array is borrowed only during its registration call. */
+        if (fvm_standard_text_register_font_variant(context, "Geometry", FVM_TEXT_FONT_BOLD, fvm_test_font_bold, sizeof(fvm_test_font_bold), 0) != FVM_OK) fvm_example_fail("register bold", __FILE__, __LINE__); /* Bind the bold slot; the context owns a copy. */
+        if (fvm_standard_text_register_font_variant(context, "Geometry", FVM_TEXT_FONT_ITALIC, fvm_test_font_italic, sizeof(fvm_test_font_italic), 0) != FVM_OK) fvm_example_fail("register italic", __FILE__, __LINE__); /* Bind the independent italic slot. */
+        if (fvm_standard_text_register_font_variant(context, "Geometry", FVM_TEXT_FONT_VARIANTS, fvm_test_font_bold_italic, sizeof(fvm_test_font_bold_italic), 0) != FVM_OK) fvm_example_fail("register bold italic", __FILE__, __LINE__); /* Both style bits choose the combined face. */
+    } /* All copies are released by context destruction. */
     /* Вызываем fvm_construct: создаём экземпляр через зарегистрированный конструктор.
      * context — контекст интерпретатора.
      * "TextFormat" — имя функции, объекта или свойства.
@@ -421,6 +432,27 @@ int main(int argc, char **argv)
             printf("anchor %s: x=%.2f width=%.2f\n", modes[anchor], x, result.number); /* Expect x=10,34,58 and width=52. */
         } /* The final field retains right anchoring; no path is borrowed yet. */
     } /* The existing path export below owns an independent field-local copy. */
+    if (variants) /* Compare the four real source advances at the same 40-pixel size. */
+    { /* C89 declarations precede statements in this optional scope. */
+        unsigned int face; /* Iterate the public bit combinations in slot order. */
+        const char *names[] = {"regular", "bold", "italic", "bold-italic"}; /* Human-readable observation labels. */
+        fvm_value_boolean(&value, 0); /* Measure a single unwrapped line. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("disable face wrapping", __FILE__, __LINE__); /* Keep geometry comparisons independent of line breaking. */
+        if (fvm_value_string(&value, "AV") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("face probe text", __FILE__, __LINE__); /* Apply the existing future regular format. */
+        fvm_value_undefined(&args[0]); /* Replace earlier editing indices with a borrowed format argument. */
+        args[0].type = FVM_VALUE_OBJECT; /* Declare the VM object representation. */
+        args[0].object = format; /* The existing global keeps this format reachable. */
+        for (face = 0; face <= FVM_TEXT_FONT_VARIANTS; ++face) /* Select each actual supplied face. */
+        { /* Boolean fields independently control the two style bits. */
+            fvm_value_boolean(&value, (face & FVM_TEXT_FONT_BOLD) != 0); /* Choose the bold component. */
+            if (fvm_object_set(context, format, "bold", &value) != FVM_OK) fvm_example_fail("set bold", __FILE__, __LINE__); /* Store the requested style without touching the current field yet. */
+            fvm_value_boolean(&value, (face & FVM_TEXT_FONT_ITALIC) != 0); /* Choose the italic component independently. */
+            if (fvm_object_set(context, format, "italic", &value) != FVM_OK) fvm_example_fail("set italic", __FILE__, __LINE__); /* Both true select the registered combined face. */
+            if (fvm_object_call(context, field, "setTextFormat", 1, args, &result) != FVM_OK) fvm_example_fail("apply real face", __FILE__, __LINE__); /* Validate source and layout before publication. */
+            if (fvm_object_get(context, field, "textWidth", &result) != FVM_OK) fvm_example_fail("measure real face", __FILE__, __LINE__); /* Read logical advance rather than ink bounds. */
+            printf("face %s: advance=%.2f\n", names[face], result.number); /* Expect 48,56,52,60 for the four embedded faces. */
+        } /* The final combined face remains selected for owned path export. */
+    } /* No source or path handle escapes the documented ownership rules. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -438,6 +470,7 @@ int main(int argc, char **argv)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)variants; /* The option is still parseable in a NO_FONTS profile. */
     (void)automatic; /* The option remains parseable in a NO_FONTS profile. */
     (void)format;
     /* Завершаем выражение с указанным значением или аргументами. */

@@ -1,10 +1,12 @@
-Development version: **0.874** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.874 ` and an English description. Increase the subversion before each
+Development version: **0.875** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.875 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.875: [Demonstrate real font family faces in the C89 text tutorial](doc/TEXT_FONT_VARIANTS.md).
 
 v0.874: [Exercise explicit font faces through AVM1 JIT and worker-owned contexts](doc/TEXT_FONT_VARIANTS.md).
 

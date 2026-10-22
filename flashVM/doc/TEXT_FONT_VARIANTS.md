@@ -56,6 +56,8 @@ v0.873 adds eight ordinary-build C++ allocation sweeps: four registration slots 
 
 v0.874 drives real AVM1 bold/italic writes through interpreter, attached native code and automatic JIT, checking all four independent face widths. Four OS workers own their runtime/context/source map and perform 64 text edits/GC passes each, retaining the right anchor and selecting one distinct face per worker.
 
+v0.875 adds --font-variants to the C89 standard-text tutorial: three explicit registrations, ordinary Boolean TextFormat selection, exact 48/56/52/60 advances and independently owned final path export. Every demonstrated API has an individual ownership/status/argument contract and the executable checker covers the new mode.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

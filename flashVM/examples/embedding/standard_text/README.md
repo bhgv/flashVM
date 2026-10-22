@@ -38,10 +38,11 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Create caller-owned runtime state from borrowed initialized config; keep it alive until every context is destroyed. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release runtime resources after context destruction; do not retain runtime/context borrows afterwards. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Publish a copied value as a context global so the VM traces the managed format/field; borrowed strings are not host-owned objects. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L17) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L34) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L21) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L25) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_register_font_variant`](../../../include/flashvm/standard_text.h#L35) | Borrow context/family, style bits, counted font bytes and face index; synchronously validate/copy a real face into one slot. Context owns the copy. Owner-thread only, no GC/teardown calls; duplicate/unknown flags are INVALID_ARGUMENT, missing face use is NOT_FOUND, budget/profile is UNSUPPORTED, allocation is OUT_OF_MEMORY. No system lookup or synthetic fallback. [EN](../../../doc/TEXT_FONT_VARIANTS.md) / [RU](../../../doc/TEXT_FONT_VARIANTS.ru.md). |
+| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L41) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L48) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Write a normalized local Boolean value without allocation; true/false select left/none for autoSize. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Write a local numeric value without allocation for dimensions, sizes or UTF-16 edit indices; field setters validate their own bounds. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L46) | Create a counted VM-compatible string value from the supplied zero-terminated text; check status before assigning it to a field. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
@@ -84,6 +85,23 @@ once. Existing owner-thread, GC, font prerequisites and API ownership above appl
 ширина всегда 52. Независимый контур остаётся локальным; хост применяет x/y один
 раз. Требования к шрифтам, потоку контекста, GC и владению API описаны выше.
 
+## Real faces / Настоящие начертания (v0.875)
+
+Run `--font-variants` to register three additional original CC0 faces, then select
+bold/italic through the ordinary TextFormat object. At 40px, AV advances are
+48.00/56.00/52.00/60.00 for regular/bold/italic/bold-italic. The original regular
+face remains the default. Context-owned copies are released with the VM; the
+final combined-face path is independently owned and destroyed separately.
+The existing text-jit build/profile and owner-thread/GC requirements apply.
+No SWF loader/display-list integration or physical-device acceptance is implied.
+
+`--font-variants` регистрирует три дополнительных исходных CC0-лица и выбирает
+bold/italic через TextFormat. При 40px AV даёт 48.00/56.00/52.00/60.00 для
+regular/bold/italic/bold-italic. Regular остаётся default. Копии принадлежат
+контексту, итоговый контур combined-face независим и освобождается отдельно.
+Требования text-jit, потока-владельца и GC описаны выше. Это не проверка загрузки
+шрифтов SWF, display list или реальных устройств.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -104,10 +122,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../../../include/flashvm/value.h#L87) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../../../include/flashvm/standard_text.h#L17) |
-| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
-| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../../../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../../../include/flashvm/standard_text.h#L34) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
+| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../../../include/flashvm/standard_text.h#L25) |
+| `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:35](../../../include/flashvm/standard_text.h#L35) |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../../../include/flashvm/standard_text.h#L41) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../../../include/flashvm/standard_text.h#L48) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |

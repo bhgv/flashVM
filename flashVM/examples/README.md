@@ -100,7 +100,7 @@
     - [os_ports](#example-embedding-os_ports) — <small><em>Native-ввод и TCP connect/send/close</em></small>
   - [text](#group-embedding-text)
     - [font_libraries](#example-embedding-font_libraries) — <small><em>Шрифты, shaping и редактируемые контуры</em></small>
-    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, размер, опоры и векторный текст</em></small>
+    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, начертания, размер и опоры</em></small>
     - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
     - [text_layout](#example-embedding-text_layout) — <small><em>Строки, интервалы, лигатуры и контуры text layout</em></small>
     - [url_encoding](#example-embedding-url_encoding) — <small><em>URL-функции AS1/AS2, UTF-16 и NUL без потери длины</em></small>
@@ -1204,7 +1204,7 @@ AS2-эскиз сетевой интеграции и host bridge. Отдель�
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/standard_text/README.md](embedding/standard_text/README.md).
 
-Регистрирует шрифт, создаёт TextField и обращается к его свойствам и методам через обычные объекты VM. Режим `--auto-size` показывает рост размеров и переносы, `--anchors` — опоры left/center/right и координаты; извлекает независимый векторный путь. AS-файл отдельно показывает редактирование и левый авторазмер.
+Регистрирует шрифт, создаёт TextField и обращается к его свойствам и методам через обычные объекты VM. Режим `--auto-size` показывает рост размеров и переносы, `--anchors` — опоры left/center/right и координаты, `--font-variants` — реальные bold/italic лица; извлекает независимый векторный путь. AS-файл отдельно показывает редактирование и левый авторазмер.
 
 **Файлы:** [editing.as](embedding/standard_text/editing.as), [main.c](embedding/standard_text/main.c).
 
