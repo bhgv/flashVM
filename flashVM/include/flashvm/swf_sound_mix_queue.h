@@ -30,6 +30,24 @@ extern "C"
      * output unchanged. Serialize queue/mixer externally; no VM/GC or reservation. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_pending(const FVM_SWFSoundMixQueue *,
                                                        FVM_SWFSoundMixQueuePending *);
+    /* Exact native allocation requests only, excluding allocator/mixer/voice/device/VM memory. */
+    typedef struct FVM_SWFSoundMixQueueStorageInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof. */
+        size_t fixed_bytes; /* Native owner including its two vector descriptors. */
+        size_t buffer_bytes; /* Original and mixed fixed S16 arrays. */
+        size_t retained_bytes; /* Checked sum of fixed and buffer bytes. */
+    } FVM_SWFSoundMixQueueStorageInfo;
+    /* Predict exact requested adapter bytes without allocating or calling VM/backend/mixer.
+     * channels 1/2 and block 1..OUTPUT_MAX_BLOCK required; invalid -> INVALID_ARGUMENT,
+     * size overflow -> OUT_OF_MEMORY. Required scalar out is preserved on errors. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required(unsigned int channels,
+                                                                size_t block, size_t *out);
+    /* Copy fixed storage observation, independent of pending/accepted queue frames.
+     * Live serialized queue and exact-size out required; invalid/reentry preserves out.
+     * No allocation/callback/VM/GC. Counts allocation requests, not actual RSS. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_info(const FVM_SWFSoundMixQueue *,
+                                                            FVM_SWFSoundMixQueueStorageInfo *);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

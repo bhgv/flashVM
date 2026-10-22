@@ -2,6 +2,7 @@
  * allocation. */
 #include "flashvm/swf_sound_mix_queue.h"
 #include "../details/vector.hpp"
+#include "sound_mix_queue_constants.h"
 #include <cstring>
 #include <new>
 
@@ -26,6 +27,24 @@ struct FVM_SWFSoundMixQueue
 };
 namespace
 {
+/* Compute requested native bytes before any storage allocation; exclude allocator overhead. */
+FVM_Result storage_bytes(unsigned int channels, size_t block, FVM_SWFSoundMixQueueStorageInfo &out)
+{
+    if ((channels != 1 && channels != 2) || !block || block > FVM_SWF_SOUND_OUTPUT_MAX_BLOCK)
+        return FVM_INVALID_ARGUMENT;
+    if (block > (size_t)-1 / channels / sizeof(short) / FVM_SWF_SOUND_MIX_QUEUE_BUFFERS)
+        return FVM_OUT_OF_MEMORY;
+    size_t buffers = block * channels * sizeof(short) * FVM_SWF_SOUND_MIX_QUEUE_BUFFERS;
+    if (buffers > (size_t)-1 - sizeof(FVM_SWFSoundMixQueue)) return FVM_OUT_OF_MEMORY;
+    FVM_SWFSoundMixQueueStorageInfo info;
+    info.struct_size = sizeof(info);
+    info.fixed_bytes = sizeof(FVM_SWFSoundMixQueue);
+    info.buffer_bytes = buffers;
+    info.retained_bytes = info.fixed_bytes + buffers;
+    out = info;
+    return FVM_OK;
+}
+
 /* Restore reentry protection even when a C++ backend violates the no-throw C boundary. */
 struct MixBusyScope
 {
@@ -264,6 +283,26 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pending(const FVM_SWFSoundMixQueue
                                 FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE;
     *out = info;
     return FVM_OK;
+}
+
+/* Predict exact adapter-owned allocation requests independently of mixer/device acquisition. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_required(unsigned int channels,
+                                                               size_t block, size_t *out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueueStorageInfo info;
+    FVM_Result result = storage_bytes(channels, block, info);
+    if (result == FVM_OK) *out = info.retained_bytes;
+    return result;
+}
+
+/* Observe fixed owner and array requests; pending state never grows native storage. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_info(const FVM_SWFSoundMixQueue *queue,
+                                                           FVM_SWFSoundMixQueueStorageInfo *out)
+{
+    if (!queue || queue->busy || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    return storage_bytes(queue->backend.channels, queue->capacity, *out);
 }
 
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */

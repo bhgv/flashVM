@@ -97,9 +97,9 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source VM lifetime; native snapshots remain retained. |
 | [fvm_swf_stream_converter_next](../../../include/flashvm/swf_stream_convert.h#L67) | Return bounded initialized values or empty markers; EOF/errors preserve state/output; no VM/device/callback. |
 | [fvm_swf_sound_mixer_add](../../../include/flashvm/swf_sound_mixer.h#L126) | Validate capacity, sum initialized base and event voices in place once, report scalar count; no allocation/callback/VM. Caller retains bytes for any later retry. |
-| [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L45) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
-| [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L67) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
-| [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L71) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
+| [`fvm_swf_sound_mix_queue_create`](../../../include/flashvm/swf_sound_mix_queue.h#L63) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): allocate fixed base/mixed buffers on owner; copy matching backend, borrow mixer exclusively; no device callback or VM; clear output on failure. |
+| [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L85) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
+| [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L89) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L133) | Release native voices after all serial reads finish; null allowed. |
 | [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Release stream storage after converter use; null allowed. |
 
@@ -118,9 +118,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:71](../../../include/flashvm/swf_sound_mix_queue.h#L71) |
-| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:45](../../../include/flashvm/swf_sound_mix_queue.h#L45) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:67](../../../include/flashvm/swf_sound_mix_queue.h#L67) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:89](../../../include/flashvm/swf_sound_mix_queue.h#L89) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:63](../../../include/flashvm/swf_sound_mix_queue.h#L63) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:85](../../../include/flashvm/swf_sound_mix_queue.h#L85) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:126](../../../include/flashvm/swf_sound_mixer.h#L126) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
