@@ -54,6 +54,8 @@ v0.872 verifies bold current/italic future transfer through binary graphs and ch
 
 v0.873 adds eight ordinary-build C++ allocation sweeps: four registration slots and current/future format, assignment and replaceText edits. Failed registration preserves the map/default; failed field edits preserve text, selected faces and anchored geometry, with balanced GC/native scopes. Existing replaceText on nonempty uniform text preserves the current face; ordinary text assignment uses the future face. Bundled C-library malloc failures are not injected.
 
+v0.874 drives real AVM1 bold/italic writes through interpreter, attached native code and automatic JIT, checking all four independent face widths. Four OS workers own their runtime/context/source map and perform 64 text edits/GC passes each, retaining the right anchor and selecting one distinct face per worker.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
