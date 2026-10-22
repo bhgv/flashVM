@@ -33,7 +33,8 @@ int main(int argc, char **argv)
     FVM_Path *outline = 0;
     int automatic = 0; /* Optional executable demonstration uses the same owner context. */
     if (argc == 2 && !strcmp(argv[1], "--auto-size")) automatic = 1; /* Select measured left-anchored field dimensions. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--anchors")) automatic = 2; /* Also demonstrate parent-space horizontal anchors. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -399,6 +400,27 @@ int main(int argc, char **argv)
         if (fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("read wrapped height", __FILE__, __LINE__); /* Three baseline rows fit to 140px with gutter. */
         printf("autoSize wrap: width=30.00 height=%.2f\n", result.number); /* The executable checker verifies 140.00. */
     } /* The field owns its measured cache; the following path export remains independent. */
+    if (automatic == 2) /* Keep exported geometry local while inspecting placement separately. */
+    { /* Each iteration starts with the same 100-pixel parent-space box. */
+        unsigned int anchor; /* C89 declarations precede statements in this scope. */
+        const char *modes[] = {"left", "center", "right"}; /* These modes preserve left edge, center or right edge. */
+        for (anchor = 0; anchor < 3; ++anchor) /* Compare all native fitting policies. */
+        { /* No VM objects or font data cross context/thread ownership. */
+            double x; /* Copy a scalar before the next borrowed value overwrites result. */
+            fvm_value_boolean(&value, 0); /* Disable fitting before resetting manual dimensions. */
+            if (fvm_object_set(context, field, "autoSize", &value) != FVM_OK || fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("disable fitting/wrap", __FILE__, __LINE__); /* Preserve ordinary error handling. */
+            fvm_value_number(&value, 100); /* Start with a 100-pixel outer width. */
+            if (fvm_object_set(context, field, "_width", &value) != FVM_OK) fvm_example_fail("reset width", __FILE__, __LINE__); /* Manual width is now writable. */
+            fvm_value_number(&value, 10); /* Locate the initial left edge at parent x=10. */
+            if (fvm_object_set(context, field, "_x", &value) != FVM_OK) fvm_example_fail("reset position", __FILE__, __LINE__); /* This does not translate the exported local path. */
+            if (fvm_value_string(&value, "AV") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("reset text", __FILE__, __LINE__); /* The future format remains 40 pixels. */
+            if (fvm_value_string(&value, modes[anchor]) != FVM_OK || fvm_object_set(context, field, "autoSize", &value) != FVM_OK) fvm_example_fail("select anchor", __FILE__, __LINE__); /* Activation fits the current box transactionally. */
+            if (fvm_object_get(context, field, "_x", &result) != FVM_OK) fvm_example_fail("read position", __FILE__, __LINE__); /* Read through the same accessors used by AVM1. */
+            x = result.number; /* Keep the position while querying width into result. */
+            if (fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("read anchored width", __FILE__, __LINE__); /* Every mode measures 48 pixels plus gutter. */
+            printf("anchor %s: x=%.2f width=%.2f\n", modes[anchor], x, result.number); /* Expect x=10,34,58 and width=52. */
+        } /* The final field retains right anchoring; no path is borrowed yet. */
+    } /* The existing path export below owns an independent field-local copy. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.

@@ -41,7 +41,7 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 | [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L17) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L33) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L34) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Write a normalized local Boolean value without allocation; true/false select left/none for autoSize. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Write a local numeric value without allocation for dimensions, sizes or UTF-16 edit indices; field setters validate their own bounds. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L46) | Create a counted VM-compatible string value from the supplied zero-terminated text; check status before assigning it to a field. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
@@ -63,13 +63,26 @@ The optional C89 path checks immediate left fitting (52x48), text growth (width
 paths before destroying the context/runtime; no window or physical device is used.
 Unknown arguments fail before acquisition; NO_FONTS reports its prerequisite.
 The AS companion is source for a host-created caption, not a compiled SWF or
-MovieClip display integration. Contracts, unsupported anchors/dimension writes
+MovieClip display integration. Contracts, supported anchors/dimension restrictions
 and GC/thread ownership: [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md).
 
 Режим C89 показывает немедленный размер 52x48, рост ширины до 76 и переносы
 при фиксированной ширине 30 с высотой 140. Контур экспортируется до уничтожения
 контекста/runtime и освобождается отдельно; окна и устройства не используются.
 AS-файл — исходник для caption, созданного приложением, а не собранный SWF.
+
+## Parent-space anchors / Опоры относительно родителя (v0.857)
+
+Run the same binary with `--anchors`. After the existing geometry checks it
+resets a box to x=10, width=100 and fits AV at 40px with each mode. Expected:
+left x=10, center x=34, right x=58; all widths are 52. Only the scalar placement
+changes; the exported independent path stays field-local. The host applies x/y
+once. Existing owner-thread, GC, font prerequisites and API ownership above apply.
+
+Запуск с `--anchors` после прежних проверок сбрасывает поле в x=10, width=100
+и подбирает размер AV при 40px. Результат left/center/right: x=10/34/58,
+ширина всегда 52. Независимый контур остаётся локальным; хост применяет x/y один
+раз. Требования к шрифтам, потоку контекста, GC и владению API описаны выше.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -94,7 +107,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../../../include/flashvm/standard_text.h#L17) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../../../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../../../include/flashvm/standard_text.h#L33) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../../../include/flashvm/standard_text.h#L34) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |

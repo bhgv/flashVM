@@ -27,6 +27,7 @@ extern "C"
     FVM_API FVM_Result fvm_textfield_create(FVM_Context *, const char *font_name, double width,
                                             double height, FVM_Object **out);
     /* Independent editable contours, including the text field's 2-pixel gutter.
+     * These are field-local: the host applies _x/_y exactly once when placing them.
      * These are not clipped to the field rectangle. */
     /* Implement textfield path for this subsystem. */
     /* Includes uniform underline when enabled; use nonzero fill for the combined contours. */

@@ -35,7 +35,7 @@ Native _x/_y и опоры left/center/right поддержаны в преде�
 
 Создайте поле через [fvm_textfield_create](../include/flashvm/standard_text.h#L27) и опубликуйте [fvm_set_global](../include/flashvm/value.h#L87) либо
 удерживайте pin/корень. Ресурс поля принадлежит GC; это ещё не узел MovieClip
-с глубиной отображения. [fvm_textfield_path](../include/flashvm/standard_text.h#L33) возвращает самостоятельный контур,
+с глубиной отображения. [fvm_textfield_path](../include/flashvm/standard_text.h#L34) возвращает самостоятельный контур,
 который переживает сборку поля и уничтожение контекста. Его можно рисовать или
 использовать как маску средствами path.h и AGG/Cairo; цвет выбирает приложение,
 например читая textColor. Контуры не обрезаются прямоугольником поля.
@@ -166,5 +166,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../include/flashvm/standard_text.h#L34) |
 <!-- source-links:end -->

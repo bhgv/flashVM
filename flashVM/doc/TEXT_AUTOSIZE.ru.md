@@ -1,3 +1,5 @@
+v0.857: C89-пример --anchors исполняет проверки x=10/34/58 и width=52. Публичное объявление экспорта контура явно описывает локальные координаты и применение позиции хостом.
+
 v0.856: настоящие AVM1 SetMember/GetMember проверяют все опоры и знаковую y в интерпретаторе, attached native code и automatic JIT. Четыре OS-потока делают по 64 изменения/GC со своими runtime, context и шрифтами; задействованы все три опоры.
 
 v0.855: 18 переборов отказов выделения памяти в обычной сборке охватывают три опоры при включении, записи текста, replaceText, текущем формате, wordWrap и смене ширины. Ошибки сохраняют x/y, текст, режим и размеры; баланс GC frames/native depth проверен.
@@ -19,7 +21,7 @@ _x и _y — числовые смещения относительно роди
 Вызовы выполняются в потоке контекста; правила корней/GC прежние. Перемещение
 не сбрасывает локальный layout cache.
 
-[fvm_textfield_path](../include/flashvm/standard_text.h#L33) возвращает независимый контур в локальных координатах поля
+[fvm_textfield_path](../include/flashvm/standard_text.h#L34) возвращает независимый контур в локальных координатах поля
 с обычным отступом. Хост применяет x/y при размещении ровно один раз. Здесь ещё
 нет MovieClip.createTextField, связи с родителем/display list, вращения, масштаба,
 обрезки, ввода, HTML или полного декодирования SWF-текста. Публичный ABI не менялся.
@@ -75,7 +77,7 @@ Center/right пока дают UNSUPPORTED: нативная модель поз
 внешний размер 52x48), правки, форматы, Boolean, неподдержанные якоря и GC.
 Полная эталонная/сценическая приёмка Flash и физические платформы остаются открытыми.
 Нативная реализация использует `PreparedGeometry` и `prepare_field_geometry` до
-публикации правок полей [`fvm_textfield_create`](../include/flashvm/standard_text.h#L27); [`fvm_textfield_path`](../include/flashvm/standard_text.h#L33) экспортирует
+публикации правок полей [`fvm_textfield_create`](../include/flashvm/standard_text.h#L27); [`fvm_textfield_path`](../include/flashvm/standard_text.h#L34) экспортирует
 независимую геометрию через существующий публичный API.
 
 v0.846: снимки и бинарная/канальная передача сохраняют режим в свободном бите
@@ -124,5 +126,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:34](../include/flashvm/standard_text.h#L34) |
 <!-- source-links:end -->

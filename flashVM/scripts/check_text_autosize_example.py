@@ -13,6 +13,11 @@ def main():
         'autoSize left: width=52.00 height=48.00',
         'autoSize edit: width=76.00',
         'autoSize wrap: width=30.00 height=140.00']
+    anchored = subprocess.run([sys.argv[1], '--anchors'], text=True, capture_output=True, check=True)
+    assert anchored.stdout.splitlines()[-3:] == [
+        'anchor left: x=10.00 width=52.00',
+        'anchor center: x=34.00 width=52.00',
+        'anchor right: x=58.00 width=52.00']
     bad = subprocess.run([sys.argv[1], '--unknown'], text=True, capture_output=True)
     assert bad.returncode and not bad.stdout and 'usage:' in bad.stderr
     print('PASS C89 autoSize activation, text edit, constrained height and owned path export')
