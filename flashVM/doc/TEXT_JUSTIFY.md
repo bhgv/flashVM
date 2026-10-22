@@ -55,6 +55,8 @@ v0.879 verifies current justification with future right-aligned bold text throug
 
 v0.880 verifies actual loaded SWF6/7 rejection and SWF8 admission, plus native restoration of the same state. Conflicting low alignment bits, reserved and unknown flags reject before native attachment. A C caller tests unknown enum bytes and explicit RTL admission; NO_FONTS retains its documented opaque-options behavior.
 
+v0.881 adds seven ordinary-build C++ allocation sweeps: native layout plus current-format admission, text assignment, replacement, automatic fitting, width and wrap-policy changes. Failed calls preserve text, current alignment, dimensions and cached metrics, with balanced GC/native scopes. Fonts remain reusable after failed construction. Bundled C allocator failures are not injected.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
