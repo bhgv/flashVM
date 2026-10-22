@@ -14,6 +14,8 @@ v0.929: storage_required predicts checked native object plus two fixed S16 array
 
 v0.930: create_bounded validates the original descriptors and matching mixer geometry first, then compares the exact fixed requested bytes to budget before allocating. Zero/insufficient budget returns OUT_OF_MEMORY, clears the native owner output and preserves the adapted backend. Exact fit succeeds without any device call. The original create delegates with an unrestricted ceiling. Neither function owns or budgets the borrowed mixer, voices or backend. Original allocation-boundary tests still pass.
 
+v0.931: real backend callbacks attempt recursive pumping, pending observation and clear; all are rejected while busy with preserved observation outputs. Failed queued/pause/clear and a thrown write preserve exact pending tail bytes. Accepted clear discards that block without rewinding voices, so the next accepted PCM begins at the later sample. The ordinary build checks exceptions; --no-throw supports a separately selected sanitizer path.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
