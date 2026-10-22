@@ -56,7 +56,7 @@ busy-флаг защищает callback recursion, а не гонки поток
 
 ## Producer, отмена и хвосты
 
-Создать адаптер до [fvm_swf_stream_output_init](../include/flashvm/swf_stream_output.h#L44), передать producer полученную table.
+Создать адаптер до [fvm_swf_stream_output_init](../include/flashvm/swf_stream_output.h#L45), передать producer полученную table.
 Producer удерживает исходный stream retry PCM, адаптер — готовую смесь; при отказе
 обе ступени удерживают один логический блок. Часы очереди и frame gates остаются
 у producer; посторонние write/clear в реальном FIFO нарушают эксклюзивное владение.
@@ -123,5 +123,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:175](../include/flashvm/swf_sound_mix_queue.h#L175) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:210](../include/flashvm/swf_sound_mix_queue.h#L210) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
-| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:45](../include/flashvm/swf_stream_output.h#L45) |
 <!-- source-links:end -->

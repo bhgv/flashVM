@@ -1,4 +1,4 @@
-Версия разработки: **0.974** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.975** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.975: [Добавлен fvm_swf_stream_output_pump_mix_tail после EOF: точный retry и согласованные счётчики без изменения публичных структур.](doc/DESKTOP_MIX.ru.md).
 
 v0.974: [Описаны tracked stop_all, расчёт памяти, подтверждённый StopSounds и границы проверок.](doc/MIX_QUEUE_IDENTITIES.ru.md).
 
@@ -970,5 +972,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_advance` | function | [include/flashvm/flashvm.h:74](include/flashvm/flashvm.h#L74) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](include/flashvm/extensions.h#L17) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](include/flashvm/meta_call.h#L20) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:82](include/flashvm/swf_stream_output.h#L82) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

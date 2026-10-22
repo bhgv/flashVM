@@ -1,10 +1,12 @@
-Development version: **0.974** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.975** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.975: [Add fvm_swf_stream_output_pump_mix_tail for final EOF: exact retry and coherent accepted/dequeued counters; no public struct change.](doc/DESKTOP_MIX.md).
 
 v0.974: [Document tracked stop_all, preflight storage, acknowledged StopSounds and regression limits.](doc/MIX_QUEUE_IDENTITIES.md).
 
@@ -1215,5 +1217,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](include/flashvm/meta_call.h#L20) |
 | `fvm_register_function` | function | [include/flashvm/value.h:101](include/flashvm/value.h#L101) |
 | `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](include/flashvm/avm1.h#L73) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:82](include/flashvm/swf_stream_output.h#L82) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

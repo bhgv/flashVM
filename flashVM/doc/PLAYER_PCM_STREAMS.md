@@ -122,7 +122,7 @@ stream_source field is only a borrowed first-entry alias. No snapshot leaks into
 VM roots, callbacks or the SDL device. Startup validates/indexes per segment and
 may allocate; worker transitions allocate nothing and never read a context.
 
-On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L89) preserves accepted queue bytes,
+On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L106) preserves accepted queue bytes,
 pause and cumulative submitted/played clocks. The device remains open once.
 Output stays 48000 Hz stereo S16 while source width, mono/stereo and rate may
 change per header. Phase carries across blocks within one header and restarts at
@@ -136,7 +136,7 @@ StopSounds cancellation remain separate concepts.
 
 Explicit/backward/skipped navigation selects the last header at/before the target
 frame (source order breaks equal-frame ties), or the first future header before
-any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L96) stages pause/clear and
+any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L113) stages pause/clear and
 rebinds the selected converter only after acknowledged clear. It chooses the
 first block at/after the target inside that segment. Gaps still hold future data;
 no silence is synthesized. Later successors are re-primed when reached. This is
@@ -183,7 +183,7 @@ The owner imports/pins the root and calls [fvm_movieclip_get_playback_info](../i
 Selected-but-not-entered frames authorize nothing. The scalar entered frame and local play
 flag are published under the audio mutex; no context, clip or managed value is read by the
 worker. The worker owns the prepared snapshot, converter position and retry buffer, and
-calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L64) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) times per service iteration. The SDL backend copies accepted PCM; it
+calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L65) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) times per service iteration. The SDL backend copies accepted PCM; it
 never calls into VM/GC. Queue targets use the actual obtained driver quantum. Short
 authorized blocks and EOF resume with a nonempty queue even below the usual reserve,
 avoiding a startup deadlock when a frame contains little audio.
@@ -191,7 +191,7 @@ avoiding a startup deadlock when a frame contains little audio.
 Host/session/background suspension and the clip's stop flag both pause the queue and
 preserve accepted bytes. play resumes authorized data. StopSounds pauses, clears and
 cancels the stream until a detected navigation reset. There is no stream stop-release
-ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L83) under the same mutex, clearing
+ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L100) under the same mutex, clearing
 old queued/pending bytes and starting phase zero at the first block at/after the selected
 frame. Gaps hold a later block; they do not synthesize silence. Source EOF and drained
 queue are distinct.
@@ -239,7 +239,7 @@ new stable plugin ABI. The existing public player C entry points retain their si
 | [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
 | [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L85) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
 | [fvm_desktop_audio_timeline](../frontend/common/audio.h#L81) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L97) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L11) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L97) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L12) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
 | [fvm_desktop_audio_pause](../frontend/common/audio.h#L92) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L90) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
 | [fvm_desktop_audio_clear](../frontend/common/audio.h#L105) / [fvm_desktop_audio_close](../frontend/common/audio.h#L107) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
 
@@ -313,9 +313,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:96](../include/flashvm/swf_stream_output.h#L96) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:89](../include/flashvm/swf_stream_output.h#L89) |
-| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:64](../include/flashvm/swf_stream_output.h#L64) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:83](../include/flashvm/swf_stream_output.h#L83) |
-| `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:11](../include/flashvm/swf_stream_output.h#L11) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:113](../include/flashvm/swf_stream_output.h#L113) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:65](../include/flashvm/swf_stream_output.h#L65) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:100](../include/flashvm/swf_stream_output.h#L100) |
+| `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->

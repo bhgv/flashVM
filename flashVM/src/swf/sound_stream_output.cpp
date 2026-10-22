@@ -1,5 +1,6 @@
 /* Bounded stream producer/retry ownership and explicit native FIFO dequeue-clock accounting. */
 #include "flashvm/swf_stream_output.h"
+#include "sound_mix_queue_internal.h"
 #include <cfloat>
 #include <cstring>
 /* Native fields are host-private after successful binding. */
@@ -196,6 +197,32 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *s, u
 {
     return stream_pump(s, &frame, accepted);
 }
+/* Keep both accepted-frame epochs coherent when the final base source yields to events. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!stream_output(s) || !s->info.eof || s->info.pending_frames ||
+        !fvm_swf_sound_mix_queue_matches(mix, &s->backend)) return FVM_INVALID_ARGUMENT;
+    StreamBusy guard(s);
+    FVM_SWFSoundMixQueueClock clock;
+    clock.struct_size = sizeof(clock);
+    FVM_Result result = fvm_swf_sound_mix_queue_clock_info(mix, &clock);
+    if (result != FVM_OK) return result;
+    if (clock.submitted_frames != s->info.submitted_frames ||
+        clock.played_frames < s->info.played_frames || clock.queued_frames > s->target)
+        return FVM_INVALID_ARGUMENT;
+    size_t count = 0;
+    result = fvm_swf_sound_mix_queue_pump_tail(mix, s->block, s->target, &count);
+    if (result != FVM_OK) return result;
+    s->info.submitted_frames += (double)count;
+    s->info.played_frames = clock.played_frames;
+    s->info.seconds = clock.seconds;
+    s->info.queued_frames = clock.queued_frames + count;
+    if (accepted) *accepted = count;
+    return FVM_OK;
+}
+
 /* Pause is explicit: priming/resume policy belongs to the embedding host. */
 extern "C" FVM_Result fvm_swf_stream_output_pause(FVM_SWFStreamOutput *s, int paused)
 {

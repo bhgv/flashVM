@@ -3,6 +3,7 @@
 #include "flashvm/swf_sound_mix_queue.h"
 #include "../details/vector.hpp"
 #include "sound_mix_queue_constants.h"
+#include "sound_mix_queue_internal.h"
 #include "sound_constants.h"
 #include <cstring>
 #include <new>
@@ -228,6 +229,19 @@ FVM_Result clear_queue(void *raw)
     }
 }
 } // namespace
+/* Pair only the exact live adapted table; arbitrary userdata aliases are not sufficient. */
+bool fvm_swf_sound_mix_queue_matches(const FVM_SWFSoundMixQueue *queue,
+                                      const FVM_AudioQueueBackend *backend)
+{
+    return queue && !queue->busy && backend &&
+        backend->struct_size == sizeof(*backend) &&
+        backend->abi_version == FVM_AUDIO_QUEUE_ABI_VERSION &&
+        backend->userdata == queue && backend->write == write_mixed &&
+        backend->queued == observe && backend->pause == pause_queue &&
+        backend->clear == clear_queue && backend->sample_rate == queue->backend.sample_rate &&
+        backend->channels == queue->backend.channels;
+}
+
 /* Prepare complete native storage without touching the real queue or publishing partial ownership.
  */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_create_bounded(FVM_SWFSoundMixer *mixer,

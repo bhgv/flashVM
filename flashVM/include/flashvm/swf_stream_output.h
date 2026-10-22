@@ -3,6 +3,7 @@
 #define FLASHVM_SWF_STREAM_OUTPUT_H /* Guard the standalone C89 producer ABI. */
 #include "swf_stream_convert.h"
 #include "swf_sound_output.h"
+#include "swf_sound_mix_queue.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -64,6 +65,22 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_output_pump_until(FVM_SWFStreamOutput *,
                                                         unsigned int max_movie_frame,
                                                         size_t *accepted);
+    /* Pump one event-only composition block after this stream has observed source EOF.
+     * Requires no base retry, the exact adapted backend of mix, an active shared clock
+     * and identical submitted epochs. Uses this producer's block/target and updates its
+     * accepted/dequeued accounting on success; source EOF/chunk/converter stay unchanged.
+     * No struct ABI change. Continue/seek/pause/info remain valid after paired tails.
+     * Never interleave direct mix-tail/base writes: use this operation for all EOF tails.
+     * accepted is optional and cleared first. Invalid/reentry/mismatched owners or epochs:
+     * INVALID_ARGUMENT; missing shared clock: NOT_FOUND; mixer headroom/exhaustion:
+     * NOT_FOUND. Other statuses propagate; backend exceptions become ERROR.
+     * Failed writes retain the mix queue's exact TAIL retry, not this producer's base PCM.
+     * Query mix_queue_pending for that retry; StreamOutputInfo.pending_frames remains base-only.
+     * No allocation/VM/GC; externally serialize both owners, mixer and exclusive backend.
+     * Keep all borrowed owners alive; this operation does not pause, clear or authorize
+     * future stream frames. Only call after the host has chosen final sequence EOF. */
+    FVM_API FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *,
+        FVM_SWFSoundMixQueue *, size_t *accepted);
     /* Acknowledge pause/resume without clearing, priming or advancing converter position. */
     FVM_API FVM_Result fvm_swf_stream_output_pause(FVM_SWFStreamOutput *, int paused);
     /* Observe backend backlog and copy clock/metadata; failures preserve caller output. Reject

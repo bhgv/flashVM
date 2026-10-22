@@ -245,10 +245,10 @@ anti-alias filter. [Full EN contract](../../../doc/STREAM_PCM_CONVERSION.md).
 
 | API | Queue ownership / Владение очередью |
 | --- | --- |
-| [`fvm_swf_stream_output_init`](../../../include/flashvm/swf_stream_output.h#L44) | Borrow converter, retry buffer and empty native FIFO; copy backend, pause on success, no allocation. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_swf_stream_output_pump`](../../../include/flashvm/swf_stream_output.h#L53) | Prepare/retry one block; all-or-none FIFO acceptance, no file writes inside callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_swf_stream_output_info`](../../../include/flashvm/swf_stream_output.h#L72) | Observe FIFO backlog and copy source metadata/dequeue clock; EOF is separate from drain. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_swf_stream_output_pause`](../../../include/flashvm/swf_stream_output.h#L68) | Explicitly resume/stop this host's consumer without clearing or priming data. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_init`](../../../include/flashvm/swf_stream_output.h#L45) | Borrow converter, retry buffer and empty native FIFO; copy backend, pause on success, no allocation. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pump`](../../../include/flashvm/swf_stream_output.h#L54) | Prepare/retry one block; all-or-none FIFO acceptance, no file writes inside callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_info`](../../../include/flashvm/swf_stream_output.h#L89) | Observe FIFO backlog and copy source metadata/dequeue clock; EOF is separate from drain. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pause`](../../../include/flashvm/swf_stream_output.h#L85) | Explicitly resume/stop this host's consumer without clearing or priming data. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 
 ## Bounded FIFO / Ограниченная FIFO
 
@@ -273,8 +273,8 @@ exactly, including empty source markers. No audio device, worker or clock starts
 
 | API | Timeline ownership / Владение таймлайном |
 | --- | --- |
-| [`fvm_swf_stream_output_next_frame`](../../../include/flashvm/swf_stream_output.h#L57) | Query next pending/indexed source frame without callbacks or decoding; distinguish future-frame hold from FIFO pressure. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_swf_stream_output_pump_until`](../../../include/flashvm/swf_stream_output.h#L64) | Authorize only actual root frames; future data stays untouched, no implicit backward reset. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_next_frame`](../../../include/flashvm/swf_stream_output.h#L58) | Query next pending/indexed source frame without callbacks or decoding; distinguish future-frame hold from FIFO pressure. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_swf_stream_output_pump_until`](../../../include/flashvm/swf_stream_output.h#L65) | Authorize only actual root frames; future data stays untouched, no implicit backward reset. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install MovieClip methods on the owner before importing the controlled timeline. Managed prototypes remain context-owned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_movieclip_load_swf_ex`](../../../include/flashvm/movieclip.h#L151) | Import exact same source with explicit stream omission; native snapshot/FIFO handle PCM separately. Returned clip is borrowed until pinned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain managed root/library through explicit owner GC safe points; cleanup owns one unpin. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
@@ -386,12 +386,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../../../include/flashvm/swf_stream_convert.h#L56) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:72](../../../include/flashvm/swf_stream_output.h#L72) |
-| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../../../include/flashvm/swf_stream_output.h#L44) |
-| `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:57](../../../include/flashvm/swf_stream_output.h#L57) |
-| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:68](../../../include/flashvm/swf_stream_output.h#L68) |
-| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:53](../../../include/flashvm/swf_stream_output.h#L53) |
-| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:64](../../../include/flashvm/swf_stream_output.h#L64) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:89](../../../include/flashvm/swf_stream_output.h#L89) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:45](../../../include/flashvm/swf_stream_output.h#L45) |
+| `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:58](../../../include/flashvm/swf_stream_output.h#L58) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:85](../../../include/flashvm/swf_stream_output.h#L85) |
+| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:54](../../../include/flashvm/swf_stream_output.h#L54) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:65](../../../include/flashvm/swf_stream_output.h#L65) |
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
