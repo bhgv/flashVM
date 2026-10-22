@@ -1,3 +1,5 @@
+v0.859: restored dimensions within the allowed subpixel tolerance rebuild with a temporary left policy, then publish the serialized anchor unchanged. This prevents a second anchor shift from rejecting valid origins at the coordinate boundary. Tests cover overflow rollback for activation/text/current format, nonfinite x/y, recovery, missing/mistyped position records and exact field-local path bounds.
+
 v0.858: independent policy-byte tests reject center/right without automatic mode, conflicting anchors, unknown bits and invalid wrapping. Both direct native restore and binary graph restore upgrade retired coordinate stubs while preserving captured roots.
 
 v0.857: the C89 tutorial adds --anchors with executable x=10/34/58 and width=52 checks. The public path declaration now explicitly states field-local coordinates and host-applied placement.

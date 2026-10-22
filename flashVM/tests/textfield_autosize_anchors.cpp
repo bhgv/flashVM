@@ -23,7 +23,7 @@ int main()
   put_text(c,field,"autoSize",name);put_number(c,field,"_y",1000000);
   FVM_Value bad;fvm_value_number(&bad,1000001);assert(fvm_object_set(c,field,"_y",&bad)==FVM_INVALID_ARGUMENT && counted_metric(c,field,"_y")==1000000);
   FVM_Path *before=0,*after=0;assert(fvm_textfield_path(c,field,&before)==FVM_OK);put_number(c,field,"_x",123);
-  assert(fvm_textfield_path(c,field,&after)==FVM_OK && fvm_path_count(before)==fvm_path_count(after));fvm_path_destroy(before);fvm_path_destroy(after);
+  assert(fvm_textfield_path(c,field,&after)==FVM_OK && fvm_path_count(before)==fvm_path_count(after));FVM_PathBounds b1,b2;assert(fvm_path_bounds(before,&b1)==FVM_OK && fvm_path_bounds(after,&b2)==FVM_OK && b1.x_min==b2.x_min && b1.x_max==b2.x_max && b1.y_min==b2.y_min && b1.y_max==b2.y_max);fvm_path_destroy(before);fvm_path_destroy(after);
   assert(fvm_gc_collect(c,0)==FVM_OK);fvm_context_destroy(c);
  }
  fvm_runtime_destroy(rt);

@@ -22,10 +22,20 @@ int main()
  for(unsigned i=0;i<4;++i){wire[policy]=flags[i];assert(fvm_value_deserialize(d,wire,size,&out)==FVM_INVALID_ARGUMENT);}
  wire[policy]=0;wire[policy+1]=2;assert(fvm_value_deserialize(d,wire,size,&out)==FVM_INVALID_ARGUMENT);wire[policy+1]=0;
  assert(fvm_value_deserialize(d,wire,size,&out)==FVM_OK);fvm_serialized_free(wire);
+ root.object=copy;assert(fvm_value_serialize(d,&root,&wire,&size)==FVM_OK);hits=0;
+ for(size_t i=0;i+8+26+2<size;++i)if(!std::memcmp(wire+i,text,8)){policy=i+8+26;++hits;}
+ assert(hits==1 && (wire[policy]&4));
+ assert(fvm_value_deserialize(d,wire,policy+2+13,&out)==FVM_INVALID_ARGUMENT);
+ unsigned char coordinate_type=wire[policy+2];wire[policy+2]=FVM_VALUE_UNDEFINED;
+ assert(fvm_value_deserialize(d,wire,size,&out)==FVM_INVALID_ARGUMENT);wire[policy+2]=coordinate_type;
+ assert(fvm_value_deserialize(d,wire,size,&out)==FVM_OK);fvm_serialized_free(wire);
  /* Direct restoration upgrades pre-existing stubs too, without requiring graph callback restoration. */
  FVM_TextFieldState state;assert(fvm_textfield_snapshot(copy,state)==FVM_OK);FVM_Object *direct=0;assert(fvm_object_create(d,&direct)==FVM_OK);
  for(unsigned i=0;i<3;++i){FVM_AccessorEntry &entry=direct->accessors[keys[i]];entry.getter=entry.setter=stub;}
  direct->resource_kind=FVM_RESOURCE_TEXT_FIELD;assert(fvm_textfield_restore(d,direct,state)==FVM_OK && counted_metric(d,direct,"_y")==-12);
+ /* A tolerated dimension subpixel at the position limit must not re-anchor the stored origin. */
+ FVM_TextFieldState edge=state;edge.x=1000000;edge.width+=1.0/128;FVM_Object *near=0;assert(fvm_object_create(d,&near)==FVM_OK);near->resource_kind=FVM_RESOURCE_TEXT_FIELD;
+ assert(fvm_textfield_restore(d,near,edge)==FVM_OK);FVM_TextFieldState measured;assert(fvm_textfield_snapshot(near,measured)==FVM_OK && measured.x==1000000 && measured.width==state.width);
  for(unsigned i=0;i<3;++i){FVM_AccessorEntry captured;captured.getter=captured.setter=stub;captured.root=copy;fvm_textfield_upgrade_accessor(keys[i],captured);assert(captured.getter==stub && captured.root==copy);}
  fvm_context_destroy(c);assert(fvm_gc_collect(d,0)==FVM_OK);fvm_context_destroy(d);fvm_runtime_destroy(rt);
 #endif

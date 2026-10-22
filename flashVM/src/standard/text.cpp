@@ -1702,6 +1702,9 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         field->auto_size_left = state.auto_size_left;
         field->x = state.x; field->y = state.y; field->anchor = state.anchor;
         PreparedGeometry geometry(*field);
+        /* Serialized dimensions are already anchored. Validate/rebuild the local
+         * layout without moving the stored origin, including tolerated subpixels. */
+        geometry.anchor = FVM_TEXT_ANCHOR_LEFT;
         result = prepare_field_geometry(context, field->current, state.text.c_str(), state.text.size(), geometry);
         if (result != FVM_OK)
         {
@@ -1717,7 +1720,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         }
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_auto =
             object->accessors.find("autoSize");
-        geometry.x = state.x; /* Rebuild caches without reapplying a serialized anchor shift. */
+        geometry.anchor = state.anchor; /* Publish the original policy after measurement. */
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_x = object->accessors.find("_x");
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_y = object->accessors.find("_y");
         char *text = new char[state.text.size() + 1];
