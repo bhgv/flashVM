@@ -4,6 +4,7 @@
 
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/standard_text.h"
+#include "flashvm/standard.h" /* The tab Array mode explicitly installs ordinary builtins. */
 /* Подключаем объявления используемых типов и функций. */
 #include "../../../tests/fixtures/font_data.h"
 /* Подключаем объявления используемых типов и функций. */
@@ -34,6 +35,7 @@ int main(int argc, char **argv)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    int tabbed = 0; /* Optional native Array tabStops demonstration. */
     int insets = 0; /* Optional paragraph inset demonstration on the same owner thread. */
     int variants = 0; /* Optional real-face tutorial shares the existing owner context. */
     int automatic = 0; /* Optional executable demonstration uses the same owner context. */
@@ -42,7 +44,8 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--font-variants")) variants = 1; /* Select actual regular/bold/italic/bold-italic sources. */
     else if (argc == 2 && !strcmp(argv[1], "--insets")) insets = 1; /* Measure wrapped and fitted paragraph insets. */
     else if (argc == 2 && !strcmp(argv[1], "--indent")) insets = 2; /* Combine first-line indentation with paragraph margins. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--tabs")) tabbed = 1; /* Apply an explicit Array of tab positions. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent|--tabs]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -75,6 +78,7 @@ int main(int argc, char **argv)
         fvm_example_fail("fvm_context_create(runtime, &context) == FVM_OK", __FILE__, __LINE__);
         /* Завершаем ветку ошибки. */
     }
+    if (tabbed && fvm_standard_install(context) != FVM_OK) fvm_example_fail("install Array builtins", __FILE__, __LINE__); /* Install Array only for the optional managed-table mode. */
     /* Вызываем fvm_standard_text_install: устанавливаем стандартные текстовые объекты.
      * context — контекст интерпретатора.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -492,6 +496,40 @@ int main(int argc, char **argv)
         if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK || fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("inset fit width", __FILE__, __LINE__); /* Fit includes 132px text, 30px insets, 4px gutter and the optional 18px first-line offset. */
         printf("%s fit: width=%.2f\n", insets == 2 ? "indent" : "insets", result.number); /* Expected 184 or 166; exported outlines remain field-local. */
     } /* The ordinary path export and context cleanup below retain their ownership. */
+    if (tabbed) /* Copy managed Array values into the field's future native style. */
+    { /* Declare every local before statements for C89. */
+        FVM_Object *array = 0; /* Managed Array stays in this context and receives a global root. */
+        double advance, width, height; /* Copy numeric observations before reusing result. */
+        if (fvm_construct(context, "Array", 0, 0, &array) != FVM_OK) fvm_example_fail("construct tab Array", __FILE__, __LINE__); /* Start empty to avoid the one-number length constructor. */
+        fvm_value_undefined(&value); /* Prepare a borrowed object value. */
+        value.type = FVM_VALUE_OBJECT; /* Use the public object representation. */
+        value.object = array; /* The context owns the Array lifetime. */
+        if (fvm_set_global(context, "tabs", &value) != FVM_OK || fvm_object_set(context, format, "tabStops", &value) != FVM_OK) fvm_example_fail("root and store tab Array", __FILE__, __LINE__); /* Root source storage before later calls. */
+        fvm_value_number(&value, 40); /* First custom stop is 40 pixels from content origin. */
+        if (fvm_object_set(context, array, "0", &value) != FVM_OK) fvm_example_fail("first tab stop", __FILE__, __LINE__); /* Canonical Array property storage updates length. */
+        fvm_value_number(&value, 80); /* Second custom stop is strictly greater. */
+        if (fvm_object_set(context, array, "1", &value) != FVM_OK) fvm_example_fail("second tab stop", __FILE__, __LINE__); /* The native field will retain copied numbers. */
+        fvm_value_undefined(args); /* Prepare one borrowed format argument. */
+        args[0].type = FVM_VALUE_OBJECT; /* Select the managed object representation. */
+        args[0].object = format; /* Existing global retains this TextFormat. */
+        if (fvm_object_call(context, field, "setNewTextFormat", 1, args, &result) != FVM_OK) fvm_example_fail("future tab format", __FILE__, __LINE__); /* Validate and copy the source Array before publication. */
+        fvm_value_boolean(&value, 0); /* Observe natural width without wrapping first. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("disable tab wrapping", __FILE__, __LINE__); /* Keep existing multiline policy. */
+        if (fvm_value_string(&value, "A\tV\tA") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) fvm_example_fail("tabbed text", __FILE__, __LINE__); /* Full assignment uses the copied future style. */
+        fvm_value_boolean(&value, 1); /* Enable the left automatic anchor. */
+        if (fvm_object_set(context, field, "autoSize", &value) != FVM_OK) fvm_example_fail("fit tabbed field", __FILE__, __LINE__); /* Measurement includes actual tab advances. */
+        if (fvm_object_get(context, field, "textWidth", &result) != FVM_OK) fvm_example_fail("tabbed advance", __FILE__, __LINE__); /* Read intrinsic advance without gutter. */
+        advance = result.number; /* Expected 104 pixels. */
+        if (fvm_object_get(context, field, "_width", &result) != FVM_OK) fvm_example_fail("tabbed fitted width", __FILE__, __LINE__); /* Outer width adds the four-pixel gutter. */
+        width = result.number; /* Expected 108 pixels. */
+        printf("tabs fit: advance=%.2f width=%.2f\n", advance, width); /* The executable checker verifies both analytical values. */
+        fvm_value_boolean(&value, 1); /* Enable wrapping before constraining width. */
+        if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK) fvm_example_fail("enable tab wrapping", __FILE__, __LINE__); /* The table restarts on each visual line. */
+        fvm_value_number(&value, 54); /* Leave a 50px content box after gutter. */
+        if (fvm_object_set(context, field, "_width", &value) != FVM_OK || fvm_object_get(context, field, "_height", &result) != FVM_OK) fvm_example_fail("wrapped tab height", __FILE__, __LINE__); /* Three lines fit with ordinary automatic height. */
+        height = result.number; /* Expected 140px including gutter and leading. */
+        printf("tabs wrap: width=54.00 height=%.2f\n", height); /* Owned path export continues below. */
+    } /* Source Array and native style have independent identities and owner lifetimes. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -509,6 +547,7 @@ int main(int argc, char **argv)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)tabbed; /* Option parsing remains available without font support. */
     (void)insets; /* The option remains parseable without font support. */
     (void)variants; /* The option is still parseable in a NO_FONTS profile. */
     (void)automatic; /* The option remains parseable in a NO_FONTS profile. */

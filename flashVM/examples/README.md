@@ -100,7 +100,7 @@
     - [os_ports](#example-embedding-os_ports) — <small><em>Native-ввод и TCP connect/send/close</em></small>
   - [text](#group-embedding-text)
     - [font_libraries](#example-embedding-font_libraries) — <small><em>Шрифты, shaping и редактируемые контуры</em></small>
-    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, отступы, начертания и авторазмер</em></small>
+    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, tabStops, отступы и авторазмер</em></small>
     - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
     - [text_layout](#example-embedding-text_layout) — <small><em>Строки, tabStops, отступы и контуры text layout</em></small>
     - [url_encoding](#example-embedding-url_encoding) — <small><em>URL-функции AS1/AS2, UTF-16 и NUL без потери длины</em></small>
@@ -2099,6 +2099,8 @@ The native `embedding/text_layout` tutorial adds `--indent` and `--hanging-inden
 The `embedding/standard_text --indent` mode combines first-line indentation with paragraph margins and checked wrapped/unwrapped fitting. [Contract](../doc/TEXT_INDENT.md). / Первая строка абзаца, поля и проверенный авторазмер.
 
 The native `embedding/text_layout --tabs` mode observes copied 40/80px word anchors after source table mutation and font teardown. [Contract](../doc/TEXT_TABS.md). / Пользовательские tabStops, независимая геометрия и контуры.
+
+The `embedding/standard_text --tabs` mode roots a managed Array, copies current/future tab positions and checks fitted/wrapped geometry. [Contract](../doc/TEXT_TABS.md). / Массив tabStops и проверенный авторазмер поля.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

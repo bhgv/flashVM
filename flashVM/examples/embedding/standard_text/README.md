@@ -38,6 +38,7 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Create caller-owned runtime state from borrowed initialized config; keep it alive until every context is destroyed. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release runtime resources after context destruction; do not retain runtime/context borrows afterwards. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Publish a copied value as a context global so the VM traces the managed format/field; borrowed strings are not host-owned objects. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install ordinary Object/Array and related builtins on the owner context for `--tabs`; may allocate and returns errors before the text tutorial starts. No device acquisition; repeated intact installation is idempotent. [Declaration](../../../include/flashvm/standard.h). |
 | [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L21) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L25) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 | [`fvm_standard_text_register_font_variant`](../../../include/flashvm/standard_text.h#L35) | Borrow context/family, style bits, counted font bytes and face index; synchronously validate/copy a real face into one slot. Context owns the copy. Owner-thread only, no GC/teardown calls; duplicate/unknown flags are INVALID_ARGUMENT, missing face use is NOT_FOUND, budget/profile is UNSUPPORTED, allocation is OUT_OF_MEMORY. No system lookup or synthetic fallback. [EN](../../../doc/TEXT_FONT_VARIANTS.md) / [RU](../../../doc/TEXT_FONT_VARIANTS.ru.md). |
@@ -135,6 +136,20 @@ profile. No device or original Flash acceptance is claimed.
 [Аргументы, ошибки и ограничения EN](../../../doc/TEXT_INDENT.md) /
 [RU](../../../doc/TEXT_INDENT.ru.md).
 
+## Managed tab table / Управляемая таблица tabStops
+
+Run `flashvm_examples_embedding_standard_text_main --tabs` with FONTS.
+The mode explicitly installs ordinary builtins, creates and globally roots Array
+[40,80], applies a copied future style and assigns tabbed text. Expected:
+`tabs fit: advance=104.00 width=108.00`, then
+`tabs wrap: width=54.00 height=140.00`. Existing independent path export and owner
+cleanup still run. NO_FONTS reports its existing profile limit; no device is opened.
+
+Режим устанавливает Array, удерживает исходный массив глобальным корнем и
+копирует позиции 40/80 в будущий стиль. Ожидаются ширина текста 104, автоширина
+108, затем высота 140 при ширине поля 54. Путь принадлежит вызывающему отдельно.
+[Контракт EN](../../../doc/TEXT_TABS.md) / [RU](../../../doc/TEXT_TABS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -155,6 +170,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../../../include/flashvm/value.h#L87) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../../../include/flashvm/standard_text.h#L25) |
 | `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:35](../../../include/flashvm/standard_text.h#L35) |
