@@ -26,3 +26,27 @@ Exported paths remain independent. No device/window is required. `textfield_auto
 checks analytical 40px AV (48px advance, 52x48 outer dimensions), edits, format
 changes, Boolean modes, unsupported anchors and GC. Full Flash reference/display
 and physical platform/device acceptance remain open.
+Native implementation uses `PreparedGeometry` and `prepare_field_geometry` before
+[`fvm_textfield_create`](../include/flashvm/standard_text.h#L27) fields publish edited state; [`fvm_textfield_path`](../include/flashvm/standard_text.h#L33) exports
+independent geometry through the existing public API.
+
+v0.846: snapshots and binary/channel transfers preserve auto-size in a free multiline
+policy bit without extra bytes. Legacy 0/1 restores manual policy; old readers reject
+the new bit. Restored automatic fields are remeasured before publication.
+`textfield_autosize_transfer.cpp` checks source destruction, receiver GC, future
+formatting and exact wire length. v0.847 adds `textfield_autosize_wrap.cpp` and
+`textfield_autosize_formats.cpp`: width-constrained height, policy rollback,
+kerning/tracking/underline composition, NUL, empty text and insertion.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
+<!-- source-links:end -->

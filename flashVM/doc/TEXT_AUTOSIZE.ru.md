@@ -26,3 +26,28 @@ Center/right пока дают UNSUPPORTED: нативная модель поз
 `textfield_autosize.cpp` проверяет аналитический AV при 40px (advance 48,
 внешний размер 52x48), правки, форматы, Boolean, неподдержанные якоря и GC.
 Полная эталонная/сценическая приёмка Flash и физические платформы остаются открытыми.
+Нативная реализация использует `PreparedGeometry` и `prepare_field_geometry` до
+публикации правок полей [`fvm_textfield_create`](../include/flashvm/standard_text.h#L27); [`fvm_textfield_path`](../include/flashvm/standard_text.h#L33) экспортирует
+независимую геометрию через существующий публичный API.
+
+v0.846: снимки и бинарная/канальная передача сохраняют режим в свободном бите
+multiline без дополнительных байтов. Старые 0/1 дают ручной размер; старый
+читатель отклоняет новый бит. Восстановленное автоматическое поле измеряется
+до публикации. `textfield_autosize_transfer.cpp` проверяет уничтожение источника,
+GC получателя, будущий формат и длину записи. v0.847 добавляет
+`textfield_autosize_wrap.cpp` и `textfield_autosize_formats.cpp`: высоту при
+ограниченной ширине, откат политики, сочетание кернинга/интервалов/подчёркивания,
+NUL, пустой текст и вставку.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:33](../include/flashvm/standard_text.h#L33) |
+<!-- source-links:end -->
