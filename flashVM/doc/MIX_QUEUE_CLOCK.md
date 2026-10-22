@@ -12,6 +12,8 @@ v0.940: clock_end explicitly disables accounting after producer quiescence, no p
 
 v0.941: callbacks attempt recursive begin/end/info during queue observation, write, pause and clear; every attempt rejects before state publication. Failed begin remains inactive; failed writes/clear/pause and thrown write/queued callbacks preserve retry/accounting. Impossible growth and played regression leave caller snapshots and the last valid position intact. Acknowledged clear resets the active epoch. The ordinary test covers exceptions; --no-throw supports separate sanitizer selection.
 
+v0.942: an explicit white-box seed tests MAX_CLOCK-2, a rejected two-frame block, exact successful retry at MAX_CLOCK and base/tail overflow rejection without voice advance or backend write. After acknowledged clear a real tail starts at the next source sample and counts from zero. The test compiles the actual adapter implementation and seeds only counters; it does not claim real-duration playback of 2^53 frames.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
