@@ -34,6 +34,23 @@ All roadmap stages and physical platform/device acceptance remain open.
 defines justify as a Flash8 paragraph alignment; exact Flash reference matching
 is a separate acceptance step.
 
+## AS2 field policy and whitespace edges — v0.878
+
+TextFormat align accepts justify for unloaded host contexts and loaded SWF8;
+older loaded movies return UNSUPPORTED when applying/measuring that format.
+Wrapped multiline TextFields use the same native policy, including auto-size
+and underline advances. Unwrapped fields retain left placement for this policy.
+Manual justified fields also validate layout before text/policy/format publication;
+unsupported wrapped bidi edits leave the previous field intact. Current/future
+format snapshots return justify. Packed graph state uses a separate style bit,
+not the existing low alignment/kerning bits; no extra payload numbers are added.
+Legacy records retain their alignment, old readers reject the new style flag.
+
+Whitespace tests cover consecutive/leading/trailing spaces, hard ends, CRLF,
+empty final paragraphs and word ligatures. Natural width sums retained glyph
+advances directly, avoiding cancellation under fractional all-space tracking.
+Space/combining ambiguity and bidi runs reject with a cleared output.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

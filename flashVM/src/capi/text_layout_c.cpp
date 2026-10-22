@@ -561,7 +561,6 @@ static FVM_Result justify_line(const Paragraph &p, size_t start, size_t end,
     size_t first = start, visible = end, gaps = 0;
     while (first < end && p.chars[first] == FVM_TEXT_LAYOUT_JUSTIFY_SPACE) ++first;
     while (visible > start && p.chars[visible - 1] == FVM_TEXT_LAYOUT_JUSTIFY_SPACE) --visible;
-    double removed = 0;
     for (size_t scalar = start; scalar < end; ++scalar)
     {
         if (p.chars[scalar] != FVM_TEXT_LAYOUT_JUSTIFY_SPACE) continue;
@@ -575,10 +574,20 @@ static FVM_Result justify_line(const Paragraph &p, size_t start, size_t end,
         if (low == glyphs.size() || glyphs[low].shaped.cluster != p.bytes[scalar] ||
             (low + 1 < glyphs.size() && glyphs[low + 1].shaped.cluster == p.bytes[scalar]))
             return FVM_UNSUPPORTED;
-        if (scalar >= visible) removed += glyphs[low].shaped.x_advance;
-        else if (scalar > first) ++gaps;
+        if (scalar > first && scalar < visible) ++gaps;
     }
-    double natural = advance - removed;
+    /* Sum retained advances directly: subtracting rounded all-space sums can
+     * create a tiny negative width under fractional tracking. */
+    double natural = 0;
+    for (size_t i = 0; i < glyphs.size(); ++i)
+    {
+        if (i && glyphs[i - 1].shaped.cluster > glyphs[i].shaped.cluster)
+            return FVM_UNSUPPORTED;
+        size_t scalar = justify_scalar(p, start, end, glyphs[i].shaped.cluster);
+        if (scalar == end || p.bytes[scalar] != glyphs[i].shaped.cluster)
+            return FVM_UNSUPPORTED;
+        if (scalar < visible) natural += glyphs[i].shaped.x_advance;
+    }
     if (!(natural >= 0 && natural <= FVM_TEXT_LAYOUT_MAX_EXTENT)) return FVM_UNSUPPORTED;
     double extra = expand && gaps && width > natural ? (width - natural) / gaps : 0;
     double shift = 0;
