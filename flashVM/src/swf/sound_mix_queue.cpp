@@ -530,6 +530,17 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_sound_active(FVM_SWFSoundMixQueue 
     return result;
 }
 
+/* Cancel a future identity lease without editing already accepted or retained mixed bytes. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_stop_id(FVM_SWFSoundMixQueue *queue, unsigned int id)
+{
+    if (!queue || queue->busy || !id || id > FVM_SWF_SOUND_ID_MAX) return FVM_INVALID_ARGUMENT;
+    if (queue->identities.empty()) return FVM_UNSUPPORTED;
+    MixBusyScope scope(queue);
+    FVM_Result result = fvm_swf_sound_mixer_stop_id(queue->mixer, id);
+    if (result == FVM_OK) queue->identities[id] = 0;
+    return result;
+}
+
 /* [GC:] Native-only cleanup after producer quiescence; neither borrowed owner is released. */
 extern "C" void fvm_swf_sound_mix_queue_close(FVM_SWFSoundMixQueue *queue)
 {

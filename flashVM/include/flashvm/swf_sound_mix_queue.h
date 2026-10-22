@@ -136,6 +136,13 @@ extern "C"
      * Same callback/thread/ownership/status contract, no allocation/VM/GC. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_sound_active(FVM_SWFSoundMixQueue *,
                                                             unsigned int sound_id, int *out);
+    /* Stop future same-ID mixing using the mixer's immediate/DECLICK policy, then cancel
+     * its tracked deadline. Existing accepted/pending PCM is unchanged; a later start
+     * composes only after that retained interval. Does not pause/clear/rewind the FIFO.
+     * Required ID 1..65535/live serialized queue; invalid/reentry INVALID_ARGUMENT,
+     * disabled UNSUPPORTED. No allocation/callback/VM/GC; real mixer errors propagate.
+     * Keep all borrowed owners live; use adapted.clear for acknowledged full cancellation. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_stop_id(FVM_SWFSoundMixQueue *, unsigned int sound_id);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;
