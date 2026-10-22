@@ -9,6 +9,12 @@ counts are historical unless explicitly rerun for this revision.
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
+v0.860: Native TextField _x/_y and left/center/right fitting, graph transfer,
+legacy callback recovery and subpixel-safe restoration. 66 native/tutorial,
+seven ASan/UBSan and seven NO_FONTS checks pass; 18 allocation-failure sweeps
+run in the ordinary build. [EN](TEXT_AUTOSIZE.md) / [RU](TEXT_AUTOSIZE.ru.md).
+All nine stages and Flash display/reference/device acceptance remain open.
+
 v0.852: Left-anchored automatic TextField geometry with transactional edits,
 wrapping, native JIT/GC/worker checks, graph transfer and legacy accessor recovery.
 58 native, eight ASan/UBSan and seven NO_FONTS checks pass.

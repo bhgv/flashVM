@@ -1,6 +1,6 @@
-Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
-
 # ActionScript text bridge (Flash 6–8 subset)
+
+Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
 
 The opt-in [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L17) adds TextFormat/TextField class metadata
 and a named TextFormat constructor. Install it separately from the initial

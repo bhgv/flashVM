@@ -1,5 +1,12 @@
 # Реестр выполнения / Compatibility status
 
+Native TextField anchors v0.853–v0.860: bounded signed _x/_y, left/center/right
+fitting, transactional geometry, versioned graph flags, retired-accessor recovery,
+AVM1 native JIT and independent OS workers. 66 native/tutorial, seven ASan/UBSan
+and seven NO_FONTS checks pass; 18 allocation-failure sweeps use the ordinary
+build. Full Flash display/reference and physical platform/device acceptance remain
+open. [EN](TEXT_AUTOSIZE.md) / [RU](TEXT_AUTOSIZE.ru.md).
+
 Queued event identities v0.793–v0.802: exact fresh-grid duration, optional native deadline/storage diagnostics, tracked bounded adoption and clear/stop controls. Desktop SyncNoMultiple includes pending/queued PCM after software voice retirement. 89 native/C89 and 15 SDL dummy checks pass; 15 full-core ASan/UBSan checks plus one no-new-allocation path; failure boundaries use scoped UBSan. Root stream/event integration, children, reference A/V/seek and physical/platform acceptance remain open. [EN](QUEUED_SOUND_IDS.md) / [RU](QUEUED_SOUND_IDS.ru.md).
 
 Native event ownership v0.783–v0.792: bounded preparation/clone/mixer construction and adoption; repeat-aware native positioning, exact storage, owner decode outside worker mutex. 79 native/C89, 14 SDL dummy-player and 11 full-core ASan/UBSan success-path checks pass; 12 isolated failure allowances pass scoped UBSan. Root stream/event integration, children, reference timing and device/platform acceptance remain open. [EN](NATIVE_VOICES.md) / [RU](NATIVE_VOICES.ru.md).

@@ -1,14 +1,4 @@
-v0.859: restored dimensions within the allowed subpixel tolerance rebuild with a temporary left policy, then publish the serialized anchor unchanged. This prevents a second anchor shift from rejecting valid origins at the coordinate boundary. Tests cover overflow rollback for activation/text/current format, nonfinite x/y, recovery, missing/mistyped position records and exact field-local path bounds.
-
-v0.858: independent policy-byte tests reject center/right without automatic mode, conflicting anchors, unknown bits and invalid wrapping. Both direct native restore and binary graph restore upgrade retired coordinate stubs while preserving captured roots.
-
-v0.857: the C89 tutorial adds --anchors with executable x=10/34/58 and width=52 checks. The public path declaration now explicitly states field-local coordinates and host-applied placement.
-
-v0.856: actual AVM1 SetMember/GetMember tests cover all anchors and signed y in interpreter, attached native code and automatic JIT. Four OS workers perform 64 edits/GC passes each using separate runtimes, contexts and font registrations; all three anchors participate.
-
-v0.855: eighteen ordinary-build allocation sweeps cover all three anchors across activation, assignment, replaceText, current format, wrapping and wrapped-width edits. Failed calls preserve x/y and prior text/mode/dimensions; GC frames/native depth remain balanced.
-
-# Native TextField horizontal anchors — v0.853
+# Native TextField horizontal anchors — v0.860
 
 The native field now accepts autoSize left, center and right. When wrapping is
 inactive, fitting preserves respectively x, x+width/2 or x+width. Setting the mode
@@ -49,6 +39,31 @@ v0.854: binary/channel transfer tests exercise every anchor after source teardow
 GC and later edits, and reject invalid restored positions/anchor combinations.
 Wrapped-mode tests preserve x/y and width, re-anchor when wrapping is disabled,
 and shrink empty text to its gutter.
+
+
+v0.855: eighteen ordinary-build allocation sweeps cover all three anchors across activation, assignment, replaceText, current format, wrapping and wrapped-width edits. Failed calls preserve x/y and prior text/mode/dimensions; GC frames/native depth remain balanced.
+
+v0.856: actual AVM1 SetMember/GetMember tests cover all anchors and signed y in interpreter, attached native code and automatic JIT. Four OS workers perform 64 edits/GC passes each using separate runtimes, contexts and font registrations; all three anchors participate.
+
+v0.857: the C89 tutorial adds --anchors with executable x=10/34/58 and width=52 checks. The public path declaration now explicitly states field-local coordinates and host-applied placement.
+
+v0.858: independent policy-byte tests reject center/right without automatic mode, conflicting anchors, unknown bits and invalid wrapping. Both direct native restore and binary graph restore upgrade retired coordinate stubs while preserving captured roots.
+
+v0.859: restored dimensions within the allowed subpixel tolerance rebuild with a temporary left policy, then publish the serialized anchor unchanged. This prevents a second anchor shift from rejecting valid origins at the coordinate boundary. Tests cover overflow rollback for activation/text/current format, nonfinite x/y, recovery, missing/mistyped position records and exact field-local path bounds.
+
+## Verification at v0.860
+
+Release text-jit: 66 font/text/GC/graph/JIT/tutorial checks pass, including eight
+new anchor checks. Seven anchor success/validation tests pass with full-core
+ASan/UBSan; leak checking is unavailable in this environment. Eighteen allocation
+failure sweeps run in the ordinary build. Seven NO_FONTS API checks pass.
+The renamed detached component configures and its copied tutorial checker passes
+against the tested native binary. This verifies configuration/path independence;
+it is not a second complete detached native build or foreign-device execution.
+
+All nine roadmap stages remain open. Full Flash reference/display acceptance,
+SWF text loading, HTML/styled spans, audio/video integration, child streams and
+physical platforms/devices are outside this bounded anchor series.
 
 Reference: [Adobe AS2 TextField reference mirror](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#autoSize).
 
