@@ -18,6 +18,8 @@ v0.920: binary and channel tests transfer default current styles with either def
 
 v0.921: ordinary C++ allocation-boundary sweeps cover periodic native construction, current-style size changes, text assignment and replaceText. Every failed construction clears output and keeps the font reusable; failed field edits preserve text, measured width/height, autoSize dimensions and usable paths through post-call GC. These fault sweeps are ordinary builds, separate from sanitizer acceptance.
 
+v0.922: actual AVM1 size writes followed by setTextFormat produce equal 40px/20px default tab measurements in interpreter, attached native JIT and automatic JIT modes (entry counters checked by the shared runner). Four real OS workers independently own fonts and derive 40px/20px intervals across 64 iterations each, checking tracking, indent and path lifetime. This does not authorize sharing a mutable font or VM context across threads.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
