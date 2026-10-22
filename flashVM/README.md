@@ -1,10 +1,12 @@
-Development version: **0.971** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.971 ` and an English description. Increase the subversion before each
+Development version: **0.972** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.972 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.972: [Exercise real StopSounds bindings, failed clear retry, GC and interpreter/JIT root actions.](doc/MIX_QUEUE_IDENTITIES.md).
 
 v0.971: [Use the checked tracked predictor and event stop_all in the executable six-mode C89 tutorial.](doc/MIX_QUEUE_IDENTITIES.md).
 

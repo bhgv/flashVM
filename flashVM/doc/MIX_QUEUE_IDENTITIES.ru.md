@@ -81,6 +81,9 @@ v0.970: Выполнены 256 stop/retry/restart циклов на четырё
 
 v0.971: Исполняемый C89-пример использует точный бюджет с ID и общую остановку событий.
 
+
+v0.972: Проверены root StopSounds, failed clear/retry, GC и interpreter/JIT; event stop_all сохраняет FIFO.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -81,6 +81,9 @@ v0.970: Run 256 independent stop/retry/restart epochs with per-worker exact PCM 
 
 v0.971: Use the checked tracked predictor and event stop_all in the executable six-mode C89 tutorial.
 
+
+v0.972: Exercise real StopSounds bindings, failed clear retry, GC and interpreter/JIT root actions.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
