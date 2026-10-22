@@ -145,7 +145,7 @@ extern "C"
     /* Like create_tabbed, but U+0009 selects the first positive multiple of
      * period strictly beyond the logical pen (including indent/tracking).
      * Finite period must be in (0,1000000]. Stops restart on each visual line.
-     * No table limit or allocation: glyph/work/extent limits still apply.
+     * No stop table is allocated; glyph/work/extent limits still apply.
      * Actual tabs require LTR level zero and non-JUSTIFY. Borrow all inputs
      * synchronously; owned output and independent paths use normal destructors.
      * Serialize mutable font access; no VM/GC. Invalid input -> INVALID_ARGUMENT,

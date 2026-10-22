@@ -481,9 +481,10 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     }
     else
     {
-    result = fvm_text_layout_create_tabbed(font.font, text, size, &options,
-                              style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing, style.indent, style.tab_stops.empty() ? 0 : style.tab_stops.begin(),
-                              style.tab_stops.size(), out);
+        result = fvm_text_layout_create_tabbed(font.font, text, size, &options,
+                style.kerning ? 0 : FVM_FONT_SHAPE_NO_KERNING, style.letter_spacing,
+                style.indent, style.tab_stops.empty() ? 0 : style.tab_stops.begin(),
+                style.tab_stops.size(), out);
     }
     if (result == FVM_OK && font_metrics)
         *font_metrics = metrics;

@@ -1,8 +1,8 @@
-# Default tab metrics
+# Font-derived default tabs
 
 The native [fvm_font_average_width](../include/flashvm/font.h#L65) function reads the positive OS/2 xAvgCharWidth and scales it through FreeType to unhinted 26.6 pixels. It never substitutes a space, maximum advance or sample-string average. It borrows the live font synchronously; serialize mutable face access. No allocation, VM state or GC roots are involved. A required out scalar is zeroed on failure. Invalid pointers return INVALID_ARGUMENT; absent/nonpositive metrics return UNSUPPORTED; NO_FONTS returns UNSUPPORTED with valid out. Existing font structures and ABIs remain unchanged.
 
-The fixture independently declares 547 units at 1000 units/em: 40px gives 21.875px, 20px gives 10.9375px. This metric alone does not enable default tabs.
+The fixture independently declares 547 units at 1000 units/em: 40px gives 21.875px, 20px gives 10.9375px. The initial v0.915 commit only exposed this metric; v0.917 below enables default tabs.
 
 Reference: [OpenType OS/2 specification](https://learn.microsoft.com/en-us/typography/opentype/spec/os2#xavgcharwidth). Flash reference/device acceptance remains open.
 
@@ -21,6 +21,10 @@ v0.921: ordinary C++ allocation-boundary sweeps cover periodic native constructi
 v0.922: actual AVM1 size writes followed by setTextFormat produce equal 40px/20px default tab measurements in interpreter, attached native JIT and automatic JIT modes (entry counters checked by the shared runner). Four real OS workers independently own fonts and derive 40px/20px intervals across 64 iterations each, checking tracking, indent and path lifetime. This does not authorize sharing a mutable font or VM context across threads.
 
 v0.925: a distinct embedded bold face with an independently changed OS/2 average proves default interval selection follows that face rather than the family regular slot or glyph maximum. Three alignments, signed indent, margins/blockIndent, fractional tracking, 40px/20px size changes and path export agree with analytic intrinsic/outer widths. Examples --default-tabs are checked in both native layout and managed-field tutorials.
+
+v0.926 validation: 145/145 native text/font/GC/JIT/serialization/tutorial checks; 50/50 targeted ASan/UBSan checks; 21/21 NO_FONTS checks. Four new ordinary-build allocation sweeps are separate. LeakSanitizer is disabled because this environment cannot inspect /proc; no leak-check claim is made. Native JIT is available and the shared AVM1 runner checks actual entries. The renamed detached component configures with its own profile and both copied tutorial checkers pass against the native binaries; no separate detached build was run. Source links and the frontend/example catalog checker pass.
+
+The existing custom-table APIs and option structure ABI remain unchanged. Old readers may reject newly supported default-tab text during layout restore; a wire-version change does not provide older readers with this functionality. No external/device fonts, bidi tab paragraphs, wrapped tab justification or original-Player pixel/behavior parity are certified. Audio, video, timeline and unrelated roadmap stages were not implemented or reaccepted by this text series. All nine stages and real-platform acceptance remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

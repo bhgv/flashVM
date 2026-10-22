@@ -202,7 +202,7 @@ extern "C" FVM_Result fvm_font_average_width(const FVM_Font *font, double *out)
     const TT_OS2 *table = (const TT_OS2 *)FT_Get_Sfnt_Table(font->face, ft_sfnt_os2);
     if (!table || table->version == FVM_FONT_OS2_MISSING_VERSION || table->xAvgCharWidth <= 0)
         return FVM_UNSUPPORTED;
-    double width = FT_MulFix(table->xAvgCharWidth, font->face->size->metrics.x_scale) / 64.0;
+    double width = FT_MulFix(table->xAvgCharWidth, font->face->size->metrics.x_scale) / FVM_FONT_METRIC_UNITS_PER_PIXEL;
     if (!(width > 0 && width <= FVM_FONT_AVERAGE_MAX_EXTENT)) return FVM_UNSUPPORTED;
     *out = width;
     return FVM_OK;
