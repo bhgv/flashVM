@@ -16,6 +16,8 @@ v0.942: явный white-box seed проверяет MAX_CLOCK-2, отказ д�
 
 v0.943: настоящий преобразуемый SWF stream-producer даёт девять принятых кадров; отказ tail не меняет сумму, точные повторы доводят общий приём/удаление до 15 кадров. Stream-only producer по-прежнему сообщает свои девять. Frame-gate, EOF и опустошение очереди различаются. Сохранены полный stereo PCM-oracle и удаление исходной VM; drained clock_end проходит. Это native-учёт перехода, не frontend A/V-синхронизация.
 
+v0.944: настоящие MovieClip frame-actions выполняются интерпретатором и доступным native JIT с проверкой native-entry counters. Общий учёт следует разрешённым stream-кадрам, остановке/gap и GC safe points. Явные goto/stream seek вызывают clear адаптера и начинают согласованный нулевой отсчёт; проверяются повторные source bytes и итоговые метрики. В native JIT-профиле выполнены оба режима. Это ограниченная root timeline/seek-проверка, не полная Flash seek-совместимость и не дочерние клипы.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

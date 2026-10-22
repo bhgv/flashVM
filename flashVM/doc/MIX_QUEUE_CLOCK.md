@@ -16,6 +16,8 @@ v0.942: an explicit white-box seed tests MAX_CLOCK-2, a rejected two-frame block
 
 v0.943: a real converted SWF stream producer contributes nine accepted frames; rejected tail output leaves that count unchanged, then exact tail retries bring the shared total/dequeue to 15 frames. The stream-only producer still reports its own nine frames. Frame-gate, source EOF and queue depletion remain distinct. The full stereo rational PCM oracle and independent source VM teardown are retained; drained clock_end succeeds. This proves native handoff accounting, not frontend A/V synchronization.
 
+v0.944: actual MovieClip frame actions execute in interpreter and available native JIT modes with native-entry counters asserted. Shared accounting follows authorized stream frames, stopped ticks/gaps and GC safe points. Explicit goto/stream seek clears through the adapter and starts a matching zero epoch; replayed source bytes and final submitted/dequeued values are checked. Both modes ran in the native JIT profile. This is bounded root timeline/seek coordination, not complete Flash seek or child-clip scheduling.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
