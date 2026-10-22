@@ -1585,6 +1585,7 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     out.height = field->height;
     out.multiline = field->multiline;
     out.wrap = field->wrap;
+    out.auto_size_left = field->auto_size_left;
     return FVM_OK;
 }
 
@@ -1649,6 +1650,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         field->height = state.height;
         field->multiline = state.multiline;
         field->wrap = state.wrap;
+        field->auto_size_left = state.auto_size_left;
         PreparedGeometry geometry(*field);
         result = prepare_field_geometry(context, field->current, state.text.c_str(), state.text.size(), geometry);
         if (result != FVM_OK)
@@ -1671,10 +1673,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         }
         field->text = text;
         field->text_size = state.text.size();
-        field->width = state.width;
-        field->height = state.height;
-        field->multiline = state.multiline;
-        field->wrap = state.wrap;
+        geometry.commit(*field);
         object->resource = field;
         object->release_resource = release_field;
         return FVM_OK;

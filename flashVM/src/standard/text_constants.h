@@ -15,4 +15,7 @@
 #define FVM_TEXT_FIELD_WRITABLE_PROPERTIES 7U /* Text, policies, dimensions, color and autoSize. */
 #define FVM_TEXT_FIELD_METHOD_SELECTORS 4U /* Stable format-method selector prefix length. */
 #define FVM_TEXT_FIELD_WRITABLE_SELECTORS (FVM_TEXT_FIELD_METHOD_SELECTORS + FVM_TEXT_FIELD_WRITABLE_PROPERTIES)
+#define FVM_TEXT_STATE_MULTILINE 1UL /* Legacy low bit of the first field policy byte. */
+#define FVM_TEXT_STATE_AUTO_SIZE_LEFT 2UL /* Automatic fitting without adding payload bytes. */
+#define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT)
 #endif

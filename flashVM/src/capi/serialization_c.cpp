@@ -713,7 +713,8 @@ struct Writer
         string(s.text);
         number(s.width);
         number(s.height);
-        byte(s.multiline ? 1 : 0);
+        byte((s.multiline ? FVM_TEXT_STATE_MULTILINE : 0UL) |
+             (s.auto_size_left ? FVM_TEXT_STATE_AUTO_SIZE_LEFT : 0UL));
         byte(s.wrap ? 1 : 0);
     }
     /* Implement callback for this subsystem. */
@@ -972,8 +973,9 @@ struct Reader
         unsigned long multiline = byte(), wrap = byte();
 
         /* Computation / Вычисление и обновление состояния. */
-        require(multiline <= 1 && wrap <= 1);
-        s.multiline = multiline != 0;
+        require(!(multiline & ~FVM_TEXT_STATE_POLICY_MASK) && wrap <= 1);
+        s.multiline = (multiline & FVM_TEXT_STATE_MULTILINE) != 0;
+        s.auto_size_left = (multiline & FVM_TEXT_STATE_AUTO_SIZE_LEFT) != 0;
         s.wrap = wrap != 0;
         return s;
     }

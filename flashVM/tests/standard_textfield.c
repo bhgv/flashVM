@@ -73,7 +73,7 @@ int main(void)
         assert(get_number(c, field, "textWidth") == 28);
         fvm_value_boolean(&v, 1);
         assert(fvm_object_set(c, field, "html", &v) == FVM_UNSUPPORTED);
-        assert(fvm_object_get(c, field, "autoSize", &out) == FVM_UNSUPPORTED);
+        assert(fvm_object_get(c, field, "autoSize", &out) == FVM_OK && out.type == FVM_VALUE_STRING && strcmp(out.string, "none") == 0);
         assert(fvm_object_call(c, field, "replaceText", 0, 0, &out) == FVM_UNSUPPORTED);
         fvm_value_number(&v, 999);
         assert(fvm_object_set(c, field, "textWidth", &v) == FVM_OK);

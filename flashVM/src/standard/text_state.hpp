@@ -43,8 +43,9 @@ struct FVM_TextFieldState
         height; /* Vertical extent in the API coordinate system. */
     bool multiline /* Whether multiple text lines are permitted. */,
         wrap; /* Whether line wrapping is enabled. */
+    bool auto_size_left; /* Rebuild measured dimensions with a fixed native left origin. */
     /* Initialize Text Field State and its owned state. */
-    FVM_TextFieldState() : width(100), height(100), multiline(false), wrap(false)
+    FVM_TextFieldState() : width(100), height(100), multiline(false), wrap(false), auto_size_left(false)
     {
     }
 };
