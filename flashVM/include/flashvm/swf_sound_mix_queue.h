@@ -34,11 +34,11 @@ extern "C"
     typedef struct FVM_SWFSoundMixQueueStorageInfo
     {
         size_t struct_size; /* Caller supplies exact sizeof. */
-        size_t fixed_bytes; /* Native owner including its two vector descriptors. */
-        size_t buffer_bytes; /* Original and mixed fixed S16 arrays. */
+        size_t fixed_bytes; /* Native owner including its vector descriptors. */
+        size_t buffer_bytes; /* Original/mixed S16 arrays plus optional fixed identity deadlines. */
         size_t retained_bytes; /* Checked sum of fixed and buffer bytes. */
     } FVM_SWFSoundMixQueueStorageInfo;
-    /* Predict exact requested adapter bytes without allocating or calling VM/backend/mixer.
+    /* Predict initial untracked adapter bytes without allocating or calling VM/backend/mixer.
      * channels 1/2 and block 1..OUTPUT_MAX_BLOCK required; invalid -> INVALID_ARGUMENT,
      * size overflow -> OUT_OF_MEMORY. Required scalar out is preserved on errors. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required(unsigned int channels,
@@ -85,6 +85,21 @@ extern "C"
      * Clock exhaustion is not source EOF; queued drain is not a physical playback timestamp. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_clock_info(FVM_SWFSoundMixQueue *,
                                                           FVM_SWFSoundMixQueueClock *);
+#define FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS 65536UL /* Optional fixed sound-ID deadlines, including unused zero. */
+    /* Opt in/out of queued sound identities. enabled is 0/1; repeated selection is an
+     * allocation-free no-op. Require active shared clock, no pending/mixer voices; enable
+     * only in a zero epoch, disable only after observed drain and expired registrations.
+     * On enable, adapter_budget covers native owner, both PCM arrays and ID_SLOTS doubles;
+     * insufficient/overflow -> OUT_OF_MEMORY before allocation, failure preserves old mode.
+     * No backend callback/VM/GC. ALL voice starts/stops must use this queue's tracked APIs;
+     * direct mixer mutation invalidates the accounting contract. While enabled, clock_begin/
+     * clock_end reject INVALID_ARGUMENT; disable first at a drained safe point.
+     * Opt-in adapted.clear stops every mixer voice and resets deadlines/clock/pending only
+     * AFTER real clear acknowledgement; failed clear preserves them. Legacy untracked clear
+     * still does not stop the mixer. Serialize all borrowed owners and queue callbacks. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_set_identity_tracking(FVM_SWFSoundMixQueue *,
+                                                                     int enabled,
+                                                                     size_t adapter_budget);
     /* Allocate fixed original/mixed buffers; copy matching mixer/backend geometry. Owner only.
      * No callback/pause/clear/VM. Clear *out first; preserve adapted on failure. Both outputs
      * required/disjoint. Null/bad geometry or block outside 1..OUTPUT_MAX_BLOCK INVALID_ARGUMENT;

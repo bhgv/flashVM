@@ -47,7 +47,7 @@ backend обязан соблюдать прежний атомарный кон
 
 `fvm_swf_sound_mix_queue_info(adapter, out)` копирует struct_size, capacity_frames,
 pending_frames без устройства/выделений/VM. Null/wrong-size/reentry дают
-INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L139) освобождает
+INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L154) освобождает
 только объект/массивы без callback, stop голосов и device close; null допустим.
 Вызывать после quiescence всех пользователей table. Нужна внешняя сериализация:
 busy-флаг защищает callback recursion, а не гонки потоков. Managed-указателей нет.
@@ -117,9 +117,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:139](../include/flashvm/swf_sound_mix_queue.h#L139) |
-| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:100](../include/flashvm/swf_sound_mix_queue.h#L100) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:135](../include/flashvm/swf_sound_mix_queue.h#L135) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:154](../include/flashvm/swf_sound_mix_queue.h#L154) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:115](../include/flashvm/swf_sound_mix_queue.h#L115) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:150](../include/flashvm/swf_sound_mix_queue.h#L150) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:44](../include/flashvm/swf_stream_output.h#L44) |
 <!-- source-links:end -->
