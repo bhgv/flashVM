@@ -103,6 +103,17 @@ extern "C"
      * To select a word, use original byte clusters and append its glyph paths. */
     /* Implement text layout path for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_path(const FVM_TextLayout *, FVM_Path **out);
+    /* Return an independently owned rectangular underline for one placed line.
+     * center_y is relative to baseline; positive thickness is the full bar height.
+     * Accept finite center/thickness within +/-1,000,000 / (0,1,000,000] pixels.
+     * Spans the full logical line advance, including whitespace/tracking; zero
+     * advance gives an owned empty path. Glyph outlines and layout metrics stay unchanged.
+     * Borrow layout only for this call; output can outlive layout/font. No VM/GC;
+     * immutable layout readers may run concurrently. Missing layout/output, invalid
+     * index/geometry -> INVALID_ARGUMENT; allocation failure -> OUT_OF_MEMORY.
+     * All failures clear out. Caller destroys the returned path. */
+    FVM_API FVM_Result fvm_text_layout_line_underline_path(const FVM_TextLayout *, size_t line,
+                                           double center_y, double thickness, FVM_Path **out);
     /* Implement text layout glyph path for this subsystem. */
     FVM_API FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *, size_t, FVM_Path **out);
 #ifdef __cplusplus

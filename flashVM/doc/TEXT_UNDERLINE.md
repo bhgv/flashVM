@@ -20,6 +20,23 @@ Three pixel sizes are checked against fixed analytical expectations. Existing
 glyph outlines, advances and substitutions are unchanged. This is native metric
 evidence, not complete Flash text or platform/device acceptance.
 
+## Owned per-line paths (v0.838)
+
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L115) borrows an immutable layout and line index,
+font-derived center/thickness and required output pointer. It returns one owned
+closed rectangle spanning line.x through line.x+advance at baseline+center.
+Whitespace and signed tracking are included. A zero-advance line returns an
+owned empty path. Glyph-only paths, glyph counts and layout metrics are unchanged.
+
+Geometry arguments and resulting coordinates must remain within the native
+1,000,000-pixel envelope; thickness must be positive. Missing layout/output,
+invalid index or geometry is INVALID_ARGUMENT; memory failure is OUT_OF_MEMORY.
+Failures clear output. Destroy returned paths independently; they outlive fonts
+and layouts. No VM/GC state is accessed. Independent immutable layout readers
+can run concurrently, but each output path belongs to its caller.
+`text_layout_underline.c` checks exact rectangle bounds, alignment, tracking,
+empty trailing lines, invalid parameters and lifetime after source destruction.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -32,4 +49,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
 <!-- source-links:end -->

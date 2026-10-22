@@ -22,6 +22,24 @@ NO_FONTS отклоняет отсутствующий выход, иначе о
 advances и подстановки глифов не изменены. Это нативная проверка метрик,
 а не полная приёмка Flash-текста или устройств/платформ.
 
+## Независимые контуры строк (v0.838)
+
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L115) заимствует неизменяемую раскладку, индекс
+строки, центр/толщину из метрик шрифта и обязательный выход. Результат —
+независимый замкнутый прямоугольник от line.x до line.x+advance на baseline+center.
+Пробелы и знаковый межбуквенный интервал включены. При нулевом advance результат
+является независимым пустым контуром. Контуры отдельных глифов, их количество
+и метрики раскладки не меняются.
+
+Аргументы геометрии и итоговые координаты ограничены 1 000 000 пикселей;
+толщина положительна. Отсутствующие раскладка/выход, неверный индекс или
+геометрия дают INVALID_ARGUMENT, отказ памяти — OUT_OF_MEMORY. Ошибка обнуляет
+выход. Контур освобождается независимо и переживает шрифт/раскладку. VM/GC не
+используются. Независимые читатели раскладки могут работать конкурентно;
+каждый выходной контур принадлежит своему вызывающему.
+`text_layout_underline.c` проверяет точные границы, выравнивание, интервалы,
+пустую последнюю строку, неверные параметры и срок жизни после уничтожения источника.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -34,4 +52,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_underline_metrics` | function | [include/flashvm/font.h:63](../include/flashvm/font.h#L63) |
 | `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:32](../include/flashvm/font.h#L32) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:115](../include/flashvm/text_layout.h#L115) |
 <!-- source-links:end -->

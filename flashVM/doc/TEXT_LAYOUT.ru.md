@@ -68,7 +68,7 @@ FriBidi разрешает уровни всего абзаца до перен�
 сериализации доступа к конкретному шрифтовому дескриптору.
 
 [fvm_text_layout_path](../include/flashvm/text_layout.h#L105) возвращает независимый контур блока,
-[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L107) — независимый контур глифа в итоговой позиции.
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L118) — независимый контур глифа в итоговой позиции.
 Изменение контрольных точек и преобразования не затрагивают исходную компоновку
 или другие копии. Для слова выберите глифы по исходному диапазону кластеров и
 объедините их контуры. Лигатура — один неделимый контур: выделение отдельных
@@ -116,6 +116,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../include/flashvm/text_layout.h#L107) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../include/flashvm/text_layout.h#L118) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

@@ -68,7 +68,7 @@ The resulting layout can be queried concurrently while no thread destroys it;
 font use during construction still follows the per-handle serialization rule.
 
 [`fvm_text_layout_path`](../include/flashvm/text_layout.h#L105) returns an independent block path;
-[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L107) returns an independent glyph path at its final
+[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L118) returns an independent glyph path at its final
 position. Editing either cannot change the layout or another exported path.
 Select words using original cluster byte ranges and append selected glyph
 paths. A ligature is one indivisible outline: splitting its component letters
@@ -116,6 +116,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_font_read` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
 | `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:93](../include/flashvm/text_layout.h#L93) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:107](../include/flashvm/text_layout.h#L107) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:118](../include/flashvm/text_layout.h#L118) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:105](../include/flashvm/text_layout.h#L105) |
 <!-- source-links:end -->

@@ -1,10 +1,12 @@
-Development version: **0.837** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.837 ` and an English description. Increase the subversion before each
+Development version: **0.838** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.838 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.838: [Export owned line underline paths from immutable placed text layouts](doc/TEXT_UNDERLINE.md).
 
 v0.837: [Expose scaled font-defined underline metrics without changing glyph geometry](doc/TEXT_UNDERLINE.md).
 

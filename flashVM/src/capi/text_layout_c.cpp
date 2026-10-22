@@ -132,6 +132,50 @@ extern "C" FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *layout, s
     FVM_Affine matrix = {1, 0, 0, 1, g.x, g.y};
     return copy_path(layout->outlines[index], &matrix, out);
 }
+/* Copy a full logical-line underline into an owned path. The caller supplies
+ * font-derived metrics so the immutable layout never retains a mutable font. */
+extern "C" FVM_Result fvm_text_layout_line_underline_path(const FVM_TextLayout *layout, size_t index,
+                                            double center, double thickness, FVM_Path **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!layout || index >= layout->lines.size() ||
+        !(center >= -FVM_TEXT_LAYOUT_MAX_EXTENT && center <= FVM_TEXT_LAYOUT_MAX_EXTENT) ||
+        !(thickness > 0 && thickness <= FVM_TEXT_LAYOUT_MAX_EXTENT))
+        return FVM_INVALID_ARGUMENT;
+    const FVM_TextLayoutLine &line = layout->lines[index];
+    PathOwner result;
+    FVM_Result status = fvm_path_create(&result.value);
+    if (status != FVM_OK)
+        return status;
+    if (line.advance > 0)
+    {
+        double left = line.x, right = line.x + line.advance;
+        double top = line.baseline + center - thickness / 2;
+        double bottom = top + thickness;
+        if (!(left >= -FVM_TEXT_LAYOUT_MAX_EXTENT && right <= FVM_TEXT_LAYOUT_MAX_EXTENT &&
+              top >= -FVM_TEXT_LAYOUT_MAX_EXTENT && bottom <= FVM_TEXT_LAYOUT_MAX_EXTENT))
+            return FVM_INVALID_ARGUMENT;
+        FVM_PathCommand commands[FVM_TEXT_LAYOUT_RECT_COMMANDS];
+        std::memset(commands, 0, sizeof(commands));
+        commands[0].verb = FVM_PATH_MOVE; commands[0].x[0] = left; commands[0].y[0] = top;
+        commands[1].verb = FVM_PATH_LINE; commands[1].x[0] = right; commands[1].y[0] = top;
+        commands[2].verb = FVM_PATH_LINE; commands[2].x[0] = right; commands[2].y[0] = bottom;
+        commands[3].verb = FVM_PATH_LINE; commands[3].x[0] = left; commands[3].y[0] = bottom;
+        commands[4].verb = FVM_PATH_CLOSE;
+        for (size_t i = 0; i < FVM_TEXT_LAYOUT_RECT_COMMANDS; ++i)
+        {
+            status = fvm_path_add(result.value, commands + i);
+            if (status != FVM_OK)
+                return status;
+        }
+    }
+    *out = result.value;
+    result.value = 0;
+    return FVM_OK;
+}
+
 #ifdef FVM_HAS_FONTS
 #include "linebreak.h"
 #include "graphemebreak.h"
