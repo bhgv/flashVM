@@ -1,10 +1,12 @@
-Development version: **0.910** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.910 ` and an English description. Increase the subversion before each
+Development version: **0.911** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.911 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.911: [Exercise custom tab tables through AVM1 JIT and independent native workers](doc/TEXT_TABS.md).
 
 v0.910: [Verify tabbed text rollback across seven allocation failure paths](doc/TEXT_TABS.md).
 
