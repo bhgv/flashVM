@@ -1,10 +1,12 @@
-Development version: **0.886** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.886 ` and an English description. Increase the subversion before each
+Development version: **0.887** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.887 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.887: [Verify inset extent fitting anchors and transactional numeric admission](doc/TEXT_INSETS.md).
 
 v0.886: [Verify paragraph inset geometry with all alignments and embedded font faces](doc/TEXT_INSETS.md).
 
