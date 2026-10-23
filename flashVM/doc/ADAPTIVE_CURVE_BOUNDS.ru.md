@@ -8,7 +8,7 @@ Current tiny-tangent extension / Расширение для коротких к
 
 ## Контракт и ограничения
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L494) по-прежнему заимствует неизменяемый путь и требует положительную конечную width ≤1 000 000, допустимые selectors и два принадлежащих вызывающему результата. Проверка не выделяет память, не вызывает callbacks/GC и не требует VM. Ошибки и unsupported сохраняют оба результата; совместная мутация пути запрещена. Оси сохраняют прежний быстрый путь. Для неосевого сокращения дополнительно проверяется ненулевая норма, чтобы не превращать старый fallback в пустой штрих при underflow существующего segment walker.
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L503) по-прежнему заимствует неизменяемый путь и требует положительную конечную width ≤1 000 000, допустимые selectors и два принадлежащих вызывающему результата. Проверка не выделяет память, не вызывает callbacks/GC и не требует VM. Ошибки и unsupported сохраняют оба результата; совместная мутация пути запрещена. Оси сохраняют прежний быстрый путь. Для неосевого сокращения дополнительно проверяется ненулевая норма, чтобы не превращать старый fallback в пустой штрих при underflow существующего segment walker.
 
 Controls должны находиться внутри прямоугольника концов и быть точно коллинеарными после масштабирования. Неупорядоченные cubic-controls внутри отрезка поддержаны как раньше. Потерянный остаток, дробные масштабированные компоненты, ненулевая ориентация и ненормализуемый тангенс сохраняют [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) для non-round. Round/round сохраняет общий аналитический расчёт. Конечные тела, торцы, joins и Close не меняются.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:494](../src/capi/path_hit_c.cpp#L494) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

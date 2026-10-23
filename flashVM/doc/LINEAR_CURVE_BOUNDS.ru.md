@@ -8,7 +8,7 @@
 
 ## Контракт
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L494) сохраняет существующий контракт: неизменяемый заимствованный путь, положительная конечная ширина ≤1 000 000, поддержанные cap/join, два обязательных принадлежащих вызывающему результата. Проверка и обход не выделяют память, не вызывают callbacks/GC и не требуют контекста. Ошибки аргументов и неподдержанные кривые сохраняют оба результата. Совместная мутация пути запрещена. Используются прежние конечные тела, round/none/square торцы, round/bevel joins и Close. Constant и одиночный Move не добавляют штрих.
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L503) сохраняет существующий контракт: неизменяемый заимствованный путь, положительная конечная ширина ≤1 000 000, поддержанные cap/join, два обязательных принадлежащих вызывающему результата. Проверка и обход не выделяют память, не вызывают callbacks/GC и не требуют контекста. Ошибки аргументов и неподдержанные кривые сохраняют оба результата. Совместная мутация пути запрещена. Используются прежние конечные тела, round/none/square торцы, round/bevel joins и Close. Constant и одиночный Move не добавляют штрих.
 
 Внеосевые координаты вне сетки, отклонения от коллинеарности и controls вне интервала не сокращаются; для non-round сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) с managed fallback. Round/round сохраняет общие аналитические кривые. Поворот или масштаб могут вывести путь с сетки. Неравномерная метрика ширины остаётся прежней.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:494](../src/capi/path_hit_c.cpp#L494) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

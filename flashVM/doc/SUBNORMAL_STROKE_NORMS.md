@@ -4,7 +4,7 @@ The previous correction scaled tangents only when squared length became zero. A 
 
 ## Contract
 
-The private [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L494) borrows an immutable path, requires positive finite width within the existing limit, validates cap/join selectors, and publishes caller-owned bounds and presence together on success. [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L412) borrows the same path and writes a caller-owned integer point result under its existing validation contract. Neither function allocates, invokes callbacks or interacts with GC. Read-only concurrent queries require stable path lifetime; concurrent mutation is forbidden. Unsupported curves and malformed selectors retain their existing status and transactional bounds behavior.
+The private [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L503) borrows an immutable path, requires positive finite width within the existing limit, validates cap/join selectors, and publishes caller-owned bounds and presence together on success. [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L421) borrows the same path and writes a caller-owned integer point result under its existing validation contract. Neither function allocates, invokes callbacks or interacts with GC. Read-only concurrent queries require stable path lifetime; concurrent mutation is forbidden. Unsupported curves and malformed selectors retain their existing status and transactional bounds behavior.
 
 No public API, wire format or callback IDs change. Only styled segment tangents change in the subnormal squared-norm range. Ordinary arithmetic, legacy public distance tests, rasterization and curve subdivision are unchanged. Managed getBounds, dimensions and selected shape hits share the segment walker. General curve bounds, nonuniform metrics and miter/hinting/non-scaling remain open. Gradual binary underflow and ordinary rounding are required; FTZ/fast-math configurations are not validated.
 
@@ -23,6 +23,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:412](../src/capi/path_hit_c.cpp#L412) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:494](../src/capi/path_hit_c.cpp#L494) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:421](../src/capi/path_hit_c.cpp#L421) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
 <!-- source-links:end -->

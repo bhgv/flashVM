@@ -59,7 +59,16 @@ struct Query
     void disk(double ax, double ay)
     {
         double dx = x - ax, dy = y - ay;
-        if (dx * dx + dy * dy <= radius * radius)
+        if (radius * radius < DBL_MIN && radius > 0)
+        {
+            /* Reject distant components before division, then compare bounded ratios. */
+            if (std::fabs(dx) > radius || std::fabs(dy) > radius)
+                return;
+            const double sx = dx / radius, sy = dy / radius;
+            if (sx * sx + sy * sy <= 1)
+                edge = true;
+        }
+        else if (dx * dx + dy * dy <= radius * radius)
             edge = true;
     }
     /* Include a bevel wedge using orientation signs, independent of raster backends. */
