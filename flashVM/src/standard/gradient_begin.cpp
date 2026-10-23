@@ -241,8 +241,8 @@ FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
 } // namespace
 
 /* Copy a spread/RGB gradient style; malformed arguments leave the previous style unchanged. */
-FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int argc,
-                                        const FVM_Value *args, FVM_Value *out, void *)
+static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int argc,
+                                   const FVM_Value *args, FVM_Value *out, bool stroke)
 {
     fvm_value_undefined(out);
     if (!c || !clip || clip->owner != c)
@@ -254,6 +254,16 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
     FVM_Result r = fvm_movieclip_scene_state(clip, &data);
     if (r != FVM_OK)
         return r;
+    if (stroke)
+    {
+        if (c->swf_loaded && c->swf_info.version < FVM_MOVIECLIP_GRADIENT_SPREAD_MIN_VERSION)
+            return FVM_UNSUPPORTED;
+        Properties::iterator line = data->properties.find("stroke");
+        /* A gradient changes an enabled stroke; it never enables a missing lineStyle itself. */
+        if (line == data->properties.end() || line->second.type != FVM_VALUE_NUMBER ||
+            !line->second.number || !argc || args[0].type == FVM_VALUE_UNDEFINED)
+            return FVM_OK;
+    }
     if (!argc || args[0].type == FVM_VALUE_UNDEFINED)
     {
         data->properties["fill"] = scalar(0);
@@ -326,15 +336,31 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
     /* [GC:] Stage all drawing links before adopting the new style; OOM preserves the old style. */
     Properties next = data->properties;
     /* [GC:] The clip owns the copied ramp independently of the caller's arrays and matrix. */
-    next["gradient"] = managed(record);
+    next[stroke ? "lineGradient" : "gradient"] = managed(record);
     /* [GC:] A new gradient replaces the current bitmap style, not completed path descriptors. */
-    next.erase("bitmap");
+    if (!stroke) next.erase("bitmap");
     /* [GC:] A fresh path adopts this descriptor when the next geometry command is issued. */
     next["active"] = managed(0);
-    next["fill"] = scalar(1);
-    next["rgb"] = scalar(0);
-    next["alpha"] = scalar(100);
+    if (!stroke)
+    {
+        next["fill"] = scalar(1);
+        next["rgb"] = scalar(0);
+        next["alpha"] = scalar(100);
+    }
     /* [GC:] Publish the complete ownership graph; replaced temporary edges are then released. */
     data->properties.swap(next);
     return FVM_OK;
+}
+
+/* Preserve the existing fill callback identity and fill-only state transitions. */
+FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int argc,
+                                        const FVM_Value *args, FVM_Value *out, void *)
+{
+    return gradient_begin(c, clip, argc, args, out, false);
+}
+/* [GC:] Share argument coercion, copied descriptors and transactional publication with fills. */
+FVM_Result fvm_movieclip_line_gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int argc,
+                                             const FVM_Value *args, FVM_Value *out, void *)
+{
+    return gradient_begin(c, clip, argc, args, out, true);
 }

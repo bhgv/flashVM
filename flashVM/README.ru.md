@@ -1,4 +1,4 @@
-Версия разработки: **0.1169** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1170** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1170: [Добавлен версионированный стиль обводки с копированием и стабильным callback ID](doc/GRADIENT_STROKES.ru.md).
 
 v0.1169: [Добавлен API градиентных обводок с общей выборкой и подготовленной маской](doc/GRADIENT_STROKES.ru.md).
 

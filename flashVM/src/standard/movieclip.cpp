@@ -29,6 +29,7 @@
 #include "movieclip_sound.hpp"
 #include "transform_scene.hpp"
 #include "gradient.hpp"
+#include "gradient_constants.h"
 #include "bitmap_fill.hpp"
 #include "bitmap_draw.hpp"
 #include "bitmap_state.hpp"
@@ -2851,7 +2852,8 @@ const Method methods[] = {{"toString", clip_string},
                           {"stopDrag", fvm_movieclip_stop_drag},
                           {"getBytesLoaded", fvm_movieclip_bytes_loaded},
                           {"getBytesTotal", fvm_movieclip_bytes_total},
-                          {"getSWFVersion", fvm_movieclip_swf_version}};
+                          {"getSWFVersion", fvm_movieclip_swf_version},
+                          {"lineGradientStyle", fvm_movieclip_line_gradient_begin}};
 } // namespace
 
 /* Compose intrinsic world geometry under the caller's root/native-barrier scope. */
@@ -4067,6 +4069,9 @@ fvm_movieclip_stage(FVM_Context *c,
     proto->attributes["getBytesLoaded"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_BYTES_VERSION_ATTRIBUTE;
     proto->attributes["getBytesTotal"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_BYTES_VERSION_ATTRIBUTE;
     proto->attributes["getSWFVersion"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_SWF_VERSION_ATTRIBUTE;
+    /* The appended method retains every existing callback ID and is visible from SWF8. */
+    proto->attributes["lineGradientStyle"] = FVM_PROPERTY_BUILTIN_FLAGS |
+                                             FVM_MOVIECLIP_LINE_GRADIENT_VERSION_ATTRIBUTE;
 
     const char *keys[] = {
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

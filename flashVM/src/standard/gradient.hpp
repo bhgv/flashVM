@@ -11,4 +11,7 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *, FVM_Object *paint, const F
 /* Copy ActionScript gradient arguments into managed drawing state without borrowing arrays. */
 FVM_Result fvm_movieclip_gradient_begin(FVM_Context *, FVM_Object *, unsigned int,
                                         const FVM_Value *, FVM_Value *, void *);
+/* Copy a SWF8 stroke ramp while retaining the width established by lineStyle. */
+FVM_Result fvm_movieclip_line_gradient_begin(FVM_Context *, FVM_Object *, unsigned int,
+                                             const FVM_Value *, FVM_Value *, void *);
 #endif
