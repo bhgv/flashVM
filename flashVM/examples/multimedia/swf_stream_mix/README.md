@@ -114,7 +114,7 @@ mixer; закрывается раньше него. Общая desktop-поли
 | [`fvm_swf_sound_mix_queue_info`](../../../include/flashvm/swf_sound_mix_queue.h#L275) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): inspect retained frame count without polling device or allocating; wrong size/reentry preserves output. |
 | [`fvm_swf_sound_mix_queue_close`](../../../include/flashvm/swf_sound_mix_queue.h#L279) | [MIX_QUEUE.md](../../../doc/MIX_QUEUE.md): after serial callback use, free adapter before borrowed mixer; no device close, voice stop or rewind. |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L143) | Release native voices after all serial reads finish; null allowed. |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L160) | Release stream storage after converter use; null allowed. |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L173) | Release stream storage after converter use; null allowed. |
 
 ## Native tail pump / Подача хвостов
 
@@ -306,6 +306,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:52](../../../include/flashvm/swf_stream_output.h#L52) |
 | `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:138](../../../include/flashvm/swf_stream_output.h#L138) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../../../include/flashvm/swf_stream_output.h#L111) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../../../include/flashvm/swf_stream_sound.h#L173) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->

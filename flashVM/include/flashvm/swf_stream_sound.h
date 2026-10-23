@@ -123,6 +123,19 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_storage_info(
         const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundStorageInfo *);
 
+    /* Bounded PCM preparation with explicit ADPCM length inference. Preserve legacy canonical
+     * whole-packet policy first; otherwise inspect all zero-padding endpoints (0..7 bits).
+     * Exactly one valid packet geometry accepts a partial final packet; multiple -> UNSUPPORTED,
+     * none -> INVALID_ARGUMENT. Header average/movie time never choose a count. Other codecs,
+     * memory limits, ownership and errors match open_pcm_bounded. Required out is cleared first.
+     * Preparation allocates/decodes synchronously on context owner; no callbacks/script/GC roots
+     * retained. Native immutable snapshot can outlive VM; close after reader/worker quiescence.
+     * Encoded bytes/index/decoded peak fit budget; overflow/allocation -> OUT_OF_MEMORY. Invalid
+     * source/missing stream statuses propagate. Existing whole-only APIs remain unchanged.
+     * This is a byte-geometry policy, not proof of an author's intended trailing zero codes. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm_inferred(
+        FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **out);
+
     /* Copy the snapshot header (normalized after open_pcm ADPCM), preserving output on error. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
     /* Query the prepared block count without rescanning the movie. */

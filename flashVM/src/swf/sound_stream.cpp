@@ -384,6 +384,41 @@ static FVM_Result stream_adpcm_frames(const unsigned char *data, size_t size, un
     *frames = count * FVM_SWF_ADPCM_BLOCK_FRAMES;
     return FVM_OK;
 }
+/* Preserve canonical whole-packet preparation, otherwise accept exactly one zero-padded length.
+ * At most eight bit-end positions are inspected; averages and movie clocks are never consulted. */
+static FVM_Result stream_adpcm_inferred_frames(const unsigned char *data, size_t size,
+                                                unsigned int channels, size_t *frames)
+{
+    FVM_Result legacy = stream_adpcm_frames(data, size, channels, frames);
+    if (legacy != FVM_UNSUPPORTED) return legacy;
+    /* The legacy check already proved nonempty size*BYTE_BITS is representable. */
+    unsigned int width = (data[0] >> FVM_SWF_STREAM_ADPCM_WIDTH_SHIFT) + FVM_SWF_ADPCM_MIN_WIDTH;
+    size_t initial = channels * FVM_SWF_STREAM_ADPCM_INITIAL_BITS;
+    size_t step = channels * width;
+    size_t packet = initial + (FVM_SWF_ADPCM_BLOCK_FRAMES - 1) * step;
+    size_t bits = size * FVM_SWF_SOUND_BYTE_BITS - FVM_SWF_ADPCM_WIDTH_BITS;
+    size_t selected = 0;
+    unsigned int candidates = 0;
+    for (unsigned int padding = 0; padding <= FVM_SWF_STREAM_ADPCM_PADDING_BITS; ++padding)
+    {
+        if (padding > bits || (padding && (data[size - 1] & ((1U << padding) - 1U)))) continue;
+        size_t payload = bits - padding;
+        size_t whole = payload / packet, remainder = payload % packet;
+        size_t tail = 0;
+        if (remainder)
+        {
+            if (remainder < initial || (remainder - initial) % step) continue;
+            tail = 1 + (remainder - initial) / step;
+        }
+        if (whole > ((size_t)-1 - tail) / FVM_SWF_ADPCM_BLOCK_FRAMES ||
+            whole > (ULONG_MAX - tail) / FVM_SWF_ADPCM_BLOCK_FRAMES) return FVM_OUT_OF_MEMORY;
+        selected = whole * FVM_SWF_ADPCM_BLOCK_FRAMES + tail;
+        if (++candidates > 1) return FVM_UNSUPPORTED;
+    }
+    if (!candidates) return FVM_INVALID_ARGUMENT;
+    *frames = selected;
+    return FVM_OK;
+}
 /* Validate an externally supplied exact frame count without guessing padding as sample data.
  * ADPCM packets share bit alignment; only the final block byte may contain zero padding. */
 static FVM_Result stream_adpcm_counted(const unsigned char *data, size_t size,
@@ -474,7 +509,7 @@ fvm_swf_stream_sound_snapshot_read_adpcm(const FVM_SWFStreamSoundSnapshot *snaps
 /* [GC:] Prepare independent native PCM before worker publication; the temporary never escapes.
  * Encoded plus decoded payload and block-index bytes share the runtime preparation budget. */
 static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const size_t *budget,
-                                    const size_t *counts, const size_t *count,
+                                    const size_t *counts, const size_t *count, bool inferred,
                                     FVM_SWFStreamSoundSnapshot **out)
 {
     if (!out)
@@ -526,8 +561,8 @@ static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const s
         size_t frames = count ? counts[i] : 0;
         result = count ? stream_adpcm_counted(data, entry.block.data_size,
                                                snapshot->info.channels, frames)
-                       : stream_adpcm_frames(data, entry.block.data_size,
-                                              snapshot->info.channels, &frames);
+                       : (inferred ? stream_adpcm_inferred_frames : stream_adpcm_frames)(
+                             data, entry.block.data_size, snapshot->info.channels, &frames);
         if (result != FVM_OK ||
             frames > (limit - used) / FVM_SWF_SOUND_PCM_BYTES / snapshot->info.channels)
         {
@@ -600,14 +635,22 @@ static FVM_Result snapshot_open_pcm(FVM_Context *context, size_t stream, const s
 extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open_pcm(FVM_Context *context, size_t stream,
                                                              FVM_SWFStreamSoundSnapshot **out)
 {
-    return snapshot_open_pcm(context, stream, 0, 0, 0, out);
+    return snapshot_open_pcm(context, stream, 0, 0, 0, false, out);
 }
 /* [GC:] Bound both initial copying and compressed expansion before allocating either payload. */
 extern "C" FVM_Result
 fvm_swf_stream_sound_snapshot_open_pcm_bounded(FVM_Context *context, size_t stream, size_t budget,
                                                FVM_SWFStreamSoundSnapshot **out)
 {
-    return snapshot_open_pcm(context, stream, &budget, 0, 0, out);
+    return snapshot_open_pcm(context, stream, &budget, 0, 0, false, out);
+}
+/* [GC:] Explicit inferred policy adds uniquely byte-delimited partial ADPCM to bounded PCM.
+ * Preparation owns no managed references after return and runs before native worker publication. */
+extern "C" FVM_Result
+fvm_swf_stream_sound_snapshot_open_pcm_inferred(FVM_Context *context, size_t stream, size_t budget,
+                                                FVM_SWFStreamSoundSnapshot **out)
+{
+    return snapshot_open_pcm(context, stream, &budget, 0, 0, true, out);
 }
 /* [GC:] Host-authoritative block counts allow partial ADPCM packets without a runtime dependency.
  * The count table is borrowed only during this synchronous owner-side bounded preparation. */
@@ -616,7 +659,7 @@ fvm_swf_stream_sound_snapshot_open_adpcm_counted(FVM_Context *context, size_t st
                                                  const size_t *counts, size_t count, size_t budget,
                                                  FVM_SWFStreamSoundSnapshot **out)
 {
-    return snapshot_open_pcm(context, stream, &budget, counts, &count, out);
+    return snapshot_open_pcm(context, stream, &budget, counts, &count, false, out);
 }
 /* Copy native allocation charges only; this immutable observation needs no original VM. */
 extern "C" FVM_Result
