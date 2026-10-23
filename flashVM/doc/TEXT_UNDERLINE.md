@@ -45,7 +45,7 @@ field snapshots expose actual Boolean values. setTextFormat toggles current
 geometry and invalidates its cache; setNewTextFormat affects later text only.
 The current font must supply usable underline metrics before format admission.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L75) appends one bar per positive-advance line after glyph paths,
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L77) appends one bar per positive-advance line after glyph paths,
 using the same field gutter and wrapped/unwrapped alignment. Bars include spaces
 and signed letter spacing. textWidth/textHeight/getTextExtent advances and
 baseline spacing remain unchanged; glyph-only paths remain undecorated. The
@@ -107,5 +107,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../include/flashvm/standard_text.h#L77) |
 <!-- source-links:end -->

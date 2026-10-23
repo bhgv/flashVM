@@ -69,7 +69,9 @@ extern "C"
         FVM_Context *, FVM_Object *, FVM_TextFieldScrollInfo *out);
     /* Independent editable contours, including the text field's 2-pixel gutter.
      * These are field-local: the host applies _x/_y exactly once when placing them.
-     * These are not clipped to the field rectangle. */
+     * Current effective scroll translation is included for glyphs and underline.
+     * These are not clipped to the field rectangle; use scroll_info for host clipping.
+     * Failed export preserves scroll offsets and clears out. */
     /* Implement textfield path for this subsystem. */
     /* Includes uniform underline when enabled; use nonzero fill for the combined contours. */
     FVM_API FVM_Result fvm_textfield_path(FVM_Context *, FVM_Object *, FVM_Path **out);

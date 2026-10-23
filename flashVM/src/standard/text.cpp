@@ -1695,6 +1695,10 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
         return result;
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_TextFieldScrollInfo viewport;
+    result = scroll_geometry(c, field, viewport);
+    if (result != FVM_OK)
+        return result;
     FVM_Path *path = 0;
     result = fvm_path_create(&path);
     if (result != FVM_OK)
@@ -1712,7 +1716,7 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
         if (result == FVM_OK)
             result = fvm_text_layout_glyph_path(field->layout, i, &copy);
         double shift = result == FVM_OK ? field_line_shift(field, line) : 0;
-        FVM_Affine place = {1, 0, 0, 1, 2 + shift, 2};
+        FVM_Affine place = {1, 0, 0, 1, 2 + shift + viewport.offset_x, 2 + viewport.offset_y};
         if (result == FVM_OK)
             result = fvm_path_append(path, copy, &place);
         fvm_path_destroy(copy);
@@ -1733,7 +1737,7 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
                 result = fvm_text_layout_line_underline_path(field->layout, i,
                                       underline.center_y, underline.thickness, &bar);
             double shift = result == FVM_OK ? field_line_shift(field, line) : 0;
-            FVM_Affine place = {1, 0, 0, 1, 2 + shift, 2};
+            FVM_Affine place = {1, 0, 0, 1, 2 + shift + viewport.offset_x, 2 + viewport.offset_y};
             if (result == FVM_OK)
                 result = fvm_path_append(path, bar, &place);
             fvm_path_destroy(bar);
@@ -1744,6 +1748,8 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
         fvm_path_destroy(path);
         return result;
     }
+    field->scroll = viewport.scroll;
+    field->hscroll = viewport.hscroll;
     *out = path;
     return FVM_OK;
 }

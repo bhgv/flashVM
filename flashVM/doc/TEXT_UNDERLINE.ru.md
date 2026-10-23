@@ -48,7 +48,7 @@ ToBoolean; null/undefined сохраняют стиль. Снимки текущ
 и сбрасывает кэш; setNewTextFormat влияет только на будущий текст. До принятия
 формата текущий шрифт должен предоставить пригодные метрики подчёркивания.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L75) добавляет полосу каждой строки с положительным advance
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L77) добавляет полосу каждой строки с положительным advance
 после контуров глифов, с тем же gutter и выравниванием поля с переносами и без.
 Пробелы и знаковый межбуквенный интервал включены. textWidth/textHeight,
 getTextExtent и расстояния baseline не меняются; отдельные глифы не декорируются.
@@ -111,5 +111,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
 | `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../include/flashvm/standard_text.h#L77) |
 <!-- source-links:end -->
