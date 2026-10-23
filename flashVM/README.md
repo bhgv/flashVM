@@ -1,4 +1,4 @@
-Development version: **0.1140** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1141** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1141: [Verified binary/channel text events and 128 independent worker edit/GC epochs](doc/TEXT_EDIT_EVENTS.md).
 
 v0.1140: [Verified 27 real AVM1 edit combinations across SWF6–8 and execution modes](doc/TEXT_EDIT_EVENTS.md).
 
