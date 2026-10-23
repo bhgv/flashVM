@@ -6,6 +6,9 @@
 #include "flashvm/gradient.h"
 #include "flashvm/path.h"
 #include "stroke_constants.h"
+/* Exact bounds for straight positive-width strokes; curves return UNSUPPORTED unchanged. */
+FVM_Result fvm_path_stroke_bounds_style(const FVM_Path *, double width, unsigned cap,
+                                        unsigned join, FVM_PathBounds *, int *has_segments);
 /* Test geometry with selected caps/joins, independently of raster availability or quality. */
 FVM_Result fvm_path_hit_test_style(const FVM_Path *, double x, double y, double width,
                                    int even_odd, int *out, unsigned cap, unsigned join);

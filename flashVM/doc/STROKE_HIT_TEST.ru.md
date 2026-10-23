@@ -9,7 +9,7 @@ LINESTYLE2 тега DefineShape4 SWF 8. Проверяется геометри�
 
 ## Геометрический контракт
 
-Внутренняя [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L262) принимает координаты назначения и
+Внутренняя [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L315) принимает координаты назначения и
 положительную ширину. Ненулевой прямой отрезок даёт конечный прямоугольник.
 Butt не продлевает отрезок, square продлевает его на половину ширины, round
 добавляет круглый торец. Соединение добавляет только внешний треугольник bevel
@@ -103,5 +103,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:262](../src/capi/path_hit_c.cpp#L262) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:315](../src/capi/path_hit_c.cpp#L315) |
 <!-- source-links:end -->

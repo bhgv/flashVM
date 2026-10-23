@@ -1,4 +1,4 @@
-/* FlashVM: backend-independent fill and selected cap/join point hit testing. */
+/* FlashVM: backend-independent fill and selected cap/join point hits and straight-stroke bounds. */
 #include "flashvm/path.h"
 #include "../render/quality_internal.hpp"
 #include <cmath>
@@ -16,16 +16,40 @@ struct Query
     bool segment; /* Whether this contour has a nonzero tangent. */
     double first_x, first_y, first_dx, first_dy; /* Initial point and unit tangent. */
     double last_x, last_y, last_dx, last_dy; /* Last endpoint and unit tangent. */
+    bool tracking; /* Whether this walk also measures exact straight-stroke extents. */
+    bool have_extent; /* Whether a nonempty stroke primitive was accumulated. */
+    FVM_PathBounds extent; /* Union of primitive endpoints and sector extrema. */
     long winding;  /* Signed half-open ray intersections across all contours. */
     bool edge;     /* Whether a boundary or stroked segment already contains the point. */
     /* Initialize an empty query with no intersections. */
     Query(double px, double py, double width, bool selected = false,
           unsigned selected_cap = FVM_STROKE_CAP_ROUND,
-          unsigned selected_join = FVM_STROKE_JOIN_ROUND)
+          unsigned selected_join = FVM_STROKE_JOIN_ROUND, bool measure = false)
         : x(px), y(py), radius(width / 2), styled(selected), cap(selected_cap), join(selected_join),
           segment(false), first_x(0), first_y(0), first_dx(0), first_dy(0),
-          last_x(0), last_y(0), last_dx(0), last_dy(0), winding(0), edge(false)
+          last_x(0), last_y(0), last_dx(0), last_dy(0), tracking(measure),
+          have_extent(false), winding(0), edge(false)
     {
+        std::memset(&extent, 0, sizeof(extent));
+    }
+    /* Include one primitive extremum without allocation or a graphics backend. */
+    void point(double px, double py)
+    {
+        if (!tracking)
+            return;
+        if (!have_extent)
+        {
+            extent.x_min = extent.x_max = px;
+            extent.y_min = extent.y_max = py;
+            have_extent = true;
+        }
+        else
+        {
+            if (px < extent.x_min) extent.x_min = px;
+            if (py < extent.y_min) extent.y_min = py;
+            if (px > extent.x_max) extent.x_max = px;
+            if (py > extent.y_max) extent.y_max = py;
+        }
     }
     /* Include a circular round cap or join, retaining boundary points. */
     void disk(double ax, double ay)
@@ -52,6 +76,15 @@ struct Query
             return;
         if (join == FVM_STROKE_JOIN_ROUND)
         {
+            if (tracking)
+            {
+                /* Sector endpoints already belong to the segment bodies. Only cardinal
+                 * directions can add another axis-aligned extremum. */
+                const double dx[] = {1, 0, -1, 0}, dy[] = {0, 1, 0, -1};
+                for (unsigned i = 0; i < 4; ++i)
+                    if (dx[i] * ux + dy[i] * uy >= 0 && dx[i] * vx + dy[i] * vy <= 0)
+                        point(ax + radius * dx[i], ay + radius * dy[i]);
+            }
             double qx = x - ax, qy = y - ay;
             /* Restrict to the outer sector: a whole disk would extend short butt-ended edges. */
             if (qx * ux + qy * uy >= 0 && qx * vx + qy * vy <= 0)
@@ -68,9 +101,15 @@ struct Query
     void endpoint(double ax, double ay, double ux, double uy)
     {
         if (cap == FVM_STROKE_CAP_ROUND)
+        {
+            point(ax - radius, ay - radius);
+            point(ax + radius, ay + radius);
             disk(ax, ay);
+        }
         else if (cap == FVM_STROKE_CAP_SQUARE)
         {
+            point(ax + radius * (ux - uy), ay + radius * (uy + ux));
+            point(ax + radius * (ux + uy), ay + radius * (uy - ux));
             double along = (x - ax) * ux + (y - ay) * uy;
             double across = (x - ax) * uy - (y - ay) * ux;
             if (along >= 0 && along <= radius && std::fabs(across) <= radius)
@@ -101,6 +140,10 @@ struct Query
             if (!length)
                 return;
             double size = std::sqrt(length), ux = dx / size, uy = dy / size;
+            point(ax - uy * radius, ay + ux * radius);
+            point(ax + uy * radius, ay - ux * radius);
+            point(bx - uy * radius, by + ux * radius);
+            point(bx + uy * radius, by - ux * radius);
             double along = (x - ax) * ux + (y - ay) * uy;
             double across = (x - ax) * uy - (y - ay) * ux;
             if (along >= 0 && along <= size && std::fabs(across) <= radius)
@@ -188,14 +231,15 @@ void curve(Query &query, const double *x, const double *y, unsigned degree, unsi
 /* Test a point against implicitly closed fills or connected strokes with the selected
  * private geometry policy; public callers retain their legacy round-distance policy. */
 static FVM_Result hit_test(const FVM_Path *path, double x, double y, double width,
-                           int even_odd, int *out, bool styled, unsigned cap, unsigned join)
+                           int even_odd, int *out, bool styled, unsigned cap, unsigned join,
+                           FVM_PathBounds *extent = 0, int *has_segments = 0)
 {
     if (!path || !out || !(x >= -2000000 && x <= 2000000 && y >= -2000000 && y <= 2000000) ||
         !(width >= 0 && width <= 1000000) || (even_odd != 0 && even_odd != 1) ||
         cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    Query query(x, y, width, styled, cap, join);
+    Query query(x, y, width, styled, cap, join, extent != 0);
     double first_x = 0, first_y = 0, current_x = 0, current_y = 0;
     bool open = false;
     for (size_t i = 0; i < fvm_path_count(path); ++i)
@@ -230,6 +274,10 @@ static FVM_Result hit_test(const FVM_Path *path, double x, double y, double widt
         }
         else
         {
+            /* Bounds are exact for straight contours; leave curved outputs transactional
+             * so managed callers can deliberately choose their conservative fallback. */
+            if (extent)
+                return FVM_UNSUPPORTED;
             unsigned degree = command.verb == FVM_PATH_QUADRATIC ? 2 : 3;
             double cx[4], cy[4];
             cx[0] = current_x;
@@ -248,6 +296,11 @@ static FVM_Result hit_test(const FVM_Path *path, double x, double y, double widt
         query.line(current_x, current_y, first_x, first_y);
     query.finish(false);
     *out = query.edge || (!width && (even_odd ? query.winding % 2 != 0 : query.winding != 0));
+    if (extent)
+    {
+        *extent = query.extent;
+        *has_segments = query.have_extent ? 1 : 0;
+    }
     return FVM_OK;
 }
 
@@ -263,4 +316,15 @@ FVM_Result fvm_path_hit_test_style(const FVM_Path *path, double x, double y, dou
                                    int even_odd, int *out, unsigned cap, unsigned join)
 {
     return hit_test(path, x, y, width, even_odd, out, true, cap, join);
+}
+
+/* Measure exact selected straight-stroke extents; empty geometry yields zero bounds and
+ * has_segments=0. Errors and curved contours preserve both caller outputs. */
+FVM_Result fvm_path_stroke_bounds_style(const FVM_Path *path, double width, unsigned cap,
+                                        unsigned join, FVM_PathBounds *out, int *has_segments)
+{
+    if (!out || !has_segments || !(width > 0))
+        return FVM_INVALID_ARGUMENT;
+    int ignored = 0;
+    return hit_test(path, 0, 0, width, 0, &ignored, true, cap, join, out, has_segments);
 }

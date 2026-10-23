@@ -1651,6 +1651,27 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
     return r;
 }
 
+/* Restore own cap/join scalars without getters; absent values retain legacy round strokes. */
+FVM_Result stroke_selectors(FVM_Object *part, unsigned &cap, unsigned &join)
+{
+    const char *style_names[] = {"lineCap", "lineJoin"};
+    unsigned *style_values[] = {&cap, &join};
+    const unsigned style_limits[] = {FVM_STROKE_CAP_SQUARE, FVM_STROKE_JOIN_BEVEL};
+    /* Restore own scalar metadata without getters; absent values retain legacy round. */
+    for (unsigned style = 0; style < 2; ++style)
+    {
+        Properties::iterator entry = part->properties.find(style_names[style]);
+        if (entry == part->properties.end())
+            continue;
+        const FVM_Value &value = entry->second;
+        if (value.type != FVM_VALUE_NUMBER || !(value.number >= 0 && value.number <= style_limits[style]) ||
+            value.number != std::floor(value.number))
+            return FVM_INVALID_ARGUMENT;
+        *style_values[style] = (unsigned)value.number;
+    }
+    return FVM_OK;
+}
+
 /* Collect stable geometry snapshots in world space or an accumulated parent-space transform. */
 FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool stroke,
                   FVM_PathBounds &out, bool &any, unsigned int depth, bool parent_space = false,
@@ -1709,11 +1730,59 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
             double other = std::sqrt(world.xy * world.xy + world.yy * world.yy);
             if (other > scale)
                 scale = other;
-            width *= scale / 2;
-            b.x_min -= width;
-            b.y_min -= width;
-            b.x_max += width;
-            b.y_max += width;
+            unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
+            r = stroke_selectors(i->second.object, cap, join);
+            if (r != FVM_OK)
+                return r;
+            bool selected = cap != FVM_STROKE_CAP_ROUND || join != FVM_STROKE_JOIN_ROUND;
+            double effective = width ? width * scale : 1;
+            FVM_PathBounds selected_bounds;
+            int has_segments = 0;
+            if (selected)
+            {
+                if (!(width >= 0 && effective >= 0))
+                    return FVM_INVALID_ARGUMENT;
+                if (effective > 0)
+                    r = fvm_path_stroke_bounds_style(p, effective, cap, join, &selected_bounds, &has_segments);
+                else
+                {
+                    std::memset(&selected_bounds, 0, sizeof(selected_bounds));
+                    r = FVM_OK;
+                }
+                if (r != FVM_OK && r != FVM_UNSUPPORTED)
+                    return r;
+            }
+            else
+                r = FVM_UNSUPPORTED;
+            if (r == FVM_OK)
+            {
+                FVM_Value fill;
+                bool filled = field(i->second.object, "fill", fill) == FVM_OK && fill.number;
+                if (!has_segments && !filled)
+                    continue;
+                if (!filled)
+                    b = selected_bounds;
+                else if (has_segments)
+                {
+                    if (selected_bounds.x_min < b.x_min) b.x_min = selected_bounds.x_min;
+                    if (selected_bounds.y_min < b.y_min) b.y_min = selected_bounds.y_min;
+                    if (selected_bounds.x_max > b.x_max) b.x_max = selected_bounds.x_max;
+                    if (selected_bounds.y_max > b.y_max) b.y_max = selected_bounds.y_max;
+                }
+            }
+            else
+            {
+                /* Preserve legacy round bounds; curved square ends need a wider conservative
+                 * envelope than a circular half-width to avoid clipping diagonal extensions. */
+                double radius = selected ? effective / 2 : width * scale / 2;
+                if (cap == FVM_STROKE_CAP_SQUARE)
+                    radius *= FVM_STROKE_SQUARE_BOUND_FACTOR;
+                b.x_min -= radius;
+                b.y_min -= radius;
+                b.x_max += radius;
+                b.y_max += radius;
+                r = FVM_OK;
+            }
         }
         if (!any)
         {
@@ -1852,27 +1921,6 @@ FVM_Result rect_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
                        FVM_Value *v, void *)
 {
     return get_bounds(c, o, n, a, v, false);
-}
-
-/* Restore own cap/join scalars without getters; absent values retain legacy round strokes. */
-FVM_Result stroke_selectors(FVM_Object *part, unsigned &cap, unsigned &join)
-{
-    const char *style_names[] = {"lineCap", "lineJoin"};
-    unsigned *style_values[] = {&cap, &join};
-    const unsigned style_limits[] = {FVM_STROKE_CAP_SQUARE, FVM_STROKE_JOIN_BEVEL};
-    /* Restore own scalar metadata without getters; absent values retain legacy round. */
-    for (unsigned style = 0; style < 2; ++style)
-    {
-        Properties::iterator entry = part->properties.find(style_names[style]);
-        if (entry == part->properties.end())
-            continue;
-        const FVM_Value &value = entry->second;
-        if (value.type != FVM_VALUE_NUMBER || !(value.number >= 0 && value.number <= style_limits[style]) ||
-            value.number != std::floor(value.number))
-            return FVM_INVALID_ARGUMENT;
-        *style_values[style] = (unsigned)value.number;
-    }
-    return FVM_OK;
 }
 
 /* [GC:] Test copied paint/child edges against a world-space point under the native call barrier. */

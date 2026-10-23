@@ -11,4 +11,6 @@
 #define FVM_STROKE_JOIN_ROUND 0U
 /* Bevel join connects the outer edges with a straight segment. */
 #define FVM_STROKE_JOIN_BEVEL 1U
+/* Conservative axis expansion for square caps on curves: half-width times sqrt(2). */
+#define FVM_STROKE_SQUARE_BOUND_FACTOR 1.4142135623730951
 #endif
