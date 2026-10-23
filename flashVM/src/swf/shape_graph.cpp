@@ -108,7 +108,7 @@ FVM_Result bitmap(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *pa
                    : 0);
     record->properties["smoothing"] = number(paint.bitmap_type < 0x42 ? 1 : 0);
     /* [GC:] The paint owns the completed descriptor before the next path is constructed. */
-    part->properties["bitmap"] = object(record);
+    part->properties[paint.stroke ? "lineBitmap" : "bitmap"] = object(record);
     return FVM_OK;
 }
 } // namespace

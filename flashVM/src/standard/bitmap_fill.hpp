@@ -10,5 +10,5 @@ FVM_Result fvm_movieclip_bitmap_begin(FVM_Context *, FVM_Object *, unsigned, con
  * contents. */
 FVM_Result fvm_movieclip_bitmap_draw(FVM_Context *, FVM_Object *, const FVM_Affine &,
                                      const FVM_Path *, FVM_RasterSurface *, const double *,
-                                     const double *, int);
+                                     const double *, int, double stroke_width = 0);
 #endif

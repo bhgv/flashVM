@@ -39,4 +39,10 @@ FVM_Result fvm_path_mask_width_quality(const FVM_Path *, FVM_RasterSurface *,
 /* Sample existing bitmap paint without changing its smoothing option; select only edge AA. */
 FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *, FVM_RasterSurface *,
                                         const FVM_BitmapPaint *, int even_odd, bool antialias);
+/* Destination-space limit shared by bitmap stroke validation and its coverage preparation. */
+#define FVM_BITMAP_STROKE_MAX_WIDTH 4096.0
+/* Width zero fills; positive width applies the existing round-stroke mask to sampled pixels. */
+FVM_Result fvm_path_bitmap_paint_quality(const FVM_Path *, FVM_RasterSurface *,
+                                         const FVM_BitmapPaint *, double width,
+                                         int even_odd, bool antialias);
 #endif

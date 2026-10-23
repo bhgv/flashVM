@@ -2288,7 +2288,15 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
             double scale = vector_length(world.xx, world.yx);
             if (r == FVM_OK)
             {
-                if (part->properties.find("lineGradient") != part->properties.end())
+                if (part->properties.find("lineBitmap") != part->properties.end())
+                {
+                    /* A positive stroke collapsed by its world matrix paints no bitmap coverage. */
+                    if (!width || scale > 0)
+                        r = fvm_movieclip_bitmap_draw(c, part, world, p, surface,
+                                                       transform.multiply, transform.add, 0,
+                                                       width ? width * scale : 1);
+                }
+                else if (part->properties.find("lineGradient") != part->properties.end())
                 {
                     /* A collapsed positive-width stroke contributes no gradient coverage. */
                     if (!width || scale > 0)

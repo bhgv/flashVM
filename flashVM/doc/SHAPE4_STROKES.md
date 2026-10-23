@@ -1,6 +1,8 @@
 # Bounded SWF 8 LINESTYLE2 strokes
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L470) accepts DefineShape4 LINESTYLE2 records with round start/end
+Current extension v0.1239+: [LINESTYLE2 bitmap strokes](BITMAP_STROKES.md). Earlier blanket bitmap-stroke exclusions below are historical; other stroke limitations remain open.
+
+[fvm_swf_read_shape](../src/swf/shape.cpp#L467) accepts DefineShape4 LINESTYLE2 records with round start/end
 caps and round joins, ordinary width scaling, and optional NoClose. Width remains
 an unsigned twip value; zero selects the renderer's one-pixel hairline.
 Both direct RGBA colors and solid/linear/radial/focal FillType records are
@@ -52,7 +54,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:470](../src/swf/shape.cpp#L470) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:467](../src/swf/shape.cpp#L467) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

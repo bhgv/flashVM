@@ -21,8 +21,8 @@ int main()
     size_t header=style+4+(fill_header-fill_flags-2);
     for(unsigned bad=0;bad<3;++bad) { Bytes bytes=source; bytes[header]=(unsigned char)(bad==0?0:bad==1?0xc2:0x22); reject(bytes,FVM_INVALID_ARGUMENT); }
     Bytes bytes=source; bytes[header+1]=200; bytes[header+6]=100; reject(bytes,FVM_INVALID_ARGUMENT);
-    /* A complete bitmap FillType is rejected before backend-dependent graph construction. */
+    /* A truncated bitmap style still fails after its now-supported FillType is decoded. */
     bytes=source; bytes.resize(style+4); bytes.push_back(0x40); u16(bytes,7); bytes.push_back(0);
-    reject(bytes,FVM_UNSUPPORTED);
+    reject(bytes,FVM_INVALID_ARGUMENT);
     return 0;
 }

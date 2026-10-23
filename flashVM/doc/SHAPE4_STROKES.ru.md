@@ -1,6 +1,8 @@
 # Ограниченные обводки SWF 8 LINESTYLE2
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L470) принимает LINESTYLE2 в DefineShape4 с круглыми концами и
+Текущее расширение v0.1239+: [bitmap-обводки LINESTYLE2](BITMAP_STROKES.ru.md). Прежний общий запрет bitmap-обводок ниже исторический; остальные ограничения обводок сохраняются.
+
+[fvm_swf_read_shape](../src/swf/shape.cpp#L467) принимает LINESTYLE2 в DefineShape4 с круглыми концами и
 соединениями, обычным масштабированием ширины и необязательным NoClose. Ширина
 задана беззнаковым числом твипов; ноль включает однопиксельную hairline-обводку.
 Принимаются прямой RGBA-цвет и FillType со сплошной, линейной, радиальной или
@@ -52,7 +54,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:470](../src/swf/shape.cpp#L470) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:467](../src/swf/shape.cpp#L467) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

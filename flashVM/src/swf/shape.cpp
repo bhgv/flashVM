@@ -184,9 +184,6 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
                 FVM_Result r = fill(reader, tag, paint);
                 if (r != FVM_OK)
                     return r;
-                /* Bitmap coverage is currently a fill-only renderer, never silently solid. */
-                if (paint.bitmap_type)
-                    return FVM_UNSUPPORTED;
             }
             else if (!color(reader, true, paint))
                 return FVM_INVALID_ARGUMENT;
