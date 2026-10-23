@@ -739,10 +739,34 @@ static FVM_Result stream_seek_frame(FVM_DesktopAudio *audio, unsigned int frame)
     FVM_Result result;
     while (index + 1 < audio->stream_count && audio->stream_segments[index + 1].frame <= frame)
         ++index;
-    result = fvm_swf_stream_output_bind_frame(&audio->stream_output,
-                                              &audio->stream_segments[index].converter, frame);
-    if (result == FVM_OK)
-        audio->stream_index = index;
+    {
+        FVM_SWFStreamSoundSeekPoint point;
+        unsigned int pcm_frame = 0;
+        point.struct_size = sizeof(point);
+        result = fvm_swf_stream_sound_snapshot_seek_point(
+            audio->stream_segments[index].source, frame, &point);
+        if (result != FVM_OK)
+            return result;
+        if (point.mp3_aligned &&
+            point.block_index < audio->stream_segments[index].converter.block_count)
+        {
+            FVM_SWFStreamSoundBlock block;
+            block.struct_size = sizeof(block);
+            result = fvm_swf_stream_sound_snapshot_block_at(
+                audio->stream_segments[index].source, point.block_index, &block);
+            if (result != FVM_OK)
+                return result;
+            pcm_frame = block.frame;
+        }
+        result = fvm_swf_stream_output_bind_frame_aligned(&audio->stream_output,
+            &audio->stream_segments[index].converter, frame);
+        if (result == FVM_OK)
+        {
+            audio->stream_index = index;
+            audio->stream_seek_selected_frame = point.mp3_aligned ? point.source_frame : 0;
+            audio->stream_seek_pcm_frame = pcm_frame;
+        }
+    }
     return result;
 }
 
@@ -798,6 +822,13 @@ static FVM_Result sync_timeline(FVM_Context *context, FVM_Object *clip,
         audio->stream_entered = info.entered;
         audio->stream_frame_ready = authorize && info.entered;
         audio->stream_frame = audio->stream_frame_ready ? info.frame : 0;
+        /* A signed backward point cannot escape a gap before its selected authored frame.
+         * Once authorized, allow the resolved starting block even if latency moved it ahead.
+         * Later source blocks retain the existing gate; full A/V read-ahead remains separate. */
+        if (audio->stream_frame && audio->stream_frame < audio->stream_seek_selected_frame)
+            audio->stream_frame = 0;
+        else if (audio->stream_frame && audio->stream_seek_pcm_frame > audio->stream_frame)
+            audio->stream_frame = audio->stream_seek_pcm_frame;
         /* Frame events may allocate outside the mutex. The owner publishes permission only
          * after the complete frame, so the worker cannot render before all starts arrive. */
         audio->stream_movie_paused = !info.playing;

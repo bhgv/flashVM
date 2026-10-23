@@ -44,6 +44,8 @@ typedef struct FVM_DesktopAudio
     FVM_SWFStreamOutput stream_output; /* Caller-buffered native producer, valid with source. */
     short stream_pcm[FVM_DESKTOP_AUDIO_BLOCK * FVM_DESKTOP_AUDIO_CHANNELS]; /* Owned retry bytes. */
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
+    unsigned int stream_seek_selected_frame; /* Earliest authored permission for an aligned start. */
+    unsigned int stream_seek_pcm_frame; /* Resolved initial PCM block frame, possibly later. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
     int event_waiting; /* Finite producer expects idle drain, so a completed event is not an underrun. */

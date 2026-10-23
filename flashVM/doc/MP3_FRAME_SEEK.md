@@ -43,6 +43,19 @@ rejected. No allocation/decode/VM/GC operation occurs. Keep snapshot, converter,
 backend and output storage alive and serialize mutations. Success remains paused.
 Legacy bind_frame/seek_frame continue selecting the authored block start.
 
+
+## Desktop root integration
+
+Nonsequential root navigation now uses aligned binding under the audio mutex.
+The owner publishes only scalars after querying the VM. A selected future authored
+block cannot play inside the preceding visual gap, even with a backward signed
+position. Once that authored frame is authorized, its resolved starting PCM block
+can play even if positive alignment/initial trimming moved it to a later block.
+Only this starting block is promoted; later blocks keep the existing source gate.
+Authored Stop, host pause and incomplete frame callbacks still withhold permission.
+Continuous playback does not reapply SeekSamples. Full reference read-ahead,
+source-time scheduling and A/V drift correction remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
