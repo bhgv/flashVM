@@ -1,4 +1,4 @@
-Версия разработки: **0.1231** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1232** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1232: [Копии через сериализацию и канал сохраняют NoClose и фокусную обводку после GC](doc/SHAPE4_STROKES.ru.md).
 
 v0.1231: [Усечение вложенных стилей резервные режимы границы фокуса и bitmap-обводки отклоняются явно](doc/SHAPE4_STROKES.ru.md).
 
