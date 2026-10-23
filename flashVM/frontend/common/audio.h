@@ -46,6 +46,7 @@ typedef struct FVM_DesktopAudio
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
+    int finite_event_tails; /* Immutable opt-in finite event-only output, independent of mixed policy. */
     int finite_mixed_tails; /* Immutable startup policy: avoid fresh event-only block padding when set. */
     int stream_frame_ready; /* Completed owner frame; zero holds both producers during callbacks. */
     int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
@@ -99,6 +100,11 @@ extern "C"
      * Retained BASE cannot be replaced while its frame is held; resume or acknowledged clear
      * resolves it. Accepted mixed lead is not selectively recalled on authored root Stop. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
+    /* Configure initial pause, mixed and event-only finite policies before worker publication.
+     * All flags 0/1; invalid flags preserve output with INVALID_ARGUMENT. Same owner-side
+     * acquisition/cleanup contract as open. Policies remain immutable until close. */
+    FVM_Result fvm_desktop_audio_open_policy(FVM_Context *, FVM_Object *, FVM_DesktopAudio *,
+                                             int paused, int finite_mixed_tails, int finite_event_tails);
     /* Initialize finite mixed-tail policy before starting the native producer; both flags are 0/1.
      * Same acquisition/cleanup ownership as open; invalid flags INVALID_ARGUMENT before mutation.
      * Legacy functions choose padded tails. Only root stream/event composition uses this policy;

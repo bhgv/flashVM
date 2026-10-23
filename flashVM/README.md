@@ -1,10 +1,12 @@
-Development version: **0.1029** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1030** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1030: [Add immutable event policy, explicit finite-audio-tails CLI parsing and compatibility wrappers for previous mixed-only startup.](doc/EVENT_TAILS.md).
 
 v0.1029: [Verify 256 epochs with exact short retries, independent rational PCM, coherent pending observations and queued identity expiry.](doc/EVENT_TAILS.md).
 

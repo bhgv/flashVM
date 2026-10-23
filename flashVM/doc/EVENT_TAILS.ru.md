@@ -16,6 +16,9 @@ v0.1028: Проверены NoMultiple до dequeue, последний точн
 
 v0.1029: Проверены 256 эпох с короткими retry, независимым рациональным PCM, pending и истечением queued ID.
 
+
+v0.1030: Добавлены неизменный event policy, CLI finite-audio-tails и совместимые wrappers прежнего mixed-only startup.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

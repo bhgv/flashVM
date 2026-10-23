@@ -16,6 +16,9 @@ v0.1028: Check NoMultiple through dequeue, the last exact clock frame and zero a
 
 v0.1029: Verify 256 epochs with exact short retries, independent rational PCM, coherent pending observations and queued identity expiry.
 
+
+v0.1030: Add immutable event policy, explicit finite-audio-tails CLI parsing and compatibility wrappers for previous mixed-only startup.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

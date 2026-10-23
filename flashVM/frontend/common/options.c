@@ -155,6 +155,7 @@ int fvm_desktop_options_validate(const FVM_DesktopOptions *options, const char *
     else if ((options->once != 0 && options->once != 1) ||
              (options->mute != 0 && options->mute != 1) ||
              (options->finite_mixed_tails != 0 && options->finite_mixed_tails != 1) ||
+             (options->finite_audio_tails != 0 && options->finite_audio_tails != 1) ||
              (options->stats != 0 && options->stats != 1))
         message = "player flags must be zero or one";
     else if (options->once && options->frames)
@@ -285,6 +286,8 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
         }
         else if (!paths_only && !strcmp(arg, "--once"))
             value.once = 1;
+        else if (!paths_only && !strcmp(arg, "--finite-audio-tails"))
+            value.finite_audio_tails = 1;
         else if (!paths_only && !strcmp(arg, "--finite-mixed-tails"))
             value.finite_mixed_tails = 1;
         else if (!paths_only && !strcmp(arg, "--mute"))
@@ -358,6 +361,7 @@ void fvm_desktop_help(const char *program)
     puts("  --loads N               Allow 1..1024 resource loads, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
+    puts("  --finite-audio-tails     End event-only and root mixed tails with finite drain");
     puts("  --finite-mixed-tails     End fresh root mixed event tails without block padding");
     puts("  --mute                  Mute event sound and validated root streams; no device");
     puts(
