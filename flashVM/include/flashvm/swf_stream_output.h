@@ -162,6 +162,22 @@ extern "C"
      * Caller exclusively retains target/snapshot; positive frame; same target is allowed. */
     FVM_API FVM_Result fvm_swf_stream_output_bind_frame(FVM_SWFStreamOutput *,
                                                          FVM_SWFStreamConverter *, unsigned int);
+    /* Resolve authored MP3 timing before the existing pause/clear/seek transaction.
+     * Same ownership, callback serialization, exception and failure contract as bind_frame.
+     * Validate target geometry and signed position before callbacks; publish target/cursor only
+     * after successful clear. Successful pause remains visible if clear fails. Success leaves
+     * output paused, discards pending PCM, resets accounting and converter phase to zero.
+     * Source snapshot must remain alive. No allocation, decoding, VM/GC or script execution;
+     * backend callbacks run synchronously, reentry is rejected. Invalid frame/target/position
+     * INVALID_ARGUMENT; encoded source UNSUPPORTED; overflow OUT_OF_MEMORY; callback statuses
+     * propagate, callback exception ERROR. Failure preserves cursor/binding/pending PCM.
+     * Host must authorize the selected authored frame before pumping resolved PCM; this does
+     * not implement a full A/V clock or future-frame read-ahead policy. Legacy APIs unchanged. */
+    FVM_API FVM_Result fvm_swf_stream_output_bind_frame_aligned(
+        FVM_SWFStreamOutput *, FVM_SWFStreamConverter *, unsigned int frame);
+    /* Current-source counterpart; same transactional and source-authorization contract. */
+    FVM_API FVM_Result fvm_swf_stream_output_seek_frame_aligned(
+        FVM_SWFStreamOutput *, unsigned int frame);
 #ifdef __cplusplus
 }
 #endif

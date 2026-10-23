@@ -30,6 +30,19 @@ No allocation, decoding, callback, script or GC access occurs. Independent const
 reads can share a post-VM snapshot; synchronize close separately. The host owns
 source authorization, resampler phase reset and device queue transactions.
 
+
+## Transactional output
+
+[fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) validates converter geometry and the
+point before callbacks; [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) uses the current
+converter. Both reuse pause → clear → publish. Only successful clear publishes
+the new cursor/binding and resets pending PCM, counters and resampler phase.
+A failed clear retains old PCM/cursors with the acknowledged pause still visible.
+Callback statuses propagate; exceptions become [FVM_ERROR](../include/flashvm/flashvm.h#L43) and busy reentry is
+rejected. No allocation/decode/VM/GC operation occurs. Keep snapshot, converter,
+backend and output storage alive and serialize mutations. Success remains paused.
+Legacy bind_frame/seek_frame continue selecting the authored block start.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -39,8 +52,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
+| `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
 | `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:140](../include/flashvm/swf_stream_sound.h#L140) |
 | `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:161](../include/flashvm/swf_stream_sound.h#L161) |
 | `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:142](../include/flashvm/swf_stream_sound.h#L142) |

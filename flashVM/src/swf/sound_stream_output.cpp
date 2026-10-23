@@ -475,3 +475,28 @@ extern "C" FVM_Result fvm_swf_stream_output_bind_frame(FVM_SWFStreamOutput *s,
         return result;
     return stream_seek(s, target, block, 0);
 }
+
+/* Validate signed authored position before any backend effects; reuse staged publication. */
+extern "C" FVM_Result fvm_swf_stream_output_bind_frame_aligned(
+    FVM_SWFStreamOutput *s, FVM_SWFStreamConverter *target, unsigned int frame)
+{
+    if (!stream_output(s) || !frame)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result result = stream_match(s, target);
+    if (result != FVM_OK)
+        return result;
+    FVM_SWFStreamSoundSeekPoint point;
+    point.struct_size = sizeof(point);
+    result = fvm_swf_stream_sound_snapshot_seek_point(target->snapshot, frame, &point);
+    if (result != FVM_OK)
+        return result;
+    return stream_seek(s, target, point.block_index, point.first);
+}
+/* Preserve native ownership and busy checks for current-source aligned navigation. */
+extern "C" FVM_Result fvm_swf_stream_output_seek_frame_aligned(
+    FVM_SWFStreamOutput *s, unsigned int frame)
+{
+    if (!stream_output(s))
+        return FVM_INVALID_ARGUMENT;
+    return fvm_swf_stream_output_bind_frame_aligned(s, s->converter, frame);
+}
