@@ -1284,10 +1284,15 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         FVM_Result result = prepare_field_geometry(c, next, args[0].string, size, geometry);
         if (result != FVM_OK)
             return result;
+        GeometryNotification notification(c, self);
+        result = notification.prepare(geometry, next, args[0].string, size);
+        if (result != FVM_OK)
+            return result;
         field->current.swap(next);
         field->text = args[0].string;
         field->text_size = size;
-        geometry.commit(*field);
+        fvm_value_undefined(out);
+        return notification.commit(geometry);
     }
     else if (std::strcmp(name, "multiline") == 0 || std::strcmp(name, "wordWrap") == 0)
     {
