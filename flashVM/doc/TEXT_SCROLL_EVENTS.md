@@ -78,6 +78,10 @@ display-list integration remain open. Tests use analytic layout and executable
 AVM1 fixtures; they are not an original Flash Player binary oracle. Device and
 foreign-platform acceptance is separate; no roadmap stage is closed.
 
+## Validation
+
+TextField explicit scroll observers v0.1104–v0.1117: addListener/removeListener use bounded graph-owned identities; effective explicit offset changes publish state before field-first onScroller and rooted snapshot listeners. Source arguments, duplicate/removal semantics, live handler replacement, nested writes and no-op suppression are verified. Binary/channel transfer retains registrations and collects unreachable cycles; only retired rootless method slots upgrade, while saved Function aliases and captured host overrides retain their bodies. SWF4/5 suppress these events; SWF6–8 real AVM1 setters agree across interpreter/manual/native JIT with actual native entry counts. Four independent OS workers check 128 epochs. Allocation sweeps and work limits distinguish prepublication rollback from committed partial delivery; VM/getter/C++ callback failures retain completed effects. Validation passes 163 selected native text/font/graph/tutorial checks, 17 ASan/UBSan checks plus explicit no-throw callback and no-fault allocation runs; LeakSanitizer is disabled. SDK-free C89 ABI/admission passes and three font tutorials explicitly skip. A renamed detached text component configures with bundled static font dependencies; its copied observer checker passes against the native executable, without a separate detached build. The C89 callback tutorial checks exact order and final offsets. Geometry-wide notifications, onChanged/input, HTML/mixed styles, SWF display-list text, physical devices/foreign platforms and all nine roadmap stages remain open. [Contract](TEXT_SCROLL_EVENTS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

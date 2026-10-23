@@ -76,6 +76,10 @@ SWF display list. Проверки используют аналитическу
 fixtures, а не binary oracle оригинального Flash Player. Приёмка устройств и
 других платформ отдельная; ни одна стадия плана не закрывается.
 
+## Проверки
+
+Наблюдатели явной прокрутки TextField v0.1104–v0.1117: addListener/removeListener хранят ограниченный список identities в managed graph; эффективная запись offsets публикует состояние до field-first onScroller и rooted snapshot listeners. Проверены source argument, duplicate/removal, живая замена handler, вложенные записи и отсутствие события при неизменной позиции. Binary/channel перенос сохраняет регистрации, GC собирает недостижимые циклы; обновляются только retired rootless method slots, а сохранённые Function aliases и host overrides сохраняют тело. SWF4/5 не доставляют эти события; реальные AVM1 setters SWF6–8 совпадают в interpreter/manual/native JIT с проверкой native entry counts. Четыре независимых OS-worker проверяют 128 эпох. Перебор allocation failures и work limits различает rollback до публикации и частичную доставку после commit; ошибки VM/getter/C++ callback сохраняют выполненные эффекты. Прошли 163 выбранные native text/font/graph/tutorial проверки, 17 ASan/UBSan и отдельные no-throw callback/no-fault allocation запуски; LeakSanitizer отключён. SDK-free C89 ABI/admission проходит, три font tutorial явно пропускаются. Переименованный detached text-компонент конфигурируется с bundled static fonts; скопированный observer checker проходит на native executable без отдельной detached-сборки. C89 tutorial проверяет точный порядок callback и итоговые offsets. События всей геометрии, onChanged/ввод, HTML/mixed styles, текст SWF display list, реальные устройства/другие платформы и все девять стадий открыты. [Контракт](TEXT_SCROLL_EVENTS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

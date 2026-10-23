@@ -99,7 +99,7 @@ TEXT_LAYOUT.ru.md. Табуляция/условный дефис и други�
 могут храниться в text, но измерение/экспорт возвращают ошибку.
 
 Известные неподдержанные свойства отображения/ввода (HTML, border,
-background, embedFonts, password, selectable, прокрутка, параметры сглаживания,
+background, embedFonts, password, selectable, параметры сглаживания,
 filters, преобразования отображения) явно дают UNSUPPORTED при чтении/записи.
 Заблокированы replaceSel и методы узла отображения.
 MovieClip.createTextField, HTML, разные стили, каретка/выделение/ввод,
