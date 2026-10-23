@@ -44,6 +44,9 @@ v0.1004: Reject all native allocations after preparation across short writes, re
 
 v0.1005: Check 256 source-teardown epochs with one-frame FIFO drain, rejected short tails, opening gates and exact PCM and ID expiry.
 
+
+v0.1006: Exercise production C89 worker scheduling in interpreter and native JIT with GC, short retry, exact event PCM and retained base resume.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

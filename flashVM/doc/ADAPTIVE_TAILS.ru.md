@@ -42,6 +42,9 @@ v0.1004: После подготовки запрещены все аллока�
 
 v0.1005: Проверены 256 эпох после удаления VM: FIFO по одному кадру, короткие retry, открытие gate, точный PCM и истечение ID.
 
+
+v0.1006: Production C89 worker проверен в interpreter/native JIT с GC, коротким retry, точным PCM и возобновлением BASE.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
