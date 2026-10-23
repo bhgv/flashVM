@@ -18,3 +18,5 @@ v0.1070: Worker проверяет single-saturation stereo PCM и BASE19/TAIL0 
 v0.1071: C89-пример добавляет inferred-режим без таблицы; все три режима проверяются по восьми ручным samples.
 
 v0.1072: Четыре OS-worker читают общий post-VM snapshot с разными курсорами, проверяя интерполяцию и restart в 128 эпохах.
+
+v0.1073: Post-VM PCM сохраняется при rejected write, gate, failed clear и reset; финальный short retry даёт ровно 19 stereo frames.

@@ -18,3 +18,5 @@ v0.1070: Real workers verify one-saturation stereo PCM and BASE19 TAIL0 for both
 v0.1071: Add an inferred export policy without count-table access; verify the same eight hand-calculated samples in all three ownership modes.
 
 v0.1072: Four native workers share a post-VM snapshot with independent cursors, checking exact rational interpolation and packet restart over 128 epochs.
+
+v0.1073: Post-VM converted PCM survives rejected writes, a closed frame gate, failed clear and acknowledged reset; short final retry drains exactly 19 stereo frames.
