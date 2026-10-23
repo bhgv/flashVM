@@ -59,7 +59,7 @@
     - [color_matrix_filter](#example-embedding-color_matrix_filter) — <small><em>Изменение RGBA через матрицу цвета</em></small>
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
-    - [gradients](#example-embedding-gradients) — <small><em>Градиенты, обводки и сравнение RGB/linearRGB</em></small>
+    - [gradients](#example-embedding-gradients) — <small><em>Градиенты, RGB/linearRGB и внутренние focal-позиции</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
     - [image_codecs_loading](#example-embedding-image_codecs_loading) — <small><em>C89: атомарная замена PNG, GC, RGBA и очистка без SDL</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
@@ -778,9 +778,9 @@ AS2-исходник использует Point, Matrix и Rectangle: перен
 
 Создаёт редактируемый прямоугольный путь и линейную красно-синюю заливку, затем печатает центральный RGBA. Показывает матрицу градиента, диапазон stop ratios и владение массивом остановок; графический backend выбирается в DEFS.
 
-**Файлы:** [example_as2.as](embedding/gradients/example_as2.as), [main.c](embedding/gradients/main.c), [stroke.inc](embedding/gradients/stroke.inc), [linear_rgb.inc](embedding/gradients/linear_rgb.inc).
+**Файлы:** [example_as2.as](embedding/gradients/example_as2.as), [main.c](embedding/gradients/main.c), [stroke.inc](embedding/gradients/stroke.inc), [linear_rgb.inc](embedding/gradients/linear_rgb.inc), [focal.inc](embedding/gradients/focal.inc).
 
-C89 helpers сравнивают pad/reflect/repeat обводки и RGB/linearRGB midpoint с неизменной alpha; путь и буфер сохраняют владение main.
+C89 helpers сравнивают spread-обводки, RGB/linearRGB midpoint и signed interior focal по реальным пикселям; путь и буфер сохраняют владение main.
 
 [К оглавлению](#оглавление).
 

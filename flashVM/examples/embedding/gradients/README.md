@@ -87,6 +87,26 @@ Run `python3 flashVM/scripts/check_gradient_linear_rgb_example.py <path-to-examp
 
 AS2 companion также показывает отдельный SWF8 linearRGB-клип. CMake не компилирует этот illustrative source в SWF; реальные AVM1 fixtures проверяют соответствующие операции и JIT отдельно. Checker проверяет все восемь строк C89-вывода, а без backend явно пропускается.
 
+## Interior focal positions / Внутренние focal-позиции
+
+The annotated C89 focal.inc companion borrows main's rectangle/buffer and owns two local red/blue stops. It paints radial fill and stroke coverage for focal -0.5, 0 and 0.5, printing red samples on the horizontal gradient axis. Width is positive for strokes; all inputs exist until each synchronous call returns. Errors return to main's ordinary path cleanup. NO_GRAPHICS exits through the earlier backend message.
+
+Helper сравнивает отрицательный, нулевой и положительный focal строго внутри круга. Границы ±1, clamping и полное округление Flash остаются открыты. Ожидаемый дополнительный вывод:
+
+```text
+focal fill -0.5: 255 170 85
+focal fill 0: 128 255 128
+focal fill 0.5: 85 170 255
+focal stroke -0.5: 255 170 85
+focal stroke 0: 128 255 128
+focal stroke 0.5: 85 170 255
+```
+
+| Function | Purpose and ownership / Назначение и владение |
+| --- | --- |
+| [fvm_path_draw_gradient_focal](../../../include/flashvm/gradient.h#L85) | Synchronously borrows path, destination and gradient/stops; fills with explicit interior radial focal and spread/color selectors. Invalid geometry or preparation failure preserves pixels. [Contract](../../../doc/FOCAL_GRADIENTS.md). |
+| [fvm_path_stroke_gradient_focal](../../../include/flashvm/gradient.h#L90) | Borrows the same inputs for a positive destination-width stroke; retains no VM/root/device and requires -1<focal<1. [Контракт](../../../doc/FOCAL_GRADIENTS.ru.md). |
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
@@ -126,7 +146,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:52](../../../include/flashvm/gradient.h#L52) |
+| `fvm_path_draw_gradient_focal` | function | [include/flashvm/gradient.h:85](../../../include/flashvm/gradient.h#L85) |
 | `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:71](../../../include/flashvm/gradient.h#L71) |
 | `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:64](../../../include/flashvm/gradient.h#L64) |
+| `fvm_path_stroke_gradient_focal` | function | [include/flashvm/gradient.h:90](../../../include/flashvm/gradient.h#L90) |
 | `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:77](../../../include/flashvm/gradient.h#L77) |
 <!-- source-links:end -->

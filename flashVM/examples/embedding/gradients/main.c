@@ -17,6 +17,7 @@ static int add(FVM_Path *path, FVM_PathVerb verb, double x, double y)
 
 #include "stroke.inc" /* Подключаем C89 helper с тремя режимами градиентной обводки. */
 #include "linear_rgb.inc" /* Подключаем сравнение RGB/linearRGB без нового ресурса или VM. */
+#include "focal.inc" /* Подключаем сравнение внутренних focal-позиций радиального градиента. */
 
 /* Рисуем градиент и освобождаем путь; при NO_GRAPHICS объясняем выбор графической сборки. */
 int main(void)
@@ -91,6 +92,7 @@ int main(void)
         (unsigned int)pixels[(16 * 32 + 16) * 4 + 3]); /* Читаем непрозрачность без premultiply. */
     result = gradient_stroke_demo(path, &surface, &gradient); /* Сравниваем pad, reflect и repeat на том же принадлежащем main пути. */
     if (result == FVM_OK) result = gradient_linear_rgb_demo(path, &surface); /* Проверяем цветовые политики после успешного spread-примера. */
+    if (result == FVM_OK) result = gradient_focal_demo(path, &surface); /* Сравниваем два ненулевых focal и прежний центр. */
     fvm_path_destroy(path); /* Освобождаем путь после всех синхронных заливок и обводок. */
     return result == FVM_OK ? 0 : 1; /* Возвращаем оболочке результат проверки примера. */
 } /* Завершаем main; локальные массивы больше не используются. */
