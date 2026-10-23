@@ -21,6 +21,12 @@ extern "C"
         FVM_GRADIENT_SPREAD_REFLECT = 1, /* Alternate forward/reverse unit intervals. */
         FVM_GRADIENT_SPREAD_REPEAT = 2 /* Repeat a half-open unit interval. */
     } FVM_GradientSpread;
+    /* Color-space policy; alpha always interpolates as a straight linear channel. */
+    typedef enum FVM_GradientInterpolation
+    {
+        FVM_GRADIENT_INTERPOLATION_RGB = 0, /* Interpolate encoded RGB bytes as before. */
+        FVM_GRADIENT_INTERPOLATION_LINEAR_RGB = 1 /* Interpolate decoded linear-light sRGB. */
+    } FVM_GradientInterpolation;
     /* One ordered control point; equal ratios represent an abrupt color transition. */
     typedef struct FVM_GradientStop
     {
@@ -57,6 +63,20 @@ extern "C"
     FVM_API FVM_Result fvm_path_stroke_gradient(const FVM_Path *, FVM_RasterSurface *,
                                                  const FVM_Gradient *, double width,
                                                  unsigned int spread);
+    /* Fill with explicit unsigned spread and interpolation selectors; borrow all inputs.
+       The legacy gradient struct/layout is unchanged. RGB selects the existing byte sampler.
+       LINEAR_RGB decodes sRGB stops and re-encodes interpolated RGB before color transforms.
+       Invalid selectors/geometry and preparation failures preserve destination pixels. */
+    FVM_API FVM_Result fvm_path_draw_gradient_interpolated(const FVM_Path *, FVM_RasterSurface *,
+                                                           const FVM_Gradient *, int even_odd,
+                                                           unsigned int spread,
+                                                           unsigned int interpolation);
+    /* Stroke with the same explicit color policy and a positive destination-pixel width.
+       Width/ownership/backend limits match fvm_path_stroke_gradient; no VM is retained. */
+    FVM_API FVM_Result fvm_path_stroke_gradient_interpolated(const FVM_Path *, FVM_RasterSurface *,
+                                                             const FVM_Gradient *, double width,
+                                                             unsigned int spread,
+                                                             unsigned int interpolation);
 #ifdef __cplusplus
 }
 #endif

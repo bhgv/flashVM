@@ -1,4 +1,4 @@
-Версия разработки: **0.1182** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1183** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1183: [Добавлены явные interpolation selectors с декодированием stops на одну отрисовку](doc/LINEAR_RGB_GRADIENTS.ru.md).
 
 v0.1182: [Проверены mixed ramp ownership и native sanitizer SDK-free detached проверки](doc/GRADIENT_STROKES.ru.md).
 

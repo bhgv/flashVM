@@ -4,7 +4,7 @@
 
 ## Вызов C89
 
-`fvm_path_stroke_gradient(path, surface, gradient, width, spread)` выбирает цвет из существующего [`FVM_Gradient`](../include/flashvm/gradient.h#L31) и композитит его через подготовленную маску обводки. Layout структуры не изменён; [`fvm_path_draw_gradient`](../include/flashvm/gradient.h#L45) и [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L50) сохраняют семантику заливок и standalone antialiasing.
+`fvm_path_stroke_gradient(path, surface, gradient, width, spread)` выбирает цвет из существующего [`FVM_Gradient`](../include/flashvm/gradient.h#L37) и композитит его через подготовленную маску обводки. Layout структуры не изменён; [`fvm_path_draw_gradient`](../include/flashvm/gradient.h#L51) и [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L56) сохраняют семантику заливок и standalone antialiasing.
 
 | Аргумент | Контракт |
 | --- | --- |
@@ -53,7 +53,7 @@ DefineShape4/LineStyle2, linearRGB, ненулевой focal, полная lineS
 
 ## v0.1182 verification
 
-Градиентные обводки v0.1169–v0.1182: добавлены C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L57) и SWF8 lineGradientStyle для linear/centered-radial PAD/REFLECT/REPEAT с обычным RGB. Layout [FVM_Gradient](../include/flashvm/gradient.h#L31) и прежние callback IDs сохранены; новый callback добавлен в конец таблицы. Проверены copied current/active aliases, solid/clear/endFill transitions, duplicate и binary/channel ownership. Прошли 91 выбранный native gradient/raster/scene/graph/GC/quality/tutorial тест и дополнительный mixed fill/stroke binary-transfer fixture. Десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски прошли с выключенным LeakSanitizer. Реальные AVM1-вызовы проверяют 72 сочетания host/SWF8 interpreter/manual/automatic JIT с native entry counts; четыре OS worker проходят 128 независимых paint/GC циклов. Проверки quality/affine/alpha охватывают 48 отрисовок. SDK-free C89 validation проходит; graphic tutorial явно пропускается. Переименованный detached-компонент конфигурируется, его скопированный checker проходит на native executable без заявления отдельной detached-сборки. Ошибки подготовки сохраняют прежний стиль/active path или пиксели, не отменяя побочные эффекты coercion. DefineShape4/LineStyle2, linearRGB, ненулевой focal, полная caps/joins/scaling/mid-path fill семантика, эталонный плеер, реальные устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](GRADIENT_STROKES.ru.md).
+Градиентные обводки v0.1169–v0.1182: добавлены C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L63) и SWF8 lineGradientStyle для linear/centered-radial PAD/REFLECT/REPEAT с обычным RGB. Layout [FVM_Gradient](../include/flashvm/gradient.h#L37) и прежние callback IDs сохранены; новый callback добавлен в конец таблицы. Проверены copied current/active aliases, solid/clear/endFill transitions, duplicate и binary/channel ownership. Прошли 91 выбранный native gradient/raster/scene/graph/GC/quality/tutorial тест и дополнительный mixed fill/stroke binary-transfer fixture. Десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски прошли с выключенным LeakSanitizer. Реальные AVM1-вызовы проверяют 72 сочетания host/SWF8 interpreter/manual/automatic JIT с native entry counts; четыре OS worker проходят 128 независимых paint/GC циклов. Проверки quality/affine/alpha охватывают 48 отрисовок. SDK-free C89 validation проходит; graphic tutorial явно пропускается. Переименованный detached-компонент конфигурируется, его скопированный checker проходит на native executable без заявления отдельной detached-сборки. Ошибки подготовки сохраняют прежний стиль/active path или пиксели, не отменяя побочные эффекты coercion. DefineShape4/LineStyle2, linearRGB, ненулевой focal, полная caps/joins/scaling/mid-path fill семантика, эталонный плеер, реальные устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](GRADIENT_STROKES.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -64,14 +64,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:31](../include/flashvm/gradient.h#L31) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../include/flashvm/gradient.h#L37) |
 | `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:9](../include/flashvm/gradient.h#L9) |
 | `FVM_GradientSpread` | enum | [include/flashvm/gradient.h:18](../include/flashvm/gradient.h#L18) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:45](../include/flashvm/gradient.h#L45) |
-| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:50](../include/flashvm/gradient.h#L50) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:57](../include/flashvm/gradient.h#L57) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../include/flashvm/gradient.h#L51) |
+| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:56](../include/flashvm/gradient.h#L56) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:63](../include/flashvm/gradient.h#L63) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -8,7 +8,7 @@ Build the ordinary project with GRAPHICS_AGG or GRAPHICS_CAIRO enabled in DEFS.t
 and run `flashvm_examples_embedding_gradients_main`. NO_GRAPHICS is supported
 as a demonstration mode and prints how to enable a raster backend.
 
-Call [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L41) before setting the borrowed stop array. Stop ratios run
+Call [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L47) before setting the borrowed stop array. Stop ratios run
 from 0 to 1 in nondecreasing order. The gradient matrix maps the normalized square
 (-1,-1)..(1,1) to pixels, independently of the path. For a horizontal ramp covering
 a surface of width W, set xx=W/2 and x0=W/2; set a nonzero yy so the transform stays
@@ -55,7 +55,7 @@ stroke repeat: 128 255 255
 
 | Function | Purpose and ownership / Назначение и владение |
 | --- | --- |
-| [`fvm_path_stroke_gradient`](../../../include/flashvm/gradient.h#L57) | Synchronously borrows path, gradient/stops and destination; paints a positive destination-space stroke. Invalid input or preparation failure preserves pixels. [Contract / Контракт](../../../doc/GRADIENT_STROKES.md). |
+| [`fvm_path_stroke_gradient`](../../../include/flashvm/gradient.h#L63) | Synchronously borrows path, gradient/stops and destination; paints a positive destination-space stroke. Invalid input or preparation failure preserves pixels. [Contract / Контракт](../../../doc/GRADIENT_STROKES.md). |
 
 [Stroke contract / Контракт обводок](../../../doc/GRADIENT_STROKES.ru.md). This example checks the selected backend on the host; reference-player and physical-device acceptance remain separate.
 
@@ -78,11 +78,11 @@ Run `python3 flashVM/scripts/check_gradient_strokes_example.py <path-to-example>
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L41) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L47) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
 | [`fvm_path_add`](../../../include/flashvm/path.h#L54) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_create`](../../../include/flashvm/path.h#L50) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h#L45) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h#L51) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-gradients).
 <!-- example-catalog-api:end -->
@@ -96,10 +96,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gradient_init` | function | [include/flashvm/gradient.h:41](../../../include/flashvm/gradient.h#L41) |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:47](../../../include/flashvm/gradient.h#L47) |
 | `fvm_path_add` | function | [include/flashvm/path.h:54](../../../include/flashvm/path.h#L54) |
 | `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:45](../../../include/flashvm/gradient.h#L45) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:57](../../../include/flashvm/gradient.h#L57) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../../../include/flashvm/gradient.h#L51) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:63](../../../include/flashvm/gradient.h#L63) |
 <!-- source-links:end -->

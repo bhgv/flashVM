@@ -43,8 +43,24 @@ double spread_ratio(double ratio, unsigned int spread)
     return ratio;
 }
 
+/* Decode a normalized sRGB channel into linear light without touching alpha. */
+double linear_light(double value)
+{
+    return value <= FVM_GRADIENT_SRGB_DECODE_BREAK ? value / FVM_GRADIENT_SRGB_SLOPE
+        : std::pow((value + FVM_GRADIENT_SRGB_OFFSET) / FVM_GRADIENT_SRGB_SCALE,
+                    FVM_GRADIENT_SRGB_EXPONENT);
+}
+/* Encode a nonnegative linear-light sample before inherited byte-domain transforms. */
+double encoded_light(double value)
+{
+    return value <= FVM_GRADIENT_SRGB_ENCODE_BREAK ? value * FVM_GRADIENT_SRGB_SLOPE
+        : FVM_GRADIENT_SRGB_SCALE * std::pow(value, 1.0 / FVM_GRADIENT_SRGB_EXPONENT)
+          - FVM_GRADIENT_SRGB_OFFSET;
+}
+
 /* Interpolate one ramp sample; the last duplicate stop wins exactly at its ratio. */
-FVM_RasterColor sample(const FVM_Gradient &gradient, double ratio)
+FVM_RasterColor sample(const FVM_Gradient &gradient, double ratio, unsigned int interpolation,
+                        const double linear_colors[FVM_GRADIENT_MAX_STOPS][3])
 {
     size_t left = 0;
     while (left + 1 < gradient.count && gradient.stops[left + 1].ratio <= ratio)
@@ -63,8 +79,16 @@ FVM_RasterColor sample(const FVM_Gradient &gradient, double ratio)
     const double bv[] = {(double)b.r, (double)b.g, (double)b.b, (double)b.a};
     unsigned char values[4];
     for (unsigned int i = 0; i < 4; ++i)
-        values[i] =
-            component((av[i] + (bv[i] - av[i]) * weight) * gradient.multiply[i] + gradient.add[i]);
+    {
+        double value = av[i] + (bv[i] - av[i]) * weight;
+        if (i < 3 && interpolation == FVM_GRADIENT_INTERPOLATION_LINEAR_RGB && left != right)
+        {
+            double light = linear_colors[left][i] +
+                           (linear_colors[right][i] - linear_colors[left][i]) * weight;
+            value = FVM_GRADIENT_COLOR_BYTE_MAX * encoded_light(light);
+        }
+        values[i] = component(value * gradient.multiply[i] + gradient.add[i]);
+    }
     FVM_RasterColor out = {values[0], values[1], values[2], values[3]};
     return out;
 }
@@ -145,8 +169,6 @@ extern "C" FVM_Result fvm_path_draw_gradient(const FVM_Path *path, FVM_RasterSur
     return fvm_path_draw_gradient_quality(path, surface, gradient, even_odd, true);
 }
 /* Shared validated paint implementation; width zero retains legacy fill coverage. */
-static FVM_Result gradient_paint(const FVM_Path *, FVM_RasterSurface *, const FVM_Gradient *,
-                                 double width, int even_odd, unsigned int spread, bool antialias);
 /* Apply context-selected edge coverage without changing public standalone defaults. */
 FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *path, FVM_RasterSurface *surface,
                                              const FVM_Gradient *gradient, int even_odd, bool antialias)
@@ -166,7 +188,8 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
                                                   const FVM_Gradient *gradient, int even_odd,
                                                   unsigned int spread, bool antialias)
 {
-    return gradient_paint(path, surface, gradient, 0, even_odd, spread, antialias);
+    return fvm_path_gradient_paint_quality(path, surface, gradient, 0, even_odd, spread,
+                                            FVM_GRADIENT_INTERPOLATION_RGB, antialias);
 }
 /* Public stroke entry keeps antialiasing local and never retains borrowed paint data. */
 extern "C" FVM_Result fvm_path_stroke_gradient(const FVM_Path *path, FVM_RasterSurface *surface,
@@ -182,13 +205,19 @@ FVM_Result fvm_path_stroke_gradient_quality(const FVM_Path *path, FVM_RasterSurf
 {
     if (!(width > 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH))
         return FVM_INVALID_ARGUMENT;
-    return gradient_paint(path, surface, gradient, width, 0, spread, antialias);
+    return fvm_path_gradient_paint_quality(path, surface, gradient, width, 0, spread,
+                                            FVM_GRADIENT_INTERPOLATION_RGB, antialias);
 }
 /* Share the legacy sampler and compositing order for both fill and stroke masks. */
-static FVM_Result gradient_paint(const FVM_Path *path, FVM_RasterSurface *surface,
-                                 const FVM_Gradient *gradient, double width, int even_odd,
-                                 unsigned int spread, bool antialias)
+FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *path, FVM_RasterSurface *surface,
+                                           const FVM_Gradient *gradient, double width, int even_odd,
+                                           unsigned int spread, unsigned int interpolation,
+                                           bool antialias)
 {
+    if (!(width >= 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH) ||
+        (interpolation != FVM_GRADIENT_INTERPOLATION_RGB &&
+         interpolation != FVM_GRADIENT_INTERPOLATION_LINEAR_RGB))
+        return FVM_INVALID_ARGUMENT;
     if (spread != FVM_GRADIENT_SPREAD_PAD && spread != FVM_GRADIENT_SPREAD_REFLECT &&
         spread != FVM_GRADIENT_SPREAD_REPEAT)
         return FVM_INVALID_ARGUMENT;
@@ -202,6 +231,16 @@ static FVM_Result gradient_paint(const FVM_Path *path, FVM_RasterSurface *surfac
 #else
     try
     {
+        /* Decode at most fifteen stops once per paint; no shared mutable lookup table exists. */
+        double linear_colors[FVM_GRADIENT_MAX_STOPS][3] = {{0}};
+        if (interpolation == FVM_GRADIENT_INTERPOLATION_LINEAR_RGB)
+            for (size_t i = 0; i < gradient->count; ++i)
+            {
+                const FVM_RasterColor &color = gradient->stops[i].color;
+                linear_colors[i][0] = linear_light(color.r / FVM_GRADIENT_COLOR_BYTE_MAX);
+                linear_colors[i][1] = linear_light(color.g / FVM_GRADIENT_COLOR_BYTE_MAX);
+                linear_colors[i][2] = linear_light(color.b / FVM_GRADIENT_COLOR_BYTE_MAX);
+            }
         size_t stride = (size_t)surface->width * 4;
         fvm_detail::vector<unsigned char> pixels(stride * surface->height);
         for (unsigned int y = 0; y < surface->height; ++y)
@@ -211,7 +250,7 @@ static FVM_Result gradient_paint(const FVM_Path *path, FVM_RasterSurface *surfac
                 double gy = inverse.yx * (x + 0.5) + inverse.yy * (y + 0.5) + inverse.y0;
                 double ratio = gradient->type == FVM_GRADIENT_LINEAR ? (gx + 1) / 2
                                                                      : std::sqrt(gx * gx + gy * gy);
-                FVM_RasterColor color = sample(*gradient, spread_ratio(ratio, spread));
+                FVM_RasterColor color = sample(*gradient, spread_ratio(ratio, spread), interpolation, linear_colors);
                 unsigned char *p = pixels.begin() + y * stride + x * 4;
                 p[0] = color.r;
                 p[1] = color.g;
@@ -226,4 +265,23 @@ static FVM_Result gradient_paint(const FVM_Path *path, FVM_RasterSurface *surfac
         return FVM_OUT_OF_MEMORY;
     }
 #endif
+}
+
+/* Borrow a fill description and select both policies without changing legacy entry points. */
+extern "C" FVM_Result fvm_path_draw_gradient_interpolated(const FVM_Path *path,
+    FVM_RasterSurface *surface, const FVM_Gradient *gradient, int even_odd,
+    unsigned int spread, unsigned int interpolation)
+{
+    return fvm_path_gradient_paint_quality(path, surface, gradient, 0, even_odd, spread,
+                                            interpolation, true);
+}
+/* Keep zero distinct from a stroke hairline, matching the existing standalone stroke API. */
+extern "C" FVM_Result fvm_path_stroke_gradient_interpolated(const FVM_Path *path,
+    FVM_RasterSurface *surface, const FVM_Gradient *gradient, double width,
+    unsigned int spread, unsigned int interpolation)
+{
+    if (!(width > 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH))
+        return FVM_INVALID_ARGUMENT;
+    return fvm_path_gradient_paint_quality(path, surface, gradient, width, 0, spread,
+                                            interpolation, true);
 }

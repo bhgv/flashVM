@@ -3,7 +3,7 @@
 Current stroke extension v0.1169+: [lineGradientStyle and C89 strokes](GRADIENT_STROKES.md) / [градиентные обводки](GRADIENT_STROKES.ru.md). Earlier lineGradientStyle limitations below describe the historical checkpoint; current RGB/zero-focal stroke support does not close full Flash line semantics or any roadmap stage.
 
 
-The additive [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L50) C89 entry accepts an unsigned selector: [`FVM_GRADIENT_SPREAD_PAD`](../include/flashvm/gradient.h#L20) (0), [`FVM_GRADIENT_SPREAD_REFLECT`](../include/flashvm/gradient.h#L21) (1), or [`FVM_GRADIENT_SPREAD_REPEAT`](../include/flashvm/gradient.h#L22) (2). [`FVM_Gradient`](../include/flashvm/gradient.h#L31) retains its existing layout. The old draw entry continues to select PAD.
+The additive [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L56) C89 entry accepts an unsigned selector: [`FVM_GRADIENT_SPREAD_PAD`](../include/flashvm/gradient.h#L20) (0), [`FVM_GRADIENT_SPREAD_REFLECT`](../include/flashvm/gradient.h#L21) (1), or [`FVM_GRADIENT_SPREAD_REPEAT`](../include/flashvm/gradient.h#L22) (2). [`FVM_Gradient`](../include/flashvm/gradient.h#L37) retains its existing layout. The old draw entry continues to select PAD.
 
 For the normalized sample ratio r, repeat uses r-floor(r), a half-open interval. Reflect reduces r modulo two, normalizes negative phases, and reverses the second interval. PAD keeps the existing endpoint and duplicate-stop behavior. Both linear and centered radial gradients use this policy before ordinary RGB, straight RGBA interpolation and the existing color transform, path coverage and compositing stages.
 
@@ -20,7 +20,7 @@ Tests cover analytical signed linear/radial samples, periodic translations, seam
 DefineShape4, linearRGB, nonzero focal gradients and lineGradientStyle remain open. Existing DefineShape1/2/3 parsing rules are unchanged. All nine roadmap stages remain open. Real devices and other platforms require separate validation.
 
 
-Gradient spread v0.1160–v0.1168 adds unsigned C89 PAD/REFLECT/REPEAT selection without changing [FVM_Gradient](../include/flashvm/gradient.h#L31) layout or the legacy PAD entry, plus Flash 8 beginGradientFill modes and optional copied graph metadata. Validation: 16 selected native gradient/quality/example tests pass; three focused ASan/UBSan tests pass with LeakSanitizer disabled; SDK-free NO_GRAPHICS C89 validation passes. Allocation sweeps preserve prior style and pixels on preparation failure; coercion errors retain explicit script side effects. New-mode JIT execution, worker concurrency, reference-player comparisons and physical/foreign platforms are not established by this series. DefineShape4, linearRGB, nonzero focal and lineGradientStyle remain open, as do all nine roadmap stages. [Contract](GRADIENT_SPREAD.md).
+Gradient spread v0.1160–v0.1168 adds unsigned C89 PAD/REFLECT/REPEAT selection without changing [FVM_Gradient](../include/flashvm/gradient.h#L37) layout or the legacy PAD entry, plus Flash 8 beginGradientFill modes and optional copied graph metadata. Validation: 16 selected native gradient/quality/example tests pass; three focused ASan/UBSan tests pass with LeakSanitizer disabled; SDK-free NO_GRAPHICS C89 validation passes. Allocation sweeps preserve prior style and pixels on preparation failure; coercion errors retain explicit script side effects. New-mode JIT execution, worker concurrency, reference-player comparisons and physical/foreign platforms are not established by this series. DefineShape4, linearRGB, nonzero focal and lineGradientStyle remain open, as do all nine roadmap stages. [Contract](GRADIENT_SPREAD.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -31,9 +31,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:31](../include/flashvm/gradient.h#L31) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../include/flashvm/gradient.h#L37) |
 | `FVM_GRADIENT_SPREAD_PAD` | enum constant | [include/flashvm/gradient.h:20](../include/flashvm/gradient.h#L20) |
 | `FVM_GRADIENT_SPREAD_REFLECT` | enum constant | [include/flashvm/gradient.h:21](../include/flashvm/gradient.h#L21) |
 | `FVM_GRADIENT_SPREAD_REPEAT` | enum constant | [include/flashvm/gradient.h:22](../include/flashvm/gradient.h#L22) |
-| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:50](../include/flashvm/gradient.h#L50) |
+| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:56](../include/flashvm/gradient.h#L56) |
 <!-- source-links:end -->

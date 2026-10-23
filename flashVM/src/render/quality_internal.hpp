@@ -22,6 +22,11 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *, FVM_RasterSur
 FVM_Result fvm_path_stroke_gradient_quality(const FVM_Path *, FVM_RasterSurface *,
                                             const FVM_Gradient *, double width,
                                             unsigned int spread, bool antialias);
+/* Shared explicit color policy; width zero fills, positive destination width strokes. */
+FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *, FVM_RasterSurface *,
+                                           const FVM_Gradient *, double width, int even_odd,
+                                           unsigned int spread, unsigned int interpolation,
+                                           bool antialias);
 /* A zero width selects fill coverage; a positive width selects backend stroke coverage. */
 FVM_Result fvm_path_mask_width_quality(const FVM_Path *, FVM_RasterSurface *,
                                        const FVM_RasterSurface *, double width,
