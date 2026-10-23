@@ -185,15 +185,18 @@ applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains ope
 ## Scroll observer mode
 
 `--scroll-events` first runs the analytic scroll mode, then installs a field
-handler and a listener. The actual trace is `1 2 1 2 1 1 1 1 1 1`: two effective changes
+handler and a listener. The actual trace is `1 2 1 2 1 1 1 1 1 1 1`: two effective changes
 notify both, an unchanged write emits nothing, and removal excludes the listener
 from later changes. Width=60 and height=200 then remove horizontal overflow
-and clamp the top line. Text assignment, replaceText and current TextFormat then add three field-only
-notifications. Final state is top=1/hscroll=0, maxscroll=1/maxhscroll=40. Native query/path export
+and clamp the top line. Text assignment, replaceText, a bottomScroll-only text change and current
+TextFormat then add four field-only notifications. Bottom-line trace is
+`2 2 2 2 3 3 3 1 1 2 1`. Final state is top=1/hscroll=0,
+maxscroll=2/maxhscroll=40 and bottomScroll=1. Native query/path export
 emit no callbacks. Main owns callback userdata until context teardown; managed
 roots retain fields/listeners independently. Dimension and layout-policy notifications follow the
 [geometry contract](../../../doc/TEXT_GEOMETRY_EVENTS.md). Text/style-triggered events follow
-[edit transaction admission](../../../doc/TEXT_EDIT_EVENTS.md); input remains open. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
+[edit transaction admission](../../../doc/TEXT_EDIT_EVENTS.md), extended by
+[visible-line notifications](../../../doc/TEXT_VISIBLE_EVENTS.md); input remains open. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
 
 | API | Individual contract |
 | --- | --- |

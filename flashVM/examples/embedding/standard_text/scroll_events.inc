@@ -3,6 +3,7 @@
 typedef struct FVM_ExampleScrollEvents { /* Keep this host state alive until context destruction. */
     FVM_Object *field; /* Borrow the source field while the context owns its graph. */
     unsigned int trace[FVM_EXAMPLE_SCROLL_EVENT_TRACE]; /* Record own handler as one and listener as two. */
+    unsigned long bottoms[FVM_EXAMPLE_SCROLL_EVENT_TRACE]; /* Copy the bottom visible line for every delivered callback. */
     unsigned int count; /* Number of synchronous callbacks already recorded. */
 } FVM_ExampleScrollEvents; /* This is host userdata, not a serialized VM structure. */
 #ifdef FVM_HAS_FONTS /* Real fields require the bundled font implementation. */
@@ -13,6 +14,7 @@ static FVM_Result scroll_event_callback(FVM_Context *context, FVM_Object *self, 
     if (!events || count != 1 || args[0].type != FVM_VALUE_OBJECT || args[0].object != events->field || events->count >= FVM_EXAMPLE_SCROLL_EVENT_TRACE) return FVM_INVALID_ARGUMENT; /* Reject malformed or excessive delivery. */
     info.struct_size = sizeof(info); /* Supply the exact native observation ABI. */
     if (fvm_textfield_scroll_info(context, events->field, &info) != FVM_OK) return FVM_ERROR; /* The source position has already been committed. */
+    events->bottoms[events->count] = info.bottom_scroll; /* Record committed visible-line state before advancing the shared callback count. */
     events->trace[events->count++] = self == events->field ? 1U : 2U; /* Preserve actual receiver order rather than requested registration order alone. */
     fvm_value_undefined(out); return FVM_OK; /* No owned or managed output escapes this callback. */
 } /* The caller retains userdata through all field/listener lifetimes. */
@@ -40,6 +42,7 @@ static int scroll_events_demo(FVM_Context *context, FVM_Object *field, FVM_Objec
     if (fvm_value_string(&value, "AVAVAV") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) return 1; /* A longer counted text creates horizontal overflow and one notification. */
     fvm_value_number(replacement, 0); fvm_value_number(replacement + 1, 6); /* Select all six current UTF-16 units with valid replacement bounds. */
     if (fvm_value_string(replacement + 2, "A") != FVM_OK || fvm_object_call(context, field, "replaceText", 3, replacement, &result) != FVM_OK) return 1; /* Publish the owned shorter text before the range callback. */
+    if (fvm_value_string(&value, "A\nA") != FVM_OK || fvm_object_set(context, field, "text", &value) != FVM_OK) return 1; /* Both lines fit: only bottomScroll changes, yet one notification must arrive. */
     fvm_value_number(&value, 160); /* Enlarge the already rooted reusable TextFormat without changing the field yet. */
     if (fvm_object_set(context, format, "size", &value) != FVM_OK) return 1; /* Format-object edits alone do not notify field observers. */
     fvm_value_undefined(&argument); argument.type = FVM_VALUE_OBJECT; argument.object = format; /* Borrow the caller-rooted format during synchronous application. */
@@ -47,7 +50,8 @@ static int scroll_events_demo(FVM_Context *context, FVM_Object *field, FVM_Objec
     info.struct_size = sizeof(info); /* Copy final committed state before printing. */
     if (fvm_textfield_scroll_info(context, field, &info) != FVM_OK) return 1; /* This observation emits no notification. */
     printf("scroll events:"); for (index = 0; index < events->count; ++index) printf(" %u", events->trace[index]); putchar('\n'); /* Show actual synchronous receiver order. */
-    printf("scroll events state: top=%lu horizontal=%lu max=%lu/%lu\n", info.scroll, info.hscroll, info.maxscroll, info.maxhscroll); /* Distinguish final line and pixel units. */
+    printf("scroll event bottoms:"); for (index = 0; index < events->count; ++index) printf(" %lu", events->bottoms[index]); putchar('\n'); /* Show that the range-neutral text edit changed the bottom visible line. */
+    printf("scroll events state: top=%lu horizontal=%lu max=%lu/%lu bottom=%lu\n", info.scroll, info.hscroll, info.maxscroll, info.maxhscroll, info.bottom_scroll); /* Distinguish final line and pixel units. */
     return 0; /* Main keeps events alive until destroying the context and its callbacks. */
 } /* No raw userdata is retained beyond its main-function owner. */
 #endif /* NO_FONTS retains explicit unavailable tutorial behavior. */
