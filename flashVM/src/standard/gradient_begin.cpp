@@ -196,7 +196,7 @@ FVM_Result stops(FVM_Context *c, const FVM_Value *args, FVM_GradientStop *out, u
 /* [GC:] Allocate a copied ramp whose ownership is later transferred atomically to the clip state.
  */
 FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
-                      FVM_GradientSpread spread, unsigned int interpolation,
+                      FVM_GradientSpread spread, unsigned int interpolation, double focal,
                       const FVM_GradientStop *values, unsigned int count, FVM_Object **out)
 {
     /* [GC:] Temporary record and stop-table edges are protected by the native barrier. */
@@ -213,6 +213,8 @@ FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
         record->properties["spread"] = scalar(spread); /* Legacy records omit the default mode. */
     if (interpolation != FVM_GRADIENT_INTERPOLATION_RGB)
         record->properties["interpolation"] = scalar(interpolation); /* Missing means legacy RGB. */
+    if (focal != 0)
+        record->properties["focal"] = scalar(focal); /* Legacy centered records omit the default. */
     record->properties["xx"] = scalar(matrix.xx);
     record->properties["yx"] = scalar(matrix.yx);
     record->properties["xy"] = scalar(matrix.xy);
@@ -317,13 +319,16 @@ static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int 
             c->swf_info.version < FVM_MOVIECLIP_GRADIENT_INTERPOLATION_MIN_VERSION)
             return FVM_UNSUPPORTED;
     }
+    double focal = 0;
     if (radial && argc > 7 && args[7].type != FVM_VALUE_UNDEFINED)
     {
-        double focal = 0;
         r = numeric(c, args[7], focal, DBL_MAX);
         if (r != FVM_OK)
             return r == FVM_INVALID_ARGUMENT ? FVM_OK : r;
-        if (focal != 0)
+        if (!(focal > -1 && focal < 1))
+            return FVM_UNSUPPORTED; /* Boundary/clamped endpoint policies remain explicit. */
+        if (focal != 0 && c->swf_loaded &&
+            c->swf_info.version < FVM_MOVIECLIP_GRADIENT_FOCAL_MIN_VERSION)
             return FVM_UNSUPPORTED;
     }
     FVM_GradientStop values[FVM_GRADIENT_MAX_STOPS];
@@ -339,7 +344,7 @@ static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int 
         return r == FVM_INVALID_ARGUMENT ? FVM_OK : r;
     /* [GC:] Hold the complete new descriptor until its drawing-state map is published. */
     FVM_Object *record = 0;
-    r = descriptor(c, local, radial, mode, interpolation_mode, values, count, &record);
+    r = descriptor(c, local, radial, mode, interpolation_mode, focal, values, count, &record);
     if (r != FVM_OK)
         return r;
     /* [GC:] Stage all drawing links before adopting the new style; OOM preserves the old style. */
