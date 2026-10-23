@@ -1,4 +1,4 @@
-Development version: **0.1475** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1476** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1476: [Verify tiny cubic repeated bounds](doc/CUBIC_EXTREMA_SCALING.md).
 
 v0.1475: [Verify tiny cubic linear bounds](doc/CUBIC_EXTREMA_SCALING.md).
 
