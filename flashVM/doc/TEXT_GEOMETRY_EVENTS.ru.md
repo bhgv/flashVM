@@ -18,7 +18,7 @@ scroll, hscroll, maxscroll и maxhscroll до и после candidate layout. И
 bottomScroll, line spacing или clip rectangle здесь не является триггером.
 Явные scroll/hscroll setters сохраняют прежний контракт.
 
-[GeometryNotification](../src/standard/text.cpp#L642) обнаруживает потенциальный handler по native property/
+[GeometryNotification](../src/standard/text.cpp#L640) обнаруживает потенциальный handler по native property/
 method/accessor descriptors в prototype chain, учитывая folding SWF6 и version
 visibility. Private registration edge или loaded __resolve descriptor также
 включают observed path. Обнаружение не вызывает getter, resolver или callback.

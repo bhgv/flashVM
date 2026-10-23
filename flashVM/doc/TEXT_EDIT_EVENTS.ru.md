@@ -24,7 +24,7 @@ assignment применяет future style и может изменить диа
 
 ## Публикация текста и стиля
 
-[GeometryNotification](../src/standard/text.cpp#L642) независимо измеряет proposed
+[GeometryNotification](../src/standard/text.cpp#L640) независимо измеряет proposed
 counted content и uniform style. Source geometry читается после обычной проверки/
 conversion аргументов; явные эффекты conversion сохраняются. Potential own/
 inherited/folded handlers, registration edges и loaded __resolve следуют admission

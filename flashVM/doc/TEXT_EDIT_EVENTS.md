@@ -25,7 +25,7 @@ geometry is measured or notified by that operation.
 
 ## Content and style publication
 
-[GeometryNotification](../src/standard/text.cpp#L642) now measures proposed counted
+[GeometryNotification](../src/standard/text.cpp#L640) now measures proposed counted
 content and uniform style independently of the source. Source field geometry is
 read after existing argument validation/conversion; explicit conversion effects
 remain visible. Potential own/inherited/folded handlers, registration edges and

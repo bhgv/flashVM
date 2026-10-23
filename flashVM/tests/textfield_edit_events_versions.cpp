@@ -20,9 +20,9 @@ int main()
     }
     FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);GeometryEvents events;events.field=scroll_field(c);events.count=0;
     FVM_Value value;assert(fvm_value_string(&value,"center")==FVM_OK && fvm_object_set(c,events.field,"autoSize",&value)==FVM_OK);double center=counted_metric(c,events.field,"_x")+counted_metric(c,events.field,"_width")/2;
-    GeometryObserver own={&events,1};assert(fvm_object_define_method_rooted(c,events.field,"onScroller",geometry_observe,&own,events.field)==FVM_OK && edit_text(c,events.field,"A",1)==FVM_OK && !events.count);
+    GeometryObserver own={&events,1};assert(fvm_object_define_method_rooted(c,events.field,"onScroller",geometry_observe,&own,events.field)==FVM_OK && edit_text(c,events.field,"A",1)==FVM_OK && events.count==1);
     assert(counted_metric(c,events.field,"_width")==28 && counted_metric(c,events.field,"_height")==48 && counted_metric(c,events.field,"_x")+counted_metric(c,events.field,"_width")/2==center);
-    assert(edit_replace(c,events.field,0,1,"AAAA",4)==FVM_OK && !events.count && counted_metric(c,events.field,"_width")==100 && counted_metric(c,events.field,"_x")+counted_metric(c,events.field,"_width")/2==center);
+    assert(edit_replace(c,events.field,0,1,"AAAA",4)==FVM_OK && events.count==1 && counted_metric(c,events.field,"_width")==100 && counted_metric(c,events.field,"_x")+counted_metric(c,events.field,"_width")/2==center);
     assert(fvm_gc_collect(c,0)==FVM_OK && !c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth);fvm_context_destroy(c);fvm_runtime_destroy(rt);
 #endif
     return 0;

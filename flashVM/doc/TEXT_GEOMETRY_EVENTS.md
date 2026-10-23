@@ -18,7 +18,7 @@ Unchanged tuples, parent _x/_y and textColor writes do not notify. A change only
 to bottomScroll, line spacing or the clip rectangle is not a trigger here.
 Explicit scroll/hscroll setters retain their existing contract.
 
-[GeometryNotification](../src/standard/text.cpp#L642) detects potential handlers through native property/method/
+[GeometryNotification](../src/standard/text.cpp#L640) detects potential handlers through native property/method/
 accessor descriptors on the prototype chain, using existing SWF6 folded-name and
 version-visibility rules. A private registration edge or loaded __resolve descriptor
 also admits the observed path. Detection runs no getter, resolver or callback.

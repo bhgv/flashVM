@@ -679,7 +679,8 @@ class GeometryNotification
         scroll_ = after.scroll;
         horizontal_ = after.hscroll;
         changed_ = before.scroll != after.scroll || before.hscroll != after.hscroll ||
-                   before.maxscroll != after.maxscroll || before.maxhscroll != after.maxhscroll;
+                   before.maxscroll != after.maxscroll || before.maxhscroll != after.maxhscroll ||
+                   before.bottom_scroll != after.bottom_scroll;
         if (changed_)
         {
             result = plan_.prepare();
