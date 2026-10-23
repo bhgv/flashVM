@@ -1,4 +1,4 @@
-Версия разработки: **0.1071** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1072** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1072: [Четыре OS-worker читают общий post-VM snapshot с разными курсорами, проверяя интерполяцию и restart в 128 эпохах.](doc/INFERRED_ADPCM.ru.md).
 
 v0.1071: [C89-пример добавляет inferred-режим без таблицы; все три режима проверяются по восьми ручным samples.](doc/INFERRED_ADPCM.ru.md).
 

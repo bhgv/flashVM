@@ -16,3 +16,5 @@ v0.1069: Check FWS CWS interpreter JIT exact rational PCM, packet restart, empty
 v0.1070: Real workers verify one-saturation stereo PCM and BASE19 TAIL0 for both finite policies, compressed SWF and both execution modes.
 
 v0.1071: Add an inferred export policy without count-table access; verify the same eight hand-calculated samples in all three ownership modes.
+
+v0.1072: Four native workers share a post-VM snapshot with independent cursors, checking exact rational interpolation and packet restart over 128 epochs.

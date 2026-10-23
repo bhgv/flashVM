@@ -1,10 +1,12 @@
-Development version: **0.1071** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1072** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1072: [Four native workers share a post-VM snapshot with independent cursors, checking exact rational interpolation and packet restart over 128 epochs.](doc/INFERRED_ADPCM.md).
 
 v0.1071: [Add an inferred export policy without count-table access; verify the same eight hand-calculated samples in all three ownership modes.](doc/INFERRED_ADPCM.md).
 
