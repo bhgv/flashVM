@@ -1,5 +1,6 @@
 /* FlashVM: backend-independent gradient sampling composed through the existing vector mask API. */
 #include "../render/quality_internal.hpp"
+#include "../render/gradient_constants.h"
 
 #include "flashvm/gradient.h"
 #include "../details/vector.hpp"
@@ -25,6 +26,21 @@ unsigned char component(double value)
     if (value >= 255)
         return 255;
     return (unsigned char)(value + 0.5);
+}
+
+/* Normalize finite phases without integer casts, including negative and very large coordinates. */
+double spread_ratio(double ratio, FVM_GradientSpread spread)
+{
+    if (spread == FVM_GRADIENT_SPREAD_REPEAT)
+        return ratio - std::floor(ratio);
+    if (spread == FVM_GRADIENT_SPREAD_REFLECT)
+    {
+        double phase = std::fmod(ratio, FVM_GRADIENT_REFLECT_PERIOD);
+        if (phase < 0) phase += FVM_GRADIENT_REFLECT_PERIOD;
+        return phase > 1 ? FVM_GRADIENT_REFLECT_PERIOD - phase : phase;
+    }
+    /* Preserve legacy pad endpoint/duplicate-stop behavior exactly, without clamping first. */
+    return ratio;
 }
 
 /* Interpolate one ramp sample; the last duplicate stop wins exactly at its ratio. */
@@ -150,9 +166,6 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
     if (spread != FVM_GRADIENT_SPREAD_PAD && spread != FVM_GRADIENT_SPREAD_REFLECT &&
         spread != FVM_GRADIENT_SPREAD_REPEAT)
         return FVM_INVALID_ARGUMENT;
-    /* Until periodic sampling is enabled, reject nonpad rather than silently painting pad. */
-    if (spread != FVM_GRADIENT_SPREAD_PAD)
-        return FVM_UNSUPPORTED;
     FVM_Affine inverse;
     if (!validate(path, surface, gradient, even_odd, inverse))
         return FVM_INVALID_ARGUMENT;
@@ -171,7 +184,7 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
                 double gy = inverse.yx * (x + 0.5) + inverse.yy * (y + 0.5) + inverse.y0;
                 double ratio = gradient->type == FVM_GRADIENT_LINEAR ? (gx + 1) / 2
                                                                      : std::sqrt(gx * gx + gy * gy);
-                FVM_RasterColor color = sample(*gradient, ratio);
+                FVM_RasterColor color = sample(*gradient, spread_ratio(ratio, spread));
                 unsigned char *p = pixels.begin() + y * stride + x * 4;
                 p[0] = color.r;
                 p[1] = color.g;

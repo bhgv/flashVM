@@ -26,7 +26,7 @@ extern "C"
         double ratio;          /* Position from zero to one; stops must be nondecreasing. */
         FVM_RasterColor color; /* Straight red/green/blue/alpha bytes at this control point. */
     } FVM_GradientStop;
-    /* Borrowed gradient description; values outside the ramp use its endpoint colors. */
+    /* Borrowed gradient description; the draw entry selects how the ramp extends. */
     typedef struct FVM_Gradient
     {
         FVM_GradientType type; /* Linear or centered radial geometry. */
