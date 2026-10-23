@@ -15,10 +15,10 @@ Flash Player. Все девять стадий плана остаются от�
 ## Триггеры и допуск
 
 Записи _width, _height, multiline, wordWrap и autoSize сравнивают effective
-scroll, hscroll, maxscroll и maxhscroll до и после candidate layout. Изменение
+scroll, hscroll, maxscroll, maxhscroll и bottomScroll до и после candidate layout. Изменение
 любого элемента создаёт одно событие, даже если меняется только максимум.
-Неизменный tuple, parent _x/_y и textColor не уведомляют. Изменение только
-bottomScroll, line spacing или clip rectangle здесь не является триггером.
+Неизменный tuple, parent _x/_y и textColor не уведомляют. Изменение только line spacing или clip rectangle здесь не является триггером;
+bottomScroll учитывается по TEXT_VISIBLE_EVENTS.ru.md.
 Явные scroll/hscroll setters сохраняют прежний контракт.
 
 [GeometryNotification](../src/standard/text.cpp#L640) обнаруживает потенциальный handler по native property/

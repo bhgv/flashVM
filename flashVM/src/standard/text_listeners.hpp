@@ -19,7 +19,7 @@ FVM_Result fvm_textfield_remove_listener(FVM_Context *, FVM_Object *, unsigned i
                                         const FVM_Value *, FVM_Value *, void *);
 /* Validate and borrow the private compact managed Array; NOT_FOUND when never registered. */
 FVM_Result fvm_textfield_listener_registry(FVM_Context *, FVM_Object *, FVM_Object **);
-/* Inspect raw versioned observer/resolver descriptors with charged traversal; never invoke script.
+/* [GC:] Inspect raw versioned observer/resolver descriptors with charged traversal; never invoke script.
  * Failure leaves out false. The owner serializes prototype mutation and collection. */
 FVM_Result fvm_textfield_observer_present(FVM_Context *, FVM_Object *, bool *out);
 /* Upgrade only exact retired rootless methods; callers invalidate matching receiver caches. */

@@ -15,10 +15,10 @@ Flash Player binary oracle. All nine roadmap stages remain open.
 ## Triggers and admission
 
 Writes to _width, _height, multiline, wordWrap and autoSize compare effective
-scroll, hscroll, maxscroll and maxhscroll before and after the candidate layout.
+scroll, hscroll, maxscroll, maxhscroll and bottomScroll before and after the candidate layout.
 One change in this tuple delivers one event, even if only a maximum changes.
-Unchanged tuples, parent _x/_y and textColor writes do not notify. A change only
-to bottomScroll, line spacing or the clip rectangle is not a trigger here.
+Unchanged tuples, parent _x/_y and textColor writes do not notify. A change only to line spacing or the clip rectangle is not a trigger here;
+bottomScroll now triggers under TEXT_VISIBLE_EVENTS.md.
 Explicit scroll/hscroll setters retain their existing contract.
 
 [GeometryNotification](../src/standard/text.cpp#L640) detects potential handlers through native property/method/

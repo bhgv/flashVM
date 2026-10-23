@@ -12,12 +12,11 @@ an original Flash Player binary oracle. All nine roadmap stages remain open.
 
 ## Triggers and version rules
 
-The transaction compares effective scroll, hscroll, maxscroll and maxhscroll.
+The transaction compares effective scroll, hscroll, maxscroll, maxhscroll and bottomScroll.
 One changed tuple produces one field-first onScroller event, followed by the
 rooted listener snapshot with one actual source-field argument. A text or format
-edit with unchanged tuple publishes normally without notification. Changes only
-to bottomScroll, intrinsic metrics, autoSize dimensions or origin are not triggers
-by themselves. Programmatic edits never synthesize onChanged.
+edit with unchanged tuple publishes normally without notification. Changes only to intrinsic metrics, autoSize dimensions or origin are not
+triggers by themselves; bottomScroll changes follow TEXT_VISIBLE_EVENTS.md. Programmatic edits never synthesize onChanged.
 
 SWF6–8 and unloaded host contexts support these observers. Loaded SWF4/5 keep
 their previous silent behavior. Loaded identical counted text preserves the

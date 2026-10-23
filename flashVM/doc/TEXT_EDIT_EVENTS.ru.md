@@ -12,11 +12,11 @@ Flash Player. Все девять стадий плана остаются от�
 
 ## Триггеры и версии
 
-Транзакция сравнивает effective scroll, hscroll, maxscroll и maxhscroll. Изменение
+Транзакция сравнивает effective scroll, hscroll, maxscroll, maxhscroll и bottomScroll. Изменение
 tuple создаёт одно field-first onScroller, затем rooted snapshot listeners с
 аргументом настоящего source field. При неизменном tuple текст/формат публикуется
-без события. Изменения только bottomScroll, intrinsic metrics, autoSize размеров
-или origin сами по себе не являются триггером. Программные edits не синтезируют
+без события. Изменения только intrinsic metrics, autoSize размеров или origin сами по себе
+не являются триггером; bottomScroll учитывается по TEXT_VISIBLE_EVENTS.ru.md. Программные edits не синтезируют
 onChanged.
 
 Поддержаны SWF6–8 и unloaded host contexts. Loaded SWF4/5 сохраняют прежнее
