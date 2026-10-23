@@ -13,6 +13,13 @@ extern "C"
         FVM_GRADIENT_LINEAR = 0 /* Ratio grows from the left edge to the right edge. */,
         FVM_GRADIENT_RADIAL = 1 /* Ratio grows from the center to the unit circle. */
     } FVM_GradientType;
+    /* Extension policy outside the normalized ramp; existing APIs always select PAD. */
+    typedef enum FVM_GradientSpread
+    {
+        FVM_GRADIENT_SPREAD_PAD = 0, /* Extend the endpoint colors. */
+        FVM_GRADIENT_SPREAD_REFLECT = 1, /* Alternate forward/reverse unit intervals. */
+        FVM_GRADIENT_SPREAD_REPEAT = 2 /* Repeat a half-open unit interval. */
+    } FVM_GradientSpread;
     /* One ordered control point; equal ratios represent an abrupt color transition. */
     typedef struct FVM_GradientStop
     {
@@ -36,6 +43,12 @@ extern "C"
        Stops interpolate straight RGBA in ordinary RGB space. NO_GRAPHICS returns UNSUPPORTED. */
     FVM_API FVM_Result fvm_path_draw_gradient(const FVM_Path *, FVM_RasterSurface *,
                                               const FVM_Gradient *, int even_odd);
+    /* Additive spread-aware draw; the gradient struct layout and legacy PAD call are unchanged.
+       Borrow all inputs for this synchronous call. Invalid spread/geometry preserves pixels;
+       allocation/backend statuses propagate. No VM, managed root or device is retained. */
+    FVM_API FVM_Result fvm_path_draw_gradient_spread(const FVM_Path *, FVM_RasterSurface *,
+                                                     const FVM_Gradient *, int even_odd,
+                                                     FVM_GradientSpread);
 #ifdef __cplusplus
 }
 #endif

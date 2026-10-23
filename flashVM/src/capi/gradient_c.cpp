@@ -132,6 +132,27 @@ extern "C" FVM_Result fvm_path_draw_gradient(const FVM_Path *path, FVM_RasterSur
 FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *path, FVM_RasterSurface *surface,
                                              const FVM_Gradient *gradient, int even_odd, bool antialias)
 {
+    return fvm_path_draw_gradient_spread_quality(path, surface, gradient, even_odd,
+                                                  FVM_GRADIENT_SPREAD_PAD, antialias);
+}
+/* Borrow all inputs and preserve the public standalone antialias default. */
+extern "C" FVM_Result fvm_path_draw_gradient_spread(const FVM_Path *path, FVM_RasterSurface *surface,
+                                                    const FVM_Gradient *gradient, int even_odd,
+                                                    FVM_GradientSpread spread)
+{
+    return fvm_path_draw_gradient_spread_quality(path, surface, gradient, even_odd, spread, true);
+}
+/* Validate mode/geometry before allocating a temporary source or touching destination pixels. */
+FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_RasterSurface *surface,
+                                                  const FVM_Gradient *gradient, int even_odd,
+                                                  FVM_GradientSpread spread, bool antialias)
+{
+    if (spread != FVM_GRADIENT_SPREAD_PAD && spread != FVM_GRADIENT_SPREAD_REFLECT &&
+        spread != FVM_GRADIENT_SPREAD_REPEAT)
+        return FVM_INVALID_ARGUMENT;
+    /* Until periodic sampling is enabled, reject nonpad rather than silently painting pad. */
+    if (spread != FVM_GRADIENT_SPREAD_PAD)
+        return FVM_UNSUPPORTED;
     FVM_Affine inverse;
     if (!validate(path, surface, gradient, even_odd, inverse))
         return FVM_INVALID_ARGUMENT;

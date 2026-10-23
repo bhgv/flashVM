@@ -1,4 +1,4 @@
-Версия разработки: **0.1159** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1160** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1160: [Добавлен spread-aware C89 entry с сохранением прежнего gradient layout](doc/GRADIENT_SPREAD.ru.md).
 
 v0.1159: [Зафиксированы visible-line проверки и allocation coverage с регистрациями и без них](doc/TEXT_VISIBLE_EVENTS.ru.md).
 
