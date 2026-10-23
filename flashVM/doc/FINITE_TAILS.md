@@ -4,6 +4,9 @@
 
 v0.1012: Add allocation-free active frame horizons including fractional lookahead, repeats and release without consuming PCM.
 
+
+v0.1013: Check independent durations and PCM across four source clocks, six output rates, channel mappings, repetitions and partial source adoption.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
