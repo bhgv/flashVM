@@ -195,6 +195,23 @@ base-кадров. Всего 17 stereo кадров; каждый failed write 
 | [`fvm_swf_stream_output_init`](../../../include/flashvm/swf_stream_output.h#L45) | Borrow converter, PCM retry buffer and the exact adapted backend into caller-owned producer; empty FIFO, matching geometry, no allocation/VM. All dependencies outlive serial use. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_swf_stream_output_pump_mix_until`](../../../include/flashvm/swf_stream_output.h#L101) | Select authorized BASE or event-only gate work and accept retained TAIL before changed gate input; optional accepted cleared first. No allocation/VM/GC, external serialization, keep both owners and retry bytes live on failure. [Contract](../../../doc/MIXED_GATES.md). |
 
+## Partial headroom / Неполный остаток FIFO
+
+Run `OUTPUT.pcm --headroom` for a 14-frame (56-byte) event-only export. The base
+converter stays unchanged after VM teardown. Each call admits one frame by raising
+the FIFO target by one; every short block is rejected once. Retrying with the larger
+queue target preserves the original one-frame size. Expected: fourteen rejected
+blocks, submitted/played14 after file consumption, ID8 end14 and inactive. This is
+a deterministic software headroom demonstration, not a timed device consumer.
+
+`--headroom` экспортирует 14 event-only кадров без продвижения base и без padding.
+Каждый короткий блок отклоняется; повтор с большим target сохраняет исходный размер.
+FIFO потребляется записью файла после всех принятых блоков; это не реальное устройство.
+
+| API | Purpose, ownership and contract |
+| --- | --- |
+| [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../../../include/flashvm/swf_sound_mix_queue.h#L222) | Synchronously observe the borrowed FIFO and mix at most the supplied maximum into available room. Optional accepted clears first. Retained TAIL is indivisible; caller quiesces base and serializes all owners. No allocation/VM/GC; callbacks may block. [Full statuses and lifetime](../../../doc/ADAPTIVE_TAILS.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -220,6 +237,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:226](../../../include/flashvm/swf_sound_mix_queue.h#L226) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:206](../../../include/flashvm/swf_sound_mix_queue.h#L206) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../../../include/flashvm/swf_sound_mix_queue.h#L222) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../../../include/flashvm/swf_sound_mix_queue.h#L109) |
 | `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../../../include/flashvm/swf_sound_mix_queue.h#L162) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:57](../../../include/flashvm/swf_sound_mix_queue.h#L57) |

@@ -1696,6 +1696,7 @@ clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
 Режим `--identities` рассчитывает полный бюджет адаптера через tracked predictor
 и после software-drain отменяет все событийные ID через stop_all без изменения PCM.
 Режим `--gated` экспортирует 17 кадров с удержанием base и TAIL retry перед открывшимся gate.
+Режим `--headroom` экспортирует 14 event-only кадров с однокадровым остатком FIFO и неделимым retry.
 Ограниченная desktop root-интеграция: [контракт и оставшиеся ограничения](../doc/DESKTOP_MIX.ru.md). [Адаптер EN](../doc/MIX_QUEUE.md) /
 [RU](../doc/MIX_QUEUE.ru.md).
 [EN](../doc/STREAM_EVENT_MIX.md) / [RU](../doc/STREAM_EVENT_MIX.ru.md).

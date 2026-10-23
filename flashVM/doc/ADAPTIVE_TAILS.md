@@ -47,6 +47,9 @@ v0.1005: Check 256 source-teardown epochs with one-frame FIFO drain, rejected sh
 
 v0.1006: Exercise production C89 worker scheduling in interpreter and native JIT with GC, short retry, exact event PCM and retained base resume.
 
+
+v0.1007: Add an event-only headroom mode with fourteen one-frame rejected blocks, unchanged source position and shared ID clock drain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -92,8 +92,9 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
     size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
+    int headroom_mode = argc == 3 && !strcmp(argv[2], "--headroom"); /* Export event-only frames with one-frame FIFO headroom and larger retry caps. */
     int gated_mode = argc == 3 && !strcmp(argv[2], "--gated"); /* Hold base while event voices advance, then open its frame gate. */
-    int identity_mode = (argc == 3 && !strcmp(argv[2], "--identities")) || gated_mode; /* Keep sound IDs active through queued/pending PCM. */
+    int identity_mode = (argc == 3 && !strcmp(argv[2], "--identities")) || gated_mode || headroom_mode; /* Keep sound IDs active through queued/pending PCM. */
     int clock_mode = (argc == 3 && !strcmp(argv[2], "--clock")) || identity_mode; /* Observe one shared accepted/dequeued epoch across base and tails. */
     int bounded_mode = (argc == 3 && !strcmp(argv[2], "--bounded-tails")) || clock_mode; /* Use an exact adapter-only allocation ceiling. */
     int tail_mode = (argc == 3 && !strcmp(argv[2], "--tails")) || bounded_mode; /* Select explicit pump_tail after actual converter EOF. */
@@ -105,7 +106,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities|--gated]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz (17 with --gated).\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities|--gated|--headroom]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz (17 with --gated, 14 with --headroom).\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -180,6 +181,21 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         perror(argv[1]); /* Report the explicit path and native failure reason. */
         goto cleanup; /* No retry pretends to undo file side effects. */
     } /* Finish failed native acquisition. */
+    if (headroom_mode) /* Demonstrate partial headroom without assigning fake stream time. */
+    { /* Base production is explicitly quiescent for the complete event-only export. */
+        FVM_SWFStreamConverter held = converter; /* Preserve an independent source-position witness. */
+        while (total < EXAMPLE_MIX_EVENT_FRAMES) /* Both event voices finish after fourteen converted frames. */
+        { /* Increase the target by only one frame while retaining the larger maximum block. */
+            queue.reject = 1; /* Reject the new short mixture once without copying it. */
+            result = fvm_swf_sound_mix_queue_pump_tail_up_to(mix_queue, EXAMPLE_MIX_BLOCK, total + 1, &accepted); /* Available headroom selects exactly one frame. */
+            if (result != FVM_NOT_FOUND || accepted) goto cleanup; /* This controlled rejection retains an indivisible short TAIL. */
+            if (!checked(fvm_swf_sound_mix_queue_pump_tail_up_to(mix_queue, EXAMPLE_MIX_BLOCK, EXAMPLE_MIX_QUEUE_FRAMES, &accepted), "adaptive retry")) goto cleanup; /* A larger target must resend the same short block. */
+            if (accepted != 1) goto cleanup; /* Reject accidental growth or re-rendering of the retained block. */
+            total += accepted; /* Advance only after the real FIFO acknowledges copying. */
+            if (memcmp(&held, &converter, sizeof(held))) goto cleanup; /* Event-only work never advances the base source. */
+        } /* No final padding is necessary with this deliberately one-frame schedule. */
+        if (fvm_swf_sound_mix_queue_pump_tail_up_to(mix_queue, EXAMPLE_MIX_BLOCK, EXAMPLE_MIX_QUEUE_FRAMES, &accepted) != FVM_NOT_FOUND || accepted) goto cleanup; /* Exhaustion cannot generate endless silence. */
+    } /* Common clock, ID, file-consumption and cleanup code remains shared. */
     if (gated_mode) /* Advance events over zero base, then resume the same untouched converter. */
     { /* Keep every rejected block owned by its original producer. */
         FVM_SWFStreamConverter held = converter; /* Copy only for an independent no-advance witness. */
@@ -195,7 +211,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         } /* All source and voice frames now fit the explicit software FIFO. */
         if (fvm_swf_stream_output_pump_mix_until(&gated_output, mix_queue, EXAMPLE_MIX_OPEN_FRAME, &accepted) != FVM_NOT_FOUND || accepted) goto cleanup; /* Exhaustion must not enqueue extra silence. */
     } /* The common file consumer below runs only after every retry has been accepted. */
-    while (!gated_mode && total < EXAMPLE_MIX_TOTAL) /* Host chooses finite duration, including an event tail. */
+    while (!gated_mode && !headroom_mode && total < EXAMPLE_MIX_TOTAL) /* Host chooses finite duration, including an event tail. */
     { /* Produce a new unmixed base exactly once for this output block. */
         count = EXAMPLE_MIX_TOTAL - total; /* Limit the final block to the finite export budget. */
         if (count > EXAMPLE_MIX_BLOCK) count = EXAMPLE_MIX_BLOCK; /* Preserve caller buffer bounds. */
@@ -242,7 +258,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     { /* Consume exactly the acknowledged native FIFO prefix once. */
         if (tail_mode && !gated_mode && fvm_swf_sound_mix_queue_pump_tail(mix_queue, 1, EXAMPLE_MIX_TOTAL, &accepted) != FVM_NOT_FOUND) goto cleanup; /* Exhausted voices must not enqueue more silence. */
         if (tail_mode && accepted) goto cleanup; /* Exhaustion clears accepted without draining the FIFO. */
-        if (queue.frames != (gated_mode ? EXAMPLE_MIX_GATED_TOTAL : EXAMPLE_MIX_TOTAL)) goto cleanup; /* Reject incomplete native export. */
+        if (queue.frames != (headroom_mode ? EXAMPLE_MIX_EVENT_FRAMES : gated_mode ? EXAMPLE_MIX_GATED_TOTAL : EXAMPLE_MIX_TOTAL)) goto cleanup; /* Reject incomplete native export. */
         if (clock_mode) /* All accepted base and tail blocks are still waiting in this software FIFO. */
         { /* Read a fresh validated observation without changing voice time. */
             shared_clock.struct_size = sizeof(shared_clock); /* Required public clock descriptor size. */

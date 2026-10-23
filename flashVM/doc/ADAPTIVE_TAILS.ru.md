@@ -45,6 +45,9 @@ v0.1005: Проверены 256 эпох после удаления VM: FIFO п
 
 v0.1006: Production C89 worker проверен в interpreter/native JIT с GC, коротким retry, точным PCM и возобновлением BASE.
 
+
+v0.1007: Добавлен C89 headroom-режим: 14 коротких retry, неизменный source cursor и общий drain часов и ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
