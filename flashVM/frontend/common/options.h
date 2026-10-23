@@ -35,6 +35,7 @@ typedef struct FVM_DesktopOptions
     unsigned long max_loads; /* Resource-load budget, including startup; default one. */
     unsigned long frames;    /* Per-file tick limit, or zero for the normal playback policy. */
     int once; /* Stop after the authored frame count; multiple files imply this by default. */
+    int finite_mixed_tails; /* Opt-in finite event-only blocks for root stream/event composition. */
     int mute; /* Explicitly skip device opening and event sound for headless/audio-free sessions. */
     int stats;                /* Print actual VM counters after each movie. */
     const char *const *files; /* Caller-owned immutable array of borrowed movie paths. */

@@ -407,9 +407,14 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
                 }
                 if (result != FVM_OK) return result;
             }
-            result = fvm_swf_stream_output_pump_mix_until(
-                &audio->stream_output, audio->composition,
-                audio->stream_movie_paused ? 0 : audio->stream_frame, 0);
+            if (audio->finite_mixed_tails)
+                result = fvm_swf_stream_output_pump_mix_finite_until(
+                    &audio->stream_output, audio->composition,
+                    audio->stream_movie_paused ? 0 : audio->stream_frame, 0);
+            else
+                result = fvm_swf_stream_output_pump_mix_until(
+                    &audio->stream_output, audio->composition,
+                    audio->stream_movie_paused ? 0 : audio->stream_frame, 0);
         }
         else
             result = fvm_swf_stream_output_pump_until(&audio->stream_output, audio->stream_frame, 0);
@@ -513,17 +518,19 @@ static int SDLCALL audio_worker(void *raw)
 }
 
 /* Complete acquisition before publication; partial cleanup joins any started worker first. */
-FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
-                                         FVM_DesktopAudio *audio, int paused)
+FVM_Result fvm_desktop_audio_open_mixed_policy(FVM_Context *context, FVM_Object *clip,
+                                         FVM_DesktopAudio *audio, int paused, int finite_mixed_tails)
 {
     FVM_AudioQueueBackend backend;
     FVM_SDLAudioQueueInfo device_info;
     FVM_SWFSoundMixerConfig geometry;
     FVM_Result result;
     size_t count = 0, streams = 0, mix_budget = 0;
-    if (!audio || (paused != 0 && paused != 1))
+    if (!audio || (paused != 0 && paused != 1) ||
+        (finite_mixed_tails != 0 && finite_mixed_tails != 1))
         return FVM_INVALID_ARGUMENT;
     memset(audio, 0, sizeof(*audio));
+    audio->finite_mixed_tails = finite_mixed_tails; /* Publish once before any worker exists. */
     audio->suspended = paused; /* Publish the initial policy before the worker can prime/unpause. */
     result = fvm_swf_sound_event_count(context, &count);
     if (result != FVM_OK)
@@ -663,6 +670,13 @@ FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
             (unsigned long)audio->target_frames, (unsigned long)audio->resume_frames,
             device_info.sample_rate, device_info.channels);
     return FVM_OK;
+}
+
+/* Preserve paused acquisition with the established padded mixed-tail policy. */
+FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
+                                         FVM_DesktopAudio *audio, int paused)
+{
+    return fvm_desktop_audio_open_mixed_policy(context, clip, audio, paused, 0);
 }
 
 /* Existing callers retain running startup and the same ownership/cleanup contract. */

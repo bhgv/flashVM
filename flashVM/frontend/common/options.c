@@ -154,6 +154,7 @@ int fvm_desktop_options_validate(const FVM_DesktopOptions *options, const char *
         message = "absolute frame rate conflicts with percentage";
     else if ((options->once != 0 && options->once != 1) ||
              (options->mute != 0 && options->mute != 1) ||
+             (options->finite_mixed_tails != 0 && options->finite_mixed_tails != 1) ||
              (options->stats != 0 && options->stats != 1))
         message = "player flags must be zero or one";
     else if (options->once && options->frames)
@@ -284,6 +285,8 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
         }
         else if (!paths_only && !strcmp(arg, "--once"))
             value.once = 1;
+        else if (!paths_only && !strcmp(arg, "--finite-mixed-tails"))
+            value.finite_mixed_tails = 1;
         else if (!paths_only && !strcmp(arg, "--mute"))
             value.mute = 1;
         else if (!paths_only && !strcmp(arg, "--stats"))
@@ -355,6 +358,7 @@ void fvm_desktop_help(const char *program)
     puts("  --loads N               Allow 1..1024 resource loads, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
+    puts("  --finite-mixed-tails     End fresh root mixed event tails without block padding");
     puts("  --mute                  Mute event sound and validated root streams; no device");
     puts(
         "  --stats                 Print interpreter/JIT and presentation counters after playback");

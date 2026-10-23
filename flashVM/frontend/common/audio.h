@@ -46,6 +46,7 @@ typedef struct FVM_DesktopAudio
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
+    int finite_mixed_tails; /* Immutable startup policy: avoid fresh event-only block padding when set. */
     int stream_frame_ready; /* Completed owner frame; zero holds both producers during callbacks. */
     int stream_entered;              /* Prior entry flag, used to detect pending navigation. */
     int stream_movie_paused;  /* Holds base only in composition mode; host suspension holds all output. */
@@ -99,7 +100,11 @@ extern "C"
      * resolves it. Accepted mixed lead is not selectively recalled on authored root Stop. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
     /* Set initial suspension before starting the native PCM producer thread. */
-    FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
+    /* Initialize finite mixed-tail policy before starting the native producer; both flags are 0/1.
+ * Legacy open functions choose padded tails. This policy affects only root stream/event composition. */
+FVM_Result fvm_desktop_audio_open_mixed_policy(FVM_Context *, FVM_Object *, FVM_DesktopAudio *,
+                                               int paused, int finite_mixed_tails);
+FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
     /* Poll worker errors and mark the host foreground; never perform PCM work on the render thread.
      */
     FVM_Result fvm_desktop_audio_tick(FVM_DesktopAudio *);

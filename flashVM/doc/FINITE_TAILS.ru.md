@@ -16,6 +16,9 @@ v0.1015: Добавлен конечный парный gate/EOF-планиро�
 
 v0.1016: Проверены strict/converted release, ранний EOF источника и ограниченная арифметика огромных повторов без огромных аллокаций.
 
+
+v0.1017: Добавлен явный finite mixed-tail startup policy и CLI-флаг до публикации worker; прежний режим остаётся по умолчанию.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

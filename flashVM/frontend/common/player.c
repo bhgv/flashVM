@@ -1265,7 +1265,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                                   "muted event sound", path))
         goto cleanup;
     if (!options->mute &&
-        !checked(fvm_desktop_audio_open_paused(context, clip, &audio, control && control->paused),
+        !checked(fvm_desktop_audio_open_mixed_policy(context, clip, &audio, control && control->paused,
+                                                     options->finite_mixed_tails),
                  "event audio (use --mute to disable)", path))
         goto cleanup;
     if (!limit && (options->once || options->file_count > 1))

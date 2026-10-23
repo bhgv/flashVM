@@ -16,6 +16,9 @@ v0.1015: Expose opt-in finite frame-gate and EOF scheduling with coherent shared
 
 v0.1016: Check strict and converted release endpoints, earlier source exhaustion and bounded huge-repeat arithmetic without huge allocations.
 
+
+v0.1017: Add explicit finite mixed-tail startup policy and CLI option before worker publication while preserving default playback behavior.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
