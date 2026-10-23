@@ -1,10 +1,12 @@
-Development version: **0.1037** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1038** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1038: [Add exact mode-aware native storage prediction for optional accepted-frame origin accounting without changing legacy predictor meaning.](doc/MIX_ORIGIN_CLOCK.md).
 
 v0.1037: [Record native finite ownership, owner-frame scheduling and complete event drain, with reproducible tutorial and player validation boundaries.](doc/EVENT_TAILS.md).
 

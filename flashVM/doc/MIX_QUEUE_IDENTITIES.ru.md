@@ -18,12 +18,12 @@ ID/clock/pending; ошибка сохраняет их. Untracked clear не м�
 
 | API | Контракт |
 | --- | --- |
-| [fvm_swf_sound_mix_queue_set_identity_tracking](../include/flashvm/swf_sound_mix_queue.h#L109) | Включить ограниченную таблицу в нулевом shared-отсчёте; отключить после наблюдённого drain без voices/pending/неистёкших регистраций. Повтор — no-op. Нет backend/VM/GC; одно выделение таблицы, ошибки сохраняют режим. |
-| [fvm_swf_sound_mix_queue_submit_prepared_bounded](../include/flashvm/swf_sound_mix_queue.h#L123) | Требует owned prepared handle; успех потребляет его, ошибка сохраняет прогресс/владение. Queued NoMultiple потребляет лишний старт даже при нулевом mixer-budget. Обычный старт продлевает max end после accepted+pending. Нет выделений/VM/GC, poll может обновить played. |
-| [fvm_swf_sound_mix_queue_identity_info](../include/flashvm/swf_sound_mix_queue.h#L141) | ID 1..65535 и обязательный out точного размера; копирует sound_id/played/end/until_end/active после реального FIFO poll. Ошибки/выключенный режим сохраняют выход; expiry оставляет исторический end. Нет выделений/VM/GC. |
-| [fvm_swf_sound_mix_queue_sound_active](../include/flashvm/swf_sound_mix_queue.h#L146) | Обязательный scalar-out, правила identity_info. True только пока зарегистрированное время не удалено из FIFO; это не резервирование и не DAC-слышимость. |
-| [fvm_swf_sound_mix_queue_stop_id](../include/flashvm/swf_sound_mix_queue.h#L154) | Требует допустимый ID и tracking; вызывает immediate/DECLICK stop микшера, отменяет deadline, сохраняет accepted/pending. Нет backend callback, выделений, VM/GC. |
-| [fvm_swf_sound_mix_queue_storage_info](../include/flashvm/swf_sound_mix_queue.h#L57) | Точные fixed+buffer=retained запросы; buffer включает обе S16-таблицы и optional deadlines. Allocator/микшер/голоса/backend/VM учитываются отдельно. |
+| [fvm_swf_sound_mix_queue_set_identity_tracking](../include/flashvm/swf_sound_mix_queue.h#L117) | Включить ограниченную таблицу в нулевом shared-отсчёте; отключить после наблюдённого drain без voices/pending/неистёкших регистраций. Повтор — no-op. Нет backend/VM/GC; одно выделение таблицы, ошибки сохраняют режим. |
+| [fvm_swf_sound_mix_queue_submit_prepared_bounded](../include/flashvm/swf_sound_mix_queue.h#L131) | Требует owned prepared handle; успех потребляет его, ошибка сохраняет прогресс/владение. Queued NoMultiple потребляет лишний старт даже при нулевом mixer-budget. Обычный старт продлевает max end после accepted+pending. Нет выделений/VM/GC, poll может обновить played. |
+| [fvm_swf_sound_mix_queue_identity_info](../include/flashvm/swf_sound_mix_queue.h#L149) | ID 1..65535 и обязательный out точного размера; копирует sound_id/played/end/until_end/active после реального FIFO poll. Ошибки/выключенный режим сохраняют выход; expiry оставляет исторический end. Нет выделений/VM/GC. |
+| [fvm_swf_sound_mix_queue_sound_active](../include/flashvm/swf_sound_mix_queue.h#L154) | Обязательный scalar-out, правила identity_info. True только пока зарегистрированное время не удалено из FIFO; это не резервирование и не DAC-слышимость. |
+| [fvm_swf_sound_mix_queue_stop_id](../include/flashvm/swf_sound_mix_queue.h#L162) | Требует допустимый ID и tracking; вызывает immediate/DECLICK stop микшера, отменяет deadline, сохраняет accepted/pending. Нет backend callback, выделений, VM/GC. |
+| [fvm_swf_sound_mix_queue_storage_info](../include/flashvm/swf_sound_mix_queue.h#L65) | Точные fixed+buffer=retained запросы; buffer включает обе S16-таблицы и optional deadlines. Allocator/микшер/голоса/backend/VM учитываются отдельно. |
 | [fvm_swf_sound_mix_queue_storage_required](../include/flashvm/swf_sound_mix_queue.h#L44) | Предсказывает только исходный untracked adapter; optional таблица добавляет ID_SLOTS*sizeof(double). Ошибка сохраняет scalar-out; нет выделений/callback/VM. |
 
 
@@ -89,9 +89,9 @@ v0.973: Проверено продолжение настоящего stream п
 
 ## Общая остановка событий и расчёт памяти адаптера
 
-[`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) немедленно удаляет все голоса микшера, включая
+[`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L170) немедленно удаляет все голоса микшера, включая
 DECLICK-хвосты, и сбрасывает сроки всех ID. В отличие от
-[`fvm_swf_sound_mix_queue_stop_id`](../include/flashvm/swf_sound_mix_queue.h#L154), общая остановка не начинает release-ramp.
+[`fvm_swf_sound_mix_queue_stop_id`](../include/flashvm/swf_sound_mix_queue.h#L162), общая остановка не начинает release-ramp.
 Принятый и pending PCM сохраняется побайтно, как и курсор base-producer,
 состояние паузы и общий отсчёт. Новый NoMultiple разрешён сразу, но начинает
 смешиваться после уже подготовленных pending-кадров. Повтор безопасен.
@@ -115,7 +115,7 @@ MovieClip, GC safe points и исполнение interpreter/native JIT.
 
 | API | Ошибки, владение и сериализация |
 | --- | --- |
-| [`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L162) | Нужны живой tracked queue и заимствованные владельцы, внешняя сериализация всех операций микшера/очереди. Null/reentry: INVALID_ARGUMENT; tracking отключён: UNSUPPORTED. Ошибка микшера предшествует изменению ID. Без callbacks/выделений/VM/GC, передачи владения и неявных pause/clear. |
+| [`fvm_swf_sound_mix_queue_stop_all`](../include/flashvm/swf_sound_mix_queue.h#L170) | Нужны живой tracked queue и заимствованные владельцы, внешняя сериализация всех операций микшера/очереди. Null/reentry: INVALID_ARGUMENT; tracking отключён: UNSUPPORTED. Ошибка микшера предшествует изменению ID. Без callbacks/выделений/VM/GC, передачи владения и неявных pause/clear. |
 | [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../include/flashvm/swf_sound_mix_queue.h#L52) | Обязательный scalar out, допустимые геометрия и режим. Неверные аргументы: INVALID_ARGUMENT; переполнение размера: OUT_OF_MEMORY; выход сохраняется. Владелец не нужен; параллельным вызовам нужны независимые выходные ячейки. |
 
 Новые native-тесты проверяют принятый PCM, pending BASE/TAIL retry, разные
@@ -142,13 +142,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:141](../include/flashvm/swf_sound_mix_queue.h#L141) |
-| `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../include/flashvm/swf_sound_mix_queue.h#L109) |
-| `fvm_swf_sound_mix_queue_sound_active` | function | [include/flashvm/swf_sound_mix_queue.h:146](../include/flashvm/swf_sound_mix_queue.h#L146) |
-| `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../include/flashvm/swf_sound_mix_queue.h#L162) |
-| `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:154](../include/flashvm/swf_sound_mix_queue.h#L154) |
-| `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:57](../include/flashvm/swf_sound_mix_queue.h#L57) |
+| `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:149](../include/flashvm/swf_sound_mix_queue.h#L149) |
+| `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:117](../include/flashvm/swf_sound_mix_queue.h#L117) |
+| `fvm_swf_sound_mix_queue_sound_active` | function | [include/flashvm/swf_sound_mix_queue.h:154](../include/flashvm/swf_sound_mix_queue.h#L154) |
+| `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:170](../include/flashvm/swf_sound_mix_queue.h#L170) |
+| `fvm_swf_sound_mix_queue_stop_id` | function | [include/flashvm/swf_sound_mix_queue.h:162](../include/flashvm/swf_sound_mix_queue.h#L162) |
+| `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:65](../include/flashvm/swf_sound_mix_queue.h#L65) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../include/flashvm/swf_sound_mix_queue.h#L44) |
 | `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../include/flashvm/swf_sound_mix_queue.h#L52) |
-| `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:123](../include/flashvm/swf_sound_mix_queue.h#L123) |
+| `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:131](../include/flashvm/swf_sound_mix_queue.h#L131) |
 <!-- source-links:end -->

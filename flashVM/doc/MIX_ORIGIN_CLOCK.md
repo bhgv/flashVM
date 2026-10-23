@@ -1,0 +1,17 @@
+# Mixed queue BASE/TAIL dequeue accounting
+
+[`fvm_swf_sound_mix_queue_storage_required_for_modes`](../include/flashvm/swf_sound_mix_queue.h#L60) predicts requested native owner/PCM memory with optional ID tracking and a fixed BASE/TAIL FIFO bitmap. Both flags are Boolean; invalid geometry/flags return INVALID_ARGUMENT preserving out, checked size overflow OUT_OF_MEMORY. No allocation/callback/VM/GC occurs. Origin storage adds 32768 bytes for the maximum 262144-frame queue; mixer, voice, backend, allocator and VM storage are excluded.
+
+v0.1038: Add exact mode-aware native storage prediction for optional accepted-frame origin accounting without changing legacy predictor meaning.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
+<!-- source-links:end -->

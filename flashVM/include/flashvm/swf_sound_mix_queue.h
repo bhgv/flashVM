@@ -51,6 +51,14 @@ extern "C"
      * Creation remains initially untracked; enable tracking separately at its safe point. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required_for_tracking(
         unsigned int channels, size_t block, int identity_tracking, size_t *out);
+#define FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES FVM_SWF_SOUND_OUTPUT_MAX_QUEUE /* Fixed accepted FIFO origin capacity. */
+    /* Predict owner+PCM+optional ID and BASE/TAIL origin tracking allocation requests.
+     * Both mode flags are 0/1; same geometry and checked-byte error rules as storage_required.
+     * Required out unchanged on errors. Origin mode adds a fixed one-bit-per-FIFO-frame
+     * bitmap; excludes mixer/voice/backend/VM/allocator memory. No allocation, callbacks,
+     * VM or GC. This prediction does not enable either optional mode. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required_for_modes(
+        unsigned int channels, size_t block, int identities, int origins, size_t *out);
     /* Copy fixed storage observation, independent of pending/accepted queue frames.
      * Live serialized queue and exact-size out required; invalid/reentry preserves out.
      * No allocation/callback/VM/GC. Counts allocation requests, not actual RSS. */

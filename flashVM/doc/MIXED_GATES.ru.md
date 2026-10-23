@@ -114,7 +114,7 @@ v0.998: Завершены C89/API и desktop-контракты authored Stop, 
 
 ## Неполный остаток FIFO с v0.1000
 
-Парные gate/EOF операции используют [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L222): новые
+Парные gate/EOF операции используют [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L230): новые
 event-only блоки заполняют свободный остаток до настроенного block. Короткий TAIL
 неделим и остаётся раньше вновь разрешённого BASE. Обе копии часов используют
 наблюдение, разрешившее успешный write, без ошибочного опроса после принятия.
@@ -130,7 +130,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../include/flashvm/swf_sound_mix_queue.h#L222) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:230](../include/flashvm/swf_sound_mix_queue.h#L230) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |

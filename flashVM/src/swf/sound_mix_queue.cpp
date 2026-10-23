@@ -20,6 +20,11 @@ struct FVM_SWFSoundMixQueue
     fvm_detail::vector<short>
         mixed;       /* Fixed actual mixed block; backend must copy before returning OK. */
     fvm_detail::vector<double> identities; /* Optional fixed per-ID exclusive dequeue deadlines. */
+    fvm_detail::vector<unsigned char> origins; /* Optional fixed FIFO BASE/TAIL origin bitmap. */
+    size_t origin_head; /* Ring position of the next accepted frame awaiting observed dequeue. */
+    size_t origin_count; /* Accepted frames represented in the origin bitmap. */
+    double origin_base_submitted; /* Exact accepted BASE frames in the active origin epoch. */
+    double origin_base_played; /* Exact BASE frames removed by valid FIFO observations. */
     size_t capacity; /* Immutable maximum interleaved frames. */
     size_t pending;  /* Zero or initialized mixed frames whose voice time is already consumed. */
     bool clock_active; /* Explicit opt-in; legacy callback-only owners retain prior behavior. */
@@ -28,7 +33,7 @@ struct FVM_SWFSoundMixQueue
     bool tail; /* Pending block was prepared by the event-only tail pump. */
     bool busy;       /* Reject callback reentry, independent of external thread synchronization. */
     /* Initialize callback state before any fallible vector acquisition. */
-    FVM_SWFSoundMixQueue() : mixer(0), capacity(0), pending(0), clock_active(false), clock_submitted(0), clock_played(0), tail(false), busy(false)
+    FVM_SWFSoundMixQueue() : mixer(0), origin_head(0), origin_count(0), origin_base_submitted(0), origin_base_played(0), capacity(0), pending(0), clock_active(false), clock_submitted(0), clock_played(0), tail(false), busy(false)
     {
     }
 };
@@ -54,7 +59,7 @@ FVM_Result storage_bytes(unsigned int channels, size_t block, FVM_SWFSoundMixQue
 }
 
 /* Include optional deadline storage while retaining the public fixed+buffer sum identity. */
-FVM_Result storage_with_identities(unsigned int channels, size_t block, size_t slots,
+FVM_Result storage_with_modes(unsigned int channels, size_t block, size_t slots, bool origins,
                                     FVM_SWFSoundMixQueueStorageInfo &out)
 {
     FVM_SWFSoundMixQueueStorageInfo info;
@@ -65,6 +70,13 @@ FVM_Result storage_with_identities(unsigned int channels, size_t block, size_t s
     if (bytes > (size_t)-1 - info.retained_bytes) return FVM_OUT_OF_MEMORY;
     info.buffer_bytes += bytes;
     info.retained_bytes += bytes;
+    if (origins)
+    {
+        size_t origin_bytes = FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES / FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS;
+        if (origin_bytes > (size_t)-1 - info.retained_bytes) return FVM_OUT_OF_MEMORY;
+        info.buffer_bytes += origin_bytes;
+        info.retained_bytes += origin_bytes;
+    }
     out = info;
     return FVM_OK;
 }
@@ -493,8 +505,21 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_required_for_tracking(
 {
     if (!out || (tracking != 0 && tracking != 1)) return FVM_INVALID_ARGUMENT;
     FVM_SWFSoundMixQueueStorageInfo info;
-    FVM_Result result = storage_with_identities(channels, block,
-        tracking ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, info);
+    FVM_Result result = storage_with_modes(channels, block,
+        tracking ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, false, info);
+    if (result == FVM_OK) *out = info.retained_bytes;
+    return result;
+}
+
+/* Predict both optional fixed modes before acquiring mixer/backend/queue ownership. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_required_for_modes(unsigned int channels,
+    size_t block, int identities, int origins, size_t *out)
+{
+    if (!out || (identities != 0 && identities != 1) || (origins != 0 && origins != 1))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueueStorageInfo info;
+    FVM_Result result = storage_with_modes(channels, block,
+        identities ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, origins != 0, info);
     if (result == FVM_OK) *out = info.retained_bytes;
     return result;
 }
@@ -505,7 +530,7 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_storage_info(const FVM_SWFSoundMix
 {
     if (!queue || queue->busy || !out || out->struct_size != sizeof(*out))
         return FVM_INVALID_ARGUMENT;
-    return storage_with_identities(queue->backend.channels, queue->capacity, queue->identities.size(), *out);
+    return storage_with_modes(queue->backend.channels, queue->capacity, queue->identities.size(), !queue->origins.empty(), *out);
 }
 
 /* Allocate optional deadlines only at an explicit clock/voice safe point. */
@@ -528,8 +553,8 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_set_identity_tracking(FVM_SWFSound
             if (queue->identities[i] > queue->clock_played) return FVM_INVALID_ARGUMENT;
     }
     FVM_SWFSoundMixQueueStorageInfo storage;
-    result = storage_with_identities(queue->backend.channels, queue->capacity,
-                enabled ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, storage);
+    result = storage_with_modes(queue->backend.channels, queue->capacity,
+                enabled ? FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS : 0, !queue->origins.empty(), storage);
     if (result != FVM_OK) return result;
     if (enabled && storage.retained_bytes > budget) return FVM_OUT_OF_MEMORY;
     MixBusyScope scope(queue);
