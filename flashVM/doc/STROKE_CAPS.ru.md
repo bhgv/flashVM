@@ -47,6 +47,16 @@ Miter limits, разные концы, hinting/non-scaling, точные bounds/
 Первоисточник: Adobe SWF specification, LINESTYLE2:
 https://open-flash.github.io/mirrors/swf-spec-19.pdf
 
+
+## Итог проверки
+
+Симметричные концы/соединения LINESTYLE2 v0.1253–v0.1266: DefineShape4 рисует одинаковые round/butt/square концы и round/bevel-соединения для сплошных, линейных/фокусных градиентных и bitmap-обводок. Необязательные lineCap/lineJoin сохраняются после GC и переноса графа; отсутствие полей сохраняет round. Селекторы вызова проходят через маски и покрытие BitmapData.draw без изменения публичного C89 ABI, callbacks и resource/wire. Резервные поля недопустимы; разные концы, miter и scaling/hinting явно неподдержаны. Тринадцать новых тестов включают независимую геометрию прямоугольников/круга/bevel, 24 исходных сочетания paint/стиля, 120 ширин, 96 топологий, 96 качеств, неверные нативные селекторы/усечение/неподдержанные стили, метаданные и восстановление round, 24 сцены через сериализацию/канал после удаления отправителя, 24 серии отказов C++-памяти при декодировании/загрузке/paint, 16 перемоток, четыре OS-потока с 96 циклами загрузки/рендеринга/GC, шесть смешанных сцен и 24 банка StateNewStyles. Все 65536 заголовков проходят расширенную политику проверки. Пройдены 170 нативных AGG-тестов, 12 ASan/UBSan и allocation с явным --no-faults, пять SDK-free проверок без графики из нового каталога сборки. Настоящие отказы памяти проверены нативно; sanitizer unwinding ограничен, LeakSanitizer отключён. Проверки исходных ссылок и примеров проходят. Miter limits, разные концы, scaling/hinting, точные bounds/hit tests новых стилей, неравномерные/скошенные правила Flash, Cairo/эталонный растр и устройства/другие платформы остаются открытыми. Все девять этапов открыты. [Контракт](STROKE_CAPS.ru.md).
+
+[paints](../tests/swf_stroke_caps.cpp), [analytic](../tests/swf_stroke_caps_analytic.cpp), [widths](../tests/swf_stroke_caps_widths.cpp), [close](../tests/swf_stroke_caps_close.cpp), [quality](../tests/swf_stroke_caps_quality.cpp), [errors](../tests/swf_stroke_caps_errors.cpp), [metadata](../tests/swf_stroke_caps_metadata.cpp), [transfer](../tests/swf_stroke_caps_transfer.cpp), [allocation](../tests/swf_stroke_caps_allocation.cpp), [timeline](../tests/swf_stroke_caps_timeline.cpp), [threads](../tests/swf_stroke_caps_threads.cpp), [mixed](../tests/swf_stroke_caps_mixed.cpp), [styles](../tests/swf_stroke_caps_styles.cpp).
+
+
+После изменения внутренних C++-сигнатур и layout используйте новый каталог CMake: старые тестовые объекты могут ссылаться на прежние внутренние сигнатуры рендерера.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

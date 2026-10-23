@@ -48,6 +48,16 @@ roadmap stages remain open; this checkpoint extends file rendering only.
 Reference: Adobe SWF specification, LINESTYLE2:
 https://open-flash.github.io/mirrors/swf-spec-19.pdf
 
+
+## Validation checkpoint
+
+Symmetric LINESTYLE2 caps/joins v0.1253–v0.1266: DefineShape4 now renders matching round/butt/square caps and round/bevel joins through solid, linear/focal-gradient and bitmap stroke paints. Optional lineCap/lineJoin scalars retain style through GC and graph transfer; absent metadata retains round defaults. Shared per-call coverage selectors reach sampled masks and BitmapData.draw coverage without public C89 ABI or callback/resource/wire changes. Reserved fields remain invalid; asymmetric caps, miter and scaling/hinting flags remain explicitly unsupported. Thirteen new fixtures include independent rectangle/circular/bevel geometry checks, 24 initial paint/style cases, 120 width cases, 96 topology cases, 96 quality cases, native selector/truncation/unsupported rejection, malformed metadata and round restoration, 24 scenes through binary and channel transfer after sender destruction, 24 decoder/loader/paint C++ allocation-fault configurations, sixteen frame seeks, four OS workers completing 96 independent load/render/GC epochs, six mixed fill/stroke scenes and 24 StateNewStyles banks. The full 65536-header admission fixture passes the expanded policy. Validation passes 170 selected native AGG tests, 12 ASan/UBSan tests plus the allocation fixture with explicit --no-faults, and five SDK-free no-graphics tests from a new build directory. Actual allocation fault sweeps pass natively; sanitizer unwinding is limited and LeakSanitizer is disabled. Documentation/source links and frontend example checks pass. Miter limits, asymmetric caps, scaling/hinting, exact styled bounds/hit tests, anisotropic/sheared Flash rules, Cairo/reference raster and physical-device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](STROKE_CAPS.md).
+
+[paints](../tests/swf_stroke_caps.cpp), [analytic](../tests/swf_stroke_caps_analytic.cpp), [widths](../tests/swf_stroke_caps_widths.cpp), [close](../tests/swf_stroke_caps_close.cpp), [quality](../tests/swf_stroke_caps_quality.cpp), [errors](../tests/swf_stroke_caps_errors.cpp), [metadata](../tests/swf_stroke_caps_metadata.cpp), [transfer](../tests/swf_stroke_caps_transfer.cpp), [allocation](../tests/swf_stroke_caps_allocation.cpp), [timeline](../tests/swf_stroke_caps_timeline.cpp), [threads](../tests/swf_stroke_caps_threads.cpp), [mixed](../tests/swf_stroke_caps_mixed.cpp), [styles](../tests/swf_stroke_caps_styles.cpp).
+
+
+Use a new CMake build directory after this internal C++ signature/layout change; stale test objects from an older build can reference the prior private renderer signatures.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

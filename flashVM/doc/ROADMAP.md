@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Current cap/join checkpoint: [symmetric caps and bevel joins](STROKE_CAPS.md) / [симметричные концы и bevel](STROKE_CAPS.ru.md). Miter, asymmetric caps and all nine stages remain open.
+
 Current image-stroke checkpoint: [bitmap LINESTYLE2 strokes](BITMAP_STROKES.md) / [bitmap-обводки LINESTYLE2](BITMAP_STROKES.ru.md). Other stroke semantics and all nine stages remain open.
 
 Current stroke checkpoint: [bounded LINESTYLE2](SHAPE4_STROKES.md) / [ограниченные обводки LINESTYLE2](SHAPE4_STROKES.ru.md). Round solid/gradient strokes and NoClose are available; other stroke semantics and all nine stages remain open.

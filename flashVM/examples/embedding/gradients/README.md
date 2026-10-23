@@ -157,6 +157,15 @@ scene fixtures and the remaining cap/join/scaling restrictions.
 Нативный пример C89 не кодирует SWF; руководство перечисляет байтовые тесты сцены
 и оставшиеся ограничения концов, соединений и масштабирования.
 
+
+File-authored stroke geometry: [symmetric caps and bevel joins](../../../doc/STROKE_CAPS.md)
+now affect solid, gradient and bitmap masks consistently. Public C89 functions
+in this tutorial retain round defaults; the guide links raw SWF scene tests.
+
+Файловая геометрия обводок: [симметричные концы и bevel](../../../doc/STROKE_CAPS.ru.md)
+согласованы для сплошных, градиентных и bitmap-масок. Публичные C89-функции примера
+сохраняют round по умолчанию; байтовые тесты SWF перечислены в руководстве.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
