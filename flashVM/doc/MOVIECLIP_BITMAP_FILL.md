@@ -1,5 +1,7 @@
 # Bitmap-заливки / Bitmap fills
 
+Current file-image extension: [bitmap LINESTYLE2 strokes](BITMAP_STROKES.md) / [bitmap-обводки LINESTYLE2](BITMAP_STROKES.ru.md). This does not introduce a new script drawing method.
+
 MovieClip.beginBitmapFill принимает BitmapData, необязательную матрицу,
 repeat (по умолчанию true) и smoothing (по умолчанию false). Матрица a/b/c/d/tx/ty
 копируется при вызове; BitmapData удерживается живой ссылкой. setPixel/setPixel32

@@ -53,6 +53,13 @@ complete SWF8 support or a new script drawing API.
 Reference: Adobe SWF specification, LINESTYLE2 and bitmap FILLSTYLE:
 https://open-flash.github.io/mirrors/swf-spec-19.pdf
 
+
+## Validation checkpoint
+
+Bitmap LINESTYLE2 v0.1239–v0.1252: DefineShape4 accepts all four bitmap FillType modes for bounded round strokes, retaining repeat/edge-extension, nearest/premultiplied-bilinear sampling, live/disposed RGBA images, hairlines, NoClose and stage edge quality. Stroke descriptors retain lineBitmap separately from bitmap fills and preserve dictionary BitmapData identity across GC and binary/channel transfer. The shared private sampler stages every source pixel and coverage before composition, including aliased surfaces, without changing public C89 layouts/functions, callback IDs or resource/wire tags. Thirteen new fixtures cover independent known-color pixels and full-surface sampling/coverage oracles, twenty width/mode cases, sixteen open/closed/NoClose cases, twenty shifted sampling cases, sixteen quality cases, four binary/channel scene transfers after sender teardown, malformed IDs/versions/widths/metadata, live mutation/dispose, four decoder/loader/paint C++ allocation-fault configurations, sixteen seeks, four OS workers with 96 independent load/render/GC epochs, four mixed distinct-image fill/stroke scenes and four StateNewStyles banks. Validation passes 157 selected native tests including both bitmap-fill and gradient C89 tutorials, 12 ASan/UBSan tests plus explicit --no-faults allocation execution, and five fresh-build SDK-free no-graphics tests. Actual C++ allocation failures pass natively; sanitizer unwinding is limited and LeakSanitizer is disabled. Source links and frontend example checks pass. Non-round caps/joins, non-scaling/hinting flags, exact anisotropic/sheared stroke behavior, Flash reference raster/rounding and physical-device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](BITMAP_STROKES.md).
+
+[modes](../tests/swf_bitmap_stroke.cpp), [widths](../tests/swf_bitmap_stroke_widths.cpp), [close](../tests/swf_bitmap_stroke_close.cpp), [sampling](../tests/swf_bitmap_stroke_sampling.cpp), [quality](../tests/swf_bitmap_stroke_quality.cpp), [transfer](../tests/swf_bitmap_stroke_transfer.cpp), [errors](../tests/swf_bitmap_stroke_errors.cpp), [metadata](../tests/swf_bitmap_stroke_metadata.cpp), [allocation](../tests/swf_bitmap_stroke_allocation.cpp), [timeline](../tests/swf_bitmap_stroke_timeline.cpp), [threads](../tests/swf_bitmap_stroke_threads.cpp), [mixed](../tests/swf_bitmap_stroke_mixed.cpp), [styles](../tests/swf_bitmap_stroke_styles.cpp).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

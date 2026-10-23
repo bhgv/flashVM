@@ -46,6 +46,17 @@ cmake --build build-examples --target flashvm_examples_embedding_bitmap_fill_mai
 [Описание в общем каталоге](../../README.md#example-embedding-bitmap_fill).
 <!-- example-catalog-api:end -->
 
+
+File-authored image strokes now share the sampler and retained BitmapData ownership:
+[SWF8 bitmap LINESTYLE2](../../../doc/BITMAP_STROKES.md). This C89 example still
+constructs a script bitmap fill; it does not encode a SWF. The guide links actual
+file-loading tests and the remaining stroke limitations.
+
+Файловые bitmap-обводки используют тот же семплер и владение BitmapData:
+[SWF8 bitmap LINESTYLE2](../../../doc/BITMAP_STROKES.ru.md). Этот C89-пример строит
+скриптовую bitmap-заливку и не кодирует SWF. В руководстве перечислены настоящие
+байтовые тесты загрузки и оставшиеся ограничения обводок.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

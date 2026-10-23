@@ -1,5 +1,7 @@
 # BitmapData.draw
 
+Current file-image extension: [bitmap LINESTYLE2 strokes](BITMAP_STROKES.md) / [bitmap-обводки LINESTYLE2](BITMAP_STROKES.ru.md). This does not introduce a new script drawing method.
+
 ## Русский
 
 v0.50 добавляет draw(source, matrix, colorTransform, blendMode, clipRect,
