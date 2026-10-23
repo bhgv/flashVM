@@ -63,6 +63,8 @@ Source-sample mapping, MP3 delay, автоматические A/V drift/seek, �
 
 Desktop выбирает внутренний путь по immutable composition_origins, установленному при подготовке, а не по статусу callback. Поэтому backend UNSUPPORTED передаётся после одного FIFO-вызова и не вызывает повторный fallback-опрос. Ручной frontend-владелец выбирает режим после включения origins.
 
+Единый mixed-снимок v0.1051–v0.1063 получает source/retry metadata, общий dequeue clock и категории BASE/TAIL одним FIFO-опросом. Desktop refill, resume/завершение и статистика используют paired-путь под mutex; заранее выбранный immutable-режим сохраняет legacy-адаптеры и передаёт статусы backend без повторного опроса. Итог: 215 выбранных native regression/tutorial/CLI проверок и две проверки options; 68 выбранных ASan/UBSan и четырнадцать --no-throw запусков; после финального mode/status исправления пересобраны и пройдены все 17 mixed frontend sanitizer проверок; отдельно 12 SDK-free core/tutorial проверок. Исключения и allocation failures проверяются обычной сборкой, LeakSanitizer отключён. Проверены один опрос draining FIFO, неизменность source/retry, pending BASE/TAIL, failed clear, reentry, сохранение out, seeded clock/ring границы, запрет аллокаций, 256 эпох независимых OS-workers и настоящий SDL dummy worker с Stop/Play/pause/GC/interpreter/JIT. Ten-mode C89-пример сохраняет точный PCM и проверяет paired-отчёты до/после drain. Source/DAC time, codec latency, автоматические A/V/drift/reference seek, дочерние словари/таймлайны, реальные устройства/платформы остаются открытыми. Все девять стадий открыты.
+
 
 v0.1051: Добавлен единый снимок stream и BASE/TAIL без рендеринга и продвижения источника.
 
@@ -90,6 +92,9 @@ v0.1061: Один PCM-эталон проверяет legacy и origin-enabled r
 
 
 v0.1062: Режим наблюдения публикуется до worker; backend UNSUPPORTED сохраняется после одного callback с проверкой out и числа опросов.
+
+
+v0.1063: Зафиксированы native, sanitizer, SDK-free и C89 проверки единого снимка; source-time и A/V приёмка остаются открытыми.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

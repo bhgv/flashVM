@@ -69,6 +69,8 @@ Internal desktop stream observations retain the legacy path for externally prepa
 
 Desktop internal selection uses the immutable prepared composition_origins mode, not a returned callback status. A real backend UNSUPPORTED therefore propagates after exactly one FIFO call; it never triggers a second fallback observation. Manually prepared frontend owners select the mode after enabling origins.
 
+Coherent mixed snapshots v0.1051–v0.1063 add one real FIFO observation for source/retry metadata, the common dequeue clock and BASE/TAIL categories. Desktop refill, resume/completion and statistics use the paired path under the producer mutex; a prepared immutable mode preserves legacy adapters and propagates backend statuses without another poll. Final validation passes 215 selected native regression/tutorial/CLI checks plus two options tests; 68 selected ASan/UBSan checks plus fourteen explicit --no-throw runs; all 17 mixed frontend sanitizer checks rebuilt after the final mode/status fix; and 12 SDK-free core/tutorial checks. Ordinary builds cover exceptions/allocation failures; LeakSanitizer is disabled. Evidence includes one-poll draining FIFO, unchanged source/retry bytes, pending BASE/TAIL, failed clear, reentry, output preservation, exact-clock/ring seeds, allocation denial, 256 independent OS-worker epochs, and real SDL dummy Stop/Play/pause/GC/interpreter/JIT workers. The ten-mode C89 example retains exact PCM and verifies queued/drained paired reports. Source/DAC timestamps, codec latency, automatic A/V/drift/reference seek, child dictionaries/timelines and physical-device/platform acceptance remain open; all nine stages remain open.
+
 
 v0.1051: Add a single-observation paired stream and BASE/TAIL query without rendering or source advancement.
 
@@ -96,6 +98,9 @@ v0.1061: Run exact retry and final drain through both adapter modes; verify expl
 
 
 v0.1062: Publish immutable observation mode before worker start and preserve a backend UNSUPPORTED after one callback; verify output and poll count.
+
+
+v0.1063: Record native sanitizer SDK-free and C89 evidence for paired observations, legacy mode and callback status propagation; retain open source-time and A-V acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

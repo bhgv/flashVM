@@ -1,10 +1,12 @@
-Development version: **0.1062** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1063** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1063: [Record native sanitizer SDK-free and C89 evidence for paired observations, legacy mode and callback status propagation; retain open source-time and A-V acceptance.](doc/MIXED_SNAPSHOT.md).
 
 v0.1062: [Publish immutable observation mode before worker start and preserve a backend UNSUPPORTED after one callback; verify output and poll count.](doc/MIXED_SNAPSHOT.md).
 
