@@ -1,5 +1,7 @@
 # C89 script stroke styles
 
+Round-curve extension: after the first render, the example clears the old line, selects round/round, calls curveTo with control (8,0), end (14,8), and adds isolated moveTo(100,100). It verifies getBounds x=0..16, y=2..10. The previous bounds root is released before replacing geometry; the new result is separately rooted and cleaned up. clear, curveTo and moveTo synchronously mutate context-owned geometry through the existing [fvm_object_call](../../../include/flashvm/value.h#L126). An additional output line is `round curve bounds: 0..16, 2..10`. This extension does not test the curve raster. [Contract](../../../doc/ROUND_CURVE_BOUNDS.md).
+
 [Русский](README.ru.md). This executable calls script lineStyle with square/bevel,
 draws (2,8)..(14,8), verifies bounds 0..16 and a corner hit at (0.1,6.1).
 With AGG it also checks alpha 255 at pixel (0,6). It needs no SWF compiler,
@@ -28,6 +30,7 @@ cmake --build build-stroke-styles --target flashvm_examples_embedding_stroke_sty
 ```text
 bounds: 0..16; square corner: hit
 square corner alpha: 255
+round curve bounds: 0..16, 2..10
 ```
 
 With `cmake/profiles/minimal.defs`, use a separate build directory: the second

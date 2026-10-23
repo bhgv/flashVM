@@ -1,4 +1,4 @@
-/* C89 tutorial: script square caps and bevel joins; see README.md and SCRIPT_STROKE_STYLES.md. */
+/* C89 tutorial: square/bevel strokes and analytic round curves; see README.md and ROUND_CURVE_BOUNDS.md. */
 #include "flashvm/standard.h" /* Declare runtime setup, values and ordinary object calls. */
 #include "flashvm/movieclip.h" /* Declare host MovieClip creation and synchronous rendering. */
 #include "flashvm/gc.h" /* [GC:] Declare explicit roots owned by this host. */
@@ -37,7 +37,7 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     unsigned char pixels[STYLE_WIDTH * STYLE_HEIGHT * STYLE_RGBA]; /* Own destination bytes on the stack. */
     FVM_RasterSurface surface; /* Initialize borrowed surface fields below in strict C89 form. */
     FVM_Result rendered; /* Preserve renderer availability independently of geometric success. */
-    double left = 0, right = 0; /* Copy bounds before releasing their temporary object. */
+    double left = 0, right = 0, top = 0, bottom = 0; /* Copy bounds before releasing their temporary object. */
     unsigned int i; /* Traverse the fixed argument array in C89 mode. */
     int clip_root = 0, bounds_root = 0, result = 1; /* Track exactly which roots cleanup owns. */
     surface.pixels = pixels; /* Borrow the host-owned RGBA storage. */
@@ -87,6 +87,42 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     else if (!checked(rendered, "render")) goto done; /* Treat real renderer failures as errors. */
     else if (pixels[(6 * STYLE_WIDTH) * STYLE_RGBA + 3] != 255) goto done; /* Require the fully covered square-cap corner. */
     else puts("square corner alpha: 255"); /* Report the independently checked raster sample. */
+    if (!checked(fvm_gc_unpin(context, bounds), "unpin old bounds")) goto done; /* [GC:] Release the first result before replacing geometry. */
+    bounds_root = 0; /* Cleanup no longer owns the first bounds root. */
+    bounds = 0; /* Do not reuse the unrooted borrowed pointer. */
+    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the square stroke before the independent curve query. */
+    for (i = 0; i < 8; ++i) fvm_value_undefined(arguments + i); /* Default all optional parameters explicitly. */
+    fvm_value_number(arguments, 4); /* Choose a four-pixel stroke. */
+    fvm_value_number(arguments + 1, 0xff0000); /* Choose opaque red RGB. */
+    fvm_value_number(arguments + 2, 100); /* Use one hundred percent opacity. */
+    fvm_value_boolean(arguments + 3, 0); /* Keep unsupported pixel hinting disabled. */
+    if (!checked(fvm_value_string(arguments + 4, "normal"), "scale")) goto done; /* Borrow a static scale-mode string. */
+    if (!checked(fvm_value_string(arguments + 5, "round"), "cap")) goto done; /* Select symmetric round ends. */
+    if (!checked(fvm_value_string(arguments + 6, "round"), "join")) goto done; /* Select round joins for this path. */
+    if (!checked(fvm_object_call(context, clip, "lineStyle", 7, arguments, &out), "lineStyle")) goto done; /* Copy the current style atomically. */
+    fvm_value_number(arguments, 2); /* Start the round curve at x=2. */
+    fvm_value_number(arguments + 1, 8); /* Start at y=8. */
+    if (!checked(fvm_object_call(context, clip, "moveTo", 2, arguments, &out), "curve start")) goto done; /* Begin a separate round path. */
+    fvm_value_number(arguments, 8); /* Place the quadratic control at x=8. */
+    fvm_value_number(arguments + 1, 0); /* Place the control at y=0, above the actual curve. */
+    fvm_value_number(arguments + 2, 14); /* End the quadratic at x=14. */
+    fvm_value_number(arguments + 3, 8); /* End at y=8; the curve minimum is y=4. */
+    if (!checked(fvm_object_call(context, clip, "curveTo", 4, arguments, &out), "curveTo")) goto done; /* Copy the quadratic into the retained path. */
+    fvm_value_number(arguments, 100); /* Choose a distant isolated move. */
+    fvm_value_number(arguments + 1, 100); /* Keep the isolated point outside the actual stroke. */
+    if (!checked(fvm_object_call(context, clip, "moveTo", 2, arguments, &out), "isolated move")) goto done; /* A move without a segment must not enlarge stroke bounds. */
+    fvm_value_undefined(arguments); /* Initialize the object-valued reference-space operand. */
+    arguments[0].type = FVM_VALUE_OBJECT; /* Mark the following pointer as a managed object reference. */
+    arguments[0].object = clip; /* Borrow the already pinned clip as the bounds coordinate space. */
+    if (!checked(fvm_object_call(context, clip, "getBounds", 1, arguments, &out), "getBounds")) goto done; /* Allocate a context-owned result object. */
+    if (out.type != FVM_VALUE_OBJECT || !out.object) goto done; /* Validate before borrowing its pointer. */
+    bounds = out.object; /* Keep the returned object separate from later scalar results. */
+    if (!checked(fvm_gc_pin(context, bounds), "pin bounds")) goto done; /* [GC:] Retain the temporary result across property reads. */
+    bounds_root = 1; /* Record ownership of the second explicit root. */
+    if (!scalar(context, bounds, "xMin", &left) || !scalar(context, bounds, "xMax", &right)) goto done; /* Copy the horizontal extents. */
+    if (!scalar(context, bounds, "yMin", &top) || !scalar(context, bounds, "yMax", &bottom)) goto done; /* Copy vertical analytic extrema. */
+    if (left != 0 || right != 16 || top != 2 || bottom != 10) goto done; /* Expand the curve extrema by the two-unit round radius. */
+    printf("round curve bounds: %.0f..%.0f, %.0f..%.0f\n", left, right, top, bottom); /* Report the move-independent geometric result. */
     result = 0; /* Every required geometry and available-renderer check succeeded. */
  done: /* Release only resources actually acquired by this host. */
     if (bounds_root) (void)fvm_gc_unpin(context, bounds); /* [GC:] Drop the temporary result root first. */
