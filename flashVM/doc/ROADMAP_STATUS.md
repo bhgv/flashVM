@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1337
 
+Analytic round-curve bounds / Аналитические round-границы кривых: [EN](ROUND_CURVE_BOUNDS.md) / [RU](ROUND_CURVE_BOUNDS.ru.md). Native quadratic/cubic centerline extrema exclude isolated moves and constant segments; managed quadratic bounds share the result. Other curve styles and all nine roadmap stages remain open.
+
 Checkpoint v0.1337 / Контрольная точка v0.1337: 257 native, 15 no-graphics, 15 ASan/UBSan tests pass. Round/hairline geometric bounds are unified; exact curves, nonuniform metrics, Cairo/platforms and all nine roadmap stages remain open. [EN](ROUND_STROKE_BOUNDS.md) / [RU](ROUND_STROKE_BOUNDS.ru.md).
 
 Round/hairline bounds continuation: [EN](ROUND_STROKE_BOUNDS.md) / [RU](ROUND_STROKE_BOUNDS.ru.md). All straight cap/join styles share the geometric walker; zero width contributes one destination unit and empty strokes contribute no extent. Curves remain conservative; all nine stages remain open.

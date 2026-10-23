@@ -27,7 +27,7 @@ max(0, advance + отступ первой строки) без выравнив
 
 [FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет копиями глифов, метаданными и контурами; освобождение —
 [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path
-возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L26), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные
+возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L27), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные
 пережить шрифт/раскладку. Шрифт, текст и параметры заимствуются только на вызов.
 VM/GC не участвуют. Изменяемый шрифт требует сериализации доступа; неизменяемая
 раскладка допускает конкурентное чтение.
@@ -73,7 +73,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_FONT_SHAPE_FLAGS` | macro / define | [include/flashvm/font.h:11](../include/flashvm/font.h#L11) |
-| `FVM_Path` | struct | [src/capi/path_c.cpp:26](../src/capi/path_c.cpp#L26) |
+| `FVM_Path` | struct | [src/capi/path_c.cpp:27](../src/capi/path_c.cpp#L27) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |

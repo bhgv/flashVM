@@ -1,6 +1,8 @@
-/* FlashVM: backend-independent fill and selected cap/join point hits and straight-stroke bounds. */
+/* FlashVM: backend-independent fill and selected cap/join point hits and straight/round-curve bounds. */
 #include "flashvm/path.h"
+#include "path_geometry_constants.h"
 #include "../render/quality_internal.hpp"
+#include "../render/curve_bounds.hpp"
 #include <cmath>
 #include <cstring>
 
@@ -235,7 +237,7 @@ static FVM_Result hit_test(const FVM_Path *path, double x, double y, double widt
                            FVM_PathBounds *extent = 0, int *has_segments = 0)
 {
     if (!path || !out || !(x >= -2000000 && x <= 2000000 && y >= -2000000 && y <= 2000000) ||
-        !(width >= 0 && width <= 1000000) || (even_odd != 0 && even_odd != 1) ||
+        !(width >= 0 && width <= FVM_PATH_GEOMETRY_MAX_STROKE_WIDTH) || (even_odd != 0 && even_odd != 1) ||
         cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
@@ -318,13 +320,90 @@ FVM_Result fvm_path_hit_test_style(const FVM_Path *path, double x, double y, dou
     return hit_test(path, x, y, width, even_odd, out, true, cap, join);
 }
 
-/* Measure exact selected straight-stroke extents; empty geometry yields zero bounds and
- * has_segments=0. Errors and curved contours preserve both caller outputs. */
+/* Measure the centerline of nonconstant round-stroked segments analytically.
+ * Round caps and joins form the radius-neighborhood of this centerline, so its
+ * axis extrema expand by exactly half the width. Isolated Moves are excluded.
+ * All results stay local until the complete borrowed path has been validated. */
+static FVM_Result round_stroke_bounds(const FVM_Path *path, double width,
+                                      FVM_PathBounds *out, int *has_segments)
+{
+    FVM_PathBounds box = {0, 0, 0, 0};
+    double x = 0, y = 0, sx = 0, sy = 0;
+    bool any = false;
+    for (size_t i = 0; i < fvm_path_count(path); ++i)
+    {
+        FVM_PathCommand command;
+        FVM_Result result = fvm_path_get(path, i, &command);
+        if (result != FVM_OK)
+            return result;
+        if (command.verb == FVM_PATH_MOVE)
+        {
+            x = sx = command.x[0];
+            y = sy = command.y[0];
+            continue;
+        }
+        unsigned count = command.verb == FVM_PATH_CUBIC ? FVM_PATH_GEOMETRY_CUBIC_POINTS :
+                         command.verb == FVM_PATH_QUADRATIC ? FVM_PATH_GEOMETRY_QUADRATIC_POINTS : 1;
+        if (command.verb == FVM_PATH_CLOSE)
+        {
+            command.x[0] = sx;
+            command.y[0] = sy;
+        }
+        bool nonconstant = false;
+        for (unsigned n = 0; n < count; ++n)
+            if (command.x[n] != x || command.y[n] != y)
+                nonconstant = true;
+        if (nonconstant)
+        {
+            if (!any)
+            {
+                box.x_min = box.x_max = x;
+                box.y_min = box.y_max = y;
+                any = true;
+            }
+            else
+            {
+                fvm_geometry::extent(x, box.x_min, box.x_max);
+                fvm_geometry::extent(y, box.y_min, box.y_max);
+            }
+            if (count == 1)
+            {
+                fvm_geometry::extent(command.x[0], box.x_min, box.x_max);
+                fvm_geometry::extent(command.y[0], box.y_min, box.y_max);
+            }
+            else
+            {
+                fvm_geometry::curve_bounds(x, command.x[0], command.x[1], command.x[2],
+                                           count == FVM_PATH_GEOMETRY_CUBIC_POINTS, box.x_min, box.x_max);
+                fvm_geometry::curve_bounds(y, command.y[0], command.y[1], command.y[2],
+                                           count == FVM_PATH_GEOMETRY_CUBIC_POINTS, box.y_min, box.y_max);
+            }
+        }
+        x = command.x[count - 1];
+        y = command.y[count - 1];
+    }
+    if (any)
+    {
+        double radius = width / 2;
+        box.x_min -= radius;
+        box.y_min -= radius;
+        box.x_max += radius;
+        box.y_max += radius;
+    }
+    *out = box;
+    *has_segments = any ? 1 : 0;
+    return FVM_OK;
+}
+
+/* Measure straight selected strokes or analytic round/round Bezier strokes. */
 FVM_Result fvm_path_stroke_bounds_style(const FVM_Path *path, double width, unsigned cap,
                                         unsigned join, FVM_PathBounds *out, int *has_segments)
 {
-    if (!out || !has_segments || !(width > 0))
+    if (!path || !out || !has_segments || !(width > 0 && width <= FVM_PATH_GEOMETRY_MAX_STROKE_WIDTH) ||
+        cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
         return FVM_INVALID_ARGUMENT;
+    if (cap == FVM_STROKE_CAP_ROUND && join == FVM_STROKE_JOIN_ROUND)
+        return round_stroke_bounds(path, width, out, has_segments);
     int ignored = 0;
     return hit_test(path, 0, 0, width, 0, &ignored, true, cap, join, out, has_segments);
 }

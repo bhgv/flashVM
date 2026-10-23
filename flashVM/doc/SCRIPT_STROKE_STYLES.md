@@ -1,5 +1,7 @@
 # ActionScript lineStyle cap and join options
 
+Current round/round curves: [analytic bounds](ROUND_CURVE_BOUNDS.md). Earlier blanket curve fallback descriptions below are historical for the entirely round style.
+
 Current round/hairline correction: [contract](ROUND_STROKE_BOUNDS.md). The separate legacy round-only policy described below is historical.
 
 [MovieClip.lineStyle](../src/standard/movieclip.cpp#L1438) now connects supported Flash Player 8 option strings to the

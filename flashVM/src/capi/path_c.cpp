@@ -5,6 +5,7 @@
 #include "flashvm/path.h"
 #include "../render/quality_internal.hpp"
 #include "../render/quality_constants.h"
+#include "../render/curve_bounds.hpp"
 #include "../details/vector.hpp"
 #include <cmath>
 #include <cstring>
@@ -189,60 +190,6 @@ extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const
     }
 }
 
-/* Implement extent for this subsystem. */
-static void extent(double v, double &low, double &high)
-{
-    if (v < low)
-        low = v;
-    if (v > high)
-        high = v;
-}
-
-/* Compute and return bezier. */
-static double bezier(double p0, double p1, double p2, double p3, double t, bool cubic)
-{
-    double s = 1 - t;
-    return cubic ? s * s * s * p0 + 3 * s * s * t * p1 + 3 * s * t * t * p2 + t * t * t * p3
-                 : s * s * p0 + 2 * s * t * p1 + t * t * p2;
-}
-
-/* Implement curve bounds for this subsystem. */
-static void curve_bounds(double p0, double p1, double p2, double p3, bool cubic, double &low,
-                         double &high)
-{
-    extent(cubic ? p3 : p2, low, high);
-
-    /* Initialization / Инициализация локального состояния. */
-    double a = cubic ? -p0 + 3 * p1 - 3 * p2 + p3 : 0;
-    double b = cubic ? 2 * (p0 - 2 * p1 + p2) : p0 - 2 * p1 + p2;
-    double c = p1 - p0;
-    double roots[2];
-    unsigned int n = 0;
-    if (a == 0)
-    {
-        if (b != 0)
-            roots[n++] = -c / b;
-    }
-    else
-    {
-        double d = b * b - 4 * a * c;
-        if (d >= 0)
-        {
-            double q = -0.5 * (b + (b < 0 ? -std::sqrt(d) : std::sqrt(d)));
-            if (q == 0)
-                roots[n++] = -b / (2 * a);
-            else
-            {
-                roots[n++] = q / a;
-                roots[n++] = c / q;
-            }
-        }
-    }
-    for (unsigned int i = 0; i < n; ++i)
-        if (roots[i] > 0 && roots[i] < 1)
-            extent(bezier(p0, p1, p2, p3, roots[i], cubic), low, high);
-}
-
 /* Compute and return path bounds. */
 extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
 {
@@ -271,13 +218,13 @@ extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
         }
         if (c.verb == FVM_PATH_MOVE || c.verb == FVM_PATH_LINE)
         {
-            extent(c.x[0], box.x_min, box.x_max);
-            extent(c.y[0], box.y_min, box.y_max);
+            fvm_geometry::extent(c.x[0], box.x_min, box.x_max);
+            fvm_geometry::extent(c.y[0], box.y_min, box.y_max);
         }
         else
         {
-            curve_bounds(x, c.x[0], c.x[1], c.x[2], n == 3, box.x_min, box.x_max);
-            curve_bounds(y, c.y[0], c.y[1], c.y[2], n == 3, box.y_min, box.y_max);
+            fvm_geometry::curve_bounds(x, c.x[0], c.x[1], c.x[2], n == 3, box.x_min, box.x_max);
+            fvm_geometry::curve_bounds(y, c.y[0], c.y[1], c.y[2], n == 3, box.y_min, box.y_max);
         }
         x = c.x[n - 1];
         y = c.y[n - 1];

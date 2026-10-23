@@ -1,5 +1,7 @@
 # Торцы и соединения ActionScript lineStyle
 
+Текущий расчёт round/round кривых: [аналитические границы](ROUND_CURVE_BOUNDS.ru.md). Прежний общий fallback ниже является историческим для полностью круглого стиля.
+
 Текущая поправка round/hairline: [контракт](ROUND_STROKE_BOUNDS.ru.md). Прежняя отдельная round-only политика ниже является исторической.
 
 [MovieClip.lineStyle](../src/standard/movieclip.cpp#L1438) связывает поддержанные строки параметров Flash Player 8 с

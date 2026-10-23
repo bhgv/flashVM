@@ -9,8 +9,8 @@ int main() {
  assert(fvm_path_stroke_bounds_style(p,4,0,0,0,&any)==FVM_INVALID_ARGUMENT && any==77);
  assert(fvm_path_stroke_bounds_style(p,4,0,0,&out,0)==FVM_INVALID_ARGUMENT && any==77);
  assert(hit_add(p,FVM_PATH_QUADRATIC,8,16,14,8)==FVM_OK);
- assert(fvm_path_stroke_bounds_style(p,4,0,0,&out,&any)==FVM_UNSUPPORTED && any==77 && std::memcmp(&out,&before,sizeof(out))==0);
+ assert(fvm_path_stroke_bounds_style(p,4,1,0,&out,&any)==FVM_UNSUPPORTED && any==77 && std::memcmp(&out,&before,sizeof(out))==0);
  fvm_path_destroy(p); p=hit_line(); assert(hit_add(p,FVM_PATH_CUBIC,2,16,14,16,14,8)==FVM_OK);
- assert(fvm_path_stroke_bounds_style(p,4,0,0,&out,&any)==FVM_UNSUPPORTED && any==77 && std::memcmp(&out,&before,sizeof(out))==0);
+ assert(fvm_path_stroke_bounds_style(p,4,1,0,&out,&any)==FVM_UNSUPPORTED && any==77 && std::memcmp(&out,&before,sizeof(out))==0);
  fvm_path_destroy(p); return 0;
 }

@@ -26,7 +26,7 @@ Disposed images contribute no pixels; live changes appear in subsequent renders.
 Malformed owned metadata returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before destination writes.
 
 The private [fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L155) helper accepts width zero for a fill or
-a finite positive width up to [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L56) for a round stroke.
+a finite positive width up to [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L57) for a round stroke.
 It borrows path, surfaces and paint only during the synchronous call; it invokes
 no script or host callback. It validates before backend selection, so valid
 NO_GRAPHICS calls return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and invalid calls return
@@ -71,7 +71,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:56](../src/render/quality_internal.hpp#L56) |
+| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:57](../src/render/quality_internal.hpp#L57) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_bitmap_draw` | function | [src/standard/bitmap_fill.cpp:156](../src/standard/bitmap_fill.cpp#L156) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
