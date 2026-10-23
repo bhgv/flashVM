@@ -1,4 +1,4 @@
-Development version: **0.1224** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1225** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1225: [Round LINESTYLE2 solid and gradient strokes with owned NoClose geometry](doc/SHAPE4_STROKES.md).
 
 v0.1224: [Verified Shape4 fill checkpoint with native sanitizer and no-graphics evidence](doc/SHAPE4_FILLS.md).
 

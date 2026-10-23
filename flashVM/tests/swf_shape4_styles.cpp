@@ -22,8 +22,8 @@ int main()
     FVM_Result r=fvm_movieclip_render(c,root,&surface);
     if(r==FVM_OK) { const unsigned char *p=pixels+4*(8*16+8); assert(p[0]==0 && p[1]==255 && p[2]==0 && p[3]==128); }
     else assert(r==FVM_UNSUPPORTED);
-    /* The new bank's line count is rejected even if no edge would select it. */
+    /* A malformed newly admitted line record must still fail before publication. */
     bytes[line+9]=1;
-    assert(fvm_swf_read_shape(bytes.begin(),bytes.size(),83,decoded)==FVM_UNSUPPORTED);
+    assert(fvm_swf_read_shape(bytes.begin(),bytes.size(),83,decoded)==FVM_INVALID_ARGUMENT);
     fvm_context_destroy(c); fvm_runtime_destroy(rt); return 0;
 }

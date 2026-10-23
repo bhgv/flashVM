@@ -61,6 +61,14 @@
 #define FVM_SWF_GRADIENT_MODE_MASK 3U
 /* Low four bits hold the number of gradient records. */
 #define FVM_SWF_GRADIENT_COUNT_MASK 15U
+/* Width of each LINESTYLE2 cap/join discriminator. */
+#define FVM_SWF_LINESTYLE_KIND_BITS 2U
+/* Width of the mandatory zero LINESTYLE2 reserved field. */
+#define FVM_SWF_LINESTYLE_RESERVED_BITS 5U
+/* LINESTYLE2 round cap and round join discriminator. */
+#define FVM_SWF_LINESTYLE_ROUND 0U
+/* Invalid cap/join discriminator, distinct from supported-but-unimplemented styles. */
+#define FVM_SWF_LINESTYLE_RESERVED_KIND 3U
 /* Maximum stop count in DefineShape/2/3, independent of the file version. */
 #define FVM_SWF_LEGACY_GRADIENT_MAX_STOPS 8U
 /* Signed little-endian FIXED8 encoding for a focal position. */

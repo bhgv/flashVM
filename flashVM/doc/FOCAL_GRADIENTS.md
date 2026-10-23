@@ -1,5 +1,7 @@
 # Interior focal gradients
 
+Current extension v0.1225+: [round LINESTYLE2 strokes](SHAPE4_STROKES.md) with solid/gradient paints and NoClose. Earlier blanket LINESTYLE2 exclusions below are historical; other cap/join styles, hinting and special scaling flags remain open.
+
 Current file extension v0.1211+: [fill-only SWF8 DefineShape4](SHAPE4_FILLS.md) adds 15-stop modes and signed interior FIXED8 focal records. LINESTYLE2 and focal endpoints remain unsupported. Earlier blanket Shape4 exclusions below are historical. All nine stages remain open.
 
 

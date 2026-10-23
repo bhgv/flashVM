@@ -52,7 +52,7 @@ FVM_Result gradient(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *
     /* [GC:] The descriptor retains its stop table before any stops are allocated. */
     record->properties["stops"] = object(stops);
     /* [GC:] The vector paint owns its complete gradient description. */
-    part->properties["gradient"] = object(record);
+    part->properties[paint.stroke ? "lineGradient" : "gradient"] = object(record);
     for (size_t i = 0; i < paint.stops.size(); ++i)
     {
         /* [GC:] Hold the newly created stop until its ordered table adopts it. */

@@ -21,7 +21,7 @@ int main()
         Bytes bad=source; bad[header]=(unsigned char)mode; rejected(bad,FVM_INVALID_ARGUMENT);
     }
     Bytes bad=source; bad[header+1]=200; bad[header+6]=100; rejected(bad,FVM_INVALID_ARGUMENT);
-    bad=source; bad[lines]=1; rejected(bad,FVM_UNSUPPORTED);
+    bad=source; bad[lines]=1; rejected(bad,FVM_INVALID_ARGUMENT);
     const int focal[]={-32768,-257,-256,256,257,32767};
     for(unsigned int i=0;i<sizeof(focal)/sizeof(focal[0]);++i) rejected(shape4(0x13,0,0,focal[i]),FVM_UNSUPPORTED);
     for(unsigned int tag_code=2;tag_code<=32;tag_code+=tag_code==2?20:10) {

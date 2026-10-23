@@ -89,6 +89,43 @@ FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &
     return FVM_OK;
 }
 
+/* Decode one owned fill for a fill bank or the FillType of a LINESTYLE2 stroke. */
+FVM_Result fill(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &paint)
+{
+    unsigned long type = reader.integer(1);
+    if (!reader.good())
+        return FVM_INVALID_ARGUMENT;
+    if (type == FVM_SWF_FILL_SOLID)
+    {
+        if (!color(reader, (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4), paint))
+            return FVM_INVALID_ARGUMENT;
+    }
+    else if (type == FVM_SWF_FILL_LINEAR_GRADIENT || type == FVM_SWF_FILL_RADIAL_GRADIENT ||
+             (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && type == FVM_SWF_FILL_FOCAL_GRADIENT))
+    {
+        paint.gradient_type = (unsigned int)type;
+        FVM_Result r = gradient(reader, tag, paint);
+        if (r != FVM_OK)
+            return r;
+    }
+    else if (type >= FVM_SWF_FILL_BITMAP_REPEAT && type <= FVM_SWF_FILL_BITMAP_CLIPPED_NEAREST)
+    {
+        paint.bitmap_type = (unsigned int)type;
+        paint.bitmap_id = (unsigned int)reader.integer(2);
+        if (!paint.bitmap_id || !fvm_swf_read_matrix(reader, paint.bitmap_matrix))
+            return FVM_INVALID_ARGUMENT;
+        /* Bitmap scales map pixel coordinates into SWF twips; translation is already in pixels.
+         */
+        paint.bitmap_matrix.xx /= 20;
+        paint.bitmap_matrix.yx /= 20;
+        paint.bitmap_matrix.xy /= 20;
+        paint.bitmap_matrix.yy /= 20;
+    }
+    else
+        return FVM_UNSUPPORTED;
+    return FVM_OK;
+}
+
 /* Decode a style bank, appending it while retaining previously referenced global styles. */
 FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
                   fvm_detail::vector<FVM_SWFShapePaint> &fills,
@@ -104,38 +141,10 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         return FVM_OUT_OF_MEMORY;
     for (unsigned long i = 0; i < fill_count; ++i)
     {
-        unsigned long type = reader.integer(1);
-        if (!reader.good())
-            return FVM_INVALID_ARGUMENT;
         FVM_SWFShapePaint paint;
-        if (type == FVM_SWF_FILL_SOLID)
-        {
-            if (!color(reader, (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4), paint))
-                return FVM_INVALID_ARGUMENT;
-        }
-        else if (type == FVM_SWF_FILL_LINEAR_GRADIENT || type == FVM_SWF_FILL_RADIAL_GRADIENT ||
-                 (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && type == FVM_SWF_FILL_FOCAL_GRADIENT))
-        {
-            paint.gradient_type = (unsigned int)type;
-            FVM_Result r = gradient(reader, tag, paint);
-            if (r != FVM_OK)
-                return r;
-        }
-        else if (type >= FVM_SWF_FILL_BITMAP_REPEAT && type <= FVM_SWF_FILL_BITMAP_CLIPPED_NEAREST)
-        {
-            paint.bitmap_type = (unsigned int)type;
-            paint.bitmap_id = (unsigned int)reader.integer(2);
-            if (!paint.bitmap_id || !fvm_swf_read_matrix(reader, paint.bitmap_matrix))
-                return FVM_INVALID_ARGUMENT;
-            /* Bitmap scales map pixel coordinates into SWF twips; translation is already in pixels.
-             */
-            paint.bitmap_matrix.xx /= 20;
-            paint.bitmap_matrix.yx /= 20;
-            paint.bitmap_matrix.xy /= 20;
-            paint.bitmap_matrix.yy /= 20;
-        }
-        else
-            return FVM_UNSUPPORTED;
+        FVM_Result r = fill(reader, tag, paint);
+        if (r != FVM_OK)
+            return r;
         fills.push_back(paint);
     }
     line_count = reader.integer(1);
@@ -145,15 +154,44 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         return FVM_INVALID_ARGUMENT;
     if (line_count > 4096 - lines.size())
         return FVM_OUT_OF_MEMORY;
-    /* LINESTYLE2 needs caps, joins and scaling semantics absent from the legacy stroke path. */
-    if (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && line_count)
-        return FVM_UNSUPPORTED;
     for (unsigned long i = 0; i < line_count; ++i)
     {
         FVM_SWFShapePaint paint;
         paint.stroke = true;
         paint.width = reader.integer(2) / 20.0;
-        if (!color(reader, (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4), paint))
+        if (tag == FVM_SWF_TAG_DEFINE_SHAPE4)
+        {
+            /* Decode both flag bytes in wire bit order, independently of host endianness. */
+            unsigned long start_cap = reader.bits(FVM_SWF_LINESTYLE_KIND_BITS);
+            unsigned long join = reader.bits(FVM_SWF_LINESTYLE_KIND_BITS);
+            bool has_fill = reader.bits(1) != 0;
+            bool no_h_scale = reader.bits(1) != 0;
+            bool no_v_scale = reader.bits(1) != 0;
+            bool pixel_hinting = reader.bits(1) != 0;
+            unsigned long reserved = reader.bits(FVM_SWF_LINESTYLE_RESERVED_BITS);
+            paint.no_close = reader.bits(1) != 0;
+            unsigned long end_cap = reader.bits(FVM_SWF_LINESTYLE_KIND_BITS);
+            reader.align();
+            if (!reader.good() || reserved || start_cap == FVM_SWF_LINESTYLE_RESERVED_KIND ||
+                join == FVM_SWF_LINESTYLE_RESERVED_KIND || end_cap == FVM_SWF_LINESTYLE_RESERVED_KIND)
+                return FVM_INVALID_ARGUMENT;
+            /* Existing backends implement round caps/joins and ordinary scaled widths only. */
+            if (start_cap != FVM_SWF_LINESTYLE_ROUND || join != FVM_SWF_LINESTYLE_ROUND ||
+                end_cap != FVM_SWF_LINESTYLE_ROUND || no_h_scale || no_v_scale || pixel_hinting)
+                return FVM_UNSUPPORTED;
+            if (has_fill)
+            {
+                FVM_Result r = fill(reader, tag, paint);
+                if (r != FVM_OK)
+                    return r;
+                /* Bitmap coverage is currently a fill-only renderer, never silently solid. */
+                if (paint.bitmap_type)
+                    return FVM_UNSUPPORTED;
+            }
+            else if (!color(reader, true, paint))
+                return FVM_INVALID_ARGUMENT;
+        }
+        else if (!color(reader, tag == FVM_SWF_TAG_DEFINE_SHAPE3, paint))
             return FVM_INVALID_ARGUMENT;
         lines.push_back(paint);
     }
@@ -268,7 +306,7 @@ void stroke_contours(const Edges &edges, FVM_SWFShapePaint &paint)
             command(paint, FVM_PATH_LINE, edge.x1, edge.y1);
         x = edge.x1;
         y = edge.y1;
-        if (x == start_x && y == start_y)
+        if (!paint.no_close && x == start_x && y == start_y)
         {
             command(paint, FVM_PATH_CLOSE, 0, 0);
             open = false;
