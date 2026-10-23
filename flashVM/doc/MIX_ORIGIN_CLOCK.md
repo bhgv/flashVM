@@ -28,6 +28,9 @@ v0.1045: Enable accepted origin accounting in root composition and reject combin
 
 v0.1046: Add serialized frontend origin diagnostics and verify exact category counts alongside real FWS/CWS CLI PCM in both VM modes.
 
+
+v0.1047: Check host pause, root Stop event dequeue, retained source phase, base resume, GC/native JIT and acknowledged origin epoch cancellation.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

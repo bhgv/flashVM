@@ -28,6 +28,9 @@ v0.1045: Origin-учёт включён в root composition; общий ID/bitma
 
 v0.1046: Добавлены сериализованные origin diagnostics и точные BASE/TAIL счётчики вместе с FWS/CWS CLI PCM в обоих VM-режимах.
 
+
+v0.1047: Проверены host pause, root Stop TAIL dequeue, source phase, BASE resume, GC/native JIT и подтверждённая отмена origin-эпохи.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

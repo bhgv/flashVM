@@ -1,10 +1,12 @@
-Development version: **0.1046** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1047** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1047: [Check host pause, root Stop event dequeue, retained source phase, base resume, GC/native JIT and acknowledged origin epoch cancellation.](doc/MIX_ORIGIN_CLOCK.md).
 
 v0.1046: [Add serialized frontend origin diagnostics and verify exact category counts alongside real FWS/CWS CLI PCM in both VM modes.](doc/MIX_ORIGIN_CLOCK.md).
 
