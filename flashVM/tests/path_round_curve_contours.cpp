@@ -1,0 +1,2 @@
+#include "round_curve_fixture.hpp"
+int main() { FVM_Path *p=rc_path(); assert(hit_add(p,FVM_PATH_MOVE,100,100)==FVM_OK); assert(hit_add(p,FVM_PATH_LINE,100,100)==FVM_OK); bounds_equal(stroke_bounds(p,0),0,2,16,10); assert(hit_add(p,FVM_PATH_MOVE,-10,-10)==FVM_OK); assert(hit_add(p,FVM_PATH_LINE,-5,-10)==FVM_OK); assert(hit_add(p,FVM_PATH_CLOSE)==FVM_OK); bounds_equal(stroke_bounds(p,0),-12,-12,16,10); fvm_path_destroy(p); return 0; }
