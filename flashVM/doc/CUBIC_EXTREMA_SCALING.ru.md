@@ -6,7 +6,7 @@
 
 ## Контракт и ограничения
 
-[`fvm_path_bounds`](../include/flashvm/path.h#L71) заимствует неизменяемый native path и публикует четыре scalar-координаты в принадлежащий вызывающему [`FVM_PathBounds`](../include/flashvm/path.h#L42) при [FVM_OK](../include/flashvm/flashvm.h#L42). Неверные path/out дают INVALID_ARGUMENT без публикации. Нет выделений, callbacks, VM, GC или устройств. Native path принадлежит вызывающему до [`fvm_path_destroy`](../include/flashvm/path.h#L52); время жизни и отсутствие совместной мутации обеспечиваются владельцем. [`fvm_path_transform`](../include/flashvm/path.h#L65) и [`fvm_path_append`](../include/flashvm/path.h#L67) сохраняют прежние транзакционные проверки и пределы координат/матриц ±1 000 000. Round/round внутренняя геометрия использует тот же helper, затем расширяет границы на половину положительной ширины; её прежние статусы и требования к двум output сохраняются.
+[`fvm_path_bounds`](../include/flashvm/path.h#L71) заимствует неизменяемый native path и публикует четыре scalar-координаты в принадлежащий вызывающему [`FVM_PathBounds`](../include/flashvm/path.h#L42) при [FVM_OK](../include/flashvm/flashvm.h#L42). Неверные path/out дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без публикации. Нет выделений, callbacks, VM, GC или устройств. Native path принадлежит вызывающему до [`fvm_path_destroy`](../include/flashvm/path.h#L52); время жизни и отсутствие совместной мутации обеспечиваются владельцем. [`fvm_path_transform`](../include/flashvm/path.h#L65) и [`fvm_path_append`](../include/flashvm/path.h#L67) сохраняют прежние транзакционные проверки и пределы координат/матриц ±1 000 000. Round/round внутренняя геометрия использует тот же helper, затем расширяет границы на половину положительной ширины; её прежние статусы и требования к двум output сохраняются.
 
 Cubic остаётся native path-командой: managed MovieClip по-прежнему принимает quadratic. Pixel raster и native JIT не получают нового алгоритма. Общая почти кратная/почти коллинеарная double-геометрия и потеря младших разрядов при построении коэффициентов из больших близких координат не получают arbitrary-precision решения. Требуется обычная двоичная арифметика; FTZ/fast-math и физические платформы не проверены. Все девять этапов плана остаются открытыми; кодеки, дочерние потоки и полная Flash-reference приёмка этой серией не закрываются.
 
@@ -15,6 +15,31 @@ Cubic остаётся native path-командой: managed MovieClip по-пр
 Независимый oracle вычисляет корни обычной long-double формулой на немасштабированных fixture-controls и оценивает curve через de Casteljau. Это дополняется точными аналитическими ±2√3 и 16/3, а также 1025 выборками на каждую из семи форм. Проверяются оси, диагональ, отражение, показатели до -1000, переходы subnormal квадратов, round-обводка, quadratic/linear и кратный/отрицательный дискриминант, append/transform, несколько контуров и четыре независимых OS worker с 196 проверками обводки. Формулы oracle не извлекаются из production helper.
 
 [Исполняемый C89-пример](../examples/embedding/cubic_extrema/README.ru.md) создаёт native path, проверяет обычные bounds, масштабирует реальный public path API на 2^-600, нормализует новые bounds и освобождает owner без VM. Каждая строка объяснена; ошибки обычные, без assert. Пример работает и без графики. Пять API и их владение/статусы подробно описаны в README. Публичный C89 ABI, callback ID и форматы остаются прежними.
+
+
+## Проверки v0.1484
+
+Пройдены 378 нативных executable-проверок прямым запуском, 132 CTest без графики и 132 CTest ASan/UBSan. LeakSanitizer отключён. CTest нативного профиля не запустил несколько файлов из-за прав доступа в workspace; для полного набора правa восстанавливались непосредственно перед каждым прямым запуском. Все 378 завершились с кодом 0. Оба потребителя изменённого inline-header принудительно пересобраны перед итоговой линковкой; устаревшие результаты промежуточных сборок не засчитаны. Пройдены source-link, per-line C89 example/API-table/catalog проверки. Это не тест реального устройства или полного SWF ≤ 8.
+
+| Fixture | Scope / Область |
+| --- | --- |
+| [path_cubic_scale_analytic](../tests/path_cubic_scale_analytic.cpp) | Analytic symmetric two-extrema oracle |
+| [path_cubic_scale_hump](../tests/path_cubic_scale_hump.cpp) | Single-hump analytic 16/3 oracle |
+| [path_cubic_scale_horizontal](../tests/path_cubic_scale_horizontal.cpp) | Horizontal axis and reflection |
+| [path_cubic_scale_vertical](../tests/path_cubic_scale_vertical.cpp) | Vertical axis and reflection |
+| [path_cubic_scale_diagonal](../tests/path_cubic_scale_diagonal.cpp) | Two scaled axes |
+| [path_cubic_scale_scales](../tests/path_cubic_scale_scales.cpp) | Uniform scale range |
+| [path_cubic_scale_transition](../tests/path_cubic_scale_transition.cpp) | Normal/subnormal-square transition |
+| [path_cubic_scale_round](../tests/path_cubic_scale_round.cpp) | Round/round expanded extents |
+| [path_cubic_scale_quadratic](../tests/path_cubic_scale_quadratic.cpp) | Quadratic derivative control |
+| [path_cubic_scale_linear](../tests/path_cubic_scale_linear.cpp) | Linear cubic derivative control |
+| [path_cubic_scale_repeated](../tests/path_cubic_scale_repeated.cpp) | Repeated derivative root control |
+| [path_cubic_scale_monotone](../tests/path_cubic_scale_monotone.cpp) | Negative discriminant control |
+| [path_cubic_scale_append](../tests/path_cubic_scale_append.cpp) | Native append with tiny affine scale |
+| [path_cubic_scale_transform](../tests/path_cubic_scale_transform.cpp) | Transactional path transform |
+| [path_cubic_scale_contours](../tests/path_cubic_scale_contours.cpp) | Union of translated contours |
+| [path_cubic_scale_sampling](../tests/path_cubic_scale_sampling.cpp) | 1025 independent de Casteljau samples |
+| [path_cubic_scale_threads](../tests/path_cubic_scale_threads.cpp) | Four OS workers and 196 stroke checks |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -25,6 +50,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |

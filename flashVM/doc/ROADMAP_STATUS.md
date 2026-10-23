@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1484 / Контрольная точка v0.1484: 378 native direct-launch, 132 no-graphics CTest, 132 ASan/UBSan CTest checks pass. Tiny cubic derivative scaling preserves analytic extrema and round bounds; an executable C89 example demonstrates the public path API. General numerical/reference/device acceptance and all nine stages remain open. [EN](CUBIC_EXTREMA_SCALING.md) / [RU](CUBIC_EXTREMA_SCALING.ru.md).
+
 Checkpoint v0.1464 / Контрольная точка v0.1464: 360 native, 114 no-graphics, 114 ASan/UBSan tests pass. Stable Y-column measurement preserves tiny nonzero stroke bounds; excessive affine components remain rejected. General transform/raster metrics, reference/devices and all nine stages remain open. [EN](SECONDARY_AXIS_BOUNDS.md) / [RU](SECONDARY_AXIS_BOUNDS.ru.md).
 
 Checkpoint v0.1445 / Контрольная точка v0.1445: 343 native, 97 no-graphics, 97 ASan/UBSan tests pass. Subnormal tangent normalization, round-cap distances and bevel orientation are corrected. All nine stages and reference/device acceptance remain open. [EN](SUBNORMAL_STROKE_NORMS.md) / [RU](SUBNORMAL_STROKE_NORMS.ru.md).
