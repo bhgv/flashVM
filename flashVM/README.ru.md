@@ -1,4 +1,4 @@
-Версия разработки: **0.1164** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1165** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1165: [Проверены host/Flash8 spread state и прежнее отклонение старых версий](doc/GRADIENT_SPREAD.ru.md).
 
 v0.1164: [Проверены analytic C89 gradient pixels, large phases и прежний pad output](doc/GRADIENT_SPREAD.ru.md).
 
