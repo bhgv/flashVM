@@ -29,7 +29,7 @@ unsigned char component(double value)
 }
 
 /* Normalize finite phases without integer casts, including negative and very large coordinates. */
-double spread_ratio(double ratio, FVM_GradientSpread spread)
+double spread_ratio(double ratio, unsigned int spread)
 {
     if (spread == FVM_GRADIENT_SPREAD_REPEAT)
         return ratio - std::floor(ratio);
@@ -154,14 +154,14 @@ FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *path, FVM_RasterSurfac
 /* Borrow all inputs and preserve the public standalone antialias default. */
 extern "C" FVM_Result fvm_path_draw_gradient_spread(const FVM_Path *path, FVM_RasterSurface *surface,
                                                     const FVM_Gradient *gradient, int even_odd,
-                                                    FVM_GradientSpread spread)
+                                                    unsigned int spread)
 {
     return fvm_path_draw_gradient_spread_quality(path, surface, gradient, even_odd, spread, true);
 }
 /* Validate mode/geometry before allocating a temporary source or touching destination pixels. */
 FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_RasterSurface *surface,
                                                   const FVM_Gradient *gradient, int even_odd,
-                                                  FVM_GradientSpread spread, bool antialias)
+                                                  unsigned int spread, bool antialias)
 {
     if (spread != FVM_GRADIENT_SPREAD_PAD && spread != FVM_GRADIENT_SPREAD_REFLECT &&
         spread != FVM_GRADIENT_SPREAD_REPEAT)

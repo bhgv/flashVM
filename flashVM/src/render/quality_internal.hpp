@@ -17,7 +17,7 @@ FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *, FVM_RasterSurface *,
 /* Select the spread mode and per-call edge coverage without changing global raster state. */
 FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *, FVM_RasterSurface *,
                                                  const FVM_Gradient *, int even_odd,
-                                                 FVM_GradientSpread, bool antialias);
+                                                 unsigned int spread, bool antialias);
 /* Sample existing bitmap paint without changing its smoothing option; select only edge AA. */
 FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *, FVM_RasterSurface *,
                                         const FVM_BitmapPaint *, int even_odd, bool antialias);

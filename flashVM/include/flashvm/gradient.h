@@ -48,7 +48,7 @@ extern "C"
        allocation/backend statuses propagate. No VM, managed root or device is retained. */
     FVM_API FVM_Result fvm_path_draw_gradient_spread(const FVM_Path *, FVM_RasterSurface *,
                                                      const FVM_Gradient *, int even_odd,
-                                                     FVM_GradientSpread);
+                                                     unsigned int spread);
 #ifdef __cplusplus
 }
 #endif
