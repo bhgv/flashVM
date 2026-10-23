@@ -1,5 +1,7 @@
 # C89 script stroke styles
 
+Diagonal extension: none/bevel, width=10, start (2,2), control (8,6.5), end (14,11). Segment length is 15 and normal half-width offsets are 3 and 4; bounds are -1..17, -2..15 despite moveTo(100,100). The added line is `linear curve bounds: -1..17, -2..15`. Ownership and result GC roots follow the preceding stages. [Contract](../../../doc/LINEAR_CURVE_BOUNDS.md).
+
 Axis-curve extension: after the round example it selects none/bevel, control (8,8), end (14,8), and isolated moveTo(100,100). It verifies bounds x=2..14, y=6..10. The additional line is `axis curve bounds: 2..14, 6..10`. Each replaced getBounds result is separately rooted and released. C APIs and synchronous ownership are unchanged; no new C entry point is needed. [Contract](../../../doc/AXIS_CURVE_BOUNDS.md).
 
 Round-curve extension: after the first render, the example clears the old line, selects round/round, calls curveTo with control (8,0), end (14,8), and adds isolated moveTo(100,100). It verifies getBounds x=0..16, y=2..10. The previous bounds root is released before replacing geometry; the new result is separately rooted and cleaned up. clear, curveTo and moveTo synchronously mutate context-owned geometry through the existing [fvm_object_call](../../../include/flashvm/value.h#L126). An additional output line is `round curve bounds: 0..16, 2..10`. This extension does not test the curve raster. [Contract](../../../doc/ROUND_CURVE_BOUNDS.md).
@@ -34,6 +36,7 @@ bounds: 0..16; square corner: hit
 square corner alpha: 255
 round curve bounds: 0..16, 2..10
 axis curve bounds: 2..14, 6..10
+linear curve bounds: -1..17, -2..15
 ```
 
 With `cmake/profiles/minimal.defs`, use a separate build directory: the second

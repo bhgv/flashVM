@@ -1,4 +1,4 @@
-Development version: **0.1398** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1399** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1399: [Extend the C89 tutorial with exact diagonal butt stroke bounds](doc/LINEAR_CURVE_BOUNDS.md).
 
 v0.1398: [Measure and collect linear curves on isolated worker runtimes](doc/LINEAR_CURVE_BOUNDS.md).
 
