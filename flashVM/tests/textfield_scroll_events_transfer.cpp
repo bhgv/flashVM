@@ -11,6 +11,7 @@ static FVM_Object *script_listener(FVM_Context *c)
     assert(fvm_function_create_avm1(c,p.bytes.begin(),p.bytes.size(),0,0,0,&fn)==FVM_OK);v=class_value(fn);assert(fvm_object_set(c,object,"onScroller",&v)==FVM_OK);return object;
 }
 #endif
+#ifndef FVM_SCROLL_EVENTS_TRANSFER_FIXTURE_ONLY
 int main()
 {
 #ifdef FVM_HAS_FONTS
@@ -33,3 +34,5 @@ int main()
 #endif
     return 0;
 }
+
+#endif
