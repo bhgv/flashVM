@@ -1,4 +1,4 @@
-Версия разработки: **0.1220** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1221** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1221: [Замена персонажа и шестнадцать перемоток восстанавливают фокусные цвета](doc/SHAPE4_FILLS.ru.md).
 
 v0.1220: [Четыре режима bitmap-заливок Shape4 отрисовываются и проверяют ресурсы](doc/SHAPE4_FILLS.ru.md).
 
