@@ -1811,7 +1811,7 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
             if (r != FVM_OK)
                 return r;
             double scale = vector_length(world.xx, world.yx);
-            double other = std::sqrt(world.xy * world.xy + world.yy * world.yy);
+            double other = vector_length(world.xy, world.yy);
             if (other > scale)
                 scale = other;
             unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
