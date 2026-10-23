@@ -3,6 +3,7 @@
  */
 
 #include "flashvm/path.h"
+#include "path_geometry_constants.h"
 #include "../render/quality_internal.hpp"
 #include "../render/quality_constants.h"
 #include "../render/curve_bounds.hpp"
@@ -43,7 +44,7 @@ static unsigned int points(FVM_PathVerb v)
 /* Compute and return coordinate. */
 static bool coordinate(double x)
 {
-    return x >= -1000000 && x <= 1000000;
+    return x >= -FVM_PATH_GEOMETRY_MAX_COORDINATE && x <= FVM_PATH_GEOMETRY_MAX_COORDINATE;
 }
 
 /* Create path. */

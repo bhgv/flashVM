@@ -1,4 +1,4 @@
-Версия разработки: **0.1379** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1380** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1380: [Точное сокращение линейных Bezier на двоичной сетке](doc/LINEAR_CURVE_BOUNDS.ru.md).
 
 v0.1379: [Проверенная контрольная точка монотонных осевых кривых](doc/AXIS_CURVE_BOUNDS.ru.md).
 

@@ -4,6 +4,7 @@
 #include "../render/quality_internal.hpp"
 #include "../render/curve_bounds.hpp"
 #include <cmath>
+#include <cfloat>
 #include <cstring>
 
 namespace
@@ -230,27 +231,48 @@ void curve(Query &query, const double *x, const double *y, unsigned degree, unsi
     curve(query, rx, ry, degree, depth + 1);
 }
 } // namespace
-/* Accept only axis-aligned Beziers whose controls progress toward the endpoint.
- * Ordered Bernstein controls make the centerline exactly the endpoint segment,
- * including zero endpoint derivatives. No epsilon or flattening is involved. */
-static bool axis_curve_segment(double x, double y, const FVM_PathCommand &command,
-                                unsigned count)
+/* Certify an exactly represented lattice coordinate within the common path domain. */
+static bool linear_grid_coordinate(double value, double &scaled)
+{
+    if (!(value >= -FVM_PATH_GEOMETRY_MAX_COORDINATE &&
+          value <= FVM_PATH_GEOMETRY_MAX_COORDINATE))
+        return false;
+    scaled = value * FVM_PATH_GEOMETRY_LINEAR_GRID;
+    return scaled == std::floor(scaled);
+}
+
+/* Controls inside a collinear endpoint interval describe exactly its segment for
+ * quadratic and cubic Beziers, even when cubic controls are not ordered. The
+ * scalar cubic derivative is nonnegative at all four control-box vertices:
+ * t*t, 2*t*(1-t), (1-2*t)^2 and (1-t)^2, hence throughout their convex hull.
+ * Axis paths admit arbitrary finite coordinates. Other paths require a 1/16
+ * lattice and at least 53 mantissa bits: differences are at most 32,000,000,
+ * products below 2^50 and cross differences below 2^51 are exact integers. */
+static bool linear_curve_segment(double x, double y, const FVM_PathCommand &command,
+                                  unsigned count)
 {
     const double end_x = command.x[count - 1], end_y = command.y[count - 1];
-    const bool vertical = x == end_x;
-    if (!vertical && y != end_y)
+    const double low_x = x < end_x ? x : end_x, high_x = x > end_x ? x : end_x;
+    const double low_y = y < end_y ? y : end_y, high_y = y > end_y ? y : end_y;
+    for (unsigned i = 0; i < count; ++i)
+        if (!(command.x[i] >= low_x && command.x[i] <= high_x &&
+              command.y[i] >= low_y && command.y[i] <= high_y))
+            return false;
+    if (x == end_x || y == end_y)
+        return true;
+    if (DBL_MANT_DIG < FVM_PATH_GEOMETRY_LINEAR_MANTISSA_BITS)
         return false;
-    double previous = vertical ? y : x;
-    const double end = vertical ? end_y : end_x;
-    const bool increasing = end >= previous;
+    double sx, sy, ex, ey;
+    if (!linear_grid_coordinate(x, sx) || !linear_grid_coordinate(y, sy) ||
+        !linear_grid_coordinate(end_x, ex) || !linear_grid_coordinate(end_y, ey))
+        return false;
+    const double dx = ex - sx, dy = ey - sy;
     for (unsigned i = 0; i < count; ++i)
     {
-        if ((vertical ? command.x[i] : command.y[i]) != (vertical ? x : y))
+        double px, py;
+        if (!linear_grid_coordinate(command.x[i], px) || !linear_grid_coordinate(command.y[i], py) ||
+            (px - sx) * dy != (py - sy) * dx)
             return false;
-        const double value = vertical ? command.y[i] : command.x[i];
-        if (increasing ? value < previous || value > end : value > previous || value < end)
-            return false;
-        previous = value;
     }
     return true;
 }
@@ -307,7 +329,7 @@ static FVM_Result hit_test(const FVM_Path *path, double x, double y, double widt
             {
                 /* Reuse finite bodies/caps/joins only when the curve is exactly a segment.
                  * Other curves leave both outputs untouched for the managed fallback. */
-                if (!axis_curve_segment(current_x, current_y, command, degree))
+                if (!linear_curve_segment(current_x, current_y, command, degree))
                     return FVM_UNSUPPORTED;
                 query.line(current_x, current_y, command.x[degree - 1], command.y[degree - 1]);
                 current_x = command.x[degree - 1];

@@ -29,7 +29,7 @@ advance и пустым контуром. Экспорт не рисует .notd
 
 Шрифт/текст/параметры/таблица заимствуются только на вызов. [FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет
 метаданными, глифами и контурами; освобождение [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Экспорт
-[fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L27),
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L28),
 освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные пережить раскладку/шрифт. Шрифт должен
 быть действующим, text может быть NULL только при нулевой длине. NULL options
 выбирает неограниченную ширину, естественную высоту и AUTO/START. Границы флагов,
@@ -84,7 +84,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `FVM_Path` | struct | [src/capi/path_c.cpp:27](../src/capi/path_c.cpp#L27) |
+| `FVM_Path` | struct | [src/capi/path_c.cpp:28](../src/capi/path_c.cpp#L28) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
 | `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
