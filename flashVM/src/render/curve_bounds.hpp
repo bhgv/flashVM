@@ -2,6 +2,7 @@
 #ifndef FVM_GEOMETRY_CURVE_BOUNDS_HPP
 #define FVM_GEOMETRY_CURVE_BOUNDS_HPP
 #include <cmath>
+#include <cfloat>
 namespace fvm_geometry
 {
 /* Extend an existing axis interval with one finite coordinate. */
@@ -41,6 +42,22 @@ inline void curve_bounds(double p0, double p1, double p2, double p3, bool cubic,
     }
     else
     {
+        /* Uniformly tiny coefficients lose their discriminant when squared. Scale
+         * by an exact binary exponent before products; roots and their signs stay
+         * unchanged, and ordinary coefficient arithmetic retains its old path. */
+        double span = std::fabs(a);
+        if (std::fabs(b) > span)
+            span = std::fabs(b);
+        if (std::fabs(c) > span)
+            span = std::fabs(c);
+        if (span * span < DBL_MIN)
+        {
+            int exponent = 0;
+            std::frexp(span, &exponent);
+            a = std::ldexp(a, -exponent);
+            b = std::ldexp(b, -exponent);
+            c = std::ldexp(c, -exponent);
+        }
         double d = b * b - 4 * a * c;
         if (d >= 0)
         {
