@@ -122,6 +122,16 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_output_stop_id(FVM_SWFSoundOutput *, unsigned int id);
     /* Prepare/retry one block. NOT_FOUND means no complete block fits below the queue target. */
     FVM_API FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *, size_t *accepted_frames);
+    /* Finite variant: clamp only fresh PCM to the current mixer horizon and free FIFO
+     * headroom. Empty voices -> NOT_FOUND without generating silence. Silent-valued
+     * source/release frames still count. Pending PCM from either pump or stop_release
+     * is indivisible and retried unchanged, even after all mixer voices retire.
+     * accepted optional/cleared first. Same owner/backend/serialization, clock and
+     * exception/status contract as pump; no allocation, VM, GC or implicit controls.
+     * Legacy pump keeps continuous silent priming. NOT_FOUND is not queue drain or
+     * physical audibility; observe pending/FIFO/voices separately before cleanup. */
+    FVM_API FVM_Result fvm_swf_sound_output_pump_finite(FVM_SWFSoundOutput *, size_t *accepted);
+
     /* Set queue pause state; never implicitly primes or clears PCM. */
     FVM_API FVM_Result fvm_swf_sound_output_pause(FVM_SWFSoundOutput *, int paused);
     /* Query queue and copied clock; errors preserve caller output. */

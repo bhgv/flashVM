@@ -330,7 +330,7 @@ extern "C" FVM_Result fvm_swf_sound_output_stop_id(FVM_SWFSoundOutput *output, u
 
 /* Render only when needed; a rejected complete block remains stable until acceptance or stop/close.
  */
-extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size_t *accepted)
+static FVM_Result output_pump(FVM_SWFSoundOutput *output, size_t *accepted, bool finite)
 {
     if (accepted)
         *accepted = 0;
@@ -349,6 +349,12 @@ extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size
         if (!count)
         {
             count = available < output->block ? available : output->block;
+            if (finite)
+            {
+                status = fvm_swf_sound_mixer_active_frames(output->mixer, count, &count);
+                if (status != FVM_OK) return status;
+                if (!count) return FVM_NOT_FOUND;
+            }
             if (output->info.submitted_frames > FVM_SWF_SOUND_OUTPUT_MAX_CLOCK - (double)count)
                 return FVM_ERROR;
             size_t written = 0;
@@ -378,6 +384,18 @@ extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size
     {
         return FVM_ERROR;
     }
+}
+
+/* Preserve continuous native priming, including silent blocks after source exhaustion. */
+extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size_t *accepted)
+{
+    return output_pump(output, accepted, false);
+}
+
+/* Render fresh output only through the live horizon; every retained retry remains indivisible. */
+extern "C" FVM_Result fvm_swf_sound_output_pump_finite(FVM_SWFSoundOutput *output, size_t *accepted)
+{
+    return output_pump(output, accepted, true);
 }
 
 /* Preserve prepared and queued data while pausing/resuming actual backend consumption. */

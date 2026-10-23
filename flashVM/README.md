@@ -1,10 +1,12 @@
-Development version: **0.1024** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1025** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1025: [Add opt-in finite output pumping with exact final frames and unchanged legacy, release and pending retry ownership.](doc/EVENT_TAILS.md).
 
 v0.1024: [Verify explicit policy parsing and Boolean validation, and record finite mixer, player and tutorial contracts with remaining acceptance limits.](doc/FINITE_TAILS.md).
 

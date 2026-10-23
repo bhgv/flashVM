@@ -109,11 +109,11 @@ lifetimes, aggregate mixer limits and atomic callback requirements.
 | [fvm_swf_sound_mixer_info](../../../include/flashvm/swf_sound_mixer.h#L139) | Observe software retirement without independently advancing the borrowed mixer |
 | [fvm_swf_sound_output_sound_active](../../../include/flashvm/swf_sound_output.h#L81) | Poll FIFO and compare exact exclusive ID endpoint with dequeue progress |
 | [fvm_swf_sound_output_identity_info](../../../include/flashvm/swf_sound_output.h#L99) | Copy exact dequeue cursor/deadline for host diagnostics without source VM or allocation |
-| [fvm_swf_sound_output_pause](../../../include/flashvm/swf_sound_output.h#L126) | Acknowledge model consumption policy without discarding PCM |
-| [fvm_swf_sound_output_info](../../../include/flashvm/swf_sound_output.h#L128) | Copy exact pending versus accepted block accounting after write failure |
+| [fvm_swf_sound_output_pause](../../../include/flashvm/swf_sound_output.h#L136) | Acknowledge model consumption policy without discarding PCM |
+| [fvm_swf_sound_output_info](../../../include/flashvm/swf_sound_output.h#L138) | Copy exact pending versus accepted block accounting after write failure |
 | [fvm_swf_sound_output_stop_id](../../../include/flashvm/swf_sound_output.h#L122) | Release ID and stop future composition while accepted PCM remains unchanged |
-| [fvm_swf_sound_output_stop](../../../include/flashvm/swf_sound_output.h#L132) | Acknowledge pause/clear, cancel registrations and reset output epoch |
-| [fvm_swf_sound_output_close](../../../include/flashvm/swf_sound_output.h#L143) | Release retry/ID storage after callbacks/readers stop; does not own mixer |
+| [fvm_swf_sound_output_stop](../../../include/flashvm/swf_sound_output.h#L142) | Acknowledge pause/clear, cancel registrations and reset output epoch |
+| [fvm_swf_sound_output_close](../../../include/flashvm/swf_sound_output.h#L153) | Release retry/ID storage after callbacks/readers stop; does not own mixer |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L143) | Release adopted native voices after output quiescence |
 | [fvm_swf_sound_voice_close](../../../include/flashvm/swf_sound.h#L128) | Release only remaining untransferred owners, independently of the destroyed VM |
 
@@ -140,15 +140,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:143](../../../include/flashvm/swf_sound_mixer.h#L143) |
 | `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../../../include/flashvm/swf_sound_mixer.h#L65) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:139](../../../include/flashvm/swf_sound_mixer.h#L139) |
-| `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:143](../../../include/flashvm/swf_sound_output.h#L143) |
+| `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:153](../../../include/flashvm/swf_sound_output.h#L153) |
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:50](../../../include/flashvm/swf_sound_output.h#L50) |
 | `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:99](../../../include/flashvm/swf_sound_output.h#L99) |
-| `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:128](../../../include/flashvm/swf_sound_output.h#L128) |
-| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:126](../../../include/flashvm/swf_sound_output.h#L126) |
+| `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:138](../../../include/flashvm/swf_sound_output.h#L138) |
+| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:136](../../../include/flashvm/swf_sound_output.h#L136) |
 | `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:124](../../../include/flashvm/swf_sound_output.h#L124) |
 | `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../../../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../../../include/flashvm/swf_sound_output.h#L81) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:132](../../../include/flashvm/swf_sound_output.h#L132) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:142](../../../include/flashvm/swf_sound_output.h#L142) |
 | `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:122](../../../include/flashvm/swf_sound_output.h#L122) |
 | `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../../../include/flashvm/swf_sound_output.h#L74) |
 | `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:114](../../../include/flashvm/swf_sound_output.h#L114) |

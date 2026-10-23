@@ -149,7 +149,7 @@ can then be smaller than one native consumption block, resulting in silent gaps.
 The bridge now sets only SDL_AUDIO_ALLOW_SAMPLES_CHANGE. Sample rate, channels
 and S16 remain fixed at the application-facing interface; SDL may perform its
 normal hardware conversion. The negotiated callback quantum is published through
-[`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L164) and used by the existing four-block reserve/two-block
+[`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L174) and used by the existing four-block reserve/two-block
 resume policy. It is not a hardware latency measurement. SDL SDK >=2.0.9 is now
 required so the flag is available; disabled builds keep their usual unsupported
 behavior. The obtained quantum need not be a power of two even though the request
@@ -212,5 +212,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:164](../include/flashvm/swf_sound_output.h#L164) |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:174](../include/flashvm/swf_sound_output.h#L174) |
 <!-- source-links:end -->

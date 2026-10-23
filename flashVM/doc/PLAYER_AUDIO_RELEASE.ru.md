@@ -69,7 +69,7 @@ clear старый звук уже удалён, даже если послед�
 Точный хвост сохраняется pending для pump retry, счётчики продвигаются только
 после принятия. Некоторые backend, в том числе SDL с фиксацией ошибки записи,
 требуют исходного hard stop/reset для восстановления; хвост тогда удаляется.
-[`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L132) по-прежнему немедленно pause/clear/reset без синтеза
+[`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L142) по-прежнему немедленно pause/clear/reset без синтеза
 хвоста и остаётся операцией восстановления/финальной очистки.
 
 ## Ограничения границы и аппаратуры
@@ -115,8 +115,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
 | `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:141](../include/flashvm/swf_sound_mixer.h#L141) |
-| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:134](../include/flashvm/swf_sound_output.h#L134) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:132](../include/flashvm/swf_sound_output.h#L132) |
-| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:140](../include/flashvm/swf_sound_output.h#L140) |
+| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:144](../include/flashvm/swf_sound_output.h#L144) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:142](../include/flashvm/swf_sound_output.h#L142) |
+| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:150](../include/flashvm/swf_sound_output.h#L150) |
 | `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../include/flashvm/swf_sound_mixer.h#L28) |
 <!-- source-links:end -->
