@@ -4,7 +4,7 @@ Current extension: [adaptive vectors](ADAPTIVE_CURVE_BOUNDS.md). The former abso
 
 Current extension: [linear curves](LINEAR_CURVE_BOUNDS.md). Earlier ordering restrictions below are historical; the helper is now named linear_curve_segment.
 
-Admission is implemented by [linear_curve_segment](../src/capi/path_hit_c.cpp#L266).
+Admission is implemented by [linear_curve_segment](../src/capi/path_hit_c.cpp#L317).
 
 The private [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L529) accepts quadratic/cubic commands with every supported cap/join when controls progress from start to endpoint on one horizontal or vertical axis. Such a curve describes exactly the endpoint segment: its changing-axis derivative has one sign. Admission uses exact double comparisons without epsilon and creates no approximate polyline. Controls at either endpoint are accepted, including zero endpoint derivatives. A completely constant command contributes no extent.
 

@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1445 / Контрольная точка v0.1445: 343 native, 97 no-graphics, 97 ASan/UBSan tests pass. Subnormal tangent normalization, round-cap distances and bevel orientation are corrected. All nine stages and reference/device acceptance remain open. [EN](SUBNORMAL_STROKE_NORMS.md) / [RU](SUBNORMAL_STROKE_NORMS.ru.md).
+
 Checkpoint v0.1427 / Контрольная точка v0.1427: 329 native, 83 no-graphics, 83 ASan/UBSan tests pass. Nonzero stroke tangents survive squared-length underflow. All nine stages and device/reference acceptance remain open. [EN](SCALED_STROKE_TANGENTS.md) / [RU](SCALED_STROKE_TANGENTS.ru.md).
 
 Checkpoint v0.1421 / Контрольная точка v0.1421: 325 native, 79 no-graphics, 79 ASan/UBSan tests pass. Exact adaptive relative vectors extend linear Bezier bounds; arbitrary curves, transform metrics, reference/devices and all nine stages remain open. [EN](ADAPTIVE_CURVE_BOUNDS.md) / [RU](ADAPTIVE_CURVE_BOUNDS.ru.md).

@@ -10,9 +10,24 @@ No public API, wire format or callback IDs change. Only styled segment tangents 
 
 ## Regression design
 
-Twelve fixtures cover diagonal/shallow/steep/reversed independent cap equations, quadratic and bounded unordered cubic reductions in both directions, open joins, closed contours, multiple contours, zero-length/retraced segments, selected body/cap point hits and managed bounds/dimensions. Scale covariance compares contour geometry against normal-sized paths; independent straight-edge equations prevent relying exclusively on that metamorphic oracle. Tests span the normal/subnormal squared-norm transition and zero underflow. The diagonal fixture fails against v0.1427 before the runtime correction.
+Fourteen fixtures cover diagonal/shallow/steep/reversed independent cap equations, quadratic and bounded unordered cubic reductions in both directions, open joins, closed contours, multiple contours, zero-length/retraced segments, selected body/cap point hits and managed bounds/dimensions. Scale covariance compares contour geometry against normal-sized paths; independent straight-edge equations prevent relying exclusively on that metamorphic oracle. Tests span the normal/subnormal squared-norm transition and zero underflow. The diagonal fixture fails against v0.1427 before the runtime correction.
 
 The existing [C89 stroke tutorial](../examples/embedding/stroke_styles/README.md) remains executable; these adversarial tiny coordinates are regression fixtures rather than a raster demonstration. All nine roadmap stages remain open. Physical devices, Cairo and complete Flash reference acceptance remain separate.
+
+
+## Round caps and bevel wedges
+
+When the radius square is subnormal, round-cap tests first reject any distance component larger than the radius, then divide both components by the radius and compare the sum of bounded squares against one. This prevents zero/zero and reduced-precision squared-distance false hits without changing normal-radius arithmetic.
+
+Tiny bevel triangles use the largest coordinate difference as a local scale whenever its square is subnormal. A coordinate-box rejection bounds the query ratios before orientation products are evaluated. Original coordinates and bounds remain unchanged. This corrects uniform tiny-scale underflow; it is not arbitrary-precision orientation for all near-collinear double inputs. Independent cap inclusion/rejection and sampled wedge classification from exponents -515 through -1000 supplement the original twelve fixtures.
+
+
+Widths whose half-width itself underflows to zero are outside this validation range; this series does not establish their geometry contract.
+
+
+## Validation v0.1445
+
+343 native, 97 no-graphics and 97 ASan/UBSan tests pass. LeakSanitizer is disabled. Documentation, source links and the C89 tutorial checks pass. Fourteen new fixtures cover the three corrections. Physical devices and complete Flash acceptance are not claimed.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
