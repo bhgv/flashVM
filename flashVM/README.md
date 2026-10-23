@@ -1,10 +1,12 @@
-Development version: **0.1083** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1084** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1084: [Validate decimal frames and signed positions before opening the destination.](doc/MP3_FRAME_SEEK.md).
 
 v0.1083: [Exercise signed starts visual gaps latency-shifted blocks and queue reset in both execution modes.](doc/MP3_FRAME_SEEK.md).
 

@@ -1,7 +1,7 @@
 /* Decode one real SWF segment with bounded host input and detached native PCM ownership. */
 #include "decode_constants.h" /* Import explicit host-input and native chunk bounds. */
 /* Run on the VM owner until capture, then use only native storage and a caller-owned file. */
-static int decode_file(const char *input, const char *output) /* Borrow explicit user paths. */
+static int decode_file(const char *input, const char *output, unsigned int seek_frame) /* Borrow explicit user paths. */
 { /* Initialize every owner before fallible work. */
     FILE *source = 0, *target = 0; /* Own only successfully opened host files. */
     unsigned char *wire = 0; /* Own the bounded input copy until loading completes. */
@@ -29,6 +29,13 @@ static int decode_file(const char *input, const char *output) /* Borrow explicit
     fvm_runtime_destroy(runtime); runtime = 0; /* Keep only native snapshot storage alive. */
     info.struct_size = sizeof(info); /* Declare the exact copied metadata ABI. */
     if (fvm_swf_stream_sound_snapshot_info(snapshot, &info) != FVM_OK || fvm_swf_stream_pcm_reader_init(&reader, snapshot) != FVM_OK) goto cleanup; /* Borrow the immutable prepared source. */
+    if (seek_frame) { /* Resolve authored timing after VM teardown and before destination replacement. */
+        FVM_SWFStreamSoundSeekPoint point; /* Copy an allocation-free normalized position. */
+        point.struct_size = sizeof(point); /* Require the exact public query ABI. */
+        if (fvm_swf_stream_sound_snapshot_seek_point(snapshot, seek_frame, &point) != FVM_OK) goto cleanup; /* Reject out-of-range signed metadata without touching output. */
+        if (fvm_swf_stream_pcm_reader_seek(&reader, point.block_index, point.first) != FVM_OK) goto cleanup; /* Begin the suffix on the resolved source sample frame. */
+        printf("seek=%u source=%u block=%lu first=%lu aligned=%d\n", seek_frame, point.source_frame, (unsigned long)point.block_index, (unsigned long)point.first, point.mp3_aligned); /* Distinguish authored permission from actual PCM storage. */
+    } /* Exact EOF is valid and produces an empty file. */
     if (output) { /* Verification mode deliberately needs no destination file. */
         target = fopen(output, "wb"); /* Replace only the explicit output after successful preparation. */
         if (!target) goto cleanup; /* Leave the validated snapshot for centralized cleanup. */

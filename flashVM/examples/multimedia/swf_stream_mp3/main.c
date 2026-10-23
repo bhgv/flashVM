@@ -3,6 +3,8 @@
 #include <stdlib.h> /* Own the bounded external-input buffer. */
 #include <stdio.h> /* Print copied metadata and failures. */
 #include <string.h> /* Recognize the explicit demonstration argument. */
+#include <errno.h> /* Detect numeric frame overflow without accepting partial input. */
+#include <limits.h> /* Bound frame numbers to the public unsigned-int ABI. */
 #include "decode.inc" /* Add the annotated real-file normalization/export workflow. */
 static const unsigned char fixture[] = { /* FWS4: two blocks with deliberately opaque MPEG data. */
     70, 87, 83, 4, 43, 0, 0, 0, /* Synthetic wire bytes; MPEG bytes are opaque, not playable audio. */
@@ -19,6 +21,16 @@ static void print_block(const FVM_SWFStreamSoundMP3Block *block) /* Borrow the v
            block->frame, block->declared_samples, block->seek_samples, /* Preserve the signed seek adjustment. */
            (unsigned long)block->data_size); /* Exclude the four-byte prefix from the MPEG byte count. */
 } /* Finish without taking ownership of the borrowed data. */
+/* Accept only a positive complete decimal movie frame, preserving output on failure. */
+static int parse_frame(const char *text, unsigned int *out) /* Borrow the CLI text for this call only. */
+{ /* Validate syntax before strtoul can accept signs or whitespace. */
+    const char *at = text; unsigned long value; char *end = 0; /* Keep C89 declarations at block start. */
+    if (!text || !*text) return 0; /* Reject absent and empty arguments. */
+    while (*at) { if (*at < '0' || *at > '9') return 0; ++at; } /* Require decimal digits throughout. */
+    errno = 0; value = strtoul(text, &end, 10); /* Convert with a checked host range. */
+    if (errno == ERANGE || *end || !value || value > UINT_MAX) return 0; /* Reject zero and overflow. */
+    *out = (unsigned int)value; return 1; /* Publish only a completely valid movie frame. */
+} /* No file or VM side effect occurs while parsing. */
 /* Prepare one segment, destroy its source VM, then inspect independent encoded storage. */
 int main(int argc, char **argv) /* Require an explicit request to run the embedded fixture. */
 { /* Begin the tutorial's resource ownership. */
@@ -30,12 +42,17 @@ int main(int argc, char **argv) /* Require an explicit request to run the embedd
     FVM_SWFStreamSoundInfo info; /* Header latency remains separate from per-block seek. */
     size_t count = 0; /* Receive the number of encoded block occurrences. */
     size_t ordinal; /* Enumerate blocks in their original movie-frame order. */
+    unsigned int seek_frame = 0; /* Receive a validated optional one-based seek frame. */
     int status = 1; /* Change to success only after every operation succeeds. */
-    if (argc == 3 && strcmp(argv[1], "--verify") == 0) return decode_file(argv[2], 0); /* Validate native PCM without creating any output file. */
-    if (argc == 4 && strcmp(argv[1], "--decode") == 0) return decode_file(argv[2], argv[3]); /* Decode only explicitly supplied input/output paths. */
+    if (argc == 3 && strcmp(argv[1], "--verify") == 0) return decode_file(argv[2], 0, 0); /* Validate native PCM without creating any output file. */
+    if (argc == 4 && strcmp(argv[1], "--decode") == 0) return decode_file(argv[2], argv[3], 0); /* Decode only explicitly supplied input/output paths. */
+    if (argc == 5 && strcmp(argv[1], "--seek") == 0) { /* Require explicit source, frame and destination. */
+        if (!parse_frame(argv[3], &seek_frame)) return 1; /* Reject malformed input before file access. */
+        return decode_file(argv[2], argv[4], seek_frame); /* Validate then export the post-VM PCM suffix. */
+    } /* Other options retain their existing argument validation. */
     if (argc == 1) /* Explain usage without allocating a VM or opening any file. */
     { /* Begin usage-only mode. */
-        puts("usage: swf_stream_mp3 --demo | --verify INPUT.swf | --decode INPUT.swf OUTPUT.pcm"); /* Name the only accepted tutorial option. */
+        puts("usage: swf_stream_mp3 --demo | --verify INPUT.swf | --decode INPUT.swf OUTPUT.pcm | --seek INPUT.swf FRAME OUTPUT.pcm"); /* Name the only accepted tutorial option. */
         return 0; /* No resources require cleanup. */
     } /* Finish usage-only mode. */
     if (argc != 2 || strcmp(argv[1], "--demo") != 0) /* Reject other arguments before side effects. */

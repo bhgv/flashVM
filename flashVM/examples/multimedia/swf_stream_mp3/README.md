@@ -132,6 +132,25 @@ audio segment is checked, not an entire movie's timeline or every sound resource
 даёт ошибку до успешного отчёта. Вход и пик подготовки отдельно ограничены 64 МиБ.
 Проверяется только первый аудиосегмент, а не весь таймлайн и все ресурсы фильма.
 
+
+## Aligned suffix export
+
+```sh
+./build/flashvm_examples_multimedia_swf_stream_mp3_main --seek input.swf 3 suffix.pcm
+```
+
+FRAME is a positive complete decimal unsigned-int movie-frame number. The entire
+stream is prepared before VM teardown. Signed authored position resolution and
+reader seek happen before opening output, so invalid CLI/metadata preserves an
+existing destination. EOF deliberately creates an empty file. Exported PCM is
+native-endian S16 at the reported rate/channels. A later physical write failure
+may leave a partial destination. Full A/V/reference/player acceptance remains open.
+
+| API | Individual purpose and ownership contract |
+| --- | --- |
+| [fvm_swf_stream_sound_snapshot_seek_point](../../../include/flashvm/swf_stream_sound.h#L161) | Copy a checked authored MP3 position without allocation/VM/callback; snapshot remains borrowed during the call. [Guide](../../../doc/MP3_FRAME_SEEK.md). |
+| [fvm_swf_stream_pcm_reader_seek](../../../include/flashvm/swf_stream_pcm.h#L54) | Reset the native reader to the resolved block/sample offset; reader borrows snapshot until reading ends. [Guide](../../../doc/STREAM_PCM_READER.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -149,6 +168,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../../../include/flashvm/swf_stream_pcm.h#L54) |
 | `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../../../include/flashvm/swf_stream_sound.h#L51) |
 | `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:167](../../../include/flashvm/swf_stream_sound.h#L167) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../../../include/flashvm/swf_stream_sound.h#L198) |
@@ -156,4 +176,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:171](../../../include/flashvm/swf_stream_sound.h#L171) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:161](../../../include/flashvm/swf_stream_sound.h#L161) |
 <!-- source-links:end -->

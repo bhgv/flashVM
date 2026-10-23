@@ -2120,6 +2120,12 @@ The swf_stream_mix --origins mode demonstrates a coherent single-poll stream/cat
 
 swf_stream_adpcm also demonstrates --inferred bounded partial lengths without a count table, preserving its exact eight-sample oracle. / Пример показывает подготовку по единственной геометрии без таблицы длин.
 
+
+The [swf_stream_mp3](multimedia/swf_stream_mp3/README.md) tutorial also provides
+`--seek INPUT FRAME OUTPUT`: validate signed authored timing, destroy the VM and
+export the complete normalized PCM suffix. Position errors preserve output;
+exact EOF creates an empty file. See [frame seek contract](../doc/MP3_FRAME_SEEK.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
