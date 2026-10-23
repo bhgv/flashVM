@@ -80,8 +80,10 @@ FVM_RasterColor sample(const FVM_Gradient &gradient, double ratio, unsigned int 
     unsigned char values[4];
     for (unsigned int i = 0; i < 4; ++i)
     {
+        /* Keep endpoints and constant channels exact before byte-domain transforms. */
         double value = av[i] + (bv[i] - av[i]) * weight;
-        if (i < 3 && interpolation == FVM_GRADIENT_INTERPOLATION_LINEAR_RGB && left != right)
+        if (i < 3 && interpolation == FVM_GRADIENT_INTERPOLATION_LINEAR_RGB &&
+            left != right && av[i] != bv[i])
         {
             double light = linear_colors[left][i] +
                            (linear_colors[right][i] - linear_colors[left][i]) * weight;
