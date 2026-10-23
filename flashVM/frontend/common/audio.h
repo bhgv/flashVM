@@ -127,6 +127,10 @@ extern "C"
     FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *, FVM_SWFSoundOutputInfo *);
     /* Stream-only copied observation under producer mutex; invalid/wrong-size preserves output. */
     FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
+    /* Copy stream and origins from one FIFO poll under the worker mutex. Requires live mixed
+     * stream and exact-size out; preserves output on error. Sequence EOF accounts for remaining
+     * headers. No render/VM/GC; owner serializes lifecycle. Native paired statuses propagate. */
+    FVM_Result fvm_desktop_audio_mix_info(FVM_DesktopAudio *, FVM_SWFStreamMixInfo *);
     /* Fresh BASE/TAIL accepted/dequeued bookkeeping under the producer mutex. Require live
      * initialized composition and exact-size out; invalid/errors preserve output. Backend
      * statuses propagate, disabled mode UNSUPPORTED. No VM/allocation/render or source seek;

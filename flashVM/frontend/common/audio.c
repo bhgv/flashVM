@@ -860,6 +860,20 @@ FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *audio, FVM_SWFSoundOutputInf
     return result;
 }
 
+/* Copy one paired observation while serializing worker production, seek and host controls. */
+FVM_Result fvm_desktop_audio_mix_info(FVM_DesktopAudio *audio, FVM_SWFStreamMixInfo *out)
+{
+    FVM_Result result;
+    if (!audio || !audio->composition || !audio->stream_source ||
+        !out || out->struct_size != sizeof(*out)) return FVM_INVALID_ARGUMENT;
+    if (SDL_LockMutex(audio->mutex) != 0) return FVM_ERROR;
+    result = fvm_swf_stream_output_mix_info(&audio->stream_output, audio->composition, out);
+    if (result == FVM_OK && audio->stream_index + 1 < audio->stream_count)
+        out->stream.eof = 0; /* A later prepared header still belongs to this sequence. */
+    SDL_UnlockMutex(audio->mutex);
+    return result;
+}
+
 /* Copy stream diagnostics without racing native preparation or queue accounting. */
 FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamOutputInfo *info)
 {

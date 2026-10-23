@@ -1549,10 +1549,12 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                 SDL_AtomicGet(&audio.underruns));
         if (audio.composition)
         {
+            FVM_SWFStreamMixInfo snapshot;
             FVM_SWFSoundMixQueueOriginInfo origin;
-            origin.struct_size = sizeof(origin);
-            if (!checked(fvm_desktop_audio_origin_info(&audio, &origin), "mixed origin clock", path))
+            snapshot.struct_size = sizeof(snapshot);
+            if (!checked(fvm_desktop_audio_mix_info(&audio, &snapshot), "mixed clock snapshot", path))
                 goto cleanup;
+            origin = snapshot.origins;
             fprintf(stderr, "audio_base_submitted=%.0f audio_base_dequeued=%.0f "
                             "audio_tail_submitted=%.0f audio_tail_dequeued=%.0f\n",
                     origin.base_submitted_frames, origin.base_played_frames,

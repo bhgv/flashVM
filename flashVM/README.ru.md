@@ -1,4 +1,4 @@
-Версия разработки: **0.1053** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1054** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1054: [Добавлен desktop-запрос под mutex для смешанной статистики; сохранена семантика EOF последовательности.](doc/MIXED_SNAPSHOT.ru.md).
 
 v0.1053: [Четыре OS-потока проверяют PCM и один опрос на снимок в 256 эпохах; запрет аллокаций охватывает снимки при retry.](doc/MIXED_SNAPSHOT.ru.md).
 
