@@ -1,4 +1,4 @@
-Версия разработки: **0.1239** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1240** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1240: [Двадцать сочетаний режима и ширины включают hairline и максимальную ширину](doc/BITMAP_STROKES.ru.md).
 
 v0.1239: [Bitmap-обводки LINESTYLE2 сохраняют независимые изображения и подготовленное круглое покрытие](doc/BITMAP_STROKES.ru.md).
 
