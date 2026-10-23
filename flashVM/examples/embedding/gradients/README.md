@@ -107,6 +107,10 @@ focal stroke 0.5: 85 170 255
 | [fvm_path_draw_gradient_focal](../../../include/flashvm/gradient.h#L85) | Synchronously borrows path, destination and gradient/stops; fills with explicit interior radial focal and spread/color selectors. Invalid geometry or preparation failure preserves pixels. [Contract](../../../doc/FOCAL_GRADIENTS.md). |
 | [fvm_path_stroke_gradient_focal](../../../include/flashvm/gradient.h#L90) | Borrows the same inputs for a positive destination-width stroke; retains no VM/root/device and requires -1<focal<1. [Контракт](../../../doc/FOCAL_GRADIENTS.ru.md). |
 
+Run `python3 flashVM/scripts/check_gradient_focal_example.py <path-to-example>` from the repository root. CTest registers flashvm_gradient_focal_tutorial and explicitly skips NO_GRAPHICS with code 77. The checker requires all fourteen measured output lines, including earlier fill/spread/linearRGB samples. The AS2 companion illustrates independent interior focal positions for fill and stroke; CMake does not compile this illustrative source to SWF.
+
+Checker проверяет четырнадцать строк реальных пикселей; без backend явно пропускается. AS2 source показывает разные focal для fill/stroke, а соответствующие AVM1/JIT вызовы проверяются отдельными bytecode fixtures.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 

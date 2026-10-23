@@ -13,7 +13,7 @@ extern "C"
     typedef enum FVM_GradientType
     {
         FVM_GRADIENT_LINEAR = 0 /* Ratio grows from the left edge to the right edge. */,
-        FVM_GRADIENT_RADIAL = 1 /* Ratio grows from the center to the unit circle. */
+        FVM_GRADIENT_RADIAL = 1 /* Radial geometry; focal-aware entries may move its origin. */
     } FVM_GradientType;
     /* Extension policy outside the ramp; the original no-selector fill always selects PAD. */
     typedef enum FVM_GradientSpread
@@ -37,7 +37,7 @@ extern "C"
     /* Borrowed gradient description; the draw entry selects how the ramp extends. */
     typedef struct FVM_Gradient
     {
-        FVM_GradientType type; /* Linear or centered radial geometry. */
+        FVM_GradientType type; /* Linear/radial geometry; the draw entry supplies optional focal. */
         FVM_Affine matrix;     /* Maps the normalized gradient square to destination pixels. */
         const FVM_GradientStop *stops; /* Borrowed array valid for the complete draw call. */
         size_t count;       /* Number of control points, from one to FVM_GRADIENT_MAX_STOPS. */

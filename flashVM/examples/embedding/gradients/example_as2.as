@@ -42,3 +42,17 @@ linear_mc.lineTo(100, 200); // Добавляем правую сторону.
 linear_mc.lineTo(0, 200); // Добавляем нижнюю сторону.
 linear_mc.lineTo(0, 160); // Замыкаем контур явной линией.
 linear_mc.endFill(); // Готовый path удерживает скопированный interpolation selector.
+
+/* SWF8: выбираем противоположные внутренние focal для радиальной заливки и обводки. */
+var focal_mc:MovieClip = this.createEmptyMovieClip("focal_mc", 4); // Родитель удерживает новый клип на отдельной глубине.
+var focal_colors:Array = [0xFF0000, 0x0000FF]; // Передаём независимые красный и синий stops.
+var focal_matrix:Object = {matrixType:"box", x:0, y:220, w:100, h:60, r:0}; // Задаём копируемую область радиального градиента.
+focal_mc.beginGradientFill("radial", focal_colors, alphas, ratios, focal_matrix, "pad", "linearRGB", 0.5); // Смещаем focal заливки вправо внутри нормализованного круга.
+focal_mc.lineStyle(4); // Сначала включаем обводку с толщиной четыре пикселя.
+focal_mc.lineGradientStyle("radial", focal_colors, alphas, ratios, focal_matrix, "reflect", "RGB", -0.5); // Выбираем для обводки отдельный focal слева и отражённое продолжение.
+focal_mc.moveTo(0, 220); // Начинаем контур до добавления его сторон.
+focal_mc.lineTo(100, 220); // Рисуем верхнюю сторону с двумя сохранёнными рампами.
+focal_mc.lineTo(100, 280); // Добавляем правую сторону.
+focal_mc.lineTo(0, 280); // Добавляем нижнюю сторону.
+focal_mc.lineTo(0, 220); // Возвращаемся в начало контура.
+focal_mc.endFill(); // Готовый path сохраняет обе независимые focal-записи.
