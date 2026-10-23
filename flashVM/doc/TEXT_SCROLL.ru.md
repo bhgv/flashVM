@@ -49,6 +49,20 @@ wire bytes. Capture измеряет/clamp активные позиции; defa
 Новый бит требует обновлённого receiver. Upgrade меняет только rootless старые
 scroll stubs; captured/custom accessors сохраняют семантику.
 
+
+## Lazy edits и наблюдательный capture
+
+Text/format/dimension writes сохраняют прежний lazy layout admission. Запрос scroll
+может временно превышать диапазон после уменьшения viewport. Scroll property/native
+query и успешный path export нормализуют обе сохранённые позиции; ошибка сохраняет
+их. Graph capture копирует эффективные clamped offsets без публикации в source,
+поэтому последующий сбой сериализации не меняет source viewport request. Если
+геометрия уменьшилась и выросла до нормализующего наблюдения, прежний запрос может
+снова стать эффективным. Это явная bounded-политика bridge; полная original-player
+edit/event приёмка открыта. Существующая раскладка сохраняет whitespace, которая
+может занимать отдельную visual line. Hard breaks при multiline=false остаются
+UNSUPPORTED.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

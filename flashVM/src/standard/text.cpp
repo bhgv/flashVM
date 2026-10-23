@@ -1968,7 +1968,6 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     out.x = field->x; out.y = field->y;
     out.anchor = field->auto_size_left ? field->anchor : FVM_TEXT_ANCHOR_LEFT;
     out.scroll = info.scroll; out.hscroll = info.hscroll;
-    field->scroll = info.scroll; field->hscroll = info.hscroll;
     return FVM_OK;
 }
 

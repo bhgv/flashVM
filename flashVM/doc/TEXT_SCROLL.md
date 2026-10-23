@@ -50,6 +50,20 @@ Fonts and text are independently owned on receivers. No font/cache/VM pointer is
 serialized. Newer payloads with this bit require an updated receiver. Existing
 rootless scroll stubs are upgraded; captured/custom accessors retain their semantics.
 
+
+## Lazy edits and observational capture
+
+Text/format/dimension writes preserve existing lazy-layout admission. Stored scroll
+requests can therefore temporarily exceed a newly smaller viewport range. A scroll
+property/native query or successful path export normalizes both stored offsets;
+failed operations preserve them. Graph capture copies effective clamped offsets
+without publishing them back into the source, so a later serialization failure
+cannot change source viewport requests. If geometry shrinks and grows again before
+any normalizing observation, the old request can become effective again. This is
+an explicit bounded bridge policy; full original-player edit/event parity remains
+open. Wrapped whitespace follows existing layout preservation and may occupy its
+own visual line. Non-multiline hard-break layout remains UNSUPPORTED.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
