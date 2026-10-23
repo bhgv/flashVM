@@ -19,6 +19,9 @@ v0.1016: Проверены strict/converted release, ранний EOF исто�
 
 v0.1017: Добавлен явный finite mixed-tail startup policy и CLI-флаг до публикации worker; прежний режим остаётся по умолчанию.
 
+
+v0.1018: CLI проверяет точный короткий WAV при root Stop/gates для FWS/CWS в interpreter/JIT и mute без устройства.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

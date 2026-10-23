@@ -19,6 +19,9 @@ v0.1016: Check strict and converted release endpoints, earlier source exhaustion
 
 v0.1017: Add explicit finite mixed-tail startup policy and CLI option before worker publication while preserving default playback behavior.
 
+
+v0.1018: Check exact short WAV output under root Stop and future gates for FWS/CWS in interpreter and JIT, plus device-free mute.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
