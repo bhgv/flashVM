@@ -1,4 +1,4 @@
-Версия разработки: **0.1226** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1227** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1227: [Открытые замкнутые и NoClose пути сохраняют команды и поведение концов](doc/SHAPE4_STROKES.ru.md).
 
 v0.1226: [Hairline субпиксельная и максимальная UI16-ширина совпадают с публичным рендерингом](doc/SHAPE4_STROKES.ru.md).
 
