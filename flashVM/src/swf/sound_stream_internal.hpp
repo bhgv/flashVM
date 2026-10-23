@@ -7,6 +7,8 @@
 struct FVM_SWFStreamSoundEntry
 {
     FVM_SWFStreamSoundBlock block; /* Copied wire metadata; data is reconstructed on lookup. */
+    size_t mp3_decoded_first; /* Original decoded frame prefix before initial latency trimming. */
+    int mp3_seek_samples; /* Signed authored adjustment, used only for discontinuous seeks. */
     size_t offset;                 /* Payload offset in the owned byte store. */
 };
 /* [GC:] Native independent snapshot; no VM pointer or managed value is retained. */
@@ -18,6 +20,7 @@ struct FVM_SWFStreamSoundSnapshot
     fvm_detail::vector<short> pcm; /* Optional expanded native-S16 storage, aligned for decoding. */
     size_t retained_bytes; /* Snapshot object plus its current payload/index allocation sizes. */
     size_t peak_bytes;     /* Maximum simultaneous raw/decoded ownership during preparation. */
+    bool prepared_mp3; /* Complete MP3 preparation retained seek metadata in normalized PCM. */
     unsigned char empty;   /* Valid address for an entirely empty payload store. */
 };
 

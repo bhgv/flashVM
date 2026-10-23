@@ -30,7 +30,7 @@ static FVM_Result mp3_stream_pass(FVM_SWFStreamSoundSnapshot *snapshot, size_t l
     FVM_SWFMP3Decoder decoder;
     size_t skip = (size_t)snapshot->info.latency_seek;
     size_t used = snapshot->bytes.size() + snapshot->blocks.size() * sizeof(FVM_SWFStreamSoundEntry);
-    size_t values = 0;
+    size_t values = 0, decoded_first = 0;
     unsigned int rate = 0, channels = 0;
     for (size_t i = 0; i < snapshot->blocks.size(); ++i)
     {
@@ -80,6 +80,14 @@ static FVM_Result mp3_stream_pass(FVM_SWFStreamSoundSnapshot *snapshot, size_t l
         }
         if (decoded != payload.declared_samples)
             return FVM_INVALID_ARGUMENT;
+        if (decoded > (size_t)-1 - decoded_first)
+            return FVM_OUT_OF_MEMORY;
+        if (!store)
+        {
+            snapshot->blocks[i].mp3_decoded_first = decoded_first;
+            snapshot->blocks[i].mp3_seek_samples = payload.seek_samples;
+        }
+        decoded_first += decoded;
         size_t block_values = values - start;
         if (!store)
         {
@@ -139,6 +147,7 @@ FVM_Result fvm_swf_stream_prepare_mp3(FVM_SWFStreamSoundSnapshot *snapshot, size
         snapshot->retained_bytes = snapshot->peak_bytes - snapshot->bytes.size();
         fvm_detail::vector<unsigned char> encoded;
         snapshot->bytes.swap(encoded);
+        snapshot->prepared_mp3 = true;
         snapshot->info.format = FVM_SWF_SOUND_PCM_NATIVE;
         snapshot->info.bits_per_sample = FVM_SWF_SOUND_BITS_16;
         *out = snapshot;

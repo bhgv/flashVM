@@ -152,5 +152,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
 | `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream_internal.hpp:7](../src/swf/sound_stream_internal.hpp#L7) |
 | `FVM_SWFStreamSoundMP3Block` | struct | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
-| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:13](../src/swf/sound_stream_internal.hpp#L13) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:15](../src/swf/sound_stream_internal.hpp#L15) |
 <!-- source-links:end -->

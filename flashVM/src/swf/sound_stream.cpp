@@ -325,6 +325,7 @@ static FVM_Result snapshot_open(FVM_Context *context, size_t stream, const size_
     {
         snapshot = new FVM_SWFStreamSoundSnapshot;
         snapshot->empty = 0;
+        snapshot->prepared_mp3 = false;
         snapshot->retained_bytes = snapshot->peak_bytes = charge;
         snapshot->info = info;
         snapshot->blocks.resize(count);

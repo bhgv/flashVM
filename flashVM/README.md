@@ -1,10 +1,12 @@
-Development version: **0.1076** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1077** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1077: [Retain original decoded prefixes and signed adjustments without changing continuous PCM.](doc/MP3_FRAME_SEEK.md).
 
 v0.1076: [Record native sanitizer SDK-free independent codec and desktop PCM evidence while retaining ambiguous-length and full A-V child-stream acceptance limits.](doc/INFERRED_ADPCM.md).
 

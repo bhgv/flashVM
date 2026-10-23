@@ -5,6 +5,7 @@
 #define main stream_reference_main
 #include "swf_stream_sound.cpp"
 #undef main
+#include "../src/swf/sound_stream_internal.hpp"
 #include "flashvm/swf_stream_pcm.h"
 #include "flashvm/swf_stream_convert.h"
 int main()
@@ -13,10 +14,9 @@ int main()
  Bytes tags,pcm;pcm.push_back(255);tag(tags,45,header(12));tag(tags,19,pcm);load(c,movie(tags));
  FVM_SWFStreamSoundSnapshot *s=0;
  for(long boundary=0;boundary<3;++boundary){allowance=boundary;assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_OUT_OF_MEMORY && !s);allowance=-1;}
- struct IndexShape { FVM_SWFStreamSoundBlock block;size_t offset; };
- rt->config.memory_limit_bytes=(unsigned long)(sizeof(IndexShape));
+ rt->config.memory_limit_bytes=(unsigned long)(sizeof(FVM_SWFStreamSoundEntry));
  assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_OUT_OF_MEMORY && !s);
- rt->config.memory_limit_bytes=(unsigned long)(sizeof(IndexShape)+pcm.size());
+ rt->config.memory_limit_bytes=(unsigned long)(sizeof(FVM_SWFStreamSoundEntry)+pcm.size());
  assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_OK);
  assert(fvm_gc_collect(c,0)==FVM_OK);
  fvm_context_destroy(c);fvm_runtime_destroy(rt);

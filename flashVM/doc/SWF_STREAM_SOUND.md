@@ -321,6 +321,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWFStreamSoundBlock` | struct | [include/flashvm/swf_stream_sound.h:27](../include/flashvm/swf_stream_sound.h#L27) |
 | `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream_internal.hpp:7](../src/swf/sound_stream_internal.hpp#L7) |
 | `FVM_SWFStreamSoundInfo` | struct | [include/flashvm/swf_stream_sound.h:10](../include/flashvm/swf_stream_sound.h#L10) |
-| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:13](../src/swf/sound_stream_internal.hpp#L13) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:15](../src/swf/sound_stream_internal.hpp#L15) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

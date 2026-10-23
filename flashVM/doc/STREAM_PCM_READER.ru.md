@@ -93,5 +93,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
 | `FVM_SWFStreamPCMReader` | struct | [include/flashvm/swf_stream_pcm.h:27](../include/flashvm/swf_stream_pcm.h#L27) |
-| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:13](../src/swf/sound_stream_internal.hpp#L13) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:15](../src/swf/sound_stream_internal.hpp#L15) |
 <!-- source-links:end -->
