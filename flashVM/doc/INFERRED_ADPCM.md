@@ -109,6 +109,9 @@ v0.1073: Post-VM converted PCM survives rejected writes, a closed frame gate, fa
 
 v0.1074: Specify canonical compatibility, unique partial endpoints, unchanged count-authoritative APIs, peak budgets and native versus physical acceptance in Russian and English.
 
+
+v0.1075: Add a no-count post-VM exporter and varying-code FWS CWS oracle for all widths and channels, including partial restarts and empty blocks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -103,6 +103,9 @@ v0.1073: Post-VM PCM сохраняется при rejected write, gate, failed 
 
 v0.1074: Описаны canonical compatibility, unique partial endpoints, counted API, peak budget и границы native/physical приёмки RU/EN.
 
+
+v0.1075: Добавлены post-VM export без counts и FFmpeg oracle для всех ширин/каналов, CWS/FWS, partial restart и пустых блоков.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
