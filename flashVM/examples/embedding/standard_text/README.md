@@ -163,6 +163,24 @@ bidi tabs and wrapped justify fail explicitly; reference/device parity remains o
 широкие tab на отдельные строки. Контракт: [EN](../../../doc/TEXT_DEFAULT_TABS.md) /
 [RU](../../../doc/TEXT_DEFAULT_TABS.ru.md). Все функции уже описаны в таблице API выше.
 
+
+## Scroll viewport mode
+
+Run `flashvm_examples_embedding_standard_text_main --scroll` with FONTS. The
+original analytic 40px face has 24px A/V advances, a 44px line body and 46px
+baseline spacing. A 40x94 field has a 36x90 inner viewport: three hard lines give
+maxscroll=2/maxhscroll=12. Setting scroll=2/hscroll=7 moves actual exported
+contours by (-7,-46). The helper owns/destroys both path copies; the main example
+retains the managed field and exports another independent final path. Failure
+uses ordinary cleanup. No-font mode explicitly reports unavailable measurement.
+Contours remain unclipped; the host uses the returned viewport rectangle and
+applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains open.
+
+| API | Purpose and ownership |
+| --- | --- |
+| [fvm_textfield_scroll_info](../../../include/flashvm/standard_text.h#L68) | Copy effective offsets, limits and inner clipping rectangle; may allocate layout on owner thread, preserves output on failure, retains no managed reference. [Contract](../../../doc/TEXT_SCROLL.md). |
+| [fvm_path_bounds](../../../include/flashvm/path.h#L71) | Read actual translated bounds from a borrowed independently owned path; no VM access or ownership transfer. [Declaration](../../../include/flashvm/path.h). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -179,6 +197,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../../../include/flashvm/path.h#L71) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
@@ -189,6 +208,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:35](../../../include/flashvm/standard_text.h#L35) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../../../include/flashvm/standard_text.h#L41) |
 | `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../../../include/flashvm/standard_text.h#L77) |
+| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../../../include/flashvm/standard_text.h#L68) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |

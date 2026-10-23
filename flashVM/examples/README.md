@@ -2126,6 +2126,11 @@ The [swf_stream_mp3](multimedia/swf_stream_mp3/README.md) tutorial also provides
 export the complete normalized PCM suffix. Position errors preserve output;
 exact EOF creates an empty file. See [frame seek contract](../doc/MP3_FRAME_SEEK.md).
 
+
+The [standard_text](embedding/standard_text/README.md) tutorial also provides
+`--scroll`: analytic line/pixel limits, effective viewport geometry and measured
+translation of independent glyph contours. See [scroll contract](../doc/TEXT_SCROLL.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

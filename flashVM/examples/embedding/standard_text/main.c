@@ -16,6 +16,7 @@
 #include <stdio.h>
 /* Подключаем объявления используемых типов и функций. */
 #include <string.h>
+#include "scroll.inc" /* Add an annotated owner-thread viewport and contour demonstration. */
 /* Initialize the example, run its API operations and release owned resources. */
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(int argc, char **argv)
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    int scrolling = 0; /* Optional explicit visual-line and pixel scrolling demonstration. */
     int tabbed = 0; /* Optional native Array tabStops demonstration. */
     int insets = 0; /* Optional paragraph inset demonstration on the same owner thread. */
     int variants = 0; /* Optional real-face tutorial shares the existing owner context. */
@@ -46,7 +48,8 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--indent")) insets = 2; /* Combine first-line indentation with paragraph margins. */
     else if (argc == 2 && !strcmp(argv[1], "--tabs")) tabbed = 1; /* Apply an explicit Array of tab positions. */
     else if (argc == 2 && !strcmp(argv[1], "--default-tabs")) tabbed = 2; /* Keep tabStops empty so the font determines the repeated interval. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent|--tabs|--default-tabs]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--scroll")) scrolling = 1; /* Demonstrate measured viewport offsets and contours. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent|--tabs|--default-tabs|--scroll]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -534,6 +537,9 @@ int main(int argc, char **argv)
         height = result.number; /* Explicit mode gives 140px; default mode gives 232px. */
         printf("%s wrap: width=54.00 height=%.2f\n", tabbed == 2 ? "default-tabs" : "tabs", height); /* Owned path export continues below. */
     } /* Source Array and native style have independent identities and owner lifetimes. */
+    if (scrolling && scroll_demo(context, field, format)) { /* Execute the optional checked workflow on the same owner thread. */
+        fvm_context_destroy(context); fvm_runtime_destroy(runtime); return 1; /* Release owners after a failed demonstration. */
+    } /* Successful contours below reflect the final active scroll position. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -551,6 +557,7 @@ int main(int argc, char **argv)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)scrolling; /* NO_FONTS keeps explicit option parsing without geometry support. */
     (void)tabbed; /* Option parsing remains available without font support. */
     (void)insets; /* The option remains parseable without font support. */
     (void)variants; /* The option is still parseable in a NO_FONTS profile. */
