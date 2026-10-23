@@ -99,6 +99,14 @@ platform/device acceptance. All nine roadmap stages remain open.
 
 v0.1036: Specify native pending and release semantics, explicit player activation, owner publication and mixed-policy compatibility with remaining acceptance limits.
 
+
+## v0.1037 verification / Проверка
+
+Finite event-only playback v0.1025–v0.1037: additive finite pump and combined pending APIs bound fresh native event PCM while retaining ordinary and anonymous stop-release retries. Queued NoMultiple spans pending/FIFO until dequeue, and the original continuous pump remains unchanged. Desktop --finite-audio-tails enables finite event-only and root mixed tails; old --finite-mixed-tails stays mixed-only. The owner withholds production during callbacks and publishes completed frames before native rendering. Short queues resume below driver reserve; finite event voices/retries/FIFO participate in the existing bounded final completion loop, while host pause/STOP/navigation and defaults retain their policy. Expected finite end/idle is not counted as an underrun. Validation: 202 native regression/tutorial/CLI checks, 58 selected ASan/UBSan checks plus twelve explicit --no-throw runs and eight SDK-free core/tutorial checks pass. Additional options/help and mixed compatibility checks pass. Ordinary builds cover exceptions/allocation failures; LeakSanitizer is disabled. Evidence includes exact rational PCM, pending/release/NoMultiple controls, seeded clock bounds, zero allocations and 256 epochs on four independent OS workers. Real SDL dummy tests cover complete-frame holds, host pause, GC, root Stop, native JIT entries, exact drain and anonymous release. CLI FWS/CWS checks simultaneous opposite voices, full short/multi-quantum PCM longer than target FIFO, real native JIT and mute. The C89 queue --finite protocol and existing nine-mode PCM oracle pass. A renamed detached component configures with explicit SDK and both copied checkers pass against native binaries; no separate detached build. Sound class API, child dictionaries/timelines, reference codec latency/seek, physical DAC/A-V/drift, other backend/platform/device acceptance and all nine stages remain open.
+
+
+v0.1037: Record native finite ownership, owner-frame scheduling and complete event drain, with reproducible tutorial and player validation boundaries.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

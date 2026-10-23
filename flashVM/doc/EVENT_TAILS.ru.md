@@ -91,6 +91,14 @@ codec latency/seek, физические DAC/A-V timestamps/drift, другие 
 
 v0.1036: Уточнены pending/release, включение плеера, публикация кадра, mixed-policy совместимость и открытая приёмка.
 
+
+## v0.1037 verification / Проверка
+
+Конечный event-only вывод v0.1025–v0.1037: новые finite pump/pending API ограничивают свежий PCM, сохраняя ordinary и anonymous stop-release retry. Queued NoMultiple действует до dequeue pending/FIFO; прежний непрерывный pump сохранён. --finite-audio-tails включает конечные event-only/root mixed хвосты, старый --finite-mixed-tails остаётся mixed-only. Владелец удерживает новые блоки во время callbacks и публикует полный кадр перед render. Короткий FIFO возобновляется ниже driver reserve; event voices/retry/FIFO учитываются ограниченным completion loop с прежними host pause/STOP/navigation/default правилами. Ожидаемый finite end/idle не считается underrun. Прошли 202 native regression/tutorial/CLI проверки, 58 выбранных ASan/UBSan плюс двенадцать --no-throw запусков и восемь SDK-free core/tutorial проверок; дополнительные options/help и mixed compatibility проверки проходят. Исключения/ошибки выделений проверены обычной сборкой; LeakSanitizer отключён. Есть точный рациональный PCM, pending/release/NoMultiple, граничные часы, отсутствие аллокаций и 256 эпох на четырёх независимых OS-потоках. SDL dummy проверяет публикацию кадра, host pause, GC/root Stop/native JIT, точный drain и anonymous release. CLI FWS/CWS проверяет одновременные противоположные голоса, полный короткий/многоблочный PCM длиннее FIFO target, настоящий native JIT и mute. C89 --finite протокол очереди и девятирежимный PCM-оракул проходят. Переименованный отделённый компонент конфигурируется с явным SDK, оба скопированных checker проходят на native-бинарниках; отдельной сборки не было. Sound class API, дочерние словари/таймлайны, reference codec latency/seek, физические DAC/A-V/drift, другие backend/платформы/устройства и все девять стадий остаются открытыми.
+
+
+v0.1037: Зафиксированы finite ownership, owner-frame планирование, полный event drain и проверенные границы tutorial/player.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
