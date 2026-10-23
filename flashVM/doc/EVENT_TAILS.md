@@ -28,6 +28,9 @@ v0.1032: Pump finite event blocks, resume short queues, observe voices and retri
 
 v0.1033: Check simultaneous opposite voices, short and multi-quantum tails, FWS/CWS, native JIT entries, exact PCM and device-free mute.
 
+
+v0.1034: Exercise host pause, completed frame publication, root Stop, native JIT and GC, exact dequeue completion and post-stop anonymous release.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

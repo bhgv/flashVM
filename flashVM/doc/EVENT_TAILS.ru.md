@@ -28,6 +28,9 @@ v0.1032: Подключены finite event pump, resume коротких оче�
 
 v0.1033: CLI проверяет одновременные голоса, короткие и многоблочные хвосты, FWS/CWS, native JIT, точный PCM и mute.
 
+
+v0.1034: Проверены host pause, публикация кадра, root Stop, native JIT/GC, точный dequeue drain и release после StopSounds.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
