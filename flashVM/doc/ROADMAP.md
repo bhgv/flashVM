@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Gradient strokes and bounded SWF8 lineGradientStyle: [EN](GRADIENT_STROKES.md) / [RU](GRADIENT_STROKES.ru.md). All nine stages remain open.
+
+
 Gradient spread extension: see [current contracts and remaining work](GRADIENT_SPREAD.md). This does not close any roadmap stage.
 
 

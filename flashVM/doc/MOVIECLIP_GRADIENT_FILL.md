@@ -1,5 +1,8 @@
 # MovieClip.beginGradientFill / Градиентная заливка ActionScript
 
+Current stroke extension v0.1169+: [lineGradientStyle and C89 strokes](GRADIENT_STROKES.md) / [градиентные обводки](GRADIENT_STROKES.ru.md). Earlier lineGradientStyle limitations below describe the historical checkpoint; current RGB/zero-focal stroke support does not close full Flash line semantics or any roadmap stage.
+
+
 Current extension: [pad, reflect and repeat](GRADIENT_SPREAD.md) / [режимы продолжения](GRADIENT_SPREAD.ru.md). Earlier PAD-only descriptions below document the original implementation; non-pad modes are now available through the additive API and SWF 8 beginGradientFill. Shape parsing limits remain unchanged.
 
 

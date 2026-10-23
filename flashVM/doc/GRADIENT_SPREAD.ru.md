@@ -1,5 +1,8 @@
 # Режимы продолжения градиента
 
+Current stroke extension v0.1169+: [lineGradientStyle and C89 strokes](GRADIENT_STROKES.md) / [градиентные обводки](GRADIENT_STROKES.ru.md). Earlier lineGradientStyle limitations below describe the historical checkpoint; current RGB/zero-focal stroke support does not close full Flash line semantics or any roadmap stage.
+
+
 Новый C89-вызов [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L50) принимает unsigned selector: [`FVM_GRADIENT_SPREAD_PAD`](../include/flashvm/gradient.h#L20) (0), [`FVM_GRADIENT_SPREAD_REFLECT`](../include/flashvm/gradient.h#L21) (1), [`FVM_GRADIENT_SPREAD_REPEAT`](../include/flashvm/gradient.h#L22) (2). Layout [`FVM_Gradient`](../include/flashvm/gradient.h#L31) не изменён. Старый вызов по-прежнему выбирает PAD.
 
 Для нормализованного отношения r режим repeat использует r-floor(r), полуоткрытый интервал. Reflect приводит r по модулю двух, нормализует отрицательную фазу и разворачивает второй интервал. PAD сохраняет прежнее поведение концов и совпадающих stops. Политика применяется к линейным и центральным радиальным градиентам перед интерполяцией straight RGBA в обычном RGB, цветовым преобразованием, маской и композицией.

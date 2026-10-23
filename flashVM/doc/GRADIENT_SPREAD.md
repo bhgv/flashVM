@@ -1,5 +1,8 @@
 # Gradient spread modes
 
+Current stroke extension v0.1169+: [lineGradientStyle and C89 strokes](GRADIENT_STROKES.md) / [градиентные обводки](GRADIENT_STROKES.ru.md). Earlier lineGradientStyle limitations below describe the historical checkpoint; current RGB/zero-focal stroke support does not close full Flash line semantics or any roadmap stage.
+
+
 The additive [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L50) C89 entry accepts an unsigned selector: [`FVM_GRADIENT_SPREAD_PAD`](../include/flashvm/gradient.h#L20) (0), [`FVM_GRADIENT_SPREAD_REFLECT`](../include/flashvm/gradient.h#L21) (1), or [`FVM_GRADIENT_SPREAD_REPEAT`](../include/flashvm/gradient.h#L22) (2). [`FVM_Gradient`](../include/flashvm/gradient.h#L31) retains its existing layout. The old draw entry continues to select PAD.
 
 For the normalized sample ratio r, repeat uses r-floor(r), a half-open interval. Reflect reduces r modulo two, normalizes negative phases, and reverses the second interval. PAD keeps the existing endpoint and duplicate-stop behavior. Both linear and centered radial gradients use this policy before ordinary RGB, straight RGBA interpolation and the existing color transform, path coverage and compositing stages.
