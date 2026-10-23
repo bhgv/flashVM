@@ -15,7 +15,7 @@ scroll, hscroll, maxscroll и maxhscroll до и после candidate layout. И
 bottomScroll, line spacing или clip rectangle здесь не является триггером.
 Явные scroll/hscroll setters сохраняют прежний контракт.
 
-GeometryNotification обнаруживает потенциальный handler по native property/
+[GeometryNotification](../src/standard/text.cpp#L642) обнаруживает потенциальный handler по native property/
 method/accessor descriptors в prototype chain, учитывая folding SWF6 и version
 visibility. Private registration edge или loaded __resolve descriptor также
 включают observed path. Обнаружение не вызывает getter, resolver или callback.
@@ -74,6 +74,10 @@ onChanged/ввод, Selection/focus, HTML/mixed styles и текст SWF display
 Отклоняемые multiline/automatic dimension операции сохраняют прежние ограничения.
 Реальные устройства и другие платформы проверяются отдельно; стадии audio,
 timelines, graphics, JIT, concurrency, GC и debugger остаются открытыми.
+
+## Проверки
+
+Наблюдатели размеров/раскладки TextField v0.1118–v0.1130: _width/_height, multiline, wordWrap и autoSize сравнивают effective offsets и maxima через независимо измеренный candidate. Потенциальные descriptors, inherited handlers, folding/visibility SWF6 и loaded __resolve обнаруживаются без script. Без потенциальных observers сохраняется lazy admission; observed layout errors возникают до публикации. Commit публикует измеренную геометрию и clamped positions до field-first rooted snapshot delivery; вложенные записи сохраняют итоговое состояние. События от text/style/fonts и изменения только bottomScroll вне этого триггера. Прошли 174 выбранные native text/font/graph/tutorial проверки, десять focused ASan/UBSan и отдельные no-throw callback/no-fault allocation запуски; LeakSanitizer отключён. Обычная сборка перебирает allocation/work failures до/после публикации и ошибки VM/getter/C++. Реальные AVM1 SetMember SWF6–8 совпадают в interpreter/manual/native JIT с native entry counts; dynamic resolver вызывается один раз после публикации. Четыре независимых OS-worker проверяют 128 geometry/GC эпох. Binary/channel receivers сохраняют fonts/listeners после уничтожения sender. SDK-free C89 ABI/admission проходит, три font tutorial явно пропускаются. Переименованный detached-компонент конфигурируется с bundled static fonts; его скопированный C89 checker проходит на native executable без отдельной detached-сборки. Точный callback trace C89: 1 2 1 2 1 1 1, итог scroll=1/hscroll=0. Ввод/onChanged, события text/style, HTML/mixed styles, текст SWF display list, устройства/другие платформы и все девять стадий остаются открытыми. [Контракт](TEXT_GEOMETRY_EVENTS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

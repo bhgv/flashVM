@@ -6,8 +6,9 @@ Dimensions and layout policies now support [geometry range events](TEXT_GEOMETRY
 This series extends the bounded [uniform scroll bridge](TEXT_SCROLL.md).
 The [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)
 describes field-first notification, listener registration and the source field
-argument. The implemented event trigger here is an effective scroll/hscroll change
-from an explicit offset setter. Input, geometry-wide automatic notifications,
+argument. Explicit scroll/hscroll setters notify effective offset changes;
+dimension/layout-policy changes extend this through TEXT_GEOMETRY_EVENTS.md.
+Input, text/style-triggered automatic notifications,
 HTML/mixed styled fields, full reference semantics and physical platforms remain
 open. All nine roadmap stages remain open.
 
@@ -75,7 +76,7 @@ collection between operations traces registered objects and reclaims unreachable
 cycles. Worker coverage uses independent contexts, not concurrent access to one VM.
 Native scroll query, path export and graph capture execute no observer code.
 
-Geometry-wide notifications after text/style/dimension/maxscroll changes,
+Geometry notifications after text/style/font changes,
 onChanged and user input, Selection/focus, HTML/mixed-style text and SWF text
 display-list integration remain open. Tests use analytic layout and executable
 AVM1 fixtures; they are not an original Flash Player binary oracle. Device and

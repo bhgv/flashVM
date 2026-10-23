@@ -7,7 +7,7 @@ Bounded uniform-field scrolling is now supported through scroll/hscroll and the
 read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
 viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).
 Contours include scroll displacement and remain host-clipped. Explicit offset
-changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); geometry-wide
+changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); text/style
 events, HTML/mixed-font and SWF display-list acceptance remain open.
 
 

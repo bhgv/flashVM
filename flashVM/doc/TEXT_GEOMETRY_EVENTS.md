@@ -15,7 +15,7 @@ Unchanged tuples, parent _x/_y and textColor writes do not notify. A change only
 to bottomScroll, line spacing or the clip rectangle is not a trigger here.
 Explicit scroll/hscroll setters retain their existing contract.
 
-GeometryNotification detects potential handlers through native property/method/
+[GeometryNotification](../src/standard/text.cpp#L642) detects potential handlers through native property/method/
 accessor descriptors on the prototype chain, using existing SWF6 folded-name and
 version-visibility rules. A private registration edge or loaded __resolve descriptor
 also admits the observed path. Detection runs no getter, resolver or callback.
@@ -76,6 +76,10 @@ integration remain open. Rejected multiline/automatic dimension operations keep
 their previous limitations. This is no physical-device or foreign-platform
 acceptance claim; audio, timelines, graphics, JIT, concurrency, GC and debugger
 roadmap stages remain open.
+
+## Validation
+
+TextField dimension/layout observers v0.1118–v0.1130: _width/_height, multiline, wordWrap and autoSize compare effective offsets and maxima through an independently measured candidate. Potential observer descriptors, inherited handlers, SWF6 folded names/visibility and loaded __resolve are detected without invoking script. Fields without potential observers retain lazy admission; observed layout errors surface before publication. Commit publishes measured geometry and clamped positions before field-first rooted snapshot delivery; nested writes remain authoritative. Text/style/font events and bottomScroll-only changes remain outside this trigger scope. Validation passes 174 selected native text/font/graph/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw callback and no-fault allocation runs; LeakSanitizer is disabled. Ordinary builds sweep allocation/work failures on both sides of publication and VM/getter/C++ errors. Real SWF6–8 AVM1 SetMember agrees across interpreter/manual/native JIT with native entry counts; dynamic resolver code runs once after publication. Four independent OS workers check 128 geometry/GC epochs. Binary/channel receivers retain fonts/listeners after sender destruction. SDK-free C89 ABI/admission passes; three font tutorials explicitly skip. A renamed detached component configures with bundled static font dependencies and its copied C89 observer checker passes against the native executable; no separate detached build. Exact C89 callback order is 1 2 1 2 1 1 1, final scroll=1/hscroll=0. Input/onChanged, text/style events, HTML/mixed styles, SWF display-list text, device/foreign-platform acceptance and all nine roadmap stages remain open. [Contract](TEXT_GEOMETRY_EVENTS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

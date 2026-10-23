@@ -7,7 +7,7 @@
 read-only maxscroll/maxhscroll/bottomScroll и нативный query viewport.
 [Геометрия и передача состояния](TEXT_SCROLL.ru.md). Контуры учитывают scroll,
 clipping выполняет хост. Явные изменения offsets поддерживают
-[onScroller/listeners](TEXT_SCROLL_EVENTS.ru.md); события всей геометрии,
+[onScroller/listeners](TEXT_SCROLL_EVENTS.ru.md); события от text/style/fonts,
 HTML/mixed-font и SWF display-list приёмка остаются открытыми.
 
 
