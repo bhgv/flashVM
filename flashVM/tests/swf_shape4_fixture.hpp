@@ -11,7 +11,8 @@ static inline Bytes shape4(unsigned int kind = 0x10, unsigned int spread = 0,
     Bytes b; u16(b, 9); Bits rect; rect.put(16, 5);
     rect.put(0, 16); rect.put(320, 16); rect.put(0, 16); rect.put(320, 16);
     append(b, rect.b); append(b, rect.b);
-    if (flags_at) *flags_at = b.size(); b.push_back(0);
+    if (flags_at) *flags_at = b.size();
+    b.push_back(0);
     b.push_back(1); b.push_back((unsigned char)kind); Bits matrix;
     matrix.put(1, 1); matrix.put(11, 5); matrix.put(320, 11); matrix.put(320, 11);
     matrix.put(0, 1); matrix.put(16, 5); matrix.put(160, 16); matrix.put(160, 16);
@@ -23,7 +24,8 @@ static inline Bytes shape4(unsigned int kind = 0x10, unsigned int spread = 0,
         b.push_back(0); b.push_back((unsigned char)ratio); b.push_back(255);
     }
     if (kind == 0x13) u16(b, (unsigned int)focal & 0xffff);
-    if (lines_at) *lines_at = b.size(); b.push_back(0);
+    if (lines_at) *lines_at = b.size();
+    b.push_back(0);
     Bits records; records.put(1, 4); records.put(0, 4);
     records.put(0, 1); records.put(3, 5); records.put(16, 5);
     records.put(0, 16); records.put(0, 16); records.put(1, 1);
