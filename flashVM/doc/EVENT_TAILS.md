@@ -13,6 +13,9 @@ v0.1027: Verify failed clear and write ownership, exception containment, callbac
 
 v0.1028: Check NoMultiple through dequeue, the last exact clock frame and zero allocations across short rejected retries and cancellation.
 
+
+v0.1029: Verify 256 epochs with exact short retries, independent rational PCM, coherent pending observations and queued identity expiry.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -13,6 +13,9 @@ v0.1027: Проверены failed clear/write, исключения, callback r
 
 v0.1028: Проверены NoMultiple до dequeue, последний точный кадр часов и отсутствие аллокаций при коротких retry и отмене.
 
+
+v0.1029: Проверены 256 эпох с короткими retry, независимым рациональным PCM, pending и истечением queued ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
