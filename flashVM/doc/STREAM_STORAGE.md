@@ -40,7 +40,7 @@ allocation-free and requires no callback, device or original VM. It remains vali
 after context/runtime teardown. Null snapshot/output or wrong `struct_size`
 returns INVALID_ARGUMENT and preserves output. Multiple const readers can observe
 a safely published snapshot; synchronize close and retain ownership until return.
-Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L173) exactly once after all readers stop.
+Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L198) exactly once after all readers stop.
 
 This is a deterministic charge for requested owned allocation sizes, **not RSS**.
 Allocator bookkeeping/alignment overhead, stack objects, original VM SWF bytes,
@@ -136,7 +136,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../include/flashvm/swf_stream_sound.h#L173) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../include/flashvm/swf_stream_sound.h#L198) |
 | `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../include/flashvm/swf_stream_sound.h#L72) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../include/flashvm/swf_stream_sound.h#L102) |

@@ -36,7 +36,7 @@ padding могут допускать несколько длин: четыре 
 live и encoded snapshot API по-прежнему выдают непрозрачный ADPCM. Массив counts
 можно освободить сразу после возврата. Snapshot живёт независимо от context/runtime;
 после завершения всех readers/converters освобождается через
-[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L173).
+[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L198).
 
 INVALID_ARGUMENT: неверные/null аргументы, несовпадение размера таблицы, длина выше
 ULONG_MAX, укороченные/лишние байты и ненулевой padding. Ошибки исходного SWF и
@@ -105,9 +105,9 @@ foreign-platform приёмка не заявляется.
 
 ## Диапазоны без выделения памяти (v0.774)
 
-[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L165)(context, stream, block, samples, first, frames,
+[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L190)(context, stream, block, samples, first, frames,
 out, capacity_values, written_values) читает один live root ADPCM block на owner
-контекста. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L169)(snapshot, block, samples,
+контекста. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L194)(snapshot, block, samples,
 first, frames, out, capacity_values, written_values) читает **закодированный**
 неизменяемый snapshot, в том числе после уничтожения VM. Нормализованный PCM
 snapshot возвращает UNSUPPORTED; для него остаётся обычный PCM reader.
@@ -184,9 +184,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:165](../include/flashvm/swf_stream_sound.h#L165) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../include/flashvm/swf_stream_sound.h#L173) |
+| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:190](../include/flashvm/swf_stream_sound.h#L190) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../include/flashvm/swf_stream_sound.h#L198) |
 | `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
-| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:169](../include/flashvm/swf_stream_sound.h#L169) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:194](../include/flashvm/swf_stream_sound.h#L194) |
 | `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:123](../include/flashvm/swf_stream_sound.h#L123) |
 <!-- source-links:end -->

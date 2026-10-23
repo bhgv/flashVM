@@ -7,7 +7,7 @@
 [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L87) — дополнительная C89-функция подготовки.
 Вызывается владельцем контекста до публикации данных worker. Возвращённый
 неизменяемый снимок принадлежит вызывающему; освобождение — через
-[`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L173). После уничтожения контекста/runtime
+[`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L198). После уничтожения контекста/runtime
 reader/converter/output используют снимок без VM, аллокаций, декодирования
 и обратных вызовов. Подготовка не продвигает MovieClip и не открывает устройства.
 
@@ -30,7 +30,7 @@ Flash состоят исключительно из полных пакетов
 частоте и числе каналов. Индексы потока/блока, номера кадров, рекомендованные
 параметры и среднее сохраняются. `sample_count_known` устанавливается;
 размеры и количество сэмплов описывают декодированные данные.
-[`fvm_swf_stream_sound_snapshot_info`](../include/flashvm/swf_stream_sound.h#L140) и [`fvm_swf_stream_sound_snapshot_block_at`](../include/flashvm/swf_stream_sound.h#L144)
+[`fvm_swf_stream_sound_snapshot_info`](../include/flashvm/swf_stream_sound.h#L165) и [`fvm_swf_stream_sound_snapshot_block_at`](../include/flashvm/swf_stream_sound.h#L169)
 возвращают **нормализованное** представление. Исходные live-функции и
 [`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L65) продолжают выдавать оригинальные непрозрачные
 ADPCM-байты. Для сохранения сжатого оригинала используйте raw API. Публичные
@@ -81,9 +81,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:144](../include/flashvm/swf_stream_sound.h#L144) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../include/flashvm/swf_stream_sound.h#L173) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:140](../include/flashvm/swf_stream_sound.h#L140) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:169](../include/flashvm/swf_stream_sound.h#L169) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../include/flashvm/swf_stream_sound.h#L198) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:165](../include/flashvm/swf_stream_sound.h#L165) |
 | `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 <!-- source-links:end -->

@@ -79,7 +79,7 @@ Detailed codec/source contracts: [EN](../../../doc/MP3_AUDIO.md) / [RU](../../..
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Validate/copy input SWF; caller buffer is freed immediately on success |
 | [fvm_swf_stream_sound_at](../../../include/flashvm/swf_stream_sound.h#L55) | Inspect first root codec before preparation; borrowed metadata remains owner-side |
 | [fvm_swf_stream_sound_snapshot_open_pcm_bounded](../../../include/flashvm/swf_stream_sound.h#L102) | Decode and validate complete MP3 history under peak ceiling; publish independent immutable PCM |
-| [fvm_swf_stream_sound_snapshot_info](../../../include/flashvm/swf_stream_sound.h#L140) | Copy effective native geometry without allocation/VM/callback |
+| [fvm_swf_stream_sound_snapshot_info](../../../include/flashvm/swf_stream_sound.h#L165) | Copy effective native geometry without allocation/VM/callback |
 | [fvm_swf_stream_pcm_reader_init](../../../include/flashvm/swf_stream_pcm.h#L40) | Initialize caller cursor borrowing snapshot; no new owner/allocation |
 | [fvm_swf_sound_event_at](../../../include/flashvm/swf_sound.h#L62) | Resolve first root StartSound synchronously before VM destruction |
 | [fvm_swf_sound_info](../../../include/flashvm/swf_sound.h#L134) | Inspect referenced codec and effective MPEG rate/channels; borrowed bytes stay owner-side |
@@ -94,7 +94,7 @@ Detailed codec/source contracts: [EN](../../../doc/MP3_AUDIO.md) / [RU](../../..
 | [fvm_swf_sound_mixer_stop_id](../../../include/flashvm/swf_sound_mixer.h#L120) | Apply native immediate/DECLICK same-ID stop to future composition; no queued-PCM cancellation |
 | [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L143) | Release adopted voices after export quiescence; caller no longer closes a transferred handle |
 | [fvm_swf_sound_voice_close](../../../include/flashvm/swf_sound.h#L128) | Null-safe native voice release after reads stop; no device/VM callback |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L173) | Null-safe native stream release after reader quiescence |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L198) | Null-safe native stream release after reader quiescence |
 
 This is a native exporter, not a movie scheduler. Negative initial latency,
 free-format bitrate, reference MP3 seeking/read-ahead, root stream/event mixing,
@@ -129,7 +129,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
 | `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../../../include/flashvm/swf_stream_sound.h#L173) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:140](../../../include/flashvm/swf_stream_sound.h#L140) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../../../include/flashvm/swf_stream_sound.h#L198) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:165](../../../include/flashvm/swf_stream_sound.h#L165) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |
 <!-- source-links:end -->

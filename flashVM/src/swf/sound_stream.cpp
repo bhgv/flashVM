@@ -759,3 +759,80 @@ extern "C" void fvm_swf_stream_sound_snapshot_close(FVM_SWFStreamSoundSnapshot *
 {
     delete snapshot;
 }
+
+/* Resolve authored timing against immutable normalized storage without allocation or callbacks. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_seek_point(
+    const FVM_SWFStreamSoundSnapshot *snapshot, unsigned int frame,
+    FVM_SWFStreamSoundSeekPoint *out)
+{
+    if (!snapshot || !out || out->struct_size != sizeof(*out) || !frame)
+        return FVM_INVALID_ARGUMENT;
+    if (snapshot->info.format != FVM_SWF_SOUND_PCM_NATIVE &&
+        snapshot->info.format != FVM_SWF_SOUND_PCM_LE)
+        return FVM_UNSUPPORTED;
+    FVM_SWFStreamSoundSeekPoint point;
+    std::memset(&point, 0, sizeof(point));
+    point.struct_size = sizeof(point);
+    point.mp3_aligned = snapshot->prepared_mp3 ? 1 : 0;
+    size_t begin = 0, end = snapshot->blocks.size();
+    while (begin < end)
+    {
+        size_t middle = begin + (end - begin) / 2;
+        if (snapshot->blocks[middle].block.frame < frame)
+            begin = middle + 1;
+        else
+            end = middle;
+    }
+    point.block_index = begin;
+    point.source_frame = FVM_SWF_STREAM_SEEK_EOF_FRAME;
+    if (begin == snapshot->blocks.size())
+    {
+        *out = point;
+        return FVM_OK;
+    }
+    point.source_frame = snapshot->blocks[begin].block.frame;
+    if (!snapshot->prepared_mp3)
+    {
+        *out = point;
+        return FVM_OK;
+    }
+    const FVM_SWFStreamSoundEntry &selected = snapshot->blocks[begin];
+    size_t position = begin ? selected.mp3_decoded_first : 0;
+    int adjustment = begin ? selected.mp3_seek_samples : 0;
+    if (adjustment < 0)
+    {
+        size_t back = (size_t)(-(long)adjustment);
+        if (back > position)
+            return FVM_INVALID_ARGUMENT;
+        position -= back;
+    }
+    else
+    {
+        if ((size_t)adjustment > (size_t)-1 - position)
+            return FVM_OUT_OF_MEMORY;
+        position += (size_t)adjustment;
+    }
+    size_t total = snapshot->pcm.size() / snapshot->info.channels;
+    if (position > total)
+        return FVM_INVALID_ARGUMENT;
+    point.block_index = snapshot->blocks.size();
+    if (position != total)
+    {
+        size_t frame_bytes = snapshot->info.channels * sizeof(short);
+        begin = 0;
+        end = snapshot->blocks.size();
+        /* Upper bound skips empty markers and initial blocks removed by latency. */
+        while (begin < end)
+        {
+            size_t middle = begin + (end - begin) / 2;
+            if (snapshot->blocks[middle].offset / frame_bytes <= position)
+                begin = middle + 1;
+            else
+                end = middle;
+        }
+        point.block_index = begin - 1;
+        point.first = position - snapshot->blocks[point.block_index].offset / frame_bytes;
+    }
+    *out = point;
+    return FVM_OK;
+}

@@ -136,6 +136,31 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open_pcm_inferred(
         FVM_Context *, size_t stream, size_t budget_bytes, FVM_SWFStreamSoundSnapshot **out);
 
+    /* No authored block at/after the requested movie frame. */
+#define FVM_SWF_STREAM_SEEK_EOF_FRAME 0U
+    /* Copied position in normalized PCM; no borrowed storage or VM values. */
+    typedef struct FVM_SWFStreamSoundSeekPoint
+    {
+        size_t struct_size; /* Required exact sizeof this structure. */
+        size_t block_index; /* Actual PCM block; block_count represents EOF. */
+        size_t first; /* Source sample-frame offset within the resolved PCM block. */
+        unsigned int source_frame; /* Selected authored frame, or SEEK_EOF_FRAME when absent. */
+        int mp3_aligned; /* Nonzero only for completely prepared MP3. */
+    } FVM_SWFStreamSoundSeekPoint;
+    /* Resolve the first authored block at/after positive frame, applying signed MP3 alignment.
+     * Prepared MP3 uses original decoded prefix + later block SeekSamples in normalized PCM;
+     * initial block starts at zero because initial latency was already removed. PCM/ADPCM
+     * select block offset zero. Actual PCM may lie in an earlier/later block; source_frame
+     * retains the selected authored frame, including when its position equals exact EOF.
+     * Beyond last authored block succeeds with block_count/0 and SEEK_EOF_FRAME.
+     * Null/wrong struct_size/zero frame or negative/past-end target INVALID_ARGUMENT;
+     * compressed encoded snapshots UNSUPPORTED; arithmetic overflow OUT_OF_MEMORY.
+     * Output unchanged on failure. No allocation, decoding, callbacks, VM access or GC roots.
+     * Immutable concurrent reads allowed after VM teardown; retain owner and synchronize close.
+     * This computes a source position only: hosts retain frame authorization/A-V scheduling. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_seek_point(
+        const FVM_SWFStreamSoundSnapshot *, unsigned int frame, FVM_SWFStreamSoundSeekPoint *);
+
     /* Copy the snapshot header (normalized after open_pcm ADPCM), preserving output on error. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
     /* Query the prepared block count without rescanning the movie. */
