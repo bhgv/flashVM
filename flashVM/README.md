@@ -1,4 +1,4 @@
-Development version: **0.1181** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1182** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1182: [Verified mixed ramp ownership and native sanitizer SDK-free and detached checks](doc/GRADIENT_STROKES.md).
 
 v0.1181: [Documented C89 and AS2 stroke contracts in English and Russian](doc/GRADIENT_STROKES.md).
 
