@@ -21,6 +21,7 @@
 #include "movieclip_point.hpp"
 #include "movieclip_drag.hpp"
 #include "movieclip_constants.h"
+#include "line_style_constants.h"
 #include "movieclip_storage.hpp"
 #include "movieclip_path_constants.h"
 #include "../avm1/display_property_ids.h"
@@ -1366,35 +1367,108 @@ FVM_Result end_fill(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value 
     return FVM_OK;
 }
 
-/* Compute and return line style. */
+/* Compare a coerced script option by counted bytes, rejecting embedded-NUL suffixes. */
+bool line_option(const FVM_Value &value, const char *literal)
+{
+    size_t length = std::strlen(literal);
+    return value.type == FVM_VALUE_STRING && fvm_string_size(value) == length &&
+           (!length || std::memcmp(value.string, literal, length) == 0);
+}
+
+/* Read an optional line scalar; explicit undefined retains the documented default. */
+FVM_Result line_number(FVM_Context *c, unsigned n, const FVM_Value *a, unsigned index,
+                        double fallback, double &out)
+{
+    if (index >= n || a[index].type == FVM_VALUE_UNDEFINED)
+    {
+        out = fallback;
+        return FVM_OK;
+    }
+    return args(c, n, a, index, fallback, out);
+}
+
+/* [GC:] Coerce supported SWF8 line options before publishing any new current style.
+ * SWF1-7 ignore extra arguments without invoking their conversion callbacks. */
+FVM_Result line_options(FVM_Context *c, unsigned n, const FVM_Value *a,
+                         unsigned &cap, unsigned &join)
+{
+    if (c->swf_loaded && c->swf_info.version < FVM_LINE_STYLE_EXTRA_MIN_VERSION)
+        return FVM_OK;
+    if (n > FVM_LINE_STYLE_HINTING && a[FVM_LINE_STYLE_HINTING].type != FVM_VALUE_UNDEFINED)
+    {
+        FVM_Value hint;
+        FVM_Result r = fvm_exec_to_boolean(c, a + FVM_LINE_STYLE_HINTING, &hint);
+        if (r != FVM_OK)
+            return r;
+        if (hint.boolean)
+            return FVM_UNSUPPORTED;
+    }
+    const unsigned indices[] = {FVM_LINE_STYLE_SCALE, FVM_LINE_STYLE_CAP, FVM_LINE_STYLE_JOIN};
+    for (unsigned i = 0; i < sizeof(indices) / sizeof(indices[0]); ++i)
+    {
+        unsigned index = indices[i];
+        if (n <= index || a[index].type == FVM_VALUE_UNDEFINED)
+            continue;
+        FVM_Value option;
+        FVM_Result r = fvm_value_to_string(c, a + index, &option);
+        if (r != FVM_OK)
+            return r;
+        if (index == FVM_LINE_STYLE_SCALE)
+        {
+            if (!line_option(option, "normal"))
+                return FVM_UNSUPPORTED;
+        }
+        else if (index == FVM_LINE_STYLE_CAP)
+        {
+            if (line_option(option, "none")) cap = FVM_STROKE_CAP_BUTT;
+            else if (line_option(option, "square")) cap = FVM_STROKE_CAP_SQUARE;
+            else if (!line_option(option, "round")) return FVM_UNSUPPORTED;
+        }
+        else
+        {
+            if (line_option(option, "bevel")) join = FVM_STROKE_JOIN_BEVEL;
+            else if (!line_option(option, "round")) return FVM_UNSUPPORTED;
+        }
+    }
+    return FVM_OK;
+}
+
+/* [GC:] Stage current line scalars and optional selectors, then publish with one map swap.
+ * Completed paths retain their previous paint and descriptor edges on every outcome. */
 FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, void *)
 {
-
-    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
+    bool enabled = n && a[FVM_LINE_STYLE_WIDTH].type != FVM_VALUE_UNDEFINED;
     double width = 0, rgb = 0, alpha = 100;
-    r = args(c, n, a, 0, 0, width);
-    if (r != FVM_OK || width < 0 || width > 255)
-        return FVM_INVALID_ARGUMENT;
-    r = args(c, n, a, 1, 0, rgb);
-    if (r != FVM_OK)
-        return r;
-    r = args(c, n, a, 2, 100, alpha);
-    if (r != FVM_OK)
-        return r;
-
-    /* Computation / Вычисление и обновление состояния. */
-    data->properties["stroke"] = number(n ? 1 : 0);
-    data->properties["width"] = number(width);
-    data->properties["lineRgb"] = number(packed_rgb(rgb));
-    data->properties["lineAlpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
-    /* [GC:] A new solid/disabled line style releases only the current stroke ramp. */
-    data->properties.erase("lineGradient");
-    data->properties["active"] = object(0);
+    unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
+    if (enabled)
+    {
+        r = line_number(c, n, a, FVM_LINE_STYLE_WIDTH, 0, width);
+        if (r == FVM_OK) r = line_number(c, n, a, FVM_LINE_STYLE_RGB, 0, rgb);
+        if (r == FVM_OK) r = line_number(c, n, a, FVM_LINE_STYLE_ALPHA, 100, alpha);
+        if (r == FVM_OK) r = line_options(c, n, a, cap, join);
+        if (r != FVM_OK)
+            return r;
+    }
+    /* [GC:] Coercion side effects have completed; retain their latest state in the staged map.
+     * All following allocations precede the swap, so OOM cannot partially replace a style. */
+    Properties staged = data->properties;
+    staged["stroke"] = number(enabled ? 1 : 0);
+    staged["width"] = number(width < 0 ? 0 : width > FVM_LINE_STYLE_MAX_WIDTH ? FVM_LINE_STYLE_MAX_WIDTH : width);
+    staged["lineRgb"] = number(packed_rgb(rgb));
+    staged["lineAlpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
+    staged.erase("lineCap");
+    staged.erase("lineJoin");
+    if (cap) staged["lineCap"] = number(cap);
+    if (join) staged["lineJoin"] = number(join);
+    /* [GC:] Release the current gradient only; previous paths retain their own ramp. */
+    staged.erase("lineGradient");
+    staged["active"] = object(0);
+    data->properties.swap(staged);
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1448,6 +1522,14 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         {
             /* [GC:] Keep this path's stroke ramp independent of later style changes. */
             part->properties["lineGradient"] = data->properties["lineGradient"];
+        }
+        /* Optional selectors preserve legacy round graphs while retaining each new path's style. */
+        const char *selectors[] = {"lineCap", "lineJoin"};
+        for (unsigned i = 0; i < sizeof(selectors) / sizeof(selectors[0]); ++i)
+        {
+            Properties::iterator selected = data->properties.find(selectors[i]);
+            if (selected != data->properties.end())
+                part->properties[selectors[i]] = selected->second;
         }
         const char *style[] = {"fill", "rgb", "alpha", "stroke", "width", "lineRgb", "lineAlpha"};
         for (unsigned int i = 0; i < 7; ++i)
@@ -1564,6 +1646,8 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     data->properties.erase("gradient");
     /* [GC:] Clearing disables strokes and releases their current descriptor as well. */
     data->properties.erase("lineGradient");
+    data->properties.erase("lineCap");
+    data->properties.erase("lineJoin");
     /* [GC:] Release only the current bitmap style; completed paths retain their own source. */
     data->properties.erase("bitmap");
     fvm_value_undefined(out);
