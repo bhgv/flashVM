@@ -1,5 +1,7 @@
 # Торцы и соединения ActionScript lineStyle
 
+Текущая поправка round/hairline: [контракт](ROUND_STROKE_BOUNDS.ru.md). Прежняя отдельная round-only политика ниже является исторической.
+
 [MovieClip.lineStyle](../src/standard/movieclip.cpp#L1438) связывает поддержанные строки параметров Flash Player 8 с
 той же геометрией штриха, которая используется восстановленными LINESTYLE2.
 Поддержаны round, none (butt), square и round/bevel для сплошных, линейных,

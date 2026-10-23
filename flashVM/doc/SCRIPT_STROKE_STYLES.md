@@ -1,5 +1,7 @@
 # ActionScript lineStyle cap and join options
 
+Current round/hairline correction: [contract](ROUND_STROKE_BOUNDS.md). The separate legacy round-only policy described below is historical.
+
 [MovieClip.lineStyle](../src/standard/movieclip.cpp#L1438) now connects supported Flash Player 8 option strings to the
 same selected stroke geometry used by restored LINESTYLE2 records. It supports
 round, none (butt) and square caps and round/bevel joins on solid and linear,

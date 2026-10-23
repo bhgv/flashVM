@@ -1818,11 +1818,9 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
             r = stroke_selectors(i->second.object, cap, join);
             if (r != FVM_OK)
                 return r;
-            bool selected = cap != FVM_STROKE_CAP_ROUND || join != FVM_STROKE_JOIN_ROUND;
             double effective = width ? width * scale : 1;
             FVM_PathBounds selected_bounds;
             int has_segments = 0;
-            if (selected)
             {
                 if (!(width >= 0 && effective >= 0))
                     return FVM_INVALID_ARGUMENT;
@@ -1836,8 +1834,6 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
                 if (r != FVM_OK && r != FVM_UNSUPPORTED)
                     return r;
             }
-            else
-                r = FVM_UNSUPPORTED;
             if (r == FVM_OK)
             {
                 FVM_Value fill;
@@ -1856,9 +1852,9 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
             }
             else
             {
-                /* Preserve legacy round bounds; curved square ends need a wider conservative
-                 * envelope than a circular half-width to avoid clipping diagonal extensions. */
-                double radius = selected ? effective / 2 : width * scale / 2;
+                /* Curves retain a conservative envelope; all caps include the effective
+                 * hairline width, and square ends also require their diagonal reach. */
+                double radius = effective / 2;
                 if (cap == FVM_STROKE_CAP_SQUARE)
                     radius *= FVM_STROKE_SQUARE_BOUND_FACTOR;
                 b.x_min -= radius;

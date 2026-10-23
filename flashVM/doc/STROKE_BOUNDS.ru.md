@@ -1,5 +1,7 @@
 # Границы прямолинейных штрихов с выбранными стилями
 
+Текущая поправка round/hairline: [контракт](ROUND_STROKE_BOUNDS.ru.md). Прежняя отдельная round-only политика ниже является исторической.
+
 Поддержанные cap/join параметры script lineStyle связаны в [SCRIPT_STROKE_STYLES.ru.md](SCRIPT_STROKE_STYLES.ru.md). Прежние файловые/нативные checkpoints ниже не подтверждают полную расширенную AS2-семантику.
 
 MovieClip.getBounds и потребители общего обхода геометрии учитывают торцы и

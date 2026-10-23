@@ -14,7 +14,7 @@ int main() {
   }
   const FVM_Affine collapsed={0,0,0,0,20,20}; assert(fvm_movieclip_set_matrix(c,node,&collapsed)==FVM_OK);
   FVM_PathBounds empty; assert(clip_bounds(c,root,&empty)==FVM_OK);
-  if(cap || join) bounds_equal(empty,0,0,0,0); else bounds_equal(empty,20,20,20,20);
+  bounds_equal(empty,0,0,0,0);
   assert(fvm_gc_unpin(c,root)==FVM_OK); assert(fvm_gc_collect(c,0)==FVM_OK);
  }
  fvm_context_destroy(c); fvm_runtime_destroy(rt); return 0;

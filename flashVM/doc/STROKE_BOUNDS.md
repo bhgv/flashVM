@@ -1,5 +1,7 @@
 # Selected straight-stroke bounds
 
+Current round/hairline correction: [contract](ROUND_STROKE_BOUNDS.md). The separate legacy round-only policy described below is historical.
+
 Supported script lineStyle cap/join options are now connected in [SCRIPT_STROKE_STYLES.md](SCRIPT_STROKE_STYLES.md). Earlier file/native checkpoints below do not imply complete extended AS2 semantics.
 
 MovieClip.getBounds and the geometry consumers that share its traversal now use
