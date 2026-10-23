@@ -1,4 +1,4 @@
-Версия разработки: **0.1262** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1263** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1263: [Четыре потока сохраняют геометрию концов и соединений в 96 независимых циклах](doc/STROKE_CAPS.ru.md).
 
 v0.1262: [Замена персонажа и шестнадцать перемоток восстанавливают стили bitmap и градиентных обводок](doc/STROKE_CAPS.ru.md).
 
