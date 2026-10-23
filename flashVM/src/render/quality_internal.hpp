@@ -27,6 +27,11 @@ FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *, FVM_RasterSurface *
                                            const FVM_Gradient *, double width, int even_odd,
                                            unsigned int spread, unsigned int interpolation,
                                            bool antialias);
+/* Explicit interior radial focal sampling; focal zero retains the legacy center path. */
+FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *, FVM_RasterSurface *,
+                                           const FVM_Gradient *, double width, int even_odd,
+                                           unsigned int spread, unsigned int interpolation,
+                                           double focal, bool antialias);
 /* A zero width selects fill coverage; a positive width selects backend stroke coverage. */
 FVM_Result fvm_path_mask_width_quality(const FVM_Path *, FVM_RasterSurface *,
                                        const FVM_RasterSurface *, double width,

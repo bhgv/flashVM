@@ -77,6 +77,19 @@ extern "C"
                                                              const FVM_Gradient *, double width,
                                                              unsigned int spread,
                                                              unsigned int interpolation);
+    /* Add an explicit radial focal position without changing FVM_Gradient layout.
+       Focal must be finite and strictly inside (-1,1); zero keeps centered sampling.
+       Nonzero focal requires RADIAL geometry. Borrow inputs for this synchronous call.
+       Width/spread/interpolation and failure atomicity match the interpolated entries. */
+    FVM_API FVM_Result fvm_path_draw_gradient_focal(const FVM_Path *, FVM_RasterSurface *,
+                                                    const FVM_Gradient *, int even_odd,
+                                                    unsigned int spread, unsigned int interpolation,
+                                                    double focal);
+    /* Stroke with a positive destination-space width and the same interior focal contract. */
+    FVM_API FVM_Result fvm_path_stroke_gradient_focal(const FVM_Path *, FVM_RasterSurface *,
+                                                      const FVM_Gradient *, double width,
+                                                      unsigned int spread, unsigned int interpolation,
+                                                      double focal);
 #ifdef __cplusplus
 }
 #endif

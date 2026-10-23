@@ -1,4 +1,4 @@
-Development version: **0.1196** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1197** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1197: [Added radial interior focal API and zero-focal legacy byte identity checks](doc/FOCAL_GRADIENTS.md).
 
 v0.1196: [Recorded native sanitizer SDK-free and detached verification without closing roadmap stages](doc/LINEAR_RGB_GRADIENTS.md).
 

@@ -43,6 +43,23 @@ double spread_ratio(double ratio, unsigned int spread)
     return ratio;
 }
 
+/* Solve the ray from an interior focal point to the unit circle, avoiding cancellation. */
+double focal_ratio(double x, double y, double focal)
+{
+    if (focal == 0)
+        return std::sqrt(x * x + y * y); /* Preserve centered sampling byte for byte. */
+    double dx = x - focal;
+    double distance_squared = dx * dx + y * y;
+    if (distance_squared == 0)
+        return 0; /* The focal point itself starts the color ramp. */
+    double remaining = (1 - focal) * (1 + focal);
+    double root = std::sqrt(dx * dx + remaining * y * y);
+    double projection = focal * dx;
+    if (projection < 0)
+        return distance_squared / (root - projection);
+    return (root + projection) / remaining;
+}
+
 /* Decode a normalized sRGB channel into linear light without touching alpha. */
 double linear_light(double value)
 {
@@ -216,6 +233,18 @@ FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *path, FVM_RasterSurfa
                                            unsigned int spread, unsigned int interpolation,
                                            bool antialias)
 {
+    return fvm_path_gradient_focal_quality(path, surface, gradient, width, even_odd,
+                                            spread, interpolation, 0, antialias);
+}
+/* Validate focal geometry before allocating sampled colors or touching destination pixels. */
+FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *path, FVM_RasterSurface *surface,
+                                           const FVM_Gradient *gradient, double width, int even_odd,
+                                           unsigned int spread, unsigned int interpolation,
+                                           double focal, bool antialias)
+{
+    if (!(focal > -1 && focal < 1) ||
+        (focal != 0 && (!gradient || gradient->type != FVM_GRADIENT_RADIAL)))
+        return FVM_INVALID_ARGUMENT;
     if (!(width >= 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH) ||
         (interpolation != FVM_GRADIENT_INTERPOLATION_RGB &&
          interpolation != FVM_GRADIENT_INTERPOLATION_LINEAR_RGB))
@@ -251,7 +280,7 @@ FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *path, FVM_RasterSurfa
                 double gx = inverse.xx * (x + 0.5) + inverse.xy * (y + 0.5) + inverse.x0;
                 double gy = inverse.yx * (x + 0.5) + inverse.yy * (y + 0.5) + inverse.y0;
                 double ratio = gradient->type == FVM_GRADIENT_LINEAR ? (gx + 1) / 2
-                                                                     : std::sqrt(gx * gx + gy * gy);
+                                                                     : focal_ratio(gx, gy, focal);
                 FVM_RasterColor color = sample(*gradient, spread_ratio(ratio, spread), interpolation, linear_colors);
                 unsigned char *p = pixels.begin() + y * stride + x * 4;
                 p[0] = color.r;
@@ -286,4 +315,23 @@ extern "C" FVM_Result fvm_path_stroke_gradient_interpolated(const FVM_Path *path
         return FVM_INVALID_ARGUMENT;
     return fvm_path_gradient_paint_quality(path, surface, gradient, width, 0, spread,
                                             interpolation, true);
+}
+
+/* Fill using explicit interior focal geometry and the existing spread/color selectors. */
+extern "C" FVM_Result fvm_path_draw_gradient_focal(const FVM_Path *path,
+    FVM_RasterSurface *surface, const FVM_Gradient *gradient, int even_odd,
+    unsigned int spread, unsigned int interpolation, double focal)
+{
+    return fvm_path_gradient_focal_quality(path, surface, gradient, 0, even_odd,
+                                            spread, interpolation, focal, true);
+}
+/* Keep zero distinct from stroke coverage while borrowing the complete focal description. */
+extern "C" FVM_Result fvm_path_stroke_gradient_focal(const FVM_Path *path,
+    FVM_RasterSurface *surface, const FVM_Gradient *gradient, double width,
+    unsigned int spread, unsigned int interpolation, double focal)
+{
+    if (!(width > 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH))
+        return FVM_INVALID_ARGUMENT;
+    return fvm_path_gradient_focal_quality(path, surface, gradient, width, 0,
+                                            spread, interpolation, focal, true);
 }
