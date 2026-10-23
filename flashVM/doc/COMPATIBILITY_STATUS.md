@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Checkpoint v0.1421 / Контрольная точка v0.1421: 325 native, 79 no-graphics, 79 ASan/UBSan tests pass. Exact adaptive relative vectors extend linear Bezier bounds; arbitrary curves, transform metrics, reference/devices and all nine stages remain open. [EN](ADAPTIVE_CURVE_BOUNDS.md) / [RU](ADAPTIVE_CURVE_BOUNDS.ru.md).
+
 Adaptive exact linear vectors / Адаптивные точные линейные векторы: [EN](ADAPTIVE_CURVE_BOUNDS.md) / [RU](ADAPTIVE_CURVE_BOUNDS.ru.md). Exact subtraction and integral scaled vectors extend non-round segment bounds beyond the absolute lattice; all nine stages remain open.
 
 Checkpoint v0.1400 / Контрольная точка v0.1400: 307 native, 61 no-graphics, 61 ASan/UBSan tests pass. Certified lattice-linear Beziers and bounded unordered controls share exact segment caps/joins. General non-round curves, transform metrics, reference/devices and all nine stages remain open. [EN](LINEAR_CURVE_BOUNDS.md) / [RU](LINEAR_CURVE_BOUNDS.ru.md).

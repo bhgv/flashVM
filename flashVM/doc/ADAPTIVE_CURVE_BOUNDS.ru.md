@@ -14,6 +14,31 @@ Managed quadratic использует результат в getBounds, разм
 
 Это ограниченный точный предикат, не полный adaptive-precision orientation. Общие non-round кривые, все произвольные double-векторы, новая метрика nonuniform/shear, miter/hinting/non-scaling, полная Flash/reference-приёмка, Cairo и физические платформы остаются открытыми. Все девять этапов roadmap открыты.
 
+## Проверенная контрольная точка v0.1421
+
+21 локальный коммит v0.1401–v0.1421 поверх опубликованного master v0.1400. Пройдены 325 выбранных нативных AGG/JIT-тестов, 79 тестов без графики и 79 ASan/UBSan с окончательным C89-примером и vector_paths; LeakSanitizer отключён. Восемнадцать новых fixtures проверяют оба порядка кривых, шесть стилей, направление, перенос до 999000, двоичные масштабы и нормализованную геометрию при масштабе 2^-400, сохранность обоих результатов при потерянном остатке/underflow/избыточной разрядности, контуры, managed geometry/hairline/mixed/dimensions/hitTest, 96 сочетаний качества/paint/style, 24 графа через binary/channel после удаления отправителя и четыре OS-потока с 96 bounds/GC эпохами. Существующие JIT/таймлайн/allocation тесты являются регрессиями, а не новой полной reference-приёмкой подсистем. Пройдены source/example/diff checks. Другие представления double, режимы округления, Cairo и физические устройства не проверялись; все девять этапов открыты.
+
+| Fixture | Проверка |
+| --- | --- |
+| [path_adaptive_curve_quadratic](../tests/path_adaptive_curve_quadratic.cpp) | Компактные quadratic |
+| [path_adaptive_curve_cubic](../tests/path_adaptive_curve_cubic.cpp) | Компактные cubic |
+| [path_adaptive_curve_reverse](../tests/path_adaptive_curve_reverse.cpp) | Обратное направление |
+| [path_adaptive_curve_translation](../tests/path_adaptive_curve_translation.cpp) | Большие и дробные переносы |
+| [path_adaptive_curve_scales](../tests/path_adaptive_curve_scales.cpp) | Двоичные масштабы |
+| [path_adaptive_curve_small](../tests/path_adaptive_curve_small.cpp) | Малые нормализуемые тангенсы |
+| [path_adaptive_curve_subtraction](../tests/path_adaptive_curve_subtraction.cpp) | Потеря остатка вычитания |
+| [path_adaptive_curve_underflow](../tests/path_adaptive_curve_underflow.cpp) | Underflow нормы тангенса |
+| [path_adaptive_curve_precision](../tests/path_adaptive_curve_precision.cpp) | Избыточная разрядность |
+| [path_adaptive_curve_contours](../tests/path_adaptive_curve_contours.cpp) | Изолированные Move |
+| [movieclip_adaptive_curve_geometry](../tests/movieclip_adaptive_curve_geometry.cpp) | Managed getBounds/getRect |
+| [movieclip_adaptive_curve_hairline](../tests/movieclip_adaptive_curve_hairline.cpp) | Hairline |
+| [movieclip_adaptive_curve_mixed](../tests/movieclip_adaptive_curve_mixed.cpp) | Смешанная заливка |
+| [movieclip_adaptive_curve_dimensions](../tests/movieclip_adaptive_curve_dimensions.cpp) | Размеры MovieClip |
+| [movieclip_adaptive_curve_hitbox](../tests/movieclip_adaptive_curve_hitbox.cpp) | Bounding hitTest |
+| [movieclip_adaptive_curve_quality](../tests/movieclip_adaptive_curve_quality.cpp) | Качество и виды paint |
+| [movieclip_adaptive_curve_transfer](../tests/movieclip_adaptive_curve_transfer.cpp) | Binary/channel после teardown |
+| [movieclip_adaptive_curve_threads](../tests/movieclip_adaptive_curve_threads.cpp) | Независимые потоки и GC |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

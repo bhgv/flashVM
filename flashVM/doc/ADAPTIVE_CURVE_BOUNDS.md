@@ -14,6 +14,31 @@ Managed quadratic paths share the result through getBounds, dimensions and non-s
 
 This is a bounded exact predicate, not a complete adaptive-precision orientation implementation. General non-round curves, all arbitrary double vectors, new nonuniform/shear metrics, miter/hinting/non-scaling, full Flash/reference acceptance, Cairo and physical platforms remain open. All nine roadmap stages remain open.
 
+## Verified checkpoint v0.1421
+
+21 local commits v0.1401–v0.1421 on published master v0.1400. Validation passes 325 selected native AGG/JIT tests, 79 no-graphics tests and 79 ASan/UBSan tests with the final C89 tutorial and vector_paths; LeakSanitizer is disabled. Eighteen new fixtures cover both curve degrees, six styles, direction, origins up to 999000, binary scales and normalized geometry at scale 2^-400, transactional residual-loss/underflow/precision rejection, contours, managed geometry/hairline/mixed/dimensions/hitTest, 96 quality/paint/style combinations, 24 graphs through binary/channel after sender teardown, and four OS workers with 96 bounds/GC epochs. Existing JIT/timeline/allocation tests are regressions rather than new complete reference acceptance of those subsystems. Source/example/diff checks pass. Other double representations, rounding modes, Cairo and physical devices were not tested; all nine stages remain open.
+
+| Fixture | Coverage |
+| --- | --- |
+| [path_adaptive_curve_quadratic](../tests/path_adaptive_curve_quadratic.cpp) | Measure compact quadratic curves beyond the fixed lattice |
+| [path_adaptive_curve_cubic](../tests/path_adaptive_curve_cubic.cpp) | Measure compact unordered cubic segment bounds |
+| [path_adaptive_curve_reverse](../tests/path_adaptive_curve_reverse.cpp) | Retain adaptive vector bounds in reverse traversal |
+| [path_adaptive_curve_translation](../tests/path_adaptive_curve_translation.cpp) | Use exact local vectors after large and fractional translations |
+| [path_adaptive_curve_scales](../tests/path_adaptive_curve_scales.cpp) | Normalize segment bounds across binary scale exponents |
+| [path_adaptive_curve_small](../tests/path_adaptive_curve_small.cpp) | Retain normalized geometry for very small nonzero tangents |
+| [path_adaptive_curve_subtraction](../tests/path_adaptive_curve_subtraction.cpp) | Preserve outputs when origin subtraction loses a residual |
+| [path_adaptive_curve_underflow](../tests/path_adaptive_curve_underflow.cpp) | Retain fallback when the segment tangent norm underflows |
+| [path_adaptive_curve_precision](../tests/path_adaptive_curve_precision.cpp) | Reject excessive vector precision without epsilon |
+| [path_adaptive_curve_contours](../tests/path_adaptive_curve_contours.cpp) | Exclude isolated moves from compact curve extents |
+| [movieclip_adaptive_curve_geometry](../tests/movieclip_adaptive_curve_geometry.cpp) | Use certified adaptive curve bounds through managed geometry queries |
+| [movieclip_adaptive_curve_hairline](../tests/movieclip_adaptive_curve_hairline.cpp) | Measure one-unit adaptive curve hairlines |
+| [movieclip_adaptive_curve_mixed](../tests/movieclip_adaptive_curve_mixed.cpp) | Union filled path boxes with certified adaptive strokes |
+| [movieclip_adaptive_curve_dimensions](../tests/movieclip_adaptive_curve_dimensions.cpp) | Expose tight adaptive curve width and height observers |
+| [movieclip_adaptive_curve_hitbox](../tests/movieclip_adaptive_curve_hitbox.cpp) | Apply tight adaptive curve boxes to non-shape point hits |
+| [movieclip_adaptive_curve_quality](../tests/movieclip_adaptive_curve_quality.cpp) | Retain adaptive bounds across paints and stage qualities |
+| [movieclip_adaptive_curve_transfer](../tests/movieclip_adaptive_curve_transfer.cpp) | Retain adaptive curves after binary and channel sender teardown |
+| [movieclip_adaptive_curve_threads](../tests/movieclip_adaptive_curve_threads.cpp) | Measure and collect adaptive curves on isolated worker runtimes |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
