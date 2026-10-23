@@ -93,14 +93,14 @@ Existing runtime and mixer contracts: [runtime declarations](../../../include/fl
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release managed source before every replay operation |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source runtime before native cloning/output |
 | [fvm_swf_sound_voice_storage_info](../../../include/flashvm/swf_sound.h#L101) | Observe exact template storage to reserve its retained charge |
-| [fvm_swf_sound_mixer_create_bounded](../../../include/flashvm/swf_sound_mixer.h#L55) | Allocate configured mixer only when its fixed storage fits remaining bytes |
-| [fvm_swf_sound_mixer_storage_info](../../../include/flashvm/swf_sound_mixer.h#L98) | Subtract fixed mixer storage before preparing a clone |
+| [fvm_swf_sound_mixer_create_bounded](../../../include/flashvm/swf_sound_mixer.h#L65) | Allocate configured mixer only when its fixed storage fits remaining bytes |
+| [fvm_swf_sound_mixer_storage_info](../../../include/flashvm/swf_sound_mixer.h#L108) | Subtract fixed mixer storage before preparing a clone |
 | [fvm_swf_sound_voice_seek](../../../include/flashvm/swf_sound.h#L123) | Keep template at EOF and restart each independently owned copy without decode/allocation |
 | [fvm_swf_sound_voice_clone](../../../include/flashvm/swf_sound.h#L111) | Allocate independent current-progress PCM/envelope owner within remaining bytes; no VM |
-| [fvm_swf_sound_mixer_submit_prepared_bounded](../../../include/flashvm/swf_sound_mixer.h#L86) | Recheck aggregate mixer/clone bytes, consume and clear copy only on success |
-| [fvm_swf_sound_mixer_read](../../../include/flashvm/swf_sound_mixer.h#L114) | Read only finite authorized frames; scalar capacity/written count channel values |
+| [fvm_swf_sound_mixer_submit_prepared_bounded](../../../include/flashvm/swf_sound_mixer.h#L96) | Recheck aggregate mixer/clone bytes, consume and clear copy only on success |
+| [fvm_swf_sound_mixer_read](../../../include/flashvm/swf_sound_mixer.h#L124) | Read only finite authorized frames; scalar capacity/written count channel values |
 | [fvm_swf_sound_voice_close](../../../include/flashvm/swf_sound.h#L128) | Release untransferred copy or retained template after all borrowers stop |
-| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L133) | Release adopted owners after every native read is quiescent |
+| [fvm_swf_sound_mixer_close](../../../include/flashvm/swf_sound_mixer.h#L143) | Release adopted owners after every native read is quiescent |
 
 The checker uses independent FWS/CWS PCM/range/loop/envelope and ADPCM vectors,
 all six MP3 geometries with optional full FFmpeg PCM, exact lengths, identical
@@ -122,11 +122,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:133](../../../include/flashvm/swf_sound_mixer.h#L133) |
-| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:55](../../../include/flashvm/swf_sound_mixer.h#L55) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:114](../../../include/flashvm/swf_sound_mixer.h#L114) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:98](../../../include/flashvm/swf_sound_mixer.h#L98) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:86](../../../include/flashvm/swf_sound_mixer.h#L86) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:143](../../../include/flashvm/swf_sound_mixer.h#L143) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../../../include/flashvm/swf_sound_mixer.h#L65) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:124](../../../include/flashvm/swf_sound_mixer.h#L124) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:108](../../../include/flashvm/swf_sound_mixer.h#L108) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:96](../../../include/flashvm/swf_sound_mixer.h#L96) |
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../../../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../../../include/flashvm/swf_sound.h#L128) |
 | `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../../../include/flashvm/swf_sound.h#L114) |

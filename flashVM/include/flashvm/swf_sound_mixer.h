@@ -43,6 +43,16 @@ extern "C"
      * voice. Output is an exact integer-valued double, not seconds, a device clock or a seek. */
     FVM_API FVM_Result fvm_swf_sound_voice_output_frames(const FVM_SWFSoundVoice *,
                                                          unsigned int output_rate, double *out);
+#define FVM_SWF_SOUND_MIXER_MAX_HORIZON 65536UL /* Bounded output-frame lookahead, not total event duration. */
+    /* Query min(maximum,longest remaining active slot duration) on the CURRENT mixer grid.
+     * maximum is 1..MAX_HORIZON. Includes converted lookahead/fractional phase, remaining
+     * repeats and the shorter of source/release duration; silent-valued samples still count.
+     * OK with zero when empty. Null/bad maximum INVALID_ARGUMENT, required out preserved
+     * on failure. No PCM reads, phase change, allocation, callbacks, VM or GC. Externally
+     * serialize mixer and retain it through return. This is a bounded production horizon,
+     * not a queued identity deadline, seconds, physical audibility or a seek operation. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_active_frames(const FVM_SWFSoundMixer *,
+                                                        size_t maximum, size_t *out);
     /* Create with explicit conversion policy; clear *out on all failures, copy caller config on
      * success. */
     FVM_API FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *,

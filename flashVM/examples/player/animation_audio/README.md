@@ -133,8 +133,8 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 | [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Привязывает HostInput в context; [API index](../../../doc/API_INDEX.md). |
 | [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Обновляет отдельные scalar-поля host-снимка перед кадром; [API index](../../../doc/API_INDEX.md). |
 | [`fvm_movieclip_set_sound_callback`](../../../include/flashvm/movieclip.h#L21) | Синхронно доставляет настоящий root StartSound до DoAction; [contract](../../../doc/MOVIECLIP_SOUND.md). |
-| [`fvm_swf_sound_mixer_submit`](../../../include/flashvm/swf_sound_mixer.h#L66) | Готовит независимый native voice или применяет stop/no-multiple; [mixer](../../../doc/SWF_SOUND_MIXER.md). |
-| [`fvm_swf_sound_mixer_create_configured`](../../../include/flashvm/swf_sound_mixer.h#L48) | Выделяет bounded mixer и явно выбирает 48 kHz stereo conversion; [conversion](../../../doc/SWF_SOUND_CONVERSION.md). |
+| [`fvm_swf_sound_mixer_submit`](../../../include/flashvm/swf_sound_mixer.h#L76) | Готовит независимый native voice или применяет stop/no-multiple; [mixer](../../../doc/SWF_SOUND_MIXER.md). |
+| [`fvm_swf_sound_mixer_create_configured`](../../../include/flashvm/swf_sound_mixer.h#L58) | Выделяет bounded mixer и явно выбирает 48 kHz stereo conversion; [conversion](../../../doc/SWF_SOUND_CONVERSION.md). |
 | [`fvm_swf_sound_output_pump`](../../../include/flashvm/swf_sound_output.h#L124) | Готовит/повторяет один PCM-блок; [output](../../../doc/SWF_SOUND_OUTPUT.md#pump-and-retry). |
 | [`fvm_swf_sound_output_pause`](../../../include/flashvm/swf_sound_output.h#L126) | Управляет потреблением при воспроизведении/Android background; [pause](../../../doc/SWF_SOUND_OUTPUT.md#pause-and-copied-clock). |
 | [`fvm_swf_sound_output_stop`](../../../include/flashvm/swf_sound_output.h#L132) | Удаляет очередь, pending и голоса перед закрытием; [stop](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
@@ -189,9 +189,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../../../include/flashvm/movieclip.h#L21) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../../../include/flashvm/value.h#L87) |
-| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../../../include/flashvm/swf_sound_mixer.h#L48) |
+| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:58](../../../include/flashvm/swf_sound_mixer.h#L58) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../../../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:66](../../../include/flashvm/swf_sound_mixer.h#L66) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:76](../../../include/flashvm/swf_sound_mixer.h#L76) |
 | `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:126](../../../include/flashvm/swf_sound_output.h#L126) |
 | `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:124](../../../include/flashvm/swf_sound_output.h#L124) |
 | `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:134](../../../include/flashvm/swf_sound_output.h#L134) |

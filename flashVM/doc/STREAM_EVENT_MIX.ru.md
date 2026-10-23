@@ -17,7 +17,7 @@
 База и все голоса попадают в общий ограниченный широкий аккумулятор; насыщение
 выполняется один раз в конце прохода. База -30000 и два голоса +30000 дают +30000.
 Если сначала обрезать сумму голосов до S16, затем прибавить базу, получится неверное
-+2767. Без активных голосов база сохраняется. Прежний [fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L114)
++2767. Без активных голосов база сохраняется. Прежний [fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L124)
 сохраняет нулевую базу и тишину после окончания голосов. Оба входа используют
 одни часы голосов и могут чередоваться при внешней сериализации. Конверсия,
 циклы, envelope и stop сохраняют прежний контракт mixer/voice.
@@ -109,6 +109,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:126](../include/flashvm/swf_sound_mixer.h#L126) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
+| `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:136](../include/flashvm/swf_sound_mixer.h#L136) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:124](../include/flashvm/swf_sound_mixer.h#L124) |
 <!-- source-links:end -->

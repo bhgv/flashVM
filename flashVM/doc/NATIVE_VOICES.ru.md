@@ -60,12 +60,12 @@ frames_per_play либо EOF (play_count,0). Пустой голос/ноль п
 
 ## v0.786: общий бюджет владения микшера
 
-[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L98) возвращает память объекта/рабочих массивов/
+[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L108) возвращает память объекта/рабочих массивов/
 слотов микшера, всех голосов и проверенную сумму. Хвосты release и голоса с
 lookahead конвертера учитываются до реального освобождения слота. Ошибка
 аргументов сохраняет результат. Нет обращения к VM, callbacks или аллокаций.
 
-[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L86) дополняет прежнюю передачу голоса
+[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L96) дополняет прежнюю передачу голоса
 общим пределом памяти объекта, слотов и голосов. Отказ по бюджету сохраняет
 указатель/позицию нового голоса и старые слоты. NoMultiple и завершённый голос
 потребляют ненужного владельца без увеличения памяти даже при нулевом бюджете.
@@ -73,7 +73,7 @@ lookahead конвертера учитываются до реального о
 накладные расходы аллокатора и внешние шаблоны не входят в сумму. Сериализуйте
 всех владельцев; callbacks, VM и аллокаций нет.
 
-[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L104) проверяет совпадающий ID среди голосов без
+[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L114) проверяет совпадающий ID среди голосов без
 release, как SyncNoMultiple. Допустимы ID 1..65535; ошибка сохраняет выход.
 Запрос ничего не резервирует: проверка повторяется при передаче под mutex.
 `swf_sound_mixer_storage` запрещает аллокации после teardown VM и проверяет
@@ -122,7 +122,7 @@ Linux/dummy не означает проверку аппаратуры, ThreadS
 
 ## v0.789: проверка фиксированной памяти до создания микшера
 
-[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L55) дополняет configured-создание пределом
+[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L65) дополняет configured-создание пределом
 памяти объекта/рабочих массивов/слотов. Сначала проверяет конфигурацию, затем
 размеры и переполнение до обеих аллокаций. Нулевой/недостаточный бюджет даёт OOM
 и нулевой выход; прочие ошибки конфигурации сохраняются. Нет callbacks,
@@ -199,10 +199,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
-| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:104](../include/flashvm/swf_sound_mixer.h#L104) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:98](../include/flashvm/swf_sound_mixer.h#L98) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:86](../include/flashvm/swf_sound_mixer.h#L86) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../include/flashvm/swf_sound_mixer.h#L65) |
+| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:108](../include/flashvm/swf_sound_mixer.h#L108) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:96](../include/flashvm/swf_sound_mixer.h#L96) |
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |

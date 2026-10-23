@@ -7,7 +7,7 @@ rates/channels into one native signed-16 output clock, such as 48000 Hz stereo.
 It extends [incremental StartSound mixing](SWF_SOUND_MIXER.md) and accepts events
 from the [actual root timeline callback](MOVIECLIP_SOUND.md).
 
-Conversion is opt-in. The existing [`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L61) stays strict:
+Conversion is opt-in. The existing [`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L71) stays strict:
 non-SWF output rates and mismatched voice geometry retain their previous errors.
 Its [`FVM_SWFSoundMixerInfo`](../include/flashvm/swf_sound_mixer.h#L13) ABI is unchanged. Existing same-geometry mixing uses
 the previous direct path, including when conversion is enabled but unnecessary.
@@ -141,10 +141,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
-| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:71](../include/flashvm/swf_sound_mixer.h#L71) |
+| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:58](../include/flashvm/swf_sound_mixer.h#L58) |
 | `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:58](../include/flashvm/swf_sound_mixer.h#L58) |
+| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:68](../include/flashvm/swf_sound_mixer.h#L68) |
 | `FVM_SWF_SOUND_MIXER_MAX_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:26](../include/flashvm/swf_sound_mixer.h#L26) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
 | `FVM_SWF_SOUND_MIXER_MIN_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:25](../include/flashvm/swf_sound_mixer.h#L25) |

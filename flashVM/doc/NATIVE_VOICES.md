@@ -60,12 +60,12 @@ progress, empty and zero-loop owners with allocation forbidden throughout seeks.
 
 ## v0.786: aggregate mixer ownership
 
-[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L98) returns fixed mixer object/scratch/slot bytes,
+[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L108) returns fixed mixer object/scratch/slot bytes,
 all owned voice bytes and their checked sum. Release tails and converter lookahead
 remain charged until the slot actually retires. Invalid query arguments preserve
 output. No source VM, callback or allocation is involved.
 
-[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L86) applies the existing transfer and
+[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L96) applies the existing transfer and
 SyncNoMultiple/finished policy with an aggregate object/slot/voice ceiling.
 Budget rejection leaves the incoming handle, progress and all old slots intact.
 NoMultiple and finished no-ops consume their unused owner without adding storage,
@@ -73,7 +73,7 @@ even with a zero budget. Ordinary adoption includes old plus new voice objects,
 PCM and envelope arrays. Queue buffers, allocator overhead and external templates
 are excluded. Keep all owners serialized; no callback/VM/allocation occurs.
 
-[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L104) queries the same non-releasing same-ID condition
+[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L114) queries the same non-releasing same-ID condition
 used by SyncNoMultiple. Valid IDs are 1..65535; errors preserve output. An
 observation is not a reservation: recheck controls when adopting under the lock.
 `swf_sound_mixer_storage` forbids allocations after VM teardown and verifies exact
@@ -122,7 +122,7 @@ are not hardware, ThreadSanitizer or foreign-platform acceptance.
 
 ## v0.789: reject fixed mixer storage before allocation
 
-[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L55) adds a fixed object/scratch/slot ceiling to
+[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L65) adds a fixed object/scratch/slot ceiling to
 configured construction. Validate geometry first, then checked-size the exact
 object and slot table before either allocation. Zero/short budget returns OOM
 and null output; other configured errors propagate. No callback, device or VM.
@@ -196,10 +196,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
-| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:104](../include/flashvm/swf_sound_mixer.h#L104) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:98](../include/flashvm/swf_sound_mixer.h#L98) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:86](../include/flashvm/swf_sound_mixer.h#L86) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../include/flashvm/swf_sound_mixer.h#L65) |
+| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:108](../include/flashvm/swf_sound_mixer.h#L108) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:96](../include/flashvm/swf_sound_mixer.h#L96) |
 | `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
 | `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |

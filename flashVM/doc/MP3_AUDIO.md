@@ -169,7 +169,7 @@ exception-unwind runs remain outside accepted evidence as documented previously.
 
 ## v0.782 prepared mixer commands without a source VM
 
-[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L78)(mixer, voice) accepts a pointer to one live,
+[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L88)(mixer, voice) accepts a pointer to one live,
 exclusively owned native voice handle. On OK it consumes ownership and clears the
 handle; finished/NoMultiple no-ops close the unused owner. On error it preserves
 handle/progress and every existing slot. Null arguments are INVALID_ARGUMENT,
@@ -180,7 +180,7 @@ cursor, never rewinds a partially read interval. No allocation, callback, VM or
 managed root occurs. Keep owner storage disjoint and externally serialize access;
 never use or close a handle after transfer.
 
-[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L110)(mixer, sound_id) applies the existing immediate or
+[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L120)(mixer, sound_id) applies the existing immediate or
 DECLICK policy without a context. ID must be 1–65535; null/invalid returns
 INVALID_ARGUMENT before mutation, absent identity is OK. Repeated release stops
 do not restart the fade. Stop/adoption affect future composition only: retained
@@ -210,8 +210,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:94](../src/swf/sound_mp3.cpp#L94) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
-| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:110](../include/flashvm/swf_sound_mixer.h#L110) |
-| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:120](../include/flashvm/swf_sound_mixer.h#L120) |
+| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:88](../include/flashvm/swf_sound_mixer.h#L88) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
 | `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:29](../src/swf/sound_mp3.hpp#L29) |

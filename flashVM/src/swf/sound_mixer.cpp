@@ -487,6 +487,67 @@ extern "C" FVM_Result fvm_swf_sound_mixer_add(FVM_SWFSoundMixer *mixer, size_t f
     return mixer_read(mixer, frames, pcm, capacity, written, true);
 }
 
+/* Clamp source repeats before multiplication; large authored durations never lose low bits. */
+static size_t source_horizon(const FVM_SWFSoundVoiceInfo &info, size_t bound)
+{
+    if (info.finished) return 0;
+    size_t remaining = info.frames_per_play - info.frame_in_play;
+    if (remaining >= bound) return bound;
+    unsigned int repeats = info.play_count - info.play_index - 1;
+    if (repeats)
+    {
+        size_t room = bound - remaining;
+        if (info.frames_per_play > room / repeats) return bound;
+        remaining += info.frames_per_play * repeats;
+    }
+    return remaining;
+}
+
+/* Observe bounded remaining output on the live conversion grid without consuming lookahead. */
+extern "C" FVM_Result fvm_swf_sound_mixer_active_frames(const FVM_SWFSoundMixer *mixer,
+                                                         size_t maximum, size_t *out)
+{
+    if (!mixer || !out || !maximum || maximum > FVM_SWF_SOUND_MIXER_MAX_HORIZON)
+        return FVM_INVALID_ARGUMENT;
+    size_t longest = 0;
+    for (size_t i = 0; i < mixer->slots.size(); ++i)
+    {
+        const FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
+        if (!slot.voice) continue;
+        FVM_SWFSoundVoiceInfo info;
+        info.struct_size = sizeof(info);
+        FVM_Result result = fvm_swf_sound_voice_info(slot.voice, &info);
+        if (result != FVM_OK) return result;
+        size_t count = 0;
+        if (!slot.converted)
+            count = source_horizon(info, maximum);
+        else
+        {
+            /* Products stay exact below 2^53 under the public rate/horizon bounds. */
+            size_t bound = (size_t)((double)maximum * slot.source_rate / mixer->info.sample_rate)
+                           + FVM_SWF_SOUND_MIXER_HORIZON_GUARD;
+            size_t source = source_horizon(info, bound);
+            if (slot.ready)
+            {
+                if (slot.left_valid && source < bound) ++source;
+                if (slot.right_valid && source < bound) ++source;
+            }
+            double numerator = (double)source * mixer->info.sample_rate - slot.phase;
+            if (numerator > 0)
+            {
+                double frames = numerator / slot.source_rate;
+                count = frames >= maximum ? maximum : (size_t)frames;
+                if (count < maximum && (double)count * slot.source_rate < numerator) ++count;
+            }
+        }
+        if (slot.release_frames && count > slot.release_left) count = slot.release_left;
+        if (count > longest) longest = count;
+        if (longest == maximum) break;
+    }
+    *out = longest;
+    return FVM_OK;
+}
+
 /* Return copied activity without consulting a source context or a hardware clock. */
 extern "C" FVM_Result fvm_swf_sound_mixer_info(const FVM_SWFSoundMixer *mixer,
                                                FVM_SWFSoundMixerInfo *out)
