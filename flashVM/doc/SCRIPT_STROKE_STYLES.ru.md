@@ -71,6 +71,34 @@ bounds, неравномерные/shear метрики Flash, полная не
 coercion/растра, Cairo и реальные устройства остаются открытыми. Все девять
 этапов плана и полная совместимость SWF <= 8 остаются открытыми.
 
+
+## Fixtures
+
+| Fixture | Проверка |
+| --- | --- |
+| [movieclip_script_stroke_styles](../tests/movieclip_script_stroke_styles.cpp) | Шесть сохранённых сплошных стилей и GC |
+| [movieclip_script_stroke_defaults](../tests/movieclip_script_stroke_defaults.cpp) | Ограничение ширины, defaults и отключение |
+| [movieclip_script_stroke_versions](../tests/movieclip_script_stroke_versions.cpp) | Параметры в SWF1-8 |
+| [movieclip_script_stroke_errors](../tests/movieclip_script_stroke_errors.cpp) | Unsupported, неконечные значения и embedded NUL |
+| [movieclip_script_stroke_transitions](../tests/movieclip_script_stroke_transitions.cpp) | Отдельные записи, clear и возврат round |
+| [movieclip_script_stroke_gradients](../tests/movieclip_script_stroke_gradients.cpp) | 18 линейных/радиальных/focal стилей |
+| [movieclip_script_stroke_curves](../tests/movieclip_script_stroke_curves.cpp) | 48 квадратичных и угловых путей |
+| [movieclip_script_stroke_quality](../tests/movieclip_script_stroke_quality.cpp) | 96 сочетаний качества/стиля/краски |
+| [movieclip_script_stroke_bounds](../tests/movieclip_script_stroke_bounds.cpp) | Выбранные bounds и shape hit |
+| [movieclip_script_stroke_mixed](../tests/movieclip_script_stroke_mixed.cpp) | Независимость заливки/текущего стиля/пути |
+| [movieclip_script_stroke_callbacks](../tests/movieclip_script_stroke_callbacks.cpp) | Порядок callbacks, ошибки и побочные эффекты fill |
+| [movieclip_script_stroke_allocation](../tests/movieclip_script_stroke_allocation.cpp) | Шесть атомарных серий C++-отказов |
+| [movieclip_script_stroke_duplicate](../tests/movieclip_script_stroke_duplicate.cpp) | Шесть независимых копий текущего/завершённого стиля |
+| [movieclip_script_stroke_transfer](../tests/movieclip_script_stroke_transfer.cpp) | 24 графа через binary и канал после удаления отправителя |
+| [movieclip_script_stroke_threads](../tests/movieclip_script_stroke_threads.cpp) | Четыре потока, 96 циклов render/GC |
+| [movieclip_script_stroke_avm1](../tests/movieclip_script_stroke_avm1.cpp) | 18 реальных версионных AVM1 вызовов |
+| [jit_script_stroke_styles](../tests/jit_script_stroke_styles.cpp) | 36 режимов/стилей со счётчиками нативных входов |
+| [movieclip_script_stroke_timeline](../tests/movieclip_script_stroke_timeline.cpp) | Действия кадров и 16 чередующихся seek |
+
+## Контрольная точка v0.1324
+
+Параметры script lineStyle v0.1304–v0.1324: SWF8 и незагруженный host принимают round/none/square и round/bevel через существующий AS-метод. Текущий стиль публикуется атомарно после упорядоченных преобразований и выделений; новый путь копирует selectors, завершённый сохраняет стиль, clear возвращает defaults. Отсутствие/undefined thickness отключает штрих; конечная ширина ограничивается 0..255, undefined color/alpha сохраняют defaults. SWF1-7 игнорируют дополнительные аргументы без преобразований. Hinting, non-normal scale, miter и неизвестные опции явно неподдержаны без частичной публикации; неконечные width/color/alpha недопустимы. Восемнадцать fixtures проверяют сплошную/градиентную геометрию, шесть ширин и defaults/disable, версии, unsupported/NUL/неконечные значения, отдельные записи и сброс, 18 градиентных стилей, 48 кривых/углов, 96 качеств, bounds/hit, независимость заливки, шесть этапов ошибок callbacks с восстановлением GC-барьера и явными побочными эффектами fill, шесть серий отказов C++-памяти, шесть дубликатов, 24 графа через binary и канал после удаления отправителя, четыре OS-потока с 96 циклами render/GC, 18 реальных AVM1 случаев, 36 конфигураций интерпретатора/manual/native JIT со счётчиками нативных входов и действия кадров при 16 чередующихся seek. Полностью комментированный C89-пример проверяет bounds, square-only hit и доступный пиксель, явно удерживая объект результата. Пройдены 247 выбранных нативных тестов с примером, 18 SDK-free тестов без графики (17 fixtures и пример), 17 ASan/UBSan (16 fixtures и пример), allocation с явным --no-faults и проверки исходников/примеров. JIT подтверждён нативно; реальные C++-отказы проверены нативно и без графики. Sanitizer unwinding ограничен, LeakSanitizer отключён. Публичный C89 ABI, callback ID и wire-форматы сохраняются. Полная coercion/reference-приёмка, видимость до SWF6, miter/hinting/non-scaling, точные кривые/неравномерные метрики, Cairo и реальные платформы открыты. Все девять этапов открыты. [Контракт](SCRIPT_STROKE_STYLES.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

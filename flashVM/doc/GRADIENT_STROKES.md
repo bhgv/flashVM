@@ -1,5 +1,7 @@
 # Gradient strokes
 
+Supported script lineStyle cap/join options are now connected in [SCRIPT_STROKE_STYLES.md](SCRIPT_STROKE_STYLES.md). Earlier file/native checkpoints below do not imply complete extended AS2 semantics.
+
 Interior focal extension v0.1197+: [signed radial fill/stroke origins](FOCAL_GRADIENTS.md) / [внутренние focal-позиции](FOCAL_GRADIENTS.ru.md). Earlier zero-focal-only notes describe historical checkpoints. Endpoints/clamping, DefineShape4/LineStyle2 and all nine roadmap stages remain open.
 
 

@@ -1,5 +1,7 @@
 # Selected straight-stroke bounds
 
+Supported script lineStyle cap/join options are now connected in [SCRIPT_STROKE_STYLES.md](SCRIPT_STROKE_STYLES.md). Earlier file/native checkpoints below do not imply complete extended AS2 semantics.
+
 MovieClip.getBounds and the geometry consumers that share its traversal now use
 cap/join geometry for straight paths with a non-round cap or a bevel join. Butt
 ends no longer gain a round-cap extension; diagonal square ends include their

@@ -1,5 +1,7 @@
 # Градиентные обводки
 
+Поддержанные cap/join параметры script lineStyle связаны в [SCRIPT_STROKE_STYLES.ru.md](SCRIPT_STROKE_STYLES.ru.md). Прежние файловые/нативные checkpoints ниже не подтверждают полную расширенную AS2-семантику.
+
 Interior focal extension v0.1197+: [signed radial fill/stroke origins](FOCAL_GRADIENTS.md) / [внутренние focal-позиции](FOCAL_GRADIENTS.ru.md). Earlier zero-focal-only notes describe historical checkpoints. Endpoints/clamping, DefineShape4/LineStyle2 and all nine roadmap stages remain open.
 
 

@@ -71,6 +71,34 @@ hairline bounds, nonuniform/shear Flash metrics, independent full player-referen
 coercion/raster acceptance, Cairo and physical devices remain open. All nine
 roadmap stages and complete SWF <= 8 compatibility remain open.
 
+
+## Fixtures
+
+| Fixture | Scope |
+| --- | --- |
+| [movieclip_script_stroke_styles](../tests/movieclip_script_stroke_styles.cpp) | Six retained solid styles and collection |
+| [movieclip_script_stroke_defaults](../tests/movieclip_script_stroke_defaults.cpp) | Width clamps, undefined defaults and disable |
+| [movieclip_script_stroke_versions](../tests/movieclip_script_stroke_versions.cpp) | SWF1-8 option gates |
+| [movieclip_script_stroke_errors](../tests/movieclip_script_stroke_errors.cpp) | Unsupported, non-finite and embedded-NUL rejection |
+| [movieclip_script_stroke_transitions](../tests/movieclip_script_stroke_transitions.cpp) | Independent records, clear and round restoration |
+| [movieclip_script_stroke_gradients](../tests/movieclip_script_stroke_gradients.cpp) | Eighteen linear/radial/focal style cases |
+| [movieclip_script_stroke_curves](../tests/movieclip_script_stroke_curves.cpp) | 48 quadratic and corner-path cases |
+| [movieclip_script_stroke_quality](../tests/movieclip_script_stroke_quality.cpp) | 96 quality/style/paint combinations |
+| [movieclip_script_stroke_bounds](../tests/movieclip_script_stroke_bounds.cpp) | Selected bounds and shape hits |
+| [movieclip_script_stroke_mixed](../tests/movieclip_script_stroke_mixed.cpp) | Fill/current/path style independence |
+| [movieclip_script_stroke_callbacks](../tests/movieclip_script_stroke_callbacks.cpp) | Ordered callbacks, failure recovery and fill side effects |
+| [movieclip_script_stroke_allocation](../tests/movieclip_script_stroke_allocation.cpp) | Six atomic current-state C++ fault sweeps |
+| [movieclip_script_stroke_duplicate](../tests/movieclip_script_stroke_duplicate.cpp) | Six independent copies of current/completed styles |
+| [movieclip_script_stroke_transfer](../tests/movieclip_script_stroke_transfer.cpp) | 24 graphs through binary and channel after sender teardown |
+| [movieclip_script_stroke_threads](../tests/movieclip_script_stroke_threads.cpp) | Four workers, 96 render/GC epochs |
+| [movieclip_script_stroke_avm1](../tests/movieclip_script_stroke_avm1.cpp) | Eighteen real versioned AVM1 calls |
+| [jit_script_stroke_styles](../tests/jit_script_stroke_styles.cpp) | 36 modes/styles with native-entry evidence |
+| [movieclip_script_stroke_timeline](../tests/movieclip_script_stroke_timeline.cpp) | Frame actions and sixteen alternating seeks |
+
+## Checkpoint v0.1324
+
+Script lineStyle options v0.1304–v0.1324: SWF8 and unloaded host contexts now accept round/none/square caps and round/bevel joins through the existing ActionScript method. Current state publishes atomically after ordered conversion and allocation; new paths copy selectors, completed paths retain their own styles, and clear restores defaults. Missing/undefined thickness disables strokes; finite width clamps to 0..255 and optional undefined color/alpha retain defaults. SWF1-7 ignore extra arguments without conversion. Hinting, non-normal scale modes, miter and unknown options return explicit unsupported status without partial publication; non-finite width/color/alpha remain invalid. Eighteen new fixtures cover solid/gradient geometry, six widths and default/disable cases, version gates, unsupported/NUL/non-finite errors, separate records and resets, eighteen gradient styles, 48 curve/corner cases, 96 quality cases, bounds/hits, mixed fill state, six ordered callback failure stages plus native GC rejection/recovery and deliberate fill side effects, six C++ allocation-fault publication sweeps, six duplicates, 24 graphs through both binary and channel after sender teardown, four OS workers with 96 render/GC epochs, eighteen real AVM1 cases, 36 interpreter/manual/native-JIT configurations with native-entry counters and frame actions across sixteen alternating seeks. A fully commented C89 tutorial verifies bounds, a square-only corner hit and available raster alpha, with explicit roots for its result object. Validation passes 247 selected native tests including the tutorial, 18 SDK-free no-graphics tests (17 fixtures and tutorial), 17 ASan/UBSan tests (16 fixtures and tutorial) plus allocation with explicit --no-faults, and source/example checks. JIT evidence is native; real C++ fault sweeps pass natively and without graphics. Sanitizer unwind limits remain and LeakSanitizer is disabled. Public C89 ABI, callback IDs and wire formats stay unchanged. Full coercion/reference raster, pre-SWF6 method visibility, miter/hinting/non-scaling, exact curves/nonuniform metrics, Cairo and physical-platform acceptance remain open. All nine stages remain open. [Contract](SCRIPT_STROKE_STYLES.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

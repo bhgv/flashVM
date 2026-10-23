@@ -1,5 +1,7 @@
 # Symmetric LINESTYLE2 caps and bevel joins
 
+Supported script lineStyle cap/join options are now connected in [SCRIPT_STROKE_STYLES.md](SCRIPT_STROKE_STYLES.md). Earlier file/native checkpoints below do not imply complete extended AS2 semantics.
+
 Selected straight-stroke bounds are now described in [STROKE_BOUNDS.md](STROKE_BOUNDS.md). Exact curves and nonuniform/shear metrics remain open; this earlier checkpoint does not certify them.
 
 Selected geometric hit testing is now covered by [STROKE_HIT_TEST.md](STROKE_HIT_TEST.md); exact bounds and nonuniform/shear metrics remain open. The original cap-rendering checkpoint below remains historical.
