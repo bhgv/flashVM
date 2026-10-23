@@ -81,6 +81,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFStreamConvertedChunk chunk; /* Receive per-block source/frame metadata. */
     FVM_SWFSoundMixerConfig geometry; /* Select explicit conversion of both event voices. */
     FVM_SWFSoundVoice *prepared[EXAMPLE_MIX_VOICES] = {0}; /* Optional tracked voices stay caller-owned until adoption succeeds. */
+    FVM_SWFSoundMixQueueOriginInfo origin; /* Copy distinct accepted/dequeued BASE and TAIL categories. */
     FVM_SWFSoundMixQueueIdentityInfo identity; /* Copy one sound-ID deadline before and after software drain. */
     FVM_SWFSoundMixer *mixer = 0; /* Own event snapshots and their independent clocks. */
     short pcm[EXAMPLE_MIX_BLOCK * EXAMPLE_MIX_CHANNELS]; /* Own base, mixed output and retry bytes. */
@@ -92,9 +93,10 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFSoundMixQueueStorageInfo storage; /* Copy fixed native allocation requests for the bounded mode. */
     size_t queue_budget = 0; /* Keep adapter storage separate from stream/voice/device budgets. */
     ExampleQueue queue; /* Keep the finite native FIFO alive through adapter cleanup. */
+    int origins_mode = argc == 3 && !strcmp(argv[2], "--origins"); /* Add bounded BASE/TAIL bookkeeping to the gated source handoff. */
     int finite_mode = argc == 3 && !strcmp(argv[2], "--finite"); /* End event-only output at its live horizon without final block padding. */
     int headroom_mode = argc == 3 && !strcmp(argv[2], "--headroom"); /* Export event-only frames with one-frame FIFO headroom and larger retry caps. */
-    int gated_mode = argc == 3 && !strcmp(argv[2], "--gated"); /* Hold base while event voices advance, then open its frame gate. */
+    int gated_mode = (argc == 3 && !strcmp(argv[2], "--gated")) || origins_mode; /* Hold base while event voices advance, then open its frame gate. */
     int identity_mode = (argc == 3 && !strcmp(argv[2], "--identities")) || gated_mode || headroom_mode || finite_mode; /* Keep sound IDs active through queued/pending PCM. */
     int clock_mode = (argc == 3 && !strcmp(argv[2], "--clock")) || identity_mode; /* Observe one shared accepted/dequeued epoch across base and tails. */
     int bounded_mode = (argc == 3 && !strcmp(argv[2], "--bounded-tails")) || clock_mode; /* Use an exact adapter-only allocation ceiling. */
@@ -107,7 +109,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     memset(&queue, 0, sizeof(queue)); /* Begin with no initialized FIFO frames. */
     if (argc != 2 && !queue_mode) /* Usage must not create an output file or start a VM. */
     { /* Describe the explicit file replacement. */
-        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities|--gated|--headroom|--finite]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz (17 with --gated, 14 with --headroom/--finite).\n", argv[0]); /* State output geometry. */
+        printf("Usage: %s OUTPUT.pcm [--queue|--tails|--bounded-tails|--clock|--identities|--gated|--headroom|--finite|--origins]\nReplaces OUTPUT.pcm with 16 native S16 stereo frames at 48000 Hz (17 with --gated/--origins, 14 with --headroom/--finite).\n", argv[0]); /* State output geometry. */
         return argc == 1 ? 0 : 1; /* Preserve no-side-effect help and reject extra arguments. */
     } /* Finish CLI validation. */
     if (!checked(fvm_config_init(&config), "config")) /* Initialize before any acquisition. */
@@ -166,8 +168,9 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     if (clock_mode && !checked(fvm_swf_sound_mix_queue_clock_begin(mix_queue), "shared clock begin")) goto cleanup; /* Explicitly require an empty real FIFO before counting accepted frames. */
     if (identity_mode) /* Preallocate the optional ID table before native output starts. */
     { /* Keep adapter table storage separate from mixer/voice/queue budgets. */
-        if (!checked(fvm_swf_sound_mix_queue_storage_required_for_tracking(EXAMPLE_MIX_CHANNELS, EXAMPLE_MIX_BLOCK, 1, &queue_budget), "tracked storage")) goto cleanup; /* Predict owner, PCM and optional deadlines with checked native arithmetic. */
+        if (!checked(fvm_swf_sound_mix_queue_storage_required_for_modes(EXAMPLE_MIX_CHANNELS, EXAMPLE_MIX_BLOCK, 1, origins_mode, &queue_budget), "tracked storage")) goto cleanup; /* Predict owner, PCM and optional deadlines with checked native arithmetic. */
         if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 1, queue_budget), "identity tracking")) goto cleanup; /* Require zero epoch and no voices before enabling. */
+        if (origins_mode && !checked(fvm_swf_sound_mix_queue_set_origin_tracking(mix_queue, 1, queue_budget), "origin tracking")) goto cleanup; /* Allocate the fixed origin bitmap only at this empty shared epoch. */
         for (event = 0; event < EXAMPLE_MIX_VOICES; ++event) /* Adopt every start through the tracked queue. */
             if (!checked(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix_queue, &prepared[event], EXAMPLE_MIX_EVENT_BYTES), "tracked event")) goto cleanup; /* Success clears the caller handle and registers its exact end. */
     } /* All later ID controls also use this tracked owner. */
@@ -277,6 +280,12 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             if (!checked(fvm_swf_sound_mix_queue_identity_info(mix_queue, EXAMPLE_MIX_LONG_ID, &identity), "queued identity")) goto cleanup; /* Observe real FIFO before publishing its deadline. */
             printf("Identity id=%u end=%.0f played=%.0f active=%d\n", identity.sound_id, identity.end_frame, identity.played_frames, identity.active); /* Expected ID8 end14 played0 active1 in both tracked modes. */
         } /* This reports dequeue registration, not physical audibility. */
+        if (origins_mode) /* Observe accepted categories before any software FIFO consumption. */
+        { /* Failed renders never entered this category ledger. */
+            origin.struct_size = sizeof(origin); /* Select the exact copied diagnostic ABI. */
+            if (!checked(fvm_swf_sound_mix_queue_origin_info(mix_queue, &origin), "queued origins")) goto cleanup; /* One validated backend poll, no PCM advancement. */
+            printf("Origins base=%.0f/%.0f tail=%.0f/%.0f\n", origin.base_submitted_frames, origin.base_played_frames, origin.tail_submitted_frames, origin.tail_played_frames); /* Expected base9/0 and tail8/0 while all seventeen frames remain queued. */
+        } /* Category sums agree with the shared submitted/dequeued clock. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
         if (fwrite(queue.pcm, sizeof(short), mixed, output) != mixed) goto cleanup; /* Terminal I/O. */
         if (clock_mode) /* The successful file write is the explicit software FIFO consumer. */
@@ -291,6 +300,12 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
                 if (!checked(fvm_swf_sound_mix_queue_stop_all(mix_queue), "cancel identities")) goto cleanup; /* Cancel every future event registration without rewriting accepted PCM. */
                 if (!checked(fvm_swf_sound_mix_queue_set_identity_tracking(mix_queue, 0, 0), "disable identities")) goto cleanup; /* Free optional deadlines only after voices/retries/FIFO have drained. */
             } /* Clock end is now permitted. */
+            if (origins_mode) /* Observe category drain before releasing the optional bookkeeping mode. */
+            { /* ID tracking is already disabled at its independent safe point. */
+                if (!checked(fvm_swf_sound_mix_queue_origin_info(mix_queue, &origin), "drained origins")) goto cleanup; /* The software consumer acknowledged every frame. */
+                printf("Origins base=%.0f/%.0f tail=%.0f/%.0f\n", origin.base_submitted_frames, origin.base_played_frames, origin.tail_submitted_frames, origin.tail_played_frames); /* Expected base9/9 and tail8/8. */
+                if (!checked(fvm_swf_sound_mix_queue_set_origin_tracking(mix_queue, 0, 0), "disable origins")) goto cleanup; /* Free the bitmap only after no retry or FIFO remains. */
+            } /* Clock end is permitted once both optional modes have been released. */
             if (!checked(fvm_swf_sound_mix_queue_clock_end(mix_queue), "shared clock end")) goto cleanup; /* End only after retry ownership and FIFO have drained. */
         } /* The adapter remains alive until centralized cleanup. */
         printf("Queue retained %lu rejected blocks.\n", (unsigned long)queue.rejected); /* Report real callbacks. */

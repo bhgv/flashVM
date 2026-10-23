@@ -1698,6 +1698,7 @@ clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
 Режим `--gated` экспортирует 17 кадров с удержанием base и TAIL retry перед открывшимся gate.
 Режим `--headroom` экспортирует 14 event-only кадров с однокадровым остатком FIFO и неделимым retry.
 Девятый режим `--finite` даёт те же 14 кадров четырьмя блоками 4,4,4,2 без завершающего padding.
+Десятый `--origins` сохраняет 17 gated кадров и раздельно наблюдает BASE9/TAIL8 до и после dequeue.
 Ограниченная desktop root-интеграция: [контракт и оставшиеся ограничения](../doc/DESKTOP_MIX.ru.md). [Адаптер EN](../doc/MIX_QUEUE.md) /
 [RU](../doc/MIX_QUEUE.ru.md).
 [EN](../doc/STREAM_EVENT_MIX.md) / [RU](../doc/STREAM_EVENT_MIX.ru.md).

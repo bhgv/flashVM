@@ -31,6 +31,9 @@ v0.1046: Добавлены сериализованные origin diagnostics и
 
 v0.1047: Проверены host pause, root Stop TAIL dequeue, source phase, BASE resume, GC/native JIT и подтверждённая отмена origin-эпохи.
 
+
+v0.1048: Десятый C89-режим показывает bounded origin tracking, точный gated PCM, retry и раздельные accepted/drained категории.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -230,6 +230,28 @@ played14 и ID8 inactive. Это конечный нативный вывод, �
 | [`fvm_swf_sound_mixer_active_frames`](../../../include/flashvm/swf_sound_mixer.h#L54) | Copy the bounded current-grid horizon without reading PCM or consuming lookahead. Includes repeats/release, OK/zero when empty. Caller retains and serializes mixer; no allocation/callback/VM/GC. [Bounds/statuses](../../../doc/FINITE_TAILS.md). |
 | [`fvm_swf_sound_mix_queue_pump_tail_finite`](../../../include/flashvm/swf_sound_mix_queue.h#L270) | Observe the exclusive FIFO and render no more than available room and the live horizon. Existing TAIL remains indivisible; optional accepted clears first. Quiesce base and serialize borrowed owners; callbacks may block, no allocation/VM/GC. [Ownership/statuses](../../../doc/FINITE_TAILS.md). |
 
+## BASE/TAIL categories / Категории BASE/TAIL
+
+The tenth mode `OUTPUT.pcm --origins` preserves the gated 17-frame rational PCM
+oracle while accounting separately for nine BASE and eight TAIL frames. All five
+blocks are deliberately rejected once. Before file consumption it prints
+`Origins base=9/0 tail=8/0`; after acknowledged software drain, `base=9/9 tail=8/8`.
+The bitmap is explicitly budgeted/enabled before voice admission and disabled after
+FIFO/IDs drain before shared clock end. This is output-origin bookkeeping, not SWF
+source phase, physical DAC time or automatic A/V policy.
+
+Десятый режим --origins сохраняет 17 кадров gated PCM, отдельно считая BASE9 и
+TAIL8. Пять отклонённых блоков повторяются без двойного счёта. До записи файла
+played0; после подтверждённого drain — BASE9/9 и TAIL8/8. Bitmap выделяется по
+явному бюджету; режим отключается после drain до clock end. Это категории вывода,
+не SWF/DAC timestamps или автоматическая A/V-синхронизация.
+
+| API | Purpose, ownership and contract |
+| --- | --- |
+| [`fvm_swf_sound_mix_queue_storage_required_for_modes`](../../../include/flashvm/swf_sound_mix_queue.h#L60) | Predict exact owner/PCM/ID/origin allocation requests without allocation/callback/VM. Boolean modes, out preserved on error; excludes other owners. [Storage contract](../../../doc/MIX_ORIGIN_CLOCK.md). |
+| [`fvm_swf_sound_mix_queue_set_origin_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L84) | Allocate the fixed accepted-origin bitmap at zero shared epoch or free it after observed drain/no retry. Caller retains and serializes queue/mixer/backend; callbacks may block, allocation is explicit. [Mode lifetime](../../../doc/MIX_ORIGIN_CLOCK.md). |
+| [`fvm_swf_sound_mix_queue_origin_info`](../../../include/flashvm/swf_sound_mix_queue.h#L91) | Fresh BASE/TAIL accepted/dequeued/queued snapshot, excluding pending retry. Errors preserve exact-size out. No allocation/render/VM/GC; borrowed owners stay serialized/live. [Category clock](../../../doc/MIX_ORIGIN_CLOCK.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -253,14 +275,17 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_create_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:226](../../../include/flashvm/swf_sound_mix_queue.h#L226) |
 | `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:180](../../../include/flashvm/swf_sound_mix_queue.h#L180) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:274](../../../include/flashvm/swf_sound_mix_queue.h#L274) |
+| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../../../include/flashvm/swf_sound_mix_queue.h#L91) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:245](../../../include/flashvm/swf_sound_mix_queue.h#L245) |
 | `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:270](../../../include/flashvm/swf_sound_mix_queue.h#L270) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../../../include/flashvm/swf_sound_mix_queue.h#L261) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:148](../../../include/flashvm/swf_sound_mix_queue.h#L148) |
+| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../../../include/flashvm/swf_sound_mix_queue.h#L84) |
 | `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:201](../../../include/flashvm/swf_sound_mix_queue.h#L201) |
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:96](../../../include/flashvm/swf_sound_mix_queue.h#L96) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../../../include/flashvm/swf_sound_mix_queue.h#L44) |
+| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../../../include/flashvm/swf_sound_mix_queue.h#L60) |
 | `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../../../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:162](../../../include/flashvm/swf_sound_mix_queue.h#L162) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../../../include/flashvm/swf_sound_mixer.h#L54) |

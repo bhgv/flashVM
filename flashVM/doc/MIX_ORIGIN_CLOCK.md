@@ -31,6 +31,9 @@ v0.1046: Add serialized frontend origin diagnostics and verify exact category co
 
 v0.1047: Check host pause, root Stop event dequeue, retained source phase, base resume, GC/native JIT and acknowledged origin epoch cancellation.
 
+
+v0.1048: Add a tenth export mode with budgeted origin tracking, exact gated PCM, retained retries and separate accepted versus drained categories.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

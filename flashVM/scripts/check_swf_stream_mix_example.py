@@ -109,10 +109,18 @@ def main():
         assert 'Shared clock submitted=14 queued=14 played=0' in finite.stdout
         assert 'Shared clock submitted=14 queued=0 played=14 seconds=0.000291667' in finite.stdout
         assert 'Identity id=8 end=14 played=14 active=0' in finite.stdout
+        origin_output = root / 'origins.pcm'
+        origin = subprocess.run([executable, str(origin_output), '--origins'], cwd=root,
+                                check=True, stdout=subprocess.PIPE, text=True)
+        assert origin_output.read_bytes() == struct.pack('=' + 'h' * len(gated_values), *gated_values)
+        assert 'Origins base=9/0 tail=8/0' in origin.stdout
+        assert 'Origins base=9/9 tail=8/8' in origin.stdout
+        assert 'Mixed 17 frames after source VM teardown.' in origin.stdout
+        assert 'Queue retained 5 rejected blocks.' in origin.stdout
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()
-    print('PASS nine-mode stream/event C89 output, gated/adaptive/finite retry, single saturation and native cleanup')
+    print('PASS ten-mode stream/event C89 output, gated/adaptive/finite retry, single saturation and native cleanup')
 
 
 if __name__ == '__main__':
