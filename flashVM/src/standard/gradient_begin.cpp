@@ -196,7 +196,8 @@ FVM_Result stops(FVM_Context *c, const FVM_Value *args, FVM_GradientStop *out, u
 /* [GC:] Allocate a copied ramp whose ownership is later transferred atomically to the clip state.
  */
 FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
-                      FVM_GradientSpread spread, const FVM_GradientStop *values, unsigned int count, FVM_Object **out)
+                      FVM_GradientSpread spread, unsigned int interpolation,
+                      const FVM_GradientStop *values, unsigned int count, FVM_Object **out)
 {
     /* [GC:] Temporary record and stop-table edges are protected by the native barrier. */
     FVM_Object *record = 0, *table = 0;
@@ -210,6 +211,8 @@ FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
     record->properties["type"] = scalar(radial ? 1 : 0);
     if (spread != FVM_GRADIENT_SPREAD_PAD)
         record->properties["spread"] = scalar(spread); /* Legacy records omit the default mode. */
+    if (interpolation != FVM_GRADIENT_INTERPOLATION_RGB)
+        record->properties["interpolation"] = scalar(interpolation); /* Missing means legacy RGB. */
     record->properties["xx"] = scalar(matrix.xx);
     record->properties["yx"] = scalar(matrix.yx);
     record->properties["xy"] = scalar(matrix.xy);
@@ -299,13 +302,19 @@ static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int 
             c->swf_info.version < FVM_MOVIECLIP_GRADIENT_SPREAD_MIN_VERSION)
             return FVM_UNSUPPORTED;
     }
+    unsigned int interpolation_mode = FVM_GRADIENT_INTERPOLATION_RGB;
     if (argc > 6 && args[6].type != FVM_VALUE_UNDEFINED)
     {
         FVM_Value interpolation;
         r = fvm_value_to_string(c, args + 6, &interpolation);
         if (r != FVM_OK)
             return r;
-        if (!equal(interpolation, "RGB"))
+        if (equal(interpolation, "linearRGB"))
+            interpolation_mode = FVM_GRADIENT_INTERPOLATION_LINEAR_RGB;
+        else if (!equal(interpolation, "RGB"))
+            return FVM_UNSUPPORTED;
+        if (interpolation_mode != FVM_GRADIENT_INTERPOLATION_RGB && c->swf_loaded &&
+            c->swf_info.version < FVM_MOVIECLIP_GRADIENT_INTERPOLATION_MIN_VERSION)
             return FVM_UNSUPPORTED;
     }
     if (radial && argc > 7 && args[7].type != FVM_VALUE_UNDEFINED)
@@ -330,7 +339,7 @@ static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int 
         return r == FVM_INVALID_ARGUMENT ? FVM_OK : r;
     /* [GC:] Hold the complete new descriptor until its drawing-state map is published. */
     FVM_Object *record = 0;
-    r = descriptor(c, local, radial, mode, values, count, &record);
+    r = descriptor(c, local, radial, mode, interpolation_mode, values, count, &record);
     if (r != FVM_OK)
         return r;
     /* [GC:] Stage all drawing links before adopting the new style; OOM preserves the old style. */
