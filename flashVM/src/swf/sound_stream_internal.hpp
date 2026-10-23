@@ -3,13 +3,13 @@
 #define FVM_SWF_SOUND_STREAM_INTERNAL_HPP /* Guard private native snapshot storage. */
 #include "flashvm/swf_stream_sound.h"
 #include "../details/vector.hpp"
-/* Owned encoded block plus its offset into the immutable byte store. */
+/* Owned block plus source timing and its offset into immutable payload storage. */
 struct FVM_SWFStreamSoundEntry
 {
     FVM_SWFStreamSoundBlock block; /* Copied wire metadata; data is reconstructed on lookup. */
     size_t mp3_decoded_first; /* Original decoded frame prefix before initial latency trimming. */
     int mp3_seek_samples; /* Signed authored adjustment, used only for discontinuous seeks. */
-    size_t offset;                 /* Payload offset in the owned byte store. */
+    size_t offset;                 /* Byte offset in owned encoded storage or normalized native PCM. */
 };
 /* [GC:] Native independent snapshot; no VM pointer or managed value is retained. */
 struct FVM_SWFStreamSoundSnapshot

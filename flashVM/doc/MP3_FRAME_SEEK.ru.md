@@ -17,12 +17,12 @@ PCM это R+S. Первый блок начинает с нормализова
 
 ## Запрос неизменяемой позиции
 
-Установите точный struct_size структуры [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L142) и вызовите
-[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L161) с положительным номером кадра от единицы.
+Установите точный struct_size структуры [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L143) и вызовите
+[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) с положительным номером кадра от единицы.
 Первый авторский блок не раньше запроса определяет source_frame. block_index и
 first выбирают нормализованный PCM, возможно из другого блока. PCM/ADPCM
 выбирают нулевое смещение. Отсутствие блока даёт EOF с
-[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L140); точный конец PCM сохраняет авторский кадр.
+[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L141); точный конец PCM сохраняет авторский кадр.
 Отрицательная/выходящая за конец позиция, неверные указатели/размер и нулевой
 кадр дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); закодированный сжатый источник — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
 переполнение — [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). При ошибке выход не меняется. Нет выделения,
@@ -60,7 +60,7 @@ SeekSamples повторно. Эталонное чтение вперёд, sour
 
 | Операция | Результат и владение |
 | --- | --- |
-| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L161) | Копирует позицию, не меняет snapshot и выход при ошибке; точный размер и срок жизни задаёт владелец. |
+| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) | Копирует позицию, не меняет snapshot и выход при ошибке; точный размер и срок жизни задаёт владелец. |
 | [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) | Проверяет другой converter, вызывает pause/clear, затем публикует привязку; оба converter принадлежат хосту. |
 | [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) | Та же транзакция для текущего converter. |
 | [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L54) | Применяет block_index/first к offline reader без воздействия на очередь. |
@@ -91,6 +91,11 @@ backend обязан сохранять all-or-none контракт при ош
 сравнивает полные хвосты с FFmpeg; отсутствие FFmpeg/ffprobe явно даёт skip 77.
 Нативные/dummy/аналитические проверки отделены от физических устройств.
 
+
+## Проверенный объём
+
+Авторская MP3-перемотка v0.1077–v0.1089: snapshot сохраняет исходные декодированные префиксы и знаковые смещения; новые immutable position и transactional output API применяют их только при навигации. Desktop сохраняет разрешение выбранного авторского кадра, включая обратные позиции через пустой кадр и начальный блок, сдвинутый задержкой. Прежние block-start API и непрерывный PCM сохраняют поведение. Прошла 241 выбранная native regression/tutorial/CLI проверка, пять full-profile ASan/UBSan и отдельные no-throw output/no-fault allocation запуски, девять SDK-free проверок. Исключения callback и четыре allocation failure проверены обычной сборкой; LeakSanitizer отключён. Шесть MPEG-векторов проверяют знаковые границы, две задержки, пустые блоки, точный конец, неизменность выхода при ошибке и обычный PCM. Четыре OS-worker выполняют 256 post-VM эпох; без выделений проверены 128 эпох. Независимый FFmpeg сравнивает 192 полных C89-выгрузки для FWS/CWS, обоих знаков, задержки и EOF. Настоящие SDL dummy-очереди проверяют MovieClip interpreter/native-JIT и GC; работающий worker не отправляет PCM до выбранного будущего авторского кадра и продолжает после разрешения. Переименованный отделённый SDK-free компонент конфигурируется, скопированный oracle проходит на native exporter; отдельной detached-сборки не было. Отрицательная начальная задержка, произвольный MPEG restart, полное эталонное чтение вперёд/source-time A/V drift, дочерние таймлайны/словари, устройства/другие платформы и все девять стадий остаются открытыми. [Контракт](MP3_FRAME_SEEK.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -107,8 +112,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
 | `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
 | `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
-| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:140](../include/flashvm/swf_stream_sound.h#L140) |
-| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:161](../include/flashvm/swf_stream_sound.h#L161) |
-| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:142](../include/flashvm/swf_stream_sound.h#L142) |
+| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:141](../include/flashvm/swf_stream_sound.h#L141) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:162](../include/flashvm/swf_stream_sound.h#L162) |
+| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:143](../include/flashvm/swf_stream_sound.h#L143) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

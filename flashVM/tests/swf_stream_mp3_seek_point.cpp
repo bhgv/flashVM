@@ -60,5 +60,19 @@ int main()
         assert(fvm_swf_stream_sound_snapshot_seek_point(encoded,3,&p)==FVM_UNSUPPORTED && std::memcmp(&p,&old,sizeof(p))==0);
         fvm_swf_stream_sound_snapshot_close(encoded);
     }
+    /* Ordinary PCM keeps authored block-start semantics, including empty blocks and gaps. */
+    Bytes tags,head,data,empty;head.push_back(14);head.push_back(0x3e);word(head,1);
+    tag(tags,45,head);word(data,100);word(data,200);tag(tags,19,data);tag(tags,1,empty);tag(tags,1,empty);tag(tags,19,empty);
+    Bytes swf=movie(tags);swf[12]=3;assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);
+    for(unsigned prepare=0;prepare<2;++prepare)
+    {
+        FVM_SWFStreamSoundSnapshot *source=0;
+        assert((prepare?fvm_swf_stream_sound_snapshot_open_pcm(c,0,&source):fvm_swf_stream_sound_snapshot_open(c,0,&source))==FVM_OK);
+        FVM_SWFStreamSoundSeekPoint p;p.struct_size=sizeof(p);
+        assert(fvm_swf_stream_sound_snapshot_seek_point(source,1,&p)==FVM_OK && !p.mp3_aligned && !p.block_index && !p.first && p.source_frame==1);
+        assert(fvm_swf_stream_sound_snapshot_seek_point(source,2,&p)==FVM_OK && !p.mp3_aligned && p.block_index==1 && !p.first && p.source_frame==3);
+        assert(fvm_swf_stream_sound_snapshot_seek_point(source,4,&p)==FVM_OK && !p.mp3_aligned && p.block_index==2 && !p.first && p.source_frame==FVM_SWF_STREAM_SEEK_EOF_FRAME);
+        fvm_swf_stream_sound_snapshot_close(source);
+    }
     fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;
 }

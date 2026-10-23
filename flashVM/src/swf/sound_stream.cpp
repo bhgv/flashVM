@@ -797,6 +797,8 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_seek_point(
         return FVM_OK;
     }
     const FVM_SWFStreamSoundEntry &selected = snapshot->blocks[begin];
+    /* Adobe adds initial latency to later raw seeks; subtracting the preparation trim
+     * leaves original decoded prefix + signed block adjustment in normalized PCM. */
     size_t position = begin ? selected.mp3_decoded_first : 0;
     int adjustment = begin ? selected.mp3_seek_samples : 0;
     if (adjustment < 0)

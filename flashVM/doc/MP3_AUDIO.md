@@ -8,7 +8,7 @@ pacing and negative initial latency remain separate open limits.
 
 [Русский](MP3_AUDIO.ru.md) · [functional roadmap](ROADMAP.md)
 
-Current v0.819: [free-format decoding](FREE_FORMAT_MP3.md) and protected-region
+Codec foundation v0.819: [free-format decoding](FREE_FORMAT_MP3.md) and protected-region
 [CRC validation](MP3_CRC.md) are implemented. Historical checkpoint limitations
 below are superseded by these contracts. Short standalone events without framing
 evidence, negative latency, complete Huffman integrity and reference seek/A/V
@@ -96,7 +96,7 @@ This does not implement a general stream/event timeline or reference seek clock.
 
 ## v0.779 bounded continuous MP3 snapshots
 
-[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L87) and its bounded counterpart now normalize
+[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L88) and its bounded counterpart now normalize
 root MP3 segments to immutable PCM_NATIVE/S16. Complete Layer-III packets stay in
 source block order and one reservoir/filter state spans all blocks, including
 explicit empty markers. Each wire SampleCount must equal that block's complete
@@ -219,6 +219,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:120](../include/flashvm/swf_sound_mixer.h#L120) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:88](../include/flashvm/swf_sound_mixer.h#L88) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:29](../src/swf/sound_mp3.hpp#L29) |
 <!-- source-links:end -->

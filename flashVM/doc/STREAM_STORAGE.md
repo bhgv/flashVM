@@ -5,7 +5,7 @@
 `fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, stream, budget_bytes, out)`
 adds a caller-selected **peak ownership** ceiling to native PCM preparation. It
 accepts the same PCM and whole-packet ADPCM subset as
-[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L87); no codec support changes. The context
+[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L88); no codec support changes. The context
 owner calls preparation before publishing immutable native storage to workers.
 The result is cleared first. Null output/context or invalid source arguments
 follow the existing invalid/missing-source statuses; a valid zero-byte budget
@@ -24,7 +24,7 @@ unbounded-normalization entry points retain their original payload-budget policy
 They also record storage charges but do not acquire a new caller ceiling.
 
 `fvm_swf_stream_sound_snapshot_storage_info(snapshot, out)` copies
-[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L91):
+[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L92):
 
 | Field | Meaning |
 | --- | --- |
@@ -40,7 +40,7 @@ allocation-free and requires no callback, device or original VM. It remains vali
 after context/runtime teardown. Null snapshot/output or wrong `struct_size`
 returns INVALID_ARGUMENT and preserves output. Multiple const readers can observe
 a safely published snapshot; synchronize close and retain ownership until return.
-Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L198) exactly once after all readers stop.
+Use [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L199) exactly once after all readers stop.
 
 This is a deterministic charge for requested owned allocation sizes, **not RSS**.
 Allocator bookkeeping/alignment overhead, stack objects, original VM SWF bytes,
@@ -136,10 +136,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../include/flashvm/swf_stream_sound.h#L198) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../include/flashvm/swf_stream_sound.h#L199) |
 | `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../include/flashvm/swf_stream_sound.h#L72) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../include/flashvm/swf_stream_sound.h#L102) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:123](../include/flashvm/swf_stream_sound.h#L123) |
-| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:91](../include/flashvm/swf_stream_sound.h#L91) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:103](../include/flashvm/swf_stream_sound.h#L103) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:124](../include/flashvm/swf_stream_sound.h#L124) |
+| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:92](../include/flashvm/swf_stream_sound.h#L92) |
 <!-- source-links:end -->

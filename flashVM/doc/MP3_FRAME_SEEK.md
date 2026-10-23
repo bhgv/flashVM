@@ -17,12 +17,12 @@ stages remain open. Version numbers do not certify SWF 8 completeness.
 
 ## Immutable position query
 
-Set [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L142).struct_size to its exact size, then call
-[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L161) with a positive one-based movie frame.
+Set [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L143).struct_size to its exact size, then call
+[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) with a positive one-based movie frame.
 The first authored block at/after it determines source_frame. The resolved
 block_index and first select normalized source PCM, potentially in another block.
 PCM/ADPCM use offset zero. No block at/after the request returns EOF with
-[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L140); exact PCM end retains the selected authored frame.
+[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L141); exact PCM end retains the selected authored frame.
 Negative/past-end target, null or wrong-size output and frame zero return
 [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); encoded compressed data returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
 arithmetic overflow returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). Failed queries preserve output.
@@ -61,7 +61,7 @@ source-time scheduling and A/V drift correction remain open.
 
 | Operation | Result and ownership |
 | --- | --- |
-| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L161) | Copies a position; never changes snapshot or output on error. Caller supplies exact structure size and retains snapshot. |
+| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) | Copies a position; never changes snapshot or output on error. Caller supplies exact structure size and retains snapshot. |
 | [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) | Validates another converter, pauses and clears backend, then publishes the binding. Both converters remain owned by host. |
 | [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) | Applies the same transaction to the currently bound converter. |
 | [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L54) | Applies the returned block_index/first to an offline native reader; no queue effects. |
@@ -93,6 +93,11 @@ exports a post-VM suffix. `scripts/check_mp3_seek_example.py EXECUTABLE` compare
 whole suffixes to FFmpeg; missing FFmpeg/ffprobe explicitly skips with status 77.
 These are native/dummy/analytical tests, separate from physical device acceptance.
 
+
+## Validation checkpoint
+
+Prepared authored MP3 seeks v0.1077–v0.1089: native snapshots retain original decoded prefixes and signed block adjustments; additive immutable position and transactional output APIs apply authored offsets only on discontinuities. Desktop root navigation preserves selected-frame authorization, including backward starts across visual gaps and latency-shifted starting blocks. Existing block-start APIs and continuous PCM retain their behavior. Validation passes 241 selected native regression/tutorial/CLI checks, five selected full-profile ASan/UBSan checks plus explicit no-throw output and no-fault allocation runs, and nine SDK-free checks. Ordinary builds cover callback exceptions and all four allocation failures; LeakSanitizer is disabled. Six MPEG vectors exercise signed bounds, two latencies, empty markers, exact end, unchanged failure outputs and ordinary PCM fallback. Four OS workers check 256 post-VM epochs; zero-allocation controls check 128 epochs. Independent FFmpeg compares 192 complete C89-exported suffixes across FWS/CWS, signed offsets, latency and EOF. Real SDL dummy queues verify actual MovieClip interpreter/native-JIT execution and GC; a running worker submits nothing before a selected future authored frame and resumes after authorization. A renamed detached SDK-free component configures and its copied oracle passes against the native exporter; no separate detached build. Negative initial latency, arbitrary MPEG decoder restart, complete reference read-ahead/source-time A/V drift, child timelines/dictionaries, physical devices/foreign platforms and all nine roadmap stages remain open. [Contract](MP3_FRAME_SEEK.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -109,8 +114,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
 | `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
 | `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
-| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:140](../include/flashvm/swf_stream_sound.h#L140) |
-| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:161](../include/flashvm/swf_stream_sound.h#L161) |
-| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:142](../include/flashvm/swf_stream_sound.h#L142) |
+| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:141](../include/flashvm/swf_stream_sound.h#L141) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:162](../include/flashvm/swf_stream_sound.h#L162) |
+| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:143](../include/flashvm/swf_stream_sound.h#L143) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

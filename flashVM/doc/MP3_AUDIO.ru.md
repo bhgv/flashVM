@@ -8,7 +8,7 @@
 
 [English](MP3_AUDIO.md) · [План функциональности](ROADMAP.md)
 
-Текущее состояние v0.819: реализованы [free-format](FREE_FORMAT_MP3.ru.md) и
+Основа кодека v0.819: реализованы [free-format](FREE_FORMAT_MP3.ru.md) и
 [CRC защищённых областей](MP3_CRC.ru.md). Исторические ограничения ниже заменены
 этими контрактами. Короткие события без framing evidence, отрицательная latency,
 полная Huffman integrity и reference seek/A/V остаются вне поддержки. MPEG CRC
@@ -94,7 +94,7 @@ MPEG samples, полные интервалы и native lifetime. Decoder/public
 
 ## v0.779 bounded continuous MP3 snapshots
 
-[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L87) и bounded-вариант теперь нормализуют root
+[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L88) и bounded-вариант теперь нормализуют root
 MP3 в immutable PCM_NATIVE/S16. Полные Layer-III packets идут в порядке блоков;
 один reservoir/filter state проходит через все блоки, включая пустые markers.
 Wire SampleCount обязан совпасть с полным decoded MPEG count блока. Фактические
@@ -210,6 +210,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:120](../include/flashvm/swf_sound_mixer.h#L120) |
 | `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:88](../include/flashvm/swf_sound_mixer.h#L88) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:87](../include/flashvm/swf_stream_sound.h#L87) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
 | `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:29](../src/swf/sound_mp3.hpp#L29) |
 <!-- source-links:end -->

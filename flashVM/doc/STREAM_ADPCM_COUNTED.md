@@ -37,7 +37,7 @@ Rate, channels, root frame/block identities, advisory playback and average field
 remain unchanged. The original live movie and encoded snapshot APIs remain opaque
 ADPCM; source bytes are not rewritten. The count array can be released immediately
 on return. The snapshot can outlive context/runtime, then closes through
-[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L198) after every reader/converter has stopped.
+[fvm_swf_stream_sound_snapshot_close](../include/flashvm/swf_stream_sound.h#L199) after every reader/converter has stopped.
 
 INVALID_ARGUMENT covers null/wrong arguments, table length mismatch, counts beyond
 ULONG_MAX, truncated/excess encoded bytes and nonzero padding. Source validation
@@ -53,7 +53,7 @@ requires quiescence. No managed pointer or GC root is retained.
 
 The same storage accounting as bounded open_pcm applies. Encoded plus decoded
 payloads coexist during preparation; compressed bytes are freed on success.
-[fvm_swf_stream_sound_snapshot_storage_info](../include/flashvm/swf_stream_sound.h#L123) exposes exact retained/peak charges,
+[fvm_swf_stream_sound_snapshot_storage_info](../include/flashvm/swf_stream_sound.h#L124) exposes exact retained/peak charges,
 excluding allocator bookkeeping, VM, count table, stack and caller reader buffers.
 Subtract retained charges when preparing multiple independently owned segments;
 this API does not enforce a process-wide aggregate memory limit.
@@ -107,9 +107,9 @@ because process enumeration is unavailable. No physical/foreign acceptance claim
 
 ## Allocation-free ranges (v0.774)
 
-[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L190)(context, stream, block, samples, first, frames,
+[fvm_swf_stream_sound_read_adpcm](../include/flashvm/swf_stream_sound.h#L191)(context, stream, block, samples, first, frames,
 out, capacity_values, written_values) decodes one live root ADPCM block on the
-context owner. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L194)(snapshot, block, samples,
+context owner. [fvm_swf_stream_sound_snapshot_read_adpcm](../include/flashvm/swf_stream_sound.h#L195)(snapshot, block, samples,
 first, frames, out, capacity_values, written_values) reads an **encoded** immutable
 snapshot, including after source VM teardown. Normalized PCM snapshots return
 UNSUPPORTED; use the ordinary PCM reader for those.
@@ -189,9 +189,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:190](../include/flashvm/swf_stream_sound.h#L190) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:198](../include/flashvm/swf_stream_sound.h#L198) |
-| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:117](../include/flashvm/swf_stream_sound.h#L117) |
-| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:194](../include/flashvm/swf_stream_sound.h#L194) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:123](../include/flashvm/swf_stream_sound.h#L123) |
+| `fvm_swf_stream_sound_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:191](../include/flashvm/swf_stream_sound.h#L191) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../include/flashvm/swf_stream_sound.h#L199) |
+| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:118](../include/flashvm/swf_stream_sound.h#L118) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:195](../include/flashvm/swf_stream_sound.h#L195) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:124](../include/flashvm/swf_stream_sound.h#L124) |
 <!-- source-links:end -->

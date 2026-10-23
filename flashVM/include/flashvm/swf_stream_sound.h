@@ -77,10 +77,11 @@ extern "C"
      * MP3: retain one MPEG reservoir across complete packets/blocks; require exact per-block
      * declared sample counts and stable effective geometry, trim header latency exactly once.
      * First block seek must match header latency; later seek fields do not trim continuous PCM.
-     * Negative initial latency/free-format MPEG/other codecs and partial inferred ADPCM
+     * Negative initial latency/other codecs and partial inferred ADPCM
      * UNSUPPORTED; malformed/truncated MPEG, count/geometry mismatch or padding INVALID_ARGUMENT.
      * MP3 normalized block counts describe post-latency PCM; frame identities persist. This
-     * does not add reference Flash discontinuous MP3 seek or decoder-read-ahead scheduling.
+     * does not choose discontinuous positions: use snapshot_seek_point for bounded authored
+     * alignment. Full reference decoder-read-ahead/A-V scheduling remains separate.
      * Output cleared first; encoded+decoded payload/index must fit runtime memory limit.
      * May allocate/decode; failure releases temporary ownership. No callback or device/VM execution.
      * Returned immutable snapshot uses existing reader/converter/close APIs after VM teardown. */
