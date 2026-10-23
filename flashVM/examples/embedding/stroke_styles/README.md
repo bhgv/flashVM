@@ -1,5 +1,7 @@
 # C89 script stroke styles
 
+Adaptive extension scales the last segment by 1/256 and moves its origin to (2+1/256,2+1/256), retaining width=10 and none/bevel. It checks exact fractional bounds -0.99609375..5.05078125, -1.99609375..6.0390625. Output: `adaptive curve bounds verified`. Result ownership and GC roots follow the same pattern. [Contract](../../../doc/ADAPTIVE_CURVE_BOUNDS.md).
+
 Diagonal extension: none/bevel, width=10, start (2,2), control (8,6.5), end (14,11). Segment length is 15 and normal half-width offsets are 3 and 4; bounds are -1..17, -2..15 despite moveTo(100,100). The added line is `linear curve bounds: -1..17, -2..15`. Ownership and result GC roots follow the preceding stages. [Contract](../../../doc/LINEAR_CURVE_BOUNDS.md).
 
 Axis-curve extension: after the round example it selects none/bevel, control (8,8), end (14,8), and isolated moveTo(100,100). It verifies bounds x=2..14, y=6..10. The additional line is `axis curve bounds: 2..14, 6..10`. Each replaced getBounds result is separately rooted and released. C APIs and synchronous ownership are unchanged; no new C entry point is needed. [Contract](../../../doc/AXIS_CURVE_BOUNDS.md).
@@ -37,6 +39,7 @@ square corner alpha: 255
 round curve bounds: 0..16, 2..10
 axis curve bounds: 2..14, 6..10
 linear curve bounds: -1..17, -2..15
+adaptive curve bounds verified
 ```
 
 With `cmake/profiles/minimal.defs`, use a separate build directory: the second

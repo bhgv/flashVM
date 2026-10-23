@@ -1,4 +1,4 @@
-/* C89 tutorial: selected stroke caps, analytic round and exact axis curves; see README.md. */
+/* C89 tutorial: selected caps and round, linear and adaptive curve bounds; see README.md. */
 #include "flashvm/standard.h" /* Declare runtime setup, values and ordinary object calls. */
 #include "flashvm/movieclip.h" /* Declare host MovieClip creation and synchronous rendering. */
 #include "flashvm/gc.h" /* [GC:] Declare explicit roots owned by this host. */
@@ -126,7 +126,7 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     if (!checked(fvm_gc_unpin(context, bounds), "unpin old bounds")) goto done; /* [GC:] Release the first result before replacing geometry. */
     bounds_root = 0; /* [GC:] Cleanup no longer owns the first bounds root. */
     bounds = 0; /* [GC:] Do not reuse the unrooted borrowed pointer. */
-    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the round stroke before the independent axis query. */
+    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the preceding stroke before the independent axis query. */
     for (i = 0; i < 8; ++i) fvm_value_undefined(arguments + i); /* Default all optional parameters explicitly. */
     fvm_value_number(arguments, 4); /* Choose a four-pixel stroke. */
     fvm_value_number(arguments + 1, 0xff0000); /* Choose opaque red RGB. */
@@ -162,7 +162,7 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     if (!checked(fvm_gc_unpin(context, bounds), "unpin old bounds")) goto done; /* [GC:] Release the first result before replacing geometry. */
     bounds_root = 0; /* [GC:] Cleanup no longer owns the first bounds root. */
     bounds = 0; /* [GC:] Do not reuse the unrooted borrowed pointer. */
-    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the round stroke before the independent diagonal query. */
+    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the preceding stroke before the independent diagonal query. */
     for (i = 0; i < 8; ++i) fvm_value_undefined(arguments + i); /* Default all optional parameters explicitly. */
     fvm_value_number(arguments, 10); /* Choose a ten-unit diagonal stroke. */
     fvm_value_number(arguments + 1, 0xff0000); /* Choose opaque red RGB. */
@@ -195,6 +195,42 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     if (!scalar(context, bounds, "yMin", &top) || !scalar(context, bounds, "yMax", &bottom)) goto done; /* Copy vertical analytic extrema. */
     if (left != -1 || right != 17 || top != -2 || bottom != 15) goto done; /* The five-unit normal offsets are exactly three horizontally and four vertically. */
     printf("linear curve bounds: %.0f..%.0f, %.0f..%.0f\n", left, right, top, bottom); /* Report the move-independent geometric result. */
+    if (!checked(fvm_gc_unpin(context, bounds), "unpin old bounds")) goto done; /* [GC:] Release the first result before replacing geometry. */
+    bounds_root = 0; /* [GC:] Cleanup no longer owns the first bounds root. */
+    bounds = 0; /* [GC:] Do not reuse the unrooted borrowed pointer. */
+    if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the preceding stroke before the independent diagonal query. */
+    for (i = 0; i < 8; ++i) fvm_value_undefined(arguments + i); /* Default all optional parameters explicitly. */
+    fvm_value_number(arguments, 10); /* Choose a ten-unit diagonal stroke. */
+    fvm_value_number(arguments + 1, 0xff0000); /* Choose opaque red RGB. */
+    fvm_value_number(arguments + 2, 100); /* Use one hundred percent opacity. */
+    fvm_value_boolean(arguments + 3, 0); /* Keep unsupported pixel hinting disabled. */
+    if (!checked(fvm_value_string(arguments + 4, "normal"), "scale")) goto done; /* Borrow a static scale-mode string. */
+    if (!checked(fvm_value_string(arguments + 5, "none"), "cap")) goto done; /* Select symmetric butt ends. */
+    if (!checked(fvm_value_string(arguments + 6, "bevel"), "join")) goto done; /* Select bevel joins for this path. */
+    if (!checked(fvm_object_call(context, clip, "lineStyle", 7, arguments, &out), "lineStyle")) goto done; /* Copy the current style atomically. */
+    fvm_value_number(arguments, 2.00390625); /* Start on a fine dyadic grid beyond the old 1/16 lattice. */
+    fvm_value_number(arguments + 1, 2.00390625); /* Use the same exact fractional origin vertically. */
+    if (!checked(fvm_object_call(context, clip, "moveTo", 2, arguments, &out), "curve start")) goto done; /* Begin a separate butt/bevel path. */
+    fvm_value_number(arguments, 2.02734375); /* Use the midpoint of a 12/256 horizontal span. */
+    fvm_value_number(arguments + 1, 2.021484375); /* Use the midpoint of a 9/256 vertical span. */
+    fvm_value_number(arguments + 2, 2.05078125); /* End at the exact fractional horizontal coordinate. */
+    fvm_value_number(arguments + 3, 2.0390625); /* Complete a segment of exact length 15/256. */
+    if (!checked(fvm_object_call(context, clip, "curveTo", 4, arguments, &out), "curveTo")) goto done; /* Copy the quadratic into the retained path. */
+    fvm_value_number(arguments, 100); /* Choose a distant isolated move. */
+    fvm_value_number(arguments + 1, 100); /* Keep the isolated point outside the actual stroke. */
+    if (!checked(fvm_object_call(context, clip, "moveTo", 2, arguments, &out), "isolated move")) goto done; /* A move without a segment must not enlarge stroke bounds. */
+    fvm_value_undefined(arguments); /* Initialize the object-valued reference-space operand. */
+    arguments[0].type = FVM_VALUE_OBJECT; /* Mark the following pointer as a managed object reference. */
+    arguments[0].object = clip; /* Borrow the already pinned clip as the bounds coordinate space. */
+    if (!checked(fvm_object_call(context, clip, "getBounds", 1, arguments, &out), "getBounds")) goto done; /* Allocate a context-owned result object. */
+    if (out.type != FVM_VALUE_OBJECT || !out.object) goto done; /* Validate before borrowing its pointer. */
+    bounds = out.object; /* Keep the returned object separate from later scalar results. */
+    if (!checked(fvm_gc_pin(context, bounds), "pin bounds")) goto done; /* [GC:] Retain the temporary result across property reads. */
+    bounds_root = 1; /* [GC:] Record ownership of the second explicit root. */
+    if (!scalar(context, bounds, "xMin", &left) || !scalar(context, bounds, "xMax", &right)) goto done; /* Copy the horizontal extents. */
+    if (!scalar(context, bounds, "yMin", &top) || !scalar(context, bounds, "yMax", &bottom)) goto done; /* Copy vertical analytic extrema. */
+    if (left != -0.99609375 || right != 5.05078125 || top != -1.99609375 || bottom != 6.0390625) goto done; /* The five-unit normal offsets are exactly three horizontally and four vertically. */
+    puts("adaptive curve bounds verified"); /* Report the move-independent geometric result. */
     result = 0; /* Every required geometry and available-renderer check succeeded. */
  done: /* Release only resources actually acquired by this host. */
     if (bounds_root) (void)fvm_gc_unpin(context, bounds); /* [GC:] Drop the temporary result root first. */
