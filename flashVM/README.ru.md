@@ -1,4 +1,4 @@
-Версия разработки: **0.1246** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1247** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1247: [Четыре bitmap-режима проходят отказы памяти декодера загрузчика и подготовки paint](doc/BITMAP_STROKES.ru.md).
 
 v0.1246: [Проверены ссылки на изображения словаря живые изменения dispose и неверные метаданные](doc/BITMAP_STROKES.ru.md).
 
