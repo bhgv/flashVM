@@ -15,6 +15,7 @@
 
 #include "text_state.hpp"
 #include "text_listeners.hpp"
+#include "../core/numeric_constants.h"
 #include "base_state.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/execution_work_scope.hpp"
@@ -516,7 +517,7 @@ struct PreparedGeometry
         field.auto_size_left = automatic;
         field.x = x;
         field.anchor = anchor;
-        if (automatic)
+        if (owned.layout)
         {
             field.layout = owned.layout;
             owned.layout = 0;
@@ -634,6 +635,85 @@ static FVM_Result scroll_geometry(FVM_Context *context, Field *field,
     info.clip_height = inner_height;
     return FVM_OK;
 }
+
+/* [GC:] Prepare geometry observers without running getters or publishing candidate state.
+ * Fields without a potential handler retain lazy layout admission. */
+class GeometryNotification
+{
+    FVM_Context *context_; /* Borrowed owner, alive through synchronous dispatch. */
+    Field *field_; /* Native resource rooted by plan_. */
+    FVM_Object *object_; /* Source identity, never the temporary candidate. */
+    FVM_TextFieldScrollPlan plan_; /* [GC:] Roots recipients before publication. */
+    bool observed_, changed_; /* Candidate admission and delivery are independent. */
+    unsigned long scroll_, horizontal_; /* Candidate clamped offsets. */
+    GeometryNotification(const GeometryNotification &); /* Active roots cannot be copied. */
+    GeometryNotification &operator=(const GeometryNotification &); /* Unique transaction ownership. */
+  public:
+    /* [GC:] Establish a rooted plan before any candidate allocation. */
+    GeometryNotification(FVM_Context *context, FVM_Object *object)
+        : context_(context), field_((Field *)object->resource), object_(object),
+          plan_(context, object), observed_(false), changed_(false), scroll_(1), horizontal_(0) {}
+    /* Detect potential observers by native descriptors only, including inherited handlers. */
+    FVM_Result prepare(PreparedGeometry &geometry)
+    {
+        if (context_->swf_loaded && context_->swf_info.version < FVM_TEXT_LISTENER_MIN_VERSION)
+            return FVM_OK;
+        observed_ = object_->properties.find(FVM_TEXT_LISTENER_KEY) != object_->properties.end();
+        FVM_Object *cursor = object_;
+        FVM_ExecutionWorkScope work(context_);
+        for (unsigned int depth = 0; !observed_ && cursor && depth < FVM_PROTOTYPE_MAX_DEPTH;
+             ++depth, cursor = cursor->prototype)
+        {
+            FVM_Result result = work.step();
+            if (result != FVM_OK) return result;
+            observed_ = cursor->properties.find("onScroller") != cursor->properties.end() ||
+                        cursor->methods.find("onScroller") != cursor->methods.end() ||
+                        cursor->accessors.find("onScroller") != cursor->accessors.end();
+        }
+        if (!observed_)
+            return cursor ? FVM_INVALID_ARGUMENT : FVM_OK;
+        FVM_TextFieldScrollInfo before, after;
+        FVM_Result result = scroll_geometry(context_, field_, before);
+        if (result != FVM_OK) return result;
+        Field candidate;
+        candidate.current = field_->current;
+        candidate.text = field_->text;
+        candidate.text_size = field_->text_size;
+        candidate.width = geometry.width;
+        candidate.height = geometry.height;
+        candidate.multiline = geometry.multiline;
+        candidate.wrap = geometry.wrap;
+        candidate.scroll = field_->scroll;
+        candidate.hscroll = field_->hscroll;
+        result = scroll_geometry(context_, &candidate, after);
+        if (result != FVM_OK) return result;
+        scroll_ = after.scroll;
+        horizontal_ = after.hscroll;
+        changed_ = before.scroll != after.scroll || before.hscroll != after.hscroll ||
+                   before.maxscroll != after.maxscroll || before.maxhscroll != after.maxhscroll;
+        if (changed_)
+        {
+            result = plan_.prepare();
+            if (result != FVM_OK) return result;
+        }
+        /* Transfer the measured cache only after every prepublication check succeeds. */
+        fvm_text_layout_destroy(geometry.owned.layout);
+        geometry.owned.layout = candidate.layout;
+        candidate.layout = 0;
+        return FVM_OK;
+    }
+    /* Publish geometry and clamp together, then deliver without overwriting nested edits. */
+    FVM_Result commit(PreparedGeometry &geometry)
+    {
+        geometry.commit(*field_);
+        if (observed_)
+        {
+            field_->scroll = scroll_;
+            field_->hscroll = horizontal_;
+        }
+        return changed_ ? plan_.dispatch() : FVM_OK;
+    }
+};
 
 /* Read extent. */
 static FVM_Result get_extent(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a,
