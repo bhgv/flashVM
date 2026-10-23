@@ -1038,6 +1038,10 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         result = prepare_field_geometry(c, next, joined.begin(), total, geometry);
         if (result != FVM_OK)
             return result;
+        GeometryNotification notification(c, self);
+        result = notification.prepare(geometry, next, joined.begin(), total);
+        if (result != FVM_OK)
+            return result;
         char *owned = new (std::nothrow) char[total + 1];
         if (!owned)
             return FVM_OUT_OF_MEMORY;
@@ -1058,9 +1062,8 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         field->text = owned;
         field->text_size = total;
         field->current.swap(next);
-        geometry.commit(*field);
         fvm_value_undefined(out);
-        return FVM_OK;
+        return notification.commit(geometry);
     }
     catch (...)
     {
