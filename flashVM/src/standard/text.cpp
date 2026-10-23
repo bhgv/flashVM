@@ -142,9 +142,10 @@ struct Field
     bool auto_size_left; /* Automatic fitting enabled; anchor chooses the horizontal invariant. */
     double x, y; /* Parent-space translation; exported outlines remain field-local. */
     unsigned long anchor; /* Left, center or right automatic horizontal anchor. */
+    unsigned long scroll, hscroll; /* Stored one-based line and zero-based pixel requests. */
     FVM_TextLayout *layout; /* Owned cache, replaced only after a successful measured edit. */
     /* Initialize Field and its owned state. */
-    Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), x(0), y(0), anchor(FVM_TEXT_ANCHOR_LEFT), layout(0)
+    Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), x(0), y(0), anchor(FVM_TEXT_ANCHOR_LEFT), scroll(1), hscroll(0), layout(0)
     {
     }
     /* Release the resources owned by this Field instance. */
@@ -572,6 +573,65 @@ static FVM_Result ensure_layout(FVM_Context *c, Field *field)
         width = FVM_TEXT_FIELD_MIN_INNER_WIDTH;
     return build_layout(c, field->current, field->text, field->text_size, width,
                         field->multiline, &field->layout, 0);
+}
+
+/* Compute uniform visual-line viewport geometry without publishing any field state. */
+static FVM_Result scroll_geometry(FVM_Context *context, Field *field,
+                                  FVM_TextFieldScrollInfo &info)
+{
+    FVM_Result result = ensure_layout(context, field);
+    if (result != FVM_OK)
+        return result;
+    FVM_TextLayoutMetrics metrics;
+    result = fvm_text_layout_metrics(field->layout, &metrics);
+    if (result != FVM_OK)
+        return result;
+    if (!metrics.line_count || metrics.line_count > FVM_TEXT_FIELD_MAX_SCROLL_LINES)
+        return FVM_UNSUPPORTED;
+    double step = metrics.height + field->current.leading;
+    if (metrics.line_count > 1)
+    {
+        FVM_TextLayoutLine first, second;
+        result = fvm_text_layout_line(field->layout, 0, &first);
+        if (result == FVM_OK)
+            result = fvm_text_layout_line(field->layout, 1, &second);
+        if (result != FVM_OK)
+            return result;
+        step = second.baseline - first.baseline;
+    }
+    if (!finite_range(step, FVM_TEXT_FIELD_MIN_INNER_WIDTH, FVM_TEXT_FIELD_MAX_EXTENT))
+        return FVM_UNSUPPORTED;
+    double inner_width = field->width > FVM_TEXT_FIELD_GUTTER ? field->width - FVM_TEXT_FIELD_GUTTER : 0;
+    double inner_height = field->height > FVM_TEXT_FIELD_GUTTER ? field->height - FVM_TEXT_FIELD_GUTTER : 0;
+    double body = metrics.height - (metrics.line_count - 1) * step;
+    size_t visible = 1;
+    if (inner_height >= body)
+    {
+        double fit = 1 + std::floor((inner_height - body) / step);
+        visible = fit >= metrics.line_count ? metrics.line_count : (size_t)fit;
+    }
+    double overflow = metrics.advance_width + field->current.left_margin +
+        field->current.right_margin + field->current.block_indent - inner_width;
+    if (overflow < 0)
+        overflow = 0;
+    overflow = std::ceil(overflow);
+    if (!finite_range(overflow, 0, FVM_TEXT_FIELD_MAX_SCROLL_PIXELS))
+        return FVM_UNSUPPORTED;
+    std::memset(&info, 0, sizeof(info));
+    info.struct_size = sizeof(info);
+    info.line_count = metrics.line_count;
+    info.line_height = step;
+    info.maxscroll = (unsigned long)(metrics.line_count - visible + 1);
+    info.maxhscroll = (unsigned long)overflow;
+    info.scroll = field->scroll < info.maxscroll ? field->scroll : info.maxscroll;
+    info.hscroll = field->hscroll < info.maxhscroll ? field->hscroll : info.maxhscroll;
+    info.bottom_scroll = (unsigned long)(info.scroll + visible - 1);
+    info.offset_x = -(double)info.hscroll;
+    info.offset_y = -(double)(info.scroll - 1) * step;
+    info.clip_x = info.clip_y = FVM_TEXT_FIELD_GUTTER / 2;
+    info.clip_width = inner_width;
+    info.clip_height = inner_height;
+    return FVM_OK;
 }
 
 /* Read extent. */
@@ -1529,6 +1589,32 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
     catch (...)
     {
         delete field;
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* [GC:] Owner-only field query retains no managed references after returning copied scalars. */
+extern "C" FVM_Result fvm_textfield_scroll_info(
+    FVM_Context *context, FVM_Object *object, FVM_TextFieldScrollInfo *out)
+{
+    if (!context || !object || object->owner != context || object->resource_kind != TEXT_FIELD ||
+        !object->resource || !out || out->struct_size != sizeof(*out) ||
+        context->destroying || context->gc_collecting || context->gc_releasing)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        Field *field = (Field *)object->resource;
+        FVM_TextFieldScrollInfo info;
+        FVM_Result result = scroll_geometry(context, field, info);
+        if (result != FVM_OK)
+            return result;
+        field->scroll = info.scroll;
+        field->hscroll = info.hscroll;
+        *out = info;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
         return FVM_OUT_OF_MEMORY;
     }
 }

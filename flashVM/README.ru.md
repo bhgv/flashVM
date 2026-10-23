@@ -1,4 +1,4 @@
-Версия разработки: **0.1089** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1090** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1090: [Добавлен расчёт диапазонов строк и пикселей по одностильной раскладке.](doc/TEXT_SCROLL.ru.md).
 
 v0.1089: [Сохранён выбор кадров PCM и зафиксированы native, sanitizer, SDK-free и независимые проверки.](doc/MP3_FRAME_SEEK.ru.md).
 

@@ -1,10 +1,12 @@
-Development version: **0.1089** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1090** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1090: [Derive visual-line and pixel ranges from uniform layout without changing intrinsic metrics.](doc/TEXT_SCROLL.md).
 
 v0.1089: [Preserve ordinary PCM frame selection and publish native sanitizer SDK-free and oracle evidence.](doc/MP3_FRAME_SEEK.md).
 

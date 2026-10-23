@@ -39,7 +39,7 @@ copied into ActionScript worker contexts.
 
 Create a field through [fvm_textfield_create](../include/flashvm/standard_text.h#L41), then publish it with [fvm_set_global](../include/flashvm/value.h#L87)
 or keep it pinned/rooted. It is a GC-owned native resource, not a MovieClip
-child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L48) returns an independent path that survives
+child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L75) returns an independent path that survives
 collection of the field and destruction of the context. The host draws or masks
 it with AGG/Cairo through path.h and chooses the color, e.g. from textColor.
 The exported contours are not clipped to the field rectangle.
@@ -183,5 +183,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
 | `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../include/flashvm/standard_text.h#L25) |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../include/flashvm/standard_text.h#L41) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
 <!-- source-links:end -->

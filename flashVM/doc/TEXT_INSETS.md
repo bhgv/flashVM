@@ -35,7 +35,7 @@ setTextFormat or setNewTextFormat to apply them. These borrowed context-owned
 objects must belong to the same context. The returned getTextFormat/getNewTextFormat
 objects are managed snapshots; retain them with ordinary roots/pins across GC.
 Calls run on the context owner thread and may allocate; OUT_OF_MEMORY leaves the
-field's text, style and geometry unchanged. [fvm_textfield_path](../include/flashvm/standard_text.h#L48) returns an independent
+field's text, style and geometry unchanged. [fvm_textfield_path](../include/flashvm/standard_text.h#L75) returns an independent
 owned local path, destroyed with [fvm_path_destroy](../include/flashvm/path.h#L52) and allowed to outlive the context.
 No new C API is introduced. Native context concurrency still requires separate owners.
 
@@ -58,5 +58,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:22](../src/standard/text_constants.h#L22) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
 <!-- source-links:end -->

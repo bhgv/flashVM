@@ -36,7 +36,7 @@ setTextFormat/setNewTextFormat. Заимствованные управляем�
 одному контексту. getTextFormat/getNewTextFormat возвращают управляемые снимки;
 для сохранения через GC нужны обычные корни/pins. Вызовы выполняются потоком
 владельца контекста и могут выделять память. OUT_OF_MEMORY сохраняет текст,
-стиль и геометрию поля. [fvm_textfield_path](../include/flashvm/standard_text.h#L48) возвращает независимый локальный путь,
+стиль и геометрию поля. [fvm_textfield_path](../include/flashvm/standard_text.h#L75) возвращает независимый локальный путь,
 который освобождается [fvm_path_destroy](../include/flashvm/path.h#L52) и может пережить контекст. Нового C API
 нет. Для конкуренции контексты требуют отдельных владельцев.
 
@@ -59,5 +59,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
 | `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:22](../src/standard/text_constants.h#L22) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
 <!-- source-links:end -->

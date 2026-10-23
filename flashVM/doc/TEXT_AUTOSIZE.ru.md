@@ -15,7 +15,7 @@ _x и _y — числовые смещения относительно роди
 Вызовы выполняются в потоке контекста; правила корней/GC прежние. Перемещение
 не сбрасывает локальный layout cache.
 
-[fvm_textfield_path](../include/flashvm/standard_text.h#L48) возвращает независимый контур в локальных координатах поля
+[fvm_textfield_path](../include/flashvm/standard_text.h#L75) возвращает независимый контур в локальных координатах поля
 с обычным отступом. Хост применяет x/y при размещении ровно один раз. Здесь ещё
 нет MovieClip.createTextField, связи с родителем/display list, вращения, масштаба,
 обрезки, ввода, HTML или полного декодирования SWF-текста. Публичный ABI не менялся.
@@ -96,7 +96,7 @@ Center/right пока дают UNSUPPORTED: нативная модель поз
 внешний размер 52x48), правки, форматы, Boolean, неподдержанные якоря и GC.
 Полная эталонная/сценическая приёмка Flash и физические платформы остаются открытыми.
 Нативная реализация использует `PreparedGeometry` и `prepare_field_geometry` до
-публикации правок полей [`fvm_textfield_create`](../include/flashvm/standard_text.h#L41); [`fvm_textfield_path`](../include/flashvm/standard_text.h#L48) экспортирует
+публикации правок полей [`fvm_textfield_create`](../include/flashvm/standard_text.h#L41); [`fvm_textfield_path`](../include/flashvm/standard_text.h#L75) экспортирует
 независимую геометрию через существующий публичный API.
 
 v0.846: снимки и бинарная/канальная передача сохраняют режим в свободном бите
@@ -145,5 +145,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../include/flashvm/standard_text.h#L41) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:48](../include/flashvm/standard_text.h#L48) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:75](../include/flashvm/standard_text.h#L75) |
 <!-- source-links:end -->

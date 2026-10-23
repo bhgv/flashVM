@@ -31,6 +31,8 @@
 #define FVM_TEXT_STYLE_TAB_WIRE_BYTES 13U /* Type byte, IEEE double and four-byte metadata reference. */
 #define FVM_TEXT_STYLE_TAB_WIRE_HEADER 4U /* Count prefix for each optional tab table. */
 #define FVM_TEXT_STYLE_FLAGS (FVM_TEXT_STYLE_NO_KERNING | FVM_TEXT_STYLE_HAS_SPACING | FVM_TEXT_STYLE_UNDERLINE | FVM_TEXT_STYLE_BOLD | FVM_TEXT_STYLE_ITALIC | FVM_TEXT_STYLE_JUSTIFY | FVM_TEXT_STYLE_HAS_INSETS | FVM_TEXT_STYLE_HAS_INDENT | FVM_TEXT_STYLE_HAS_TABS) /* Packed non-alignment bits. */
+#define FVM_TEXT_FIELD_MAX_SCROLL_PIXELS 2147483647UL /* Portable positive signed pixel envelope. */
+#define FVM_TEXT_FIELD_MAX_SCROLL_LINES (FVM_TEXT_FIELD_MAX_SCALARS + 1UL) /* Hard breaks can add one empty line. */
 #define FVM_TEXT_FIELD_GUTTER 4.0 /* Total horizontal/vertical native text padding. */
 #define FVM_TEXT_FIELD_MIN_INNER_WIDTH (1.0 / 64.0) /* Progress on oversized graphemes. */
 #define FVM_TEXT_FIELD_MAX_EXTENT 1000000.0 /* Maximum admitted outer field dimension. */

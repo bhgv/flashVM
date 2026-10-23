@@ -40,6 +40,33 @@ extern "C"
     /* Create textfield. */
     FVM_API FVM_Result fvm_textfield_create(FVM_Context *, const char *font_name, double width,
                                             double height, FVM_Object **out);
+    /* Copied field-local viewport observation; no borrowed pointers or managed roots. */
+    typedef struct FVM_TextFieldScrollInfo
+    {
+        size_t struct_size; /* Caller sets exact sizeof this structure. */
+        unsigned long scroll; /* Effective one-based top visual line. */
+        unsigned long hscroll; /* Effective zero-based horizontal pixel offset. */
+        unsigned long maxscroll; /* Largest admitted top line with this viewport. */
+        unsigned long maxhscroll; /* Ceiling of horizontal logical overflow in pixels. */
+        unsigned long bottom_scroll; /* Last fully fitting line, with at least the top line. */
+        size_t line_count; /* Visual layout lines, including empty hard lines. */
+        double line_height; /* Uniform baseline step from the current font and leading. */
+        double offset_x, offset_y; /* Scroll translation already applied by textfield_path. */
+        double clip_x, clip_y; /* Field-local inner viewport origin, after the gutter. */
+        double clip_width, clip_height; /* Nonnegative inner viewport extents for host clipping. */
+    } FVM_TextFieldScrollInfo;
+    /* Owner-thread observation of host-created uniform TextField scroll geometry.
+     * Requires matching context/object and exact struct_size. May build/cache layout;
+     * no script/callback/device operation, no managed pointer retained. Cache failures
+     * propagate (including NO_FONTS UNSUPPORTED and allocation OUT_OF_MEMORY); invalid
+     * descriptors INVALID_ARGUMENT; excessive geometry UNSUPPORTED. Output unchanged
+     * on failure. Keep object reachable; serialize all VM/field mutations and GC.
+     * Successful observation clamps stored offsets to current geometry. Fully fitting
+     * line policy keeps at least one top line even for a zero-height viewport. Native
+     * contours remain unclipped; host applies returned rectangle and _x/_y separately.
+     * This bounded uniform-style policy is not full Flash mixed-font/HTML/event parity. */
+    FVM_API FVM_Result fvm_textfield_scroll_info(
+        FVM_Context *, FVM_Object *, FVM_TextFieldScrollInfo *out);
     /* Independent editable contours, including the text field's 2-pixel gutter.
      * These are field-local: the host applies _x/_y exactly once when placing them.
      * These are not clipped to the field rectangle. */
