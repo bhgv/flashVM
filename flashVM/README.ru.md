@@ -1,4 +1,4 @@
-Версия разработки: **0.1000** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1001** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1001: [Парные часы получают наблюдение FIFO непосредственно перед write без ошибочного опроса после принятия.](doc/ADAPTIVE_TAILS.ru.md).
 
 v0.1000: [Парный планировщик EOF/gates заполняет остаток FIFO; короткий TAIL сохраняет приоритет перед новым BASE.](doc/ADAPTIVE_TAILS.ru.md).
 

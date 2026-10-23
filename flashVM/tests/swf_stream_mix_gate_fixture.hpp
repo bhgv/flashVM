@@ -6,10 +6,10 @@
 #undef main
 #include "flashvm/swf_stream_output.h"
 #include <cassert>
-struct GateFIFO {size_t count,total,calls;short samples[128];int fail_write,fail_count,fail_clear,throw_write,reenter;FVM_SWFStreamOutput *owner;FVM_SWFSoundMixQueue *mix;};
+struct GateFIFO {size_t count,total,calls,drain_per_count;short samples[128];int fail_write,fail_count,fail_clear,throw_write,reenter;FVM_SWFStreamOutput *owner;FVM_SWFSoundMixQueue *mix;};
 static void gate_reenter(GateFIFO *q){if(!q->reenter)return;size_t n=91;assert(fvm_swf_stream_output_pump_mix_until(q->owner,q->mix,1,&n)==FVM_INVALID_ARGUMENT && !n);FVM_SWFStreamOutputInfo info;info.struct_size=sizeof(info);info.submitted_frames=91;assert(fvm_swf_stream_output_info(q->owner,&info)==FVM_INVALID_ARGUMENT && info.submitted_frames==91);}
 static FVM_Result gate_write(void *raw,const short *pcm,size_t frames){GateFIFO *q=(GateFIFO*)raw;++q->calls;gate_reenter(q);if(q->throw_write)throw 7;if(q->fail_write)return q->fail_write==2?FVM_NOT_FOUND:FVM_ERROR;assert((q->total+frames)*2<=128);memcpy(q->samples+q->total*2,pcm,frames*2*sizeof(short));q->total+=frames;q->count+=frames;return FVM_OK;}
-static FVM_Result gate_count(void *raw,size_t *out){GateFIFO *q=(GateFIFO*)raw;gate_reenter(q);if(q->fail_count)return FVM_ERROR;*out=q->count;return FVM_OK;}
+static FVM_Result gate_count(void *raw,size_t *out){GateFIFO *q=(GateFIFO*)raw;gate_reenter(q);if(q->fail_count)return FVM_ERROR;if(q->drain_per_count)q->count=q->count>q->drain_per_count?q->count-q->drain_per_count:0;*out=q->count;return FVM_OK;}
 static FVM_Result gate_pause(void *,int){return FVM_OK;}
 static FVM_Result gate_clear(void *raw){GateFIFO *q=(GateFIFO*)raw;if(q->fail_clear)return FVM_ERROR;q->count=0;return FVM_OK;}
 struct GateFixture

@@ -331,8 +331,8 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *qu
 }
 
 /* Fit fresh event work into observed headroom; retained retries remain indivisible. */
-extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *queue,
-    size_t maximum, size_t target, size_t *accepted)
+FVM_Result fvm_swf_sound_mix_queue_pump_tail_observed(FVM_SWFSoundMixQueue *queue,
+    size_t maximum, size_t target, size_t *accepted, FVM_SWFSoundMixQueueClock *clock)
 {
     if (accepted) *accepted = 0;
     if (!queue || queue->busy || !maximum || maximum > queue->capacity || !target ||
@@ -357,8 +357,27 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQue
                     (maximum < available ? maximum : available);
     if (frames > available) return FVM_NOT_FOUND;
     result = write_composed(queue, 0, frames, true);
-    if (result == FVM_OK && accepted) *accepted = frames;
+    if (result == FVM_OK)
+    {
+        if (accepted) *accepted = frames;
+        if (clock)
+        {
+            /* Publish the observation actually used for admission, without a fallible post-write poll. */
+            clock->struct_size = sizeof(*clock);
+            clock->submitted_frames = queue->clock_submitted;
+            clock->played_frames = queue->clock_played;
+            clock->seconds = queue->clock_played / queue->backend.sample_rate;
+            clock->queued_frames = queued + frames;
+        }
+    }
     return result;
+}
+
+/* Public adaptive filling needs no extra clock output or callback after real acceptance. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *queue,
+    size_t maximum, size_t target, size_t *accepted)
+{
+    return fvm_swf_sound_mix_queue_pump_tail_observed(queue, maximum, target, accepted, 0);
 }
 
 /* Explicitly begin a fresh shared epoch; do not infer a queue baseline at construction. */

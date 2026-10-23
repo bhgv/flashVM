@@ -29,6 +29,9 @@ v0.999: Add bounded adaptive tail filling with indivisible retained retries and 
 
 v0.1000: Use adaptive tails in paired EOF and frame-gated scheduling while retaining short TAIL priority over newly permitted base.
 
+
+v0.1001: Carry the final pre-write FIFO observation into paired counters without a fallible post-acceptance callback.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
