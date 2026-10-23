@@ -1,10 +1,12 @@
-Development version: **0.1094** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1095** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1095: [Retain independent fonts contours and viewport positions after sender destruction and GC.](doc/TEXT_SCROLL.md).
 
 v0.1094: [Check complete-line geometry zero viewports intrinsic metrics and failed query preservation.](doc/TEXT_SCROLL.md).
 
