@@ -1,4 +1,4 @@
-Версия разработки: **0.1049** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1050** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1050: [Зафиксированы bounded origin ownership, согласованные парные часы, desktop stats и PCM-проверки с открытыми A/V-границами.](doc/MIX_ORIGIN_CLOCK.ru.md).
 
 v0.1049: [Уточнены origin budget, accepted/pending ownership, точные dequeue категории, desktop diagnostics и десять PCM-режимов.](doc/MIX_ORIGIN_CLOCK.ru.md).
 

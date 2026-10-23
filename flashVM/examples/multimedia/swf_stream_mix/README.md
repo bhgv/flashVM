@@ -169,7 +169,6 @@ including existing DECLICK voices; device-wide cancellation still requires ackno
 
 | API | Contract and ownership |
 | --- | --- |
-| [`fvm_swf_sound_mix_queue_storage_required_for_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L52) | Predict owner/PCM/optional ID bytes into a required scalar without allocation, callbacks or VM access; invalid geometry/mode preserves output. Excludes mixer, voices and device. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
 | [`fvm_swf_sound_mix_queue_stop_all`](../../../include/flashvm/swf_sound_mix_queue.h#L202) | Retire all future events and reset ID deadlines on a live tracked owner; preserve pending/FIFO bytes and clock. Requires external serialization; no callback/allocation/VM/GC. Disabled tracking is UNSUPPORTED. [Guide](../../../doc/MIX_QUEUE_IDENTITIES.md). |
 
 
@@ -286,7 +285,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_storage_info` | function | [include/flashvm/swf_sound_mix_queue.h:96](../../../include/flashvm/swf_sound_mix_queue.h#L96) |
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../../../include/flashvm/swf_sound_mix_queue.h#L44) |
 | `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../../../include/flashvm/swf_sound_mix_queue.h#L60) |
-| `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../../../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:163](../../../include/flashvm/swf_sound_mix_queue.h#L163) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../../../include/flashvm/swf_sound_mixer.h#L54) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:136](../../../include/flashvm/swf_sound_mixer.h#L136) |

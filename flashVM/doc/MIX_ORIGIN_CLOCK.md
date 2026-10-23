@@ -65,12 +65,12 @@ It performs one validated FIFO observation and copies BASE/TAIL submitted, playe
 and queued counts. Disabled mode is UNSUPPORTED; invalid/reentry INVALID_ARGUMENT;
 backend/clock failures propagate and exceptions ERROR. Errors preserve caller out.
 No allocation, render or source advancement occurs. Category sums equal the shared
-accepted/dequeued/backlog counts, with exact integer frames through MAX_CLOCK.
+accepted/dequeued/backlog counts, with exact integer frames through [FVM_SWF_SOUND_OUTPUT_MAX_CLOCK](../include/flashvm/swf_sound_output.h#L14).
 Rendered but rejected retry is excluded until acknowledged; its original BASE/TAIL
 classification survives gate changes, voice stop and retry through a different
 compatible tail variant. PCM values are never used to guess category.
 
-The fixed ring represents up to ORIGIN_FRAMES accepted FIFO positions. Tracked
+The fixed ring represents up to [FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES](../include/flashvm/swf_sound_mix_queue.h#L54) accepted FIFO positions. Tracked
 writes observe dequeue before rendering, then return NOT_FOUND on insufficient
 ring room without advancing voices or changing pending bytes. Successful writes
 record bits/counters without a fallible post-write callback. Invalid growth or
@@ -81,7 +81,7 @@ multiple polls. A later backend consumption becomes visible on the next observat
 ## Desktop and C89 use
 
 Root desktop composition budgets/enables IDs and origins before native worker
-publication. The 32 KiB bitmap is inside the existing MIX_BYTES budget; source,
+publication. The 32 KiB bitmap is inside the existing FVM_DESKTOP_AUDIO_MIX_BYTES budget; source,
 voice, device, VM and allocator memory stay separate. Insufficient combined budget
 is rejected during preflight before opening SDL, including when the older ID-only
 requirement would fit. `fvm_desktop_audio_origin_info` copies a fresh native snapshot
@@ -109,6 +109,17 @@ or huge-PCM device runs. Shared-owner access still requires external serializati
 
 v0.1049: Specify origin mode budgets, accepted versus pending ownership, exact dequeue categories, desktop diagnostics and independent ten-mode PCM evidence.
 
+
+[`FVM_SWFSoundMixQueueOriginInfo`](../include/flashvm/swf_sound_mix_queue.h#L64) is an owned-value snapshot: submitted/played fields are exact integer-valued doubles and queued fields are complete native output frames. Retain the queue rather than any borrowed result pointer.
+
+
+## v0.1050 verification / Проверка
+
+Mixed BASE/TAIL origin clocks v0.1038–v0.1050: an optional fixed 32 KiB bitmap tracks accepted output origins through validated FIFO dequeue. Adapted writes are BASE (including zero PCM and event mixing); explicit event-only pumps are TAIL (including chosen padding/releases). Pending retries are excluded until acknowledgement and preserve origin across gate/stop/retry changes. Additive storage/mode/observation APIs preserve old predictor meanings and untracked callbacks. Validated writes observe room before render, with no allocation or fallible callback after acceptance. Paired stream snapshots carry the actual latest base admission observation. Desktop mixed acquisition preflights/enables the origin journal inside its existing adapter budget; --stats reports separate accepted/dequeued categories. Validation passes 211 native regression/tutorial/CLI checks, 65 selected ASan/UBSan checks plus thirteen explicit --no-throw runs, and eight SDK-free core/tutorial checks. Additional mixed compatibility and options/help checks pass. Ordinary builds cover exceptions/allocation failures; LeakSanitizer is disabled. Evidence includes seeded wrap/capacity/2^53 boundaries (not huge PCM or duration runs), allocation rollback and zero-allocation scheduling, exact converted PCM and 256 epochs on four independent OS workers. A real SDL dummy worker verifies host pause, root Stop TAIL drain, retained source grid, BASE resume, GC/native JIT and acknowledged epoch cancellation. FWS/CWS CLI tests assert PCM and origin totals in both VM modes. The C89 tenth --origins mode checks 17 exact frames, BASE9/TAIL8 and five retained retries with an independent rational oracle. A renamed detached component configures with explicit SDK and its copied ten-mode checker passes against the native binary; no separate detached build. Origin bookkeeping does not reconstruct SWF source/DAC timestamps or implement automatic A/V/drift/seek correction. Child timelines/dictionaries, complete codec/reference latency, other backend/platform/device acceptance and all nine stages remain open.
+
+
+v0.1050: Record bounded category ownership, coherent paired clocks, desktop statistics and independent PCM evidence with explicit remaining synchronization limits.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -118,7 +129,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:54](../include/flashvm/swf_sound_mix_queue.h#L54) |
 | `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../include/flashvm/swf_sound_mix_queue.h#L91) |
 | `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../include/flashvm/swf_sound_mix_queue.h#L84) |
 | `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
+| `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
+| `FVM_SWFSoundMixQueueOriginInfo` | struct | [include/flashvm/swf_sound_mix_queue.h:64](../include/flashvm/swf_sound_mix_queue.h#L64) |
 <!-- source-links:end -->
