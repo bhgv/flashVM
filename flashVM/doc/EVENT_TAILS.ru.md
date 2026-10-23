@@ -25,6 +25,9 @@ v0.1031: Event-only вывод удерживается при подготов�
 
 v0.1032: Подключены finite event pump, resume коротких очередей, завершение после FIFO drain и исключение ожидаемой idle-паузы из underrun.
 
+
+v0.1033: CLI проверяет одновременные голоса, короткие и многоблочные хвосты, FWS/CWS, native JIT, точный PCM и mute.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

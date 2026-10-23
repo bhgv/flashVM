@@ -25,6 +25,9 @@ v0.1031: Hold event-only production during source preparation and frame callback
 
 v0.1032: Pump finite event blocks, resume short queues, observe voices and retries through final FIFO drain and avoid expected-idle underrun reports.
 
+
+v0.1033: Check simultaneous opposite voices, short and multi-quantum tails, FWS/CWS, native JIT entries, exact PCM and device-free mute.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
