@@ -74,6 +74,32 @@ struct Query
     /* Include a bevel wedge using orientation signs, independent of raster backends. */
     void triangle(double ax, double ay, double bx, double by, double cx, double cy)
     {
+        double span = std::fabs(bx - ax);
+        const double deltas[] = {by - ay, cx - ax, cy - ay};
+        for (unsigned i = 0; i < 3; ++i)
+            if (std::fabs(deltas[i]) > span)
+                span = std::fabs(deltas[i]);
+        if (span > 0 && span * span < DBL_MIN)
+        {
+            /* A triangle cannot contain a point outside its coordinate box. This also
+             * bounds the ratios before the local orientation products are evaluated. */
+            const double low_x = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx);
+            const double high_x = ax > bx ? (ax > cx ? ax : cx) : (bx > cx ? bx : cx);
+            const double low_y = ay < by ? (ay < cy ? ay : cy) : (by < cy ? by : cy);
+            const double high_y = ay > by ? (ay > cy ? ay : cy) : (by > cy ? by : cy);
+            if (x < low_x || x > high_x || y < low_y || y > high_y)
+                return;
+            const double px = (x - ax) / span, py = (y - ay) / span;
+            bx = (bx - ax) / span; by = (by - ay) / span;
+            cx = (cx - ax) / span; cy = (cy - ay) / span;
+            const double a = bx * py - by * px;
+            const double b = (cx - bx) * (py - by) - (cy - by) * (px - bx);
+            const double c = -cx * (py - cy) + cy * (px - cx);
+            const double area = bx * cy - by * cx;
+            if (area && ((a >= 0 && b >= 0 && c >= 0) || (a <= 0 && b <= 0 && c <= 0)))
+                edge = true;
+            return;
+        }
         double a = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
         double b = (cx - bx) * (y - by) - (cy - by) * (x - bx);
         double c = (ax - cx) * (y - cy) - (ay - cy) * (x - cx);

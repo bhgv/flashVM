@@ -18,7 +18,7 @@ paint alpha and bitmap pixels are not read to calculate geometric bounds.
 
 ## Private geometry contract
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L503) borrows an immutable path, a positive finite width
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L529) borrows an immutable path, a positive finite width
 up to 1,000,000 destination units, supported cap/join selectors and two required
 caller-owned output pointers. The path's existing coordinate limits still apply.
 It allocates no temporary geometry, needs no context or graphics backend and
@@ -27,7 +27,7 @@ only after a successful walk. Invalid arguments return [FVM_INVALID_ARGUMENT](..
 quadratic or cubic commands return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and leave both outputs intact.
 An empty path or only zero-length edges succeeds with zero bounds and no segments.
 
-The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L421). It
+The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L447). It
 unions finite rectangular bodies, open-end cap extrema and outer round sectors.
 Only cardinal directions inside a round sector can add an axis extremum beyond
 its endpoints. Bevel vertices already belong to the adjacent bodies. Closed
@@ -113,7 +113,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:421](../src/capi/path_hit_c.cpp#L421) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:447](../src/capi/path_hit_c.cpp#L447) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:529](../src/capi/path_hit_c.cpp#L529) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

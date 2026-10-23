@@ -6,7 +6,7 @@ The managed bounds traversal now sends every straight stroke through the existin
 
 Zero authored width uses one destination unit for both straight bounds and the conservative curve envelope. Positive width uses the existing maximum-axis transform metric; complete positive-width collapse contributes no stroke extent. getBounds, MovieClip dimensions and non-shape point hitTest share this traversal. getRect retains the underlying path geometry. These are geometric bounds, not antialias pixel extents.
 
-The implementation is in [bounds](../src/standard/movieclip.cpp); straight geometry uses [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L503). The latter remains allocation-free, context-free and transactional, with caller-owned outputs and an immutable borrowed path. Managed traversal still allocates snapshots and converted paths, uses its existing native GC barrier and propagates allocation errors. No API, serialization field or callback ID changes.
+The implementation is in [bounds](../src/standard/movieclip.cpp); straight geometry uses [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L529). The latter remains allocation-free, context-free and transactional, with caller-owned outputs and an immutable borrowed path. Managed traversal still allocates snapshots and converted paths, uses its existing native GC barrier and propagates allocation errors. No API, serialization field or callback ID changes.
 
 Quadratic/cubic paths continue to use the path bounding box expanded by half the effective width, multiplied by sqrt(2) for square caps. This is deliberately conservative, not an exact offset-curve bound. Existing nonuniform/shear width metric differences, raster/reference acceptance, unsupported LINESTYLE2 styles, Cairo and physical devices remain open. All nine roadmap stages remain open.
 
@@ -43,5 +43,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:529](../src/capi/path_hit_c.cpp#L529) |
 <!-- source-links:end -->

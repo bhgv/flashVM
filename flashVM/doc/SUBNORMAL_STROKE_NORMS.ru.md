@@ -4,7 +4,7 @@
 
 ## Контракт
 
-Внутренний [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L503) заимствует неизменяемый путь, требует положительную конечную ширину в прежнем диапазоне, проверяет selectors торцов/соединений и совместно публикует принадлежащие вызывающему bounds/presence. [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L421) заимствует тот же путь и пишет целочисленный результат точки при прежней валидации. Обе функции не выделяют память, не вызывают callbacks и не взаимодействуют с GC. Параллельное чтение требует стабильного времени жизни; совместная мутация запрещена. Ошибки selectors и неподдержанные кривые сохраняют статусы и транзакционность bounds.
+Внутренний [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L529) заимствует неизменяемый путь, требует положительную конечную ширину в прежнем диапазоне, проверяет selectors торцов/соединений и совместно публикует принадлежащие вызывающему bounds/presence. [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L447) заимствует тот же путь и пишет целочисленный результат точки при прежней валидации. Обе функции не выделяют память, не вызывают callbacks и не взаимодействуют с GC. Параллельное чтение требует стабильного времени жизни; совместная мутация запрещена. Ошибки selectors и неподдержанные кривые сохраняют статусы и транзакционность bounds.
 
 Публичный API, wire-формат и callback ID не меняются. Изменяется только касательная styled-отрезка в диапазоне субнормального квадрата нормы. Обычная арифметика, прежний публичный distance test, raster и деление кривых сохраняются. Managed getBounds, dimensions и selected shape hits используют общий walker. Общие кривые, неравномерные метрики, miter/hinting/non-scaling открыты. Требуются постепенный двоичный underflow и обычное округление; FTZ/fast-math не проверены.
 
@@ -23,6 +23,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:421](../src/capi/path_hit_c.cpp#L421) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:447](../src/capi/path_hit_c.cpp#L447) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:529](../src/capi/path_hit_c.cpp#L529) |
 <!-- source-links:end -->

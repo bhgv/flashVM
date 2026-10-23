@@ -18,7 +18,7 @@ shape используют обновлённые границы. getRect по-�
 
 ## Контракт внутренней геометрии
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L503) заимствует неизменяемый путь, положительную конечную
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L529) заимствует неизменяемый путь, положительную конечную
 ширину до 1 000 000 единиц назначения, поддержанные selectors и два обязательных
 указателя на результат вызывающей стороны. Сохраняются ограничения координат
 пути. Временная геометрия не выделяется, контекст и графический backend не нужны;
@@ -28,7 +28,7 @@ shape используют обновлённые границы. getRect по-�
 Пустой путь или только нулевые рёбра успешно дают нулевые bounds и отсутствие
 отрезков.
 
-Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L421). Объединяются
+Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L447). Объединяются
 конечные прямоугольники отрезков, экстремумы открытых торцов и внешние round-сектора.
 Только направления осей внутри сектора могут добавить экстремум помимо его концов.
 Вершины bevel уже принадлежат телам соседних отрезков. Замкнутый контур соединяет
@@ -111,7 +111,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:421](../src/capi/path_hit_c.cpp#L421) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:503](../src/capi/path_hit_c.cpp#L503) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:447](../src/capi/path_hit_c.cpp#L447) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:529](../src/capi/path_hit_c.cpp#L529) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
