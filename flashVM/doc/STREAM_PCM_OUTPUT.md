@@ -1,5 +1,10 @@
 # Caller-buffered prepared stream output
 
+Additive authored MP3 binding/seek APIs are documented in
+[prepared frame seek](MP3_FRAME_SEEK.md). Legacy block-start navigation retains
+its behavior. Hosts still own frame authorization and device queue scheduling.
+
+
 [Русский](STREAM_PCM_OUTPUT.ru.md), [conversion](STREAM_PCM_CONVERSION.md).
 `swf_stream_output.h` connects a prepared native converter to the existing
 [FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L16) contract. The producer, retry buffer and converter are

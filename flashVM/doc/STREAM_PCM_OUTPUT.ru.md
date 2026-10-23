@@ -1,5 +1,10 @@
 # Вывод подготовленного потока с caller-буфером
 
+Новые API привязки/перемотки по MP3 SeekSamples описаны в
+[контракте покадровой перемотки](MP3_FRAME_SEEK.ru.md). Прежние API сохраняют
+переход на начало блока. Разрешение кадров и очередь устройства принадлежат хосту.
+
+
 [English](STREAM_PCM_OUTPUT.md), [conversion](STREAM_PCM_CONVERSION.ru.md).
 `swf_stream_output.h` соединяет native converter с существующим
 [FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L16). Producer, retry buffer и converter принадлежат caller;

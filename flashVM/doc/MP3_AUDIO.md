@@ -1,5 +1,11 @@
 # SWF MP3 audio
 
+Prepared MP3 discontinuities now have a checked signed-position path:
+[authored frame seek](MP3_FRAME_SEEK.md). It preserves continuous decoding and
+adds transactional native/desktop navigation. Full reference read-ahead/A/V
+pacing and negative initial latency remain separate open limits.
+
+
 [Русский](MP3_AUDIO.ru.md) · [functional roadmap](ROADMAP.md)
 
 Current v0.819: [free-format decoding](FREE_FORMAT_MP3.md) and protected-region

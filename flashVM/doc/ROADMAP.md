@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Prepared root MP3 seek alignment: [EN](MP3_FRAME_SEEK.md) /
+[RU](MP3_FRAME_SEEK.ru.md). Signed authored positions and transactional desktop
+navigation are implemented; full reference source-time/read-ahead/A/V acceptance,
+child streams and negative initial latency remain open. No roadmap stage closes.
+
+
 Принят пользователем 12 октября 2026 года. Основной ориентир дальнейшей
 разработки. Исходная контрольная точка: v0.14. Добавление этого документа в
 v0.15 не означает появления новых возможностей VM.

@@ -55,6 +55,42 @@ bind_frame/seek_frame продолжают выбирать начало авт�
 callback кадра продолжают удерживать вывод. Непрерывный путь не применяет
 SeekSamples повторно. Эталонное чтение вперёд, source-time и коррекция A/V открыты.
 
+
+## API и границы выполнения
+
+| Операция | Результат и владение |
+| --- | --- |
+| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L161) | Копирует позицию, не меняет snapshot и выход при ошибке; точный размер и срок жизни задаёт владелец. |
+| [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) | Проверяет другой converter, вызывает pause/clear, затем публикует привязку; оба converter принадлежат хосту. |
+| [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) | Та же транзакция для текущего converter. |
+| [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L54) | Применяет block_index/first к offline reader без воздействия на очередь. |
+| [fvm_swf_stream_converter_seek](../include/flashvm/swf_stream_convert.h#L73) | Устанавливает source-позицию и нулевую рациональную фазу; синхронизация у хоста. |
+
+Смещения считаются в sample frames/парах, не channel values и не выходных кадрах.
+Поиск логарифмический по индексированным блокам. Весь PCM и metadata находятся
+в bounded-владельце; sizeof приватного индекса входит в runtime и peak-бюджет.
+Прежние публичные структуры не увеличены. Скопированная позиция не владеет
+snapshot: она применима только к исходному сегменту. Нельзя подставлять её к
+другому источнику или закрывать snapshot до завершения reader/worker.
+
+Выход SeekSamples за PCM отклоняется без clamp и выдуманной тишины. Callback
+backend обязан сохранять all-or-none контракт при ошибке. Отклонённые записи
+сохраняют точный PCM; успешная перемотка отменяет его после подтверждения clear,
+в том числе через mixed-адаптер. Это позиционирование в конечном подготовленном
+буфере, а не restart декодера в произвольно обрезанном MPEG и не полная Flash-приёмка.
+
+## Воспроизводимые проверки
+
+Соберите `flashvm_tests_swf_stream_mp3_seek_point`,
+`flashvm_tests_swf_stream_mp3_seek_output`,
+`flashvm_tests_swf_stream_mp3_seek_allocation` и
+`flashvm_tests_swf_stream_mp3_seek_threads`. С явным SDL2 SDK и desktop frontend
+также соберите `flashvm_frontend_stream_mp3_seek`. C89-пример
+`flashvm_examples_multimedia_swf_stream_mp3_main --seek INPUT FRAME OUTPUT`
+выгружает хвост после уничтожения VM. `scripts/check_mp3_seek_example.py EXECUTABLE`
+сравнивает полные хвосты с FFmpeg; отсутствие FFmpeg/ffprobe явно даёт skip 77.
+Нативные/dummy/аналитические проверки отделены от физических устройств.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -67,8 +103,10 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
 | `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
 | `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
 | `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:140](../include/flashvm/swf_stream_sound.h#L140) |
 | `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:161](../include/flashvm/swf_stream_sound.h#L161) |
 | `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:142](../include/flashvm/swf_stream_sound.h#L142) |

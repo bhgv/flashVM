@@ -144,7 +144,7 @@ extern "C"
         size_t struct_size; /* Required exact sizeof this structure. */
         size_t block_index; /* Actual PCM block; block_count represents EOF. */
         size_t first; /* Source sample-frame offset within the resolved PCM block. */
-        unsigned int source_frame; /* Selected authored frame, or SEEK_EOF_FRAME when absent. */
+        unsigned int source_frame; /* Selected authored frame, or FVM_SWF_STREAM_SEEK_EOF_FRAME when absent. */
         int mp3_aligned; /* Nonzero only for completely prepared MP3. */
     } FVM_SWFStreamSoundSeekPoint;
     /* Resolve the first authored block at/after positive frame, applying signed MP3 alignment.
@@ -152,7 +152,7 @@ extern "C"
      * initial block starts at zero because initial latency was already removed. PCM/ADPCM
      * select block offset zero. Actual PCM may lie in an earlier/later block; source_frame
      * retains the selected authored frame, including when its position equals exact EOF.
-     * Beyond last authored block succeeds with block_count/0 and SEEK_EOF_FRAME.
+     * Beyond last authored block succeeds with block_count/0 and FVM_SWF_STREAM_SEEK_EOF_FRAME.
      * Null/wrong struct_size/zero frame or negative/past-end target INVALID_ARGUMENT;
      * compressed encoded snapshots UNSUPPORTED; arithmetic overflow OUT_OF_MEMORY.
      * Output unchanged on failure. No allocation, decoding, callbacks, VM access or GC roots.
