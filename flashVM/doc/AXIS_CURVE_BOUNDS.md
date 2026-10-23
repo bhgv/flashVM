@@ -14,6 +14,31 @@ Managed quadratic paths automatically share the precise box through getBounds, M
 
 Arbitrary rotations can move an axis path outside the admitted class. General non-round curves, nonuniform/shear metrics, miter/hinting/non-scaling, full Flash reference acceptance, Cairo and physical devices remain open. All nine roadmap stages remain open. The executable [C89 tutorial](../examples/embedding/stroke_styles/README.md) demonstrates actual curveTo(8,8,14,8), none/bevel and an ignored isolated moveTo.
 
+## Verified checkpoint v0.1379
+
+Series v0.1359–v0.1379 on published master v0.1358 contains 21 local commits. Validation passes 289 selected native AGG/JIT tests, 43 no-graphics interpreter tests and 43 ASan/UBSan tests, including the updated C89 tutorial and existing vector_paths. LeakSanitizer is disabled. Eighteen new fixtures cover two curve degrees, six styles, both axes/directions, endpoint controls, constants, contours, joins/Close, four unsupported cases preserving both outputs, five widths, managed getBounds/getRect/hairline/mixed/dimensions/hitTest, 96 quality/paint/style combinations, 24 graphs through binary and channel after sender teardown, and four OS workers with 96 bounds/GC epochs. Existing native tests include JIT, timeline and allocation failures; these are regressions rather than complete new reference acceptance for every subsystem. Source/example/diff checks pass. Cairo and physical platforms were not tested; all nine stages remain open.
+
+| Fixture | Coverage |
+| --- | --- |
+| [path_axis_curve_quadratic](../tests/path_axis_curve_quadratic.cpp) | Measure all supported quadratic axis stroke caps and joins |
+| [path_axis_curve_cubic](../tests/path_axis_curve_cubic.cpp) | Measure all supported cubic axis stroke caps and joins |
+| [path_axis_curve_vertical](../tests/path_axis_curve_vertical.cpp) | Apply exact stroke geometry to vertical axis curves |
+| [path_axis_curve_reverse](../tests/path_axis_curve_reverse.cpp) | Retain axis stroke extents for both traversal directions |
+| [path_axis_curve_endpoint_controls](../tests/path_axis_curve_endpoint_controls.cpp) | Accept endpoint controls and vanishing endpoint derivatives |
+| [path_axis_curve_constant](../tests/path_axis_curve_constant.cpp) | Suppress constant axis Bezier stroke extents |
+| [path_axis_curve_contours](../tests/path_axis_curve_contours.cpp) | Exclude isolated moves and constant secondary contours |
+| [path_axis_curve_joins](../tests/path_axis_curve_joins.cpp) | Compose axis Bezier joins and closing segments like straight geometry |
+| [path_axis_curve_errors](../tests/path_axis_curve_errors.cpp) | Preserve output sentinels on non-axis reversing and unordered controls |
+| [path_axis_curve_widths](../tests/path_axis_curve_widths.cpp) | Measure axis stroke bodies at finite fractional and maximum widths |
+| [movieclip_axis_curve_geometry](../tests/movieclip_axis_curve_geometry.cpp) | Use exact axis curve bounds without isolated move inflation |
+| [movieclip_axis_curve_hairline](../tests/movieclip_axis_curve_hairline.cpp) | Measure effective one-unit axis curve hairlines |
+| [movieclip_axis_curve_mixed](../tests/movieclip_axis_curve_mixed.cpp) | Union filled path boxes with exact axis stroke extents |
+| [movieclip_axis_curve_dimensions](../tests/movieclip_axis_curve_dimensions.cpp) | Read scaled axis stroke dimensions through MovieClip observers |
+| [movieclip_axis_curve_hitbox](../tests/movieclip_axis_curve_hitbox.cpp) | Use axis stroke boxes for non-shape point hit queries |
+| [movieclip_axis_curve_quality](../tests/movieclip_axis_curve_quality.cpp) | Retain axis bounds across paint kinds and stage quality policies |
+| [movieclip_axis_curve_transfer](../tests/movieclip_axis_curve_transfer.cpp) | Preserve axis curves through binary and channel sender teardown |
+| [movieclip_axis_curve_threads](../tests/movieclip_axis_curve_threads.cpp) | Measure and collect axis curves on isolated worker runtimes |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

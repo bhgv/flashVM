@@ -14,6 +14,31 @@ Managed quadratic автоматически использует точную �
 
 Произвольные повороты осевого пути могут вывести его из поддержанного класса; точные non-round кривые, неравномерный масштаб/shear, miter/hinting/non-scaling, полная Flash-reference-приёмка, Cairo и физические устройства остаются открытыми. Все девять этапов roadmap открыты. Исполняемый [C89-пример](../examples/embedding/stroke_styles/README.ru.md) демонстрирует реальный curveTo(8,8,14,8), none/bevel и игнорируемый одиночный moveTo.
 
+## Проверенная контрольная точка v0.1379
+
+Серия v0.1359–v0.1379 поверх опубликованного master v0.1358 содержит 21 локальный коммит. Пройдены 289 выбранных нативных AGG/JIT-тестов, 43 теста интерпретатора без графики и 43 ASan/UBSan, включая обновлённый C89-пример и существующий vector_paths. LeakSanitizer отключён. Восемнадцать новых fixtures проверяют два порядка кривых, шесть стилей, обе оси/направления, торцевые controls, постоянные команды, контуры, joins/Close, четыре неподдержанных случая с сохранением обоих результатов, пять ширин, managed getBounds/getRect/hairline/mixed/dimensions/hitTest, 96 quality/paint/style сочетаний, 24 графа через binary и канал после удаления отправителя, четыре OS-потока с 96 циклами bounds/GC. Существующий нативный набор включает JIT, таймлайн и отказы памяти; это регрессии, а не полная новая reference-приёмка каждой подсистемы. Пройдены source/example/diff checks. Cairo и реальные платформы не проверялись; все девять этапов остаются открытыми.
+
+| Fixture | Проверка |
+| --- | --- |
+| [path_axis_curve_quadratic](../tests/path_axis_curve_quadratic.cpp) | Quadratic: все торцы и соединения |
+| [path_axis_curve_cubic](../tests/path_axis_curve_cubic.cpp) | Cubic: все торцы и соединения |
+| [path_axis_curve_vertical](../tests/path_axis_curve_vertical.cpp) | Вертикальная ось |
+| [path_axis_curve_reverse](../tests/path_axis_curve_reverse.cpp) | Обратное направление |
+| [path_axis_curve_endpoint_controls](../tests/path_axis_curve_endpoint_controls.cpp) | Нулевые производные торцов |
+| [path_axis_curve_constant](../tests/path_axis_curve_constant.cpp) | Постоянные команды |
+| [path_axis_curve_contours](../tests/path_axis_curve_contours.cpp) | Изолированные и постоянные контуры |
+| [path_axis_curve_joins](../tests/path_axis_curve_joins.cpp) | Соединения и замыкание |
+| [path_axis_curve_errors](../tests/path_axis_curve_errors.cpp) | Сохранность результатов при отказе |
+| [path_axis_curve_widths](../tests/path_axis_curve_widths.cpp) | Дробная и предельная ширина |
+| [movieclip_axis_curve_geometry](../tests/movieclip_axis_curve_geometry.cpp) | Managed bounds и getRect |
+| [movieclip_axis_curve_hairline](../tests/movieclip_axis_curve_hairline.cpp) | Managed hairline |
+| [movieclip_axis_curve_mixed](../tests/movieclip_axis_curve_mixed.cpp) | Смешанная заливка и штрих |
+| [movieclip_axis_curve_dimensions](../tests/movieclip_axis_curve_dimensions.cpp) | Размеры и равномерный масштаб |
+| [movieclip_axis_curve_hitbox](../tests/movieclip_axis_curve_hitbox.cpp) | Bounding hitTest |
+| [movieclip_axis_curve_quality](../tests/movieclip_axis_curve_quality.cpp) | Виды paint и качество Stage |
+| [movieclip_axis_curve_transfer](../tests/movieclip_axis_curve_transfer.cpp) | Передача графов binary/channel |
+| [movieclip_axis_curve_threads](../tests/movieclip_axis_curve_threads.cpp) | Независимые OS-потоки |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -1,4 +1,6 @@
-# FlashVM stage status / Состояние стадий — v0.1358
+# FlashVM stage status / Состояние стадий — v0.1379
+
+Checkpoint v0.1379 / Контрольная точка v0.1379: 289 native, 43 no-graphics, 43 ASan/UBSan tests pass. Ordered axis Beziers share exact segment cap/join bounds. General non-round curves, nonuniform metrics, full reference/device acceptance and all nine roadmap stages remain open. [EN](AXIS_CURVE_BOUNDS.md) / [RU](AXIS_CURVE_BOUNDS.ru.md).
 
 Monotone axis Bezier bounds / Границы монотонных осевых Bezier: [EN](AXIS_CURVE_BOUNDS.md) / [RU](AXIS_CURVE_BOUNDS.ru.md). Supported caps/joins share exact segment geometry for ordered axis controls. General non-round curves and all nine stages remain open.
 
