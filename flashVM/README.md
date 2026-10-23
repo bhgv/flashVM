@@ -1,10 +1,12 @@
-Development version: **0.1055** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1056** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1056: [Mixed refill, resume, completion and public stream diagnostics observe the stream cache and origin ledger together.](doc/MIXED_SNAPSHOT.md).
 
 v0.1055: [Real SDL dummy workers check category/common sums while draining authored-Stop tails and resumed base in interpreter and JIT.](doc/MIXED_SNAPSHOT.md).
 

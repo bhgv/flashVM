@@ -1,4 +1,4 @@
-Версия разработки: **0.1055** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1056** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1056: [Mixed refill, resume, завершение и stream-диагностика используют единое наблюдение.](doc/MIXED_SNAPSHOT.ru.md).
 
 v0.1055: [Worker SDL dummy проверяет суммы clock при authored Stop, Play, pause и GC в интерпретаторе и JIT.](doc/MIXED_SNAPSHOT.ru.md).
 

@@ -15,6 +15,19 @@ static FVM_Result stream_budget(size_t streams, size_t *remaining)
     return FVM_OK;
 }
 
+/* Observe mixed producer state and category ledger at one FIFO instant; caller holds mutex. */
+static FVM_Result stream_info_locked(FVM_DesktopAudio *audio, FVM_SWFStreamOutputInfo *out)
+{
+    FVM_SWFStreamMixInfo snapshot;
+    FVM_Result result;
+    if (!out || out->struct_size != sizeof(*out)) return FVM_INVALID_ARGUMENT;
+    if (!audio->composition) return fvm_swf_stream_output_info(&audio->stream_output, out);
+    snapshot.struct_size = sizeof(snapshot);
+    result = fvm_swf_stream_output_mix_info(&audio->stream_output, audio->composition, &snapshot);
+    if (result == FVM_OK) *out = snapshot.stream;
+    return result;
+}
+
 /* Predict the separate composition ceiling before native endpoint or callback acquisition. */
 static FVM_Result composition_budget(size_t streams, size_t events, size_t *out)
 {
@@ -359,7 +372,7 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
         return fvm_swf_stream_output_pause(&audio->stream_output, 1);
     }
     info.struct_size = sizeof(info);
-    result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+    result = stream_info_locked(audio, &info);
     if (result != FVM_OK)
         return result;
     result = stream_authorized(audio, &authorized);
@@ -421,7 +434,7 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
         if (result == FVM_NOT_FOUND)
         {
             info.struct_size = sizeof(info);
-            result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+            result = stream_info_locked(audio, &info);
             if (result != FVM_OK)
                 return result;
             if (info.eof && !audio->composition && !audio->stream_cancelled &&
@@ -438,7 +451,7 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
             return result;
     }
     info.struct_size = sizeof(info);
-    result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+    result = stream_info_locked(audio, &info);
     /* A short authorized block/EOF cannot reach a full driver reserve; let it drain. */
     if (result == FVM_OK && info.paused && info.queued_frames &&
         (held || info.queued_frames >= audio->resume_frames))
@@ -446,7 +459,7 @@ static FVM_Result refill_stream(FVM_DesktopAudio *audio)
     if (result == FVM_OK && audio->was_starved && info.queued_frames)
     {
         /* Recheck acknowledged pause after an attempted resume; errors remain observable. */
-        result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+        result = stream_info_locked(audio, &info);
         if (result == FVM_OK && !info.paused)
         {
             audio->was_starved = 0;
@@ -882,7 +895,7 @@ FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamO
         return FVM_INVALID_ARGUMENT;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
-    result = fvm_swf_stream_output_info(&audio->stream_output, info);
+    result = stream_info_locked(audio, info);
     if (result == FVM_OK && audio->stream_index + 1 < audio->stream_count)
         info->eof = 0; /* Source EOF is not complete sequence EOF while later headers remain. */
     SDL_UnlockMutex(audio->mutex);
@@ -933,7 +946,7 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
         (!audio->stream_cancelled || audio->composition))
     {
         info.struct_size = sizeof(info);
-        result = fvm_swf_stream_output_info(&audio->stream_output, &info);
+        result = stream_info_locked(audio, &info);
         if (result == FVM_OK)
         {
             result = stream_authorized(audio, &authorized);
