@@ -12,8 +12,10 @@ from mixed_gates_player import movie
 
 def main():
     executable = sys.argv[1]
+    flag = sys.argv[2] if len(sys.argv) > 2 else '--finite-mixed-tails'
+    assert flag in ('--finite-mixed-tails', '--finite-audio-tails')
     help_result = subprocess.run([executable, '--help'], capture_output=True, text=True, check=True)
-    assert '--finite-mixed-tails' in help_result.stdout
+    assert flag in help_result.stdout
     with tempfile.TemporaryDirectory(prefix='flashvm-finite-cli-') as directory:
         root = Path(directory)
         for kind in ('stop', 'gap'):
@@ -25,7 +27,7 @@ def main():
                     trace = root / (kind + mode + str(int(compressed)))
                     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software',
                                SDL_AUDIODRIVER='dummy', FVM_AUDIO_TRACE=str(trace))
-                    args = [executable, mode, '--finite-mixed-tails', '--frames', '1', '--fps', '1000', '--stats', str(source)]
+                    args = [executable, mode, flag, '--frames', '1', '--fps', '1000', '--stats', str(source)]
                     result = subprocess.run(args, env=env, capture_output=True, text=True, timeout=15)
                     output = result.stdout + result.stderr
                     if mode == '--jit' and 'requested JIT backend unavailable' in output:

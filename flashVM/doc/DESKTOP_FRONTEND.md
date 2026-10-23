@@ -59,6 +59,7 @@ paths that begin with a dash. Input paths are local files, not URLs.
 | `--speed N` or `--speed N%` | Decimal 0.1..10000 percent of authored FPS; default 100 |
 | `--once` | Runs the authored frame count worth of ticks, then closes the current movie |
 | `--frames N` | Positive integer per-file tick limit; useful for bounded launches/tests |
+| `--finite-audio-tails` | Finite event-only and root mixed tails with current work/FIFO completion drain; [contract](EVENT_TAILS.md) |
 | `--finite-mixed-tails` | Opt-in finite root stream/event tails without fresh block padding; [contract](FINITE_TAILS.md) |
 | `--mute` | Mutes event audio and validated root streams; skips device opening |
 | `--stats` | Reports tick count and actual native/interpreter/fallback counters |

@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+`--finite-audio-tails` добавляет конечный event-only PCM, публикацию полного кадра и FIFO drain. [Контракт](../doc/EVENT_TAILS.ru.md).
+
 Флаг `--finite-mixed-tails` завершает root mixed event вывод по живому остатку voice/release. [Контракт и ограничения](../doc/FINITE_TAILS.ru.md).
 
 Mixed-события продолжаются при future stream gates и authored root Stop; host pause удерживает всю очередь. [Текущий контракт](../doc/MIXED_GATES.ru.md).

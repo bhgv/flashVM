@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+`--finite-audio-tails` extends finite completion to event-only PCM with complete-frame publication and full FIFO drain. [Contract](../doc/EVENT_TAILS.md).
+
 Opt-in `--finite-mixed-tails` ends root mixed event output at the live voice/release horizon. [Contract and limits](../doc/FINITE_TAILS.md).
 
 Mixed events now advance through future stream gates and authored root Stop; host pause still holds the whole queue. [Current contract](../doc/MIXED_GATES.md).

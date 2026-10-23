@@ -134,6 +134,8 @@ extern "C"
      * after accepted lead drains. StopSounds holds base cancelled but later events may play.
      * No audio or host suspension reports zero. Query is mutex-serialized;
      * errors preserve output. Owner must retain initialized audio throughout the call. */
+    /* Also observes finite event-only voices/retry/FIFO; suspended hosts report no
+     * processable completion work. Serialized observation never pumps or cancels data. */
     FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *, int *);
     /* Owner safe point: detach sound delivery and join/release old root audio while keeping
      * cumulative counters. Context/window remain alive. Repeated clearing is safe. */

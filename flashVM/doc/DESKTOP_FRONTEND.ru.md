@@ -60,6 +60,7 @@ origin указывает на GitHub.
 | `--speed N` или `--speed N%` | 0.1..10000 процентов от FPS файла; по умолчанию 100 |
 | `--once` | Ограничение числом тиков, равным объявленному числу кадров SWF |
 | `--frames N` | Положительный целый предел тиков для каждого файла |
+| `--finite-audio-tails` | Конечные event-only/root mixed хвосты с ожиданием текущих voice/retry/FIFO; [контракт](EVENT_TAILS.ru.md) |
 | `--finite-mixed-tails` | Конечные root stream/event хвосты без нового padding; [контракт](FINITE_TAILS.ru.md) |
 | `--mute` | Отключение событийного звука и проверенных корневых потоков без открытия устройства |
 | `--stats` | Число тиков и реальные счётчики native/interpreter/fallback |
