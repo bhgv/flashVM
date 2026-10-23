@@ -1,5 +1,8 @@
 # Gradient strokes
 
+Current color-policy extension v0.1183+: [linearRGB fills and strokes](LINEAR_RGB_GRADIENTS.md) / [интерполяция linearRGB](LINEAR_RGB_GRADIENTS.ru.md). Earlier RGB-only limits describe historical checkpoints. DefineShape4/LineStyle2 and nonzero focal remain open; all nine stages remain open.
+
+
 FlashVM adds destination-space gradient strokes and a bounded Flash 8 `MovieClip.lineGradientStyle` implementation. Linear and centered radial ramps support PAD, REFLECT and REPEAT with ordinary RGB interpolation. This extends the existing drawing model; all nine roadmap stages remain open.
 
 ## C89 stroke entry

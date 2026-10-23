@@ -1,5 +1,8 @@
 # Градиентные обводки
 
+Current color-policy extension v0.1183+: [linearRGB fills and strokes](LINEAR_RGB_GRADIENTS.md) / [интерполяция linearRGB](LINEAR_RGB_GRADIENTS.ru.md). Earlier RGB-only limits describe historical checkpoints. DefineShape4/LineStyle2 and nonzero focal remain open; all nine stages remain open.
+
+
 Добавлены градиентные обводки в destination-space и ограниченная реализация Flash 8 `MovieClip.lineGradientStyle`. Поддерживаются линейные и центральные радиальные рампы, PAD, REFLECT и REPEAT с обычной RGB-интерполяцией. Все девять этапов roadmap остаются открытыми.
 
 ## Вызов C89

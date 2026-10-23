@@ -1,5 +1,8 @@
 # Режимы продолжения градиента
 
+Current color-policy extension v0.1183+: [linearRGB fills and strokes](LINEAR_RGB_GRADIENTS.md) / [интерполяция linearRGB](LINEAR_RGB_GRADIENTS.ru.md). Earlier RGB-only limits describe historical checkpoints. DefineShape4/LineStyle2 and nonzero focal remain open; all nine stages remain open.
+
+
 Current stroke extension v0.1169+: [lineGradientStyle and C89 strokes](GRADIENT_STROKES.md) / [градиентные обводки](GRADIENT_STROKES.ru.md). Earlier lineGradientStyle limitations below describe the historical checkpoint; current RGB/zero-focal stroke support does not close full Flash line semantics or any roadmap stage.
 
 

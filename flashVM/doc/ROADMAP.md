@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Linear-light RGB gradient fills/strokes: [EN](LINEAR_RGB_GRADIENTS.md) / [RU](LINEAR_RGB_GRADIENTS.ru.md). This extension does not close any roadmap stage.
+
+
 Gradient strokes and bounded SWF8 lineGradientStyle: [EN](GRADIENT_STROKES.md) / [RU](GRADIENT_STROKES.ru.md). All nine stages remain open.
 
 
