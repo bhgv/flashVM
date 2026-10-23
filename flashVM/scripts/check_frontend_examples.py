@@ -71,7 +71,8 @@ def check():
                              ("player/image_loading", "player-image_loading"),
                              ("player/playback_control", "player-playback_control"),
                              ("player/playback_mailbox", "player-playback_mailbox"),
-                             ("player/frame_capture", "player-frame_capture")):
+                             ("player/frame_capture", "player-frame_capture"),
+                             ("embedding/stroke_styles", "embedding-stroke_styles")):
         tutorial = ROOT / "examples" / relative
         source = (tutorial / "main.c").read_text()
         for file in [tutorial / "main.c"] + list(tutorial.glob("*.inc")):

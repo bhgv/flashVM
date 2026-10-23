@@ -66,6 +66,7 @@
     - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall/init, глубины и отрисовка</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
+    - [stroke_styles](#example-embedding-stroke_styles) — <small><em>C89: lineStyle square/bevel, bounds, hitTest и пиксели</em></small>
   - [input](#group-embedding-input)
     - [event_work_budget](#example-embedding-event_work_budget) — <small><em>Общий бюджет события и сохранение опубликованной позиции</em></small>
     - [gesture_dispatch](#example-embedding-gesture_dispatch) — <small><em>Жест преобразуется в C callback мыши</em></small>
@@ -851,6 +852,19 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 
 
 **Файлы:** [main.c](embedding/stage_quality/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-stroke_styles"></a>
+#### stroke_styles
+
+**Тип:** C89 — собираемый пример. **README:** [EN](embedding/stroke_styles/README.md) / [RU](embedding/stroke_styles/README.ru.md).
+
+Вызывает расширенный script lineStyle, рисует square/bevel линию и проверяет getBounds,
+точечный shape hitTest и непрозрачный угол торца. Явно удерживает clip и временный
+bounds через GC-корни. В NO_GRAPHICS сохраняет геометрические проверки без устройства.
+
+**Файлы:** [main.c](embedding/stroke_styles/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -2287,6 +2301,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [stop_binding — multimedia/stop_binding](#example-multimedia-stop_binding)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
+- [stroke_styles — embedding/stroke_styles](#example-embedding-stroke_styles)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
 - [swf_audio_queue — multimedia/swf_audio_queue](#example-multimedia-swf_audio_queue)
 - [swf_event_mixer — multimedia/swf_event_mixer](#example-multimedia-swf_event_mixer)
