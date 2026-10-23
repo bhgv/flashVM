@@ -25,6 +25,9 @@ v0.1018: Check exact short WAV output under root Stop and future gates for FWS/C
 
 v0.1019: Exercise callback errors and recursion, unchanged pending bytes after stops, failed clear preservation and zero native allocations after preparation.
 
+
+v0.1020: Verify 256 epochs with rejected held tails, newly permitted base, exact saturated PCM, source EOF and queued identity expiry.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

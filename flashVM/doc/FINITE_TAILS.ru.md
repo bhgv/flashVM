@@ -25,6 +25,9 @@ v0.1018: CLI проверяет точный короткий WAV при root St
 
 v0.1019: Проверены errors/reentry, сохранение pending после stop/ошибки clear и отсутствие нативных аллокаций после подготовки.
 
+
+v0.1020: Проверены 256 эпох: отклонённый held TAIL, разрешение BASE, точный насыщенный PCM, source EOF и истечение ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
