@@ -38,6 +38,9 @@ v0.1002: Cover backend failures, callback reentry, exceptions, BASE exclusion an
 
 v0.1003: Exercise the last representable single frame, overflow rejection, invalid backlog and acknowledged epoch reset.
 
+
+v0.1004: Reject all native allocations after preparation across short writes, retry, gate changes, event stop and seek clear.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
