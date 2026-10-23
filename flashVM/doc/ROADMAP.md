@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Gradient spread extension: see [current contracts and remaining work](GRADIENT_SPREAD.md). This does not close any roadmap stage.
+
+
 TextField visible-line observers and metered descriptor admission: [EN](TEXT_VISIBLE_EVENTS.md) / [RU](TEXT_VISIBLE_EVENTS.ru.md). All nine roadmap stages remain open.
 
 

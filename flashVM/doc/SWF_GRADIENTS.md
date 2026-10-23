@@ -1,5 +1,8 @@
 # Linear and radial gradients / Линейные и радиальные градиенты
 
+Current extension: [pad, reflect and repeat](GRADIENT_SPREAD.md) / [режимы продолжения](GRADIENT_SPREAD.ru.md). Earlier PAD-only descriptions below document the original implementation; non-pad modes are now available through the additive API and SWF 8 beginGradientFill. Shape parsing limits remain unchanged.
+
+
 Development checkpoint v0.30; roadmap stage 4 remains open.
 
 DefineShape/2/3 support linear (0x10) and centered radial (0x12) gradient fills.

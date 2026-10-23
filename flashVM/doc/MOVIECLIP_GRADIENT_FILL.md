@@ -1,5 +1,8 @@
 # MovieClip.beginGradientFill / Градиентная заливка ActionScript
 
+Current extension: [pad, reflect and repeat](GRADIENT_SPREAD.md) / [режимы продолжения](GRADIENT_SPREAD.ru.md). Earlier PAD-only descriptions below document the original implementation; non-pad modes are now available through the additive API and SWF 8 beginGradientFill. Shape parsing limits remain unchanged.
+
+
 Development checkpoint v0.31. Roadmap stages 3 and 4 remain open.
 
 MovieClip.beginGradientFill is now available through the standard prototype and
