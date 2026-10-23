@@ -1,4 +1,4 @@
-Версия разработки: **0.1124** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1125** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1125: [Проверены geometry setters SWF6–8 в interpreter и native JIT](doc/TEXT_GEOMETRY_EVENTS.ru.md).
 
 v0.1124: [Проверены rollback до публикации и частичная доставка после commit](doc/TEXT_GEOMETRY_EVENTS.ru.md).
 
