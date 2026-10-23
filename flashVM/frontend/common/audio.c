@@ -46,7 +46,7 @@ static FVM_Result prepare_segment(FVM_Context *context, size_t index, size_t *re
 {
     FVM_SWFStreamSoundStorageInfo storage;
     FVM_Result result =
-        fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, index, *remaining, out);
+        fvm_swf_stream_sound_snapshot_open_pcm_inferred(context, index, *remaining, out);
     if (result != FVM_OK)
         return result;
     storage.struct_size = sizeof(storage);

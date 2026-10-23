@@ -200,6 +200,9 @@ described in [player input](PLAYER_POINTER.md). Full scene/button routing remain
 Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREEN_PLAYER.md) / [RU](OFFSCREEN_PLAYER.ru.md).
 Queued resource owner control / Очередь управления ресурсами: [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
+
+Desktop stream preparation now uses [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../include/flashvm/swf_stream_sound.h#L136): canonical whole ADPCM packets remain accepted; partial packets require a unique byte/padding endpoint. Ambiguous counts stay UNSUPPORTED before audio acquisition. Aggregate retained/peak budgets still apply. / Подготовка коротких ADPCM блоков разрешена только при единственной длине; неоднозначные блоки не угадываются. [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -214,6 +217,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:136](../include/flashvm/swf_stream_sound.h#L136) |
 | `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:27](../include/flashvm/swf.h#L27) |
 | `FVM_SWFStageBounds` | struct | [include/flashvm/swf.h:29](../include/flashvm/swf.h#L29) |
 <!-- source-links:end -->

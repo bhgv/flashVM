@@ -8,3 +8,5 @@ v0.1065: Enumerate independent frame-count candidates for 104 geometries, checki
 v0.1066: Exercise all four native acquisitions, exact and short budgets, VM teardown and allocation-free immutable PCM reads.
 
 v0.1067: Check invalid endings and short predictors, ambiguous mono rejection, missing owners and a unique nonzero endpoint with exact PCM.
+
+v0.1068: Use the inferred bounded snapshot policy for desktop stream segments while retaining aggregate peak budgets and preflight failure before device ownership.
