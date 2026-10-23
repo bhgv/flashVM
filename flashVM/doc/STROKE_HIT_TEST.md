@@ -1,5 +1,7 @@
 # Cap and join aware shape hit testing
 
+Selected straight-stroke bounds are now described in [STROKE_BOUNDS.md](STROKE_BOUNDS.md). Exact curves and nonuniform/shear metrics remain open; this earlier checkpoint does not certify them.
+
 The point form of MovieClip.hitTest with a true shape flag now respects the
 symmetric round, butt and square caps and round/bevel joins already restored
 from SWF 8 DefineShape4 LINESTYLE2. It queries geometry rather than raster alpha:

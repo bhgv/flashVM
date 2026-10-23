@@ -89,6 +89,11 @@ file-style contract is exercised by regression fixtures.
 | [swf_stroke_bounds_threads](../tests/swf_stroke_bounds_threads.cpp) | Four OS workers, 96 bounds/GC epochs |
 | [swf_stroke_bounds_allocation](../tests/swf_stroke_bounds_allocation.cpp) | 24 managed getBounds C++ allocation-fault sweeps |
 
+
+## Checkpoint v0.1303
+
+Selected stroke bounds v0.1285–v0.1303: straight paths with a non-round cap or bevel join now measure finite bodies, cap corners and outer round-sector extrema instead of expanding every path box as a round stroke. getBounds, root dimensions and non-shape point hits share the result; getRect stays stroke-free. Empty selected strokes and isolated Moves do not create extents; mixed fill/stroke paints retain the union. The private allocation-free walker rejects curves transactionally. Managed curves use an explicit conservative fallback, widened by sqrt(2) for square caps. Seventeen new fixtures cover analytic axial and independent diagonal equations, outer sectors and short edges, contour closure, empty geometry, transactional errors, 24 SWF paint/style cases, 120 width cases, twelve curve envelopes, restored metadata, 96 uniform transforms plus 24 complete collapses, sixteen mixed/degenerate graphs, root dimension reads/writes and hit boxes, 96 stage-quality cases, 24 graphs through binary/channel after sender teardown, replacement and sixteen seeks, four workers with 96 bounds/GC epochs and 24 managed C++ allocation-fault sweeps. Validation passes 228 selected native regressions, all 17 fixtures in the SDK-free no-graphics interpreter profile, 16 ASan/UBSan fixtures plus allocation with explicit --no-faults, and documentation/example checks. Real allocation failures pass natively; sanitizer unwinding remains limited and LeakSanitizer is disabled. Public C89 ABI, wire formats and legacy round-only bounds policy stay unchanged. Exact curve bounds, round hairline discrepancies, nonuniform/shear metrics, unsupported LINESTYLE2 options, independent full Flash reference acceptance, Cairo and physical platforms remain open. All nine stages remain open. [Contract](STROKE_BOUNDS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

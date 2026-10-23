@@ -169,6 +169,9 @@ in this tutorial retain round defaults; the guide links raw SWF scene tests.
 
 Geometric hit testing for loaded styled strokes is documented separately in [STROKE_HIT_TEST.md](../../../doc/STROKE_HIT_TEST.md) / [RU](../../../doc/STROKE_HIT_TEST.ru.md). This public C tutorial still uses the existing round stroke ABI. Геометрический hitTest загруженных линий проверяется отдельными fixtures; этот C-пример сохраняет прежний round ABI.
 
+
+Loaded selected-stroke geometry bounds are documented in [STROKE_BOUNDS.md](../../../doc/STROKE_BOUNDS.md) / [RU](../../../doc/STROKE_BOUNDS.ru.md). This tutorial retains public round path APIs. Границы загруженных выбранных стилей проверяются отдельными fixtures; пример сохраняет публичные round API.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
