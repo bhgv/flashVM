@@ -1,4 +1,4 @@
-Development version: **0.1301** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1302** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1302: [Bounds allocation recovery](doc/STROKE_BOUNDS.md).
 
 v0.1301: [Isolated worker bounds](doc/STROKE_BOUNDS.md).
 
