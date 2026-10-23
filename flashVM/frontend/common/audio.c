@@ -469,6 +469,8 @@ static FVM_Result refill(FVM_DesktopAudio *audio)
     FVM_SWFSoundOutputInfo info;
     FVM_Result result;
     unsigned int attempt;
+    size_t future = 0;
+    int held = 0;
     if (audio->stream_source)
         return refill_stream(audio);
     if (audio->finite_event_tails && !audio->event_frame_ready)
@@ -477,7 +479,13 @@ static FVM_Result refill(FVM_DesktopAudio *audio)
     result = fvm_swf_sound_output_info(audio->output, &info);
     if (result != FVM_OK)
         return result;
-    if (info.starved && !audio->was_starved)
+    if (audio->finite_event_tails)
+    {
+        result = fvm_swf_sound_mixer_active_frames(audio->mixer, 1, &future);
+        if (result != FVM_OK) return result;
+    }
+    if (info.starved && !audio->was_starved &&
+        (!audio->finite_event_tails || (!audio->event_waiting && future)))
     {
         SDL_AtomicAdd(&audio->underruns, 1);
         fvm_desktop_trace_event(audio->trace, "starved", 0, FVM_OK);
@@ -485,14 +493,25 @@ static FVM_Result refill(FVM_DesktopAudio *audio)
     audio->was_starved = info.starved;
     for (attempt = 0; attempt < FVM_DESKTOP_AUDIO_PUMPS; ++attempt)
     {
-        result = fvm_swf_sound_output_pump(audio->output, 0);
+        result = audio->finite_event_tails
+                     ? fvm_swf_sound_output_pump_finite(audio->output, 0)
+                     : fvm_swf_sound_output_pump(audio->output, 0);
         if (result == FVM_NOT_FOUND)
+        {
+            held = 1;
             break;
+        }
         if (result != FVM_OK)
             return result;
     }
     result = fvm_swf_sound_output_info(audio->output, &info);
-    if (result == FVM_OK && info.paused && info.queued_frames >= audio->resume_frames)
+    if (result == FVM_OK && audio->finite_event_tails)
+    {
+        result = fvm_swf_sound_mixer_active_frames(audio->mixer, 1, &future);
+        if (result == FVM_OK) audio->event_waiting = !future && !info.pending_frames;
+    }
+    if (result == FVM_OK && info.paused && info.queued_frames &&
+        (info.queued_frames >= audio->resume_frames || (audio->finite_event_tails && held)))
         result = fvm_swf_sound_output_pause(audio->output, 0);
     return result;
 }
@@ -533,6 +552,7 @@ FVM_Result fvm_desktop_audio_open_policy(FVM_Context *context, FVM_Object *clip,
         (finite_event_tails != 0 && finite_event_tails != 1))
         return FVM_INVALID_ARGUMENT;
     memset(audio, 0, sizeof(*audio));
+    audio->event_waiting = finite_event_tails; /* No finite future work is expected before first frame. */
     audio->finite_event_tails = finite_event_tails; /* Immutable event-only policy before publication. */
     audio->finite_mixed_tails = finite_mixed_tails; /* Publish once before any worker exists. */
     audio->suspended = paused; /* Publish the initial policy before the worker can prime/unpause. */
@@ -864,8 +884,18 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)
         return FVM_INVALID_ARGUMENT;
     if (!audio->stream_source)
     {
-        *out = 0;
-        return FVM_OK;
+        if (!audio->finite_event_tails || !audio->output)
+        {
+            *out = 0;
+            return FVM_OK;
+        }
+        if (SDL_LockMutex(audio->mutex) != 0) return FVM_ERROR;
+        result = (FVM_Result)SDL_AtomicGet(&audio->error);
+        if (result == FVM_OK && !audio->suspended)
+            result = fvm_swf_sound_output_pending(audio->output, &pending);
+        if (result == FVM_OK) *out = pending;
+        SDL_UnlockMutex(audio->mutex);
+        return result;
     }
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;

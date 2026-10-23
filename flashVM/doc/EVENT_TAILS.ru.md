@@ -22,6 +22,9 @@ v0.1030: Добавлены неизменный event policy, CLI finite-audio-
 
 v0.1031: Event-only вывод удерживается при подготовке и callbacks кадра, затем разрешается владельцем в безопасной точке.
 
+
+v0.1032: Подключены finite event pump, resume коротких очередей, завершение после FIFO drain и исключение ожидаемой idle-паузы из underrun.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

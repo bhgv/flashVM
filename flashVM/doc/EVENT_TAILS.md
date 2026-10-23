@@ -22,6 +22,9 @@ v0.1030: Add immutable event policy, explicit finite-audio-tails CLI parsing and
 
 v0.1031: Hold event-only production during source preparation and frame callbacks, then authorize native work from the owner safe point.
 
+
+v0.1032: Pump finite event blocks, resume short queues, observe voices and retries through final FIFO drain and avoid expected-idle underrun reports.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

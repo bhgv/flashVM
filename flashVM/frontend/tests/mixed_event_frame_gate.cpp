@@ -14,5 +14,8 @@ int main()
  assert(fvm_movieclip_advance(c,clip,1)==FVM_OK&&audio.events==2);SDL_Delay(30);assert(fvm_desktop_audio_info(&audio,&info)==FVM_OK&&!info.submitted_frames);
  assert(fvm_gc_collect(c,0)==FVM_OK&&fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK);
  assert(SDL_LockMutex(audio.mutex)==0);assert(audio.event_frame_ready);SDL_UnlockMutex(audio.mutex);
+ int pending=1;for(unsigned i=0;i<50&&pending;++i){assert(fvm_desktop_audio_stream_pending(&audio,&pending)==FVM_OK);if(pending)SDL_Delay(10);}
+ assert(!pending&&fvm_desktop_audio_info(&audio,&info)==FVM_OK&&info.submitted_frames==9&&info.played_frames==9);
+ assert(SDL_AtomicGet(&audio.underruns)==0);
  assert(fvm_movieclip_set_sound_callback(c,0,0)==FVM_OK);fvm_desktop_audio_close(&audio);fvm_gc_unpin(c,clip);fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;
 }
