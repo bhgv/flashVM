@@ -1,4 +1,4 @@
-Версия разработки: **0.1377** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1378** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1378: [Продемонстрированы точные осевые bounds через curveTo](doc/AXIS_CURVE_BOUNDS.ru.md).
 
 v0.1377: [Независимые OS-потоки](doc/AXIS_CURVE_BOUNDS.ru.md).
 

@@ -66,7 +66,7 @@
     - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall/init, глубины и отрисовка</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
-    - [stroke_styles](#example-embedding-stroke_styles) — <small><em>C89: square/bevel, round-кривая, bounds и hitTest</em></small>
+    - [stroke_styles](#example-embedding-stroke_styles) — <small><em>C89: торцы, round/осевые кривые и bounds</em></small>
   - [input](#group-embedding-input)
     - [event_work_budget](#example-embedding-event_work_budget) — <small><em>Общий бюджет события и сохранение опубликованной позиции</em></small>
     - [gesture_dispatch](#example-embedding-gesture_dispatch) — <small><em>Жест преобразуется в C callback мыши</em></small>
@@ -863,7 +863,8 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 Вызывает расширенный script lineStyle, рисует square/bevel линию и проверяет getBounds,
 точечный shape hitTest и непрозрачный угол торца. Явно удерживает clip и временный
 bounds через GC-корни. Затем проверяет аналитические round-границы quadratic-кривой
-с одиночным moveTo вне штриха и заменой корня результата. В NO_GRAPHICS сохраняет геометрические проверки без устройства.
+с одиночным moveTo вне штриха и заменой корня результата, затем точные
+butt/bevel-границы монотонной осевой quadratic-команды. В NO_GRAPHICS сохраняет геометрические проверки без устройства.
 
 **Файлы:** [main.c](embedding/stroke_styles/main.c).
 
