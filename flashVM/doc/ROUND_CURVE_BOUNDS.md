@@ -18,6 +18,31 @@ Cubic is available to the native path API; managed MovieClip intentionally rejec
 
 The executable C89 [stroke_styles tutorial](../examples/embedding/stroke_styles/README.md) is extended in this series with a separate round curve and explicit replacement of its result GC root.
 
+## Verified checkpoint v0.1358
+
+Series v0.1338–v0.1358 on published v0.1337 contains 21 local commits. Validation passes 275 selected native AGG/JIT regressions plus the separate existing C89 vector_paths regression (276 total), 22 no-graphics tests and 22 ASan/UBSan tests, including the final C89 tutorial. LeakSanitizer is disabled. Eighteen new fixtures cover native quadratic/cubic, returning and constant curves, separate contours, rotation/scale, coordinate limits, transactional outputs, managed quadratic and deliberate cubic rejection, mixed paint, dimensions, bounding hitTest, four qualities/four paints, snapshots, four graphs through binary and channel after sender teardown, and four OS workers with 96 bounds/GC epochs. Existing native tests include JIT, timeline, channels and allocation failures; this is not a separate full reference acceptance of the new curves in each subsystem. Source links, examples and formatting checks pass. Cairo and physical platforms were not tested; all nine stages remain open.
+
+| Fixture | Coverage |
+| --- | --- |
+| [path_round_curve_quadratic](../tests/path_round_curve_quadratic.cpp) | Check analytic quadratic round extents against centerline bounds |
+| [path_round_curve_cubic](../tests/path_round_curve_cubic.cpp) | Verify symmetric and two-extremum cubic round bounds |
+| [path_round_curve_reversal](../tests/path_round_curve_reversal.cpp) | Retain nonconstant returning curves despite coincident endpoints |
+| [path_round_curve_degenerate](../tests/path_round_curve_degenerate.cpp) | Exclude constant quadratic and cubic segments from stroke extents |
+| [path_round_curve_contours](../tests/path_round_curve_contours.cpp) | Union active curve contours without including isolated moves |
+| [path_round_curve_rotation](../tests/path_round_curve_rotation.cpp) | Measure analytic round curves after uniform rotation and scaling |
+| [path_round_curve_limits](../tests/path_round_curve_limits.cpp) | Exercise round curve bounds at coordinate and width limits |
+| [path_round_curve_outputs](../tests/path_round_curve_outputs.cpp) | Preserve both output sentinels on unsupported and invalid curve queries |
+| [movieclip_round_curve_isolated](../tests/movieclip_round_curve_isolated.cpp) | Exclude distant moveTo commands from managed round curve paint bounds |
+| [movieclip_round_curve_degenerate](../tests/movieclip_round_curve_degenerate.cpp) | Suppress constant managed curves while preserving getRect geometry |
+| [movieclip_round_curve_cubic](../tests/movieclip_round_curve_cubic.cpp) | Reject managed cubic metadata and recover a valid quadratic path |
+| [movieclip_round_curve_mixed](../tests/movieclip_round_curve_mixed.cpp) | Union filled path geometry with analytic round curve stroke bounds |
+| [movieclip_round_curve_dimensions](../tests/movieclip_round_curve_dimensions.cpp) | Read hairline curve dimensions without isolated move inflation |
+| [movieclip_round_curve_hitbox](../tests/movieclip_round_curve_hitbox.cpp) | Apply analytic curve boxes to non-shape point hit queries |
+| [movieclip_round_curve_quality](../tests/movieclip_round_curve_quality.cpp) | Keep analytic curve bounds stable across stage quality and paints |
+| [movieclip_round_curve_snapshots](../tests/movieclip_round_curve_snapshots.cpp) | Retain curve style snapshots across later styles clear and collection |
+| [movieclip_round_curve_transfer](../tests/movieclip_round_curve_transfer.cpp) | Preserve round curve bounds through binary and channel sender teardown |
+| [movieclip_round_curve_threads](../tests/movieclip_round_curve_threads.cpp) | Measure and collect round curve graphs on isolated worker runtimes |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

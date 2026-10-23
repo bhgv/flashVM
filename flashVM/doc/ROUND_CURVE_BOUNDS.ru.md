@@ -18,6 +18,31 @@ Cubic доступен нативному path API; managed MovieClip намер
 
 Исполняемый C89-пример [stroke_styles](../examples/embedding/stroke_styles/README.ru.md) расширяется в этой серии отдельной round-кривой с явной заменой GC-корня результата.
 
+## Проверенная контрольная точка v0.1358
+
+Серия v0.1338–v0.1358 поверх опубликованного v0.1337 содержит 21 локальный коммит. Пройдены 275 выбранных нативных AGG/JIT-регрессий и отдельный существующий C89 vector_paths (всего 276), 22 теста без графики и 22 ASan/UBSan, включая окончательный C89-пример. LeakSanitizer отключён. Восемнадцать новых fixtures покрывают native quadratic/cubic, возвратные и постоянные кривые, раздельные контуры, поворот/масштаб, предельные координаты, атомарность результатов, managed quadratic и намеренный отказ cubic, mixed paint, размеры, bounding hitTest, четыре качества/четыре paint, снимки, четыре графа через binary и channel после удаления отправителя и четыре OS-потока с 96 циклами bounds/GC. Существующие нативные тесты включают JIT, таймлайн, каналы и отказы памяти; это не отдельная полная reference-приёмка новых кривых для каждой подсистемы. Проверки ссылок, примеров и форматирования пройдены. Cairo и физические платформы не проверялись; все девять этапов открыты.
+
+| Fixture | Проверка |
+| --- | --- |
+| [path_round_curve_quadratic](../tests/path_round_curve_quadratic.cpp) | Квадратичные экстремумы |
+| [path_round_curve_cubic](../tests/path_round_curve_cubic.cpp) | Кубические экстремумы |
+| [path_round_curve_reversal](../tests/path_round_curve_reversal.cpp) | Непостоянная возвратная кривая |
+| [path_round_curve_degenerate](../tests/path_round_curve_degenerate.cpp) | Постоянные сегменты |
+| [path_round_curve_contours](../tests/path_round_curve_contours.cpp) | Объединение активных контуров |
+| [path_round_curve_rotation](../tests/path_round_curve_rotation.cpp) | Поворот и равномерный масштаб |
+| [path_round_curve_limits](../tests/path_round_curve_limits.cpp) | Пределы координат и ширины |
+| [path_round_curve_outputs](../tests/path_round_curve_outputs.cpp) | Сохранение обоих результатов при ошибке |
+| [movieclip_round_curve_isolated](../tests/movieclip_round_curve_isolated.cpp) | Одиночные moveTo в managed-кривой |
+| [movieclip_round_curve_degenerate](../tests/movieclip_round_curve_degenerate.cpp) | Постоянные managed-кривые и getRect |
+| [movieclip_round_curve_cubic](../tests/movieclip_round_curve_cubic.cpp) | Отказ managed cubic и восстановление |
+| [movieclip_round_curve_mixed](../tests/movieclip_round_curve_mixed.cpp) | Смешанные заливка и штрих |
+| [movieclip_round_curve_dimensions](../tests/movieclip_round_curve_dimensions.cpp) | Размеры hairline-кривой |
+| [movieclip_round_curve_hitbox](../tests/movieclip_round_curve_hitbox.cpp) | Рамка hitTest без shape |
+| [movieclip_round_curve_quality](../tests/movieclip_round_curve_quality.cpp) | Качество Stage и виды paint |
+| [movieclip_round_curve_snapshots](../tests/movieclip_round_curve_snapshots.cpp) | Снимки стиля clear и GC |
+| [movieclip_round_curve_transfer](../tests/movieclip_round_curve_transfer.cpp) | Передача binary и channel |
+| [movieclip_round_curve_threads](../tests/movieclip_round_curve_threads.cpp) | Независимые рабочие потоки |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

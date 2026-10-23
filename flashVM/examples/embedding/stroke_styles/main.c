@@ -72,7 +72,7 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     if (out.type != FVM_VALUE_OBJECT || !out.object) goto done; /* Validate before borrowing its pointer. */
     bounds = out.object; /* Keep the returned object separate from later scalar results. */
     if (!checked(fvm_gc_pin(context, bounds), "pin bounds")) goto done; /* [GC:] Retain the temporary result across property reads. */
-    bounds_root = 1; /* Record ownership of the second explicit root. */
+    bounds_root = 1; /* [GC:] Record ownership of the second explicit root. */
     if (!scalar(context, bounds, "xMin", &left) || !scalar(context, bounds, "xMax", &right)) goto done; /* Copy the horizontal extents. */
     if (left != 0 || right != 16) goto done; /* Square caps extend by half the stroke width at each end. */
     fvm_value_number(arguments, 0.1); /* Probe a square-only corner outside the old round cap. */
@@ -88,8 +88,8 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     else if (pixels[(6 * STYLE_WIDTH) * STYLE_RGBA + 3] != 255) goto done; /* Require the fully covered square-cap corner. */
     else puts("square corner alpha: 255"); /* Report the independently checked raster sample. */
     if (!checked(fvm_gc_unpin(context, bounds), "unpin old bounds")) goto done; /* [GC:] Release the first result before replacing geometry. */
-    bounds_root = 0; /* Cleanup no longer owns the first bounds root. */
-    bounds = 0; /* Do not reuse the unrooted borrowed pointer. */
+    bounds_root = 0; /* [GC:] Cleanup no longer owns the first bounds root. */
+    bounds = 0; /* [GC:] Do not reuse the unrooted borrowed pointer. */
     if (!checked(fvm_object_call(context, clip, "clear", 0, 0, &out), "clear")) goto done; /* Remove the square stroke before the independent curve query. */
     for (i = 0; i < 8; ++i) fvm_value_undefined(arguments + i); /* Default all optional parameters explicitly. */
     fvm_value_number(arguments, 4); /* Choose a four-pixel stroke. */
@@ -118,7 +118,7 @@ int main(void) /* Run without an external SWF compiler or device event loop. */
     if (out.type != FVM_VALUE_OBJECT || !out.object) goto done; /* Validate before borrowing its pointer. */
     bounds = out.object; /* Keep the returned object separate from later scalar results. */
     if (!checked(fvm_gc_pin(context, bounds), "pin bounds")) goto done; /* [GC:] Retain the temporary result across property reads. */
-    bounds_root = 1; /* Record ownership of the second explicit root. */
+    bounds_root = 1; /* [GC:] Record ownership of the second explicit root. */
     if (!scalar(context, bounds, "xMin", &left) || !scalar(context, bounds, "xMax", &right)) goto done; /* Copy the horizontal extents. */
     if (!scalar(context, bounds, "yMin", &top) || !scalar(context, bounds, "yMax", &bottom)) goto done; /* Copy vertical analytic extrema. */
     if (left != 0 || right != 16 || top != 2 || bottom != 10) goto done; /* Expand the curve extrema by the two-unit round radius. */

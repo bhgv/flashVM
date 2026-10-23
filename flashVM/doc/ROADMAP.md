@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1358 / Контрольная точка v0.1358: 276 native (275 selected + vector_paths), 22 no-graphics, 22 ASan/UBSan tests pass. Analytic round quadratic/cubic bounds exclude isolated moves; managed paths remain quadratic-only. Non-round curves, transform metrics, full reference/device acceptance and all nine stages remain open. [EN](ROUND_CURVE_BOUNDS.md) / [RU](ROUND_CURVE_BOUNDS.ru.md).
+
 Analytic round-curve bounds / Аналитические round-границы кривых: [EN](ROUND_CURVE_BOUNDS.md) / [RU](ROUND_CURVE_BOUNDS.ru.md). Native quadratic/cubic centerline extrema exclude isolated moves and constant segments; managed quadratic bounds share the result. Other curve styles and all nine roadmap stages remain open.
 
 Round/hairline bounds continuation: [EN](ROUND_STROKE_BOUNDS.md) / [RU](ROUND_STROKE_BOUNDS.ru.md). All straight cap/join styles share the geometric walker; zero width contributes one destination unit and empty strokes contribute no extent. Curves remain conservative; all nine stages remain open.
