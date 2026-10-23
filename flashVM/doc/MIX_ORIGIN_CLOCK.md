@@ -19,6 +19,9 @@ v0.1042: Verify paired BASE and TAIL origins and publish the actual successful b
 
 v0.1043: Reject mode allocation transactionally and exercise tracked base/tail retries, observations and acknowledged seek reset with no further allocations.
 
+
+v0.1044: Verify 256 tracked epochs with exact PCM, held-tail handoff, converted stream EOF and coherent category dequeue totals.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

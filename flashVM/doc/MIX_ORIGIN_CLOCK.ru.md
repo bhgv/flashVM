@@ -19,6 +19,9 @@ v0.1042: Проверены BASE/TAIL парного конвертирован�
 
 v0.1043: Проверены rollback выделения bitmap и BASE/TAIL retry, наблюдения и seek reset без последующих аллокаций.
 
+
+v0.1044: Проверены 256 эпох с точным PCM, held TAIL, converted stream EOF и согласованными раздельными dequeue-суммами.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
