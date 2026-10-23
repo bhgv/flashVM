@@ -1286,7 +1286,12 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         FVM_Result result = prepare_field_geometry(c, field->current, field->text, field->text_size, geometry);
         if (result != FVM_OK)
             return result;
-        geometry.commit(*field);
+        GeometryNotification notification(c, self);
+        FVM_Result notify_result = notification.prepare(geometry);
+        if (notify_result != FVM_OK)
+            return notify_result;
+        fvm_value_undefined(out);
+        return notification.commit(geometry);
     }
     else if (std::strcmp(name, "autoSize") == 0)
     {
@@ -1310,7 +1315,12 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
             if (result != FVM_OK)
                 return result;
         }
-        geometry.commit(*field);
+        GeometryNotification notification(c, self);
+        FVM_Result notify_result = notification.prepare(geometry);
+        if (notify_result != FVM_OK)
+            return notify_result;
+        fvm_value_undefined(out);
+        return notification.commit(geometry);
     }
     else
     {
