@@ -13,6 +13,9 @@ v0.1014: Add opt-in horizon-limited tail pumping while preserving indivisible re
 
 v0.1015: Expose opt-in finite frame-gate and EOF scheduling with coherent shared clocks and unchanged base and retry ownership.
 
+
+v0.1016: Check strict and converted release endpoints, earlier source exhaustion and bounded huge-repeat arithmetic without huge allocations.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
