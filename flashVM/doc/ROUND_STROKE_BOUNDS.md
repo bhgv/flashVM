@@ -8,6 +8,8 @@ The implementation is in [bounds](../src/standard/movieclip.cpp); straight geome
 
 Quadratic/cubic paths continue to use the path bounding box expanded by half the effective width, multiplied by sqrt(2) for square caps. This is deliberately conservative, not an exact offset-curve bound. Existing nonuniform/shear width metric differences, raster/reference acceptance, unsupported LINESTYLE2 styles, Cairo and physical devices remain open. All nine roadmap stages remain open.
 
+The straight-stroke walker accepts effective widths up to 1,000,000 destination units. Larger widths return an argument error. Concurrent mutation of one context or path is not supported.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

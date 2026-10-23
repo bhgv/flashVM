@@ -1,4 +1,4 @@
-Development version: **0.1335** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1336** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1336: [Document destination width limits and ownership](doc/ROUND_STROKE_BOUNDS.md).
 
 v0.1335: [Retain round bounds across explicit collector epochs](doc/ROUND_STROKE_BOUNDS.md).
 
