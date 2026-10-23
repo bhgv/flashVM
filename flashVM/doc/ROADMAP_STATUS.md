@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1358
 
+Monotone axis Bezier bounds / Границы монотонных осевых Bezier: [EN](AXIS_CURVE_BOUNDS.md) / [RU](AXIS_CURVE_BOUNDS.ru.md). Supported caps/joins share exact segment geometry for ordered axis controls. General non-round curves and all nine stages remain open.
+
 Checkpoint v0.1358 / Контрольная точка v0.1358: 276 native (275 selected + vector_paths), 22 no-graphics, 22 ASan/UBSan tests pass. Analytic round quadratic/cubic bounds exclude isolated moves; managed paths remain quadratic-only. Non-round curves, transform metrics, full reference/device acceptance and all nine stages remain open. [EN](ROUND_CURVE_BOUNDS.md) / [RU](ROUND_CURVE_BOUNDS.ru.md).
 
 Analytic round-curve bounds / Аналитические round-границы кривых: [EN](ROUND_CURVE_BOUNDS.md) / [RU](ROUND_CURVE_BOUNDS.ru.md). Native quadratic/cubic centerline extrema exclude isolated moves and constant segments; managed quadratic bounds share the result. Other curve styles and all nine roadmap stages remain open.

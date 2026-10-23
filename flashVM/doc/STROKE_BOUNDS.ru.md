@@ -1,5 +1,7 @@
 # Границы прямолинейных штрихов с выбранными стилями
 
+Текущая поддержка монотонных осевых команд: [контракт](AXIS_CURVE_BOUNDS.ru.md). Прежний общий отказ non-round кривых ниже имеет это исключение.
+
 Текущий расчёт round/round кривых: [аналитические границы](ROUND_CURVE_BOUNDS.ru.md). Прежний общий fallback ниже является историческим для полностью круглого стиля.
 
 Текущая поправка round/hairline: [контракт](ROUND_STROKE_BOUNDS.ru.md). Прежняя отдельная round-only политика ниже является исторической.
@@ -16,7 +18,7 @@ shape используют обновлённые границы. getRect по-�
 
 ## Контракт внутренней геометрии
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L399) заимствует неизменяемый путь, положительную конечную
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L432) заимствует неизменяемый путь, положительную конечную
 ширину до 1 000 000 единиц назначения, поддержанные selectors и два обязательных
 указателя на результат вызывающей стороны. Сохраняются ограничения координат
 пути. Временная геометрия не выделяется, контекст и графический backend не нужны;
@@ -26,7 +28,7 @@ shape используют обновлённые границы. getRect по-�
 Пустой путь или только нулевые рёбра успешно дают нулевые bounds и отсутствие
 отрезков.
 
-Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L317). Объединяются
+Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L350). Объединяются
 конечные прямоугольники отрезков, экстремумы открытых торцов и внешние round-сектора.
 Только направления осей внутри сектора могут добавить экстремум помимо его концов.
 Вершины bevel уже принадлежат телам соседних отрезков. Замкнутый контур соединяет
@@ -109,7 +111,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:317](../src/capi/path_hit_c.cpp#L317) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:399](../src/capi/path_hit_c.cpp#L399) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:350](../src/capi/path_hit_c.cpp#L350) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:432](../src/capi/path_hit_c.cpp#L432) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -1,5 +1,7 @@
 # Selected straight-stroke bounds
 
+Current monotone axis commands: [contract](AXIS_CURVE_BOUNDS.md). Earlier blanket non-round curve rejection below now has this exception.
+
 Current round/round curves: [analytic bounds](ROUND_CURVE_BOUNDS.md). Earlier blanket curve fallback descriptions below are historical for the entirely round style.
 
 Current round/hairline correction: [contract](ROUND_STROKE_BOUNDS.md). The separate legacy round-only policy described below is historical.
@@ -16,7 +18,7 @@ paint alpha and bitmap pixels are not read to calculate geometric bounds.
 
 ## Private geometry contract
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L399) borrows an immutable path, a positive finite width
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L432) borrows an immutable path, a positive finite width
 up to 1,000,000 destination units, supported cap/join selectors and two required
 caller-owned output pointers. The path's existing coordinate limits still apply.
 It allocates no temporary geometry, needs no context or graphics backend and
@@ -25,7 +27,7 @@ only after a successful walk. Invalid arguments return [FVM_INVALID_ARGUMENT](..
 quadratic or cubic commands return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and leave both outputs intact.
 An empty path or only zero-length edges succeeds with zero bounds and no segments.
 
-The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L317). It
+The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L350). It
 unions finite rectangular bodies, open-end cap extrema and outer round sectors.
 Only cardinal directions inside a round sector can add an axis extremum beyond
 its endpoints. Bevel vertices already belong to the adjacent bodies. Closed
@@ -111,7 +113,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:317](../src/capi/path_hit_c.cpp#L317) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:399](../src/capi/path_hit_c.cpp#L399) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:350](../src/capi/path_hit_c.cpp#L350) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:432](../src/capi/path_hit_c.cpp#L432) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

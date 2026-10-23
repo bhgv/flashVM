@@ -230,6 +230,31 @@ void curve(Query &query, const double *x, const double *y, unsigned degree, unsi
     curve(query, rx, ry, degree, depth + 1);
 }
 } // namespace
+/* Accept only axis-aligned Beziers whose controls progress toward the endpoint.
+ * Ordered Bernstein controls make the centerline exactly the endpoint segment,
+ * including zero endpoint derivatives. No epsilon or flattening is involved. */
+static bool axis_curve_segment(double x, double y, const FVM_PathCommand &command,
+                                unsigned count)
+{
+    const double end_x = command.x[count - 1], end_y = command.y[count - 1];
+    const bool vertical = x == end_x;
+    if (!vertical && y != end_y)
+        return false;
+    double previous = vertical ? y : x;
+    const double end = vertical ? end_y : end_x;
+    const bool increasing = end >= previous;
+    for (unsigned i = 0; i < count; ++i)
+    {
+        if ((vertical ? command.x[i] : command.y[i]) != (vertical ? x : y))
+            return false;
+        const double value = vertical ? command.y[i] : command.x[i];
+        if (increasing ? value < previous || value > end : value > previous || value < end)
+            return false;
+        previous = value;
+    }
+    return true;
+}
+
 /* Test a point against implicitly closed fills or connected strokes with the selected
  * private geometry policy; public callers retain their legacy round-distance policy. */
 static FVM_Result hit_test(const FVM_Path *path, double x, double y, double width,
@@ -276,11 +301,19 @@ static FVM_Result hit_test(const FVM_Path *path, double x, double y, double widt
         }
         else
         {
-            /* Bounds are exact for straight contours; leave curved outputs transactional
-             * so managed callers can deliberately choose their conservative fallback. */
+            unsigned degree = command.verb == FVM_PATH_QUADRATIC
+                                  ? FVM_PATH_GEOMETRY_QUADRATIC_POINTS : FVM_PATH_GEOMETRY_CUBIC_POINTS;
             if (extent)
-                return FVM_UNSUPPORTED;
-            unsigned degree = command.verb == FVM_PATH_QUADRATIC ? 2 : 3;
+            {
+                /* Reuse finite bodies/caps/joins only when the curve is exactly a segment.
+                 * Other curves leave both outputs untouched for the managed fallback. */
+                if (!axis_curve_segment(current_x, current_y, command, degree))
+                    return FVM_UNSUPPORTED;
+                query.line(current_x, current_y, command.x[degree - 1], command.y[degree - 1]);
+                current_x = command.x[degree - 1];
+                current_y = command.y[degree - 1];
+                continue;
+            }
             double cx[4], cy[4];
             cx[0] = current_x;
             cy[0] = current_y;
