@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+Opt-in `--finite-mixed-tails` ends root mixed event output at the live voice/release horizon. [Contract and limits](../doc/FINITE_TAILS.md).
+
 Mixed events now advance through future stream gates and authored root Stop; host pause still holds the whole queue. [Current contract](../doc/MIXED_GATES.md).
 
 Root stream and StartSound now share a tracked queue; [current contract and limits](../doc/DESKTOP_MIX.md).

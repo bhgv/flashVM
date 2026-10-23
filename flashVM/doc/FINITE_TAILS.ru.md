@@ -34,6 +34,56 @@ v0.1021: Девятый C89-режим показывает четыре точ�
 
 v0.1022: Рациональный PCM-checker проверяет девять режимов, конечный вывод, четыре retry и истечение ID после drain.
 
+
+## Конечные нативные producer
+
+[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L231) сохраняет адаптивный FIFO-контракт
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L222), ограничивая новый zero-base блок живым
+остатком микшера. maximum — 1..capacity; target положителен и не выше
+SOUND_OUTPUT_MAX_QUEUE. accepted необязателен и сначала обнуляется. Нет голосов,
+полный FIFO или недостаточно места для retry — NOT_FOUND; null/reentry/неверная
+геометрия/pending BASE — INVALID_ARGUMENT. Переполнение общих часов даёт UNSUPPORTED
+до render, ошибки backend передаются, исключения дают ERROR. Существующий TAIL
+неделим, даже если создан старым padded API или голоса остановлены после отказа.
+Повторяются исходные размер и байты; отмена — только подтверждённый clear. Убирается
+синтетический padding, но не авторские нулевые отсчёты и не release endpoint.
+
+[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L114) добавляет этот режим в парный stream
+планировщик: проверяет точный backend и общую эпоху, принимает TAIL до нового BASE,
+удерживает BASE закрытого кадра и сохраняет source phase при event-only выводе.
+Base-конверсия не меняется. Кадр ноль удерживает base, разрешая события. accepted
+сначала обнуляется; OK может потребить нулевой marker. NOT_FOUND не означает EOF:
+возможны missing clock, headroom, held BASE или исчерпание голосов. Прочие статусы
+передаются. Обе копии часов получают наблюдение допуска успешного write без
+ошибочного callback после принятия. Все заимствованные stream/converter/snapshot/
+queue/mixer/backend живут до завершения и сериализуются извне; аллокаций, VM и GC нет.
+Прежние парные/exact/adaptive API сохраняют поведение и ABI.
+
+## Desktop
+
+`flashvm_player --finite-mixed-tails movie.swf` включает конечный root mixed TAIL.
+Флаг относится только к stream-plus-event composition; отдельные event-only и
+stream-only пути сохраняют прежнюю политику. С --mute устройство не открывается.
+`fvm_desktop_audio_open_mixed_policy` проверяет Boolean-флаги и записывает неизменную
+политику до запуска worker; старые open выбирают padded режим. Публикация полного
+кадра, authored Stop, host pause, StopSounds, seek и queued ID сохраняют контракты.
+Короткая конечная очередь возобновляется для drain, даже если меньше driver reserve.
+
+Девятый C89-режим `swf_stream_mix --finite` после удаления VM пишет 14 кадров
+блоками 4,4,4,2, отклоняя каждый блок один раз. Независимый рациональный оракул
+проверяет PCM, числа и истечение ID. Проверены частоты/каналы/повторы/частичная
+adoption, strict/converted release, ограниченная арифметика огромных повторов,
+controls/reentry/exception, отсутствие аллокаций и 256 эпох на четырёх независимых
+OS-потоках. Production C89 worker проверяет interpreter/native JIT entries и GC;
+CLI FWS/CWS Stop/gate/mute использует SDL dummy worker и точные 9/14-frame WAV.
+Huge-repeat тест задаёт граничные метаданные, а не выделяет огромный источник.
+
+Дочерние словари/таймлайны, reference codec latency/seek, физические DAC timestamps,
+A/V drift, другие backend/платформы/устройства и все девять стадий остаются открытыми.
+
+
+v0.1023: Уточнены пределы horizon, неделимость retry, source/release, явное включение плеера и открытая reference/device-приёмка.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -43,6 +93,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:231](../include/flashvm/swf_sound_mix_queue.h#L231) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../include/flashvm/swf_sound_mix_queue.h#L222) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
 | `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
+| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |
 <!-- source-links:end -->

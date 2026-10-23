@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+Флаг `--finite-mixed-tails` завершает root mixed event вывод по живому остатку voice/release. [Контракт и ограничения](../doc/FINITE_TAILS.ru.md).
+
 Mixed-события продолжаются при future stream gates и authored root Stop; host pause удерживает всю очередь. [Текущий контракт](../doc/MIXED_GATES.ru.md).
 
 Root stream и StartSound используют общую tracked-очередь: [контракт и ограничения](../doc/DESKTOP_MIX.ru.md).
