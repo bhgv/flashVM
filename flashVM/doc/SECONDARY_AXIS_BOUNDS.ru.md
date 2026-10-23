@@ -1,8 +1,8 @@
 # Устойчивая Y-метрика границ обводки
 
-Расчёт bounds теперь использует существующую `vector_length` для обоих столбцов affine-матрицы. Прежняя Y-формула sqrt(xy*xy+yy*yy) обнуляла ненулевой масштаб при underflow или давала бесконечность при overflow, хотя сама длина была конечной. X-столбец и shape hitTest уже использовали устойчивую норму. Изменяется численная устойчивость, а не выбор метрики: положительная authored width умножается на максимум длин двух столбцов; hairline остаётся одной единицей пространства назначения.
+Расчёт bounds теперь использует существующую `vector_length` для обоих столбцов affine-матрицы. Прежняя Y-формула sqrt(xy*xy+yy*yy) обнуляла ненулевой масштаб или теряла относительную точность при underflow квадрата нормы. X-столбец и shape hitTest уже использовали устойчивую норму. Изменяется численная устойчивость, а не выбор метрики: положительная authored width умножается на максимум длин двух столбцов; hairline остаётся одной единицей пространства назначения.
 
-Воспроизводящий underflow-тест падает на v0.1445 до исправления. Для больших масштабов исходные координаты и authored width обратно масштабируются, чтобы преобразованная геометрия и эффективная ширина оставались в прежних допустимых диапазонах. Новых разрешённых диапазонов нет.
+Воспроизводящий underflow-тест падает на v0.1445 до исправления. Для допустимых больших масштабов исходные координаты и authored width обратно масштабируются. Компоненты affine остаются ограничены прежним path-лимитом 1 000 000. Матрицы с показателями 510, 600 и 900 по-прежнему отклоняются до измерения обводки, даже если преобразованные точки были бы малы. Диапазоны не расширяются.
 
 ## Контракт и границы проверки
 
@@ -10,11 +10,36 @@
 
 Тесты используют отдельный identity-clip как целевое пространство; сингулярный source-transform допустим, но эта серия не меняет отказ при необратимом target-transform. Память, callbacks, thread/GC-ограничения публичных API сохраняются; управляемые объекты явно удерживаются и освобождаются в fixtures. Четыре worker используют отдельные runtime/контексты, не совместную мутацию одного clip.
 
-Проверяются независимые формулы прямого отрезка, positive/negative transform, показатели -1000..900, normal/subnormal/overflow переходы, меняющийся X-столбец, шесть cap/join сочетаний, четыре solid/gradient paint, четыре качества, dimensions, обе формы hitTest, getRect, линейная quadratic и последовательные рёбра. Quadratic fixture редактирует native command metadata; существующий C89-пример демонстрирует реальный curveTo отдельно. 48 графов проходят binary и channel после удаления отправителя; четыре OS worker выполняют 96 bounds/GC циклов.
+Проверяются независимые формулы прямого отрезка, positive/negative transform, допустимые показатели -1000..17, normal/subnormal переходы и отказ для матриц вне диапазона, меняющийся X-столбец, шесть cap/join сочетаний, четыре solid/gradient paint, четыре качества, dimensions, обе формы hitTest, getRect, линейная quadratic и последовательные рёбра. Quadratic fixture редактирует native command metadata; существующий C89-пример демонстрирует реальный curveTo отдельно. 48 графов проходят binary и channel после удаления отправителя; четыре OS worker выполняют 96 bounds/GC циклов.
 
 Пиксельный renderer по-прежнему выбирает длину X-столбца для нормальной обводки: общее согласование nonuniform/shear raster-метрики остаётся открытым. Общие non-round кривые, произвольная double-геометрия, miter/hinting/non-scaling, Cairo, полная Flash-reference и реальные платформы не закрываются. Все девять этапов плана открыты. Требуется обычная двоичная арифметика; FTZ/fast-math не проверены. Публичный C89 ABI, форматы, callback ID и кодогенерация JIT не меняются.
 
 Существующий [C89-пример](../examples/embedding/stroke_styles/README.ru.md) остаётся исполняемым. Эта серия добавляет численные регрессии, а не пример raster с практически невидимыми координатами.
+
+
+## Проверки v0.1464
+
+Пройдены 360 нативных, 114 без графики и 114 ASan/UBSan тестов. LeakSanitizer отключён. Пройдены source-link и C89 tutorial/catalog проверки. Данные не являются проверкой физических устройств или полной Flash-reference совместимости.
+
+| Fixture | Scope / Область |
+| --- | --- |
+| [movieclip_secondary_axis_underflow](../tests/movieclip_secondary_axis_underflow.cpp) | Nonzero tiny Y columns |
+| [movieclip_secondary_axis_subnormal](../tests/movieclip_secondary_axis_subnormal.cpp) | Reduced-precision subnormal squares |
+| [movieclip_secondary_axis_overflow](../tests/movieclip_secondary_axis_overflow.cpp) | Preserved rejection of excessive affine components |
+| [movieclip_secondary_axis_normal](../tests/movieclip_secondary_axis_normal.cpp) | Ordinary admitted transforms |
+| [movieclip_secondary_axis_transition](../tests/movieclip_secondary_axis_transition.cpp) | Arithmetic and admission boundaries |
+| [movieclip_secondary_axis_reflection](../tests/movieclip_secondary_axis_reflection.cpp) | Reflected source geometry |
+| [movieclip_secondary_axis_dominance](../tests/movieclip_secondary_axis_dominance.cpp) | Secondary-column maximum |
+| [movieclip_secondary_axis_paints](../tests/movieclip_secondary_axis_paints.cpp) | Solid and gradient paints |
+| [movieclip_secondary_axis_quality](../tests/movieclip_secondary_axis_quality.cpp) | Four stage qualities |
+| [movieclip_secondary_axis_dimensions](../tests/movieclip_secondary_axis_dimensions.cpp) | Named width and height |
+| [movieclip_secondary_axis_hitbox](../tests/movieclip_secondary_axis_hitbox.cpp) | Bounds and shape point hits |
+| [movieclip_secondary_axis_rect](../tests/movieclip_secondary_axis_rect.cpp) | Stroke-free getRect |
+| [movieclip_secondary_axis_curves](../tests/movieclip_secondary_axis_curves.cpp) | Axis-linear quadratic metadata |
+| [movieclip_secondary_axis_contours](../tests/movieclip_secondary_axis_contours.cpp) | Consecutive segments |
+| [movieclip_secondary_axis_gc](../tests/movieclip_secondary_axis_gc.cpp) | Pinned roots and collection |
+| [movieclip_secondary_axis_transfer](../tests/movieclip_secondary_axis_transfer.cpp) | Binary and channel graphs after sender teardown |
+| [movieclip_secondary_axis_threads](../tests/movieclip_secondary_axis_threads.cpp) | Separate runtime OS workers |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

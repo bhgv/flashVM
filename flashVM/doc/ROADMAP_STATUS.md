@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1464 / Контрольная точка v0.1464: 360 native, 114 no-graphics, 114 ASan/UBSan tests pass. Stable Y-column measurement preserves tiny nonzero stroke bounds; excessive affine components remain rejected. General transform/raster metrics, reference/devices and all nine stages remain open. [EN](SECONDARY_AXIS_BOUNDS.md) / [RU](SECONDARY_AXIS_BOUNDS.ru.md).
+
 Checkpoint v0.1445 / Контрольная точка v0.1445: 343 native, 97 no-graphics, 97 ASan/UBSan tests pass. Subnormal tangent normalization, round-cap distances and bevel orientation are corrected. All nine stages and reference/device acceptance remain open. [EN](SUBNORMAL_STROKE_NORMS.md) / [RU](SUBNORMAL_STROKE_NORMS.ru.md).
 
 Checkpoint v0.1427 / Контрольная точка v0.1427: 329 native, 83 no-graphics, 83 ASan/UBSan tests pass. Nonzero stroke tangents survive squared-length underflow. All nine stages and device/reference acceptance remain open. [EN](SCALED_STROKE_TANGENTS.md) / [RU](SCALED_STROKE_TANGENTS.ru.md).

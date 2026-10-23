@@ -17,6 +17,8 @@ static FVM_PathBounds sa_bounds(FVM_Context *c,FVM_Object *clip,FVM_Object *targ
  FVM_Value arg,out;ref(&arg,target);assert(fvm_object_call(c,clip,method,1,&arg,&out)==FVM_OK);
  FVM_Object *b=out.object;double s=sa_output(exponent);FVM_PathBounds result={b->properties["xMin"].number/s,b->properties["yMin"].number/s,b->properties["xMax"].number/s,b->properties["yMax"].number/s};return result;
 }
+static void sa_rejected(FVM_Context *c,FVM_Object *clip,FVM_Object *target)
+{ FVM_Value arg,out;ref(&arg,target);assert(fvm_object_call(c,clip,"getBounds",1,&arg,&out)==FVM_INVALID_ARGUMENT);assert(fvm_object_call(c,clip,"getRect",1,&arg,&out)==FVM_INVALID_ARGUMENT); }
 static void sa_expected(const FVM_PathBounds &b,unsigned cap,bool reverse=false,double end=10)
 { lc_expected(b,cap,20,reverse?-3*end:0,reverse?-4*end:0,reverse?0:3*end,reverse?0:4*end); }
 #endif
