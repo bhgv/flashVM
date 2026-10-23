@@ -10,6 +10,9 @@ v0.1026: Добавлено сериализованное наблюдение 
 
 v0.1027: Проверены failed clear/write, исключения, callback reentry и завершение anonymous release после удаления голосов.
 
+
+v0.1028: Проверены NoMultiple до dequeue, последний точный кадр часов и отсутствие аллокаций при коротких retry и отмене.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

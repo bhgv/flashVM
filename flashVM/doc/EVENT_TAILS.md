@@ -10,6 +10,9 @@ v0.1026: Add a serialized pending observation with coherent dequeue clock update
 
 v0.1027: Verify failed clear and write ownership, exception containment, callback reentry and anonymous release completion after voices retire.
 
+
+v0.1028: Check NoMultiple through dequeue, the last exact clock frame and zero allocations across short rejected retries and cancellation.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

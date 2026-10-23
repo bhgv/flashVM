@@ -1,10 +1,12 @@
-Development version: **0.1027** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1028** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1028: [Check NoMultiple through dequeue, the last exact clock frame and zero allocations across short rejected retries and cancellation.](doc/EVENT_TAILS.md).
 
 v0.1027: [Verify failed clear and write ownership, exception containment, callback reentry and anonymous release completion after voices retire.](doc/EVENT_TAILS.md).
 
