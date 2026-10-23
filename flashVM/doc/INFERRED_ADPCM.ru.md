@@ -1,5 +1,85 @@
 # Подготовка коротких ADPCM-блоков по геометрии байтов
 
+`fvm_swf_stream_sound_snapshot_open_pcm_inferred(context, stream, budget_bytes, out)`
+добавляет явную bounded-политику подготовки root stream ADPCM. Desktop-плеер
+использует её до открытия устройства и публикации worker. Старые open_pcm и
+open_pcm_bounded сохраняют whole-packet поведение. Counted API по-прежнему
+принимает внешние точные длины, включая неоднозначные блоки.
+
+## Политика длины
+
+Сначала сохраняется legacy-интерпретация целых пакетов по 4096 кадров. Если она
+возвращает UNSUPPORTED, проверяются все возможные окончания с 0–7 нулевыми padding
+битами. После двух width-битов учитываются целые пакеты, затем predictor/index
+первого кадра хвоста и целое число межканальных differential codes. Между пакетами
+нет byte alignment. Одна длина принимается, несколько дают UNSUPPORTED, ни одной —
+INVALID_ARGUMENT. После выбора decoder проверяет и декодирует весь блок.
+
+Для canonical whole packets сохраняется прежний результат, даже если возможна
+более короткая геометрия. Новый partial-fallback не выбирает длину по average,
+FPS, ordinal, ближайшему или самому длинному кандидату. Пустые и корректные
+width-only блоки сохраняют прежнюю нулевую длину. Нулевые differential codes
+остаются данными, когда входят в единственную геометрию: обрезать все нули нельзя.
+Байты не доказывают намерение автора; некоторые усечения сами могут быть валидным
+блоком другой длины.
+
+## Владение, ошибки и бюджет API
+
+Требуются живой context на owner-потоке, zero-based root stream, peak-byte ceiling
+и отдельный writable snapshot-pointer. Out обнуляется до другой валидации. Во
+время синхронной подготовки context/исходные байты стабильны. Успех даёт независимый
+immutable normalized native S16 snapshot, сохраняя rate/channels, frame/block
+identity, playback metadata и advisory average. Исходный movie не переписывается.
+Для остальных поддержанных PCM/MP3 действует прежний bounded-контракт.
+
+Объект, индекс, encoded bytes и decoded PCM совместно входят в peak ceiling.
+При нескольких сегментах вычитайте retained bytes предшественников. Нулевого
+бюджета недостаточно даже пустому владельцу. Переполнение, native allocation
+failure, runtime payload/index limit и превышение peak дают OUT_OF_MEMORY.
+Неверные аргументы/источник/представление и missing stream передают статусы
+прежнего bounded API; геометрия/неоднозначность описаны выше. Ошибка освобождает
+временных владельцев, частичный snapshot не публикуется, audio endpoint не открыт.
+
+Подготовка выделяет память и декодирует до публикации worker, вне audio callback.
+Нет script/device callback или исполнения VM; managed/GC pointers не остаются.
+После возврата исходную VM можно уничтожить. Readers/converters заимствуют
+snapshot; разные курсоры могут читать immutable данные в OS-потоках. Внешне
+сериализуйте source mutation и close; закрывайте после остановки всех читателей.
+Новых блокировок, общих курсоров и скрытого worker API не создаёт.
+
+## Desktop и native-потребители
+
+prepare_segment использует inferred-политику в существующем aggregate retained/peak
+бюджете до audio acquisition. Неоднозначный/невалидный звук отклоняется preflight;
+явный mute сохраняет свою политику. Нормализованный PCM поступает в stream-only
+и root stream/event mixing. Контракты retry, frame gates, finite tails, StopSounds,
+seek-clear epochs, source grid и dequeue clock не меняются. Автоматическая A/V
+политика не добавляется.
+
+C89 swf_stream_adpcm --inferred не читает block_frames: последние ненулевые коды
+оставляют длины 5 и 3 вокруг пустого блока. Все три режима экспортируют те же
+восемь ручных samples после уничтожения VM. [Пример](../examples/multimedia/swf_stream_adpcm/README.md).
+
+## Проверки и незакрытая приёмка
+
+Матрица 104 случаев: ширины 2–5, mono/stereo и длины около 4096/8192; 65 принятых
+случаев совпадают по всем samples, 39 неоднозначных отклонены. Oracle независимо
+перебирает длины. Проверены плохие окончания/короткие predictors, точный и
+one-byte-short бюджет, четыре allocation failures, чтение без аллокаций, VM
+teardown, точный retry PCM, закрытый gate, failed clear и успешный seek reset.
+Четыре OS-worker читают один immutable snapshot разными converters в 128 эпохах,
+сверяя рациональную интерполяцию на restart.
+
+Настоящие SDL dummy CLI проверяют полный PCM FWS/CWS, interpreter/native JIT,
+пустые блоки, partial restart и PCM successor. Mixed fixtures проверяют partial
+stereo ADPCM с противоположными events, одно насыщение, BASE19/TAIL0 в двух finite
+политиках. Это Linux native функциональные проверки, не физический DAC, не race
+detector и не приёмка других платформ.
+
+Неоднозначный ADPCM требует авторитетных длин. Дочерние таймлайны/словари,
+reference codec latency/seek, source time, автоматический A/V drift и полная
+SWF <=8 совместимость остаются открытыми. Все девять стадий открыты.
+
 
 v0.1064: Добавлена bounded-подготовка с прежними whole packets и единственной partial-длиной без header average.
 
@@ -20,3 +100,17 @@ v0.1071: C89-пример добавляет inferred-режим без табл
 v0.1072: Четыре OS-worker читают общий post-VM snapshot с разными курсорами, проверяя интерполяцию и restart в 128 эпохах.
 
 v0.1073: Post-VM PCM сохраняется при rejected write, gate, failed clear и reset; финальный short retry даёт ровно 19 stereo frames.
+
+v0.1074: Описаны canonical compatibility, unique partial endpoints, counted API, peak budget и границы native/physical приёмки RU/EN.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:136](../include/flashvm/swf_stream_sound.h#L136) |
+<!-- source-links:end -->

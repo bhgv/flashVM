@@ -69,6 +69,9 @@ FFmpeg нужен только как необязимый независимы�
 Общий проверщик комментариев мультимедиа продолжает находить прежние пропуски
 в неизменённых файлах Windows speech; успешным этот общий прогон не объявляется.
 
+
+Explicit inferred partial preparation and automatic desktop integration: [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md). Existing whole-only/count-authoritative APIs keep their policy. / Неоднозначные блоки по-прежнему требуют внешних длин; все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

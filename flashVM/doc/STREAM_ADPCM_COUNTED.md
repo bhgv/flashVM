@@ -177,6 +177,9 @@ Source-link freshness, version refresh and sorted example catalog checks pass.
 The global multimedia comment checker still reports only two unchanged Windows
 speech files; changed tutorial files have complete line comments and API coverage.
 
+
+Explicit inferred partial preparation and automatic desktop integration: [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md). Existing whole-only/count-authoritative APIs keep their policy. / Неоднозначные блоки по-прежнему требуют внешних длин; все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

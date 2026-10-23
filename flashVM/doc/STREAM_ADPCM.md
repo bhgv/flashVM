@@ -70,6 +70,9 @@ host and was disabled; the entire VM/dependency tree was not sanitizer-instrumen
 The broader multimedia comment checker still reports pre-existing missing comments
 in unchanged Windows speech files; it is not reported as passing here.
 
+
+Explicit inferred partial preparation and automatic desktop integration: [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md). Existing whole-only/count-authoritative APIs keep their policy. / Неоднозначные блоки по-прежнему требуют внешних длин; все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

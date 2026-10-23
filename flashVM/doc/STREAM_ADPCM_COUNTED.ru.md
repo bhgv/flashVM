@@ -172,6 +172,9 @@ links, version refresh и сортировка каталога. Общий mult
 сохраняет замечания только к двум неизменённым Windows speech files; новый пример
 полностью покрыт построчными комментариями и таблицей API.
 
+
+Explicit inferred partial preparation and automatic desktop integration: [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md). Existing whole-only/count-authoritative APIs keep their policy. / Неоднозначные блоки по-прежнему требуют внешних длин; все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

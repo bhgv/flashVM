@@ -5222,6 +5222,9 @@ ASan/UBSan, 64 dummy-SDL случая и экспорт C89; исходные э
 
 Coherent mixed stream/category observation and desktop worker integration: [EN](MIXED_SNAPSHOT.md) / [RU](MIXED_SNAPSHOT.ru.md). Source/DAC mapping and automatic A/V remain open. / Единый снимок не закрывает A/V и стадии 1–9.
 
+
+Explicit inferred partial preparation and automatic desktop integration: [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md). Existing whole-only/count-authoritative APIs keep their policy. / Неоднозначные блоки по-прежнему требуют внешних длин; все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
