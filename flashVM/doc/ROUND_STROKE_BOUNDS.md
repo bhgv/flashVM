@@ -8,7 +8,29 @@ The implementation is in [bounds](../src/standard/movieclip.cpp); straight geome
 
 Quadratic/cubic paths continue to use the path bounding box expanded by half the effective width, multiplied by sqrt(2) for square caps. This is deliberately conservative, not an exact offset-curve bound. Existing nonuniform/shear width metric differences, raster/reference acceptance, unsupported LINESTYLE2 styles, Cairo and physical devices remain open. All nine roadmap stages remain open.
 
-The straight-stroke walker accepts effective widths up to 1,000,000 destination units. Larger widths return an argument error. Concurrent mutation of one context or path is not supported.
+## Regression coverage
+
+Ten focused host fixtures exercise SWF6/7/8 hairlines, diagonal round ends, isolated moves, degenerate paths, contours returning to their start, curved envelopes, dimensions, non-shape hits, all four quality policies and 32 GC epochs. Existing SWF width, transform and mixed-fill fixtures now include the corrected default round expectations. The existing executable [C89 stroke tutorial](../examples/embedding/stroke_styles/README.md) remains applicable; its selected square-cap geometry is unchanged.
+The straight-stroke walker accepts positive effective widths up to 1,000,000 destination units; larger values return an argument error. Concurrent mutation of one context or path is not supported.
+
+
+| Fixture | Coverage |
+| --- | --- |
+| [hairline](../tests/movieclip_round_bounds_hairline.cpp) | SWF6/7/8, bounds versus getRect |
+| [diagonal](../tests/movieclip_round_bounds_diagonal.cpp) | Independent diagonal cap extents |
+| [isolated_moves](../tests/movieclip_round_bounds_isolated_moves.cpp) | Stroke-only extents exclude an isolated move |
+| [degenerate](../tests/movieclip_round_bounds_degenerate.cpp) | Zero-length edges versus underlying path |
+| [closed](../tests/movieclip_round_bounds_closed.cpp) | Round contour returning to its start |
+| [curves](../tests/movieclip_round_bounds_curves.cpp) | Conservative nonzero hairline envelope |
+| [dimensions](../tests/movieclip_round_bounds_dimensions.cpp) | Width and height observers |
+| [hitbox](../tests/movieclip_round_bounds_hitbox.cpp) | Non-shape point hit at hairline reach |
+| [quality](../tests/movieclip_round_bounds_quality.cpp) | Four stage policies |
+| [gc](../tests/movieclip_round_bounds_gc.cpp) | 32 explicit collection epochs |
+
+
+## Verified checkpoint v0.1337
+
+Series v0.1325–v0.1337 on published v0.1324 contains 13 local commits. Validation passes 257 selected native AGG/JIT tests, 15 no-graphics interpreter tests and 15 ASan/UBSan tests, including the C89 tutorial. LeakSanitizer is disabled. New fixtures exercise host-context geometry; hairlines additionally run in loaded SWF6/7/8 contexts. The native set retains existing JIT/transfer/thread/timeline/allocation regressions, without implying a new complete reference acceptance pass. Source/example checks pass. Cairo and physical platforms were not tested.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
