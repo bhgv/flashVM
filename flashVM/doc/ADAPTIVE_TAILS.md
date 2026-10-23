@@ -35,6 +35,9 @@ v0.1001: Carry the final pre-write FIFO observation into paired counters without
 
 v0.1002: Cover backend failures, callback reentry, exceptions, BASE exclusion and acknowledged cancellation of short retries.
 
+
+v0.1003: Exercise the last representable single frame, overflow rejection, invalid backlog and acknowledged epoch reset.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
