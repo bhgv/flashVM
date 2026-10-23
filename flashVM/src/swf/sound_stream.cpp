@@ -1,5 +1,5 @@
 /* FlashVM: live root streaming-sound inspection and optional owned indexed encoded snapshots.
- * Explicit preparation can expand whole or authoritatively counted partial ADPCM packets; no MovieClip clock or host output runs. */
+ * Explicit preparation expands canonical whole, uniquely inferred or counted partial ADPCM; no MovieClip clock or host output runs. */
 #include "../core/runtime.hpp"
 #include "flashvm/swf_stream_sound.h"
 #include "reader.hpp"

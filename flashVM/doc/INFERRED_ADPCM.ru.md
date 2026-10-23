@@ -80,6 +80,19 @@ detector и не приёмка других платформ.
 reference codec latency/seek, source time, автоматический A/V drift и полная
 SWF <=8 совместимость остаются открытыми. Все девять стадий открыты.
 
+## Independent codec oracle / Независимый codec oracle
+
+Run `python3 scripts/check_inferred_adpcm_ffmpeg.py BUILD/flashvm_tests_swf_stream_adpcm_inferred`.
+The test exporter receives only SWF/output paths, never a count table. Varying
+codes exercise every width/channel pair, partial restarts, empty/width-only
+blocks and FWS/CWS. FFmpeg is an optional test executable, not a runtime dependency.
+Fixture lengths come from independent construction and endpoint enumeration.
+
+FFmpeg используется только как внешний oracle. Экспортёр FlashVM не получает
+таблицу длин; полный PCM сверяется для всех ширин/каналов и обоих контейнеров.
+
+Inferred partial ADPCM v0.1064–v0.1076: новый bounded API сохраняет canonical whole-packet поведение и принимает единственную partial-геометрию байтов/padding без header average и movie time. Старые whole-only и counted API сохраняют политику; неоднозначные короткие блоки автоматически не принимаются. Desktop готовит stream-only и mixed источники этим API в общем retained/peak бюджете до устройства. Прошли 223 выбранных native regression/tutorial/CLI проверки и две options-проверки; 78 full-profile ASan/UBSan, четырнадцать --no-throw запусков и isolated inferred allocation-success; 14 SDK-free ADPCM проверок; независимое сравнение PCM с FFmpeg всех ширин/каналов в FWS/CWS. Четыре allocation failures проверены обычной сборкой; LeakSanitizer отключён. Матрица 104 случаев принимает 65 и отклоняет 39 неоднозначных. Проверены плохие окончания, точные бюджеты, VM teardown, gates, точный retry, failed clear и seek/reset. Четыре настоящих OS-worker сверяют рациональную интерполяцию на restart в 128 эпохах. SDL dummy CLI сверяет весь PCM, пустые блоки, PCM successor, обе VM modes, opposite events, finite policies и BASE19/TAIL0. C89 exporter проверяет восемь ручных samples в counted/range/inferred режимах. Переименованный detached-компонент конфигурируется с явным SDK; скопированные FFmpeg/tutorial checkers проходят на native binaries, отдельной detached-сборки нет. Неоднозначные длины, дочерние таймлайны/словари, reference codec latency/seek, автоматические source-time/A-V drift, устройства/другие платформы и все девять стадий остаются открытыми.
+
 
 v0.1064: Добавлена bounded-подготовка с прежними whole packets и единственной partial-длиной без header average.
 
@@ -105,6 +118,9 @@ v0.1074: Описаны canonical compatibility, unique partial endpoints, count
 
 
 v0.1075: Добавлены post-VM export без counts и FFmpeg oracle для всех ширин/каналов, CWS/FWS, partial restart и пустых блоков.
+
+
+v0.1076: Зафиксированы native, sanitizer, SDK-free, FFmpeg и desktop PCM проверки; неоднозначные длины, A/V и дочерние потоки остаются открытыми.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

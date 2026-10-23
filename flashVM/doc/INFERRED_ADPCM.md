@@ -86,6 +86,19 @@ Ambiguous ADPCM still needs authoritative counts. Child timelines/dictionaries,
 reference codec latency/seek, source timestamps, automatic A/V drift and complete
 SWF <=8 support remain open. All nine roadmap stages remain open.
 
+## Independent codec oracle / Независимый codec oracle
+
+Run `python3 scripts/check_inferred_adpcm_ffmpeg.py BUILD/flashvm_tests_swf_stream_adpcm_inferred`.
+The test exporter receives only SWF/output paths, never a count table. Varying
+codes exercise every width/channel pair, partial restarts, empty/width-only
+blocks and FWS/CWS. FFmpeg is an optional test executable, not a runtime dependency.
+Fixture lengths come from independent construction and endpoint enumeration.
+
+FFmpeg используется только как внешний oracle. Экспортёр FlashVM не получает
+таблицу длин; полный PCM сверяется для всех ширин/каналов и обоих контейнеров.
+
+Inferred partial ADPCM v0.1064–v0.1076: an additive bounded preparation API preserves canonical whole-packet behavior and accepts a unique partial byte/padding geometry without using header average or movie timing. Existing whole-only and count-authoritative APIs keep their policy; ambiguous partial blocks remain unsupported automatically. Desktop preparation uses the new policy within its aggregate retained/peak ceiling before device acquisition, for stream-only and mixed output. Validation passes 223 selected native regression/tutorial/CLI checks plus two options tests; 78 selected full-profile ASan/UBSan checks plus fourteen explicit --no-throw runs and the isolated inferred allocation-success path; 14 SDK-free ADPCM checks; and independent FFmpeg PCM comparisons across all widths/channels in FWS/CWS. Ordinary builds cover all four allocation failures; LeakSanitizer is disabled. The 104-case independent count matrix accepts 65 and rejects 39 ambiguous cases. Tests cover bad endpoints, exact budgets, VM teardown, held gates, exact retry, failed clear and seek/reset. Four real OS workers compare rational conversion across partial packet restarts over 128 epochs. SDL dummy CLI checks complete converted PCM, empty blocks, PCM successors, both VM modes, opposing event mixing, finite policies and BASE19/TAIL0. The documented C89 exporter verifies the same eight hand-calculated values in counted/range/inferred modes. A renamed detached component configures with explicit SDK; copied FFmpeg/tutorial checkers pass against native binaries, without a separate detached build. Ambiguous source lengths, child timelines/dictionaries, reference codec latency/seek, automatic source-time A/V drift, physical devices/foreign platforms and all nine roadmap stages remain open.
+
 
 v0.1064: Add bounded PCM preparation that preserves canonical whole packets and accepts a unique zero-padded partial length without header averages.
 
@@ -111,6 +124,9 @@ v0.1074: Specify canonical compatibility, unique partial endpoints, unchanged co
 
 
 v0.1075: Add a no-count post-VM exporter and varying-code FWS CWS oracle for all widths and channels, including partial restarts and empty blocks.
+
+
+v0.1076: Record native sanitizer SDK-free independent codec and desktop PCM evidence while retaining ambiguous-length and full A-V child-stream acceptance limits.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

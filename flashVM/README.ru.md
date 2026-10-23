@@ -1,4 +1,4 @@
-Версия разработки: **0.1075** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1076** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1076: [Зафиксированы native, sanitizer, SDK-free, FFmpeg и desktop PCM проверки; неоднозначные длины, A/V и дочерние потоки остаются открытыми.](doc/INFERRED_ADPCM.ru.md).
 
 v0.1075: [Добавлены post-VM export без counts и FFmpeg oracle для всех ширин/каналов, CWS/FWS, partial restart и пустых блоков.](doc/INFERRED_ADPCM.ru.md).
 
