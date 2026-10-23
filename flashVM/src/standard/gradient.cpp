@@ -71,6 +71,18 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
             return FVM_INVALID_ARGUMENT;
         spread = (FVM_GradientSpread)(unsigned int)value.number;
     }
+    unsigned int interpolation = FVM_GRADIENT_INTERPOLATION_RGB;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator color_mode =
+        record->properties.find("interpolation");
+    if (color_mode != record->properties.end())
+    {
+        const FVM_Value &value = color_mode->second;
+        if (value.type != FVM_VALUE_NUMBER ||
+            (value.number != FVM_GRADIENT_INTERPOLATION_RGB &&
+             value.number != FVM_GRADIENT_INTERPOLATION_LINEAR_RGB))
+            return FVM_INVALID_ARGUMENT;
+        interpolation = (unsigned int)value.number;
+    }
     FVM_Gradient gradient;
     fvm_gradient_init(&gradient);
     double type = 0;
@@ -129,9 +141,7 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     }
     gradient.stops = values.begin();
     gradient.count = values.size();
-    if (stroke_width > 0)
-        return fvm_path_stroke_gradient_quality(path, surface, &gradient, stroke_width, spread,
-                                                 c->stage_quality != FVM_STAGE_QUALITY_LOW);
-    return fvm_path_draw_gradient_spread_quality(path, surface, &gradient, even_odd, spread,
-                                                c->stage_quality != FVM_STAGE_QUALITY_LOW);
+    return fvm_path_gradient_paint_quality(path, surface, &gradient, stroke_width, even_odd,
+                                            spread, interpolation,
+                                            c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }
