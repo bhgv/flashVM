@@ -32,6 +32,9 @@ v0.1000: Use adaptive tails in paired EOF and frame-gated scheduling while retai
 
 v0.1001: Carry the final pre-write FIFO observation into paired counters without a fallible post-acceptance callback.
 
+
+v0.1002: Cover backend failures, callback reentry, exceptions, BASE exclusion and acknowledged cancellation of short retries.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
