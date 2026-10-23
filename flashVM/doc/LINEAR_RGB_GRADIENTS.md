@@ -1,5 +1,8 @@
 # Linear-light RGB gradients
 
+Current file extension v0.1211+: [fill-only SWF8 DefineShape4](SHAPE4_FILLS.md) adds 15-stop modes and signed interior FIXED8 focal records. LINESTYLE2 and focal endpoints remain unsupported. Earlier blanket Shape4 exclusions below are historical. All nine stages remain open.
+
+
 Interior focal extension v0.1197+: [signed radial fill/stroke origins](FOCAL_GRADIENTS.md) / [внутренние focal-позиции](FOCAL_GRADIENTS.ru.md). Earlier zero-focal-only notes describe historical checkpoints. Endpoints/clamping, DefineShape4/LineStyle2 and all nine roadmap stages remain open.
 
 

@@ -1,4 +1,4 @@
-/* FlashVM: bounded SWF shape decoding and directed-edge assembly for solid vector paints. */
+/* FlashVM: bounded SWF shape decoding and directed-edge assembly for owned vector paints. */
 #include "format_constants.h"
 #include "shape.hpp"
 #include "reader.hpp"
@@ -50,13 +50,16 @@ FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &
     if (tag == FVM_SWF_TAG_DEFINE_SHAPE4)
     {
         paint.gradient_spread = (unsigned int)(header >> FVM_SWF_GRADIENT_SPREAD_SHIFT);
-        paint.gradient_interpolation = (unsigned int)((header >> FVM_SWF_GRADIENT_INTERPOLATION_SHIFT) & FVM_SWF_GRADIENT_MODE_MASK);
+        paint.gradient_interpolation = (unsigned int)(
+            (header >> FVM_SWF_GRADIENT_INTERPOLATION_SHIFT) & FVM_SWF_GRADIENT_MODE_MASK);
         count = header & FVM_SWF_GRADIENT_COUNT_MASK;
         if (paint.gradient_spread > FVM_GRADIENT_SPREAD_REPEAT ||
             paint.gradient_interpolation > FVM_GRADIENT_INTERPOLATION_LINEAR_RGB)
             return FVM_INVALID_ARGUMENT;
     }
-    if (!reader.good() || count < 1 || count > (tag == FVM_SWF_TAG_DEFINE_SHAPE4 ? FVM_GRADIENT_MAX_STOPS : 8))
+    unsigned long limit = tag == FVM_SWF_TAG_DEFINE_SHAPE4
+                              ? FVM_GRADIENT_MAX_STOPS : FVM_SWF_LEGACY_GRADIENT_MAX_STOPS;
+    if (!reader.good() || count < 1 || count > limit)
         return FVM_INVALID_ARGUMENT;
     for (unsigned long i = 0; i < count; ++i)
     {
@@ -75,10 +78,12 @@ FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &
         unsigned long raw = reader.integer(2);
         if (!reader.good())
             return FVM_INVALID_ARGUMENT;
-        long signed_value = raw & FVM_SWF_FOCAL_SIGN ? -(long)(FVM_SWF_FOCAL_MODULUS - raw) : (long)raw;
+        long signed_value = raw & FVM_SWF_FOCAL_SIGN
+                                ? -(long)(FVM_SWF_FOCAL_MODULUS - raw) : (long)raw;
         paint.gradient_focal = signed_value / FVM_SWF_FOCAL_SCALE;
         /* The current ray sampler intentionally excludes degenerate circle-boundary origins. */
-        if (paint.gradient_focal <= -FVM_GRADIENT_FOCAL_LIMIT || paint.gradient_focal >= FVM_GRADIENT_FOCAL_LIMIT)
+        if (paint.gradient_focal <= -FVM_GRADIENT_FOCAL_LIMIT ||
+            paint.gradient_focal >= FVM_GRADIENT_FOCAL_LIMIT)
             return FVM_UNSUPPORTED;
     }
     return FVM_OK;

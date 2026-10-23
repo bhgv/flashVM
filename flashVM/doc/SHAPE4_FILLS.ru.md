@@ -1,6 +1,6 @@
 # Заливки SWF 8 DefineShape4
 
-Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L427) принимает DefineShape4 (тег 83) без
+Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L432) принимает DefineShape4 (тег 83) без
 обводок. Загрузчик сцены разрешает тег начиная с SWF 8. Проверки резервных битов
 и ограничение в восемь точек для DefineShape/2/3 сохранены.
 
@@ -19,7 +19,7 @@ ShapeBounds и EdgeBounds проверяются на порядок и пред
 заливки и масштабирование обводок требуют отдельной реализации.
 
 Сплошные и bitmap-заливки используют существующие пути и проверку словаря.
-fvm_swf_shape_graph создаёт собственный управляемый дескриптор градиента с
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) создаёт собственный управляемый дескриптор градиента с
 необязательными скалярными свойствами spread/interpolation/focal. Указатели
 бэкенда и исходные байты не сохраняются. Нативный барьер защищает построение,
 рёбра графа удерживают точки и команды. Ошибка декодирования сохраняет прежний
@@ -39,6 +39,21 @@ https://open-flash.github.io/mirrors/swf-spec-19.pdf
 Независимые аналитические проверки семплера находятся в `gradient_focal_edges.c`
 и `gradient_linear_rgb.c`.
 
+
+## Дополнительные проверки
+
+`swf_shape4_errors` проверяет усечения и неизменность прежнего результата;
+`swf_shape4_stops` — 90 сочетаний числа точек и режимов;
+`swf_shape4_fixed` — все 511 внутренних FIXED8-значений;
+`swf_shape4_transfer` — 12 сцен через сериализацию и канал после удаления отправителя;
+`swf_shape4_version` — версии, повторные ID и границы спрайтов;
+`swf_shape4_allocation` — шесть полных серий отказов памяти при декодировании и загрузке;
+`swf_shape4_styles` — новый RGBA-банк и запрет LINESTYLE2;
+`swf_shape4_bounds` — EdgeBounds и подсказки обводок;
+`swf_shape4_bitmap` — четыре bitmap-режима и отсутствующие ресурсы;
+`swf_shape4_timeline` — замена персонажа и 16 перемоток;
+`swf_shape4_threads` — четыре потока, 96 циклов загрузки/рендеринга/GC.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -49,6 +64,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:427](../src/swf/shape.cpp#L427) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:432](../src/swf/shape.cpp#L432) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

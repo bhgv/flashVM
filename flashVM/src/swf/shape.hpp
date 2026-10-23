@@ -1,4 +1,4 @@
-/* FlashVM: owned decoded SWF solid-shape contours, independent of backend pointers. */
+/* FlashVM: owned decoded SWF vector paints, independent of backend pointers. */
 #ifndef FVM_SWF_SHAPE_HPP
 #define FVM_SWF_SHAPE_HPP /* Include guard for decoded shape resources. */
 #include "flashvm/gradient.h"
@@ -17,7 +17,7 @@ struct FVM_SWFGradientStop
     }
 };
 
-/* One solid fill or stroke, retaining separate contours and quadratic control points. */
+/* One decoded fill or legacy stroke with owned style and quadratic contour geometry. */
 struct FVM_SWFShapePaint
 {
     unsigned long rgb;          /* Packed red/green/blue color. */

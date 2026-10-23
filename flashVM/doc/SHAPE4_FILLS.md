@@ -1,6 +1,6 @@
 # SWF 8 DefineShape4 fills
 
-The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L427) now accepts fill-only DefineShape4 (tag 83).
+The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L432) now accepts fill-only DefineShape4 (tag 83).
 The scene loader gates it to SWF 8 and later. DefineShape/2/3 retain their original
 reserved-mode checks and limit of eight gradient stops.
 
@@ -20,7 +20,7 @@ stroke fills and scaling require a later implementation.
 
 Solid and bitmap fills reuse the existing shape paths and bitmap dictionary
 validation. Each gradient becomes an owned scalar-only managed descriptor through
-fvm_swf_shape_graph, using optional spread/interpolation/focal properties.
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117), using optional spread/interpolation/focal properties.
 No backend pointer or source byte storage survives decoding. The loader's native
 barrier protects construction; normal graph edges retain stops and commands.
 Decoder failure leaves the caller's previous decoded shape intact.
@@ -40,6 +40,21 @@ complete rendered surfaces against the public focal-gradient sampler for 18
 linear/radial/focal × spread × interpolation cases. The sampler itself has
 independent analytic tests in `gradient_focal_edges.c` and `gradient_linear_rgb.c`.
 
+
+## Additional fixtures
+
+`swf_shape4_errors` covers truncation and unchanged previous output;
+`swf_shape4_stops` covers 90 stop-count/mode combinations;
+`swf_shape4_fixed` covers all 511 interior FIXED8 values;
+`swf_shape4_transfer` covers 12 scenes through binary/channel copies after sender destruction;
+`swf_shape4_version` covers version gates, duplicate IDs and sprite boundaries;
+`swf_shape4_allocation` sweeps six decoder/loader configurations through allocation failures;
+`swf_shape4_styles` covers new RGBA banks and LINESTYLE2 rejection;
+`swf_shape4_bounds` covers EdgeBounds and stroke hints;
+`swf_shape4_bitmap` covers four bitmap modes and missing resources;
+`swf_shape4_timeline` covers character replacement and 16 seeks;
+`swf_shape4_threads` covers four workers and 96 load/render/GC epochs.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -50,6 +65,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:427](../src/swf/shape.cpp#L427) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:432](../src/swf/shape.cpp#L432) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

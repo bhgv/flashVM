@@ -55,12 +55,19 @@
 #define FVM_SWF_SHAPE4_RESERVED_MASK 0xfcU
 /* Gradient header bit layout shared by GRADIENT and FOCALGRADIENT. */
 #define FVM_SWF_GRADIENT_SPREAD_SHIFT 6U
+/* Interpolation selector starts above the low stop-count nibble. */
 #define FVM_SWF_GRADIENT_INTERPOLATION_SHIFT 4U
+/* Each selector occupies two bits. */
 #define FVM_SWF_GRADIENT_MODE_MASK 3U
+/* Low four bits hold the number of gradient records. */
 #define FVM_SWF_GRADIENT_COUNT_MASK 15U
+/* Maximum stop count in DefineShape/2/3, independent of the file version. */
+#define FVM_SWF_LEGACY_GRADIENT_MAX_STOPS 8U
 /* Signed little-endian FIXED8 encoding for a focal position. */
 #define FVM_SWF_FOCAL_SIGN 0x8000UL
+/* Modulus used for portable sign extension of the two-byte record. */
 #define FVM_SWF_FOCAL_MODULUS 0x10000UL
+/* Number of encoded units per normalized focal coordinate. */
 #define FVM_SWF_FOCAL_SCALE 256.0
 /* SWF version 1 compatibility boundary. */
 #define FVM_SWF_VERSION_1 1U

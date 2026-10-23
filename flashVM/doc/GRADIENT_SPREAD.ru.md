@@ -1,5 +1,8 @@
 # Режимы продолжения градиента
 
+Текущее файловое расширение v0.1211+: [заливки SWF8 DefineShape4](SHAPE4_FILLS.ru.md), 15 точек, режимы и внутренний FIXED8-фокус. LINESTYLE2 и граничные фокусы не поддержаны. Прежние общие исключения Shape4 ниже относятся к истории. Все девять этапов открыты.
+
+
 Interior focal extension v0.1197+: [signed radial fill/stroke origins](FOCAL_GRADIENTS.md) / [внутренние focal-позиции](FOCAL_GRADIENTS.ru.md). Earlier zero-focal-only notes describe historical checkpoints. Endpoints/clamping, DefineShape4/LineStyle2 and all nine roadmap stages remain open.
 
 

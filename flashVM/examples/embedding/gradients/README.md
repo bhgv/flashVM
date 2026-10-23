@@ -135,6 +135,17 @@ Checker проверяет четырнадцать строк реальных 
 [Описание в общем каталоге](../../README.md#example-embedding-gradients).
 <!-- example-catalog-api:end -->
 
+
+File-authored gradients: [SWF8 DefineShape4 fills](../../../doc/SHAPE4_FILLS.md)
+now feed the same sampler from owned scene records. This C89 example constructs
+native paths; it does not encode a SWF file. Raw file fixtures are documented in
+the guide. LINESTYLE2 and boundary focal positions remain unsupported.
+
+Файловые градиенты: [заливки SWF8 DefineShape4](../../../doc/SHAPE4_FILLS.ru.md)
+используют тот же семплер через граф сцены. Этот пример C89 строит нативные пути
+и не кодирует SWF. Байтовые тесты перечислены в руководстве; LINESTYLE2 и
+граничные фокусы остаются неподдержанными.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

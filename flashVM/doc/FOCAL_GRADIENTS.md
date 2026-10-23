@@ -1,5 +1,8 @@
 # Interior focal gradients
 
+Current file extension v0.1211+: [fill-only SWF8 DefineShape4](SHAPE4_FILLS.md) adds 15-stop modes and signed interior FIXED8 focal records. LINESTYLE2 and focal endpoints remain unsupported. Earlier blanket Shape4 exclusions below are historical. All nine stages remain open.
+
+
 C89 and SWF8 radial gradients support signed focal positions strictly inside the normalized unit circle, for fills and strokes, RGB/linearRGB and PAD/REFLECT/REPEAT. Zero retains the previous centered sampler exactly. The public [FVM_Gradient](../include/flashvm/gradient.h#L38) layout and existing callback identifiers remain unchanged. All nine roadmap stages remain open.
 
 This is an interior-focal checkpoint. Adobe's API describes endpoints -1/+1 and clamping out-of-range values to them. This implementation retains [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for those finite script inputs; it does not implement or silently approximate that endpoint policy. Full reference-player fixed-point/rounding acceptance remains open.

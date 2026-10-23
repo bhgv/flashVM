@@ -1,5 +1,8 @@
 # Внутренние focal-градиенты
 
+Текущее файловое расширение v0.1211+: [заливки SWF8 DefineShape4](SHAPE4_FILLS.ru.md), 15 точек, режимы и внутренний FIXED8-фокус. LINESTYLE2 и граничные фокусы не поддержаны. Прежние общие исключения Shape4 ниже относятся к истории. Все девять этапов открыты.
+
+
 Для C89 и SWF8 radial gradients добавлены signed focal-позиции строго внутри нормализованного единичного круга: fill/stroke, RGB/linearRGB, PAD/REFLECT/REPEAT. Ноль сохраняет прежний centered sampler побайтно. Layout [FVM_Gradient](../include/flashvm/gradient.h#L38) и callback IDs не меняются. Все девять этапов roadmap открыты.
 
 Это checkpoint внутренних focal. Adobe API описывает границы -1/+1 и clamping значений к ним. Для таких конечных script-аргументов здесь сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46): endpoint policy не реализуется и не заменяется произвольной epsilon-аппроксимацией. Полная Fixed8/rounding приёмка эталонного плеера открыта.

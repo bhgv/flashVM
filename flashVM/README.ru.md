@@ -1,4 +1,4 @@
-Версия разработки: **0.1222** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1223** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1223: [Двуязычные контракты Shape4 ссылки на исходники и уточнение прежних ограничений](doc/SHAPE4_FILLS.ru.md).
 
 v0.1222: [Четыре OS-потока выполняют 96 независимых циклов загрузки рендеринга и GC](doc/SHAPE4_FILLS.ru.md).
 
