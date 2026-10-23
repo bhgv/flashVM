@@ -1,5 +1,8 @@
 # Прокрутка одностильного TextField
 
+Размеры и режимы раскладки дополнены observer-транзакциями: [контракт](TEXT_GEOMETRY_EVENTS.ru.md). Native query/export/capture остаются no-script.
+
+
 Добавляется ограниченная прокрутка host-created TextField.
 [Справочник Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html)
 задаёт вертикальный индекс visual line от единицы и горизонтальные пиксели от нуля.

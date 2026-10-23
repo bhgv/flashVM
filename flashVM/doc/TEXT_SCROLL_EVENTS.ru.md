@@ -1,5 +1,8 @@
 # Наблюдатели прокрутки TextField
 
+Размеры и режимы раскладки теперь поддерживают [события диапазонов](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
+
+
 Расширяется [bounded bridge прокрутки](TEXT_SCROLL.ru.md).
 [Справочник Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)
 описывает порядок field-first, регистрацию listeners и аргумент source field.

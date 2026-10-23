@@ -1,5 +1,8 @@
 # ActionScript text bridge (Flash 6–8 subset)
 
+Dimension and layout-policy changes now notify onScroller when effective positions or maxima change; see [geometry admission and transaction](TEXT_GEOMETRY_EVENTS.md). Text/style events and input remain open.
+
+
 Bounded uniform-field scrolling is now supported through scroll/hscroll and the
 read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
 viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).

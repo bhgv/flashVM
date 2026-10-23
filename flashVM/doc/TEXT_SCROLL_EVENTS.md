@@ -1,5 +1,8 @@
 # TextField scroll observers
 
+Dimensions and layout policies now support [geometry range events](TEXT_GEOMETRY_EVENTS.md). Text/style-triggered events and input remain open.
+
+
 This series extends the bounded [uniform scroll bridge](TEXT_SCROLL.md).
 The [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)
 describes field-first notification, listener registration and the source field

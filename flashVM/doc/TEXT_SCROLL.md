@@ -1,5 +1,8 @@
 # Uniform TextField scrolling
 
+Dimension/layout-policy observer transactions extend this bridge: [contract](TEXT_GEOMETRY_EVENTS.md). Native query/export/capture remain no-script.
+
+
 This series adds bounded viewport scrolling to host-created TextField objects.
 The [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html)
 defines one-based vertical visual-line indices and zero-based horizontal pixels.

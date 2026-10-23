@@ -1,5 +1,8 @@
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
+Изменения размеров и режимов раскладки уведомляют onScroller при изменении effective positions или maxima: [допуск и транзакция](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
+
+
 Добавлена bounded-прокрутка одностильного поля: scroll/hscroll,
 read-only maxscroll/maxhscroll/bottomScroll и нативный query viewport.
 [Геометрия и передача состояния](TEXT_SCROLL.ru.md). Контуры учитывают scroll,

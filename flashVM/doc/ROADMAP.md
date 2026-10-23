@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+TextField geometry observers: [EN](TEXT_GEOMETRY_EVENTS.md) / [RU](TEXT_GEOMETRY_EVENTS.ru.md). Dimensions and layout-policy range changes publish before synchronous callbacks. Text/style-triggered events, input and all nine roadmap stages remain open.
+
+
 Bounded explicit TextField scroll observers: [EN](TEXT_SCROLL_EVENTS.md) /
 [RU](TEXT_SCROLL_EVENTS.ru.md). Field-first synchronous delivery, graph-owned
 listeners and reentrant snapshots are implemented. Geometry-wide notifications,
