@@ -191,7 +191,7 @@ static FVM_Result sound_event(FVM_Context *context, FVM_Object *clip, size_t ord
     FVM_Result result;
     size_t remaining = 0;
     int handled = 0, active = 0;
-    if (audio->composition)
+    if (audio->composition || audio->finite_event_tails)
     {
         /* Navigation must clear the old epoch before this frame's first new event is adopted. */
         result = sync_timeline(context, clip, audio, 0);
@@ -471,6 +471,8 @@ static FVM_Result refill(FVM_DesktopAudio *audio)
     unsigned int attempt;
     if (audio->stream_source)
         return refill_stream(audio);
+    if (audio->finite_event_tails && !audio->event_frame_ready)
+        return FVM_OK; /* Complete owner frame delivery precedes every new finite event block. */
     info.struct_size = sizeof(info);
     result = fvm_swf_sound_output_info(audio->output, &info);
     if (result != FVM_OK)
@@ -719,7 +721,16 @@ static FVM_Result sync_timeline(FVM_Context *context, FVM_Object *clip,
     if (!audio)
         return FVM_INVALID_ARGUMENT;
     if (!audio->stream_source)
+    {
+        if (!audio->finite_event_tails || !audio->output) return FVM_OK;
+        info.struct_size = sizeof(info);
+        result = fvm_movieclip_get_playback_info(context, clip, &info);
+        if (result != FVM_OK) return result;
+        if (SDL_LockMutex(audio->mutex) != 0) return FVM_ERROR;
+        audio->event_frame_ready = authorize && info.entered;
+        SDL_UnlockMutex(audio->mutex);
         return FVM_OK;
+    }
     info.struct_size = sizeof(info);
     result = fvm_movieclip_get_playback_info(context, clip, &info);
     if (result != FVM_OK)

@@ -19,6 +19,9 @@ v0.1029: Проверены 256 эпох с короткими retry, незав
 
 v0.1030: Добавлены неизменный event policy, CLI finite-audio-tails и совместимые wrappers прежнего mixed-only startup.
 
+
+v0.1031: Event-only вывод удерживается при подготовке и callbacks кадра, затем разрешается владельцем в безопасной точке.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

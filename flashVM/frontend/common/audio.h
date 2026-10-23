@@ -46,6 +46,7 @@ typedef struct FVM_DesktopAudio
     unsigned int stream_frame;    /* Mutex-protected authorized entered movie frame, zero holds. */
     unsigned int stream_selected; /* Last observed intrinsic selection, owner writes under lock. */
     unsigned long stream_navigation; /* Last observed explicit seek token, scoped to this root. */
+    int event_frame_ready; /* Finite events may render only after the owner publishes a complete frame. */
     int finite_event_tails; /* Immutable opt-in finite event-only output, independent of mixed policy. */
     int finite_mixed_tails; /* Immutable startup policy: avoid fresh event-only block padding when set. */
     int stream_frame_ready; /* Completed owner frame; zero holds both producers during callbacks. */

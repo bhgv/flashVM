@@ -1313,7 +1313,7 @@ endif()
 
 # Root stream/event integration uses the production C89 owner and explicit SDL dummy endpoint.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
-  foreach(mixed_case IN ITEMS open thread budget stopped_thread)
+  foreach(mixed_case IN ITEMS open thread budget stopped_thread event_frame_gate)
     add_executable(flashvm_frontend_mixed_${mixed_case} tests/mixed_${mixed_case}.cpp common/audio.c common/audio_trace.c)
     target_link_libraries(flashvm_frontend_mixed_${mixed_case} PRIVATE flashvm SDL2::SDL2)
     set_target_properties(flashvm_frontend_mixed_${mixed_case} PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)

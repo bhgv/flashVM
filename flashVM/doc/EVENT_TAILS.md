@@ -19,6 +19,9 @@ v0.1029: Verify 256 epochs with exact short retries, independent rational PCM, c
 
 v0.1030: Add immutable event policy, explicit finite-audio-tails CLI parsing and compatibility wrappers for previous mixed-only startup.
 
+
+v0.1031: Hold event-only production during source preparation and frame callbacks, then authorize native work from the owner safe point.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
