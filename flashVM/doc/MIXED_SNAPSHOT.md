@@ -89,6 +89,9 @@ v0.1059: Specify one-callback snapshot semantics, stream-cache publication, nonr
 
 v0.1060: Keep internal stream observation compatible with prepared adapters that omit optional origins; explicit paired queries still report unsupported mode.
 
+
+v0.1061: Run exact retry and final drain through both adapter modes; verify explicit paired unsupported preservation and enabled category totals.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -83,6 +83,9 @@ v0.1059: Описаны один callback, публикация stream cache, н
 
 v0.1060: Внутренний stream-запрос совместим с адаптерами без origins; явный paired API сохраняет UNSUPPORTED.
 
+
+v0.1061: Один PCM-эталон проверяет legacy и origin-enabled refill, точный retry, финальный drain и сохранение out при UNSUPPORTED.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
