@@ -1,10 +1,12 @@
-Development version: **0.1065** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1066** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1066: [Exercise all four native acquisitions, exact and short budgets, VM teardown and allocation-free immutable PCM reads.](doc/INFERRED_ADPCM.md).
 
 v0.1065: [Enumerate independent frame-count candidates for 104 geometries, checking every decoded sample and preserving ambiguous rejection and legacy whole packets.](doc/INFERRED_ADPCM.md).
 
