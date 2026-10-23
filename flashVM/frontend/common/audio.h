@@ -127,6 +127,11 @@ extern "C"
     FVM_Result fvm_desktop_audio_info(FVM_DesktopAudio *, FVM_SWFSoundOutputInfo *);
     /* Stream-only copied observation under producer mutex; invalid/wrong-size preserves output. */
     FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *, FVM_SWFStreamOutputInfo *);
+    /* Fresh BASE/TAIL accepted/dequeued bookkeeping under the producer mutex. Require live
+     * initialized composition and exact-size out; invalid/errors preserve output. Backend
+     * statuses propagate, disabled mode UNSUPPORTED. No VM/allocation/render or source seek;
+     * these categories do not map automatically to SWF/DAC timestamps. */
+    FVM_Result fvm_desktop_audio_origin_info(FVM_DesktopAudio *, FVM_SWFSoundMixQueueOriginInfo *);
     /* Copy whether a running stream has authorized PCM/markers or accepted queued frames left.
      * Inactive future sources are inspected from their initial block; no decoding or VM access.
      * Mixed voices and processable mixed retry count through source gates/EOF/authored Stop.

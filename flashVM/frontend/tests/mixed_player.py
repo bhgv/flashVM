@@ -48,6 +48,7 @@ def main():
                 if mode == '--jit' and 'requested JIT backend unavailable' in output:
                     return 77
                 assert result.returncode == 0 and 'sound_events=2' in output and 'audio_device=1' in output, output
+                assert 'audio_base_submitted=9 audio_base_dequeued=9 audio_tail_submitted=1024 audio_tail_dequeued=1024' in output, output
                 with wave.open(str(trace) + '.wav') as audio:
                     assert (audio.getnchannels(), audio.getframerate(), audio.getsampwidth()) == (2, 48000, 2)
                     assert audio.getnframes() == 1033, audio.getnframes()

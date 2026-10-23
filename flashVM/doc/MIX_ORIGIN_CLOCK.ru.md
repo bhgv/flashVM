@@ -25,6 +25,9 @@ v0.1044: Проверены 256 эпох с точным PCM, held TAIL, convert
 
 v0.1045: Origin-учёт включён в root composition; общий ID/bitmap бюджет проверяется до открытия SDL endpoint.
 
+
+v0.1046: Добавлены сериализованные origin diagnostics и точные BASE/TAIL счётчики вместе с FWS/CWS CLI PCM в обоих VM-режимах.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

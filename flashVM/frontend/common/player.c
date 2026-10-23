@@ -1547,6 +1547,17 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                 "audio_underruns=%d\n",
                 input.key_presses, input.clicks, audio.events, audio.stops, audio.device != 0,
                 SDL_AtomicGet(&audio.underruns));
+        if (audio.composition)
+        {
+            FVM_SWFSoundMixQueueOriginInfo origin;
+            origin.struct_size = sizeof(origin);
+            if (!checked(fvm_desktop_audio_origin_info(&audio, &origin), "mixed origin clock", path))
+                goto cleanup;
+            fprintf(stderr, "audio_base_submitted=%.0f audio_base_dequeued=%.0f "
+                            "audio_tail_submitted=%.0f audio_tail_dequeued=%.0f\n",
+                    origin.base_submitted_frames, origin.base_played_frames,
+                    origin.tail_submitted_frames, origin.tail_played_frames);
+        }
         fprintf(stderr, "presentations=%lu refreshes=%lu\n", presentations, refreshes);
         fprintf(stderr, "frames=%lu native=%lu interpreter=%lu fallbacks=%lu\n", ticks,
                 stats.native_entries, stats.interpreter_entries, stats.fallbacks);

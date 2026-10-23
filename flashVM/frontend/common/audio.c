@@ -875,6 +875,19 @@ FVM_Result fvm_desktop_audio_stream_info(FVM_DesktopAudio *audio, FVM_SWFStreamO
     return result;
 }
 
+/* Copy category dequeue bookkeeping under the same mutex as mixed production and controls. */
+FVM_Result fvm_desktop_audio_origin_info(FVM_DesktopAudio *audio,
+                                        FVM_SWFSoundMixQueueOriginInfo *out)
+{
+    FVM_Result result;
+    if (!audio || !audio->composition || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    if (SDL_LockMutex(audio->mutex) != 0) return FVM_ERROR;
+    result = fvm_swf_sound_mix_queue_origin_info(audio->composition, out);
+    SDL_UnlockMutex(audio->mutex);
+    return result;
+}
+
 /* Observe bounded native work without pumping it on the owner or authorizing future movie frames.
  */
 FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *out)

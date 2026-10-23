@@ -25,6 +25,9 @@ v0.1044: Verify 256 tracked epochs with exact PCM, held-tail handoff, converted 
 
 v0.1045: Enable accepted origin accounting in root composition and reject combined ID and bitmap budgets before any SDL endpoint is opened.
 
+
+v0.1046: Add serialized frontend origin diagnostics and verify exact category counts alongside real FWS/CWS CLI PCM in both VM modes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

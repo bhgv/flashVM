@@ -1,4 +1,4 @@
-Версия разработки: **0.1045** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1046** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1046: [Добавлены сериализованные origin diagnostics и точные BASE/TAIL счётчики вместе с FWS/CWS CLI PCM в обоих VM-режимах.](doc/MIX_ORIGIN_CLOCK.ru.md).
 
 v0.1045: [Origin-учёт включён в root composition; общий ID/bitmap бюджет проверяется до открытия SDL endpoint.](doc/MIX_ORIGIN_CLOCK.ru.md).
 

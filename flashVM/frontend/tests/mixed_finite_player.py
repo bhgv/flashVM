@@ -34,6 +34,7 @@ def main():
                         return 77
                     assert result.returncode == 0 and 'sound_events=1' in output and 'audio_device=1' in output, output
                     frames = (source_frames * 48000 + 44100 - 1) // 44100
+                    assert ('audio_base_submitted=0 audio_base_dequeued=0 audio_tail_submitted=' + str(frames) + ' audio_tail_dequeued=' + str(frames)) in output, output
                     with wave.open(str(trace) + '.wav') as audio:
                         assert (audio.getnchannels(), audio.getframerate(), audio.getsampwidth(), audio.getnframes()) == (2, 48000, 2, frames)
                         raw = audio.readframes(frames)
