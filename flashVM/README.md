@@ -1,10 +1,12 @@
-Development version: **0.1009** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1010** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1010: [Check exact changed final padding and segment offsets when one-frame headroom alters tail block boundaries.](doc/ADAPTIVE_TAILS.md).
 
 v0.1009: [Specify partial FIFO sizing, indivisible retries, admission-clock snapshots, desktop pause policy and eight-mode tutorial limits.](doc/ADAPTIVE_TAILS.md).
 

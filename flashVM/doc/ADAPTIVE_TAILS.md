@@ -75,6 +75,9 @@ A/V drift correction, child timeline scheduling or reference seek preservation.
 
 v0.1009: Specify partial FIFO sizing, indivisible retries, admission-clock snapshots, desktop pause policy and eight-mode tutorial limits.
 
+
+v0.1010: Check exact changed final padding and segment offsets when one-frame headroom alters tail block boundaries.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
