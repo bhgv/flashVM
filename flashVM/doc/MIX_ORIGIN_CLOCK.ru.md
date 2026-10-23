@@ -7,6 +7,9 @@ v0.1038: Добавлен точный расчёт памяти BASE/TAIL origi
 
 v0.1039: Добавлены фиксированный origin bitmap, проверенный dequeue и точные BASE/TAIL счётчики; legacy callbacks сохранены.
 
+
+v0.1040: Проверены TAIL-классификация retry, stop/failed clear, неверный рост FIFO, рекурсия и исключения callbacks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

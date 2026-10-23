@@ -7,6 +7,9 @@ v0.1038: Add exact mode-aware native storage prediction for optional accepted-fr
 
 v0.1039: Add opt-in fixed bitmap origin accounting, validated FIFO retirement and exact category clock observations while preserving legacy callbacks.
 
+
+v0.1040: Verify retained TAIL classification, stop and failed-clear ownership, invalid queue growth, callback recursion and exception containment.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
