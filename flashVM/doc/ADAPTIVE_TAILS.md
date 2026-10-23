@@ -41,6 +41,9 @@ v0.1003: Exercise the last representable single frame, overflow rejection, inval
 
 v0.1004: Reject all native allocations after preparation across short writes, retry, gate changes, event stop and seek clear.
 
+
+v0.1005: Check 256 source-teardown epochs with one-frame FIFO drain, rejected short tails, opening gates and exact PCM and ID expiry.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
