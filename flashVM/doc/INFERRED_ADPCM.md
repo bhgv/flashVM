@@ -10,3 +10,5 @@ v0.1066: Exercise all four native acquisitions, exact and short budgets, VM tear
 v0.1067: Check invalid endings and short predictors, ambiguous mono rejection, missing owners and a unique nonzero endpoint with exact PCM.
 
 v0.1068: Use the inferred bounded snapshot policy for desktop stream segments while retaining aggregate peak budgets and preflight failure before device ownership.
+
+v0.1069: Check FWS CWS interpreter JIT exact rational PCM, packet restart, empty blocks, PCM successor and rejection before device acquisition.

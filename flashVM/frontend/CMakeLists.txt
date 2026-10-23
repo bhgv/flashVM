@@ -528,6 +528,9 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_player_stream_adpcm COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_adpcm.py $<TARGET_FILE:flashvm_player>)
   set_tests_properties(flashvm_player_stream_adpcm PROPERTIES TIMEOUT 90)
+  add_test(NAME flashvm_player_stream_adpcm_inferred COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_adpcm_inferred.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_player_stream_adpcm_inferred PROPERTIES TIMEOUT 45 SKIP_RETURN_CODE 77)
   add_test(NAME flashvm_player_stream_segments COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/stream_segments.py $<TARGET_FILE:flashvm_player>)
   set_tests_properties(flashvm_player_stream_segments PROPERTIES TIMEOUT 30)
