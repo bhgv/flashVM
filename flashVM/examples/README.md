@@ -57,6 +57,7 @@
     - [bitmap_fill](#example-embedding-bitmap_fill) — <small><em>Живой BitmapData как заливка клипа</em></small>
     - [clip_actions](#example-embedding-clip_actions) — <small><em>Load, MouseMove и KeyPress</em></small>
     - [color_matrix_filter](#example-embedding-color_matrix_filter) — <small><em>Изменение RGBA через матрицу цвета</em></small>
+    - [cubic_extrema](#example-embedding-cubic_extrema) — <small><em>C89: экстремумы малой кубической Bezier</em></small>
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
     - [gradients](#example-embedding-gradients) — <small><em>Градиенты, RGB/linearRGB и внутренние focal-позиции</em></small>
@@ -749,6 +750,15 @@ owner и читает ответ по одному байту с проверк�
 **Файлы:** [main.c](embedding/color_matrix_filter/main.c).
 
 [К оглавлению](#оглавление).
+
+<a id="example-embedding-cubic_extrema"></a>
+#### cubic_extrema
+
+**Тип:** C89 — собираемый пример. **README:** [EN](embedding/cubic_extrema/README.md) / [RU](embedding/cubic_extrema/README.ru.md).
+
+Native cubic 0,12,-12,0: аналитические экстремумы ±2√3 до и после масштабирования 2^-600. Пять public path API, явный native owner и обычная очистка без VM/GC/графики. Каждая строка исходника объяснена. Не проверяет pixels или managed cubic.
+
+**Файлы:** [main.c](embedding/cubic_extrema/main.c), [example_constants.h](embedding/cubic_extrema/example_constants.h).
 
 <a id="example-embedding-drawing"></a>
 #### drawing
@@ -2200,6 +2210,7 @@ Source line links describe the current checkout, including in historical notes.
 - [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
 - [configured_host — player/configured_host](#example-player-configured_host)
 - [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)
+- [cubic_extrema — embedding/cubic_extrema](#example-embedding-cubic_extrema)
 - [custom_audio_bridge — multimedia/custom_audio_bridge](#example-multimedia-custom_audio_bridge)
 - [custom_video_output — multimedia/custom_video_output](#example-multimedia-custom_video_output)
 - [cycle_collection — embedding/cycle_collection](#example-embedding-cycle_collection)
