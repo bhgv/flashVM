@@ -1,5 +1,7 @@
 # Symmetric LINESTYLE2 caps and bevel joins
 
+Selected geometric hit testing is now covered by [STROKE_HIT_TEST.md](STROKE_HIT_TEST.md); exact bounds and nonuniform/shear metrics remain open. The original cap-rendering checkpoint below remains historical.
+
 DefineShape4 now renders matching round, butt (no extension), or square start/end
 caps, combined with round or bevel joins, for solid, linear/focal gradient and
 bitmap strokes. NoClose continues to leave coincident endpoints capped.

@@ -166,6 +166,9 @@ in this tutorial retain round defaults; the guide links raw SWF scene tests.
 согласованы для сплошных, градиентных и bitmap-масок. Публичные C89-функции примера
 сохраняют round по умолчанию; байтовые тесты SWF перечислены в руководстве.
 
+
+Geometric hit testing for loaded styled strokes is documented separately in [STROKE_HIT_TEST.md](../../../doc/STROKE_HIT_TEST.md) / [RU](../../../doc/STROKE_HIT_TEST.ru.md). This public C tutorial still uses the existing round stroke ABI. Геометрический hitTest загруженных линий проверяется отдельными fixtures; этот C-пример сохраняет прежний round ABI.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

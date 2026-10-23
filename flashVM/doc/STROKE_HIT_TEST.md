@@ -87,6 +87,11 @@ Run tests with assertions enabled as configured by the project.
 | [swf_stroke_hit_threads](../tests/swf_stroke_hit_threads.cpp) | Four workers, 96 independent query/GC epochs |
 | [swf_stroke_hit_allocation](../tests/swf_stroke_hit_allocation.cpp) | 24 native managed-query allocation-fault sweeps |
 
+
+## Checkpoint v0.1284
+
+Cap/join-aware shape hits v0.1267–v0.1284: MovieClip point hitTest with shape=true now queries finite stroke bodies, selected round/butt/square ends and round/bevel outer joins for restored solid, linear/focal-gradient and bitmap paints. One own-scalar validator serves drawing and querying; absent selectors remain round. Curves retain bounded adaptive chords. Sixteen new fixtures cover analytic equations, short-edge outer sectors, contour topology, curve queries, legacy round equivalence, argument/metadata rejection, 24 SWF paint/style combinations, 120 width cases, 96 uniform transformations, 96 quality cases, 24 graphs through binary and channel after sender destruction, replacement and sixteen seeks, four workers with 96 query/GC epochs and 24 managed allocation-fault sweeps. Validation passes 187 selected native regressions plus the separate legacy MovieClip shape-hit regression, all 16 fixtures in a fresh SDK-free no-graphics interpreter build, 15 ASan/UBSan fixtures and allocation with explicit --no-faults. Real allocation failures pass natively; sanitizer unwinding remains limited and LeakSanitizer is disabled. Public C89 ABI and serialization formats are unchanged. Exact bounds, nonuniform/shear width metrics, unsupported LINESTYLE2 options, independent full Flash reference acceptance, Cairo and physical platforms remain open. All nine stages remain open. [Contract](STROKE_HIT_TEST.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
