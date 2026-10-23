@@ -2,9 +2,9 @@
 
 При включённых [queued-ID](MIX_QUEUE_IDENTITIES.ru.md) clock_begin/clock_end отклоняются; сначала безопасно отключают tracking после drain. Успешная adapted.clear сбрасывает общий отсчёт и отменяет tracked-голоса/deadlines. Это opt-in политика, не изменение прежней untracked clear.
 
-v0.939 добавляет явно включаемый счётчик в native-адаптер stream/event. [fvm_swf_sound_mix_queue_clock_begin](../include/flashvm/swf_sound_mix_queue.h#L116) требует живой сериализованный адаптер, отсутствие pending retry и пустую настоящую FIFO. После успешного наблюдения backend начинается новый нулевой отсчёт. Создание остаётся без callbacks, учёт выключен до begin. Пустой дренированный отсчёт можно начать заново. Pause, clear, seek конвертера и сброс голосов автоматически не выполняются.
+v0.939 добавляет явно включаемый счётчик в native-адаптер stream/event. [fvm_swf_sound_mix_queue_clock_begin](../include/flashvm/swf_sound_mix_queue.h#L117) требует живой сериализованный адаптер, отсутствие pending retry и пустую настоящую FIFO. После успешного наблюдения backend начинается новый нулевой отсчёт. Создание остаётся без callbacks, учёт выключен до begin. Пустой дренированный отсчёт можно начать заново. Pause, clear, seek конвертера и сброс голосов автоматически не выполняются.
 
-[fvm_swf_sound_mix_queue_clock_info](../include/flashvm/swf_sound_mix_queue.h#L133) заполняет структуру точного размера [FVM_SWFSoundMixQueueClock](../include/flashvm/swf_sound_mix_queue.h#L99): submitted_frames учитывает каждый реально принятый блок adapted.write и pump_tail; played_frames — submitted минус свежий проверенный queued_frames; seconds делит удалённые из FIFO кадры на частоту выхода. Отказы записи не учитываются до успешного точного retry. Максимум точного счётчика [FVM_SWF_SOUND_OUTPUT_MAX_CLOCK](../include/flashvm/swf_sound_output.h#L14); переполнение даёт UNSUPPORTED до render/write. Это не DAC timestamp, EOF источника, разрешение кадра или полная A/V-синхронизация.
+[fvm_swf_sound_mix_queue_clock_info](../include/flashvm/swf_sound_mix_queue.h#L134) заполняет структуру точного размера [FVM_SWFSoundMixQueueClock](../include/flashvm/swf_sound_mix_queue.h#L99): submitted_frames учитывает каждый реально принятый блок adapted.write и pump_tail; played_frames — submitted минус свежий проверенный queued_frames; seconds делит удалённые из FIFO кадры на частоту выхода. Отказы записи не учитываются до успешного точного retry. Максимум точного счётчика [FVM_SWF_SOUND_OUTPUT_MAX_CLOCK](../include/flashvm/swf_sound_output.h#L14); переполнение даёт UNSUPPORTED до render/write. Это не DAC timestamp, EOF источника, разрешение кадра или полная A/V-синхронизация.
 
 Невозможный рост FIFO сверх submitted/предела backlog и регресс played дают ERROR без публикации выхода и изменения последней корректной позиции. До begin info даёт NOT_FOUND без callbacks. Неверные размер/NULL/busy дают INVALID_ARGUMENT с сохранением выхода. Статусы backend передаются, исключения становятся ERROR. Успешная adapted.clear обнуляет активный отсчёт; ошибка clear сохраняет счётчики/pending, pause их не меняет. Владелец сериализует вызовы и сохраняет микшер/backend живыми. На hot path нет выделений и VM/GC-ссылок. Прежние публичные структуры не меняются; storage-query включает новые private-поля владельца.
 
@@ -41,8 +41,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_clock_begin` | function | [include/flashvm/swf_sound_mix_queue.h:116](../include/flashvm/swf_sound_mix_queue.h#L116) |
-| `fvm_swf_sound_mix_queue_clock_info` | function | [include/flashvm/swf_sound_mix_queue.h:133](../include/flashvm/swf_sound_mix_queue.h#L133) |
+| `fvm_swf_sound_mix_queue_clock_begin` | function | [include/flashvm/swf_sound_mix_queue.h:117](../include/flashvm/swf_sound_mix_queue.h#L117) |
+| `fvm_swf_sound_mix_queue_clock_info` | function | [include/flashvm/swf_sound_mix_queue.h:134](../include/flashvm/swf_sound_mix_queue.h#L134) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
 | `FVM_SWFSoundMixQueueClock` | struct | [include/flashvm/swf_sound_mix_queue.h:99](../include/flashvm/swf_sound_mix_queue.h#L99) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |

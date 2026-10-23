@@ -11,6 +11,6 @@
 #endif /* Explicit host builds may choose a separate event-source ceiling. */
 #ifndef FVM_DESKTOP_AUDIO_MIX_BYTES
 #define FVM_DESKTOP_AUDIO_MIX_BYTES \
-    (1024UL * 1024UL) /* Separate root composition owner, PCM retries and fixed ID deadlines. */
+    (1024UL * 1024UL) /* Separate root composition owner, PCM retries, fixed ID deadlines and FIFO origins. */
 #endif /* Host may set a smaller ceiling; predicted requests fail before opening a device. */
 #endif                       /* FVM_DESKTOP_AUDIO_MEMORY_H */

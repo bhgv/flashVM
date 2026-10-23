@@ -1,7 +1,7 @@
 # Adaptive event-only queue filling
 
 Fresh event-only audio may fill partial FIFO headroom instead of waiting for a
-whole render block. [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L261) takes a live native
+whole render block. [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262) takes a live native
 queue, a maximum block size, a positive target backlog and optional accepted count.
 The maximum cannot exceed the immutable queue capacity. The target may be smaller
 than the maximum. With active voices it renders min(maximum, target minus observed
@@ -10,7 +10,7 @@ backlog); a full queue or no voices returns NOT_FOUND without rendering.
 A failed write owns an indivisible TAIL retry. A smaller maximum or insufficient
 headroom returns NOT_FOUND; neither splits nor remixes it. A later call with enough
 room resends its original size and bytes, even if the maximum changed. Pending BASE
-input is INVALID_ARGUMENT. The original exact-size [`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L245)
+input is INVALID_ARGUMENT. The original exact-size [`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L246)
 keeps its existing behavior. accepted is cleared first, then receives actual accepted
 frames only on OK. Invalid arguments/reentry are INVALID_ARGUMENT; callback statuses
 propagate, exceptions are ERROR, and exact shared-clock overflow is UNSUPPORTED
@@ -95,8 +95,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:245](../include/flashvm/swf_sound_mix_queue.h#L245) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../include/flashvm/swf_sound_mix_queue.h#L261) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 <!-- source-links:end -->

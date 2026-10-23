@@ -1,5 +1,7 @@
 # Десктопный проигрыватель SWF
 
+Mixed --stats раздельно считает accepted/dequeued BASE и event-only TAIL с bounded origin-журналом. [Контракт и границы A/V](../doc/MIX_ORIGIN_CLOCK.ru.md).
+
 `--finite-audio-tails` добавляет конечный event-only PCM, публикацию полного кадра и FIFO drain. [Контракт](../doc/EVENT_TAILS.ru.md).
 
 Флаг `--finite-mixed-tails` завершает root mixed event вывод по живому остатку voice/release. [Контракт и ограничения](../doc/FINITE_TAILS.ru.md).

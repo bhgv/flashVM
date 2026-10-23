@@ -62,7 +62,7 @@ paths that begin with a dash. Input paths are local files, not URLs.
 | `--finite-audio-tails` | Finite event-only and root mixed tails with current work/FIFO completion drain; [contract](EVENT_TAILS.md) |
 | `--finite-mixed-tails` | Opt-in finite root stream/event tails without fresh block padding; [contract](FINITE_TAILS.md) |
 | `--mute` | Mutes event audio and validated root streams; skips device opening |
-| `--stats` | Reports tick count and actual native/interpreter/fallback counters |
+| `--stats` | Reports execution counters and mixed BASE/TAIL accepted/dequeued categories; [contract](MIX_ORIGIN_CLOCK.md) |
 
 Conflicting interpreter/JIT options, `--fps` with `--speed`, and `--frames` with
 `--once` are errors (status 2). Repeated values of the same option use the last

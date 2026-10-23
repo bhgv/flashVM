@@ -120,7 +120,7 @@ v0.998: Complete C89/API and desktop contracts for authored Stop, ordered retry,
 
 ## Adaptive headroom since v0.1000
 
-Paired gate/EOF scheduling uses [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L261) for fresh
+Paired gate/EOF scheduling uses [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262) for fresh
 event-only work. It fills available FIFO room up to the configured block. A retained
 short TAIL stays indivisible and wins over newly authorized base. Both clock copies
 use the final successful admission observation, without a fallible post-write poll.
@@ -136,7 +136,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../include/flashvm/swf_sound_mix_queue.h#L261) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |

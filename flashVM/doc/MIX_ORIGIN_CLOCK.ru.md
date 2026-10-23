@@ -34,6 +34,76 @@ v0.1047: Проверены host pause, root Stop TAIL dequeue, source phase, BA
 
 v0.1048: Десятый C89-режим показывает bounded origin tracking, точный gated PCM, retry и раздельные accepted/drained категории.
 
+
+## Режим и владение эпохой
+
+[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L84) выделяет фиксированный bitmap при
+активных нулевых общих часах без pending retry. Будущие голоса уже могут существовать,
+принятой истории быть не должно. Отключение — после проверенного FIFO drain без
+retry. Повторный выбор режима не выделяет память. Enable сравнивает budget с
+owner/PCM/текущей ID-table/bitmap; OUT_OF_MEMORY сохраняет режим. ID и origins
+независимы; перед clock begin/end оба освобождаются в своих безопасных точках.
+Подтверждённый adapted.clear сбрасывает category counters/ring/pending, сохраняя
+выделенные режимы. Failed clear сохраняет владение. При ID-tracking действует
+прежняя политика отмены voice/ID после подтверждённого clear.
+
+Null/busy/неверный Boolean/state дают INVALID_ARGUMENT, ошибки backend передаются,
+исключения callbacks дают ERROR. Успешный опрос может обновить played даже при
+последующей ошибке budget/write/control. Аллокация только в явной настройке режима.
+Все queue/mixer/backend живут до завершения вызова и сериализуются извне; VM/GC
+указателей нет.
+
+## Принятые и извлечённые категории
+
+| Origin | Какие кадры считаются | Смысл played/dequeued |
+| --- | --- | --- |
+| BASE | Все принятые adapted.write кадры, включая нулевую base и примешанные события | Эти BASE-позиции покинули software FIFO |
+| TAIL | Все принятые explicit event-only кадры, включая выбранный padding/release endpoint | Эти TAIL-позиции покинули software FIFO |
+
+[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L91) требует точный sizeof(out) и включённый режим.
+Один проверенный FIFO-опрос копирует BASE/TAIL submitted/played/queued. Выключенный
+режим — UNSUPPORTED, неверный/reentry — INVALID_ARGUMENT, backend/clock ошибки
+передаются, исключения — ERROR. При ошибке out сохраняется. Аллокаций, render и
+source advancement нет. Суммы категорий равны общим accepted/dequeued/backlog
+с точностью integer frames до MAX_CLOCK. Отклонённый render не считается до OK;
+его BASE/TAIL сохраняется при gate/stop/retry через совместимый tail API. Категория
+определяется операцией подачи, не значениями PCM.
+
+Кольцо хранит до ORIGIN_FRAMES принятых FIFO-позиций. Tracked write наблюдает
+dequeue до render; недостаток места даёт NOT_FOUND без продвижения голосов и
+изменения pending. После OK запись bits/counters не вызывает ошибочный callback.
+Неверный рост/регрессия отклоняются до retirement журнала. Парный stream-снимок
+получает фактическое последнее наблюдение допуска, даже если backend потребляет
+между опросами. Последующее потребление видно при следующем наблюдении.
+
+## Desktop и C89
+
+Desktop root composition рассчитывает и включает ID/origins до запуска worker.
+Bitmap 32 KiB входит в MIX_BYTES; source/voice/device/VM/allocator учитываются
+отдельно. Недостаточный общий бюджет отклоняется до SDL, включая случай, когда
+старый ID-only бюджет помещался. `fvm_desktop_audio_origin_info` копирует свежий
+снимок под worker mutex, требует initialized composition и сохраняет out при
+ошибках; главный поток не производит PCM.
+
+`flashvm_player --stats movie.swf` печатает audio_base_submitted/dequeued и
+audio_tail_submitted/dequeued для composition. --finite-audio-tails и прежний
+--finite-mixed-tails сохраняют конечную политику; в default принятый final padding
+остаётся TAIL. Root Stop/gates позволяют dequeue TAIL при удерживаемых converter
+phase и BASE. Play продолжает сохранённую сетку. Подтверждённый StopSounds/seek
+clear начинает новую category epoch по прежней cancellation-политике. Host pause
+независим. C89 swf_stream_mix --origins экспортирует 17 точных кадров с BASE9/TAIL8
+до/после явного file-consumer drain; десятый режим проверяет рациональный PCM.
+
+Счётчики классифицируют операции вывода. Восстановление SWF sample positions,
+decoder delay, исходных media timestamps, физических DAC/A-V/drift, автоматический
+seek, дочерние словари/таймлайны, полная codec/reference latency и другие backend/
+платформы/устройства остаются открытыми, как все девять стадий. White-box тесты
+задают граничные метаданные, не моделируют многолетний/огромный PCM device run.
+Общий mutable owner по-прежнему требует внешней сериализации.
+
+
+v0.1049: Уточнены origin budget, accepted/pending ownership, точные dequeue категории, desktop diagnostics и десять PCM-режимов.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -43,5 +113,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../include/flashvm/swf_sound_mix_queue.h#L91) |
+| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../include/flashvm/swf_sound_mix_queue.h#L84) |
 | `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
 <!-- source-links:end -->

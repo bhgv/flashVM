@@ -35,7 +35,7 @@ extern "C"
     {
         size_t struct_size; /* Caller supplies exact sizeof. */
         size_t fixed_bytes; /* Native owner including its vector descriptors. */
-        size_t buffer_bytes; /* Original/mixed S16 arrays plus optional fixed identity deadlines. */
+        size_t buffer_bytes; /* Original/mixed S16 arrays plus optional fixed ID deadlines and origin bitmap. */
         size_t retained_bytes; /* Checked sum of fixed and buffer bytes. */
     } FVM_SWFSoundMixQueueStorageInfo;
     /* Predict initial untracked adapter bytes without allocating or calling VM/backend/mixer.
@@ -109,6 +109,7 @@ extern "C"
      * Nonempty FIFO INVALID_ARGUMENT, inadequate double precision UNSUPPORTED, backend
      * statuses propagate, exceptions ERROR. Failure preserves old epoch; success resets to
      * zero and enables accounting of every later adapted.write and pump_tail acceptance.
+     * Enabled ID or origin tracking rejects clock begin/end; release modes at their safe points.
      * No pause/clear/seek/voice reset, allocation, VM or GC. Retain all borrowed owners;
      * use only the adapted backend until quiescence. Acknowledged adapted.clear starts a
      * fresh zero epoch while keeping accounting enabled. Create remains callback-free and

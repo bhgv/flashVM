@@ -1,5 +1,7 @@
 # Desktop SWF frontend
 
+Mixed --stats now separates accepted/dequeued BASE from event-only TAIL, with a bounded preflighted origin journal. [Contract and A/V limits](../doc/MIX_ORIGIN_CLOCK.md).
+
 `--finite-audio-tails` extends finite completion to event-only PCM with complete-frame publication and full FIFO drain. [Contract](../doc/EVENT_TAILS.md).
 
 Opt-in `--finite-mixed-tails` ends root mixed event output at the live voice/release horizon. [Contract and limits](../doc/FINITE_TAILS.md).

@@ -34,6 +34,81 @@ v0.1047: Check host pause, root Stop event dequeue, retained source phase, base 
 
 v0.1048: Add a tenth export mode with budgeted origin tracking, exact gated PCM, retained retries and separate accepted versus drained categories.
 
+
+## Origin mode and epoch ownership
+
+[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L84) enables a fixed bitmap during an
+active zero shared clock with no pending retry. Future mixer voices may already
+exist; accepted history may not. Disable only after valid observed FIFO drain and
+no retry. Repeated mode selection is an allocation-free no-op. Enable compares
+its budget to owner/PCM/current-ID-table/bitmap requests; OUT_OF_MEMORY preserves
+the old mode. Optional IDs and origins are independent. Both modes must be disabled
+before clock begin/end. Acknowledged adapted.clear resets category counters/ring
+and pending while retaining allocated modes; failed clear preserves ownership.
+ID-enabled clear retains its established voice/ID cancellation policy.
+
+Null/busy/invalid Boolean/state returns INVALID_ARGUMENT. Backend statuses
+propagate and callback exceptions become ERROR. Valid observations may refresh
+played counters even when later budget/write/control work fails. Allocation occurs
+only during explicit mode configuration. Retain and externally serialize queue,
+mixer and exclusive backend through calls; no VM or GC pointers are retained.
+
+## Accepted and dequeued categories
+
+| Origin | Frames represented | Meaning of played/dequeued |
+| --- | --- | --- |
+| BASE | Every accepted adapted.write frame, including zero base and mixed event contributions | Those BASE positions have left the software FIFO |
+| TAIL | Every accepted explicit event-only tail frame, including chosen padding or release endpoints | Those TAIL positions have left the software FIFO |
+
+[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L91) requires exact-size output and enabled mode.
+It performs one validated FIFO observation and copies BASE/TAIL submitted, played
+and queued counts. Disabled mode is UNSUPPORTED; invalid/reentry INVALID_ARGUMENT;
+backend/clock failures propagate and exceptions ERROR. Errors preserve caller out.
+No allocation, render or source advancement occurs. Category sums equal the shared
+accepted/dequeued/backlog counts, with exact integer frames through MAX_CLOCK.
+Rendered but rejected retry is excluded until acknowledged; its original BASE/TAIL
+classification survives gate changes, voice stop and retry through a different
+compatible tail variant. PCM values are never used to guess category.
+
+The fixed ring represents up to ORIGIN_FRAMES accepted FIFO positions. Tracked
+writes observe dequeue before rendering, then return NOT_FOUND on insufficient
+ring room without advancing voices or changing pending bytes. Successful writes
+record bits/counters without a fallible post-write callback. Invalid growth or
+regression is rejected before ledger retirement. Paired stream snapshots carry
+the actual latest admission observation even when the backend consumes between
+multiple polls. A later backend consumption becomes visible on the next observation.
+
+## Desktop and C89 use
+
+Root desktop composition budgets/enables IDs and origins before native worker
+publication. The 32 KiB bitmap is inside the existing MIX_BYTES budget; source,
+voice, device, VM and allocator memory stay separate. Insufficient combined budget
+is rejected during preflight before opening SDL, including when the older ID-only
+requirement would fit. `fvm_desktop_audio_origin_info` copies a fresh native snapshot
+under the worker mutex; it requires initialized composition and preserves output
+on errors. The main thread performs no PCM production in this diagnostic call.
+
+`flashvm_player --stats movie.swf` reports audio_base_submitted,
+audio_base_dequeued, audio_tail_submitted and audio_tail_dequeued for composition.
+With --finite-audio-tails or --finite-mixed-tails the existing finite policy applies;
+otherwise accepted final padding remains TAIL. Root Stop/gates can dequeue TAIL
+while source converter phase and BASE counts remain held. After Play, BASE may
+resume from that retained grid. StopSounds/seek acknowledged clear starts a fresh
+category epoch, matching the existing cancellation policy. Host pause remains
+independent. The C89 swf_stream_mix --origins mode exports seventeen exact frames,
+with BASE9/TAIL8 before and after explicit file-consumer drain; the tenth-mode
+checker uses the independent rational PCM oracle.
+
+These counters classify output operations. They do not reconstruct SWF sample
+positions, decoder delay, original media timestamps, physical DAC time or A/V drift.
+Automatic A/V correction/seek preservation, child dictionaries/timelines, full
+codec/reference latency, backend/platform/device acceptance and all nine stages
+remain open. White-box ring/counter tests seed boundaries; they are not long-duration
+or huge-PCM device runs. Shared-owner access still requires external serialization.
+
+
+v0.1049: Specify origin mode budgets, accepted versus pending ownership, exact dequeue categories, desktop diagnostics and independent ten-mode PCM evidence.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -43,5 +118,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../include/flashvm/swf_sound_mix_queue.h#L91) |
+| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../include/flashvm/swf_sound_mix_queue.h#L84) |
 | `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
 <!-- source-links:end -->

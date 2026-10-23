@@ -97,7 +97,7 @@ extern "C"
      * Event preparation runs on owner outside worker mutex; aggregate native mixer/voice storage
      * obeys EVENT_BYTES. SyncNoMultiple includes queued/pending identity time until dequeue end.
      * Native output/ID/device/trace storage and VM memory are separate budgets; composition
-     * owner+PCM+ID obeys MIX_BYTES. Gated/EOF event blocks share both accepted epochs.
+     * owner+PCM+ID+origin bitmap obeys MIX_BYTES. Gated/EOF event blocks share both accepted epochs.
      * Authored root Stop holds new base work while events drain; host pause holds everything.
      * Retained BASE cannot be replaced while its frame is held; resume or acknowledged clear
      * resolves it. Accepted mixed lead is not selectively recalled on authored root Stop. */

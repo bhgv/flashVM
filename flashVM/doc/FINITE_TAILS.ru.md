@@ -37,8 +37,8 @@ v0.1022: Рациональный PCM-checker проверяет девять р
 
 ## Конечные нативные producer
 
-[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L270) сохраняет адаптивный FIFO-контракт
-[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L261), ограничивая новый zero-base блок живым
+[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L271) сохраняет адаптивный FIFO-контракт
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262), ограничивая новый zero-base блок живым
 остатком микшера. maximum — 1..capacity; target положителен и не выше
 SOUND_OUTPUT_MAX_QUEUE. accepted необязателен и сначала обнуляется. Нет голосов,
 полный FIFO или недостаточно места для retry — NOT_FOUND; null/reentry/неверная
@@ -101,8 +101,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:270](../include/flashvm/swf_sound_mix_queue.h#L270) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../include/flashvm/swf_sound_mix_queue.h#L261) |
+| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:271](../include/flashvm/swf_sound_mix_queue.h#L271) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
 | `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
 | `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |

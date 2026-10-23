@@ -1,6 +1,6 @@
 # Заполнение неполного остатка звуковой очереди
 
-[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L261) принимает живую нативную очередь,
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262) принимает живую нативную очередь,
 максимальное число кадров блока, положительную целевую глубину FIFO и необязательный
 счётчик принятых кадров. Максимум ограничен ёмкостью адаптера; целевая глубина может
 быть меньше максимума. При активных голосах создаётся min(максимум, свободный остаток)
@@ -9,7 +9,7 @@
 Отклонённый TAIL неделим: меньший максимум или недостаточный остаток дают NOT_FOUND,
 сохраняя размер и байты retry. При достаточном месте повторяется исходный блок,
 даже если максимум изменился. Удерживаемый BASE даёт INVALID_ARGUMENT. Старый
-[`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L245) сохраняет точный размер блока и прежний контракт.
+[`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L246) сохраняет точный размер блока и прежний контракт.
 accepted сначала обнуляется, затем получает фактически принятые кадры только при OK.
 Неверные параметры/рекурсия дают INVALID_ARGUMENT; статусы backend передаются,
 исключения дают ERROR, переполнение точных общих часов — UNSUPPORTED до смешивания.
@@ -91,8 +91,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:245](../include/flashvm/swf_sound_mix_queue.h#L245) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../include/flashvm/swf_sound_mix_queue.h#L261) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 <!-- source-links:end -->
