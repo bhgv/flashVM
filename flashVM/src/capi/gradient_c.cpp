@@ -240,8 +240,10 @@ FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *path, FVM_RasterSurfa
 FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *path, FVM_RasterSurface *surface,
                                            const FVM_Gradient *gradient, double width, int even_odd,
                                            unsigned int spread, unsigned int interpolation,
-                                           double focal, bool antialias)
+                                           double focal, bool antialias, unsigned cap, unsigned join)
 {
+    if (cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
+        return FVM_INVALID_ARGUMENT;
     if (!(focal > -FVM_GRADIENT_FOCAL_LIMIT && focal < FVM_GRADIENT_FOCAL_LIMIT) ||
         (focal != 0 && (!gradient || gradient->type != FVM_GRADIENT_RADIAL)))
         return FVM_INVALID_ARGUMENT;
@@ -289,7 +291,7 @@ FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *path, FVM_RasterSurfa
                 p[3] = color.a;
             }
         FVM_RasterSurface source = {pixels.begin(), surface->width, surface->height, stride};
-        return fvm_path_mask_width_quality(path, surface, &source, width, even_odd, antialias);
+        return fvm_path_mask_width_quality(path, surface, &source, width, even_odd, antialias, cap, join);
     }
     catch (const std::bad_alloc &)
     {

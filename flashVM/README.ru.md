@@ -1,4 +1,4 @@
-Версия разработки: **0.1252** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1253** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1253: [Симметричные butt square round концы и bevel проходят через все типы обводок](doc/STROKE_CAPS.ru.md).
 
 v0.1252: [Проверенный этап bitmap-обводок LINESTYLE2 с нативными sanitizer и SDK-free проверками](doc/BITMAP_STROKES.ru.md).
 

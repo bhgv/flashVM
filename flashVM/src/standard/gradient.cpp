@@ -45,7 +45,7 @@ FVM_Result byte(FVM_Object *o, const char *key, unsigned char &out)
 FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const FVM_Affine &world,
                                        const FVM_Path *path, FVM_RasterSurface *surface,
                                        const double multiply[4], const double add[4], int even_odd,
-                                       double stroke_width)
+                                       double stroke_width, unsigned cap, unsigned join)
 {
     if (!c || !paint || paint->owner != c || !surface || !multiply || !add)
         return FVM_INVALID_ARGUMENT;
@@ -153,5 +153,5 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     gradient.count = values.size();
     return fvm_path_gradient_focal_quality(path, surface, &gradient, stroke_width, even_odd,
                                             spread, interpolation, focal,
-                                            c->stage_quality != FVM_STAGE_QUALITY_LOW);
+                                            c->stage_quality != FVM_STAGE_QUALITY_LOW, cap, join);
 }

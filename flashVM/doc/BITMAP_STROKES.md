@@ -1,5 +1,7 @@
 # SWF 8 bitmap LINESTYLE2 strokes
 
+Current extension v0.1253+: [symmetric butt/square caps and bevel joins](STROKE_CAPS.md). Earlier round-only exclusions below are historical; miter and asymmetric caps remain unsupported.
+
 DefineShape4 LINESTYLE2 FillType records now accept bitmap modes 0x40–0x43.
 They retain the existing repeat/edge-extension and nearest/premultiplied-bilinear
 sampling policies, RGBA source alpha, matrix composition, and stage edge quality.
@@ -7,7 +9,7 @@ Round caps/joins, ordinary scaled width, hairlines and NoClose use the same path
 commands as solid and gradient strokes. Special caps/joins, pixel hinting and
 non-scaling flags remain unsupported under the LINESTYLE2 contract.
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L467) validates and owns the style; the scene loader requires a
+[fvm_swf_read_shape](../src/swf/shape.cpp#L469) validates and owns the style; the scene loader requires a
 previously defined bitmap character. Missing/zero IDs, malformed matrices,
 truncation and old SWF versions return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Decoder failure
 retains the caller's previous result; failed scene loading publishes no root.
@@ -24,7 +26,7 @@ Disposed images contribute no pixels; live changes appear in subsequent renders.
 Malformed owned metadata returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before destination writes.
 
 The private [fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L155) helper accepts width zero for a fill or
-a finite positive width up to [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L43) for a round stroke.
+a finite positive width up to [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L50) for a round stroke.
 It borrows path, surfaces and paint only during the synchronous call; it invokes
 no script or host callback. It validates before backend selection, so valid
 NO_GRAPHICS calls return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and invalid calls return
@@ -69,13 +71,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:43](../src/render/quality_internal.hpp#L43) |
+| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:50](../src/render/quality_internal.hpp#L50) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_bitmap_draw` | function | [src/standard/bitmap_fill.cpp:156](../src/standard/bitmap_fill.cpp#L156) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:155](../src/capi/bitmap_paint_c.cpp#L155) |
 | `fvm_path_draw_bitmap` | function | [include/flashvm/bitmap_paint.h:26](../include/flashvm/bitmap_paint.h#L26) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:467](../src/swf/shape.cpp#L467) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

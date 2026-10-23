@@ -2280,6 +2280,22 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         }
         if (r == FVM_OK && stroke)
         {
+            unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
+            const char *style_names[] = {"lineCap", "lineJoin"};
+            unsigned *style_values[] = {&cap, &join};
+            const unsigned style_limits[] = {FVM_STROKE_CAP_SQUARE, FVM_STROKE_JOIN_BEVEL};
+            /* Restore own scalar metadata without getters; absent values retain legacy round. */
+            for (unsigned style = 0; style < 2; ++style)
+            {
+                Properties::iterator entry = part->properties.find(style_names[style]);
+                if (entry == part->properties.end())
+                    continue;
+                const FVM_Value &value = entry->second;
+                if (value.type != FVM_VALUE_NUMBER || !(value.number >= 0 && value.number <= style_limits[style]) ||
+                    value.number != std::floor(value.number))
+                    return FVM_INVALID_ARGUMENT;
+                *style_values[style] = (unsigned)value.number;
+            }
             r = numeric(c, part, "lineRgb", rgb);
             if (r == FVM_OK)
                 r = numeric(c, part, "lineAlpha", a);
@@ -2294,7 +2310,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                     if (!width || scale > 0)
                         r = fvm_movieclip_bitmap_draw(c, part, world, p, surface,
                                                        transform.multiply, transform.add, 0,
-                                                       width ? width * scale : 1);
+                                                       width ? width * scale : 1, cap, join);
                 }
                 else if (part->properties.find("lineGradient") != part->properties.end())
                 {
@@ -2302,16 +2318,16 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                     if (!width || scale > 0)
                         r = fvm_movieclip_gradient_draw(c, part, world, p, surface,
                                                          transform.multiply, transform.add, 0,
-                                                         width ? width * scale : 1);
+                                                         width ? width * scale : 1, cap, join);
                 }
                 else
                     r = fvm_path_draw_quality(p, surface, color(rgb, a, transform), width ? width * scale : 1,
-                                              0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+                                              0, c->stage_quality != FVM_STAGE_QUALITY_LOW, cap, join);
             }
             if (r == FVM_OK && coverage)
             {
                 FVM_RasterColor opaque = {255, 255, 255, 255};
-                r = fvm_path_draw_quality(p, coverage, opaque, width ? width * scale : 1, 0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+                r = fvm_path_draw_quality(p, coverage, opaque, width ? width * scale : 1, 0, c->stage_quality != FVM_STAGE_QUALITY_LOW, cap, join);
             }
         }
         if (r != FVM_OK)

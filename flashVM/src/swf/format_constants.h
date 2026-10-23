@@ -67,6 +67,8 @@
 #define FVM_SWF_LINESTYLE_RESERVED_BITS 5U
 /* LINESTYLE2 round cap and round join discriminator. */
 #define FVM_SWF_LINESTYLE_ROUND 0U
+/* Largest currently supported LINESTYLE2 join discriminator (bevel). */
+#define FVM_SWF_LINESTYLE_BEVEL 1U
 /* Invalid cap/join discriminator, distinct from supported-but-unimplemented styles. */
 #define FVM_SWF_LINESTYLE_RESERVED_KIND 3U
 /* Maximum stop count in DefineShape/2/3, independent of the file version. */

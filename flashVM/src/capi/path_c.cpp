@@ -314,11 +314,12 @@ extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM
 }
 /* Keep the coverage policy local to this draw, including strokes and masks. */
 FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
-                                double width, int even_odd, bool antialias)
+                                double width, int even_odd, bool antialias, unsigned cap, unsigned join)
 {
     (void)antialias; /* NO_GRAPHICS validates inputs but has no backend policy to apply. */
     if (!p || !valid_surface(s) || !(width >= 0 && width <= 4096) ||
-        (even_odd != 0 && even_odd != 1))
+        (even_odd != 0 && even_odd != 1) ||
+        cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
         return FVM_INVALID_ARGUMENT;
     for (size_t i = 0; i < p->commands.size(); ++i)
         for (unsigned int n = 0; n < points(p->commands[i].verb); ++n)
@@ -362,8 +363,9 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
         {
             agg::conv_stroke<agg::conv_curve<agg::path_storage> > stroke(curves);
             stroke.width(width);
-            stroke.line_join(agg::round_join);
-            stroke.line_cap(agg::round_cap);
+            stroke.line_join(join == FVM_STROKE_JOIN_BEVEL ? agg::bevel_join : agg::round_join);
+            stroke.line_cap(cap == FVM_STROKE_CAP_BUTT ? agg::butt_cap :
+                            cap == FVM_STROKE_CAP_SQUARE ? agg::square_cap : agg::round_cap);
             ras.add_path(stroke);
         }
         else
@@ -441,8 +443,9 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
     if (width > 0)
     {
         cairo_set_line_width(cr, width);
-        cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
-        cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+        cairo_set_line_join(cr, join == FVM_STROKE_JOIN_BEVEL ? CAIRO_LINE_JOIN_BEVEL : CAIRO_LINE_JOIN_ROUND);
+        cairo_set_line_cap(cr, cap == FVM_STROKE_CAP_BUTT ? CAIRO_LINE_CAP_BUTT :
+                                cap == FVM_STROKE_CAP_SQUARE ? CAIRO_LINE_CAP_SQUARE : CAIRO_LINE_CAP_ROUND);
         cairo_stroke(cr);
     }
     else
@@ -495,9 +498,10 @@ FVM_Result fvm_path_mask_quality(const FVM_Path *p, FVM_RasterSurface *dst,
 /* Prepare fill/stroke coverage completely before source-over composition touches pixels. */
 FVM_Result fvm_path_mask_width_quality(const FVM_Path *p, FVM_RasterSurface *dst,
                                        const FVM_RasterSurface *src, double width,
-                                       int even_odd, bool antialias)
+                                       int even_odd, bool antialias, unsigned cap, unsigned join)
 {
-    if (!p || !(width >= 0 && width <= 4096) ||
+    if (cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL ||
+        !p || !(width >= 0 && width <= 4096) ||
         !valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
         src->height != dst->height)
         return FVM_INVALID_ARGUMENT;
@@ -512,7 +516,7 @@ FVM_Result fvm_path_mask_width_quality(const FVM_Path *p, FVM_RasterSurface *dst
     /* Initialization / Инициализация локального состояния. */
     FVM_RasterSurface s = {mask, dst->width, dst->height, (size_t)dst->width * 4};
     FVM_RasterColor white = {255, 255, 255, 255};
-    FVM_Result result = fvm_path_draw_quality(p, &s, white, width, even_odd, antialias);
+    FVM_Result result = fvm_path_draw_quality(p, &s, white, width, even_odd, antialias, cap, join);
     if (result == FVM_OK)
         for (unsigned int y = 0; y < dst->height; ++y)
             for (unsigned int x = 0; x < dst->width; ++x)

@@ -5,9 +5,12 @@
 #include "flashvm/bitmap_paint.h"
 #include "flashvm/gradient.h"
 #include "flashvm/path.h"
+#include "stroke_constants.h"
 /* Render vector coverage with per-call AA; no process/global renderer state is changed. */
 FVM_Result fvm_path_draw_quality(const FVM_Path *, FVM_RasterSurface *, FVM_RasterColor,
-                                 double width, int even_odd, bool antialias);
+                                 double width, int even_odd, bool antialias,
+                                 unsigned cap = FVM_STROKE_CAP_ROUND,
+                                 unsigned join = FVM_STROKE_JOIN_ROUND);
 /* Composite a source image through a path mask with the selected coverage policy. */
 FVM_Result fvm_path_mask_quality(const FVM_Path *, FVM_RasterSurface *, const FVM_RasterSurface *,
                                  int even_odd, bool antialias);
@@ -31,18 +34,24 @@ FVM_Result fvm_path_gradient_paint_quality(const FVM_Path *, FVM_RasterSurface *
 FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *, FVM_RasterSurface *,
                                            const FVM_Gradient *, double width, int even_odd,
                                            unsigned int spread, unsigned int interpolation,
-                                           double focal, bool antialias);
+                                           double focal, bool antialias,
+                                           unsigned cap = FVM_STROKE_CAP_ROUND,
+                                           unsigned join = FVM_STROKE_JOIN_ROUND);
 /* A zero width selects fill coverage; a positive width selects backend stroke coverage. */
 FVM_Result fvm_path_mask_width_quality(const FVM_Path *, FVM_RasterSurface *,
                                        const FVM_RasterSurface *, double width,
-                                       int even_odd, bool antialias);
+                                       int even_odd, bool antialias,
+                                       unsigned cap = FVM_STROKE_CAP_ROUND,
+                                       unsigned join = FVM_STROKE_JOIN_ROUND);
 /* Sample existing bitmap paint without changing its smoothing option; select only edge AA. */
 FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *, FVM_RasterSurface *,
                                         const FVM_BitmapPaint *, int even_odd, bool antialias);
 /* Destination-space limit shared by bitmap stroke validation and its coverage preparation. */
 #define FVM_BITMAP_STROKE_MAX_WIDTH 4096.0
-/* Width zero fills; positive width applies the existing round-stroke mask to sampled pixels. */
+/* Width zero fills; positive width applies the selected stroke mask to sampled pixels. */
 FVM_Result fvm_path_bitmap_paint_quality(const FVM_Path *, FVM_RasterSurface *,
                                          const FVM_BitmapPaint *, double width,
-                                         int even_odd, bool antialias);
+                                         int even_odd, bool antialias,
+                                         unsigned cap = FVM_STROKE_CAP_ROUND,
+                                         unsigned join = FVM_STROKE_JOIN_ROUND);
 #endif

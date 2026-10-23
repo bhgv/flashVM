@@ -39,7 +39,7 @@ static FVM_Path *bs_path(bool closed=false,bool no_close=false)
     return path;
 }
 static void bs_expected(unsigned char *out,unsigned kind,unsigned width=80,bool no_close=false,
-                        bool closed=false,int shift=0,bool antialias=true)
+                        bool closed=false,int shift=0,bool antialias=true,unsigned cap=0,unsigned join=0)
 {
     unsigned char sampled[1024],mask[1024]; const unsigned char rgba[]={255,0,0,128,0,255,0,255,0,0,0,0,0,0,255,64};
     std::memset(out,0,1024); std::memset(sampled,0,sizeof(sampled)); std::memset(mask,0,sizeof(mask));
@@ -52,7 +52,7 @@ static void bs_expected(unsigned char *out,unsigned kind,unsigned width=80,bool 
     paint.repeat=(kind==0x40 || kind==0x42); paint.smoothing=kind<0x42; paint.matrix.x0=paint.matrix.y0=shift/20.0;
     assert(fvm_path_draw_bitmap(rectangle,&dst,&paint,0)==FVM_OK); fvm_path_destroy(rectangle);
     FVM_Path *path=bs_path(closed,no_close); FVM_RasterColor white={255,255,255,255};
-    assert(fvm_path_draw_quality(path,&coverage,white,width?width/20.0:1,0,antialias)==FVM_OK); fvm_path_destroy(path);
+    assert(fvm_path_draw_quality(path,&coverage,white,width?width/20.0:1,0,antialias,cap,join)==FVM_OK); fvm_path_destroy(path);
     for(unsigned i=0;i<256;++i) { unsigned alpha=(sampled[i*4+3]*mask[i*4+3]+127)/255;
         if(alpha) { out[i*4]=sampled[i*4]; out[i*4+1]=sampled[i*4+1]; out[i*4+2]=sampled[i*4+2]; out[i*4+3]=(unsigned char)alpha; } }
 }

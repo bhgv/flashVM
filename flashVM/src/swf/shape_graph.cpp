@@ -162,6 +162,11 @@ FVM_Result fvm_swf_shape_build(FVM_Context *c, const FVM_SWFShape &shape, FVM_Ob
         part->properties["rgb"] = part->properties["lineRgb"] = number(paint.rgb);
         part->properties["alpha"] = part->properties["lineAlpha"] = number(paint.alpha);
         part->properties["width"] = number(paint.width);
+        /* Keep round defaults absent so old graphs and public drawing records retain their shape. */
+        if (paint.stroke_cap)
+            part->properties["lineCap"] = number(paint.stroke_cap);
+        if (paint.stroke_join)
+            part->properties["lineJoin"] = number(paint.stroke_join);
         part->properties["even_odd"] = number(1);
         if (paint.gradient_type)
         {

@@ -2,6 +2,7 @@
 #ifndef FVM_SWF_SHAPE_HPP
 #define FVM_SWF_SHAPE_HPP /* Include guard for decoded shape resources. */
 #include "flashvm/gradient.h"
+#include "format_constants.h"
 #include "../details/vector.hpp"
 
 /* One SWF gradient control point retaining its original byte ratio and straight RGBA. */
@@ -33,6 +34,8 @@ struct FVM_SWFShapePaint
     unsigned int bitmap_type; /* Zero or bitmap fill style 0x40..0x43. */
     unsigned int bitmap_id;   /* Referenced bitmap character ID, zero for non-bitmap paints. */
     FVM_Affine bitmap_matrix; /* Maps source pixel coordinates to shape-local pixels. */
+    unsigned stroke_cap;      /* Shared start/end LINESTYLE2 cap; zero retains legacy round. */
+    unsigned stroke_join;     /* LINESTYLE2 round or bevel join selector. */
     bool no_close;            /* LINESTYLE2 keeps coincident endpoints capped rather than joined. */
     bool stroke;              /* Distinguishes a zero-width hairline from a fill. */
     fvm_detail::vector<FVM_PathCommand> commands; /* Owned vector commands in pixel coordinates. */
@@ -40,7 +43,7 @@ struct FVM_SWFShapePaint
     FVM_SWFShapePaint()
         : rgb(0), alpha(100), width(0), gradient_type(0), gradient_spread(0), gradient_interpolation(0),
           gradient_focal(0), bitmap_type(0), bitmap_id(0),
-          no_close(false), stroke(false)
+          stroke_cap(FVM_SWF_LINESTYLE_ROUND), stroke_join(FVM_SWF_LINESTYLE_ROUND), no_close(false), stroke(false)
     {
         bitmap_matrix.xx = bitmap_matrix.yy = 1;
         bitmap_matrix.xy = bitmap_matrix.yx = bitmap_matrix.x0 = bitmap_matrix.y0 = 0;
@@ -62,6 +65,6 @@ struct FVM_SWFShape
     }
 };
 
-/* Decode DefineShape/2/3 and bounded round-stroke DefineShape4 styles and edge records with bounded allocations and coordinates. */
+/* Decode DefineShape/2/3 and bounded DefineShape4 styles and edge records with bounded allocations and coordinates. */
 FVM_Result fvm_swf_read_shape(const unsigned char *, size_t, unsigned int tag, FVM_SWFShape &);
 #endif

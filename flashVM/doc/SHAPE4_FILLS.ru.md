@@ -4,7 +4,7 @@
 
 Текущее расширение v0.1225+: [круглые LINESTYLE2-обводки](SHAPE4_STROKES.ru.md) со сплошным цветом, градиентом и NoClose. Прежний общий запрет LINESTYLE2 ниже исторический; другие концы/соединения, hinting и специальные scaling-флаги остаются открытыми.
 
-Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L467) принимает DefineShape4 (тег 83) без
+Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L469) принимает DefineShape4 (тег 83) без
 обводок. Загрузчик сцены разрешает тег начиная с SWF 8. Проверки резервных битов
 и ограничение в восемь точек для DefineShape/2/3 сохранены.
 
@@ -73,7 +73,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:467](../src/swf/shape.cpp#L467) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -2,6 +2,7 @@
 #ifndef FVM_BITMAP_FILL_HPP
 #define FVM_BITMAP_FILL_HPP /* Include guard for managed bitmap fill bridges. */
 #include "../core/runtime.hpp"
+#include "../render/stroke_constants.h"
 #include "flashvm/bitmap_paint.h"
 /* [GC:] Capture a live bitmap and copied matrix in an atomically published drawing descriptor. */
 FVM_Result fvm_movieclip_bitmap_begin(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
@@ -10,5 +11,6 @@ FVM_Result fvm_movieclip_bitmap_begin(FVM_Context *, FVM_Object *, unsigned, con
  * contents. */
 FVM_Result fvm_movieclip_bitmap_draw(FVM_Context *, FVM_Object *, const FVM_Affine &,
                                      const FVM_Path *, FVM_RasterSurface *, const double *,
-                                     const double *, int, double stroke_width = 0);
+                                     const double *, int, double stroke_width = 0, unsigned cap = FVM_STROKE_CAP_ROUND,
+                                       unsigned join = FVM_STROKE_JOIN_ROUND);
 #endif

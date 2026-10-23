@@ -156,7 +156,7 @@ FVM_Result fvm_movieclip_bitmap_begin(FVM_Context *c, FVM_Object *clip, unsigned
 FVM_Result fvm_movieclip_bitmap_draw(FVM_Context *c, FVM_Object *part, const FVM_Affine &world,
                                      const FVM_Path *path, FVM_RasterSurface *destination,
                                      const double *multiply_values, const double *add, int even_odd,
-                                     double stroke_width)
+                                     double stroke_width, unsigned cap, unsigned join)
 {
     Properties::iterator b = part->properties.find(stroke_width > 0 ? "lineBitmap" : "bitmap");
     if (b == part->properties.end() || b->second.type != FVM_VALUE_OBJECT || !b->second.object ||
@@ -210,5 +210,5 @@ FVM_Result fvm_movieclip_bitmap_draw(FVM_Context *c, FVM_Object *part, const FVM
         paint.add[i] = add[i];
     }
     return fvm_path_bitmap_paint_quality(path, destination, &paint, stroke_width, even_odd,
-                                         c->stage_quality != FVM_STAGE_QUALITY_LOW);
+                                         c->stage_quality != FVM_STAGE_QUALITY_LOW, cap, join);
 }

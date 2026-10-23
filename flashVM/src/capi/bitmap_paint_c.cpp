@@ -154,10 +154,11 @@ FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *path, FVM_RasterSurface 
 /* Sample the complete source before preparing either a fill or round-stroke coverage mask. */
 FVM_Result fvm_path_bitmap_paint_quality(const FVM_Path *path, FVM_RasterSurface *destination,
                                           const FVM_BitmapPaint *paint, double width,
-                                          int even_odd, bool antialias)
+                                          int even_odd, bool antialias, unsigned cap, unsigned join)
 {
     FVM_Affine inverse;
-    if (!(width >= 0 && width <= FVM_BITMAP_STROKE_MAX_WIDTH) ||
+    if (cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL ||
+        !(width >= 0 && width <= FVM_BITMAP_STROKE_MAX_WIDTH) ||
         !validate(path, destination, paint, even_odd, inverse))
         return FVM_INVALID_ARGUMENT;
 #if !defined(FVM_HAS_AGG) && !defined(FVM_HAS_CAIRO)
@@ -177,7 +178,7 @@ FVM_Result fvm_path_bitmap_paint_quality(const FVM_Path *path, FVM_RasterSurface
             }
         FVM_RasterSurface source = {pixels.begin(), destination->width, destination->height,
                                     stride};
-        return fvm_path_mask_width_quality(path, destination, &source, width, even_odd, antialias);
+        return fvm_path_mask_width_quality(path, destination, &source, width, even_odd, antialias, cap, join);
     }
     catch (const std::bad_alloc &)
     {

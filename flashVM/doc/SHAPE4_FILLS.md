@@ -4,7 +4,7 @@ Current extension v0.1239+: [LINESTYLE2 bitmap strokes](BITMAP_STROKES.md). Earl
 
 Current extension v0.1225+: [round LINESTYLE2 strokes](SHAPE4_STROKES.md) with solid/gradient paints and NoClose. Earlier blanket LINESTYLE2 exclusions below are historical; other cap/join styles, hinting and special scaling flags remain open.
 
-The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L467) now accepts fill-only DefineShape4 (tag 83).
+The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L469) now accepts fill-only DefineShape4 (tag 83).
 The scene loader gates it to SWF 8 and later. DefineShape/2/3 retain their original
 reserved-mode checks and limit of eight gradient stops.
 
@@ -74,7 +74,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:467](../src/swf/shape.cpp#L467) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

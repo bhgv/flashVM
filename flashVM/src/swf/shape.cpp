@@ -175,10 +175,12 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
             if (!reader.good() || reserved || start_cap == FVM_SWF_LINESTYLE_RESERVED_KIND ||
                 join == FVM_SWF_LINESTYLE_RESERVED_KIND || end_cap == FVM_SWF_LINESTYLE_RESERVED_KIND)
                 return FVM_INVALID_ARGUMENT;
-            /* Existing backends implement round caps/joins and ordinary scaled widths only. */
-            if (start_cap != FVM_SWF_LINESTYLE_ROUND || join != FVM_SWF_LINESTYLE_ROUND ||
-                end_cap != FVM_SWF_LINESTYLE_ROUND || no_h_scale || no_v_scale || pixel_hinting)
+            /* Shared caps and round/bevel joins map directly to the selected backend. */
+            if (start_cap != end_cap || join > FVM_SWF_LINESTYLE_BEVEL ||
+                no_h_scale || no_v_scale || pixel_hinting)
                 return FVM_UNSUPPORTED;
+            paint.stroke_cap = (unsigned)start_cap;
+            paint.stroke_join = (unsigned)join;
             if (has_fill)
             {
                 FVM_Result r = fill(reader, tag, paint);
