@@ -1,4 +1,4 @@
-Версия разработки: **0.1255** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1256** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1256: [96 топологий сохраняют выбранные концы соединения и команды замыкания](doc/STROKE_CAPS.ru.md).
 
 v0.1255: [120 сочетаний paint стиля и ширины сохраняют выбранную геометрию обводки](doc/STROKE_CAPS.ru.md).
 
