@@ -1059,6 +1059,22 @@ static FVM_Result field_get(FVM_Context *c, FVM_Object *self, unsigned int, cons
     /* Initialization / Инициализация локального состояния. */
     Field *field = (Field *)self->resource;
     const char *name = (const char *)userdata;
+    if (!std::strcmp(name, "scroll") || !std::strcmp(name, "hscroll") ||
+        !std::strcmp(name, "maxscroll") || !std::strcmp(name, "maxhscroll") ||
+        !std::strcmp(name, "bottomScroll"))
+    {
+        FVM_TextFieldScrollInfo info;
+        FVM_Result result = scroll_geometry(c, field, info);
+        if (result != FVM_OK)
+            return result;
+        field->scroll = info.scroll;
+        field->hscroll = info.hscroll;
+        fvm_value_number(out, !std::strcmp(name, "scroll") ? info.scroll :
+            !std::strcmp(name, "hscroll") ? info.hscroll :
+            !std::strcmp(name, "maxscroll") ? info.maxscroll :
+            !std::strcmp(name, "maxhscroll") ? info.maxhscroll : info.bottom_scroll);
+        return FVM_OK;
+    }
     if (std::strcmp(name, "autoSize") == 0)
         return fvm_value_string(out, !field->auto_size_left ? "none" : field->anchor == FVM_TEXT_ANCHOR_RIGHT ? "right" :
             field->anchor == FVM_TEXT_ANCHOR_CENTER ? "center" : "left");
@@ -1116,6 +1132,26 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
     /* Initialization / Инициализация локального состояния. */
     Field *field = (Field *)self->resource;
     const char *name = (const char *)userdata;
+    if (!std::strcmp(name, "scroll") || !std::strcmp(name, "hscroll"))
+    {
+        double requested;
+        FVM_Result result = number(c, args[0], requested);
+        if (result != FVM_OK)
+            return result;
+        /* Conversion may execute user code; inspect current geometry only after it returns. */
+        FVM_TextFieldScrollInfo info;
+        result = scroll_geometry(c, field, info);
+        if (result != FVM_OK)
+            return result;
+        bool vertical = !std::strcmp(name, "scroll");
+        double minimum = vertical ? 1 : 0;
+        double maximum = vertical ? info.maxscroll : info.maxhscroll;
+        requested = requested < minimum ? minimum : requested > maximum ? maximum : std::floor(requested);
+        field->scroll = vertical ? (unsigned long)requested : info.scroll;
+        field->hscroll = vertical ? info.hscroll : (unsigned long)requested;
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     if (std::strcmp(name, "text") == 0)
     {
         if (args[0].type != FVM_VALUE_STRING)
@@ -1559,12 +1595,19 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
         FVM_NativeEntry replace;
         replace.callback = replace_text;
         object->methods["replaceText"] = replace;
+        const char *scroll_names[] = {"scroll", "hscroll", "maxscroll", "maxhscroll", "bottomScroll"};
+        for (size_t i = 0; i < sizeof(scroll_names) / sizeof(scroll_names[0]); ++i)
+        {
+            result = fvm_object_define_accessor_rooted(c, object, scroll_names[i], field_get,
+                i < FVM_TEXT_FIELD_SCROLL_WRITABLE_COUNT ? field_set : 0, (void *)scroll_names[i], 0);
+            if (result != FVM_OK)
+                return result;
+        }
         const char *unimplemented[] = {
             "html",       "htmlText",     "type",
             "border",     "borderColor",  "background",    "backgroundColor",
             "embedFonts", "password",     "selectable",    "maxChars",
-            "restrict",   "scroll",       "hscroll",       "maxscroll",
-            "maxhscroll", "bottomScroll", "antiAliasType", "gridFitType",
+            "restrict", "antiAliasType", "gridFitType",
             "sharpness",  "thickness",    "condenseWhite", "filters",
             "_alpha",        "_visible"};
         for (size_t i = 0; i < sizeof(unimplemented) / sizeof(unimplemented[0]); ++i)
@@ -1710,7 +1753,8 @@ namespace
 const char *field_selectors[] = {
     "getTextFormat", "getNewTextFormat", "setTextFormat", "setNewTextFormat", "text",
     "multiline",     "wordWrap",         "_width",        "_height",          "textColor",
-    "autoSize", "_x", "_y", "length",        "textWidth",        "textHeight"};
+    "autoSize", "_x", "_y", "length",        "textWidth",        "textHeight",
+    "scroll", "hscroll", "maxscroll", "maxhscroll", "bottomScroll"};
 
 /* Capture snapshot of style. */
 void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState &out)
@@ -1820,7 +1864,9 @@ const char *fvm_text_callback_selector(FVM_NativeFunction callback, void *userda
     const char *name = (const char *)userdata;
     for (size_t i = 0; i < sizeof(field_selectors) / sizeof(field_selectors[0]); ++i)
         if (!std::strcmp(name, field_selectors[i]) && ((id == 201) == (i < FVM_TEXT_FIELD_METHOD_SELECTORS)) &&
-            (id != 203 || i < FVM_TEXT_FIELD_WRITABLE_SELECTORS))
+            (id != 203 || i < FVM_TEXT_FIELD_WRITABLE_SELECTORS ||
+             (i >= FVM_TEXT_FIELD_SCROLL_SELECTOR_FIRST &&
+              i < FVM_TEXT_FIELD_SCROLL_SELECTOR_FIRST + FVM_TEXT_FIELD_SCROLL_WRITABLE_COUNT)))
             return field_selectors[i];
     return 0;
 }
@@ -1835,6 +1881,18 @@ void *fvm_text_callback_userdata(unsigned long id, const char *name)
  * custom userdata and captured roots retain their original graph semantics. */
 void fvm_textfield_upgrade_accessor(const char *name, FVM_AccessorEntry &entry)
 {
+    const char *scroll_names[] = {"scroll", "hscroll", "maxscroll", "maxhscroll", "bottomScroll"};
+    for (size_t i = 0; name && i < sizeof(scroll_names) / sizeof(scroll_names[0]); ++i)
+    {
+        if (!std::strcmp(name, scroll_names[i]) && entry.getter == unsupported &&
+            entry.setter == unsupported && !entry.userdata && !entry.root)
+        {
+            entry.getter = field_get;
+            entry.setter = i < FVM_TEXT_FIELD_SCROLL_WRITABLE_COUNT ? field_set : 0;
+            entry.userdata = (void *)scroll_names[i];
+            return;
+        }
+    }
     if (name && (!std::strcmp(name, "autoSize") || !std::strcmp(name, "_x") ||
                  !std::strcmp(name, "_y")) && entry.getter == unsupported &&
         entry.setter == unsupported && !entry.userdata && !entry.root)

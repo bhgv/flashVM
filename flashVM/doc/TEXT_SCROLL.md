@@ -24,6 +24,19 @@ bounded geometry rules, not claims about every Flash rounding/version edge case.
 Exported contours remain unclipped; the host uses the returned inner clip rectangle
 and applies parent-space _x/_y once. Intrinsic text metrics remain unscrolled.
 
+
+## AS2 properties
+
+scroll and hscroll are writable; maxscroll, maxhscroll and bottomScroll are
+read-only. Finite numeric conversions are truncated and clamped to geometry.
+NaN/infinity or failed conversion rejects without this setter changing offsets;
+side effects of an explicit user conversion remain visible. Geometry is measured
+after conversion so reentry cannot publish stale layout. A successful query/set
+normalizes both offsets. Text/style/dimension edits keep lazy layout admission;
+clamping occurs at the next scroll observation, export or capture. No onScroller
+notification is synthesized. Legacy callback selectors retain their identities;
+new selectors are appended and only rootless retired native stubs are upgraded.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

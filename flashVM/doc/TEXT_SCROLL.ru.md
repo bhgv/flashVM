@@ -23,6 +23,19 @@ viewport; bottom_scroll следует той же политике. maxhscroll 
 хост использует возвращённый clip rectangle и один раз применяет _x/_y. Intrinsic
 text metrics не меняются от прокрутки.
 
+
+## Свойства AS2
+
+scroll и hscroll доступны для записи; maxscroll, maxhscroll и bottomScroll — только
+для чтения. Конечное числовое преобразование усекается и ограничивается диапазоном.
+NaN/infinity и ошибка conversion отклоняются без изменения offsets этим setter;
+явные побочные эффекты пользовательского conversion сохраняются. Раскладка
+измеряется после conversion, поэтому reentry не публикует устаревшую геометрию.
+Успешный query/set нормализует обе координаты. Text/style/dimension edits сохраняют
+lazy layout; clamp выполняется при следующем scroll observation/export/capture.
+Уведомление onScroller не создаётся. Старые callback selectors сохраняют ID;
+новые добавлены в конец, upgrade заменяет только rootless старые native stubs.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
