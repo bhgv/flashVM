@@ -7,6 +7,9 @@ v0.1025: Добавлен конечный event-only pump с точными п�
 
 v0.1026: Добавлено сериализованное наблюдение voice/retry/FIFO с обновлением dequeue clock и сохранением out при ошибке.
 
+
+v0.1027: Проверены failed clear/write, исключения, callback reentry и завершение anonymous release после удаления голосов.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

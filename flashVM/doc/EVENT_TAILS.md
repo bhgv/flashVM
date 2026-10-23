@@ -7,6 +7,9 @@ v0.1025: Add opt-in finite output pumping with exact final frames and unchanged 
 
 v0.1026: Add a serialized pending observation with coherent dequeue clock updates and preserved caller output on errors.
 
+
+v0.1027: Verify failed clear and write ownership, exception containment, callback reentry and anonymous release completion after voices retire.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
