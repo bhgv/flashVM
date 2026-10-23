@@ -212,6 +212,24 @@ FIFO потребляется записью файла после всех пр
 | --- | --- |
 | [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../../../include/flashvm/swf_sound_mix_queue.h#L222) | Synchronously observe the borrowed FIFO and mix at most the supplied maximum into available room. Optional accepted clears first. Retained TAIL is indivisible; caller quiesces base and serializes all owners. No allocation/VM/GC; callbacks may block. [Full statuses and lifetime](../../../doc/ADAPTIVE_TAILS.md). |
 
+## Finite event tails / Конечные событийные хвосты
+
+`OUTPUT.pcm --finite` exports the same 14 event-only frames (56 bytes) as headroom
+mode using four bounded blocks of 4,4,4,2 frames. Each block is rejected once;
+retry must preserve its pre-render live horizon. The base converter stays unchanged.
+After software drain, submitted/played14 and ID8 end14/inactive are expected.
+This ninth mode demonstrates native finite completion; desktop uses the explicit
+`--finite-mixed-tails` option. Neither is physical DAC/reference A/V acceptance.
+
+`--finite` пишет 14 event-only кадров блоками 4,4,4,2, без завершающего padding.
+Четыре отклонённых блока повторяются точно; base не продвигается. После записи файла
+played14 и ID8 inactive. Это конечный нативный вывод, не физическая A/V-приёмка.
+
+| API | Purpose, ownership and contract |
+| --- | --- |
+| [`fvm_swf_sound_mixer_active_frames`](../../../include/flashvm/swf_sound_mixer.h#L54) | Copy the bounded current-grid horizon without reading PCM or consuming lookahead. Includes repeats/release, OK/zero when empty. Caller retains and serializes mixer; no allocation/callback/VM/GC. [Bounds/statuses](../../../doc/FINITE_TAILS.md). |
+| [`fvm_swf_sound_mix_queue_pump_tail_finite`](../../../include/flashvm/swf_sound_mix_queue.h#L231) | Observe the exclusive FIFO and render no more than available room and the live horizon. Existing TAIL remains indivisible; optional accepted clears first. Quiesce base and serialize borrowed owners; callbacks may block, no allocation/VM/GC. [Ownership/statuses](../../../doc/FINITE_TAILS.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -237,6 +255,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:235](../../../include/flashvm/swf_sound_mix_queue.h#L235) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:206](../../../include/flashvm/swf_sound_mix_queue.h#L206) |
+| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:231](../../../include/flashvm/swf_sound_mix_queue.h#L231) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../../../include/flashvm/swf_sound_mix_queue.h#L222) |
 | `fvm_swf_sound_mix_queue_set_identity_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:109](../../../include/flashvm/swf_sound_mix_queue.h#L109) |
 | `fvm_swf_sound_mix_queue_stop_all` | function | [include/flashvm/swf_sound_mix_queue.h:162](../../../include/flashvm/swf_sound_mix_queue.h#L162) |
@@ -244,6 +263,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_storage_required` | function | [include/flashvm/swf_sound_mix_queue.h:44](../../../include/flashvm/swf_sound_mix_queue.h#L44) |
 | `fvm_swf_sound_mix_queue_storage_required_for_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:52](../../../include/flashvm/swf_sound_mix_queue.h#L52) |
 | `fvm_swf_sound_mix_queue_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:123](../../../include/flashvm/swf_sound_mix_queue.h#L123) |
+| `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../../../include/flashvm/swf_sound_mixer.h#L54) |
 | `fvm_swf_sound_mixer_add` | function | [include/flashvm/swf_sound_mixer.h:136](../../../include/flashvm/swf_sound_mixer.h#L136) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:143](../../../include/flashvm/swf_sound_mixer.h#L143) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:58](../../../include/flashvm/swf_sound_mixer.h#L58) |

@@ -28,6 +28,9 @@ v0.1019: Exercise callback errors and recursion, unchanged pending bytes after s
 
 v0.1020: Verify 256 epochs with rejected held tails, newly permitted base, exact saturated PCM, source EOF and queued identity expiry.
 
+
+v0.1021: Add a ninth mode with four exact rejected blocks, a short final tail, unchanged base and explicit queued identity drain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

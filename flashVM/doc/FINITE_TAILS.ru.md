@@ -28,6 +28,9 @@ v0.1019: Проверены errors/reentry, сохранение pending пос�
 
 v0.1020: Проверены 256 эпох: отклонённый held TAIL, разрешение BASE, точный насыщенный PCM, source EOF и истечение ID.
 
+
+v0.1021: Девятый C89-режим показывает четыре точных retry, короткий последний TAIL, неизменный BASE и queued/drained ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
