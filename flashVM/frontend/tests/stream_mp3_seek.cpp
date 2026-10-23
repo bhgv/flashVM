@@ -65,4 +65,27 @@ static void verify(unsigned mode,unsigned latency,int adjustment,bool gap)
     FVM_ExecutionStats stats;stats.struct_size=sizeof(stats);assert(fvm_execution_get_stats(c,&stats)==FVM_OK);assert(mode?stats.native_entries>0:stats.interpreter_entries>0);
     fvm_desktop_audio_close(&audio);assert(fvm_gc_unpin(c,clip)==FVM_OK);fvm_context_destroy(c);fvm_runtime_destroy(rt);
 }
-int main(){for(unsigned mode=0;mode<2;++mode){if(mode && !fvm_jit_available())continue;verify(mode,37,37,false);verify(mode,1105,37,false);verify(mode,37,-74,true);}return 0;}
+/* A running native worker must not submit a backward-aligned point in a visual gap. */
+static void verify_live_gap(unsigned mode)
+{
+    FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;FVM_Object *clip=0;
+    assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
+    Bytes swf=navigation_movie(37,-74,true);
+    assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK && fvm_standard_install(c)==FVM_OK);
+    assert(fvm_movieclip_load_swf_ex(c,swf.begin(),swf.size(),"_root",FVM_SWF_IMPORT_MUTE_ROOT_STREAMS,&clip)==FVM_OK && fvm_gc_pin(c,clip)==FVM_OK);
+    assert(fvm_execution_set_mode(c,mode?FVM_EXECUTION_JIT:FVM_EXECUTION_INTERPRETER,0)==FVM_OK);
+    FVM_DesktopAudio audio;assert(fvm_desktop_audio_open_paused(c,clip,&audio,1)==FVM_OK);
+    assert(fvm_movieclip_advance(c,clip,1)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK);
+    navigate(c,clip,"gotoAndPlay",2);
+    assert(fvm_movieclip_advance(c,clip,1)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK);
+    assert(fvm_desktop_audio_pause(&audio,0)==FVM_OK);
+    SDL_Delay(30);
+    FVM_SWFStreamOutputInfo info;info.struct_size=sizeof(info);
+    assert(fvm_desktop_audio_stream_info(&audio,&info)==FVM_OK && info.submitted_frames==0 && info.pending_frames==0);
+    assert(fvm_gc_collect(c,0)==FVM_OK);
+    assert(fvm_movieclip_advance(c,clip,1)==FVM_OK && fvm_desktop_audio_timeline(c,clip,&audio)==FVM_OK);
+    for(unsigned poll=0;poll<40;++poll){assert(fvm_desktop_audio_stream_info(&audio,&info)==FVM_OK);if(info.submitted_frames>0)break;SDL_Delay(5);}
+    assert(info.submitted_frames>0);
+    fvm_desktop_audio_close(&audio);assert(fvm_gc_unpin(c,clip)==FVM_OK);fvm_context_destroy(c);fvm_runtime_destroy(rt);
+}
+int main(){for(unsigned mode=0;mode<2;++mode){if(mode && !fvm_jit_available())continue;verify(mode,37,37,false);verify(mode,1105,37,false);verify(mode,37,-74,true);verify_live_gap(mode);}return 0;}

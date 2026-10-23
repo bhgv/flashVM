@@ -41,7 +41,7 @@ int main()
             {
                 Bytes swf=seek_movie(fixture,latency,offsets[k]);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);
                 FVM_SWFStreamSoundSnapshot *source=0;assert(fvm_swf_stream_sound_snapshot_open_pcm(c,0,&source)==FVM_OK);
-                FVM_SWFStreamSoundSeekPoint p;p.struct_size=sizeof(p);
+                FVM_SWFStreamSoundSeekPoint p;std::memset(&p,0,sizeof(p));p.struct_size=sizeof(p);
                 assert(fvm_swf_stream_sound_snapshot_seek_point(source,1,&p)==FVM_OK && p.source_frame==1 && p.mp3_aligned && absolute_point(source,p)==0);
                 long expected=(long)first.samples+offsets[k];
                 FVM_SWFStreamSoundSeekPoint old=p;
@@ -56,7 +56,7 @@ int main()
         }
         Bytes swf=stream_movie(fixture,0);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);
         FVM_SWFStreamSoundSnapshot *encoded=0;assert(fvm_swf_stream_sound_snapshot_open(c,0,&encoded)==FVM_OK);
-        FVM_SWFStreamSoundSeekPoint p;p.struct_size=sizeof(p);FVM_SWFStreamSoundSeekPoint old=p;
+        FVM_SWFStreamSoundSeekPoint p;std::memset(&p,0,sizeof(p));p.struct_size=sizeof(p);FVM_SWFStreamSoundSeekPoint old=p;
         assert(fvm_swf_stream_sound_snapshot_seek_point(encoded,3,&p)==FVM_UNSUPPORTED && std::memcmp(&p,&old,sizeof(p))==0);
         fvm_swf_stream_sound_snapshot_close(encoded);
     }
