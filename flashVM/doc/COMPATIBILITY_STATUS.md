@@ -5219,6 +5219,9 @@ ASan/UBSan, 64 dummy-SDL случая и экспорт C89; исходные э
 независимыми LAME/mpg123. Остальные перечисленные ограничения и все стадии roadmap
 остаются открытыми. [EN](FREE_FORMAT_MP3.md) / [RU](FREE_FORMAT_MP3.ru.md).
 
+
+Coherent mixed stream/category observation and desktop worker integration: [EN](MIXED_SNAPSHOT.md) / [RU](MIXED_SNAPSHOT.ru.md). Source/DAC mapping and automatic A/V remain open. / Единый снимок не закрывает A/V и стадии 1–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

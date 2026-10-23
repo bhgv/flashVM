@@ -3443,6 +3443,9 @@ only pending ordinals are captured under the shared work limit. Bound/owner chec
 monotonic failure progress and transferred-library reset remain explicit.
 [EN](INITIALIZER_PROGRESS.md) / [RU](INITIALIZER_PROGRESS.ru.md). Все стадии открыты.
 
+
+Coherent mixed stream/category observation and desktop worker integration: [EN](MIXED_SNAPSHOT.md) / [RU](MIXED_SNAPSHOT.ru.md). Source/DAC mapping and automatic A/V remain open. / Единый снимок не закрывает A/V и стадии 1–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
