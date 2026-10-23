@@ -12,3 +12,5 @@ v0.1054: Add the desktop mutex-protected paired query and use it for mixed playe
 v0.1055: Real SDL dummy workers check category/common sums while draining authored-Stop tails and resumed base in interpreter and JIT.
 
 v0.1056: Mixed refill, resume, completion and public stream diagnostics observe the stream cache and origin ledger together.
+
+v0.1057: The origins tutorial reports one-poll queued and drained snapshots; its independent ten-mode PCM checker verifies both reports.

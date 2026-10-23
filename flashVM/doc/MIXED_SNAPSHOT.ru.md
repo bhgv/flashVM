@@ -12,3 +12,5 @@ v0.1054: Добавлен desktop-запрос под mutex для смешан�
 v0.1055: Worker SDL dummy проверяет суммы clock при authored Stop, Play, pause и GC в интерпретаторе и JIT.
 
 v0.1056: Mixed refill, resume, завершение и stream-диагностика используют единое наблюдение.
+
+v0.1057: C89-пример выводит единые снимки до и после drain; независимый ten-mode PCM checker проверяет оба отчёта.

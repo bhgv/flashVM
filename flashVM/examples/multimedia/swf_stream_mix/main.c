@@ -81,6 +81,7 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
     FVM_SWFStreamConvertedChunk chunk; /* Receive per-block source/frame metadata. */
     FVM_SWFSoundMixerConfig geometry; /* Select explicit conversion of both event voices. */
     FVM_SWFSoundVoice *prepared[EXAMPLE_MIX_VOICES] = {0}; /* Optional tracked voices stay caller-owned until adoption succeeds. */
+    FVM_SWFStreamMixInfo paired; /* Copy stream and origin counters from one native FIFO observation. */
     FVM_SWFSoundMixQueueOriginInfo origin; /* Copy distinct accepted/dequeued BASE and TAIL categories. */
     FVM_SWFSoundMixQueueIdentityInfo identity; /* Copy one sound-ID deadline before and after software drain. */
     FVM_SWFSoundMixer *mixer = 0; /* Own event snapshots and their independent clocks. */
@@ -282,8 +283,10 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
         } /* This reports dequeue registration, not physical audibility. */
         if (origins_mode) /* Observe accepted categories before any software FIFO consumption. */
         { /* Failed renders never entered this category ledger. */
-            origin.struct_size = sizeof(origin); /* Select the exact copied diagnostic ABI. */
-            if (!checked(fvm_swf_sound_mix_queue_origin_info(mix_queue, &origin), "queued origins")) goto cleanup; /* One validated backend poll, no PCM advancement. */
+            paired.struct_size = sizeof(paired); /* Nested descriptors are initialized by the paired query. */
+            if (!checked(fvm_swf_stream_output_mix_info(&gated_output, mix_queue, &paired), "queued snapshot")) goto cleanup; /* One FIFO observation captures stream metadata and both categories. */
+            origin = paired.origins; /* Retain the owned category value after releasing the query guard. */
+            printf("Snapshot submitted=%.0f played=%.0f queued=%lu\n", paired.stream.submitted_frames, paired.stream.played_frames, (unsigned long)paired.stream.queued_frames); /* Expected seventeen accepted and queued frames before software drain. */
             printf("Origins base=%.0f/%.0f tail=%.0f/%.0f\n", origin.base_submitted_frames, origin.base_played_frames, origin.tail_submitted_frames, origin.tail_played_frames); /* Expected base9/0 and tail8/0 while all seventeen frames remain queued. */
         } /* Category sums agree with the shared submitted/dequeued clock. */
         mixed = queue.frames * EXAMPLE_MIX_CHANNELS; /* Convert frames to scalar S16 values. */
@@ -302,7 +305,9 @@ int main(int argc, char **argv) /* Keep the reusable integration valid C89. */
             } /* Clock end is now permitted. */
             if (origins_mode) /* Observe category drain before releasing the optional bookkeeping mode. */
             { /* ID tracking is already disabled at its independent safe point. */
-                if (!checked(fvm_swf_sound_mix_queue_origin_info(mix_queue, &origin), "drained origins")) goto cleanup; /* The software consumer acknowledged every frame. */
+                if (!checked(fvm_swf_stream_output_mix_info(&gated_output, mix_queue, &paired), "drained snapshot")) goto cleanup; /* Observe the acknowledged software drain in both clocks at once. */
+                origin = paired.origins; /* Category counters belong to this same zero-backlog observation. */
+                printf("Snapshot submitted=%.0f played=%.0f queued=%lu\n", paired.stream.submitted_frames, paired.stream.played_frames, (unsigned long)paired.stream.queued_frames); /* Expected seventeen accepted and dequeued frames. */
                 printf("Origins base=%.0f/%.0f tail=%.0f/%.0f\n", origin.base_submitted_frames, origin.base_played_frames, origin.tail_submitted_frames, origin.tail_played_frames); /* Expected base9/9 and tail8/8. */
                 if (!checked(fvm_swf_sound_mix_queue_set_origin_tracking(mix_queue, 0, 0), "disable origins")) goto cleanup; /* Free the bitmap only after no retry or FIFO remains. */
             } /* Clock end is permitted once both optional modes have been released. */

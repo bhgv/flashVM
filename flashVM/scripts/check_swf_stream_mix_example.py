@@ -113,6 +113,8 @@ def main():
         origin = subprocess.run([executable, str(origin_output), '--origins'], cwd=root,
                                 check=True, stdout=subprocess.PIPE, text=True)
         assert origin_output.read_bytes() == struct.pack('=' + 'h' * len(gated_values), *gated_values)
+        assert 'Snapshot submitted=17 played=0 queued=17' in origin.stdout
+        assert 'Snapshot submitted=17 played=17 queued=0' in origin.stdout
         assert 'Origins base=9/0 tail=8/0' in origin.stdout
         assert 'Origins base=9/9 tail=8/8' in origin.stdout
         assert 'Mixed 17 frames after source VM teardown.' in origin.stdout

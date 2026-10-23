@@ -249,7 +249,16 @@ played0; после подтверждённого drain — BASE9/9 и TAIL8/8.
 | --- | --- |
 | [`fvm_swf_sound_mix_queue_storage_required_for_modes`](../../../include/flashvm/swf_sound_mix_queue.h#L60) | Predict exact owner/PCM/ID/origin allocation requests without allocation/callback/VM. Boolean modes, out preserved on error; excludes other owners. [Storage contract](../../../doc/MIX_ORIGIN_CLOCK.md). |
 | [`fvm_swf_sound_mix_queue_set_origin_tracking`](../../../include/flashvm/swf_sound_mix_queue.h#L84) | Allocate the fixed accepted-origin bitmap at zero shared epoch or free it after observed drain/no retry. Caller retains and serializes queue/mixer/backend; callbacks may block, allocation is explicit. [Mode lifetime](../../../doc/MIX_ORIGIN_CLOCK.md). |
-| [`fvm_swf_sound_mix_queue_origin_info`](../../../include/flashvm/swf_sound_mix_queue.h#L91) | Fresh BASE/TAIL accepted/dequeued/queued snapshot, excluding pending retry. Errors preserve exact-size out. No allocation/render/VM/GC; borrowed owners stay serialized/live. [Category clock](../../../doc/MIX_ORIGIN_CLOCK.md). |
+| [`fvm_swf_stream_output_mix_info`](../../../include/flashvm/swf_stream_output.h#L138) | One FIFO callback captures stream source/retry metadata and BASE/TAIL counters together. Requires exact adapted owner, equal epoch, enabled origins, exact outer size; no allocation/render/VM, errors preserve output, externally serialize all borrowed owners. [Contract](../../../doc/MIXED_SNAPSHOT.md). |
+
+The --origins mode now obtains both category reports through
+[`fvm_swf_stream_output_mix_info`](../../../include/flashvm/swf_stream_output.h#L138), with `Snapshot submitted=17 played=0 queued=17`
+and then `Snapshot submitted=17 played=17 queued=0`. Nested descriptor sizes are
+initialized by the API. The existing category output and exact PCM stay the same.
+
+Режим --origins использует единый FIFO-снимок stream и категорий. До software
+drain: submitted17/played0/queued17; после: submitted17/played17/queued0.
+Это проверка программной очереди, не DAC и не автоматическая A/V-синхронизация.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -274,7 +283,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_create_bounded` | function | [include/flashvm/swf_sound_mix_queue.h:227](../../../include/flashvm/swf_sound_mix_queue.h#L227) |
 | `fvm_swf_sound_mix_queue_identity_info` | function | [include/flashvm/swf_sound_mix_queue.h:181](../../../include/flashvm/swf_sound_mix_queue.h#L181) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:275](../../../include/flashvm/swf_sound_mix_queue.h#L275) |
-| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../../../include/flashvm/swf_sound_mix_queue.h#L91) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../../../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../../../include/flashvm/swf_sound_mix_queue.h#L246) |
 | `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:271](../../../include/flashvm/swf_sound_mix_queue.h#L271) |
@@ -296,6 +304,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../../../include/flashvm/swf_stream_convert.h#L48) |
 | `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../../../include/flashvm/swf_stream_convert.h#L67) |
 | `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:52](../../../include/flashvm/swf_stream_output.h#L52) |
+| `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:138](../../../include/flashvm/swf_stream_output.h#L138) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../../../include/flashvm/swf_stream_output.h#L111) |
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:160](../../../include/flashvm/swf_stream_sound.h#L160) |
 | `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:102](../../../include/flashvm/swf_stream_sound.h#L102) |

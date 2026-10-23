@@ -2116,6 +2116,8 @@ The `multimedia/swf_stream_mix --clock` mode demonstrates a single base/tail sub
 
 The `multimedia/swf_stream_mix --identities` mode demonstrates budgeted tracked adoption, queued ID expiry and safe drain/disable. [Contract](../doc/MIX_QUEUE_IDENTITIES.md). / Ограниченные queued-ID, истечение после drain и безопасное отключение.
 
+The swf_stream_mix --origins mode demonstrates a coherent single-poll stream/category snapshot (software FIFO evidence). / Режим демонстрирует единый опрос stream и категорий программной очереди.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
