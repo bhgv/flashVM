@@ -1,4 +1,4 @@
-Development version: **0.1218** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1219** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1219: [Edge bounds ordering and coordinate limits reject malformed Shape4 records](doc/SHAPE4_FILLS.md).
 
 v0.1218: [RGBA StateNewStyles replacement preserves bank offsets and rejects LINESTYLE2](doc/SHAPE4_FILLS.md).
 
