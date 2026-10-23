@@ -33,7 +33,7 @@ are stable. Existing host callbacks and captured roots must retain their identit
 
 ## Explicit notification transaction
 
-[FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L25) roots the source and copied registration order before the
+[FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L28) roots the source and copied registration order before the
 setter publishes both offsets. Input conversion and fresh geometry happen first.
 Preparation allocation/work errors preserve offsets. After publication the field
 onScroller runs first, then snapshot listeners, each with one source-field argument.
@@ -99,5 +99,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:25](../src/standard/text_listeners.hpp#L25) |
+| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:28](../src/standard/text_listeners.hpp#L28) |
 <!-- source-links:end -->

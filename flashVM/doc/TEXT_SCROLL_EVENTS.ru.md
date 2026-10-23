@@ -32,7 +32,7 @@ tracing и graph serialization удерживают listeners и циклы; в 
 
 ## Транзакция явного уведомления
 
-[FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L25) удерживает source и копию порядка регистраций до публикации
+[FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L28) удерживает source и копию порядка регистраций до публикации
 обоих offsets. Сначала выполняются conversion и свежее измерение. Ошибка подготовки
 allocation/work сохраняет offsets. После публикации вызывается field onScroller,
 затем snapshot listeners; аргумент — source field. Missing/noncallable handler
@@ -96,5 +96,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:25](../src/standard/text_listeners.hpp#L25) |
+| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:28](../src/standard/text_listeners.hpp#L28) |
 <!-- source-links:end -->

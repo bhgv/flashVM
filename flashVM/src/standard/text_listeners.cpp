@@ -5,6 +5,7 @@
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
 #include "../core/optional_method.hpp"
+#include "../core/property_lookup.hpp"
 #include <cstring>
 
 namespace
@@ -19,6 +20,84 @@ FVM_Result usable(FVM_Context *context, FVM_Object *field)
     return context->swf_loaded && context->swf_info.version < FVM_TEXT_LISTENER_MIN_VERSION
         ? FVM_UNSUPPORTED : FVM_OK;
 }
+/* Find exact spelling first, charging every visited entry in legacy folded fallback. */
+template <class Entries>
+FVM_Result observer_find(FVM_Context *context, Entries &entries,
+                         const fvm_detail::string &name, FVM_ExecutionWorkScope &work,
+                         typename Entries::iterator &found)
+{
+    FVM_Result result = work.step();
+    if (result != FVM_OK) return result;
+    found = entries.find(name);
+    if (found != entries.end() || !context->swf_loaded ||
+        context->swf_info.version >= FVM_SWF_VERSION_7)
+        return FVM_OK;
+    for (found = entries.begin(); found != entries.end(); ++found)
+    {
+        result = work.step();
+        if (result != FVM_OK) return result;
+        if (fvm_avm1_folded_name_equal(found->first, name))
+            break;
+    }
+    return FVM_OK;
+}
+/* Visibility and all three descriptor tables use the same charged name selection. */
+FVM_Result observer_slot(FVM_Context *context, FVM_Object *object,
+                         const fvm_detail::string &name, FVM_ExecutionWorkScope &work,
+                         bool &present)
+{
+    present = false;
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags;
+    FVM_Result result = observer_find(context, object->attributes, name, work, flags);
+    if (result != FVM_OK) return result;
+    if (flags != object->attributes.end() &&
+        (flags->second & fvm_property_visibility_mask(context)))
+        return FVM_OK;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data;
+    result = observer_find(context, object->properties, name, work, data);
+    if (result != FVM_OK) return result;
+    if (data != object->properties.end()) { present = true; return FVM_OK; }
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method;
+    result = observer_find(context, object->methods, name, work, method);
+    if (result != FVM_OK) return result;
+    if (method != object->methods.end()) { present = true; return FVM_OK; }
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor;
+    result = observer_find(context, object->accessors, name, work, accessor);
+    if (result == FVM_OK) present = accessor != object->accessors.end();
+    return result;
+}
+
+}
+/* Descriptor-only admission shares the caller budget and never evaluates user code. */
+FVM_Result fvm_textfield_observer_present(FVM_Context *context, FVM_Object *field, bool *out)
+{
+    if (!out) return FVM_INVALID_ARGUMENT;
+    *out = false;
+    FVM_Result result = usable(context, field);
+    if (result == FVM_UNSUPPORTED) return FVM_OK;
+    if (result != FVM_OK) return result;
+    FVM_ExecutionWorkScope work(context);
+    result = work.step();
+    if (result != FVM_OK) return result;
+    if (field->properties.find(FVM_TEXT_LISTENER_KEY) != field->properties.end())
+    { *out = true; return FVM_OK; }
+    const fvm_detail::string handler("onScroller"), resolver("__resolve");
+    FVM_Object *cursor = field;
+    for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH;
+         ++depth, cursor = cursor->prototype)
+    {
+        result = work.step();
+        if (result != FVM_OK) return result;
+        if (cursor->owner != context) return FVM_INVALID_ARGUMENT;
+        bool present = false;
+        result = observer_slot(context, cursor, handler, work, present);
+        if (result != FVM_OK) return result;
+        if (!present && context->swf_loaded)
+            result = observer_slot(context, cursor, resolver, work, present);
+        if (result != FVM_OK) return result;
+        if (present) { *out = true; return FVM_OK; }
+    }
+    return cursor ? FVM_INVALID_ARGUMENT : FVM_OK;
 }
 /* Inspect only trusted native storage; malformed graph data cannot bypass count/owner bounds. */
 FVM_Result fvm_textfield_listener_registry(FVM_Context *context, FVM_Object *field,
