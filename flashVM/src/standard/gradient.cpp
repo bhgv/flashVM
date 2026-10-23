@@ -60,6 +60,16 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     unsigned long configured = c->runtime->config.memory_limit_bytes;
     if (configured && (size_t)surface->width * surface->height * 8 > configured)
         return FVM_OUT_OF_MEMORY;
+    FVM_GradientSpread spread = FVM_GRADIENT_SPREAD_PAD;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator mode = record->properties.find("spread");
+    if (mode != record->properties.end())
+    {
+        const FVM_Value &value = mode->second;
+        if (value.type != FVM_VALUE_NUMBER || !(value.number >= FVM_GRADIENT_SPREAD_PAD &&
+            value.number <= FVM_GRADIENT_SPREAD_REPEAT) || value.number != std::floor(value.number))
+            return FVM_INVALID_ARGUMENT;
+        spread = (FVM_GradientSpread)(unsigned int)value.number;
+    }
     FVM_Gradient gradient;
     fvm_gradient_init(&gradient);
     double type = 0;
@@ -118,5 +128,6 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     }
     gradient.stops = values.begin();
     gradient.count = values.size();
-    return fvm_path_draw_gradient_quality(path, surface, &gradient, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+    return fvm_path_draw_gradient_spread_quality(path, surface, &gradient, even_odd, spread,
+                                                c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }
