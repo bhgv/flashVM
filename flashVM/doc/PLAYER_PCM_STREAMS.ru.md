@@ -118,7 +118,7 @@ converters до старта worker. Каждая запись владеет sn
 проверяет/индексирует отдельно каждый сегмент и может выделять память; worker
 переключается без выделений и не читает context.
 
-При EOF источника [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L125) сохраняет принятые queue bytes,
+При EOF источника [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L128) сохраняет принятые queue bytes,
 pause и суммарные submitted/played clocks. Device открывается один раз. Выход
 всегда 48000 Hz stereo S16, source width/mono/stereo/rate меняются по заголовкам.
 Фаза переносится между блоками одного header и начинается с нуля у нового. Перед
@@ -130,7 +130,7 @@ pause и суммарные submitted/played clocks. Device открываетс
 
 Explicit/backward/skipped навигация выбирает последний header не позже target
 frame (при равных frames — последний в source order), а до первого header —
-первый будущий. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L132) выполняет staged pause/clear и
+первый будущий. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L135) выполняет staged pause/clear и
 публикует binding только после подтверждённого clear, выбирая первый блок не
 раньше target внутри сегмента. Gaps удерживают будущие данные, тишина не
 синтезируется. Следующие cursors заново подготавливаются при достижении. Это
@@ -183,7 +183,7 @@ Backend SDL копирует принятый PCM и не входит в VM/GC.
 Пауза хоста/сессии/background и stop клипа останавливают очередь, сохраняя данные; play
 возобновляет разрешённые данные. StopSounds очищает очередь и отменяет stream до
 обнаруженной навигации. Release ramp для stream пока нет. Pending/backward/skipped переход
-вызывает [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L119) под тем же mutex: старые queued/pending bytes удаляются, phase=0 и выбирается
+вызывает [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L122) под тем же mutex: старые queued/pending bytes удаляются, phase=0 и выбирается
 первый блок не раньше выбранного кадра. Пропуск кадра удерживает более поздний блок,
 тишина не синтезируется. EOF источника отличается от опустевшей очереди.
 
@@ -300,9 +300,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:132](../include/flashvm/swf_stream_output.h#L132) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:125](../include/flashvm/swf_stream_output.h#L125) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:135](../include/flashvm/swf_stream_output.h#L135) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:128](../include/flashvm/swf_stream_output.h#L128) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:122](../include/flashvm/swf_stream_output.h#L122) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->

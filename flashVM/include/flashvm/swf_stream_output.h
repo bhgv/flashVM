@@ -98,6 +98,9 @@ extern "C"
      * cancel only after acknowledgement. No allocation/VM/GC, implicit pause or A/V retiming.
      * Successful event-only blocks count in both clocks, preserve source cursor/chunk/EOF;
      * output padding and already queued lead are not reference Flash timestamp semantics. */
+    /* Fresh event-only blocks fit available FIFO headroom up to block; a retained short
+     * TAIL remains indivisible and precedes newly permitted base. Copied queue/played
+     * counters use the successful write admission observation without a post-write poll. */
     FVM_API FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *,
         FVM_SWFSoundMixQueue *, unsigned int max_movie_frame, size_t *accepted);
     /* Acknowledge pause/resume without clearing, priming or advancing converter position. */

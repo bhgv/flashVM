@@ -103,7 +103,7 @@ def main():
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()
-    print('PASS seven-mode stream/event C89 output, gated retry, single saturation and native cleanup')
+    print('PASS eight-mode stream/event C89 output, gated/adaptive retry, single saturation and native cleanup')
 
 
 if __name__ == '__main__':

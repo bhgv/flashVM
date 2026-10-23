@@ -62,7 +62,7 @@ the mix queue. The producer's base buffer is not repurposed;
 [`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31) for the retained tail. A valid FIFO observation may
 refresh played time on a failing operation; no failed write increments accepted time.
 Do not interleave direct mix-tail writes or unrelated queue producers with paired
-tails. Settle a tail retry before [`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L125); acknowledged
+tails. Settle a tail retry before [`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L128); acknowledged
 seek/clear cancels it. Explicit epoch mismatch is rejected before further rendering.
 
 Context StopSounds uses staged stream seek/clear through the adapter. Successful
@@ -141,7 +141,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:125](../include/flashvm/swf_stream_output.h#L125) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:128](../include/flashvm/swf_stream_output.h#L128) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |

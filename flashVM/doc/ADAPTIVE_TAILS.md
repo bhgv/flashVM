@@ -53,6 +53,28 @@ v0.1007: Add an event-only headroom mode with fourteen one-frame rejected blocks
 
 v0.1008: Check all eight export modes including exact fourteen-frame headroom PCM, rejected retries and queued-to-drained identity lifetime.
 
+
+## Paired and desktop scheduling
+
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L104) and [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L85) use
+adaptive tails while preserving their existing gate/observed-EOF preconditions.
+Short retained tails take priority over new base. The stream's base PCM pending
+field remains base-only; query mix pending for event retry ownership. Source cursor,
+phase, chunk and EOF remain unchanged during event-only work. Both clock copies
+use the FIFO observation immediately before the successful write; no fallible
+callback follows acceptance. A backend can consume during later callbacks, so
+this is a consistent admission observation, not a physical DAC timestamp.
+
+The desktop root composition worker inherits this behavior during future frame
+gates, authored root Stop and source EOF. Host pause continues to suspend complete
+output. BASE retries are never shortened or substituted; accepted PCM cannot be
+selectively recalled. Chosen final padding depends on block/headroom geometry;
+one-frame filling can retire exactly at event duration. This adds no automatic
+A/V drift correction, child timeline scheduling or reference seek preservation.
+
+
+v0.1009: Specify partial FIFO sizing, indivisible retries, admission-clock snapshots, desktop pause policy and eight-mode tutorial limits.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -64,4 +86,6 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:206](../include/flashvm/swf_sound_mix_queue.h#L206) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../include/flashvm/swf_sound_mix_queue.h#L222) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 <!-- source-links:end -->

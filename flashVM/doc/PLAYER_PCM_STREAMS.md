@@ -126,7 +126,7 @@ stream_source field is only a borrowed first-entry alias. No snapshot leaks into
 VM roots, callbacks or the SDL device. Startup validates/indexes per segment and
 may allocate; worker transitions allocate nothing and never read a context.
 
-On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L125) preserves accepted queue bytes,
+On source EOF, [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L128) preserves accepted queue bytes,
 pause and cumulative submitted/played clocks. The device remains open once.
 Output stays 48000 Hz stereo S16 while source width, mono/stereo and rate may
 change per header. Phase carries across blocks within one header and restarts at
@@ -140,7 +140,7 @@ StopSounds cancellation remain separate concepts.
 
 Explicit/backward/skipped navigation selects the last header at/before the target
 frame (source order breaks equal-frame ties), or the first future header before
-any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L132) stages pause/clear and
+any header has begun. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L135) stages pause/clear and
 rebinds the selected converter only after acknowledged clear. It chooses the
 first block at/after the target inside that segment. Gaps still hold future data;
 no silence is synthesized. Later successors are re-primed when reached. This is
@@ -195,7 +195,7 @@ avoiding a startup deadlock when a frame contains little audio.
 Host/session/background suspension and the clip's stop flag both pause the queue and
 preserve accepted bytes. play resumes authorized data. StopSounds pauses, clears and
 cancels the stream until a detected navigation reset. There is no stream stop-release
-ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L119) under the same mutex, clearing
+ramp. Pending, backward or skipped navigation invokes [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L122) under the same mutex, clearing
 old queued/pending bytes and starting phase zero at the first block at/after the selected
 frame. Gaps hold a later block; they do not synthesize silence. Source EOF and drained
 queue are distinct.
@@ -317,9 +317,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:132](../include/flashvm/swf_stream_output.h#L132) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:125](../include/flashvm/swf_stream_output.h#L125) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:135](../include/flashvm/swf_stream_output.h#L135) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:128](../include/flashvm/swf_stream_output.h#L128) |
 | `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:122](../include/flashvm/swf_stream_output.h#L122) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->

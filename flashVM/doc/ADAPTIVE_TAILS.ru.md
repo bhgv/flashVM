@@ -51,6 +51,26 @@ v0.1007: Добавлен C89 headroom-режим: 14 коротких retry, н
 
 v0.1008: Независимый PCM-оракул проверяет восемь режимов, 14 кадров headroom, retry и queued/drained lifetime ID.
 
+
+## Парный планировщик и desktop
+
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L104) и [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L85)
+используют адаптивный TAIL с прежними условиями gate/наблюдаемого EOF. Короткий
+retry предшествует новому BASE. Stream pending остаётся только базовым; event retry
+наблюдается через mix pending. Cursor, phase, chunk и EOF источника не меняются.
+Обе копии часов получают наблюдение FIFO непосредственно перед успешным write;
+после принятия ошибочного callback нет. Это согласованное наблюдение допуска
+блока, не физический DAC timestamp: backend может продолжать потребление.
+
+Desktop root worker наследует этот путь при future gate, authored Stop и EOF.
+Host pause останавливает весь вывод. BASE retry не сокращается и не заменяется;
+принятый PCM нельзя выборочно отозвать. Последний padding зависит от геометрии
+block/остатка; однокадровый вывод может закончиться точно на длительности событий.
+Автокоррекция A/V, дочерние таймлайны и эталонный seek этим не реализованы.
+
+
+v0.1009: Уточнены размеры по остатку FIFO, неделимый retry, admission-clock, desktop pause и ограничения восьми режимов.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -62,4 +82,6 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:206](../include/flashvm/swf_sound_mix_queue.h#L206) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../include/flashvm/swf_sound_mix_queue.h#L222) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 <!-- source-links:end -->
