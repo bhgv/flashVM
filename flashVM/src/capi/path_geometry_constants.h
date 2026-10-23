@@ -11,6 +11,8 @@
 #define FVM_PATH_GEOMETRY_MAX_COORDINATE 1000000.0
 /* Exact dyadic lattice used to certify non-axis collinearity. */
 #define FVM_PATH_GEOMETRY_LINEAR_GRID 16.0
+/* Binary radix is required for exact multiplication by the dyadic lattice scale. */
+#define FVM_PATH_GEOMETRY_LINEAR_RADIX 2
 /* Integer products and their differences are exact on the admitted coordinate grid. */
 #define FVM_PATH_GEOMETRY_LINEAR_MANTISSA_BITS 53
 #endif

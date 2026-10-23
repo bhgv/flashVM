@@ -2,13 +2,13 @@
 
 Current monotone axis commands: [contract](AXIS_CURVE_BOUNDS.md). Earlier blanket non-round curve rejection below now has this exception.
 
-The private [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L454) now accepts quadratic and cubic contours with round/round styles. It measures analytic centerline extrema of each nonconstant segment and expands the combined box by half the effective width. For an entirely round stroke this is the radius-neighborhood bound of the centerline, subject to ordinary double arithmetic. It is geometric, not the antialias pixel rectangle or a certification of complete Flash equivalence.
+The private [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L455) now accepts quadratic and cubic contours with round/round styles. It measures analytic centerline extrema of each nonconstant segment and expands the combined box by half the effective width. For an entirely round stroke this is the radius-neighborhood bound of the centerline, subject to ordinary double arithmetic. It is geometric, not the antialias pixel rectangle or a certification of complete Flash equivalence.
 
 Move only changes the contour origin and contributes no stroke. Constant line/quadratic/cubic segments contribute no extent; coincident curve endpoints do not make a curve constant when a control point differs. Close includes its actual closing segment. Multiple contours are unioned without adding intervening moves. Empty geometry returns zero bounds and has_segments=0.
 
 ## Contract and ownership
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L454) borrows an immutable path, accepts a finite positive width up to 1,000,000 destination units, valid cap/join selectors, and two required caller-owned output pointers. It allocates nothing, executes no callbacks or GC and needs no context. Errors preserve both outputs. Invalid selectors/widths/pointers return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Curves with butt/square caps or bevel joins still return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without publishing outputs. Concurrent path mutation is forbidden.
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L455) borrows an immutable path, accepts a finite positive width up to 1,000,000 destination units, valid cap/join selectors, and two required caller-owned output pointers. It allocates nothing, executes no callbacks or GC and needs no context. Errors preserve both outputs. Invalid selectors/widths/pointers return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Curves with butt/square caps or bevel joins still return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without publishing outputs. Concurrent path mutation is forbidden.
 
 Derivative roots use a [shared internal math module](../src/render/curve_bounds.hpp) extracted from the existing [fvm_path_bounds](../src/capi/path_c.cpp#L195). The public function retains its formulas and existing inclusion of isolated Moves. The new round walker deliberately excludes moves without strokes. Zero authored width still becomes one destination unit in managed traversal; positive width keeps the existing maximum-axis transform metric. A complete positive-width collapse creates no stroke.
 
@@ -56,6 +56,6 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:454](../src/capi/path_hit_c.cpp#L454) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:455](../src/capi/path_hit_c.cpp#L455) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

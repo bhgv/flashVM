@@ -260,7 +260,8 @@ static bool linear_curve_segment(double x, double y, const FVM_PathCommand &comm
             return false;
     if (x == end_x || y == end_y)
         return true;
-    if (DBL_MANT_DIG < FVM_PATH_GEOMETRY_LINEAR_MANTISSA_BITS)
+    if (FLT_RADIX != FVM_PATH_GEOMETRY_LINEAR_RADIX ||
+        DBL_MANT_DIG < FVM_PATH_GEOMETRY_LINEAR_MANTISSA_BITS)
         return false;
     double sx, sy, ex, ey;
     if (!linear_grid_coordinate(x, sx) || !linear_grid_coordinate(y, sy) ||

@@ -1,4 +1,6 @@
-# FlashVM stage status / Состояние стадий — v0.1379
+# FlashVM stage status / Состояние стадий — v0.1400
+
+Checkpoint v0.1400 / Контрольная точка v0.1400: 307 native, 61 no-graphics, 61 ASan/UBSan tests pass. Certified lattice-linear Beziers and bounded unordered controls share exact segment caps/joins. General non-round curves, transform metrics, reference/devices and all nine stages remain open. [EN](LINEAR_CURVE_BOUNDS.md) / [RU](LINEAR_CURVE_BOUNDS.ru.md).
 
 Certified linear Bezier bounds / Сертифицированные линейные Bezier: [EN](LINEAR_CURVE_BOUNDS.md) / [RU](LINEAR_CURVE_BOUNDS.ru.md). Exact lattice collinearity and bounded unordered controls reuse segment caps/joins. All nine stages remain open.
 

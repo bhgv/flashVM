@@ -1,5 +1,7 @@
 # Реестр выполнения / Compatibility status
 
+Checkpoint v0.1400 / Контрольная точка v0.1400: 307 native, 61 no-graphics, 61 ASan/UBSan tests pass. Certified lattice-linear Beziers and bounded unordered controls share exact segment caps/joins. General non-round curves, transform metrics, reference/devices and all nine stages remain open. [EN](LINEAR_CURVE_BOUNDS.md) / [RU](LINEAR_CURVE_BOUNDS.ru.md).
+
 Certified linear Bezier bounds / Сертифицированные линейные Bezier: [EN](LINEAR_CURVE_BOUNDS.md) / [RU](LINEAR_CURVE_BOUNDS.ru.md). Exact lattice collinearity and bounded unordered controls reuse segment caps/joins. All nine stages remain open.
 
 Checkpoint v0.1379 / Контрольная точка v0.1379: 289 native, 43 no-graphics, 43 ASan/UBSan tests pass. Ordered axis Beziers share exact segment cap/join bounds. General non-round curves, nonuniform metrics, full reference/device acceptance and all nine roadmap stages remain open. [EN](AXIS_CURVE_BOUNDS.md) / [RU](AXIS_CURVE_BOUNDS.ru.md).
