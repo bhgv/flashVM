@@ -1,4 +1,4 @@
-Версия разработки: **0.1179** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1180** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1180: [Добавлены checker фазовых выборок CTest и пояснённый пример AS2 обводки](doc/GRADIENT_STROKES.ru.md).
 
 v0.1179: [Добавлен запускаемый пример обводок и описаны фазовые выборки](doc/GRADIENT_STROKES.ru.md).
 

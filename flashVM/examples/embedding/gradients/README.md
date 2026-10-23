@@ -59,6 +59,10 @@ stroke repeat: 128 255 255
 
 [Stroke contract / Контракт обводок](../../../doc/GRADIENT_STROKES.ru.md). This example checks the selected backend on the host; reference-player and physical-device acceptance remain separate.
 
+Run `python3 flashVM/scripts/check_gradient_strokes_example.py <path-to-example>` from the repository root to check the actual printed samples. CTest registers `flashvm_gradient_strokes_tutorial`; NO_GRAPHICS returns explicit skip code 77. The accompanying AS2 source adds a separate SWF8 stroke clip; bytecode execution is tested by the AVM1 fixtures, not by compiling this illustrative source in the CMake build.
+
+Проверка C89 вывода выполняется отдельным checker и CTest; NO_GRAPHICS явно пропускается. AS2 source показывает lineStyle перед lineGradientStyle и копирование массива цветов; его компиляция в SWF не входит в эту CMake-проверку.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
