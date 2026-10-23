@@ -1,4 +1,4 @@
-Версия разработки: **0.1266** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1267** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1267: [Shape hitTest с учётом торцов и соединений](doc/STROKE_HIT_TEST.ru.md).
 
 v0.1266: [Проверенный этап симметричных концов и bevel с чистыми нативными sanitizer и SDK-free проверками](doc/STROKE_CAPS.ru.md).
 

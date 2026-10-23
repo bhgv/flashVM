@@ -1854,6 +1854,27 @@ FVM_Result rect_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     return get_bounds(c, o, n, a, v, false);
 }
 
+/* Restore own cap/join scalars without getters; absent values retain legacy round strokes. */
+FVM_Result stroke_selectors(FVM_Object *part, unsigned &cap, unsigned &join)
+{
+    const char *style_names[] = {"lineCap", "lineJoin"};
+    unsigned *style_values[] = {&cap, &join};
+    const unsigned style_limits[] = {FVM_STROKE_CAP_SQUARE, FVM_STROKE_JOIN_BEVEL};
+    /* Restore own scalar metadata without getters; absent values retain legacy round. */
+    for (unsigned style = 0; style < 2; ++style)
+    {
+        Properties::iterator entry = part->properties.find(style_names[style]);
+        if (entry == part->properties.end())
+            continue;
+        const FVM_Value &value = entry->second;
+        if (value.type != FVM_VALUE_NUMBER || !(value.number >= 0 && value.number <= style_limits[style]) ||
+            value.number != std::floor(value.number))
+            return FVM_INVALID_ARGUMENT;
+        *style_values[style] = (unsigned)value.number;
+    }
+    return FVM_OK;
+}
+
 /* [GC:] Test copied paint/child edges against a world-space point under the native call barrier. */
 FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &yes, unsigned depth)
 {
@@ -1904,8 +1925,12 @@ FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &ye
             double other = vector_length(world.xy, world.yy);
             if (other > scale)
                 scale = other;
+            unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
             if (r == FVM_OK)
-                r = fvm_path_hit_test(geometry, x, y, width ? width * scale : 1, even_odd, &hit);
+                r = stroke_selectors(paint, cap, join);
+            if (r == FVM_OK)
+                r = fvm_path_hit_test_style(geometry, x, y, width ? width * scale : 1,
+                                           even_odd, &hit, cap, join);
         }
         if (r != FVM_OK)
             return r;
@@ -2281,21 +2306,9 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         if (r == FVM_OK && stroke)
         {
             unsigned cap = FVM_STROKE_CAP_ROUND, join = FVM_STROKE_JOIN_ROUND;
-            const char *style_names[] = {"lineCap", "lineJoin"};
-            unsigned *style_values[] = {&cap, &join};
-            const unsigned style_limits[] = {FVM_STROKE_CAP_SQUARE, FVM_STROKE_JOIN_BEVEL};
-            /* Restore own scalar metadata without getters; absent values retain legacy round. */
-            for (unsigned style = 0; style < 2; ++style)
-            {
-                Properties::iterator entry = part->properties.find(style_names[style]);
-                if (entry == part->properties.end())
-                    continue;
-                const FVM_Value &value = entry->second;
-                if (value.type != FVM_VALUE_NUMBER || !(value.number >= 0 && value.number <= style_limits[style]) ||
-                    value.number != std::floor(value.number))
-                    return FVM_INVALID_ARGUMENT;
-                *style_values[style] = (unsigned)value.number;
-            }
+            r = stroke_selectors(part, cap, join);
+            if (r != FVM_OK)
+                return r;
             r = numeric(c, part, "lineRgb", rgb);
             if (r == FVM_OK)
                 r = numeric(c, part, "lineAlpha", a);

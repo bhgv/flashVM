@@ -1,5 +1,6 @@
-/* FlashVM: backend-independent filled-contour and round-stroke point hit testing. */
+/* FlashVM: backend-independent fill and selected cap/join point hit testing. */
 #include "flashvm/path.h"
+#include "../render/quality_internal.hpp"
 #include <cmath>
 #include <cstring>
 
@@ -10,17 +11,110 @@ struct Query
 {
     double x, y;   /* Query coordinates in the same space as path commands. */
     double radius; /* Half the requested stroke width; zero selects filled contours. */
+    bool styled; /* Explicit private cap/join policy; public queries retain legacy distances. */
+    unsigned cap, join; /* Validated stroke selectors. */
+    bool segment; /* Whether this contour has a nonzero tangent. */
+    double first_x, first_y, first_dx, first_dy; /* Initial point and unit tangent. */
+    double last_x, last_y, last_dx, last_dy; /* Last endpoint and unit tangent. */
     long winding;  /* Signed half-open ray intersections across all contours. */
     bool edge;     /* Whether a boundary or stroked segment already contains the point. */
     /* Initialize an empty query with no intersections. */
-    Query(double px, double py, double width)
-        : x(px), y(py), radius(width / 2), winding(0), edge(false)
+    Query(double px, double py, double width, bool selected = false,
+          unsigned selected_cap = FVM_STROKE_CAP_ROUND,
+          unsigned selected_join = FVM_STROKE_JOIN_ROUND)
+        : x(px), y(py), radius(width / 2), styled(selected), cap(selected_cap), join(selected_join),
+          segment(false), first_x(0), first_y(0), first_dx(0), first_dy(0),
+          last_x(0), last_y(0), last_dx(0), last_dy(0), winding(0), edge(false)
     {
     }
-    /* Accumulate a line crossing, or test its round-ended stroke distance. */
+    /* Include a circular round cap or join, retaining boundary points. */
+    void disk(double ax, double ay)
+    {
+        double dx = x - ax, dy = y - ay;
+        if (dx * dx + dy * dy <= radius * radius)
+            edge = true;
+    }
+    /* Include a bevel wedge using orientation signs, independent of raster backends. */
+    void triangle(double ax, double ay, double bx, double by, double cx, double cy)
+    {
+        double a = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+        double b = (cx - bx) * (y - by) - (cy - by) * (x - bx);
+        double c = (ax - cx) * (y - cy) - (ay - cy) * (x - cx);
+        double area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+        if (area && ((a >= 0 && b >= 0 && c >= 0) || (a <= 0 && b <= 0 && c <= 0)))
+            edge = true;
+    }
+    /* Complete a turn between normalized tangents; inner wedges are already in the bodies. */
+    void turn(double ax, double ay, double ux, double uy, double vx, double vy)
+    {
+        double cross = ux * vy - uy * vx;
+        if (!cross && ux * vx + uy * vy > 0)
+            return;
+        if (join == FVM_STROKE_JOIN_ROUND)
+        {
+            double qx = x - ax, qy = y - ay;
+            /* Restrict to the outer sector: a whole disk would extend short butt-ended edges. */
+            if (qx * ux + qy * uy >= 0 && qx * vx + qy * vy <= 0)
+                disk(ax, ay);
+        }
+        else
+        {
+            double side = cross > 0 ? -1 : 1;
+            triangle(ax, ay, ax - side * uy * radius, ay + side * ux * radius,
+                     ax - side * vy * radius, ay + side * vx * radius);
+        }
+    }
+    /* Include only the outward half-width square extension at an open endpoint. */
+    void endpoint(double ax, double ay, double ux, double uy)
+    {
+        if (cap == FVM_STROKE_CAP_ROUND)
+            disk(ax, ay);
+        else if (cap == FVM_STROKE_CAP_SQUARE)
+        {
+            double along = (x - ax) * ux + (y - ay) * uy;
+            double across = (x - ax) * uy - (y - ay) * ux;
+            if (along >= 0 && along <= radius && std::fabs(across) <= radius)
+                edge = true;
+        }
+    }
+    /* Finish one explicit contour; closed contours join the final and initial tangents. */
+    void finish(bool closed)
+    {
+        if (styled && radius && segment)
+        {
+            if (closed)
+                turn(first_x, first_y, last_dx, last_dy, first_dx, first_dy);
+            else
+            {
+                endpoint(first_x, first_y, -first_dx, -first_dy);
+                endpoint(last_x, last_y, last_dx, last_dy);
+            }
+        }
+        segment = false;
+    }
+    /* Accumulate a fill crossing, a selected stroke body, or legacy round distance. */
     void line(double ax, double ay, double bx, double by)
     {
         double dx = bx - ax, dy = by - ay, length = dx * dx + dy * dy;
+        if (styled && radius)
+        {
+            if (!length)
+                return;
+            double size = std::sqrt(length), ux = dx / size, uy = dy / size;
+            double along = (x - ax) * ux + (y - ay) * uy;
+            double across = (x - ax) * uy - (y - ay) * ux;
+            if (along >= 0 && along <= size && std::fabs(across) <= radius)
+                edge = true;
+            if (segment)
+                turn(ax, ay, last_dx, last_dy, ux, uy);
+            else
+            {
+                first_x = ax; first_y = ay; first_dx = ux; first_dy = uy;
+                segment = true;
+            }
+            last_x = bx; last_y = by; last_dx = ux; last_dy = uy;
+            return;
+        }
         if (!length && !radius)
             return;
         double t = length ? ((x - ax) * dx + (y - ay) * dy) / length : 0;
@@ -91,16 +185,17 @@ void curve(Query &query, const double *x, const double *y, unsigned degree, unsi
     curve(query, rx, ry, degree, depth + 1);
 }
 } // namespace
-/* Test a point against implicitly closed fills or explicitly connected round-cap/round-join
- * strokes. */
-extern "C" FVM_Result fvm_path_hit_test(const FVM_Path *path, double x, double y, double width,
-                                        int even_odd, int *out)
+/* Test a point against implicitly closed fills or connected strokes with the selected
+ * private geometry policy; public callers retain their legacy round-distance policy. */
+static FVM_Result hit_test(const FVM_Path *path, double x, double y, double width,
+                           int even_odd, int *out, bool styled, unsigned cap, unsigned join)
 {
     if (!path || !out || !(x >= -2000000 && x <= 2000000 && y >= -2000000 && y <= 2000000) ||
-        !(width >= 0 && width <= 1000000) || (even_odd != 0 && even_odd != 1))
+        !(width >= 0 && width <= 1000000) || (even_odd != 0 && even_odd != 1) ||
+        cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    Query query(x, y, width);
+    Query query(x, y, width, styled, cap, join);
     double first_x = 0, first_y = 0, current_x = 0, current_y = 0;
     bool open = false;
     for (size_t i = 0; i < fvm_path_count(path); ++i)
@@ -113,6 +208,7 @@ extern "C" FVM_Result fvm_path_hit_test(const FVM_Path *path, double x, double y
         {
             if (open && !width)
                 query.line(current_x, current_y, first_x, first_y);
+            query.finish(false);
             first_x = current_x = command.x[0];
             first_y = current_y = command.y[0];
             open = true;
@@ -121,6 +217,7 @@ extern "C" FVM_Result fvm_path_hit_test(const FVM_Path *path, double x, double y
         {
             if (open)
                 query.line(current_x, current_y, first_x, first_y);
+            query.finish(true);
             current_x = first_x;
             current_y = first_y;
             open = false;
@@ -149,6 +246,21 @@ extern "C" FVM_Result fvm_path_hit_test(const FVM_Path *path, double x, double y
     }
     if (open && !width)
         query.line(current_x, current_y, first_x, first_y);
+    query.finish(false);
     *out = query.edge || (!width && (even_odd ? query.winding % 2 != 0 : query.winding != 0));
     return FVM_OK;
+}
+
+/* Preserve the public round-ended distance query and its existing C89 ABI. */
+extern "C" FVM_Result fvm_path_hit_test(const FVM_Path *path, double x, double y, double width,
+                                        int even_odd, int *out)
+{
+    return hit_test(path, x, y, width, even_odd, out, false,
+                    FVM_STROKE_CAP_ROUND, FVM_STROKE_JOIN_ROUND);
+}
+/* Query selected private strokes independently of AGG/Cairo or a rendering surface. */
+FVM_Result fvm_path_hit_test_style(const FVM_Path *path, double x, double y, double width,
+                                   int even_odd, int *out, unsigned cap, unsigned join)
+{
+    return hit_test(path, x, y, width, even_odd, out, true, cap, join);
 }

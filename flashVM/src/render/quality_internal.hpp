@@ -6,6 +6,9 @@
 #include "flashvm/gradient.h"
 #include "flashvm/path.h"
 #include "stroke_constants.h"
+/* Test geometry with selected caps/joins, independently of raster availability or quality. */
+FVM_Result fvm_path_hit_test_style(const FVM_Path *, double x, double y, double width,
+                                   int even_odd, int *out, unsigned cap, unsigned join);
 /* Render vector coverage with per-call AA; no process/global renderer state is changed. */
 FVM_Result fvm_path_draw_quality(const FVM_Path *, FVM_RasterSurface *, FVM_RasterColor,
                                  double width, int even_odd, bool antialias,
