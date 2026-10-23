@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Interior radial focal fills/strokes: [EN](FOCAL_GRADIENTS.md) / [RU](FOCAL_GRADIENTS.ru.md). Endpoints and all nine stages remain open.
+
+
 Linear-light RGB gradient fills/strokes: [EN](LINEAR_RGB_GRADIENTS.md) / [RU](LINEAR_RGB_GRADIENTS.ru.md). This extension does not close any roadmap stage.
 
 

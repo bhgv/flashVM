@@ -1,5 +1,8 @@
 # Linear-light RGB gradients
 
+Interior focal extension v0.1197+: [signed radial fill/stroke origins](FOCAL_GRADIENTS.md) / [внутренние focal-позиции](FOCAL_GRADIENTS.ru.md). Earlier zero-focal-only notes describe historical checkpoints. Endpoints/clamping, DefineShape4/LineStyle2 and all nine roadmap stages remain open.
+
+
 Explicit linearRGB interpolation is available for C89 gradient fills/strokes and the Flash 8 beginGradientFill/lineGradientStyle methods. The existing [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, old entry-point defaults and callback identifiers remain unchanged. All nine roadmap stages remain open.
 
 ## C89 entries
