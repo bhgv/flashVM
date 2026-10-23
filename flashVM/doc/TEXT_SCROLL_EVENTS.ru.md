@@ -3,7 +3,7 @@
 Range notifications от text/current format следуют [edit-транзакции](TEXT_EDIT_EVENTS.ru.md); программные edits не синтезируют onChanged.
 
 
-Размеры и режимы раскладки теперь поддерживают [события диапазонов](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
+Размеры и режимы раскладки теперь поддерживают [события диапазонов](TEXT_GEOMETRY_EVENTS.ru.md). Text/style events расширены в TEXT_EDIT_EVENTS.ru.md; ввод остаётся открытым.
 
 
 Расширяется [bounded bridge прокрутки](TEXT_SCROLL.ru.md).
@@ -11,7 +11,7 @@ Range notifications от text/current format следуют [edit-транзак
 описывает порядок field-first, регистрацию listeners и аргумент source field.
 Явный offset setter уведомляет об effective изменении scroll/hscroll; размеры и
 режимы раскладки расширены в TEXT_GEOMETRY_EVENTS.ru.md. Ввод,
-автоматические события от text/style/fonts, HTML/mixed styled fields, полная reference
+reflow вне поддержанных native setters, HTML/mixed styled fields, полная reference
 семантика и физические платформы остаются открытыми. Все девять стадий открыты.
 
 ## Регистрация и владение графом
@@ -77,7 +77,7 @@ Native accessor GC barrier сохраняется: collection внутри callb
 использует независимые contexts, а не конкурентный доступ к одной VM. Нативные
 scroll query, path export и graph capture не исполняют observers.
 
-Остаются открыты события геометрии после изменений text/style/fonts, onChanged и ввод, Selection/focus, HTML/mixed-style и интеграция текста
+Остаются открыты reflow вне поддержанных native setters, onChanged и ввод, Selection/focus, HTML/mixed-style и интеграция текста
 SWF display list. Проверки используют аналитическую раскладку и исполняемые AVM1
 fixtures, а не binary oracle оригинального Flash Player. Приёмка устройств и
 других платформ отдельная; ни одна стадия плана не закрывается.

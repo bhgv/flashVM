@@ -7,7 +7,7 @@ This series adds bounded viewport scrolling to host-created TextField objects.
 The [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html)
 defines one-based vertical visual-line indices and zero-based horizontal pixels.
 This implementation uses the existing uniform-style native layout, not a Flash
-Player binary oracle. HTML/mixed-font fields, text/style-triggered scroll events, input,
+Player binary oracle. HTML/mixed-font fields, reflow outside native setters, input,
 SWF display-list text integration and physical platform acceptance remain open.
 All nine roadmap stages remain open.
 
@@ -35,11 +35,11 @@ read-only. Finite numeric conversions are truncated and clamped to geometry.
 NaN/infinity or failed conversion rejects without this setter changing offsets;
 side effects of an explicit user conversion remain visible. Geometry is measured
 after conversion so reentry cannot publish stale layout. A successful query/set
-normalizes both offsets. Text/style edits keep lazy layout admission; dimension
+normalizes both offsets. Text/style admission follows TEXT_EDIT_EVENTS.md; dimension
 and layout-policy admission follows TEXT_GEOMETRY_EVENTS.md;
 effective bounds are measured at the next scroll observation, export or capture;
 only normalizing observations/exports publish source offsets. Explicit offset changes now notify onScroller and listeners under the
-[observer transaction contract](TEXT_SCROLL_EVENTS.md). Text/style-only changes and native observations do not synthesize notifications. Legacy callback selectors retain their identities;
+[observer transaction contract](TEXT_SCROLL_EVENTS.md). Text/style events follow TEXT_EDIT_EVENTS.md; native observations do not synthesize notifications. Legacy callback selectors retain their identities;
 new selectors are appended and only rootless retired native stubs are upgraded.
 
 

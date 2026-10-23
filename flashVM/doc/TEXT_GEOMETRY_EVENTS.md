@@ -72,13 +72,12 @@ separate contexts, not concurrent access to one VM.
 
 ## Remaining scope
 
-Text assignment, replaceText, current/future TextFormat changes and font changes
-do not yet synthesize geometry events. Full bottomScroll/reference rounding,
-onChanged/user input, Selection/focus, HTML/mixed styles and SWF text display-list
-integration remain open. Rejected multiline/automatic dimension operations keep
-their previous limitations. This is no physical-device or foreign-platform
-acceptance claim; audio, timelines, graphics, JIT, concurrency, GC and debugger
-roadmap stages remain open.
+Text assignment, replaceText and current TextFormat now follow TEXT_EDIT_EVENTS.md;
+future formatting alone remains silent. Full bottomScroll/reference rounding,
+onChanged/input, Selection/focus, HTML/mixed styles, automatic font-source rebinding
+and SWF text display-list integration remain open. Rejected multiline/automatic
+dimension operations retain their previous constraints. Devices and foreign
+platforms require separate acceptance; all nine roadmap stages remain open.
 
 ## Validation
 

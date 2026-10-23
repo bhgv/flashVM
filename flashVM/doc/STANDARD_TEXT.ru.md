@@ -3,14 +3,14 @@
 Text assignment, replaceText и current setTextFormat уведомляют об изменении effective scroll ranges через [edit-транзакцию](TEXT_EDIT_EVENTS.ru.md). Future formatting и unchanged tuples молчаливы.
 
 
-Изменения размеров и режимов раскладки уведомляют onScroller при изменении effective positions или maxima: [допуск и транзакция](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
+Изменения размеров и режимов раскладки уведомляют onScroller при изменении effective positions или maxima: [допуск и транзакция](TEXT_GEOMETRY_EVENTS.ru.md). Text/style события расширены в TEXT_EDIT_EVENTS.ru.md; ввод остаётся открытым.
 
 
 Добавлена bounded-прокрутка одностильного поля: scroll/hscroll,
 read-only maxscroll/maxhscroll/bottomScroll и нативный query viewport.
 [Геометрия и передача состояния](TEXT_SCROLL.ru.md). Контуры учитывают scroll,
 clipping выполняет хост. Явные изменения offsets поддерживают
-[onScroller/listeners](TEXT_SCROLL_EVENTS.ru.md); события от text/style/fonts,
+[onScroller/listeners](TEXT_SCROLL_EVENTS.ru.md); reflow вне native setters,
 HTML/mixed-font и SWF display-list приёмка остаются открытыми.
 
 

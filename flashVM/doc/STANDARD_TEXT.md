@@ -3,15 +3,15 @@
 Text assignment, replaceText and current setTextFormat now notify changed effective scroll ranges through the [edit transaction](TEXT_EDIT_EVENTS.md). Future formatting and unchanged tuples stay silent.
 
 
-Dimension and layout-policy changes now notify onScroller when effective positions or maxima change; see [geometry admission and transaction](TEXT_GEOMETRY_EVENTS.md). Text/style events and input remain open.
+Dimension and layout-policy changes now notify onScroller when effective positions or maxima change; see [geometry admission and transaction](TEXT_GEOMETRY_EVENTS.md). Text/style events extend this through TEXT_EDIT_EVENTS.md; input remains open.
 
 
 Bounded uniform-field scrolling is now supported through scroll/hscroll and the
 read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
 viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).
 Contours include scroll displacement and remain host-clipped. Explicit offset
-changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); text/style
-events, HTML/mixed-font and SWF display-list acceptance remain open.
+changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); reflow outside
+native setters, HTML/mixed-font and SWF display-list acceptance remain open.
 
 
 Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.

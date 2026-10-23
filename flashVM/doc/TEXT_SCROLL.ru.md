@@ -7,7 +7,7 @@
 [Справочник Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html)
 задаёт вертикальный индекс visual line от единицы и горизонтальные пиксели от нуля.
 Используется существующая одностильная раскладка без oracle оригинального Flash.
-HTML/смешанные шрифты, события от text/style/fonts, ввод, текст display list SWF и приёмка
+HTML/смешанные шрифты, reflow вне native setters, ввод, текст display list SWF и приёмка
 на физических платформах остаются открытыми. Все девять стадий плана открыты.
 
 [fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L68) копирует геометрию на потоке владельца context. Задайте
@@ -35,11 +35,10 @@ NaN/infinity и ошибка conversion отклоняются без измен
 явные побочные эффекты пользовательского conversion сохраняются. Раскладка
 измеряется после conversion, поэтому reentry не публикует устаревшую геометрию.
 Успешный query/set нормализует обе координаты. Для размеров и режимов раскладки
-действует TEXT_GEOMETRY_EVENTS.ru.md. Text/style edits сохраняют
-lazy layout; эффективные границы вычисляются при scroll observation/export/capture;
+действует TEXT_GEOMETRY_EVENTS.ru.md. Text/style admission следует TEXT_EDIT_EVENTS.ru.md; эффективные границы вычисляются при scroll observation/export/capture;
 только нормализующие observation/export публикуют source offsets.
 Явные изменения offsets теперь вызывают onScroller и listeners по
-[контракту доставки](TEXT_SCROLL_EVENTS.ru.md). Изменения только text/style и нативные observations не создают уведомлений. Старые callback selectors сохраняют ID;
+[контракту доставки](TEXT_SCROLL_EVENTS.ru.md). Text/style events следуют TEXT_EDIT_EVENTS.ru.md; нативные observations не создают уведомлений. Старые callback selectors сохраняют ID;
 новые добавлены в конец, upgrade заменяет только rootless старые native stubs.
 
 

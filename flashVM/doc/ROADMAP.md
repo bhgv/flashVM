@@ -3,7 +3,7 @@
 TextField text/style scroll observers: [EN](TEXT_EDIT_EVENTS.md) / [RU](TEXT_EDIT_EVENTS.ru.md). Supported native content/current-format edits notify changed ranges. Input, mixed styled/display-list text and all nine roadmap stages remain open.
 
 
-TextField geometry observers: [EN](TEXT_GEOMETRY_EVENTS.md) / [RU](TEXT_GEOMETRY_EVENTS.ru.md). Dimensions and layout-policy range changes publish before synchronous callbacks. Text/style-triggered events, input and all nine roadmap stages remain open.
+TextField geometry observers: [EN](TEXT_GEOMETRY_EVENTS.md) / [RU](TEXT_GEOMETRY_EVENTS.ru.md). Dimensions and layout-policy range changes publish before synchronous callbacks. Input, full reference text acceptance and all nine roadmap stages remain open.
 
 
 Bounded explicit TextField scroll observers: [EN](TEXT_SCROLL_EVENTS.md) /

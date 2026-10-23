@@ -71,12 +71,12 @@ fonts/layout после уничтожения sender. Raw host userdata сох�
 
 ## Оставшийся объём
 
-Присваивание text, replaceText, изменения current/future TextFormat и fonts пока
-не создают geometry events. Полная bottomScroll/reference rounding семантика,
-onChanged/ввод, Selection/focus, HTML/mixed styles и текст SWF display list открыты.
-Отклоняемые multiline/automatic dimension операции сохраняют прежние ограничения.
-Реальные устройства и другие платформы проверяются отдельно; стадии audio,
-timelines, graphics, JIT, concurrency, GC и debugger остаются открытыми.
+Text assignment, replaceText и current TextFormat теперь следуют TEXT_EDIT_EVENTS.ru.md;
+future formatting само по себе не уведомляет. Полная bottomScroll/reference rounding
+семантика, onChanged/ввод, Selection/focus, HTML/mixed styles, автоматическая
+перепривязка font sources и текст SWF display list открыты. Отклоняемые multiline/
+automatic dimension операции сохраняют прежние ограничения. Устройства и другие
+платформы проверяются отдельно; все девять стадий остаются открытыми.
 
 ## Проверки
 
