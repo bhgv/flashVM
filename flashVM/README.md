@@ -1,4 +1,4 @@
-Development version: **0.1204** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1205** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1205: [Verified 192 signed focal fill stroke color and quality combinations](doc/FOCAL_GRADIENTS.md).
 
 v0.1204: [Verified four OS workers with 128 isolated signed focal paint and GC epochs](doc/FOCAL_GRADIENTS.md).
 
