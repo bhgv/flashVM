@@ -31,6 +31,9 @@ v0.1033: CLI проверяет одновременные голоса, кор�
 
 v0.1034: Проверены host pause, публикация кадра, root Stop, native JIT/GC, точный dequeue drain и release после StopSounds.
 
+
+v0.1035: C89-пример показывает конечное исчерпание, retained legacy PCM, pending FIFO и подтверждённый software drain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

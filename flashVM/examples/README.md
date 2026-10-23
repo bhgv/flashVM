@@ -1740,7 +1740,7 @@ clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
 v0.587: явная настройка необязательного хвоста и release stop на модели тишины; [контракт](../doc/PLAYER_AUDIO_RELEASE.ru.md).
 
 Исполняемый C89 учебник: [README](multimedia/swf_audio_queue/README.md),
-[main.c](multimedia/swf_audio_queue/main.c). Собственная модель FIFO показывает
+[main.c](multimedia/swf_audio_queue/main.c). Режим `--finite` различает пустые голоса, retained retry и фактический software drain. Собственная модель FIFO показывает
 отклонение/повтор одного PCM-блока, pause/clear, копируемые часы потребления и
 отдельное владение producer/mixer/device. Явный `--sdl` использует настоящий SDL2
 bridge при включённом SDK; модель работает без устройства. Тишина и dummy-driver

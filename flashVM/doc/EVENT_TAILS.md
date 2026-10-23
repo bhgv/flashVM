@@ -31,6 +31,9 @@ v0.1033: Check simultaneous opposite voices, short and multi-quantum tails, FWS/
 
 v0.1034: Exercise host pause, completed frame publication, root Stop, native JIT and GC, exact dequeue completion and post-stop anonymous release.
 
+
+v0.1035: Extend the queue tutorial with explicit finite exhaustion, retained legacy PCM, pending FIFO observation and acknowledged software drain.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

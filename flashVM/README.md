@@ -1,10 +1,12 @@
-Development version: **0.1034** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1035** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1035: [Extend the queue tutorial with explicit finite exhaustion, retained legacy PCM, pending FIFO observation and acknowledged software drain.](doc/EVENT_TAILS.md).
 
 v0.1034: [Exercise host pause, completed frame publication, root Stop, native JIT and GC, exact dequeue completion and post-stop anonymous release.](doc/EVENT_TAILS.md).
 

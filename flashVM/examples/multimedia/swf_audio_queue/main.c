@@ -64,11 +64,13 @@ int main(int argc, char **argv) /* Keep the host example portable C89. */
     FVM_SDLAudioQueue *device = 0; /* Own a native device only in explicit SDL mode. */
     FVM_SWFSoundOutputInfo info; /* Receive copied queue state and consumed-frame time. */
     size_t accepted = 0; /* Receive complete frames accepted by one pump. */
+    int finite = argc == 2 && !strcmp(argv[1], "--finite"); /* Demonstrate finite exhaustion and retained legacy retry without opening a device. */
+    int pending = 0; /* Copy combined future/retry/FIFO work without inferring drain from pump status. */
     int sdl = 0; /* Default to a deterministic model rather than opening hardware. */
     int status = 1; /* Report success only after cleanup-relevant operations succeed. */
-    if (argc != 2 || (strcmp(argv[1], "--demo") && strcmp(argv[1], "--sdl"))) /* Validate before resource acquisition. */
+    if (argc != 2 || (strcmp(argv[1], "--demo") && strcmp(argv[1], "--sdl") && !finite)) /* Validate before resource acquisition. */
     { /* Explain both explicitly selected paths. */
-        fprintf(stderr, "usage: %s --demo|--sdl\n", argv[0]); /* SDL mode opens the default playback device. */
+        fprintf(stderr, "usage: %s --demo|--sdl|--finite\n", argv[0]); /* SDL mode opens the default playback device. */
         return argc == 1 ? 0 : 2; /* Usage succeeds; malformed input fails. */
     } /* Finish argument validation. */
     sdl = strcmp(argv[1], "--sdl") == 0; /* Choose the backend before acquiring the mixer. */
@@ -98,6 +100,24 @@ int main(int argc, char **argv) /* Keep the host example portable C89. */
         goto cleanup; /* Preserve caller ownership of mixer/device. */
     if (!checked(fvm_swf_sound_output_set_release(output, EXAMPLE_RELEASE), "release configuration")) /* Allocate optional history before any PCM submission. */
         goto cleanup; /* Configuration failure preserves ordinary ownership cleanup. */
+    if (finite) /* Keep the empty mixer to isolate exhaustion, retained ownership and software drain. */
+    { /* Finite mode emits no new silent block from an empty mixer. */
+        if (fvm_swf_sound_output_pump_finite(output, &accepted) != FVM_NOT_FOUND || accepted) goto cleanup; /* No output was created or voice time consumed. */
+        if (!checked(fvm_swf_sound_output_pending(output, &pending), "empty pending") || pending) goto cleanup; /* Empty future work is distinct from a rejected retry. */
+        if (fvm_swf_sound_output_pump(output, &accepted) != FVM_ERROR || accepted) goto cleanup; /* Legacy mode deliberately prepares the one rejected silent block. */
+        if (!checked(fvm_swf_sound_output_pending(output, &pending), "retry pending") || !pending) goto cleanup; /* Mixer is empty but pending PCM is real work. */
+        if (!checked(fvm_swf_sound_output_pump_finite(output, &accepted), "finite retry") || accepted != EXAMPLE_BLOCK) goto cleanup; /* Retry preserves the entire legacy block without trimming. */
+        if (fvm_swf_sound_output_pump_finite(output, &accepted) != FVM_NOT_FOUND || accepted) goto cleanup; /* No fresh silent blocks follow acceptance. */
+        if (!checked(fvm_swf_sound_output_pending(output, &pending), "queued pending") || !pending) goto cleanup; /* Accepted FIFO still needs a consumer despite NOT_FOUND. */
+        if (!checked(fvm_swf_sound_output_pause(output, 0), "finite resume")) goto cleanup; /* Host explicitly allows consumption of even this short queue. */
+        model.frames = 0; /* The deterministic software consumer now acknowledges complete dequeue. */
+        if (!checked(fvm_swf_sound_output_pending(output, &pending), "drained pending") || pending) goto cleanup; /* All future/retry/FIFO stages are empty. */
+        info.struct_size = sizeof(info); /* Copy the validated admission/dequeue epoch. */
+        if (!checked(fvm_swf_sound_output_info(output, &info), "finite clock")) goto cleanup; /* No wall-time or DAC position is invented. */
+        printf("finite pending=%d submitted=%.0f played=%.0f\n", pending, info.submitted_frames, info.played_frames); /* Expected zero pending and 128 accepted/dequeued frames. */
+        status = 0; /* Protocol demonstration completed without an audio device. */
+        goto cleanup; /* Preserve the shared dependency-ordered cleanup. */
+    } /* Actual voiced PCM and native device acceptance belong to separate tests. */
     if (!sdl && fvm_swf_sound_output_pump(output, &accepted) != FVM_ERROR) /* Reject the model's first complete block. */
         goto cleanup; /* Unexpected behavior is an ordinary tutorial failure. */
     if (!checked(fvm_swf_sound_output_pump(output, &accepted), "pump/retry")) /* Retry identical PCM or perform the first native write. */

@@ -127,6 +127,25 @@ control/ownership and no nonzero seed; it is not audible fade acceptance.
 | [`fvm_swf_sound_output_set_release`](../../../include/flashvm/swf_sound_output.h#L154) | Allocates optional bounded history transactionally before first submission; caller owns output, errors preserve its setting. [Contract](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_set_release). |
 | [`fvm_swf_sound_output_stop_release`](../../../include/flashvm/swf_sound_output.h#L160) | Clears old voices/queue, optionally submits a tail without pausing; silence here needs no tail. [Status/retry/ownership](../../../doc/PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_stop_release). |
 
+## Finite protocol / Конечный протокол
+
+`--finite` needs no SDL/VM/SWF. Empty finite pumping returns NOT_FOUND without
+creating silence. The original pump then deliberately prepares/rejects one 128-frame
+silent block; finite pump must retry all of it. NOT_FOUND afterward still leaves
+accepted FIFO work. Only explicit software consumption makes pending zero and
+reports `finite pending=0 submitted=128 played=128`. This isolates ownership and
+completion protocol; voiced PCM and real-worker evidence are in [the contract](../../../doc/EVENT_TAILS.md).
+
+`--finite` показывает без устройства: пустой finite pump не синтезирует тишину,
+но обязан повторить весь старый pending. После NOT_FOUND принятый FIFO остаётся
+работой до явного потребления. Ожидается pending0 и submitted/played128. Это
+проверка протокола, а не слышимого PCM или физической A/V-синхронизации.
+
+| API | Individual behavior and guide |
+| --- | --- |
+| [`fvm_swf_sound_output_pump_finite`](../../../include/flashvm/swf_sound_output.h#L133) | Synchronously render only live future frames or resend an indivisible pending block. Optional accepted clears first; empty future returns NOT_FOUND, not drain. Retain/serialize mixer/output/backend; no allocation/VM/GC. [Finite contract](../../../doc/EVENT_TAILS.md). |
+| [`fvm_swf_sound_output_pending`](../../../include/flashvm/swf_sound_output.h#L142) | Observe voices, retry and fresh accepted FIFO under one callback barrier, preserving out on error. Works while paused, no production or source advance; borrowed owners remain live and serialized. [Completion contract](../../../doc/EVENT_TAILS.md). |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -144,7 +163,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:50](../../../include/flashvm/swf_sound_output.h#L50) |
 | `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:148](../../../include/flashvm/swf_sound_output.h#L148) |
 | `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:146](../../../include/flashvm/swf_sound_output.h#L146) |
+| `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:142](../../../include/flashvm/swf_sound_output.h#L142) |
 | `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:124](../../../include/flashvm/swf_sound_output.h#L124) |
+| `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:133](../../../include/flashvm/swf_sound_output.h#L133) |
 | `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:154](../../../include/flashvm/swf_sound_output.h#L154) |
 | `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:152](../../../include/flashvm/swf_sound_output.h#L152) |
 | `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:160](../../../include/flashvm/swf_sound_output.h#L160) |
