@@ -146,6 +146,17 @@ the guide. LINESTYLE2 and boundary focal positions remain unsupported.
 и не кодирует SWF. Байтовые тесты перечислены в руководстве; LINESTYLE2 и
 граничные фокусы остаются неподдержанными.
 
+
+File-authored strokes: [bounded LINESTYLE2](../../../doc/SHAPE4_STROKES.md)
+feeds the same gradient stroke sampler with round caps/joins and NoClose commands.
+The native C89 tutorial does not encode a SWF; the guide identifies raw-byte
+scene fixtures and the remaining cap/join/scaling restrictions.
+
+Файловые обводки: [ограниченный LINESTYLE2](../../../doc/SHAPE4_STROKES.ru.md)
+использует тот же градиентный семплер с круглыми концами/соединениями и NoClose.
+Нативный пример C89 не кодирует SWF; руководство перечисляет байтовые тесты сцены
+и оставшиеся ограничения концов, соединений и масштабирования.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

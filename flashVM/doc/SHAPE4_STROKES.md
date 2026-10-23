@@ -37,6 +37,11 @@ https://open-flash.github.io/mirrors/swf-spec-19.pdf
 actual scene characters, and compares full surfaces against the public C89
 stroke/gradient APIs for 24 solid/linear/radial/focal and mode combinations.
 
+
+## Validation checkpoint
+
+Bounded LINESTYLE2 v0.1225–v0.1238: DefineShape4 now accepts round caps/joins, ordinary scaled widths, direct RGBA or solid/linear/radial/focal FillType paints, and NoClose. A shared fill decoder keeps 1–15-stop spread/interpolation/interior FIXED8 admission identical in fill and stroke banks. Managed strokes retain lineGradient rather than gradient; NoClose becomes owned command geometry and requires no new wire/resource/callback type. Thirteen new fixtures cover 24 initial type/mode cases, hairline through maximum UI16 widths, closed/capped topology, all 65536 flag headers, 180 stop-count/type/mode cases, all 511 interior FIXED8 focal positions, truncation/reserved/bitmap/focal rejection, twelve scenes copied through binary/channel transfer after sender destruction, six allocation-fault configurations, character replacement and sixteen seeks, four OS workers with 96 independent load/render/GC epochs, six mixed opposite-origin fill/stroke scenes and StateNewStyles banks. All 143 selected native tests pass; 12 ASan/UBSan tests and the allocation fixture with explicit --no-faults pass (sanitizer unwind limitation; real fault sweeps pass natively), as do five fresh-build SDK-free no-graphics admission/error tests. LeakSanitizer is disabled. Documentation source links and frontend example checks pass. Non-round caps/joins, non-scaling flags, pixel hinting, bitmap strokes, focal endpoints/clamping, exact Flash nonuniform/shear stroke behavior and reference raster rounding remain open. Physical-device/foreign-platform acceptance is separate; all nine roadmap stages remain open. [Contract](SHAPE4_STROKES.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

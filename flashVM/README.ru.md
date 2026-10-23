@@ -1,4 +1,4 @@
-Версия разработки: **0.1237** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1238** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1238: [Проверенный этап круглых LINESTYLE2-обводок с нативными sanitizer и чистой безграфической сборкой](doc/SHAPE4_STROKES.ru.md).
 
 v0.1237: [StateNewStyles восстанавливает собственные банки фокусных NoClose-обводок и смещения](doc/SHAPE4_STROKES.ru.md).
 

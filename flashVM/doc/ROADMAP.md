@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Current stroke checkpoint: [bounded LINESTYLE2](SHAPE4_STROKES.md) / [ограниченные обводки LINESTYLE2](SHAPE4_STROKES.ru.md). Round solid/gradient strokes and NoClose are available; other stroke semantics and all nine stages remain open.
+
 Current file-graphics checkpoint: [SWF8 DefineShape4 fills](SHAPE4_FILLS.md) / [заливки DefineShape4](SHAPE4_FILLS.ru.md). LINESTYLE2 and focal endpoints remain open; all nine stages remain open.
 
 Interior radial focal fills/strokes: [EN](FOCAL_GRADIENTS.md) / [RU](FOCAL_GRADIENTS.ru.md). Endpoints and all nine stages remain open.
