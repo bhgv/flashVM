@@ -30,3 +30,15 @@ stroke_colors[0] = 0x00FF00; // Изменение массива не меня�
 stroke_mc.moveTo(0, 130); // Начинаем линию посередине вертикальной области матрицы.
 stroke_mc.lineTo(100, 130); // Рисуем несколько отражённых периодов на одной линии.
 stroke_mc.endFill(); // Завершаем только заливку; текущая градиентная обводка остаётся выбранной.
+
+/* SWF8: сравниваем более светлую середину linearRGB с прежней RGB-рампой. */
+var linear_mc:MovieClip = this.createEmptyMovieClip("linear_mc", 3); // Родитель удерживает отдельный клип для новой цветовой политики.
+var linear_colors:Array = [0x000000, 0xFFFFFF]; // Задаём чёрный и белый без изменения общей alpha-рампы.
+var linear_matrix:Object = {matrixType:"box", x:0, y:160, w:100, h:40, r:0}; // Размещаем копируемую матрицу ниже прежних примеров.
+linear_mc.beginGradientFill("linear", linear_colors, alphas, ratios, linear_matrix, "pad", "linearRGB", 0); // Выбираем интерполяцию RGB в линейном свете и нулевой focal.
+linear_mc.moveTo(0, 160); // Начинаем прямоугольник в верхнем левом углу матрицы.
+linear_mc.lineTo(100, 160); // Добавляем верхнюю сторону.
+linear_mc.lineTo(100, 200); // Добавляем правую сторону.
+linear_mc.lineTo(0, 200); // Добавляем нижнюю сторону.
+linear_mc.lineTo(0, 160); // Замыкаем контур явной линией.
+linear_mc.endFill(); // Готовый path удерживает скопированный interpolation selector.

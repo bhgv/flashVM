@@ -14,7 +14,7 @@ extern "C"
         FVM_GRADIENT_LINEAR = 0 /* Ratio grows from the left edge to the right edge. */,
         FVM_GRADIENT_RADIAL = 1 /* Ratio grows from the center to the unit circle. */
     } FVM_GradientType;
-    /* Extension policy outside the normalized ramp; existing APIs always select PAD. */
+    /* Extension policy outside the ramp; the original no-selector fill always selects PAD. */
     typedef enum FVM_GradientSpread
     {
         FVM_GRADIENT_SPREAD_PAD = 0, /* Extend the endpoint colors. */

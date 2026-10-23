@@ -336,6 +336,10 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING AN
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_gradient_strokes_example.py
             $<TARGET_FILE:flashvm_examples_embedding_gradients_main>)
   set_tests_properties(flashvm_gradient_strokes_tutorial PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+  add_test(NAME flashvm_gradient_linear_rgb_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_gradient_linear_rgb_example.py
+            $<TARGET_FILE:flashvm_examples_embedding_gradients_main>)
+  set_tests_properties(flashvm_gradient_linear_rgb_tutorial PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
 endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING AND TARGET flashvm_examples_embedding_text_layout_main)
   add_test(NAME flashvm_text_kerning_tutorial

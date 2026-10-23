@@ -83,6 +83,10 @@ linear stroke linearRGB: 188 188 188 128
 
 NO_GRAPHICS follows the earlier backend message and does not claim to render these values. Original-player and physical-platform comparisons remain separate.
 
+Run `python3 flashVM/scripts/check_gradient_linear_rgb_example.py <path-to-example>` from the repository root. CTest registers `flashvm_gradient_linear_rgb_tutorial`; the backend-free executable explicitly skips with code 77. The checker requires all eight actual output lines, including the legacy fill and spread samples.
+
+AS2 companion также показывает отдельный SWF8 linearRGB-клип. CMake не компилирует этот illustrative source в SWF; реальные AVM1 fixtures проверяют соответствующие операции и JIT отдельно. Checker проверяет все восемь строк C89-вывода, а без backend явно пропускается.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
