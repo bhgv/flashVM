@@ -16,6 +16,7 @@
 #include "text_state.hpp"
 #include "text_listeners.hpp"
 #include "../core/numeric_constants.h"
+#include "../core/property_lookup.hpp"
 #include "base_state.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/execution_work_scope.hpp"
@@ -666,9 +667,17 @@ class GeometryNotification
         {
             FVM_Result result = work.step();
             if (result != FVM_OK) return result;
-            observed_ = cursor->properties.find("onScroller") != cursor->properties.end() ||
-                        cursor->methods.find("onScroller") != cursor->methods.end() ||
-                        cursor->accessors.find("onScroller") != cursor->accessors.end();
+            const fvm_detail::string handler("onScroller"), resolver("__resolve");
+            /* Use the same SWF6 folding/visibility policy as eventual optional dispatch.
+             * A loaded resolver is potential observer code, but runs only after publication. */
+            observed_ = fvm_property_available(context_, cursor, handler) &&
+                (fvm_property_find(context_, cursor->properties, handler) != cursor->properties.end() ||
+                 fvm_property_find(context_, cursor->methods, handler) != cursor->methods.end() ||
+                 fvm_property_find(context_, cursor->accessors, handler) != cursor->accessors.end());
+            if (!observed_ && context_->swf_loaded && fvm_property_available(context_, cursor, resolver))
+                observed_ = fvm_property_find(context_, cursor->properties, resolver) != cursor->properties.end() ||
+                    fvm_property_find(context_, cursor->methods, resolver) != cursor->methods.end() ||
+                    fvm_property_find(context_, cursor->accessors, resolver) != cursor->accessors.end();
         }
         if (!observed_)
             return cursor ? FVM_INVALID_ARGUMENT : FVM_OK;
