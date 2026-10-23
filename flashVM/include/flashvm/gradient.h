@@ -49,6 +49,13 @@ extern "C"
     FVM_API FVM_Result fvm_path_draw_gradient_spread(const FVM_Path *, FVM_RasterSurface *,
                                                      const FVM_Gradient *, int even_odd,
                                                      unsigned int spread);
+    /* Stroke a path with the borrowed gradient and PAD/REFLECT/REPEAT policy.
+       Width is in destination pixels, finite and greater than zero up to 4096.
+       Uses existing backend stroke caps/joins and antialiasing; no VM is retained.
+       Invalid arguments and preparation failures preserve destination pixels. */
+    FVM_API FVM_Result fvm_path_stroke_gradient(const FVM_Path *, FVM_RasterSurface *,
+                                                 const FVM_Gradient *, double width,
+                                                 unsigned int spread);
 #ifdef __cplusplus
 }
 #endif

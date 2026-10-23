@@ -490,7 +490,15 @@ extern "C" FVM_Result fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst,
 FVM_Result fvm_path_mask_quality(const FVM_Path *p, FVM_RasterSurface *dst,
                                 const FVM_RasterSurface *src, int even_odd, bool antialias)
 {
-    if (!valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
+    return fvm_path_mask_width_quality(p, dst, src, 0, even_odd, antialias);
+}
+/* Prepare fill/stroke coverage completely before source-over composition touches pixels. */
+FVM_Result fvm_path_mask_width_quality(const FVM_Path *p, FVM_RasterSurface *dst,
+                                       const FVM_RasterSurface *src, double width,
+                                       int even_odd, bool antialias)
+{
+    if (!p || !(width >= 0 && width <= 4096) ||
+        !valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
         src->height != dst->height)
         return FVM_INVALID_ARGUMENT;
 
@@ -504,7 +512,7 @@ FVM_Result fvm_path_mask_quality(const FVM_Path *p, FVM_RasterSurface *dst,
     /* Initialization / Инициализация локального состояния. */
     FVM_RasterSurface s = {mask, dst->width, dst->height, (size_t)dst->width * 4};
     FVM_RasterColor white = {255, 255, 255, 255};
-    FVM_Result result = fvm_path_draw_quality(p, &s, white, 0, even_odd, antialias);
+    FVM_Result result = fvm_path_draw_quality(p, &s, white, width, even_odd, antialias);
     if (result == FVM_OK)
         for (unsigned int y = 0; y < dst->height; ++y)
             for (unsigned int x = 0; x < dst->width; ++x)

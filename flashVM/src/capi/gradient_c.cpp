@@ -144,6 +144,9 @@ extern "C" FVM_Result fvm_path_draw_gradient(const FVM_Path *path, FVM_RasterSur
 {
     return fvm_path_draw_gradient_quality(path, surface, gradient, even_odd, true);
 }
+/* Shared validated paint implementation; width zero retains legacy fill coverage. */
+static FVM_Result gradient_paint(const FVM_Path *, FVM_RasterSurface *, const FVM_Gradient *,
+                                 double width, int even_odd, unsigned int spread, bool antialias);
 /* Apply context-selected edge coverage without changing public standalone defaults. */
 FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *path, FVM_RasterSurface *surface,
                                              const FVM_Gradient *gradient, int even_odd, bool antialias)
@@ -163,6 +166,29 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
                                                   const FVM_Gradient *gradient, int even_odd,
                                                   unsigned int spread, bool antialias)
 {
+    return gradient_paint(path, surface, gradient, 0, even_odd, spread, antialias);
+}
+/* Public stroke entry keeps antialiasing local and never retains borrowed paint data. */
+extern "C" FVM_Result fvm_path_stroke_gradient(const FVM_Path *path, FVM_RasterSurface *surface,
+                                               const FVM_Gradient *gradient, double width,
+                                               unsigned int spread)
+{
+    return fvm_path_stroke_gradient_quality(path, surface, gradient, width, spread, true);
+}
+/* Validate positive stroke width before allocating a sampled source or backend mask. */
+FVM_Result fvm_path_stroke_gradient_quality(const FVM_Path *path, FVM_RasterSurface *surface,
+                                            const FVM_Gradient *gradient, double width,
+                                            unsigned int spread, bool antialias)
+{
+    if (!(width > 0 && width <= 4096))
+        return FVM_INVALID_ARGUMENT;
+    return gradient_paint(path, surface, gradient, width, 0, spread, antialias);
+}
+/* Share the legacy sampler and compositing order for both fill and stroke masks. */
+static FVM_Result gradient_paint(const FVM_Path *path, FVM_RasterSurface *surface,
+                                 const FVM_Gradient *gradient, double width, int even_odd,
+                                 unsigned int spread, bool antialias)
+{
     if (spread != FVM_GRADIENT_SPREAD_PAD && spread != FVM_GRADIENT_SPREAD_REFLECT &&
         spread != FVM_GRADIENT_SPREAD_REPEAT)
         return FVM_INVALID_ARGUMENT;
@@ -171,6 +197,7 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
         return FVM_INVALID_ARGUMENT;
 #if !defined(FVM_HAS_AGG) && !defined(FVM_HAS_CAIRO)
     (void)antialias;
+    (void)width;
     return FVM_UNSUPPORTED;
 #else
     try
@@ -192,7 +219,7 @@ FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *path, FVM_Raste
                 p[3] = color.a;
             }
         FVM_RasterSurface source = {pixels.begin(), surface->width, surface->height, stride};
-        return fvm_path_mask_quality(path, surface, &source, even_odd, antialias);
+        return fvm_path_mask_width_quality(path, surface, &source, width, even_odd, antialias);
     }
     catch (const std::bad_alloc &)
     {

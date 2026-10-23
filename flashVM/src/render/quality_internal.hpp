@@ -18,6 +18,14 @@ FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *, FVM_RasterSurface *,
 FVM_Result fvm_path_draw_gradient_spread_quality(const FVM_Path *, FVM_RasterSurface *,
                                                  const FVM_Gradient *, int even_odd,
                                                  unsigned int spread, bool antialias);
+/* Stroke-gradient sampling uses a positive destination-space width and local edge policy. */
+FVM_Result fvm_path_stroke_gradient_quality(const FVM_Path *, FVM_RasterSurface *,
+                                            const FVM_Gradient *, double width,
+                                            unsigned int spread, bool antialias);
+/* A zero width selects fill coverage; a positive width selects backend stroke coverage. */
+FVM_Result fvm_path_mask_width_quality(const FVM_Path *, FVM_RasterSurface *,
+                                       const FVM_RasterSurface *, double width,
+                                       int even_odd, bool antialias);
 /* Sample existing bitmap paint without changing its smoothing option; select only edge AA. */
 FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *, FVM_RasterSurface *,
                                         const FVM_BitmapPaint *, int even_odd, bool antialias);
