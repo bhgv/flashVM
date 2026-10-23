@@ -14,3 +14,5 @@ v0.1055: Real SDL dummy workers check category/common sums while draining author
 v0.1056: Mixed refill, resume, completion and public stream diagnostics observe the stream cache and origin ledger together.
 
 v0.1057: The origins tutorial reports one-poll queued and drained snapshots; its independent ten-mode PCM checker verifies both reports.
+
+v0.1058: Seeded tests cover one-poll exact-clock boundaries, ring wrap, regression, target mismatch and acknowledged reset.

@@ -14,3 +14,5 @@ v0.1055: Worker SDL dummy проверяет суммы clock при authored St
 v0.1056: Mixed refill, resume, завершение и stream-диагностика используют единое наблюдение.
 
 v0.1057: C89-пример выводит единые снимки до и после drain; независимый ten-mode PCM checker проверяет оба отчёта.
+
+v0.1058: Seeded-проверки охватывают границу точности clock, wrap, регрессию, target mismatch и сброс.
