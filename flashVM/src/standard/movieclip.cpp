@@ -1392,6 +1392,8 @@ FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     data->properties["width"] = number(width);
     data->properties["lineRgb"] = number(packed_rgb(rgb));
     data->properties["lineAlpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
+    /* [GC:] A new solid/disabled line style releases only the current stroke ramp. */
+    data->properties.erase("lineGradient");
     data->properties["active"] = object(0);
     fvm_value_undefined(out);
     return FVM_OK;
@@ -1441,6 +1443,11 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         {
             /* [GC:] This path retains the live bitmap and copied matrix chosen when it begins. */
             part->properties["bitmap"] = data->properties["bitmap"];
+        }
+        if (data->properties.find("lineGradient") != data->properties.end())
+        {
+            /* [GC:] Keep this path's stroke ramp independent of later style changes. */
+            part->properties["lineGradient"] = data->properties["lineGradient"];
         }
         const char *style[] = {"fill", "rgb", "alpha", "stroke", "width", "lineRgb", "lineAlpha"};
         for (unsigned int i = 0; i < 7; ++i)
@@ -1555,6 +1562,8 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     data->properties["alpha"] = data->properties["lineAlpha"] = number(100);
     /* [GC:] Clearing graphics releases the active/current ramp after dropping all path edges. */
     data->properties.erase("gradient");
+    /* [GC:] Clearing disables strokes and releases their current descriptor as well. */
+    data->properties.erase("lineGradient");
     /* [GC:] Release only the current bitmap style; completed paths retain their own source. */
     data->properties.erase("bitmap");
     fvm_value_undefined(out);
@@ -2278,8 +2287,19 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 r = numeric(c, part, "width", width);
             double scale = vector_length(world.xx, world.yx);
             if (r == FVM_OK)
-                r = fvm_path_draw_quality(p, surface, color(rgb, a, transform), width ? width * scale : 1,
-                                  0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+            {
+                if (part->properties.find("lineGradient") != part->properties.end())
+                {
+                    /* A collapsed positive-width stroke contributes no gradient coverage. */
+                    if (!width || scale > 0)
+                        r = fvm_movieclip_gradient_draw(c, part, world, p, surface,
+                                                         transform.multiply, transform.add, 0,
+                                                         width ? width * scale : 1);
+                }
+                else
+                    r = fvm_path_draw_quality(p, surface, color(rgb, a, transform), width ? width * scale : 1,
+                                              0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+            }
             if (r == FVM_OK && coverage)
             {
                 FVM_RasterColor opaque = {255, 255, 255, 255};

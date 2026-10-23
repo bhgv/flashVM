@@ -72,6 +72,11 @@ FVM_Result fvm_movieclip_copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Ob
         /* [GC:] Clone the current ramp together with its aliases in active/completed paths. */
         bundle->properties["gradient"] = source->properties["gradient"];
     }
+    if (source->properties.find("lineGradient") != source->properties.end())
+    {
+        /* [GC:] Clone both current ramps in the same graph to preserve cross-path aliases. */
+        bundle->properties["lineGradient"] = source->properties["lineGradient"];
+    }
     FVM_Value value = object(bundle), restored;
     unsigned char *bytes = 0;
     size_t size = 0;
@@ -94,6 +99,11 @@ FVM_Result fvm_movieclip_copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Ob
     {
         /* [GC:] Adopt the cloned current ramp rather than retaining the source's descriptor. */
         destination->properties["gradient"] = restored.object->properties["gradient"];
+    }
+    if (restored.object->properties.find("lineGradient") != restored.object->properties.end())
+    {
+        /* [GC:] Future duplicate paths adopt their own copied stroke descriptor. */
+        destination->properties["lineGradient"] = restored.object->properties["lineGradient"];
     }
     if (bitmap_paths)
     {

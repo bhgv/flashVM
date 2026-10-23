@@ -6,7 +6,7 @@ non-MovieClip receiver) and a valid [`FVM_Value`](../include/flashvm/value.h#L24
 wraps to Uint32; other operands undergo AVM1 string coercion. Counted `clip:frame`
 paths resolve before selecting actions. A missing target/frame is a no-op; unsupported
 slash-only selector syntax returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). The private
-[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3389) receives an already resolved clip and numeric/string selector.
+[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3409) receives an already resolved clip and numeric/string selector.
 Neither route seeks the playhead, applies scene controls, emits onEnterFrame, polls
 timers or advances children. Caller ownership of context/arguments lasts through return.
 
@@ -101,7 +101,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3389](../src/standard/movieclip.cpp#L3389) |
+| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3409](../src/standard/movieclip.cpp#L3409) |
 | `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:30](../src/standard/movieclip_constants.h#L30) |
 | `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:24](../src/standard/movieclip_constants.h#L24) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

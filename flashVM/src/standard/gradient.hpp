@@ -7,7 +7,8 @@
 /* [GC:] Read immutable managed gradient data and draw with its composed matrix/color transform. */
 FVM_Result fvm_movieclip_gradient_draw(FVM_Context *, FVM_Object *paint, const FVM_Affine &world,
                                        const FVM_Path *, FVM_RasterSurface *,
-                                       const double multiply[4], const double add[4], int even_odd);
+                                       const double multiply[4], const double add[4], int even_odd,
+                                       double stroke_width = 0);
 /* Copy ActionScript gradient arguments into managed drawing state without borrowing arrays. */
 FVM_Result fvm_movieclip_gradient_begin(FVM_Context *, FVM_Object *, unsigned int,
                                         const FVM_Value *, FVM_Value *, void *);

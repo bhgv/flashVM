@@ -44,13 +44,14 @@ FVM_Result byte(FVM_Object *o, const char *key, unsigned char &out)
  */
 FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const FVM_Affine &world,
                                        const FVM_Path *path, FVM_RasterSurface *surface,
-                                       const double multiply[4], const double add[4], int even_odd)
+                                       const double multiply[4], const double add[4], int even_odd,
+                                       double stroke_width)
 {
     if (!c || !paint || paint->owner != c || !surface || !multiply || !add)
         return FVM_INVALID_ARGUMENT;
     /* [GC:] The scene owns these immutable descriptors throughout the native render call. */
     FVM_Object *record = 0, *stops = 0;
-    FVM_Result r = object(c, paint, "gradient", record);
+    FVM_Result r = object(c, paint, stroke_width > 0 ? "lineGradient" : "gradient", record);
     if (r == FVM_OK)
         r = object(c, record, "stops", stops);
     if (r != FVM_OK)
@@ -128,6 +129,9 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     }
     gradient.stops = values.begin();
     gradient.count = values.size();
+    if (stroke_width > 0)
+        return fvm_path_stroke_gradient_quality(path, surface, &gradient, stroke_width, spread,
+                                                 c->stage_quality != FVM_STAGE_QUALITY_LOW);
     return fvm_path_draw_gradient_spread_quality(path, surface, &gradient, even_odd, spread,
                                                 c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }
