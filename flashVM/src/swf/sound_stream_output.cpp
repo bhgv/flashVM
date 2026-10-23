@@ -217,13 +217,13 @@ static FVM_Result stream_mix_clock(FVM_SWFStreamOutput *s, FVM_SWFSoundMixQueue 
 
 /* Caller holds StreamBusy; account exactly one acknowledged zero-base event block. */
 static FVM_Result stream_mix_tail_locked(FVM_SWFStreamOutput *s, FVM_SWFSoundMixQueue *mix,
-                                         size_t *accepted)
+                                         size_t *accepted, bool finite = false)
 {
     FVM_SWFSoundMixQueueClock clock;
     FVM_Result result = stream_mix_clock(s, mix, clock);
     if (result != FVM_OK) return result;
     size_t count = 0;
-    result = fvm_swf_sound_mix_queue_pump_tail_observed(mix, s->block, s->target, &count, &clock, false);
+    result = fvm_swf_sound_mix_queue_pump_tail_observed(mix, s->block, s->target, &count, &clock, finite);
     if (result != FVM_OK) return result;
     s->info.submitted_frames += (double)count;
     s->info.played_frames = clock.played_frames;
@@ -245,8 +245,8 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_mix_tail(FVM_SWFStreamOutput *s
 }
 
 /* Choose authorized base or gated events without allowing a tail retry to become base input. */
-extern "C" FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *s,
-    FVM_SWFSoundMixQueue *mix, unsigned int frame, size_t *accepted)
+static FVM_Result stream_pump_mix_until(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, unsigned int frame, size_t *accepted, bool finite)
 {
     if (accepted) *accepted = 0;
     if (!stream_output(s) || !fvm_swf_sound_mix_queue_matches(mix, &s->backend))
@@ -262,7 +262,7 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *
     if (pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL)
     {
         if (s->info.pending_frames) return FVM_INVALID_ARGUMENT;
-        return stream_mix_tail_locked(s, mix, accepted);
+        return stream_mix_tail_locked(s, mix, accepted, finite);
     }
     if (pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE &&
         pending.frames != s->info.pending_frames) return FVM_INVALID_ARGUMENT;
@@ -273,7 +273,21 @@ extern "C" FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *
     if (result != FVM_NOT_FOUND && result != FVM_OK) return result;
     if (result == FVM_OK && next <= frame) return FVM_NOT_FOUND;
     /* Only a true frame hold or source EOF authorizes zero-base events, never base backpressure. */
-    return stream_mix_tail_locked(s, mix, accepted);
+    return stream_mix_tail_locked(s, mix, accepted, finite);
+}
+
+/* Keep the existing adaptive/padded scheduling ABI and source gate policy. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_mix_until(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, unsigned int frame, size_t *accepted)
+{
+    return stream_pump_mix_until(s, mix, frame, accepted, false);
+}
+
+/* Opt in to a finite voice horizon without changing base authorization or retained retry order. */
+extern "C" FVM_Result fvm_swf_stream_output_pump_mix_finite_until(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, unsigned int frame, size_t *accepted)
+{
+    return stream_pump_mix_until(s, mix, frame, accepted, true);
 }
 
 /* Pause is explicit: priming/resume policy belongs to the embedding host. */

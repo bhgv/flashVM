@@ -25,7 +25,7 @@ snapshot, mixer, mix queue и exclusive backend. Передачи владени
 | --- | --- |
 | [`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L104) | Optional accepted обнуляется сразу. OK принимает один блок либо нулевой marker источника. Неверный stream/reentry/backend/эпоха: INVALID_ARGUMENT. Нет общего clock/headroom/голосов или удержан BASE: NOT_FOUND; для EOF нужны producer/mix pending, одного статуса недостаточно. Прочие native/backend статусы передаются; исключения callbacks: ERROR. Без выделений, VM, GC, неявных pause/clear и автоматического A/V retiming. |
 | [`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31) | Без callbacks показывает владение BASE/TAIL. Failed event-only блок хранится здесь отдельно от base PCM producer. |
-| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L111) | Свежие accepted/dequeued включают успешные base и event-only блоки. Source chunk/EOF и base pending сохраняют прежний смысл. Сериализация со всеми scheduling/controls; ошибка сохраняет выход. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L119) | Свежие accepted/dequeued включают успешные base и event-only блоки. Source chunk/EOF и base pending сохраняют прежний смысл. Сериализация со всеми scheduling/controls; ошибка сохраняет выход. |
 
 Нулевая база использует прежние block/target и оба точных счётчика, не меняя
 позицию, фазу, chunk и EOF источника. Финальный padding — настоящий принятый output,
@@ -131,7 +131,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:222](../include/flashvm/swf_sound_mix_queue.h#L222) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:119](../include/flashvm/swf_stream_output.h#L119) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
 | `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |

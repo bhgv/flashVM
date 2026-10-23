@@ -10,6 +10,9 @@ v0.1013: Check independent durations and PCM across four source clocks, six outp
 
 v0.1014: Add opt-in horizon-limited tail pumping while preserving indivisible retries from every earlier rendering mode.
 
+
+v0.1015: Expose opt-in finite frame-gate and EOF scheduling with coherent shared clocks and unchanged base and retry ownership.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

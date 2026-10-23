@@ -59,7 +59,7 @@ Base-буфер producer не используется под хвост; `FVM_S
 [`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31). Допустимый FIFO poll может обновить played при
 ошибке операции; failed write не увеличивает accepted. Нельзя чередовать paired
 хвосты с прямым mix-tail или посторонним producer. Перед
-[`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L128) нужно завершить tail retry; подтверждённый seek/clear
+[`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L136) нужно завершить tail retry; подтверждённый seek/clear
 его отменяет. Разные эпохи отвергаются до следующего смешивания.
 
 Context StopSounds выполняет staged stream seek/clear через адаптер. Успех отменяет
@@ -137,7 +137,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:128](../include/flashvm/swf_stream_output.h#L128) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:136](../include/flashvm/swf_stream_output.h#L136) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
 | `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |

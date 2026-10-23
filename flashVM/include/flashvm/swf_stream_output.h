@@ -108,6 +108,14 @@ extern "C"
     /* Observe backend backlog and copy clock/metadata; failures preserve caller output. Reject
      * impossible growth beyond submitted/target or regression of played_frames with ERROR.
      * Requires exclusive producer and queue ownership, including no independent clears/writes. */
+    /* Opt-in finite variant of pump_mix_until: clamp only fresh event-only work to
+     * the live voice/release horizon, avoiding final synthetic block padding. Base,
+     * source-frame gates, common epoch validation and indivisible BASE/TAIL retries
+     * keep the same contract, including optional accepted cleared first. Previously
+     * rendered padded TAIL bytes are never trimmed. Same statuses, external owner
+     * serialization and no-allocation/callback-after-write/VM/GC restrictions. */
+    FVM_API FVM_Result fvm_swf_stream_output_pump_mix_finite_until(FVM_SWFStreamOutput *,
+        FVM_SWFSoundMixQueue *, unsigned int max_movie_frame, size_t *accepted);
     FVM_API FVM_Result fvm_swf_stream_output_info(FVM_SWFStreamOutput *, FVM_SWFStreamOutputInfo *);
     /* Validate absolute source seek first, pause then clear FIFO, discard pending and reset clock
      * epoch only after successful clear. New grid phase zero. Pause success remains visible if

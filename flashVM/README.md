@@ -1,10 +1,12 @@
-Development version: **0.1014** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1015** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1015: [Expose opt-in finite frame-gate and EOF scheduling with coherent shared clocks and unchanged base and retry ownership.](doc/FINITE_TAILS.md).
 
 v0.1014: [Add opt-in horizon-limited tail pumping while preserving indivisible retries from every earlier rendering mode.](doc/FINITE_TAILS.md).
 
