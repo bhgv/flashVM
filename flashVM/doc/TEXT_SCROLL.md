@@ -33,7 +33,8 @@ NaN/infinity or failed conversion rejects without this setter changing offsets;
 side effects of an explicit user conversion remain visible. Geometry is measured
 after conversion so reentry cannot publish stale layout. A successful query/set
 normalizes both offsets. Text/style/dimension edits keep lazy layout admission;
-clamping occurs at the next scroll observation, export or capture. No onScroller
+effective bounds are measured at the next scroll observation, export or capture;
+only normalizing observations/exports publish source offsets. No onScroller
 notification is synthesized. Legacy callback selectors retain their identities;
 new selectors are appended and only rootless retired native stubs are upgraded.
 
@@ -63,6 +64,11 @@ any normalizing observation, the old request can become effective again. This is
 an explicit bounded bridge policy; full original-player edit/event parity remains
 open. Wrapped whitespace follows existing layout preservation and may occupy its
 own visual line. Non-multiline hard-break layout remains UNSUPPORTED.
+
+
+## Validation checkpoint
+
+Uniform TextField scrolling v0.1090–v0.1103: the host-created text bridge implements writable one-based scroll and zero-based hscroll plus read-only maxscroll/maxhscroll/bottomScroll. An additive C89 observation copies effective ranges, line spacing, scroll displacement and the inner host clip rectangle. Exported glyph and underline contours include the same translation; intrinsic metrics and parent _x/_y remain independent. Optional binary/channel state preserves active positions and legacy defaults, upgrades only retired rootless native stubs, validates actual restore bounds and independently owns receiver fonts/text. Graph capture copies effective positions without mutating pending source requests. Validation passes 153 selected native text/font/graph/tutorial checks, nine focused full-font ASan/UBSan checks plus an explicit no-fault allocation-success run. Ordinary builds sweep query/path allocation failures and verify conversion exceptions; LeakSanitizer is disabled. Tests cover wrapping and preserved whitespace, CRLF/empty/count-NUL lines, leading/underline, autoSize, zero viewports, clamping, exact contour shifts, stale query outputs, legacy accessors, sender destruction and GC. SWF6–8 AVM1 GetMember/SetMember agrees across interpreter/manual/native JIT with actual native entries asserted; reentrant numeric conversion measures updated geometry and retains the GC barrier. Four OS workers own separate VMs/fonts and check 128 scroll/export/GC epochs; cached native observations run 128 times without C++ allocation. The C89 --scroll tutorial checks analytic ranges and actual exported bounds. SDK-free C89 ABI/admission passes and both font tutorials explicitly skip. A renamed detached text component configures with its bundled static font dependencies; the copied scroll checker passes against the native executable, without a separate detached build. Clipping is explicitly host-owned; full original-player rounding/edit semantics, onScroller/listeners, mixed styled/HTML fields, SWF font/text display-list integration, input, physical platforms/devices and all nine roadmap stages remain open. [Contract](TEXT_SCROLL.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

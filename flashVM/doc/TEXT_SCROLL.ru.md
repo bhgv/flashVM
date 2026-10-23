@@ -32,7 +32,8 @@ NaN/infinity и ошибка conversion отклоняются без измен
 явные побочные эффекты пользовательского conversion сохраняются. Раскладка
 измеряется после conversion, поэтому reentry не публикует устаревшую геометрию.
 Успешный query/set нормализует обе координаты. Text/style/dimension edits сохраняют
-lazy layout; clamp выполняется при следующем scroll observation/export/capture.
+lazy layout; эффективные границы вычисляются при scroll observation/export/capture;
+только нормализующие observation/export публикуют source offsets.
 Уведомление onScroller не создаётся. Старые callback selectors сохраняют ID;
 новые добавлены в конец, upgrade заменяет только rootless старые native stubs.
 
@@ -62,6 +63,11 @@ query и успешный path export нормализуют обе сохран
 edit/event приёмка открыта. Существующая раскладка сохраняет whitespace, которая
 может занимать отдельную visual line. Hard breaks при multiline=false остаются
 UNSUPPORTED.
+
+
+## Проверенный объём
+
+Прокрутка одностильного TextField v0.1090–v0.1103: host-created bridge реализует запись scroll от единицы/hscroll от нуля и чтение maxscroll/maxhscroll/bottomScroll. Новый C89 query копирует диапазоны, baseline step, scroll displacement и внутренний clip rectangle хоста. Glyph/underline-контуры получают одинаковое смещение; intrinsic metrics и parent _x/_y независимы. Optional binary/channel state сохраняет активные позиции и legacy defaults, обновляет только retired rootless stubs, проверяет фактические границы receiver и независимо владеет шрифтами/текстом. Graph capture копирует эффективные позиции без изменения отложенного source request. Прошли 153 выбранные native text/font/graph/tutorial проверки, девять focused full-font ASan/UBSan и отдельный no-fault allocation-success запуск. Обычная сборка перебирает query/path allocation failures и исключения conversion; LeakSanitizer отключён. Проверены wrapping/whitespace, CRLF/пустые/count-NUL строки, leading/underline, autoSize, нулевые viewport, clamp, точные смещения контуров, выходы ошибок, legacy accessors, уничтожение sender и GC. AVM1 GetMember/SetMember SWF6–8 совпадает в interpreter/manual/native JIT с проверкой настоящих native entries; reentrant conversion учитывает свежую геометрию и GC barrier. Четыре OS-worker владеют отдельными VM/fonts и выполняют 128 scroll/export/GC эпох; cached query повторён 128 раз без C++ выделений. C89 --scroll проверяет аналитические диапазоны и реальные bounds. SDK-free C89 ABI/admission проходит, оба font tutorial явно дают skip. Переименованный отделённый text-компонент конфигурируется с bundled static fonts; скопированный checker проходит на native executable без отдельной detached-сборки. Clipping принадлежит хосту; полная original-player rounding/edit семантика, onScroller/listeners, mixed styled/HTML fields, SWF font/text display list, ввод, физические платформы/устройства и все девять стадий открыты. [Контракт](TEXT_SCROLL.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

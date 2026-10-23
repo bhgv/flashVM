@@ -1,10 +1,12 @@
-Development version: **0.1102** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1103** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1103: [Publish native sanitizer C89 transfer and detached-project evidence without closing roadmap stages.](doc/TEXT_SCROLL.md).
 
 v0.1102: [Copy effective positions without mutating lazy source requests and verify the strict C89 ABI.](doc/TEXT_SCROLL.md).
 

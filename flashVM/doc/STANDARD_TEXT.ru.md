@@ -1,5 +1,12 @@
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
+Добавлена bounded-прокрутка одностильного поля: scroll/hscroll,
+read-only maxscroll/maxhscroll/bottomScroll и нативный query viewport.
+[Геометрия и передача состояния](TEXT_SCROLL.ru.md). Контуры учитывают scroll,
+clipping выполняет хост; onScroller/listeners, HTML/mixed-font и SWF display-list
+приёмка остаются открытыми.
+
+
 Native _x/_y и опоры left/center/right поддержаны в пределах [контракта геометрии](TEXT_AUTOSIZE.ru.md). Остальные преобразования display остаются неподдержанными.
 
 [fvm_standard_text_install](../include/flashvm/standard_text.h#L21) отдельно от числовой библиотеки устанавливает

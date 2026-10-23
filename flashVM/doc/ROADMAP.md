@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Bounded host-created TextField scrolling: [EN](TEXT_SCROLL.md) /
+[RU](TEXT_SCROLL.ru.md). Native viewport geometry, AS2 offsets, translated
+contours and graph ownership are implemented. Full HTML/mixed-font/event/display-list
+TextField acceptance and all nine roadmap stages remain open.
+
+
 Prepared root MP3 seek alignment: [EN](MP3_FRAME_SEEK.md) /
 [RU](MP3_FRAME_SEEK.ru.md). Signed authored positions and transactional desktop
 navigation are implemented; full reference source-time/read-ahead/A/V acceptance,

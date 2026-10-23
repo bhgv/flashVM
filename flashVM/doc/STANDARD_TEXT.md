@@ -1,5 +1,12 @@
 # ActionScript text bridge (Flash 6–8 subset)
 
+Bounded uniform-field scrolling is now supported through scroll/hscroll and the
+read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
+viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).
+Contours include scroll displacement and remain host-clipped; onScroller/listener,
+HTML/mixed-font and SWF display-list acceptance remain open.
+
+
 Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
 
 The opt-in [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L21) adds TextFormat/TextField class metadata
@@ -88,7 +95,7 @@ Wrapping is enabled when both multiline and wordWrap are true, within width-4.
 For nonpositive inner width, a 1/64-pixel wrapping width still makes progress.
 Without wrapping, center/right alignment is applied when exporting contours.
 Metrics exclude alignment offsets and gutters. _height stores the field box;
-it does not clip, scroll or resize glyphs. Hard line separators in single-line
+it does not clip or resize glyphs; scroll/hscroll supply the separate contour translation. Hard line separators in single-line
 layout return UNSUPPORTED rather than inventing untested Flash behavior.
 length counts UTF-16 code units, while native shaping clusters remain UTF-8
 byte positions. See TEXT_LAYOUT.md for greedy wrapping, whitespace, work limits
@@ -96,7 +103,7 @@ and script-itemization restrictions. Tabs/soft hyphens and unsupported layout
 requests can be stored as text but fail when measured/exported.
 
 Known unsupported display/input properties (html/htmlText, border,
-background, embedFonts, password, selectable, scrolling, antialias settings,
+background, embedFonts, password, selectable, onScroller/listeners, antialias settings,
 filters and display transforms) explicitly return UNSUPPORTED on access/write.
 Likewise replaceSel, listener and display-node methods are blocked.
 There is no timeline, MovieClip.createTextField, HTML parser, styled spans,
