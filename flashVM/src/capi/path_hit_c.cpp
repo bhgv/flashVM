@@ -5,6 +5,7 @@
 #include "../render/curve_bounds.hpp"
 #include <cmath>
 #include <cfloat>
+#include <climits>
 #include <cstring>
 
 namespace
@@ -231,13 +232,26 @@ void curve(Query &query, const double *x, const double *y, unsigned degree, unsi
     curve(query, rx, ry, degree, depth + 1);
 }
 } // namespace
-/* Certify an exactly represented lattice coordinate within the common path domain. */
-static bool linear_grid_coordinate(double value, double &scaled)
+/* Two-Diff residual: force each intermediate to double storage, including on
+ * extended-register targets. Reject subtraction that loses any low component.
+ * Construction: Shewchuk, Adaptive Precision Floating-Point Arithmetic (1997). */
+static bool linear_difference(double point, double origin, double &difference)
 {
-    if (!(value >= -FVM_PATH_GEOMETRY_MAX_COORDINATE &&
-          value <= FVM_PATH_GEOMETRY_MAX_COORDINATE))
-        return false;
-    scaled = value * FVM_PATH_GEOMETRY_LINEAR_GRID;
+    volatile double high = point - origin;
+    volatile double virtual_origin = point - high;
+    volatile double virtual_point = high + virtual_origin;
+    volatile double origin_tail = virtual_origin - origin;
+    volatile double point_tail = point - virtual_point;
+    volatile double residual = point_tail + origin_tail;
+    difference = high;
+    return residual == 0;
+}
+
+/* Power-of-two scaling is exact here and only increases magnitude. The endpoint
+ * span bounds every control vector, so no scaled coordinate can overflow. */
+static bool linear_vector_coordinate(double difference, int shift, double &scaled)
+{
+    scaled = std::ldexp(difference, shift);
     return scaled == std::floor(scaled);
 }
 
@@ -245,9 +259,10 @@ static bool linear_grid_coordinate(double value, double &scaled)
  * quadratic and cubic Beziers, even when cubic controls are not ordered. The
  * scalar cubic derivative is nonnegative at all four control-box vertices:
  * t*t, 2*t*(1-t), (1-2*t)^2 and (1-t)^2, hence throughout their convex hull.
- * Axis paths admit arbitrary finite coordinates. Other paths require a 1/16
- * lattice and at least 53 mantissa bits: differences are at most 32,000,000,
- * products below 2^50 and cross differences below 2^51 are exact integers. */
+ * Axis paths admit arbitrary finite coordinates. Other paths require exact
+ * origin subtraction and integral relative vectors after adaptive binary scaling.
+ * Scaled vectors stay below 2^25, products below 2^50 and cross differences below
+ * 2^51; at least 53 mantissa bits make the determinant exact. */
 static bool linear_curve_segment(double x, double y, const FVM_PathCommand &command,
                                   unsigned count)
 {
@@ -263,16 +278,27 @@ static bool linear_curve_segment(double x, double y, const FVM_PathCommand &comm
     if (FLT_RADIX != FVM_PATH_GEOMETRY_LINEAR_RADIX ||
         DBL_MANT_DIG < FVM_PATH_GEOMETRY_LINEAR_MANTISSA_BITS)
         return false;
-    double sx, sy, ex, ey;
-    if (!linear_grid_coordinate(x, sx) || !linear_grid_coordinate(y, sy) ||
-        !linear_grid_coordinate(end_x, ex) || !linear_grid_coordinate(end_y, ey))
+    double dx, dy;
+    if (!linear_difference(end_x, x, dx) || !linear_difference(end_y, y, dy))
         return false;
-    const double dx = ex - sx, dy = ey - sy;
+    volatile double squared_norm = dx * dx + dy * dy;
+    if (!(squared_norm > 0))
+        return false; /* Preserve fallback when the segment walker cannot normalize a tangent. */
+    const double span = std::fabs(dx) > std::fabs(dy) ? std::fabs(dx) : std::fabs(dy);
+    int exponent = 0;
+    std::frexp(span, &exponent);
+    if (exponent < FVM_PATH_GEOMETRY_LINEAR_VECTOR_BITS - INT_MAX)
+        return false;
+    const int shift = FVM_PATH_GEOMETRY_LINEAR_VECTOR_BITS - exponent;
+    double ex, ey;
+    if (!linear_vector_coordinate(dx, shift, ex) || !linear_vector_coordinate(dy, shift, ey))
+        return false;
     for (unsigned i = 0; i < count; ++i)
     {
-        double px, py;
-        if (!linear_grid_coordinate(command.x[i], px) || !linear_grid_coordinate(command.y[i], py) ||
-            (px - sx) * dy != (py - sy) * dx)
+        double px, py, sx, sy;
+        if (!linear_difference(command.x[i], x, px) || !linear_difference(command.y[i], y, py) ||
+            !linear_vector_coordinate(px, shift, sx) || !linear_vector_coordinate(py, shift, sy) ||
+            sx * ey != sy * ex)
             return false;
     }
     return true;

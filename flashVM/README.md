@@ -1,4 +1,4 @@
-Development version: **0.1400** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1401** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1401: [Certify linear Beziers with exact origin subtraction and adaptive binary vectors](doc/ADAPTIVE_CURVE_BOUNDS.md).
 
 v0.1400: [Verified linear Bezier bounds checkpoint](doc/LINEAR_CURVE_BOUNDS.md).
 
