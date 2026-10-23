@@ -1148,10 +1148,24 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         double minimum = vertical ? 1 : 0;
         double maximum = vertical ? info.maxscroll : info.maxhscroll;
         requested = requested < minimum ? minimum : requested > maximum ? maximum : std::floor(requested);
-        field->scroll = vertical ? (unsigned long)requested : info.scroll;
-        field->hscroll = vertical ? info.hscroll : (unsigned long)requested;
+        unsigned long next_scroll = vertical ? (unsigned long)requested : info.scroll;
+        unsigned long next_hscroll = vertical ? info.hscroll : (unsigned long)requested;
+        bool changed = next_scroll != info.scroll || next_hscroll != info.hscroll;
+        if (!changed)
+        {
+            field->scroll = next_scroll;
+            field->hscroll = next_hscroll;
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
+        FVM_TextFieldScrollPlan notification(c, self);
+        result = notification.prepare();
+        if (result != FVM_OK)
+            return result;
+        field->scroll = next_scroll;
+        field->hscroll = next_hscroll;
         fvm_value_undefined(out);
-        return FVM_OK;
+        return notification.dispatch();
     }
     if (std::strcmp(name, "text") == 0)
     {

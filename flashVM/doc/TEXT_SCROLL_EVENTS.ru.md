@@ -22,3 +22,28 @@ tracing и graph serialization удерживают listeners и циклы; в 
 скрытых raw listener pointers. Receiver независимо владеет fonts/fields/listeners.
 Новые native callback IDs стабильны. Host callbacks и captured roots сохраняют
 свою identity.
+
+## Транзакция явного уведомления
+
+[FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L22) удерживает source и копию порядка регистраций до публикации
+обоих offsets. Сначала выполняются conversion и свежее измерение. Ошибка подготовки
+allocation/work сохраняет offsets. После публикации вызывается field onScroller,
+затем snapshot listeners; аргумент — source field. Missing/noncallable handler
+игнорируется. Первая ошибка lookup/callback/work останавливает доставку и передаётся;
+commit и эффекты callback сохраняются. Вложенные записи не перезаписываются.
+Изменения регистраций влияют на следующие события; handler разрешается перед
+вызовом каждого recipient. Unchanged/clamped-same позиция не уведомляет.
+Query/path/capture сохраняют no-script контракт. Native accessor barrier
+отклоняет collection внутри callback; обычный GC доступен после снятия roots.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:22](../src/standard/text_listeners.hpp#L22) |
+<!-- source-links:end -->
