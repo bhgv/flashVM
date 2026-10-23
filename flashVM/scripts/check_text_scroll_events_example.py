@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Require real C89 callback order and final committed TextField viewport state."""
+import subprocess
+import sys
+
+
+def main():
+    result = subprocess.run([sys.argv[1], '--scroll-events'], capture_output=True, text=True, check=True)
+    if 'requires FONTS' in result.stdout:
+        print('SKIP no-font scroll event tutorial')
+        return 77
+    assert result.stdout.splitlines()[-2:] == ['scroll events: 1 2 1 2 1', 'scroll events state: top=2 horizontal=3'], result.stdout
+    print('PASS C89 field-first scroll callbacks, no-op suppression, removal and final state')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

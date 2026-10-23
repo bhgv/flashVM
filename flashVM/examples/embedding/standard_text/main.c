@@ -16,6 +16,7 @@
 #include <stdio.h>
 /* Подключаем объявления используемых типов и функций. */
 #include <string.h>
+#include "scroll_events.inc" /* Declare host-owned event userdata and the checked listener workflow. */
 #include "scroll.inc" /* Add an annotated owner-thread viewport and contour demonstration. */
 /* Initialize the example, run its API operations and release owned resources. */
 /* Точка входа: запускаем последовательность действий этого примера. */
@@ -36,11 +37,13 @@ int main(int argc, char **argv)
     FVM_Value value, args[3], result;
     /* Сохраняем вычисленное значение: FVM_Path *outline. */
     FVM_Path *outline = 0;
+    FVM_ExampleScrollEvents event_demo; /* Host callback userdata remains alive until context teardown. */
     int scrolling = 0; /* Optional explicit visual-line and pixel scrolling demonstration. */
     int tabbed = 0; /* Optional native Array tabStops demonstration. */
     int insets = 0; /* Optional paragraph inset demonstration on the same owner thread. */
     int variants = 0; /* Optional real-face tutorial shares the existing owner context. */
     int automatic = 0; /* Optional executable demonstration uses the same owner context. */
+    event_demo.field = 0; event_demo.count = 0; /* Initialize callback ownership before any option runs. */
     if (argc == 2 && !strcmp(argv[1], "--auto-size")) automatic = 1; /* Select measured left-anchored field dimensions. */
     else if (argc == 2 && !strcmp(argv[1], "--anchors")) automatic = 2; /* Also demonstrate parent-space horizontal anchors. */
     else if (argc == 2 && !strcmp(argv[1], "--font-variants")) variants = 1; /* Select actual regular/bold/italic/bold-italic sources. */
@@ -49,7 +52,8 @@ int main(int argc, char **argv)
     else if (argc == 2 && !strcmp(argv[1], "--tabs")) tabbed = 1; /* Apply an explicit Array of tab positions. */
     else if (argc == 2 && !strcmp(argv[1], "--default-tabs")) tabbed = 2; /* Keep tabStops empty so the font determines the repeated interval. */
     else if (argc == 2 && !strcmp(argv[1], "--scroll")) scrolling = 1; /* Demonstrate measured viewport offsets and contours. */
-    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent|--tabs|--default-tabs|--scroll]\n", stderr); return 1; } /* Reject unknown options before allocation. */
+    else if (argc == 2 && !strcmp(argv[1], "--scroll-events")) scrolling = 2; /* Record actual field-first event delivery. */
+    else if (argc != 1) { fputs("usage: standard_text [--auto-size|--anchors|--font-variants|--insets|--indent|--tabs|--default-tabs|--scroll|--scroll-events]\n", stderr); return 1; } /* Reject unknown options before allocation. */
     /* Вызываем fvm_config_init: заполняем настройки VM значениями по умолчанию.
      * &config — настройки VM.
      * Если условие ниже нарушено, печатаем место ошибки и завершаем учебный процесс. */
@@ -540,6 +544,9 @@ int main(int argc, char **argv)
     if (scrolling && scroll_demo(context, field, format)) { /* Execute the optional checked workflow on the same owner thread. */
         fvm_context_destroy(context); fvm_runtime_destroy(runtime); return 1; /* Release owners after a failed demonstration. */
     } /* Successful contours below reflect the final active scroll position. */
+    if (scrolling == 2 && scroll_events_demo(context, field, &event_demo)) { /* Keep host userdata alive through every synchronous notification. */
+        fvm_context_destroy(context); fvm_runtime_destroy(runtime); return 1; /* Release callbacks before their stack-owned userdata ends. */
+    } /* Final path export below must not generate another notification. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
      * context — контекст интерпретатора.
      * field — объект, с которым выполняется операция.
@@ -557,6 +564,7 @@ int main(int argc, char **argv)
 /* Начинаем альтернативную ветку компиляции. */
 #else
     /* Завершаем выражение с указанным значением или аргументами. */
+    (void)event_demo; /* No callback can be installed without font support. */
     (void)scrolling; /* NO_FONTS keeps explicit option parsing without geometry support. */
     (void)tabbed; /* Option parsing remains available without font support. */
     (void)insets; /* The option remains parseable without font support. */

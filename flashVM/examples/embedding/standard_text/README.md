@@ -181,6 +181,23 @@ applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains ope
 | [fvm_textfield_scroll_info](../../../include/flashvm/standard_text.h#L68) | Copy effective offsets, limits and inner clipping rectangle; may allocate layout on owner thread, preserves output on failure, retains no managed reference. [Contract](../../../doc/TEXT_SCROLL.md). |
 | [fvm_path_bounds](../../../include/flashvm/path.h#L71) | Read actual translated bounds from a borrowed independently owned path; no VM access or ownership transfer. [Declaration](../../../include/flashvm/path.h). |
 
+
+## Scroll observer mode
+
+`--scroll-events` first runs the analytic scroll mode, then installs a field
+handler and a listener. The actual trace is `1 2 1 2 1`: two effective changes
+notify both, an unchanged write emits nothing, and removal excludes the listener
+from the last change. Final state is top=2/hscroll=3. Native query/path export
+emit no callbacks. Main owns callback userdata until context teardown; managed
+roots retain fields/listeners independently. Geometry-wide notifications and
+input are outside this bounded mode. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
+
+| API | Individual contract |
+| --- | --- |
+| [fvm_object_define_method_rooted](../../../include/flashvm/value.h#L115) | Install the native onScroller method and retain the source field as a traced capture; host userdata must outlive callbacks/context teardown. |
+| [fvm_object_create](../../../include/flashvm/value.h#L62) | Create a managed listener owned by the context; registration supplies its strong graph edge. |
+| [fvm_object_call](../../../include/flashvm/value.h#L126) | Invoke addListener/removeListener synchronously with one object argument and inspect the Boolean result; errors propagate. |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -195,6 +212,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
+| `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_path_bounds` | function | [include/flashvm/path.h:71](../../../include/flashvm/path.h#L71) |
