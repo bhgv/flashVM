@@ -83,11 +83,21 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
             return FVM_INVALID_ARGUMENT;
         interpolation = (unsigned int)value.number;
     }
+    double focal = 0;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator focal_mode =
+        record->properties.find("focal");
+    if (focal_mode != record->properties.end())
+    {
+        const FVM_Value &value = focal_mode->second;
+        if (value.type != FVM_VALUE_NUMBER || !(value.number > -1 && value.number < 1))
+            return FVM_INVALID_ARGUMENT;
+        focal = value.number;
+    }
     FVM_Gradient gradient;
     fvm_gradient_init(&gradient);
     double type = 0;
     r = number(record, "type", type);
-    if (r != FVM_OK || (type != 0 && type != 1))
+    if (r != FVM_OK || (type != 0 && type != 1) || (focal != 0 && type != 1))
         return FVM_INVALID_ARGUMENT;
     gradient.type = type == 0 ? FVM_GRADIENT_LINEAR : FVM_GRADIENT_RADIAL;
     FVM_Affine local;
@@ -141,7 +151,7 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     }
     gradient.stops = values.begin();
     gradient.count = values.size();
-    return fvm_path_gradient_paint_quality(path, surface, &gradient, stroke_width, even_odd,
-                                            spread, interpolation,
+    return fvm_path_gradient_focal_quality(path, surface, &gradient, stroke_width, even_odd,
+                                            spread, interpolation, focal,
                                             c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }
