@@ -4,6 +4,7 @@
 #include "../core/object_root_scope.hpp"
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
+#include "../core/optional_method.hpp"
 
 namespace
 {
@@ -66,11 +67,11 @@ FVM_Result fvm_textfield_add_listener(FVM_Context *context, FVM_Object *field, u
         return FVM_OK;
     if (args[0].object->owner != context)
         return FVM_INVALID_ARGUMENT;
+    FVM_ExecutionWorkScope work(context);
     FVM_Object *array = 0;
     result = fvm_textfield_listener_registry(context, field, &array);
     if (result != FVM_OK && result != FVM_NOT_FOUND)
         return result;
-    FVM_ExecutionWorkScope work(context);
     if (array)
     {
         for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = array->indexed.begin();
@@ -153,13 +154,15 @@ FVM_Result fvm_textfield_remove_listener(FVM_Context *context, FVM_Object *field
         return result;
     if (!count || args[0].type != FVM_VALUE_OBJECT || !args[0].object)
         return FVM_OK;
+    if (args[0].object->owner != context)
+        return FVM_INVALID_ARGUMENT;
+    FVM_ExecutionWorkScope work(context);
     FVM_Object *array = 0;
     result = fvm_textfield_listener_registry(context, field, &array);
     if (result == FVM_NOT_FOUND)
         return FVM_OK;
     if (result != FVM_OK)
         return result;
-    FVM_ExecutionWorkScope work(context);
     unsigned long removed = (unsigned long)array->indexed.size();
     for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = array->indexed.begin();
          i != array->indexed.end(); ++i)
@@ -189,4 +192,64 @@ FVM_Result fvm_textfield_remove_listener(FVM_Context *context, FVM_Object *field
     fvm_value_number(&array->resource_result, (double)array->indexed.size());
     fvm_value_boolean(out, 1);
     return FVM_OK;
+}
+
+/* [GC:] Field and vector roots remain linked across preparation, reentry and delivery failures. */
+FVM_TextFieldScrollPlan::FVM_TextFieldScrollPlan(FVM_Context *context, FVM_Object *field)
+    : context_(context), field_(field), field_root_(context, field),
+      recipient_roots_(context, recipients_),
+      enabled_(!context->swf_loaded || context->swf_info.version >= FVM_TEXT_LISTENER_MIN_VERSION),
+      work_(context, enabled_), prepared_(false)
+{
+}
+/* No handler lookup runs until the setter has published its new state. */
+FVM_Result FVM_TextFieldScrollPlan::prepare()
+{
+    if (prepared_)
+        return FVM_INVALID_ARGUMENT;
+    if (enabled_)
+    {
+        FVM_Object *array = 0;
+        FVM_Result result = fvm_textfield_listener_registry(context_, field_, &array);
+        if (result != FVM_OK && result != FVM_NOT_FOUND)
+            return result;
+        if (array)
+        {
+            recipients_.reserve(array->indexed.size());
+            for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = array->indexed.begin();
+                 i != array->indexed.end(); ++i)
+            {
+                result = work_.step();
+                if (result != FVM_OK)
+                    return result;
+                recipients_.push_back(i->second);
+            }
+        }
+    }
+    prepared_ = true;
+    return FVM_OK;
+}
+/* Publication precedes callbacks; nested scroll mutations are never overwritten on return. */
+FVM_Result FVM_TextFieldScrollPlan::dispatch()
+{
+    if (!prepared_)
+        return FVM_INVALID_ARGUMENT;
+    prepared_ = false;
+    if (!enabled_)
+        return FVM_OK;
+    FVM_Value argument;
+    fvm_value_undefined(&argument);
+    argument.type = FVM_VALUE_OBJECT;
+    argument.object = field_;
+    FVM_Result result = work_.step();
+    if (result == FVM_OK)
+        result = fvm_object_call_optional_args(context_, field_, "onScroller", 1, &argument);
+    for (size_t i = 0; result == FVM_OK && i < recipients_.size(); ++i)
+    {
+        result = work_.step();
+        if (result == FVM_OK)
+            result = fvm_object_call_optional_args(context_, recipients_[i].object,
+                                                   "onScroller", 1, &argument);
+    }
+    return result;
 }
