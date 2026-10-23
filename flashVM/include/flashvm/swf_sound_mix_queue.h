@@ -206,6 +206,22 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *,
                                                          size_t frames, size_t target,
                                                          size_t *accepted);
+    /* Authorize up to maximum event-only frames in currently available FIFO headroom.
+     * maximum is 1..capacity; target is 1..SOUND_OUTPUT_MAX_QUEUE, and may be smaller
+     * than maximum. Fresh work uses min(maximum,target-queued); full FIFO or exhausted
+     * voices -> NOT_FOUND without consuming voice time. A retained TAIL is indivisible:
+     * if larger than maximum or available headroom, NOT_FOUND preserves it; otherwise
+     * resend its original size/bytes exactly once, even when maximum changes. Pending
+     * BASE, null/reentry/invalid geometry -> INVALID_ARGUMENT. accepted is optional,
+     * cleared first, and set to actual accepted frames only on OK. Existing exact-size
+     * pump_tail semantics are unchanged. Shared-clock overflow -> UNSUPPORTED before
+     * rendering; real callback errors propagate, exceptions ERROR. No allocation, VM,
+     * GC, pause/clear/seek or source EOF inference. Padding may fill the chosen block.
+     * Quiesce base production and externally serialize all borrowed owners/callbacks;
+     * use the paired stream scheduler when sharing its accepted epoch. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *,
+                                                               size_t maximum, size_t target,
+                                                               size_t *accepted);
     /* No allocation/callback/VM. Null/wrong-size/reentry INVALID_ARGUMENT, output intact. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_info(const FVM_SWFSoundMixQueue *,
                                                     FVM_SWFSoundMixQueueInfo *);

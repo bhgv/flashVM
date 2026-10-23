@@ -330,6 +330,37 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *qu
     return result;
 }
 
+/* Fit fresh event work into observed headroom; retained retries remain indivisible. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *queue,
+    size_t maximum, size_t target, size_t *accepted)
+{
+    if (accepted) *accepted = 0;
+    if (!queue || queue->busy || !maximum || maximum > queue->capacity || !target ||
+        target > FVM_SWF_SOUND_OUTPUT_MAX_QUEUE || (queue->pending && !queue->tail))
+        return FVM_INVALID_ARGUMENT;
+    if (queue->pending > maximum) return FVM_NOT_FOUND;
+    if (!queue->pending)
+    {
+        FVM_SWFSoundMixerInfo info;
+        info.struct_size = sizeof(info);
+        FVM_Result result = fvm_swf_sound_mixer_info(queue->mixer, &info);
+        if (result != FVM_OK) return result;
+        if (!info.active_voices) return FVM_NOT_FOUND;
+    }
+    size_t queued = 0;
+    FVM_Result result = observe(queue, &queued);
+    if (result != FVM_OK) return result;
+    if (queued > FVM_SWF_SOUND_OUTPUT_MAX_QUEUE) return FVM_INVALID_ARGUMENT;
+    if (queued >= target) return FVM_NOT_FOUND;
+    size_t available = target - queued;
+    size_t frames = queue->pending ? queue->pending :
+                    (maximum < available ? maximum : available);
+    if (frames > available) return FVM_NOT_FOUND;
+    result = write_composed(queue, 0, frames, true);
+    if (result == FVM_OK && accepted) *accepted = frames;
+    return result;
+}
+
 /* Explicitly begin a fresh shared epoch; do not infer a queue baseline at construction. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *queue)
 {

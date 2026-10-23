@@ -1,10 +1,12 @@
-Development version: **0.998** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.999** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.999: [Add bounded adaptive tail filling with indivisible retained retries and unchanged exact-size API.](doc/ADAPTIVE_TAILS.md).
 
 v0.998: [Complete C89/API and desktop contracts for authored Stop, ordered retry, gated PCM and remaining reference/device limits.](doc/MIXED_GATES.md).
 
