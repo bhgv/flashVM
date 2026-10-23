@@ -59,6 +59,11 @@ Focal endpoints/clamping, Flash Fixed8 and original-player rounding/performance 
 
 Primary API reference: Adobe [MovieClip beginGradientFill and lineGradientStyle](https://open-flash.github.io/mirrors/as2-language-reference/MovieClip.html#beginGradientFill()).
 
+
+## v0.1210 verification
+
+Interior focal gradients v0.1197–v0.1210: additive C89 fill/stroke entries and SWF8 radial beginGradientFill/lineGradientStyle accept signed focal positions strictly inside (-1,1), with RGB/linearRGB and PAD/REFLECT/REPEAT. Zero preserves centered bytes; [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, callback IDs and wire/resource types are unchanged. A cancellation-safe ray solver selects ratio before existing color/coverage composition. Finite endpoint/outside script inputs remain UNSUPPORTED; native inputs are INVALID_ARGUMENT. Validation passes 118 selected native gradient/raster/scene/graph/GC/quality/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent horizontal tables, 288 ray-contour samples and nearest-interior boundary samples pass. Real AVM1 tests cover 144 host/SWF8 interpreter/manual/automatic JIT configurations, each with success and atomic boundary rejection (288 calls), checking native counters. Four OS workers complete 128 isolated paint/GC epochs; 192 signed focal affine/alpha/quality renders pass. Copy/duplicate/current-active aliases, binary/channel sender teardown, mixed opposite origins, raw metadata/getter exclusion, numeric coercion effects and allocation fault sweeps are covered. SDK-free C89 admission/invalid-input checks pass; three graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable, without a separate detached build claim. Endpoints/clamping, Flash Fixed8/reference rounding, DefineShape4/LineStyle2, complete stroke semantics and device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](FOCAL_GRADIENTS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

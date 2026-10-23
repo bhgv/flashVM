@@ -59,6 +59,11 @@ Focal endpoints/clamping, Flash Fixed8, сравнение округления/
 
 Первичный API reference: Adobe [MovieClip beginGradientFill и lineGradientStyle](https://open-flash.github.io/mirrors/as2-language-reference/MovieClip.html#beginGradientFill()).
 
+
+## v0.1210 verification
+
+Внутренние focal-градиенты v0.1197–v0.1210: добавлены C89 fill/stroke entries и signed focal строго внутри (-1,1) для radial beginGradientFill/lineGradientStyle SWF8, RGB/linearRGB, PAD/REFLECT/REPEAT. Zero сохраняет centered bytes; layout [FVM_Gradient](../include/flashvm/gradient.h#L38), callback IDs и wire/resource types прежние. Устойчивый ray solver выбирает отношение до прежней color/coverage композиции. Конечные endpoint/outside script-аргументы остаются UNSUPPORTED, native — INVALID_ARGUMENT. Прошли 118 выбранных native gradient/raster/scene/graph/GC/quality/tutorial проверок, десять focused ASan/UBSan и явные no-throw/no-fault запуски; LeakSanitizer выключен. Проверены независимые горизонтальные таблицы, 288 ray-contour samples и ближайшие внутренние значения у границы. Реальные AVM1 тесты охватывают 144 host/SWF8 interpreter/manual/automatic JIT конфигурации: success и атомарный boundary rejection в каждой (288 вызовов), с native counters. Четыре OS worker проходят 128 независимых paint/GC циклов; проверены 192 signed focal affine/alpha/quality отрисовки. Проверены copy/duplicate/current-active aliases, binary/channel после уничтожения отправителя, mixed opposite origins, raw metadata без getters, numeric coercion effects и ошибки выделения. SDK-free C89 admission/invalid-input проверки проходят; три graphic tutorial явно пропускаются. Переименованный detached-компонент конфигурируется, copied checker проходит на native executable без заявления отдельной detached-сборки. Endpoints/clamping, Flash Fixed8/эталонное округление, DefineShape4/LineStyle2, полная stroke семантика, устройства и другие платформы открыты. Все девять этапов открыты. [Контракт](FOCAL_GRADIENTS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
