@@ -7,12 +7,12 @@
 #include <cstdlib>
 extern "C" FVM_Result fvm_test_mixed_refill(FVM_DesktopAudio *);
 extern "C" FVM_Result fvm_test_mixed_install(FVM_Context *, FVM_DesktopAudio *);
-struct MixedFIFO {size_t count,total,calls;short samples[256];int fail_write,fail_observe,fail_clear,paused;};
+struct MixedFIFO {size_t count,total,calls,observations;short samples[256];int fail_write,fail_observe,fail_clear,paused;};
 static FVM_Result mixed_write(void *raw,const short *pcm,size_t frames)
 {
  MixedFIFO *q=(MixedFIFO*)raw;++q->calls;if(q->fail_write)return FVM_ERROR;assert((q->total+frames)*2<=256);std::memcpy(q->samples+q->total*2,pcm,frames*2*sizeof(short));q->total+=frames;q->count+=frames;return FVM_OK;
 }
-static FVM_Result mixed_count(void *raw,size_t *out){MixedFIFO *q=(MixedFIFO*)raw;if(q->fail_observe)return FVM_ERROR;*out=q->count;return FVM_OK;}
+static FVM_Result mixed_count(void *raw,size_t *out){MixedFIFO *q=(MixedFIFO*)raw;++q->observations;if(q->fail_observe)return q->fail_observe==2?FVM_UNSUPPORTED:FVM_ERROR;*out=q->count;return FVM_OK;}
 static FVM_Result mixed_pause(void *raw,int paused){((MixedFIFO*)raw)->paused=paused;return FVM_OK;}
 static FVM_Result mixed_clear(void *raw){MixedFIFO *q=(MixedFIFO*)raw;if(q->fail_clear)return FVM_ERROR;q->count=0;return FVM_OK;}
 struct MixedNative

@@ -67,6 +67,8 @@ acceptance. All nine roadmap stages remain open.
 
 Internal desktop stream observations retain the legacy path for externally prepared composition adapters without origin tracking. Disabled-origin detection has no queued callback; the fallback still polls the FIFO once. The explicit paired API continues to return UNSUPPORTED.
 
+Desktop internal selection uses the immutable prepared composition_origins mode, not a returned callback status. A real backend UNSUPPORTED therefore propagates after exactly one FIFO call; it never triggers a second fallback observation. Manually prepared frontend owners select the mode after enabling origins.
+
 
 v0.1051: Add a single-observation paired stream and BASE/TAIL query without rendering or source advancement.
 
@@ -91,6 +93,9 @@ v0.1060: Keep internal stream observation compatible with prepared adapters that
 
 
 v0.1061: Run exact retry and final drain through both adapter modes; verify explicit paired unsupported preservation and enabled category totals.
+
+
+v0.1062: Publish immutable observation mode before worker start and preserve a backend UNSUPPORTED after one callback; verify output and poll count.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

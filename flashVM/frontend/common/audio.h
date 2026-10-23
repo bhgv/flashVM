@@ -56,6 +56,7 @@ typedef struct FVM_DesktopAudio
     int stream_waiting; /* Prior native observation was a frame gate/EOF or explicit pause. */
     int stream_cancelled;     /* StopSounds holds this stream until a detected navigation reset. */
     FVM_SWFSoundMixer *mixer; /* Owned native voices; every access is serialized by mutex. */
+    int composition_origins; /* Immutable selection of paired observations after origin preparation. */
     FVM_SWFSoundMixQueue *composition; /* Owned root stream/event adapter; null in legacy paths. */
     FVM_SWFSoundOutput *output; /* Owned PCM producer, serialized by mutex. */
     FVM_SDLAudioQueue *device;  /* Owned native output, closed after joining the worker. */

@@ -21,11 +21,9 @@ static FVM_Result stream_info_locked(FVM_DesktopAudio *audio, FVM_SWFStreamOutpu
     FVM_SWFStreamMixInfo snapshot;
     FVM_Result result;
     if (!out || out->struct_size != sizeof(*out)) return FVM_INVALID_ARGUMENT;
-    if (!audio->composition) return fvm_swf_stream_output_info(&audio->stream_output, out);
+    if (!audio->composition || !audio->composition_origins) return fvm_swf_stream_output_info(&audio->stream_output, out);
     snapshot.struct_size = sizeof(snapshot);
     result = fvm_swf_stream_output_mix_info(&audio->stream_output, audio->composition, &snapshot);
-    if (result == FVM_UNSUPPORTED)
-        return fvm_swf_stream_output_info(&audio->stream_output, out); /* Legacy adapters omit origins. */
     if (result == FVM_OK) *out = snapshot.stream;
     return result;
 }
@@ -662,6 +660,7 @@ FVM_Result fvm_desktop_audio_open_policy(FVM_Context *context, FVM_Object *clip,
             audio->composition, 1, mix_budget);
         if (result == FVM_OK) result = fvm_swf_sound_mix_queue_set_origin_tracking(
             audio->composition, 1, mix_budget);
+        if (result == FVM_OK) audio->composition_origins = 1; /* Publish mode before worker starts. */
         if (result != FVM_OK) return result;
         backend = adapted; /* Trace wraps the real device below the single saturation pass. */
     }

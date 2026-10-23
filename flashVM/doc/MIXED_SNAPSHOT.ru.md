@@ -61,6 +61,8 @@ Source-sample mapping, MP3 delay, автоматические A/V drift/seek, �
 
 Внутренний desktop stream-запрос сохраняет legacy-путь для вручную подготовленных адаптеров без origin tracking. Проверка disabled mode не опрашивает FIFO; fallback выполняет один queued-опрос. Явный paired API по-прежнему возвращает UNSUPPORTED.
 
+Desktop выбирает внутренний путь по immutable composition_origins, установленному при подготовке, а не по статусу callback. Поэтому backend UNSUPPORTED передаётся после одного FIFO-вызова и не вызывает повторный fallback-опрос. Ручной frontend-владелец выбирает режим после включения origins.
+
 
 v0.1051: Добавлен единый снимок stream и BASE/TAIL без рендеринга и продвижения источника.
 
@@ -85,6 +87,9 @@ v0.1060: Внутренний stream-запрос совместим с адап
 
 
 v0.1061: Один PCM-эталон проверяет legacy и origin-enabled refill, точный retry, финальный drain и сохранение out при UNSUPPORTED.
+
+
+v0.1062: Режим наблюдения публикуется до worker; backend UNSUPPORTED сохраняется после одного callback с проверкой out и числа опросов.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
