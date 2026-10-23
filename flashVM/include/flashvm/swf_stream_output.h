@@ -22,6 +22,13 @@ extern "C"
         FVM_SWFStreamConvertedChunk
             chunk; /* Last prepared source/output metadata, including markers. */
     } FVM_SWFStreamOutputInfo;
+    /* One native FIFO observation shared by stream metadata and BASE/TAIL categories. */
+    typedef struct FVM_SWFStreamMixInfo
+    {
+        size_t struct_size; /* Caller supplies exact size; nested sizes are initialized on OK. */
+        FVM_SWFStreamOutputInfo stream; /* Source/retry metadata and the shared dequeue clock. */
+        FVM_SWFSoundMixQueueOriginInfo origins; /* Categories of the same accepted/queued frames. */
+    } FVM_SWFStreamMixInfo;
     /* Caller-owned serial state; no hidden allocation or VM references. Fields private after init.
      */
     typedef struct FVM_SWFStreamOutput
@@ -117,6 +124,19 @@ extern "C"
      * impossible growth beyond submitted/target or regression of played_frames with ERROR.
      * Requires exclusive producer and queue ownership, including no independent clears/writes. */
     FVM_API FVM_Result fvm_swf_stream_output_info(FVM_SWFStreamOutput *, FVM_SWFStreamOutputInfo *);
+    /* Observe a paired stream/mix through exactly one real queued callback. Require the exact
+     * adapted backend, equal submitted epochs and enabled origin tracking. Copies stream and
+     * category clocks from that same observation; updates stream's cached clock only on OK.
+     * Does not decode, render, advance source, allocate, authorize frames or call VM/GC.
+     * Retained BASE/TAIL bytes are excluded from submitted/queued, as with separate queries.
+     * INVALID_ARGUMENT for invalid size/reentry/owners/epochs or queue beyond stream target;
+     * UNSUPPORTED when origin mode is disabled; backend errors propagate, exceptions ERROR.
+     * Errors preserve out and stream cache; a valid mix dequeue observation may still retire
+     * its native ledger. No rollback of device progress. Keep all borrowed owners alive and
+     * externally serialize both producers, converter, mixer and exclusive FIFO. Not DAC time
+     * or a mapping from output samples to source/movie timestamps. Nested sizes need not be set. */
+    FVM_API FVM_Result fvm_swf_stream_output_mix_info(FVM_SWFStreamOutput *,
+        FVM_SWFSoundMixQueue *, FVM_SWFStreamMixInfo *out);
     /* Validate absolute source seek first, pause then clear FIFO, discard pending and reset clock
      * epoch only after successful clear. New grid phase zero. Pause success remains visible if
      * clear fails; pending/converter/epoch stay intact for retry. Errors cannot undo host effects.

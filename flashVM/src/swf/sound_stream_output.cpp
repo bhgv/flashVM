@@ -335,6 +335,33 @@ extern "C" FVM_Result fvm_swf_stream_output_info(FVM_SWFStreamOutput *s,
         return FVM_ERROR;
     }
 }
+/* [GC:] Copy one paired native observation without rendering or touching managed objects. */
+extern "C" FVM_Result fvm_swf_stream_output_mix_info(FVM_SWFStreamOutput *s,
+    FVM_SWFSoundMixQueue *mix, FVM_SWFStreamMixInfo *out)
+{
+    if (!stream_output(s) || !out || out->struct_size != sizeof(*out) ||
+        !fvm_swf_sound_mix_queue_matches(mix, &s->backend)) return FVM_INVALID_ARGUMENT;
+    StreamBusy guard(s);
+    FVM_SWFSoundMixQueueClock clock;
+    fvm_swf_sound_mix_queue_last_clock(mix, &clock);
+    if (clock.submitted_frames != s->info.submitted_frames ||
+        clock.played_frames < s->info.played_frames) return FVM_INVALID_ARGUMENT;
+    FVM_SWFStreamMixInfo info;
+    std::memset(&info, 0, sizeof(info));
+    info.struct_size = sizeof(info);
+    info.origins.struct_size = sizeof(info.origins);
+    FVM_Result result = fvm_swf_sound_mix_queue_origin_info(mix, &info.origins);
+    if (result != FVM_OK) return result;
+    fvm_swf_sound_mix_queue_last_clock(mix, &clock);
+    if (clock.queued_frames > s->target) return FVM_INVALID_ARGUMENT;
+    info.stream = s->info;
+    info.stream.played_frames = clock.played_frames;
+    info.stream.seconds = clock.seconds;
+    info.stream.queued_frames = clock.queued_frames;
+    s->info = info.stream;
+    *out = info;
+    return FVM_OK;
+}
 /* Check a prospective cursor on a copy before any native queue or binding change. */
 static FVM_Result stream_match(FVM_SWFStreamOutput *s, FVM_SWFStreamConverter *converter)
 {

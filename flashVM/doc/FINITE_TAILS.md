@@ -49,7 +49,7 @@ were stopped after rejection. Retry its original size and bytes; acknowledged
 clear is the cancellation boundary. New silent-valued source/release frames still
 count. This trims synthetic block padding, not authored silence or release endpoints.
 
-[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L114) adds the same policy to the existing
+[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L121) adds the same policy to the existing
 paired stream scheduler. It validates the exact adapted backend and common epoch,
 accepts a retained TAIL before newly permitted base, holds BASE when its frame gate
 is closed and preserves source phase during event-only output. Base conversion is
@@ -111,5 +111,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
 | `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
-| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |
+| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:121](../include/flashvm/swf_stream_output.h#L121) |
 <!-- source-links:end -->

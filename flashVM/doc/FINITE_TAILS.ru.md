@@ -48,7 +48,7 @@ SOUND_OUTPUT_MAX_QUEUE. accepted необязателен и сначала об
 Повторяются исходные размер и байты; отмена — только подтверждённый clear. Убирается
 синтетический padding, но не авторские нулевые отсчёты и не release endpoint.
 
-[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L114) добавляет этот режим в парный stream
+[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L121) добавляет этот режим в парный stream
 планировщик: проверяет точный backend и общую эпоху, принимает TAIL до нового BASE,
 удерживает BASE закрытого кадра и сохраняет source phase при event-only выводе.
 Base-конверсия не меняется. Кадр ноль удерживает base, разрешая события. accepted
@@ -105,5 +105,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
 | `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
-| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |
+| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:121](../include/flashvm/swf_stream_output.h#L121) |
 <!-- source-links:end -->

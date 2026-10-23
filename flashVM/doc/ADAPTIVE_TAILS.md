@@ -56,7 +56,7 @@ v0.1008: Check all eight export modes including exact fourteen-frame headroom PC
 
 ## Paired and desktop scheduling
 
-[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L104) and [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L85) use
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) and [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) use
 adaptive tails while preserving their existing gate/observed-EOF preconditions.
 Short retained tails take priority over new base. The stream's base PCM pending
 field remains base-only; query mix pending for event retry ownership. Source cursor,
@@ -97,6 +97,6 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
 <!-- source-links:end -->

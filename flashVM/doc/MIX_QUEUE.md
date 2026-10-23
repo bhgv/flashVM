@@ -64,7 +64,7 @@ callback recursion and is not a thread lock. No managed pointer is retained.
 
 ## Producer, cancellation and tails
 
-Create the adapter before [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L45), passing its returned table
+Create the adapter before [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L52), passing its returned table
 to that producer. The producer owns original stream retry PCM, while the adapter
 owns its already mixed retry. On write rejection both layers retain the same
 logical block. Queue clocks/frame gates remain the producer's responsibility.
@@ -138,5 +138,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:215](../include/flashvm/swf_sound_mix_queue.h#L215) |
 | `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:275](../include/flashvm/swf_sound_mix_queue.h#L275) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
-| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:45](../include/flashvm/swf_stream_output.h#L45) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:52](../include/flashvm/swf_stream_output.h#L52) |
 <!-- source-links:end -->

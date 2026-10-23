@@ -54,7 +54,7 @@ v0.1008: Независимый PCM-оракул проверяет восемь
 
 ## Парный планировщик и desktop
 
-[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L104) и [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L85)
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) и [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92)
 используют адаптивный TAIL с прежними условиями gate/наблюдаемого EOF. Короткий
 retry предшествует новому BASE. Stream pending остаётся только базовым; event retry
 наблюдается через mix pending. Cursor, phase, chunk и EOF источника не меняются.
@@ -93,6 +93,6 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:85](../include/flashvm/swf_stream_output.h#L85) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:104](../include/flashvm/swf_stream_output.h#L104) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
 <!-- source-links:end -->

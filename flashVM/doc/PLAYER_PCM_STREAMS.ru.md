@@ -118,7 +118,7 @@ converters до старта worker. Каждая запись владеет sn
 проверяет/индексирует отдельно каждый сегмент и может выделять память; worker
 переключается без выделений и не читает context.
 
-При EOF источника [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L136) сохраняет принятые queue bytes,
+При EOF источника [fvm_swf_stream_output_continue](../include/flashvm/swf_stream_output.h#L156) сохраняет принятые queue bytes,
 pause и суммарные submitted/played clocks. Device открывается один раз. Выход
 всегда 48000 Hz stereo S16, source width/mono/stereo/rate меняются по заголовкам.
 Фаза переносится между блоками одного header и начинается с нуля у нового. Перед
@@ -130,7 +130,7 @@ pause и суммарные submitted/played clocks. Device открываетс
 
 Explicit/backward/skipped навигация выбирает последний header не позже target
 frame (при равных frames — последний в source order), а до первого header —
-первый будущий. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L143) выполняет staged pause/clear и
+первый будущий. [fvm_swf_stream_output_bind_frame](../include/flashvm/swf_stream_output.h#L163) выполняет staged pause/clear и
 публикует binding только после подтверждённого clear, выбирая первый блок не
 раньше target внутри сегмента. Gaps удерживают будущие данные, тишина не
 синтезируется. Следующие cursors заново подготавливаются при достижении. Это
@@ -175,7 +175,7 @@ child/sprite streams не поддержаны.
 Владелец импортирует/укореняет root и читает [fvm_movieclip_get_playback_info](../include/flashvm/movieclip.h#L83) в точках обслуживания. Выбранный, но ещё
 не выполненный кадр не разрешает звук. Только скаляры entered frame и play передаются под
 audio mutex; worker не читает context, clip и managed values. Он владеет независимым
-snapshot, converter cursor и retry buffer и делает не больше [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) вызовов [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L67) за итерацию.
+snapshot, converter cursor и retry buffer и делает не больше [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) вызовов [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L74) за итерацию.
 Backend SDL копирует принятый PCM и не входит в VM/GC. Reserve учитывает реальный quantum
 драйвера. Короткий разрешённый блок/EOF запускает непустую очередь даже ниже обычного
 порога, чтобы ожидание reserve не блокировало старт.
@@ -183,7 +183,7 @@ Backend SDL копирует принятый PCM и не входит в VM/GC.
 Пауза хоста/сессии/background и stop клипа останавливают очередь, сохраняя данные; play
 возобновляет разрешённые данные. StopSounds очищает очередь и отменяет stream до
 обнаруженной навигации. Release ramp для stream пока нет. Pending/backward/skipped переход
-вызывает [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L130) под тем же mutex: старые queued/pending bytes удаляются, phase=0 и выбирается
+вызывает [fvm_swf_stream_output_seek_frame](../include/flashvm/swf_stream_output.h#L150) под тем же mutex: старые queued/pending bytes удаляются, phase=0 и выбирается
 первый блок не раньше выбранного кадра. Пропуск кадра удерживает более поздний блок,
 тишина не синтезируется. EOF источника отличается от опустевшей очереди.
 
@@ -300,9 +300,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:93](../include/flashvm/movieclip.h#L93) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:85](../include/flashvm/movieclip.h#L85) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:143](../include/flashvm/swf_stream_output.h#L143) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:136](../include/flashvm/swf_stream_output.h#L136) |
-| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:67](../include/flashvm/swf_stream_output.h#L67) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:130](../include/flashvm/swf_stream_output.h#L130) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:163](../include/flashvm/swf_stream_output.h#L163) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:156](../include/flashvm/swf_stream_output.h#L156) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:74](../include/flashvm/swf_stream_output.h#L74) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:150](../include/flashvm/swf_stream_output.h#L150) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->
