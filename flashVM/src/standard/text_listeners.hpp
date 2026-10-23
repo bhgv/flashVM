@@ -8,6 +8,7 @@
 #define FVM_TEXT_LISTENER_KEY "\001FlashVM.TextField.listeners" /* Private nonenumerable managed registry. */
 #define FVM_TEXT_LISTENER_MAX_COUNT 4096UL /* Bounded registration and recipient snapshot work. */
 #define FVM_TEXT_LISTENER_MIN_VERSION 6U /* TextField listener events begin in SWF6. */
+#define FVM_TEXT_LISTENER_RETIRED_CALLBACK 205UL /* Historical unsupported TextField method body. */
 #define FVM_TEXT_LISTENER_CALLBACK_ADD 207UL /* Stable text callback graph identity. */
 #define FVM_TEXT_LISTENER_CALLBACK_REMOVE 208UL /* Stable text callback graph identity. */
 /* Register a same-context identity once; publish no partial registry on allocation failure. */
@@ -18,6 +19,8 @@ FVM_Result fvm_textfield_remove_listener(FVM_Context *, FVM_Object *, unsigned i
                                         const FVM_Value *, FVM_Value *, void *);
 /* Validate and borrow the private compact managed Array; NOT_FOUND when never registered. */
 FVM_Result fvm_textfield_listener_registry(FVM_Context *, FVM_Object *, FVM_Object **);
+/* Upgrade only exact retired rootless methods; callers invalidate matching receiver caches. */
+bool fvm_textfield_upgrade_listener_method(const char *, FVM_NativeEntry &);
 /* [GC:] Root the field and recipient snapshot before publishing an explicit scroll change. */
 class FVM_TextFieldScrollPlan
 {

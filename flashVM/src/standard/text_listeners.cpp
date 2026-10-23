@@ -5,6 +5,7 @@
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
 #include "../core/optional_method.hpp"
+#include <cstring>
 
 namespace
 {
@@ -252,4 +253,19 @@ FVM_Result FVM_TextFieldScrollPlan::dispatch()
                                                    "onScroller", 1, &argument);
     }
     return result;
+}
+
+/* [GC:] Preserve custom callbacks and captured roots; only legacy unsupported slots are retired. */
+bool fvm_textfield_upgrade_listener_method(const char *name, FVM_NativeEntry &entry)
+{
+    if (!name || entry.callback != fvm_text_callback_from_id(FVM_TEXT_LISTENER_RETIRED_CALLBACK) || entry.userdata ||
+        entry.root || entry.collector_entry)
+        return false;
+    if (!std::strcmp(name, "addListener"))
+        entry.callback = fvm_textfield_add_listener;
+    else if (!std::strcmp(name, "removeListener"))
+        entry.callback = fvm_textfield_remove_listener;
+    else
+        return false;
+    return true;
 }

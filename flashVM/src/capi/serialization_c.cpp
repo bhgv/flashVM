@@ -31,6 +31,7 @@
 #include "../core/native_call_guard.hpp"
 #include "flashvm/serialization.h"
 #include "../standard/text_state.hpp"
+#include "../standard/text_listeners.hpp"
 #include "../standard/text_constants.h"
 #include "zlib.h"
 #include <cstring>
@@ -1834,7 +1835,14 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                  /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.methods.end(); ++p)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                dst->methods[p->first] = restore_callback(c, p->second, objects);
+            {
+                FVM_NativeEntry method = restore_callback(c, p->second, objects);
+                /* [GC:] Upgrade retired TextField methods without rewriting unrelated saved wrappers. */
+                if (src.kind == FVM_RESOURCE_TEXT_FIELD &&
+                    fvm_textfield_upgrade_listener_method(p->first.c_str(), method))
+                    dst->method_values.erase(p->first);
+                dst->methods[p->first] = method;
+            }
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Callback>::iterator p =
                      /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов.
