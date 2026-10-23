@@ -1,5 +1,8 @@
 # События прокрутки при изменениях текста и формата
 
+Триггер теперь учитывает bottomScroll, а поиск descriptors расходует work: [контракт visible lines](TEXT_VISIBLE_EVENTS.ru.md).
+
+
 [Транзакции геометрии](TEXT_GEOMETRY_EVENTS.ru.md) расширены на присваивание text,
 replaceText и текущий setTextFormat host-created одностильного TextField.
 [Справочник Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)

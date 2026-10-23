@@ -1,5 +1,8 @@
 # Scroll observers for text and format edits
 
+The trigger now also includes bottomScroll; descriptor discovery consumes charged work: [visible-line contract](TEXT_VISIBLE_EVENTS.md).
+
+
 This extends [geometry transactions](TEXT_GEOMETRY_EVENTS.md) to text assignment,
 replaceText and current setTextFormat on host-created uniform TextFields. The
 [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)

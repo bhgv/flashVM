@@ -1,5 +1,8 @@
 # ActionScript text bridge (Flash 6–8 subset)
 
+bottomScroll now joins the native edit event trigger; folded descriptor discovery consumes shared work before publication: [contract](TEXT_VISIBLE_EVENTS.md).
+
+
 Text assignment, replaceText and current setTextFormat now notify changed effective scroll ranges through the [edit transaction](TEXT_EDIT_EVENTS.md). Future formatting and unchanged tuples stay silent.
 
 

@@ -1,5 +1,8 @@
 # Транзакции событий геометрии TextField
 
+Изменения нижней видимой строки уведомляют даже при неизменных offsets/maxima; поиск observers учитывается: [контракт](TEXT_VISIBLE_EVENTS.ru.md).
+
+
 Text assignment, replaceText и current TextFormat расширяют транзакцию: [контракт edits](TEXT_EDIT_EVENTS.ru.md). Future style остаётся молчаливым; ввод открыт.
 
 

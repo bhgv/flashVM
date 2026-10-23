@@ -1,5 +1,8 @@
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
+bottomScroll включён в native edit event trigger; folded descriptor discovery расходует общий work до публикации: [контракт](TEXT_VISIBLE_EVENTS.ru.md).
+
+
 Text assignment, replaceText и current setTextFormat уведомляют об изменении effective scroll ranges через [edit-транзакцию](TEXT_EDIT_EVENTS.ru.md). Future formatting и unchanged tuples молчаливы.
 
 

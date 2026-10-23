@@ -1,5 +1,8 @@
 # TextField geometry observer transactions
 
+Bottom-visible-line changes now notify, even when offsets and maxima agree; observer discovery is metered: [contract](TEXT_VISIBLE_EVENTS.md).
+
+
 Text assignment, replaceText and current TextFormat now extend this transaction: [edit contract](TEXT_EDIT_EVENTS.md). Future style remains silent; input is still open.
 
 

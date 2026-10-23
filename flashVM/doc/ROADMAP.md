@@ -1,5 +1,8 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+TextField visible-line observers and metered descriptor admission: [EN](TEXT_VISIBLE_EVENTS.md) / [RU](TEXT_VISIBLE_EVENTS.ru.md). All nine roadmap stages remain open.
+
+
 TextField text/style scroll observers: [EN](TEXT_EDIT_EVENTS.md) / [RU](TEXT_EDIT_EVENTS.ru.md). Supported native content/current-format edits notify changed ranges. Input, mixed styled/display-list text and all nine roadmap stages remain open.
 
 
