@@ -10,6 +10,8 @@ int main(void)
     char *valid[] = {"player",  "--no-jit", "--quality", "best",
                      "--speed", "200%",     "a.swf",     "b.swf"};
     char *fps[] = {"player", "--fps", "30", "--frames", "2", "movie.swf"};
+    char *finite[] = {"player", "--finite-mixed-tails", "movie.swf"};
+    char *finite_file[] = {"player", "--", "--finite-mixed-tails"};
     char *mute[] = {"player", "--mute", "movie.swf"};
     char *null_program[] = {0, "--help"};
     char *null_file[] = {"player", 0};
@@ -56,6 +58,15 @@ int main(void)
     assert(options.frames == 2 && fvm_desktop_rate(&options, 0, &rate) && rate == 30);
     assert(fvm_desktop_parse(3, mute, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
            options.mute);
+    assert(!options.finite_mixed_tails);
+    assert(fvm_desktop_parse(3, finite, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
+           options.finite_mixed_tails && !options.mute);
+    options.finite_mixed_tails = 2;
+    assert(!fvm_desktop_options_validate(&options, &error) && error);
+    options.finite_mixed_tails = 1;
+    assert(fvm_desktop_options_validate(&options, &error));
+    assert(fvm_desktop_parse(3, finite_file, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
+           !options.finite_mixed_tails && !strcmp(files[0], "--finite-mixed-tails"));
     assert(fvm_desktop_parse(2, version, files, &options, &error) == FVM_DESKTOP_PARSE_VERSION);
     assert(fvm_desktop_parse(3, version_file, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
            !strcmp(files[0], "--version"));

@@ -84,6 +84,14 @@ A/V drift, другие backend/платформы/устройства и вс�
 
 v0.1023: Уточнены пределы horizon, неделимость retry, source/release, явное включение плеера и открытая reference/device-приёмка.
 
+
+## v0.1024 verification / Проверка
+
+Конечные mixed-хвосты v0.1012–v0.1024: ограниченный остаток на живой сетке микшера учитывает дробный lookahead, повторы и меньшую source/release-длительность. Новые finite queue/paired API убирают только свежий event-only padding; существующие retry всех режимов остаются неделимыми. Desktop --finite-mixed-tails задаёт неизменную политику до запуска worker; default, event-only и stream-only пути сохраняют прежнее поведение. Root Stop/gates, host pause, StopSounds/seek и queued ID сохраняют владение. Прошли 191 native regression/tutorial/CLI проверка, 51 выбранная ASan/UBSan плюс одиннадцать --no-throw запусков, десять SDK-free core/tutorial и две дополнительные options/help проверки. Четыре старых white-box queue limits пересобраны и повторно проверены; граничные метаданные не означают огромный source/device run. Исключения/ошибки выделений проверены обычной сборкой; LeakSanitizer отключён. Есть независимая conversion/duration/PCM-матрица, strict/converted release, отсутствие аллокаций final retry/cancel и 256 эпох на четырёх независимых OS-потоках. C89 worker подтверждает interpreter/native JIT entries и GC; CLI FWS/CWS Stop/gate даёт точные 9/14-frame WAV и mute на SDL dummy. Девятый C89-режим проверяет хвосты 4,4,4,2 независимым рациональным PCM-оракулом. Отделённый переименованный компонент конфигурируется с явным SDK, скопированный девятирежимный checker проходит на native-бинарнике; отдельной сборки не было. Дочерние словари/таймлайны, полная codec/reference latency/seek, физические DAC/A-V/drift, другие backend/платформы/устройства и все девять стадий остаются открытыми.
+
+
+v0.1024: Проверены CLI policy и Boolean-валидация; зафиксированы finite mixer/player/tutorial контракты и открытая приёмка.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

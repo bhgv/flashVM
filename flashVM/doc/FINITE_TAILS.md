@@ -90,6 +90,14 @@ acceptance. All nine roadmap stages remain open.
 
 v0.1023: Specify live horizon bounds, indivisible retries, source and release limits, explicit player activation and remaining reference and device acceptance.
 
+
+## v0.1024 verification / Проверка
+
+Finite mixed tails v0.1012–v0.1024: a bounded live-grid mixer horizon includes fractional lookahead, remaining repeats and the shorter source/release interval. New finite queue and paired stream APIs trim only fresh event-only block padding; all existing retries remain indivisible, including padded retries created by older APIs. Desktop --finite-mixed-tails selects immutable startup policy before worker publication; default, event-only and stream-only paths retain their prior behavior. Root Stop/gates, host pause, StopSounds/seek and queued identities preserve ownership. Validation passes 191 native regression/tutorial/CLI checks, 51 selected ASan/UBSan checks plus eleven explicit --no-throw runs, ten SDK-free core/tutorial checks and two additional options/help checks. Four existing white-box queue limits were rebuilt and rerun; no huge source/device run is inferred from seeded arithmetic tests. Ordinary builds cover exceptions/allocation failures; LeakSanitizer is disabled. Native evidence includes an independent conversion/duration/PCM matrix, strict/converted release endpoints, zero-allocation final retry/cancel and 256 epochs on four independent OS workers. Real C89 worker tests assert interpreter/native JIT entries and GC; FWS/CWS Stop/gate CLI checks exact 9/14-frame WAV and mute on SDL dummy. The ninth C89 export mode checks 4,4,4,2-frame tails with an independent rational PCM oracle. A renamed detached component configures with an explicit SDK and its copied nine-mode checker passes against the native executable; no separate detached build. Child dictionaries/timelines, full codec/reference latency/seek, physical DAC/A-V/drift, other backend/platform/device acceptance and all nine stages remain open.
+
+
+v0.1024: Verify explicit policy parsing and Boolean validation, and record finite mixer, player and tutorial contracts with remaining acceptance limits.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
