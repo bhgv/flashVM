@@ -1,5 +1,8 @@
 # ActionScript text bridge (Flash 6–8 subset)
 
+Text assignment, replaceText and current setTextFormat now notify changed effective scroll ranges through the [edit transaction](TEXT_EDIT_EVENTS.md). Future formatting and unchanged tuples stay silent.
+
+
 Dimension and layout-policy changes now notify onScroller when effective positions or maxima change; see [geometry admission and transaction](TEXT_GEOMETRY_EVENTS.md). Text/style events and input remain open.
 
 

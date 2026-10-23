@@ -1,5 +1,8 @@
 # Наблюдатели прокрутки TextField
 
+Range notifications от text/current format следуют [edit-транзакции](TEXT_EDIT_EVENTS.ru.md); программные edits не синтезируют onChanged.
+
+
 Размеры и режимы раскладки теперь поддерживают [события диапазонов](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
 
 

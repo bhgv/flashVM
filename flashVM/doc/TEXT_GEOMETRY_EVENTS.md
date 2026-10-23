@@ -1,5 +1,8 @@
 # TextField geometry observer transactions
 
+Text assignment, replaceText and current TextFormat now extend this transaction: [edit contract](TEXT_EDIT_EVENTS.md). Future style remains silent; input is still open.
+
+
 This extends [scroll observers](TEXT_SCROLL_EVENTS.md) for host-created uniform
 TextFields. The [Adobe AS2 reference](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)
 describes notification for scroll property changes; the exact bounded geometry

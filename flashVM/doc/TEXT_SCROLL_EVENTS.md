@@ -1,5 +1,8 @@
 # TextField scroll observers
 
+Text and current-format range notifications now follow the [edit transaction](TEXT_EDIT_EVENTS.md); programmatic edits do not synthesize onChanged.
+
+
 Dimensions and layout policies now support [geometry range events](TEXT_GEOMETRY_EVENTS.md). Text/style-triggered events and input remain open.
 
 

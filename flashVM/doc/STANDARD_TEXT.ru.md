@@ -1,5 +1,8 @@
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
+Text assignment, replaceText и current setTextFormat уведомляют об изменении effective scroll ranges через [edit-транзакцию](TEXT_EDIT_EVENTS.ru.md). Future formatting и unchanged tuples молчаливы.
+
+
 Изменения размеров и режимов раскладки уведомляют onScroller при изменении effective positions или maxima: [допуск и транзакция](TEXT_GEOMETRY_EVENTS.ru.md). События от text/style и ввод остаются открытыми.
 
 

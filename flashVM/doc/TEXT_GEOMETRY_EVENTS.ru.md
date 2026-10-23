@@ -1,5 +1,8 @@
 # Транзакции событий геометрии TextField
 
+Text assignment, replaceText и current TextFormat расширяют транзакцию: [контракт edits](TEXT_EDIT_EVENTS.ru.md). Future style остаётся молчаливым; ввод открыт.
+
+
 Расширяются [наблюдатели прокрутки](TEXT_SCROLL_EVENTS.ru.md) для host-created
 одностильного TextField. [Справочник Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/TextField.html#onScroller)
 описывает уведомления при изменении scroll properties. Точная bounded-геометрия
