@@ -267,6 +267,14 @@ static FVM_Result stream_pump_mix_until(FVM_SWFStreamOutput *s,
     if (pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_BASE &&
         pending.frames != s->info.pending_frames) return FVM_INVALID_ARGUMENT;
     result = stream_pump_locked(s, &frame, accepted);
+    if (result == FVM_OK)
+    {
+        /* Origin-enabled writes may observe more dequeue during their own admission check. */
+        fvm_swf_sound_mix_queue_last_clock(mix, &clock);
+        s->info.played_frames = clock.played_frames;
+        s->info.seconds = clock.seconds;
+        s->info.queued_frames = clock.queued_frames;
+    }
     if (result != FVM_NOT_FOUND || s->info.pending_frames) return result;
     unsigned int next = 0;
     result = stream_next_frame(s, &next);

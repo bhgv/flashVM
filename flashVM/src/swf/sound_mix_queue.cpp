@@ -300,6 +300,17 @@ bool fvm_swf_sound_mix_queue_matches(const FVM_SWFSoundMixQueue *queue,
         backend->channels == queue->backend.channels;
 }
 
+/* Carry the actual latest admission observation into paired stream snapshots without repolling. */
+void fvm_swf_sound_mix_queue_last_clock(const FVM_SWFSoundMixQueue *queue,
+                                       FVM_SWFSoundMixQueueClock *clock)
+{
+    clock->struct_size = sizeof(*clock);
+    clock->submitted_frames = queue->clock_submitted;
+    clock->played_frames = queue->clock_played;
+    clock->seconds = queue->clock_played / queue->backend.sample_rate;
+    clock->queued_frames = (size_t)(queue->clock_submitted - queue->clock_played);
+}
+
 /* Prepare complete native storage without touching the real queue or publishing partial ownership.
  */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_create_bounded(FVM_SWFSoundMixer *mixer,

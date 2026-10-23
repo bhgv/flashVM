@@ -13,6 +13,9 @@ v0.1040: Verify retained TAIL classification, stop and failed-clear ownership, i
 
 v0.1041: Exercise wraparound, bounded admission before render and the last exact epoch frames using explicit seeded native metadata.
 
+
+v0.1042: Verify paired BASE and TAIL origins and publish the actual successful base admission clock without a fallible post-write callback.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
