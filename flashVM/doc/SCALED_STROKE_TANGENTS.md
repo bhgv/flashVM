@@ -8,6 +8,11 @@ Tests cover horizontal, vertical, diagonal and reversed segments across binary e
 
 Standard binary floating point with gradual underflow is required; fast-math and flush-to-zero are not acceptance configurations. General curved non-round bounds, transform metrics, reference raster and device/platform acceptance remain open. All nine roadmap stages remain open.
 
+
+## Validation v0.1427
+
+329 native, 83 no-graphics and 83 ASan/UBSan tests pass. LeakSanitizer is disabled. Documentation and C89 tutorial checks pass. This does not validate physical devices or full reference Flash behavior.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
