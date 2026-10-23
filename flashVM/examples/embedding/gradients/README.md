@@ -41,6 +41,24 @@ GC этому нативному API не требуются. Ограничен
 The annotated AS2 example_as2.as demonstrates MovieClip.beginGradientFill with a copied legacy box matrix; see [RU/EN checkpoint](../../../doc/MOVIECLIP_GRADIENT_FILL.md).
 Русский: example_as2.as поясняет вызов beginGradientFill, копирование аргументов и сохранение рампы готовым контуром.
 
+## Gradient strokes / Градиентные обводки
+
+The C89 `stroke.inc` companion reuses the owned rectangle, borrowed stops and RGBA buffer. It draws a four-pixel stroke with PAD, REFLECT and REPEAT, then prints red samples at phases 0.5, 1 and 2. No VM, managed root, device or file is retained. API errors clean up the path and return a failing process status; NO_GRAPHICS prints the existing backend message before this helper runs.
+
+C89 helper сравнивает обводки с тремя режимами продолжения. Все массивы и путь принадлежат main; helper ничего не сохраняет. Ожидаемый дополнительный вывод:
+
+```text
+stroke pad: 128 0 0
+stroke reflect: 128 0 255
+stroke repeat: 128 255 255
+```
+
+| Function | Purpose and ownership / Назначение и владение |
+| --- | --- |
+| [`fvm_path_stroke_gradient`](../../../include/flashvm/gradient.h#L57) | Synchronously borrows path, gradient/stops and destination; paints a positive destination-space stroke. Invalid input or preparation failure preserves pixels. [Contract / Контракт](../../../doc/GRADIENT_STROKES.md). |
+
+[Stroke contract / Контракт обводок](../../../doc/GRADIENT_STROKES.ru.md). This example checks the selected backend on the host; reference-player and physical-device acceptance remain separate.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
@@ -79,4 +97,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:45](../../../include/flashvm/gradient.h#L45) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:57](../../../include/flashvm/gradient.h#L57) |
 <!-- source-links:end -->
