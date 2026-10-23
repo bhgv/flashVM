@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Bounded explicit TextField scroll observers: [EN](TEXT_SCROLL_EVENTS.md) /
+[RU](TEXT_SCROLL_EVENTS.ru.md). Field-first synchronous delivery, graph-owned
+listeners and reentrant snapshots are implemented. Geometry-wide notifications,
+input and complete TextField acceptance remain open; all nine stages remain open.
+
+
 Bounded host-created TextField scrolling: [EN](TEXT_SCROLL.md) /
 [RU](TEXT_SCROLL.ru.md). Native viewport geometry, AS2 offsets, translated
 contours and graph ownership are implemented. Full HTML/mixed-font/event/display-list

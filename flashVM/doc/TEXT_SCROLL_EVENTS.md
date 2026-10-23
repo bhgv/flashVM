@@ -38,6 +38,46 @@ not notify. Query/path/capture keep their no-script contract. Existing native
 accessor barriers still reject collection inside callbacks; ordinary GC resumes
 after rooted delivery unwinds.
 
+## Transfer and legacy methods
+
+The registry is an ordinary strong graph edge, including self-listener cycles.
+Binary capture and channel transfer preserve registrations, source identity and
+current offsets without replaying events. A pending stack-local delivery plan is
+not serialized. Default fields that never register have no private registry edge.
+No public C ABI struct or native Field wire bit is added by this series. Updated
+readers are required for the new callback selectors 207/208.
+
+Restoration upgrades only retired rootless native callback 205 when installed as
+the TextField addListener/removeListener method, clearing its receiver method
+cache. An independently saved old Function alias retains its unsupported body.
+Custom methods, callback roots and userdata keep their ordinary capture contract;
+raw host userdata is not made portable by this feature.
+
+## Failures, execution and remaining scope
+
+The 4096-entry limit rejects a new unique registration with [FVM_ERROR](../include/flashvm/flashvm.h#L43). Registration
+staging and registry validation share a work budget. Recipient preparation precedes
+publication; callback lookup and delivery consume the same event budget. Allocation
+failure before publication preserves offsets. Lookup, VM exception, host C++
+exception or work failure after publication retains the committed offsets and all
+completed callback effects. Delivery stops at that error and has no automatic
+retry or replay. Rewriting the same effective position does not replay a lost tail.
+Conversion side effects also remain visible if subsequent preparation fails.
+
+Callbacks run synchronously on the context owner thread. Reentrant setters retain
+their final state. Recipient order is snapshotted, but each handler is looked up
+live, so replacing a later handler affects the current delivery. The existing
+native accessor GC barrier remains: collecting inside these callbacks is rejected;
+collection between operations traces registered objects and reclaims unreachable
+cycles. Worker coverage uses independent contexts, not concurrent access to one VM.
+Native scroll query, path export and graph capture execute no observer code.
+
+Geometry-wide notifications after text/style/dimension/maxscroll changes,
+onChanged and user input, Selection/focus, HTML/mixed-style text and SWF text
+display-list integration remain open. Tests use analytic layout and executable
+AVM1 fixtures; they are not an original Flash Player binary oracle. Device and
+foreign-platform acceptance is separate; no roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -47,5 +87,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:25](../src/standard/text_listeners.hpp#L25) |
 <!-- source-links:end -->

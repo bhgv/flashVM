@@ -3,8 +3,9 @@
 Добавлена bounded-прокрутка одностильного поля: scroll/hscroll,
 read-only maxscroll/maxhscroll/bottomScroll и нативный query viewport.
 [Геометрия и передача состояния](TEXT_SCROLL.ru.md). Контуры учитывают scroll,
-clipping выполняет хост; onScroller/listeners, HTML/mixed-font и SWF display-list
-приёмка остаются открытыми.
+clipping выполняет хост. Явные изменения offsets поддерживают
+[onScroller/listeners](TEXT_SCROLL_EVENTS.ru.md); события всей геометрии,
+HTML/mixed-font и SWF display-list приёмка остаются открытыми.
 
 
 Native _x/_y и опоры left/center/right поддержаны в пределах [контракта геометрии](TEXT_AUTOSIZE.ru.md). Остальные преобразования display остаются неподдержанными.
@@ -100,7 +101,7 @@ TEXT_LAYOUT.ru.md. Табуляция/условный дефис и други�
 Известные неподдержанные свойства отображения/ввода (HTML, border,
 background, embedFonts, password, selectable, прокрутка, параметры сглаживания,
 filters, преобразования отображения) явно дают UNSUPPORTED при чтении/записи.
-Заблокированы replaceSel, слушатели и методы узла отображения.
+Заблокированы replaceSel и методы узла отображения.
 MovieClip.createTextField, HTML, разные стили, каретка/выделение/ввод,
 подстановка шрифтов, декодирование встроенных SWF-шрифтов и полный display list
 ещё не готовы. Прямой new TextField не поддержан; временный мост — создание

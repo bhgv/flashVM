@@ -36,6 +36,46 @@ commit и эффекты callback сохраняются. Вложенные з�
 Query/path/capture сохраняют no-script контракт. Native accessor barrier
 отклоняет collection внутри callback; обычный GC доступен после снятия roots.
 
+## Передача и старые методы
+
+Реестр — обычное сильное ребро графа, включая циклы self-listener. Binary capture
+и channel transfer сохраняют регистрации, source identity и offsets без повторной
+доставки событий. План текущей доставки на стеке не сериализуется. Поле без
+регистраций не получает private registry edge. Публичный C ABI struct и wire bit
+нативного Field не расширяются. Новые callback selectors 207/208 требуют нового
+reader.
+
+При restore обновляется только retired rootless native callback 205 в методах
+TextField addListener/removeListener со сбросом receiver method cache. Отдельно
+сохранённый старый Function alias остаётся неподдержанным. Custom methods, roots
+и userdata следуют обычному контракту capture; raw host userdata не становится
+переносимым благодаря этому изменению.
+
+## Ошибки, исполнение и оставшийся объём
+
+Лимит 4096 записей отклоняет новую уникальную регистрацию с [FVM_ERROR](../include/flashvm/flashvm.h#L43). Проверка
+реестра и staging регистрации используют общий work budget. Подготовка recipients
+предшествует публикации; lookup и доставка расходуют тот же бюджет события.
+Ошибка allocation до публикации сохраняет offsets. Ошибка lookup, VM exception,
+C++ exception хоста или work после публикации сохраняет offsets и уже выполненные
+эффекты. Доставка останавливается без автоматического retry/replay. Повторная
+запись той же effective position не доставляет пропущенный хвост. Эффекты conversion
+также сохраняются при последующей ошибке подготовки.
+
+Callback выполняется синхронно на потоке владельца context. Вложенный setter
+сохраняет своё итоговое состояние. Порядок recipients копируется, но handler
+разрешается перед каждым вызовом: замена следующего handler видна текущей доставке.
+Native accessor GC barrier сохраняется: collection внутри callback отклоняется;
+между операциями GC обходит регистрации и собирает недостижимые циклы. Worker-тест
+использует независимые contexts, а не конкурентный доступ к одной VM. Нативные
+scroll query, path export и graph capture не исполняют observers.
+
+Остаются открыты события всей геометрии после изменений text/style/dimensions/
+maxscroll, onChanged и ввод, Selection/focus, HTML/mixed-style и интеграция текста
+SWF display list. Проверки используют аналитическую раскладку и исполняемые AVM1
+fixtures, а не binary oracle оригинального Flash Player. Приёмка устройств и
+других платформ отдельная; ни одна стадия плана не закрывается.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -45,5 +85,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:25](../src/standard/text_listeners.hpp#L25) |
 <!-- source-links:end -->

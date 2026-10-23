@@ -3,8 +3,9 @@
 Bounded uniform-field scrolling is now supported through scroll/hscroll and the
 read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
 viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).
-Contours include scroll displacement and remain host-clipped; onScroller/listener,
-HTML/mixed-font and SWF display-list acceptance remain open.
+Contours include scroll displacement and remain host-clipped. Explicit offset
+changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); geometry-wide
+events, HTML/mixed-font and SWF display-list acceptance remain open.
 
 
 Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
@@ -103,9 +104,9 @@ and script-itemization restrictions. Tabs/soft hyphens and unsupported layout
 requests can be stored as text but fail when measured/exported.
 
 Known unsupported display/input properties (html/htmlText, border,
-background, embedFonts, password, selectable, onScroller/listeners, antialias settings,
+background, embedFonts, password, selectable, antialias settings,
 filters and display transforms) explicitly return UNSUPPORTED on access/write.
-Likewise replaceSel, listener and display-node methods are blocked.
+Likewise replaceSel and display-node methods are blocked.
 There is no timeline, MovieClip.createTextField, HTML parser, styled spans,
 selection/caret/input editing, font fallback, SWF embedded font decoding or
 complete display list in this checkpoint. Direct new TextField is unsupported;
