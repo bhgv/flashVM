@@ -14,6 +14,7 @@
 #include <limits>
 
 #include "text_state.hpp"
+#include "text_listeners.hpp"
 #include "base_state.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/execution_work_scope.hpp"
@@ -1260,6 +1261,8 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
 /* Map a native text callback to its stable serialization identifier. */
 unsigned long fvm_text_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == fvm_textfield_add_listener) return FVM_TEXT_LISTENER_CALLBACK_ADD;
+    if (callback == fvm_textfield_remove_listener) return FVM_TEXT_LISTENER_CALLBACK_REMOVE;
     if (callback == format_constructor)
         return 206;
     if (callback == get_extent)
@@ -1280,6 +1283,8 @@ unsigned long fvm_text_callback_id(FVM_NativeFunction callback)
 /* Restore a native text callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_text_callback_from_id(unsigned long id)
 {
+    if (id == FVM_TEXT_LISTENER_CALLBACK_ADD) return fvm_textfield_add_listener;
+    if (id == FVM_TEXT_LISTENER_CALLBACK_REMOVE) return fvm_textfield_remove_listener;
     if (id == 206)
         return format_constructor;
     if (id == 200)
@@ -1617,8 +1622,12 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
             if (result != FVM_OK)
                 return result;
         }
-        const char *unimplemented_methods[] = {"replaceSel", "removeTextField", "getDepth",
-                                               "addListener", "removeListener"};
+        FVM_NativeEntry listener;
+        listener.callback = fvm_textfield_add_listener;
+        object->methods["addListener"] = listener;
+        listener.callback = fvm_textfield_remove_listener;
+        object->methods["removeListener"] = listener;
+        const char *unimplemented_methods[] = {"replaceSel", "removeTextField", "getDepth"};
         for (size_t i = 0; i < sizeof(unimplemented_methods) / sizeof(unimplemented_methods[0]);
              ++i)
         {
