@@ -10,6 +10,9 @@ v0.1039: Add opt-in fixed bitmap origin accounting, validated FIFO retirement an
 
 v0.1040: Verify retained TAIL classification, stop and failed-clear ownership, invalid queue growth, callback recursion and exception containment.
 
+
+v0.1041: Exercise wraparound, bounded admission before render and the last exact epoch frames using explicit seeded native metadata.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

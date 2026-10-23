@@ -1,10 +1,12 @@
-Development version: **0.1040** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1041** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1041: [Exercise wraparound, bounded admission before render and the last exact epoch frames using explicit seeded native metadata.](doc/MIX_ORIGIN_CLOCK.md).
 
 v0.1040: [Verify retained TAIL classification, stop and failed-clear ownership, invalid queue growth, callback recursion and exception containment.](doc/MIX_ORIGIN_CLOCK.md).
 

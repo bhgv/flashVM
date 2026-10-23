@@ -10,6 +10,9 @@ v0.1039: Добавлены фиксированный origin bitmap, прове
 
 v0.1040: Проверены TAIL-классификация retry, stop/failed clear, неверный рост FIFO, рекурсия и исключения callbacks.
 
+
+v0.1041: Проверены wraparound, ограничение до render и последние точные кадры эпохи на явно заданных нативных метаданных.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
