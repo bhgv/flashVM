@@ -1,2 +1,2 @@
 #include "adaptive_curve_fixture.hpp"
-int main() { FVM_Path *p=dc_path(3,false,-600); for(unsigned c=0;c<3;++c) for(unsigned j=0;j<2;++j) if(c||j) { FVM_PathBounds b={1,2,3,4},before=b; int any=77; assert(fvm_path_stroke_bounds_style(p,4,c,j,&b,&any)==FVM_UNSUPPORTED && any==77 && std::memcmp(&b,&before,sizeof(b))==0); } fvm_path_destroy(p); return 0; }
+int main() { for(unsigned degree=2;degree<=3;++degree) for(unsigned c=0;c<3;++c) for(unsigned j=0;j<2;++j) { double scale=std::ldexp(1.0,-600); FVM_Path *p=dc_path(degree,false,-600); FVM_PathBounds b=stroke_bounds(p,c,j,4*scale); b.x_min/=scale; b.y_min/=scale; b.x_max/=scale; b.y_max/=scale; lc_expected(b,c); fvm_path_destroy(p); } return 0; }

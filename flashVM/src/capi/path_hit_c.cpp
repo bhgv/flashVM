@@ -141,9 +141,25 @@ struct Query
         double dx = bx - ax, dy = by - ay, length = dx * dx + dy * dy;
         if (styled && radius)
         {
-            if (!length)
+            if (!dx && !dy)
                 return;
-            double size = std::sqrt(length), ux = dx / size, uy = dy / size;
+            double size = std::sqrt(length), ux, uy;
+            if (size > 0)
+            {
+                ux = dx / size;
+                uy = dy / size;
+            }
+            else
+            {
+                /* Scale before squaring: a nonzero tangent may have a zero squared norm.
+                 * Preserve ordinary-segment arithmetic and normalize tiny vectors locally. */
+                const double span = std::fabs(dx) > std::fabs(dy) ? std::fabs(dx) : std::fabs(dy);
+                const double sx = dx / span, sy = dy / span;
+                const double norm = std::sqrt(sx * sx + sy * sy);
+                ux = sx / norm;
+                uy = sy / norm;
+                size = span * norm;
+            }
             point(ax - uy * radius, ay + ux * radius);
             point(ax + uy * radius, ay - ux * radius);
             point(bx - uy * radius, by + ux * radius);
@@ -281,9 +297,6 @@ static bool linear_curve_segment(double x, double y, const FVM_PathCommand &comm
     double dx, dy;
     if (!linear_difference(end_x, x, dx) || !linear_difference(end_y, y, dy))
         return false;
-    volatile double squared_norm = dx * dx + dy * dy;
-    if (!(squared_norm > 0))
-        return false; /* Preserve fallback when the segment walker cannot normalize a tangent. */
     const double span = std::fabs(dx) > std::fabs(dy) ? std::fabs(dx) : std::fabs(dy);
     int exponent = 0;
     std::frexp(span, &exponent);

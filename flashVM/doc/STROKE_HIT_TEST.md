@@ -11,7 +11,7 @@ query. Bounds/object hit testing is unchanged.
 
 ## Geometry contract
 
-The private [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L399) uses destination-space coordinates and a
+The private [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L412) uses destination-space coordinates and a
 positive stroke width. Each nonzero straight segment contributes its finite
 rectangular body. Butt caps add no extension, square caps extend by half the
 width, and round caps add circular endpoints. Joins add only the outside bevel
@@ -105,5 +105,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:399](../src/capi/path_hit_c.cpp#L399) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:412](../src/capi/path_hit_c.cpp#L412) |
 <!-- source-links:end -->
