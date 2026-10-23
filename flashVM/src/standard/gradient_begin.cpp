@@ -1,5 +1,6 @@
 /* FlashVM: ActionScript MovieClip gradient arguments copied into portable managed drawing state. */
 #include "gradient.hpp"
+#include "gradient_constants.h"
 #include "movieclip_scene.hpp"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/standard.h"
@@ -195,7 +196,7 @@ FVM_Result stops(FVM_Context *c, const FVM_Value *args, FVM_GradientStop *out, u
 /* [GC:] Allocate a copied ramp whose ownership is later transferred atomically to the clip state.
  */
 FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
-                      const FVM_GradientStop *values, unsigned int count, FVM_Object **out)
+                      FVM_GradientSpread spread, const FVM_GradientStop *values, unsigned int count, FVM_Object **out)
 {
     /* [GC:] Temporary record and stop-table edges are protected by the native barrier. */
     FVM_Object *record = 0, *table = 0;
@@ -207,6 +208,8 @@ FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
     if (r != FVM_OK)
         return r;
     record->properties["type"] = scalar(radial ? 1 : 0);
+    if (spread != FVM_GRADIENT_SPREAD_PAD)
+        record->properties["spread"] = scalar(spread); /* Legacy records omit the default mode. */
     record->properties["xx"] = scalar(matrix.xx);
     record->properties["yx"] = scalar(matrix.yx);
     record->properties["xy"] = scalar(matrix.xy);
@@ -237,7 +240,7 @@ FVM_Result descriptor(FVM_Context *c, const FVM_Affine &matrix, bool radial,
 }
 } // namespace
 
-/* Copy a pad/RGB gradient style; malformed arguments leave the previous style unchanged. */
+/* Copy a spread/RGB gradient style; malformed arguments leave the previous style unchanged. */
 FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int argc,
                                         const FVM_Value *args, FVM_Value *out, void *)
 {
@@ -272,13 +275,18 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
     if (!equal(type, "linear") && !equal(type, "radial"))
         return FVM_OK;
     bool radial = equal(type, "radial");
+    FVM_GradientSpread mode = FVM_GRADIENT_SPREAD_PAD;
     if (argc > 5 && args[5].type != FVM_VALUE_UNDEFINED)
     {
         FVM_Value spread;
         r = fvm_value_to_string(c, args + 5, &spread);
         if (r != FVM_OK)
             return r;
-        if (!equal(spread, "pad"))
+        if (equal(spread, "reflect")) mode = FVM_GRADIENT_SPREAD_REFLECT;
+        else if (equal(spread, "repeat")) mode = FVM_GRADIENT_SPREAD_REPEAT;
+        else if (!equal(spread, "pad")) return FVM_UNSUPPORTED;
+        if (mode != FVM_GRADIENT_SPREAD_PAD && c->swf_loaded &&
+            c->swf_info.version < FVM_MOVIECLIP_GRADIENT_SPREAD_MIN_VERSION)
             return FVM_UNSUPPORTED;
     }
     if (argc > 6 && args[6].type != FVM_VALUE_UNDEFINED)
@@ -312,7 +320,7 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
         return r == FVM_INVALID_ARGUMENT ? FVM_OK : r;
     /* [GC:] Hold the complete new descriptor until its drawing-state map is published. */
     FVM_Object *record = 0;
-    r = descriptor(c, local, radial, values, count, &record);
+    r = descriptor(c, local, radial, mode, values, count, &record);
     if (r != FVM_OK)
         return r;
     /* [GC:] Stage all drawing links before adopting the new style; OOM preserves the old style. */

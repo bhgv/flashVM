@@ -93,7 +93,7 @@ int main()
     FVM_Value invalid[8]; for (unsigned int i = 0; i < 8; ++i) invalid[i] = args[i];
     fvm_value_string(invalid, "unknown"); assert(fvm_object_call(c, clip, "beginGradientFill", 5, invalid, &out) == FVM_OK);
     assert(clip->resource_result.object->properties["gradient"].object == original);
-    fvm_value_string(invalid, "linear"); fvm_value_string(invalid + 5, "reflect");
+    fvm_value_string(invalid, "linear"); fvm_value_string(invalid + 5, "unknown-spread");
     assert(fvm_object_call(c, clip, "beginGradientFill", 6, invalid, &out) == FVM_UNSUPPORTED);
     assert(clip->resource_result.object->properties["gradient"].object == original);
     set(c, args[3].object, "length", 1); assert(fvm_object_call(c, clip, "beginGradientFill", 5, args, &out) == FVM_OK);
