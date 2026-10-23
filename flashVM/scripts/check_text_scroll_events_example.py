@@ -9,8 +9,8 @@ def main():
     if 'requires FONTS' in result.stdout:
         print('SKIP no-font scroll event tutorial')
         return 77
-    assert result.stdout.splitlines()[-2:] == ['scroll events: 1 2 1 2 1 1 1', 'scroll events state: top=1 horizontal=0'], result.stdout
-    print('PASS C89 field-first scroll callbacks, no-op suppression, removal, geometry ranges and final state')
+    assert result.stdout.splitlines()[-2:] == ['scroll events: 1 2 1 2 1 1 1 1 1 1', 'scroll events state: top=1 horizontal=0 max=1/40'], result.stdout
+    print('PASS C89 field-first scroll callbacks, no-op suppression, removal, geometry/text/style ranges and final state')
     return 0
 
 

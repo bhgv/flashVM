@@ -185,20 +185,21 @@ applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains ope
 ## Scroll observer mode
 
 `--scroll-events` first runs the analytic scroll mode, then installs a field
-handler and a listener. The actual trace is `1 2 1 2 1 1 1`: two effective changes
+handler and a listener. The actual trace is `1 2 1 2 1 1 1 1 1 1`: two effective changes
 notify both, an unchanged write emits nothing, and removal excludes the listener
 from later changes. Width=60 and height=200 then remove horizontal overflow
-and clamp the top line. Final state is top=1/hscroll=0. Native query/path export
+and clamp the top line. Text assignment, replaceText and current TextFormat then add three field-only
+notifications. Final state is top=1/hscroll=0, maxscroll=1/maxhscroll=40. Native query/path export
 emit no callbacks. Main owns callback userdata until context teardown; managed
 roots retain fields/listeners independently. Dimension and layout-policy notifications follow the
-[geometry contract](../../../doc/TEXT_GEOMETRY_EVENTS.md). Text/style-triggered
-events and input remain open. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
+[geometry contract](../../../doc/TEXT_GEOMETRY_EVENTS.md). Text/style-triggered events follow
+[edit transaction admission](../../../doc/TEXT_EDIT_EVENTS.md); input remains open. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
 
 | API | Individual contract |
 | --- | --- |
 | [fvm_object_define_method_rooted](../../../include/flashvm/value.h#L115) | Install the native onScroller method and retain the source field as a traced capture; host userdata must outlive callbacks/context teardown. |
 | [fvm_object_create](../../../include/flashvm/value.h#L62) | Create a managed listener owned by the context; registration supplies its strong graph edge. |
-| [fvm_object_call](../../../include/flashvm/value.h#L126) | Invoke addListener/removeListener synchronously with one object argument and inspect the Boolean result; errors propagate. |
+| [fvm_object_call](../../../include/flashvm/value.h#L126) | Invoke addListener/removeListener and inspect their Boolean result; replaceText publishes owned text and setTextFormat applies current metrics before synchronous observers. Errors propagate; use the [edit contract](../../../doc/TEXT_EDIT_EVENTS.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

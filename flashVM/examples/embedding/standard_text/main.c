@@ -544,7 +544,7 @@ int main(int argc, char **argv)
     if (scrolling && scroll_demo(context, field, format)) { /* Execute the optional checked workflow on the same owner thread. */
         fvm_context_destroy(context); fvm_runtime_destroy(runtime); return 1; /* Release owners after a failed demonstration. */
     } /* Successful contours below reflect the final active scroll position. */
-    if (scrolling == 2 && scroll_events_demo(context, field, &event_demo)) { /* Keep host userdata alive through every synchronous notification. */
+    if (scrolling == 2 && scroll_events_demo(context, field, format, &event_demo)) { /* Keep host userdata alive through every synchronous notification. */
         fvm_context_destroy(context); fvm_runtime_destroy(runtime); return 1; /* Release callbacks before their stack-owned userdata ends. */
     } /* Final path export below must not generate another notification. */
     /* Вызываем fvm_textfield_path: получаем контуры текста поля.
