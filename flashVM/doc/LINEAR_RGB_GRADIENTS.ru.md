@@ -54,6 +54,11 @@ DefineShape4/LineStyle2 и их on-disk interpolation bits этой работо
 
 Первичный API reference: Adobe [MovieClip beginGradientFill и lineGradientStyle](https://open-flash.github.io/mirrors/as2-language-reference/MovieClip.html#beginGradientFill()).
 
+
+## v0.1196 verification
+
+LinearRGB v0.1183–v0.1196: добавлены C89 fill/stroke interpolation selectors и linearRGB для beginGradientFill/lineGradientStyle SWF8, linear/centered-radial PAD/REFLECT/REPEAT. Layout [FVM_Gradient](../include/flashvm/gradient.h#L37), старые RGB defaults и callback IDs сохранены. До пятнадцати sRGB stops декодируются в paint-local память, RGB интерполируется в линейном свете и кодируется до color transform; alpha остаётся straight/linear. Endpoints и постоянные каналы точные. Прошли 105 выбранных native gradient/raster/scene/graph/GC/quality/tutorial тестов, десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски; LeakSanitizer выключен. Независимые числовые таблицы проверяют тёмные transfer branches, duplicate stops, alpha/source-over и старую RGB byte identity. Проверены 72 реальных host/SWF8 AVM1 interpreter/manual/automatic JIT сочетания с native counters, четыре OS worker и 128 независимых paint/GC циклов, 96 affine/alpha/quality отрисовок. Mixed RGB/linearRGB fill/stroke binary graphs сохраняют разные политики после уничтожения отправителя. SDK-free C89 validation проходит, две graphic tutorial проверки явно пропускаются. Переименованный detached-компонент конфигурируется, скопированный checker проходит на native executable без заявления отдельной detached-сборки. Проверены counted names, версии, копирование аргументов, duplicate/current-active aliases, raw metadata без getters и ошибки подготовки. DefineShape4/LineStyle2, ненулевой focal, полная stroke scaling/caps/joins/mid-path fill семантика, per-pixel metering, эталонный плеер, устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](LINEAR_RGB_GRADIENTS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

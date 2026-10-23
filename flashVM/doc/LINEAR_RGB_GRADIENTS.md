@@ -54,6 +54,11 @@ DefineShape4/LineStyle2 and their on-disk interpolation bits are not decoded by 
 
 Primary API reference: Adobe [MovieClip beginGradientFill and lineGradientStyle](https://open-flash.github.io/mirrors/as2-language-reference/MovieClip.html#beginGradientFill()).
 
+
+## v0.1196 verification
+
+Linear-light RGB v0.1183–v0.1196: additive C89 fill/stroke interpolation selectors and SWF8 beginGradientFill/lineGradientStyle support linearRGB for linear and centered-radial PAD/REFLECT/REPEAT ramps. [FVM_Gradient](../include/flashvm/gradient.h#L37) layout, old RGB defaults and callback IDs remain unchanged. The sampler decodes at most fifteen sRGB stops into paint-local storage, interpolates RGB in linear light, re-encodes before color transforms and keeps alpha straight/linear. Endpoints and constant channels remain exact. Validation passes 105 selected native gradient/raster/scene/graph/GC/quality/tutorial tests, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent numeric tables cover dark transfer branches, duplicate stops, alpha/source-over and old RGB byte identity. Seventy-two real host/SWF8 AVM1 interpreter/manual/automatic JIT combinations check native counters; four OS workers complete 128 isolated paint/GC epochs; 96 affine/alpha/quality renders pass. Mixed RGB/linearRGB fill/stroke binary graphs retain independent policies after sender teardown. SDK-free C89 validation passes and two graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Counted names, version gates, copied inputs, duplicate/current-active aliases, raw metadata/getter exclusion and preparation fault sweeps are covered. DefineShape4/LineStyle2, nonzero focal, complete stroke scaling/caps/joins/mid-path fill semantics, per-pixel work metering and original-player/device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](LINEAR_RGB_GRADIENTS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
