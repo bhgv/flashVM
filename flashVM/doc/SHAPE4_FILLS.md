@@ -55,6 +55,11 @@ independent analytic tests in `gradient_focal_edges.c` and `gradient_linear_rgb.
 `swf_shape4_timeline` covers character replacement and 16 seeks;
 `swf_shape4_threads` covers four workers and 96 load/render/GC epochs.
 
+
+## Validation checkpoint
+
+DefineShape4 fills v0.1211–v0.1224: the SWF8 scene loader decodes fill-only tag 83 with separate validated edge bounds, RGBA solid/bitmap fills, 1–15 ordered gradient stops, PAD/REFLECT/REPEAT, RGB/linearRGB and exact signed interior FIXED8 focal positions. Optional scalar graph metadata preserves modes through GC, binary/channel copies and sender teardown. Legacy Shape1/2/3 admission stays unchanged. Twelve new fixtures cover 18 initial mode cases, 90 stop-count/mode cases, all 511 interior focal values, malformed/truncated records, old-version/duplicate/nested-definition rejection, allocation fault sweeps, four bitmap modes, StateNewStyles, character replacement and 16 seeks, plus four OS workers completing 96 independent load/render/GC epochs. Validation passes 130 selected native tests, 11 ASan/UBSan tests plus the allocation fixture with explicit --no-faults (sanitizer unwinding limitation; real fault sweeps pass natively), and three SDK-free no-graphics admission/error tests. LeakSanitizer is disabled. Documentation source links and frontend example checks pass. Nonempty LINESTYLE2 banks, focal endpoints/clamping, Flash reference raster/rounding comparisons, complete stroke semantics and physical-device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](SHAPE4_FILLS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

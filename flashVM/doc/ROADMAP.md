@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Current file-graphics checkpoint: [SWF8 DefineShape4 fills](SHAPE4_FILLS.md) / [заливки DefineShape4](SHAPE4_FILLS.ru.md). LINESTYLE2 and focal endpoints remain open; all nine stages remain open.
+
 Interior radial focal fills/strokes: [EN](FOCAL_GRADIENTS.md) / [RU](FOCAL_GRADIENTS.ru.md). Endpoints and all nine stages remain open.
 
 
