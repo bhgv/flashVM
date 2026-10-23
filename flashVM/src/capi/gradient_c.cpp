@@ -180,7 +180,7 @@ FVM_Result fvm_path_stroke_gradient_quality(const FVM_Path *path, FVM_RasterSurf
                                             const FVM_Gradient *gradient, double width,
                                             unsigned int spread, bool antialias)
 {
-    if (!(width > 0 && width <= 4096))
+    if (!(width > 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH))
         return FVM_INVALID_ARGUMENT;
     return gradient_paint(path, surface, gradient, width, 0, spread, antialias);
 }

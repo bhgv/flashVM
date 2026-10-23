@@ -6,6 +6,7 @@
 extern "C"
 {
 #endif
+#define FVM_GRADIENT_MAX_STROKE_WIDTH 4096.0 /* Maximum destination-space stroke width in pixels. */
 #define FVM_GRADIENT_MAX_STOPS 15 /* Maximum number of ordered gradient control points. */
     /* Gradient geometry in a normalized square from -1 to +1 on each axis. */
     typedef enum FVM_GradientType
