@@ -398,6 +398,25 @@ extern "C" FVM_Result fvm_swf_sound_output_pump_finite(FVM_SWFSoundOutput *outpu
     return output_pump(output, accepted, true);
 }
 
+/* Observe future voices, indivisible retry ownership and accepted FIFO work under one barrier. */
+extern "C" FVM_Result fvm_swf_sound_output_pending(FVM_SWFSoundOutput *output, int *out)
+{
+    if (!output || output->busy || !out) return FVM_INVALID_ARGUMENT;
+    BusyScope scope(output);
+    try
+    {
+        FVM_Result result = observe(output);
+        if (result != FVM_OK) return result;
+        size_t future = 0;
+        result = fvm_swf_sound_mixer_active_frames(output->mixer, 1, &future);
+        if (result == FVM_OK)
+            *out = future || output->info.pending_frames || output->info.queued_frames;
+        return result;
+    }
+    catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
+    catch (...) { return FVM_ERROR; }
+}
+
 /* Preserve prepared and queued data while pausing/resuming actual backend consumption. */
 extern "C" FVM_Result fvm_swf_sound_output_pause(FVM_SWFSoundOutput *output, int paused)
 {

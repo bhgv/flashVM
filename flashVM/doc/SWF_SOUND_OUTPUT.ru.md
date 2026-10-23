@@ -137,7 +137,7 @@ device close. Поэтому допускает освобождение пос�
 открывает настоящее default playback устройство SDL2 на Linux/Windows/macOS.
 Оба выходных указателя обязательны; handle/таблица очищаются до проверки.
 Частота 5512–192000 помещается в int; каналы 1..2; device buffer — степень двух
-в [`FVM_SDL_AUDIO_MIN_BUFFER`](../include/flashvm/swf_sound_output.h#L156)..[`FVM_SDL_AUDIO_MAX_BUFFER`](../include/flashvm/swf_sound_output.h#L157) (64..32768 frames).
+в [`FVM_SDL_AUDIO_MIN_BUFFER`](../include/flashvm/swf_sound_output.h#L166)..[`FVM_SDL_AUDIO_MAX_BUFFER`](../include/flashvm/swf_sound_output.h#L167) (64..32768 frames).
 Неверные параметры: [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); не 8-bit byte/16-bit short либо
 неожиданный полученный формат: [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46); ошибка init/open:
 [`FVM_ERROR`](../include/flashvm/flashvm.h#L43); нехватка памяти handle: [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44). Частичные ресурсы
@@ -184,7 +184,7 @@ audio driver dummy. Это не проверка слышимого вывода
 ## Фактический блок устройства (v0.583)
 
 `fvm_audio_sdl_queue_info(device, info)` копирует неизменяемую геометрию SDL в
-[`FVM_SDLAudioQueueInfo`](../include/flashvm/swf_sound_output.h#L165): `sample_rate` в Гц, `channels`, `device_buffer_frames` —
+[`FVM_SDLAudioQueueInfo`](../include/flashvm/swf_sound_output.h#L175): `sample_rate` в Гц, `channels`, `device_buffer_frames` —
 число interleaved frames в native-блоке. Установить `struct_size` равным
 `sizeof(FVM_SDLAudioQueueInfo)`. На Android фактический блок может превышать
 запрошенный: запас очереди и порог resume рассчитываются по этому значению.
@@ -199,7 +199,7 @@ audio driver dummy. Это не проверка слышимого вывода
 
 ## Согласование блока в v0.586
 
-[`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L160) разрешает только SDL_AUDIO_ALLOW_SAMPLES_CHANGE:
+[`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L170) разрешает только SDL_AUDIO_ALLOW_SAMPLES_CHANGE:
 `FVM_SDLAudioQueueInfo.device_buffer_frames` показывает согласованный callback-блок,
 а не скрытый conversion stream с запрошенным размером. Частота/каналы/native S16
 на входе очереди сохраняются. Запрос ограничен степенями двойки, но полученный
@@ -223,9 +223,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AUDIO_QUEUE_ABI_VERSION` | macro / define | [include/flashvm/swf_sound_output.h:10](../include/flashvm/swf_sound_output.h#L10) |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:176](../include/flashvm/swf_sound_output.h#L176) |
-| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:174](../include/flashvm/swf_sound_output.h#L174) |
-| `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:160](../include/flashvm/swf_sound_output.h#L160) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:186](../include/flashvm/swf_sound_output.h#L186) |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:184](../include/flashvm/swf_sound_output.h#L184) |
+| `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:170](../include/flashvm/swf_sound_output.h#L170) |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
@@ -233,20 +233,20 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `FVM_SDL_AUDIO_MAX_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:157](../include/flashvm/swf_sound_output.h#L157) |
-| `FVM_SDL_AUDIO_MIN_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:156](../include/flashvm/swf_sound_output.h#L156) |
+| `FVM_SDL_AUDIO_MAX_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:167](../include/flashvm/swf_sound_output.h#L167) |
+| `FVM_SDL_AUDIO_MIN_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:166](../include/flashvm/swf_sound_output.h#L166) |
 | `FVM_SDLAudioQueue` | struct | [src/multimedia/audio/sdl_queue.hpp:11](../src/multimedia/audio/sdl_queue.hpp#L11) |
-| `FVM_SDLAudioQueueInfo` | struct | [include/flashvm/swf_sound_output.h:165](../include/flashvm/swf_sound_output.h#L165) |
+| `FVM_SDLAudioQueueInfo` | struct | [include/flashvm/swf_sound_output.h:175](../include/flashvm/swf_sound_output.h#L175) |
 | `FVM_SWF_SOUND_OUTPUT_CLOCK_BITS` | macro / define | [include/flashvm/swf_sound_output.h:13](../include/flashvm/swf_sound_output.h#L13) |
-| `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:153](../include/flashvm/swf_sound_output.h#L153) |
+| `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:163](../include/flashvm/swf_sound_output.h#L163) |
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:50](../include/flashvm/swf_sound_output.h#L50) |
-| `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:138](../include/flashvm/swf_sound_output.h#L138) |
+| `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:148](../include/flashvm/swf_sound_output.h#L148) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_QUEUE` | macro / define | [include/flashvm/swf_sound_output.h:12](../include/flashvm/swf_sound_output.h#L12) |
-| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:136](../include/flashvm/swf_sound_output.h#L136) |
+| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:146](../include/flashvm/swf_sound_output.h#L146) |
 | `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:124](../include/flashvm/swf_sound_output.h#L124) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:142](../include/flashvm/swf_sound_output.h#L142) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:152](../include/flashvm/swf_sound_output.h#L152) |
 | `FVM_SWFSoundOutput` | struct | [src/swf/sound_output.cpp:11](../src/swf/sound_output.cpp#L11) |
 | `FVM_SWFSoundOutputInfo` | struct | [include/flashvm/swf_sound_output.h:34](../include/flashvm/swf_sound_output.h#L34) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

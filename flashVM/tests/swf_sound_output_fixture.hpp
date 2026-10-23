@@ -21,7 +21,10 @@ inline void reentry(Device *d)
 {
     if (!d->reenter || !d->output)
         return;
+    int pending = 91;
+    assert(fvm_swf_sound_output_pending(d->output, &pending) == FVM_INVALID_ARGUMENT && pending == 91);
     size_t written = 99;
+    assert(fvm_swf_sound_output_pump_finite(d->output, &written) == FVM_INVALID_ARGUMENT && !written);
     FVM_SWFSoundOutputInfo info;
     info.struct_size = sizeof(info);
     assert(fvm_swf_sound_output_pump(d->output, &written) == FVM_INVALID_ARGUMENT && !written);

@@ -131,6 +131,16 @@ extern "C"
      * Legacy pump keeps continuous silent priming. NOT_FOUND is not queue drain or
      * physical audibility; observe pending/FIFO/voices separately before cleanup. */
     FVM_API FVM_Result fvm_swf_sound_output_pump_finite(FVM_SWFSoundOutput *, size_t *accepted);
+    /* Observe whether any live future voice, pending retry or accepted FIFO frames remain.
+     * Required serialized live output and scalar out. Fresh validated queue observation
+     * refreshes the dequeue clock; no pumping, pause, clear or source advancement occurs.
+     * Paused owners can report pending. OK/zero means no current work, not a reservation
+     * against later voice submission or a physical DAC timestamp. Invalid/reentry ->
+     * INVALID_ARGUMENT; backend/impossible backlog or regressing clock rules match info;
+     * bad_alloc -> OUT_OF_MEMORY, other exceptions ERROR. Errors preserve out. No
+     * allocation/VM/GC; callbacks may block. Retain all borrowed owners through return. */
+    FVM_API FVM_Result fvm_swf_sound_output_pending(FVM_SWFSoundOutput *, int *out);
+
 
     /* Set queue pause state; never implicitly primes or clears PCM. */
     FVM_API FVM_Result fvm_swf_sound_output_pause(FVM_SWFSoundOutput *, int paused);

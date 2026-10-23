@@ -4,6 +4,9 @@
 
 v0.1025: Добавлен конечный event-only pump с точными последними кадрами и сохранением legacy/release/pending retry.
 
+
+v0.1026: Добавлено сериализованное наблюдение voice/retry/FIFO с обновлением dequeue clock и сохранением out при ошибке.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

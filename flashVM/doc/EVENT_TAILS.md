@@ -4,6 +4,9 @@ The opt-in [`fvm_swf_sound_output_pump_finite`](../include/flashvm/swf_sound_out
 
 v0.1025: Add opt-in finite output pumping with exact final frames and unchanged legacy, release and pending retry ownership.
 
+
+v0.1026: Add a serialized pending observation with coherent dequeue clock updates and preserved caller output on errors.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
