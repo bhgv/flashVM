@@ -655,7 +655,8 @@ class GeometryNotification
         : context_(context), field_((Field *)object->resource), object_(object),
           plan_(context, object), observed_(false), changed_(false), scroll_(1), horizontal_(0) {}
     /* Detect potential observers by native descriptors only, including inherited handlers. */
-    FVM_Result prepare(PreparedGeometry &geometry)
+    FVM_Result prepare(PreparedGeometry &geometry, const Style &style,
+                       const char *text, size_t size)
     {
         if (context_->swf_loaded && context_->swf_info.version < FVM_TEXT_LISTENER_MIN_VERSION)
             return FVM_OK;
@@ -685,9 +686,9 @@ class GeometryNotification
         FVM_Result result = scroll_geometry(context_, field_, before);
         if (result != FVM_OK) return result;
         Field candidate;
-        candidate.current = field_->current;
-        candidate.text = field_->text;
-        candidate.text_size = field_->text_size;
+        candidate.current = style;
+        candidate.text = text;
+        candidate.text_size = size;
         candidate.width = geometry.width;
         candidate.height = geometry.height;
         candidate.multiline = geometry.multiline;
@@ -710,6 +711,11 @@ class GeometryNotification
         geometry.owned.layout = candidate.layout;
         candidate.layout = 0;
         return FVM_OK;
+    }
+    /* Geometry-only edits borrow the current content/style without copying native ownership. */
+    FVM_Result prepare(PreparedGeometry &geometry)
+    {
+        return prepare(geometry, field_->current, field_->text, field_->text_size);
     }
     /* Publish geometry and clamp together, then deliver without overwriting nested edits. */
     FVM_Result commit(PreparedGeometry &geometry)
