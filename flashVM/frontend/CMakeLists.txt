@@ -1313,7 +1313,7 @@ endif()
 
 # Root stream/event integration uses the production C89 owner and explicit SDL dummy endpoint.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
-  foreach(mixed_case IN ITEMS open thread budget stopped_thread event_frame_gate event_finite_worker)
+  foreach(mixed_case IN ITEMS open thread budget stopped_thread event_frame_gate event_finite_worker origin_budget)
     add_executable(flashvm_frontend_mixed_${mixed_case} tests/mixed_${mixed_case}.cpp common/audio.c common/audio_trace.c)
     target_link_libraries(flashvm_frontend_mixed_${mixed_case} PRIVATE flashvm SDL2::SDL2)
     set_target_properties(flashvm_frontend_mixed_${mixed_case} PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS OFF)
@@ -1326,6 +1326,7 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
     set_tests_properties(flashvm_frontend_mixed_${mixed_case} PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 15)
   endforeach()
   target_compile_definitions(flashvm_frontend_mixed_budget PRIVATE FVM_DESKTOP_AUDIO_MIX_BYTES=1024UL)
+  target_compile_definitions(flashvm_frontend_mixed_origin_budget PRIVATE FVM_DESKTOP_AUDIO_MIX_BYTES=550000UL)
   if(Python3_Interpreter_FOUND)
     add_test(NAME flashvm_player_mixed_pcm COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/mixed_player.py $<TARGET_FILE:flashvm_player>)

@@ -21,8 +21,8 @@ static FVM_Result composition_budget(size_t streams, size_t events, size_t *out)
     FVM_Result result;
     *out = 0;
     if (!streams || !events) return FVM_OK;
-    result = fvm_swf_sound_mix_queue_storage_required_for_tracking(
-        FVM_DESKTOP_AUDIO_CHANNELS, FVM_DESKTOP_AUDIO_BLOCK, 1, out);
+    result = fvm_swf_sound_mix_queue_storage_required_for_modes(
+        FVM_DESKTOP_AUDIO_CHANNELS, FVM_DESKTOP_AUDIO_BLOCK, 1, 1, out);
     if (result != FVM_OK) return result;
     return *out <= FVM_DESKTOP_AUDIO_MIX_BYTES ? FVM_OK : FVM_OUT_OF_MEMORY;
 }
@@ -644,6 +644,8 @@ FVM_Result fvm_desktop_audio_open_policy(FVM_Context *context, FVM_Object *clip,
             FVM_DESKTOP_AUDIO_BLOCK, mix_budget, &audio->composition, &adapted);
         if (result == FVM_OK) result = fvm_swf_sound_mix_queue_clock_begin(audio->composition);
         if (result == FVM_OK) result = fvm_swf_sound_mix_queue_set_identity_tracking(
+            audio->composition, 1, mix_budget);
+        if (result == FVM_OK) result = fvm_swf_sound_mix_queue_set_origin_tracking(
             audio->composition, 1, mix_budget);
         if (result != FVM_OK) return result;
         backend = adapted; /* Trace wraps the real device below the single saturation pass. */

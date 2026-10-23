@@ -22,6 +22,9 @@ v0.1043: Проверены rollback выделения bitmap и BASE/TAIL retr
 
 v0.1044: Проверены 256 эпох с точным PCM, held TAIL, converted stream EOF и согласованными раздельными dequeue-суммами.
 
+
+v0.1045: Origin-учёт включён в root composition; общий ID/bitmap бюджет проверяется до открытия SDL endpoint.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

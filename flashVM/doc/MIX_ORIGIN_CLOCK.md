@@ -22,6 +22,9 @@ v0.1043: Reject mode allocation transactionally and exercise tracked base/tail r
 
 v0.1044: Verify 256 tracked epochs with exact PCM, held-tail handoff, converted stream EOF and coherent category dequeue totals.
 
+
+v0.1045: Enable accepted origin accounting in root composition and reject combined ID and bitmap budgets before any SDL endpoint is opened.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
