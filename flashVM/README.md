@@ -1,10 +1,12 @@
-Development version: **0.1100** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1101** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1101: [Retain viewport ownership and native GC barriers when numeric conversion raises.](doc/TEXT_SCROLL.md).
 
 v0.1100: [Exercise separate VM font and contour ownership over 128 native worker epochs.](doc/TEXT_SCROLL.md).
 
