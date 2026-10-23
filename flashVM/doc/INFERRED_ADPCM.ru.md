@@ -14,3 +14,5 @@ v0.1068: Desktop-сегменты используют inferred bounded snapshot
 v0.1069: Проверены FWS/CWS, interpreter/JIT, точный PCM, restart, пустые блоки, PCM successor и отказ до устройства.
 
 v0.1070: Worker проверяет single-saturation stereo PCM и BASE19/TAIL0 для обоих finite-режимов, CWS/FWS и двух VM modes.
+
+v0.1071: C89-пример добавляет inferred-режим без таблицы; все три режима проверяются по восьми ручным samples.

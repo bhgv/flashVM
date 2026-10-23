@@ -23,14 +23,16 @@ int main(int argc, char **argv) /* One optional output path; no hidden input or 
     short pcm[EXAMPLE_ADPCM_CHUNK]; /* Caller-owned aligned mono S16 transfer buffer. */
     size_t written = 0, total = 0; /* Count scalar values and accepted mono source frames. */
     FVM_Result result = FVM_OK; /* Retain the exact read status at EOF or failure. */
+    int inferred = 0; /* Choose unique byte-geometry counts instead of the fixture count table. */
     int ranges = 0; /* Choose encoded native ranges instead of eager normalized PCM. */
     int status = 1; /* Default to failure until export and close both succeed. */
     if (argc == 1) /* Usage has no file or VM side effects. */
     { /* Explain the one explicit export action. */
-        puts("Usage: swf_stream_adpcm OUTPUT.pcm [--ranges] (native S16 mono 44100 Hz)"); /* No output file. */
+        puts("Usage: swf_stream_adpcm OUTPUT.pcm [--ranges|--inferred] (native S16 mono 44100 Hz)"); /* No output file. */
         return 0; /* A usage request succeeds. */
     } /* End the no-side-effect usage path. */
     if (argc == 3 && strcmp(argv[2], "--ranges") == 0) ranges = 1; /* Explicit raw-read policy. */
+    else if (argc == 3 && strcmp(argv[2], "--inferred") == 0) inferred = 1; /* Never use the advisory average. */
     else if (argc != 2) return 1; /* Reject malformed command lines before allocating or opening files. */
     if (!checked(fvm_config_init(&config), "config")) goto cleanup; /* Initialize owner policy. */
     if (!checked(fvm_runtime_create(&config, &runtime), "runtime")) goto cleanup; /* Acquire VM. */
@@ -38,6 +40,8 @@ int main(int argc, char **argv) /* One optional output path; no hidden input or 
     if (!checked(fvm_load_memory(context, movie, sizeof(movie)), "load")) goto cleanup; /* Real SWF8. */
     if (ranges) result = fvm_swf_stream_sound_snapshot_open_bounded( /* Keep compressed ownership. */
         context, 0, EXAMPLE_ADPCM_BUDGET, &source); /* Copy without decoding; caller owns counts. */
+    else if (inferred) result = fvm_swf_stream_sound_snapshot_open_pcm_inferred( /* Infer only a unique partial endpoint. */
+        context, 0, EXAMPLE_ADPCM_BUDGET, &source); /* Preserve the same bounded independent ownership. */
     else result = fvm_swf_stream_sound_snapshot_open_adpcm_counted( /* Decode only explicit lengths. */
         context, 0, block_frames, sizeof(block_frames) / sizeof(block_frames[0]), /* Root block order. */
         EXAMPLE_ADPCM_BUDGET, &source); /* Bound encoded+decoded peak; source cleared on failure. */
@@ -78,7 +82,7 @@ int main(int argc, char **argv) /* One optional output path; no hidden input or 
     } /* End the finite native reader loop. */
     if (fclose(file) != 0) { file = 0; goto cleanup; } /* Flush errors remain export failures. */
     file = 0; /* Acknowledge file cleanup exactly once. */
-    printf("Decoded %lu counted ADPCM frames after VM teardown.\n", (unsigned long)total); /* Evidence. */
+    printf("Decoded %lu %s ADPCM frames after VM teardown.\n", (unsigned long)total, inferred ? "inferred" : "counted"); /* Evidence. */
     status = 0; /* Every read/write/close completed successfully. */
 cleanup: /* Release resources in reverse order; no callback retains the local reader. */
     if (file) fclose(file); /* Best-effort close after a terminal native output failure. */

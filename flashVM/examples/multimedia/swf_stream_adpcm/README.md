@@ -2,7 +2,7 @@
 
 Executable C89 tutorial for native asset extraction, bounded decoding and worker
 preparation. [EN contract](../../../doc/STREAM_ADPCM_COUNTED.md) /
-[Контракт RU](../../../doc/STREAM_ADPCM_COUNTED.ru.md). Both modes destroy the
+[Контракт RU](../../../doc/STREAM_ADPCM_COUNTED.ru.md). All three modes destroy the
 source context/runtime **before** reading/exporting PCM. No SDL, audio device,
 FFmpeg, script compiler, media SDK or live MovieClip is required.
 
@@ -28,6 +28,7 @@ failure. No atomic queue/retry guarantee is invented for stdio.
 | Mode | Native ownership and work |
 | --- | --- |
 | OUTPUT.pcm | Prepare normalized PCM under a 64 KiB peak snapshot ceiling, free VM, copy chunks with a native PCM reader |
+| OUTPUT.pcm --inferred | Prepare normalized PCM from the unique byte/padding length without reading block_frames, free VM, export the same eight samples |
 | OUTPUT.pcm --ranges | Copy bounded encoded ADPCM, free VM, validate/decode each selected range without further native allocation |
 
 The peak ceiling covers the snapshot object/index/payloads, not the whole process,
@@ -77,6 +78,7 @@ Each function below is used in [main.c](main.c); detailed count/range semantics:
 | [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Allocate the source runtime on owner; release after native preparation |
 | [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Allocate a source context borrowing runtime; destroy before runtime |
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Validate/copy the literal SWF into source context; may allocate, no playback loop |
+| [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../../../include/flashvm/swf_stream_sound.h#L136) | Owner-side bounded PCM preparation: legacy whole-packet policy, otherwise unique partial endpoint; ambiguous lengths UNSUPPORTED, malformed geometry INVALID_ARGUMENT, out cleared on error. Allocates before publication, retains no VM pointer; caller closes after readers stop. [EN](../../../doc/INFERRED_ADPCM.md) / [RU](../../../doc/INFERRED_ADPCM.ru.md). |
 | [fvm_swf_stream_sound_snapshot_open_adpcm_counted](../../../include/flashvm/swf_stream_sound.h#L117) | Decode exact per-block lengths under peak ceiling; publish independent immutable PCM, allocate on owner |
 | [fvm_swf_stream_sound_snapshot_open_bounded](../../../include/flashvm/swf_stream_sound.h#L72) | Copy encoded root ADPCM/index under peak ceiling without codec decoding; retain no VM pointer |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release managed source after native ownership succeeds; no native snapshot invalidation |
@@ -94,6 +96,19 @@ stream playback, root event mixing policy, child streams, A/V synchronization,
 MP3 and physical-device/foreign-platform acceptance remain open. This tutorial
 adds no timeline clock, thread scheduler or new JIT behavior. All roadmap stages
 remain open. / Пример не закрывает полную SWF≤8 совместимость или приёмку устройств.
+
+### Inferred mode / Режим без таблицы длин
+
+OUTPUT.pcm --inferred calls the bounded inferred API without the count table.
+The final nonzero codes make the five- and three-frame endpoints unique; the
+middle empty block stays empty. It prints `Decoded 8 inferred ADPCM frames after
+VM teardown.` and exports the same hand-calculated PCM. Header average=1 is ignored.
+Ambiguous assets still need the counted API; byte geometry is not a movie clock.
+
+Режим --inferred не читает block_frames: последние ненулевые коды оставляют ровно
+одну длину обоих коротких блоков. Среднее из header не используется. PCM совпадает
+с counted/range; неоднозначные assets требуют внешней таблицы длин. Checker
+проверяет все три режима, замену файла и ошибки CLI/stdio.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -115,5 +130,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:173](../../../include/flashvm/swf_stream_sound.h#L173) |
 | `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:117](../../../include/flashvm/swf_stream_sound.h#L117) |
 | `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../../../include/flashvm/swf_stream_sound.h#L72) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:136](../../../include/flashvm/swf_stream_sound.h#L136) |
 | `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:169](../../../include/flashvm/swf_stream_sound.h#L169) |
 <!-- source-links:end -->

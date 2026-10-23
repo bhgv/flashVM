@@ -14,3 +14,5 @@ v0.1068: Use the inferred bounded snapshot policy for desktop stream segments wh
 v0.1069: Check FWS CWS interpreter JIT exact rational PCM, packet restart, empty blocks, PCM successor and rejection before device acquisition.
 
 v0.1070: Real workers verify one-saturation stereo PCM and BASE19 TAIL0 for both finite policies, compressed SWF and both execution modes.
+
+v0.1071: Add an inferred export policy without count-table access; verify the same eight hand-calculated samples in all three ownership modes.

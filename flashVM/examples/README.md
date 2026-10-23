@@ -2118,6 +2118,8 @@ The `multimedia/swf_stream_mix --identities` mode demonstrates budgeted tracked 
 
 The swf_stream_mix --origins mode demonstrates a coherent single-poll stream/category snapshot (software FIFO evidence). / Режим демонстрирует единый опрос stream и категорий программной очереди.
 
+swf_stream_adpcm also demonstrates --inferred bounded partial lengths without a count table, preserving its exact eight-sample oracle. / Пример показывает подготовку по единственной геометрии без таблицы длин.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
