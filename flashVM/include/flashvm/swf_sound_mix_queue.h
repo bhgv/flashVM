@@ -222,6 +222,15 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *,
                                                                size_t maximum, size_t target,
                                                                size_t *accepted);
+    /* Finite adaptive variant: fresh work is also clamped to the current live mixer
+     * horizon, so no block padding is appended beyond the final voice/release frame.
+     * Existing pending TAIL bytes remain indivisible, including legacy padded blocks;
+     * stopping voices never truncates a retry. Same maximum/target/status/output,
+     * ownership, serialization and no-allocation/VM/GC contract as pump_tail_up_to.
+     * Zero-valued source frames still count; no physical audibility/EOF inference. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_pump_tail_finite(FVM_SWFSoundMixQueue *,
+                                                               size_t maximum, size_t target,
+                                                               size_t *accepted);
     /* No allocation/callback/VM. Null/wrong-size/reentry INVALID_ARGUMENT, output intact. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_info(const FVM_SWFSoundMixQueue *,
                                                     FVM_SWFSoundMixQueueInfo *);

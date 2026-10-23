@@ -332,7 +332,7 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail(FVM_SWFSoundMixQueue *qu
 
 /* Fit fresh event work into observed headroom; retained retries remain indivisible. */
 FVM_Result fvm_swf_sound_mix_queue_pump_tail_observed(FVM_SWFSoundMixQueue *queue,
-    size_t maximum, size_t target, size_t *accepted, FVM_SWFSoundMixQueueClock *clock)
+    size_t maximum, size_t target, size_t *accepted, FVM_SWFSoundMixQueueClock *clock, bool finite)
 {
     if (accepted) *accepted = 0;
     if (!queue || queue->busy || !maximum || maximum > queue->capacity || !target ||
@@ -356,6 +356,12 @@ FVM_Result fvm_swf_sound_mix_queue_pump_tail_observed(FVM_SWFSoundMixQueue *queu
     size_t frames = queue->pending ? queue->pending :
                     (maximum < available ? maximum : available);
     if (frames > available) return FVM_NOT_FOUND;
+    if (finite && !queue->pending)
+    {
+        result = fvm_swf_sound_mixer_active_frames(queue->mixer, frames, &frames);
+        if (result != FVM_OK) return result;
+        if (!frames) return FVM_NOT_FOUND;
+    }
     result = write_composed(queue, 0, frames, true);
     if (result == FVM_OK)
     {
@@ -377,7 +383,14 @@ FVM_Result fvm_swf_sound_mix_queue_pump_tail_observed(FVM_SWFSoundMixQueue *queu
 extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_up_to(FVM_SWFSoundMixQueue *queue,
     size_t maximum, size_t target, size_t *accepted)
 {
-    return fvm_swf_sound_mix_queue_pump_tail_observed(queue, maximum, target, accepted, 0);
+    return fvm_swf_sound_mix_queue_pump_tail_observed(queue, maximum, target, accepted, 0, false);
+}
+
+/* Bound new zero-base output by live voices, while retaining all earlier retry bytes. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_finite(FVM_SWFSoundMixQueue *queue,
+    size_t maximum, size_t target, size_t *accepted)
+{
+    return fvm_swf_sound_mix_queue_pump_tail_observed(queue, maximum, target, accepted, 0, true);
 }
 
 /* Explicitly begin a fresh shared epoch; do not infer a queue baseline at construction. */

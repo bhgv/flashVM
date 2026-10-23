@@ -1,10 +1,12 @@
-Development version: **0.1013** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1014** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1014: [Add opt-in horizon-limited tail pumping while preserving indivisible retries from every earlier rendering mode.](doc/FINITE_TAILS.md).
 
 v0.1013: [Check independent durations and PCM across four source clocks, six output rates, channel mappings, repetitions and partial source adoption.](doc/FINITE_TAILS.md).
 
