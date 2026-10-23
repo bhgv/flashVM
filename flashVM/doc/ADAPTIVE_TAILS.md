@@ -26,6 +26,9 @@ remain open, as do all nine roadmap stages.
 
 v0.999: Add bounded adaptive tail filling with indivisible retained retries and unchanged exact-size API.
 
+
+v0.1000: Use adaptive tails in paired EOF and frame-gated scheduling while retaining short TAIL priority over newly permitted base.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

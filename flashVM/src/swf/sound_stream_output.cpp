@@ -223,7 +223,7 @@ static FVM_Result stream_mix_tail_locked(FVM_SWFStreamOutput *s, FVM_SWFSoundMix
     FVM_Result result = stream_mix_clock(s, mix, clock);
     if (result != FVM_OK) return result;
     size_t count = 0;
-    result = fvm_swf_sound_mix_queue_pump_tail(mix, s->block, s->target, &count);
+    result = fvm_swf_sound_mix_queue_pump_tail_up_to(mix, s->block, s->target, &count);
     if (result != FVM_OK) return result;
     s->info.submitted_frames += (double)count;
     s->info.played_frames = clock.played_frames;
