@@ -3,7 +3,7 @@
 #include "mixed_authored_stop.cpp"
 static void wait_frames(FVM_DesktopAudio *a,double frames)
 {
- FVM_SWFStreamOutputInfo info;info.struct_size=sizeof(info);unsigned wait=0;for(;wait<400;++wait){assert(fvm_desktop_audio_stream_info(a,&info)==FVM_OK && SDL_AtomicGet(&a->error)==FVM_OK);if(info.submitted_frames==frames&&!info.queued_frames)break;SDL_Delay(5);}assert(wait<400);
+ FVM_SWFStreamMixInfo info;info.struct_size=sizeof(info);unsigned wait=0;for(;wait<400;++wait){assert(fvm_desktop_audio_mix_info(a,&info)==FVM_OK && SDL_AtomicGet(&a->error)==FVM_OK);assert(info.origins.base_submitted_frames+info.origins.tail_submitted_frames==info.stream.submitted_frames&&info.origins.base_played_frames+info.origins.tail_played_frames==info.stream.played_frames&&info.origins.base_queued_frames+info.origins.tail_queued_frames==info.stream.queued_frames);if(info.stream.submitted_frames==frames&&!info.stream.queued_frames)break;SDL_Delay(5);}assert(wait<400);
 }
 int main()
 {
