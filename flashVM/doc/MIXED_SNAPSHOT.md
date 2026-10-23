@@ -65,6 +65,8 @@ This is coherent bookkeeping, not source-sample mapping, MP3 delay compensation,
 automatic A/V drift/seek, child timelines/dictionaries or physical device/platform
 acceptance. All nine roadmap stages remain open.
 
+Internal desktop stream observations retain the legacy path for externally prepared composition adapters without origin tracking. Disabled-origin detection has no queued callback; the fallback still polls the FIFO once. The explicit paired API continues to return UNSUPPORTED.
+
 
 v0.1051: Add a single-observation paired stream and BASE/TAIL query without rendering or source advancement.
 
@@ -83,6 +85,9 @@ v0.1057: The origins tutorial reports one-poll queued and drained snapshots; its
 v0.1058: Seeded tests cover one-poll exact-clock boundaries, ring wrap, regression, target mismatch and acknowledged reset.
 
 v0.1059: Specify one-callback snapshot semantics, stream-cache publication, nonrollbackable queue progress and desktop lifecycle ownership.
+
+
+v0.1060: Keep internal stream observation compatible with prepared adapters that omit optional origins; explicit paired queries still report unsupported mode.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

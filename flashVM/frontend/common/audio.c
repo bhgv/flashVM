@@ -24,6 +24,8 @@ static FVM_Result stream_info_locked(FVM_DesktopAudio *audio, FVM_SWFStreamOutpu
     if (!audio->composition) return fvm_swf_stream_output_info(&audio->stream_output, out);
     snapshot.struct_size = sizeof(snapshot);
     result = fvm_swf_stream_output_mix_info(&audio->stream_output, audio->composition, &snapshot);
+    if (result == FVM_UNSUPPORTED)
+        return fvm_swf_stream_output_info(&audio->stream_output, out); /* Legacy adapters omit origins. */
     if (result == FVM_OK) *out = snapshot.stream;
     return result;
 }

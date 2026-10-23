@@ -1,10 +1,12 @@
-Development version: **0.1059** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1060** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1060: [Keep internal stream observation compatible with prepared adapters that omit optional origins; explicit paired queries still report unsupported mode.](doc/MIXED_SNAPSHOT.md).
 
 v0.1059: [Specify one-callback snapshot semantics, stream-cache publication, nonrollbackable queue progress and desktop lifecycle ownership.](doc/MIXED_SNAPSHOT.md).
 

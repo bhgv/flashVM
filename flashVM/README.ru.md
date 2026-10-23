@@ -1,4 +1,4 @@
-Версия разработки: **0.1059** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1060** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1060: [Внутренний stream-запрос совместим с адаптерами без origins; явный paired API сохраняет UNSUPPORTED.](doc/MIXED_SNAPSHOT.ru.md).
 
 v0.1059: [Описаны один callback, публикация stream cache, неоткатываемый прогресс очереди и desktop-владение.](doc/MIXED_SNAPSHOT.ru.md).
 

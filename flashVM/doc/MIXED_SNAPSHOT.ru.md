@@ -59,6 +59,8 @@ Source-sample mapping, MP3 delay, автоматические A/V drift/seek, �
 и словари, реальные устройства и платформы остаются открытыми. Все девять стадий
 плана открыты.
 
+Внутренний desktop stream-запрос сохраняет legacy-путь для вручную подготовленных адаптеров без origin tracking. Проверка disabled mode не опрашивает FIFO; fallback выполняет один queued-опрос. Явный paired API по-прежнему возвращает UNSUPPORTED.
+
 
 v0.1051: Добавлен единый снимок stream и BASE/TAIL без рендеринга и продвижения источника.
 
@@ -77,6 +79,9 @@ v0.1057: C89-пример выводит единые снимки до и по�
 v0.1058: Seeded-проверки охватывают границу точности clock, wrap, регрессию, target mismatch и сброс.
 
 v0.1059: Описаны один callback, публикация stream cache, неоткатываемый прогресс очереди и desktop-владение.
+
+
+v0.1060: Внутренний stream-запрос совместим с адаптерами без origins; явный paired API сохраняет UNSUPPORTED.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
