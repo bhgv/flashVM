@@ -16,6 +16,9 @@ v0.1041: Exercise wraparound, bounded admission before render and the last exact
 
 v0.1042: Verify paired BASE and TAIL origins and publish the actual successful base admission clock without a fallible post-write callback.
 
+
+v0.1043: Reject mode allocation transactionally and exercise tracked base/tail retries, observations and acknowledged seek reset with no further allocations.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

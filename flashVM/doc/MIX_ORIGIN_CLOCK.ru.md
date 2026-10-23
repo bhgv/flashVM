@@ -16,6 +16,9 @@ v0.1041: Проверены wraparound, ограничение до render и п
 
 v0.1042: Проверены BASE/TAIL парного конвертированного stream; часы используют фактический допуск BASE без ошибочного callback после write.
 
+
+v0.1043: Проверены rollback выделения bitmap и BASE/TAIL retry, наблюдения и seek reset без последующих аллокаций.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -1,4 +1,4 @@
-Версия разработки: **0.1042** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1043** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.1043: [Проверены rollback выделения bitmap и BASE/TAIL retry, наблюдения и seek reset без последующих аллокаций.](doc/MIX_ORIGIN_CLOCK.ru.md).
 
 v0.1042: [Проверены BASE/TAIL парного конвертированного stream; часы используют фактический допуск BASE без ошибочного callback после write.](doc/MIX_ORIGIN_CLOCK.ru.md).
 
