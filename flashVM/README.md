@@ -1,4 +1,4 @@
-Development version: **0.1210** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1211** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1211: [Bounded DefineShape4 fills with SWF8 gradient modes and signed interior focal positions](doc/SHAPE4_FILLS.md).
 
 v0.1210: [Recorded native sanitizer SDK-free and detached focal checks with endpoints still open](doc/FOCAL_GRADIENTS.md).
 

@@ -40,26 +40,46 @@ bool color(FVM_SWFReader &reader, bool rgba, FVM_SWFShapePaint &paint)
     return reader.good();
 }
 
-/* Read legacy pad/RGB gradient records; Shape1/2/3 reserve mode bits and allow at most eight stops.
- */
+/* Decode versioned gradient modes and ordered stops without relaxing legacy reserved bits. */
 FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &paint)
 {
     if (!fvm_swf_read_matrix(reader, paint.gradient_matrix))
         return FVM_INVALID_ARGUMENT;
     unsigned long header = reader.integer(1);
-    if (!reader.good() || header < 1 || header > 8)
+    unsigned long count = header;
+    if (tag == FVM_SWF_TAG_DEFINE_SHAPE4)
+    {
+        paint.gradient_spread = (unsigned int)(header >> FVM_SWF_GRADIENT_SPREAD_SHIFT);
+        paint.gradient_interpolation = (unsigned int)((header >> FVM_SWF_GRADIENT_INTERPOLATION_SHIFT) & FVM_SWF_GRADIENT_MODE_MASK);
+        count = header & FVM_SWF_GRADIENT_COUNT_MASK;
+        if (paint.gradient_spread > FVM_GRADIENT_SPREAD_REPEAT ||
+            paint.gradient_interpolation > FVM_GRADIENT_INTERPOLATION_LINEAR_RGB)
+            return FVM_INVALID_ARGUMENT;
+    }
+    if (!reader.good() || count < 1 || count > (tag == FVM_SWF_TAG_DEFINE_SHAPE4 ? FVM_GRADIENT_MAX_STOPS : 8))
         return FVM_INVALID_ARGUMENT;
-    for (unsigned long i = 0; i < header; ++i)
+    for (unsigned long i = 0; i < count; ++i)
     {
         FVM_SWFGradientStop stop;
         stop.ratio = (unsigned int)reader.integer(1);
         stop.color.r = (unsigned char)reader.integer(1);
         stop.color.g = (unsigned char)reader.integer(1);
         stop.color.b = (unsigned char)reader.integer(1);
-        stop.color.a = tag == FVM_SWF_TAG_DEFINE_SHAPE3 ? (unsigned char)reader.integer(1) : 255;
+        stop.color.a = (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4) ? (unsigned char)reader.integer(1) : 255;
         if (!reader.good() || (i && stop.ratio < paint.stops[i - 1].ratio))
             return FVM_INVALID_ARGUMENT;
         paint.stops.push_back(stop);
+    }
+    if (paint.gradient_type == FVM_SWF_FILL_FOCAL_GRADIENT)
+    {
+        unsigned long raw = reader.integer(2);
+        if (!reader.good())
+            return FVM_INVALID_ARGUMENT;
+        long signed_value = raw & FVM_SWF_FOCAL_SIGN ? -(long)(FVM_SWF_FOCAL_MODULUS - raw) : (long)raw;
+        paint.gradient_focal = signed_value / FVM_SWF_FOCAL_SCALE;
+        /* The current ray sampler intentionally excludes degenerate circle-boundary origins. */
+        if (paint.gradient_focal <= -FVM_GRADIENT_FOCAL_LIMIT || paint.gradient_focal >= FVM_GRADIENT_FOCAL_LIMIT)
+            return FVM_UNSUPPORTED;
     }
     return FVM_OK;
 }
@@ -85,10 +105,11 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         FVM_SWFShapePaint paint;
         if (type == FVM_SWF_FILL_SOLID)
         {
-            if (!color(reader, tag == FVM_SWF_TAG_DEFINE_SHAPE3, paint))
+            if (!color(reader, (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4), paint))
                 return FVM_INVALID_ARGUMENT;
         }
-        else if (type == FVM_SWF_FILL_LINEAR_GRADIENT || type == FVM_SWF_FILL_RADIAL_GRADIENT)
+        else if (type == FVM_SWF_FILL_LINEAR_GRADIENT || type == FVM_SWF_FILL_RADIAL_GRADIENT ||
+                 (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && type == FVM_SWF_FILL_FOCAL_GRADIENT))
         {
             paint.gradient_type = (unsigned int)type;
             FVM_Result r = gradient(reader, tag, paint);
@@ -119,12 +140,15 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         return FVM_INVALID_ARGUMENT;
     if (line_count > 4096 - lines.size())
         return FVM_OUT_OF_MEMORY;
+    /* LINESTYLE2 needs caps, joins and scaling semantics absent from the legacy stroke path. */
+    if (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && line_count)
+        return FVM_UNSUPPORTED;
     for (unsigned long i = 0; i < line_count; ++i)
     {
         FVM_SWFShapePaint paint;
         paint.stroke = true;
         paint.width = reader.integer(2) / 20.0;
-        if (!color(reader, tag == FVM_SWF_TAG_DEFINE_SHAPE3, paint))
+        if (!color(reader, (tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4), paint))
             return FVM_INVALID_ARGUMENT;
         lines.push_back(paint);
     }
@@ -263,6 +287,18 @@ FVM_Result decode(const unsigned char *bytes, size_t size, unsigned int tag, FVM
     out.bounds.x_max = xmax / 20.0;
     out.bounds.y_min = ymin / 20.0;
     out.bounds.y_max = ymax / 20.0;
+    if (tag == FVM_SWF_TAG_DEFINE_SHAPE4)
+    {
+        /* Validate the separate edge rectangle even though fill-only layout uses ShapeBounds. */
+        unsigned int edge_bits = (unsigned int)reader.bits(5);
+        long ex0 = reader.signed_bits(edge_bits), ex1 = reader.signed_bits(edge_bits);
+        long ey0 = reader.signed_bits(edge_bits), ey1 = reader.signed_bits(edge_bits);
+        reader.align();
+        unsigned long flags = reader.integer(1);
+        if (!reader.good() || ex0 > ex1 || ey0 > ey1 || !coordinate(ex0) || !coordinate(ex1) ||
+            !coordinate(ey0) || !coordinate(ey1) || (flags & FVM_SWF_SHAPE4_RESERVED_MASK))
+            return FVM_INVALID_ARGUMENT;
+    }
     fvm_detail::vector<FVM_SWFShapePaint> fills, lines;
     unsigned long fill_count = 0, line_count = 0, fill_offset = 0, line_offset = 0;
     FVM_Result r = styles(reader, tag, fills, lines, fill_count, line_count);
@@ -392,7 +428,7 @@ FVM_Result fvm_swf_read_shape(const unsigned char *bytes, size_t size, unsigned 
                               FVM_SWFShape &out)
 {
     if (!bytes || (tag != FVM_SWF_TAG_DEFINE_SHAPE && tag != FVM_SWF_TAG_DEFINE_SHAPE2 &&
-                   tag != FVM_SWF_TAG_DEFINE_SHAPE3))
+                   tag != FVM_SWF_TAG_DEFINE_SHAPE3 && tag != FVM_SWF_TAG_DEFINE_SHAPE4))
         return FVM_INVALID_ARGUMENT;
     try
     {

@@ -238,7 +238,7 @@ FVM_Result inspect_timeline(FVM_Context *context, const fvm_detail::vector<unsig
             at += count;
             continue;
         }
-        if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 ||
+        if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4 ||
                          tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS || tag == FVM_SWF_TAG_JPEG_TABLES))
             return FVM_INVALID_ARGUMENT;
         if (tag == FVM_SWF_TAG_DEFINE_SOUND || tag == FVM_SWF_SOUND_EVENT_TAG)
@@ -322,9 +322,10 @@ FVM_Result inspect_timeline(FVM_Context *context, const fvm_detail::vector<unsig
             bitmaps->push_back(bitmap);
             known[bitmap.id] = true;
         }
-        else if ((tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3) && shapes)
+        else if ((tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 || tag == FVM_SWF_TAG_DEFINE_SHAPE4) && shapes)
         {
-            if ((tag == FVM_SWF_TAG_DEFINE_SHAPE2 && version < 2) || (tag == FVM_SWF_TAG_DEFINE_SHAPE3 && version < 3))
+            if ((tag == FVM_SWF_TAG_DEFINE_SHAPE2 && version < 2) || (tag == FVM_SWF_TAG_DEFINE_SHAPE3 && version < 3) ||
+                (tag == FVM_SWF_TAG_DEFINE_SHAPE4 && version < FVM_SWF_VERSION_8))
                 return FVM_INVALID_ARGUMENT;
             FVM_SWFShape shape;
             FVM_Result r = fvm_swf_read_shape(p + at, count, tag, shape);

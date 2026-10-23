@@ -23,7 +23,10 @@ struct FVM_SWFShapePaint
     unsigned long rgb;          /* Packed red/green/blue color. */
     double alpha;               /* Opacity percentage for the common MovieClip renderer. */
     double width;               /* Pixel stroke width; zero selects a fill. */
-    unsigned int gradient_type; /* Zero for solid, 0x10 for linear, 0x12 for radial. */
+    unsigned int gradient_type; /* Zero for solid; linear, radial or focal fill discriminator. */
+    unsigned int gradient_spread; /* Pad, reflect or repeat; legacy shapes always use pad. */
+    unsigned int gradient_interpolation; /* RGB or linearRGB; legacy shapes always use RGB. */
+    double gradient_focal; /* Signed interior focal position, zero for non-focal gradients. */
     FVM_Affine gradient_matrix; /* Maps SWF gradient coordinates in pixels to shape-local pixels. */
     fvm_detail::vector<FVM_SWFGradientStop>
         stops;                /* Owned sorted control points for a gradient fill. */
@@ -34,7 +37,8 @@ struct FVM_SWFShapePaint
     fvm_detail::vector<FVM_PathCommand> commands; /* Owned vector commands in pixel coordinates. */
     /* Initialize a fully opaque solid fill with no geometry. */
     FVM_SWFShapePaint()
-        : rgb(0), alpha(100), width(0), gradient_type(0), bitmap_type(0), bitmap_id(0),
+        : rgb(0), alpha(100), width(0), gradient_type(0), gradient_spread(0), gradient_interpolation(0),
+          gradient_focal(0), bitmap_type(0), bitmap_id(0),
           stroke(false)
     {
         bitmap_matrix.xx = bitmap_matrix.yy = 1;
@@ -57,6 +61,6 @@ struct FVM_SWFShape
     }
 };
 
-/* Decode DefineShape/2/3 solid styles and edge records with bounded allocations and coordinates. */
+/* Decode DefineShape/2/3 and fill-only DefineShape4 styles and edge records with bounded allocations and coordinates. */
 FVM_Result fvm_swf_read_shape(const unsigned char *, size_t, unsigned int tag, FVM_SWFShape &);
 #endif

@@ -49,6 +49,19 @@
 #define FVM_SWF_TAG_FILE_ATTRIBUTES 69U
 /* SWF metadata tag identifier. */
 #define FVM_SWF_TAG_METADATA 77U
+/* SWF 8 shape definition with edge bounds and extended gradient records. */
+#define FVM_SWF_TAG_DEFINE_SHAPE4 83U
+/* Shape4 header bits reserved by SWF 8 (including the later SWF 10 winding flag). */
+#define FVM_SWF_SHAPE4_RESERVED_MASK 0xfcU
+/* Gradient header bit layout shared by GRADIENT and FOCALGRADIENT. */
+#define FVM_SWF_GRADIENT_SPREAD_SHIFT 6U
+#define FVM_SWF_GRADIENT_INTERPOLATION_SHIFT 4U
+#define FVM_SWF_GRADIENT_MODE_MASK 3U
+#define FVM_SWF_GRADIENT_COUNT_MASK 15U
+/* Signed little-endian FIXED8 encoding for a focal position. */
+#define FVM_SWF_FOCAL_SIGN 0x8000UL
+#define FVM_SWF_FOCAL_MODULUS 0x10000UL
+#define FVM_SWF_FOCAL_SCALE 256.0
 /* SWF version 1 compatibility boundary. */
 #define FVM_SWF_VERSION_1 1U
 /* SWF version 2 compatibility boundary. */
@@ -71,6 +84,8 @@
 #define FVM_SWF_FILL_LINEAR_GRADIENT 0x10U
 /* Radial gradient fill style. */
 #define FVM_SWF_FILL_RADIAL_GRADIENT 0x12U
+/* SWF 8 radial fill with an explicit signed FIXED8 focal position. */
+#define FVM_SWF_FILL_FOCAL_GRADIENT 0x13U
 /* Smoothed repeating bitmap fill. */
 #define FVM_SWF_FILL_BITMAP_REPEAT 0x40U
 /* Smoothed clipped bitmap fill. */

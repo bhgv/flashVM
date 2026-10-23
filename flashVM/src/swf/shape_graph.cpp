@@ -36,6 +36,13 @@ FVM_Result gradient(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *
         return r;
     record->properties["type"] =
         number(paint.gradient_type == FVM_SWF_FILL_LINEAR_GRADIENT ? 0 : 1);
+    /* Preserve optional SWF 8 modes using the same scalar-only graph as script gradients. */
+    if (paint.gradient_spread)
+        record->properties["spread"] = number(paint.gradient_spread);
+    if (paint.gradient_interpolation)
+        record->properties["interpolation"] = number(paint.gradient_interpolation);
+    if (paint.gradient_focal)
+        record->properties["focal"] = number(paint.gradient_focal);
     record->properties["xx"] = number(paint.gradient_matrix.xx);
     record->properties["yx"] = number(paint.gradient_matrix.yx);
     record->properties["xy"] = number(paint.gradient_matrix.xy);

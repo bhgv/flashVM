@@ -1,4 +1,4 @@
-Версия разработки: **0.1210** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1211** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -9,6 +9,8 @@ Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
 
+
+v0.1211: [Ограниченные заливки DefineShape4 с режимами SWF8 и знаковым внутренним фокусом](doc/SHAPE4_FILLS.ru.md).
 
 v0.1210: [Записаны native sanitizer SDK-free и detached focal проверки с открытыми endpoints](doc/FOCAL_GRADIENTS.ru.md).
 
