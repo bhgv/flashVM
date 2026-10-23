@@ -37,6 +37,19 @@ clamping occurs at the next scroll observation, export or capture. No onScroller
 notification is synthesized. Legacy callback selectors retain their identities;
 new selectors are appended and only rootless retired native stubs are upgraded.
 
+
+## Binary and channel ownership
+
+Nondefault scroll positions add the [FVM_TEXT_STATE_HAS_SCROLL](../src/standard/text_constants.h#L49) policy bit and two
+numeric values after optional position values. Default offsets omit these bytes;
+older payloads restore scroll=1/hscroll=0. Snapshot charges include the optional
+26 wire bytes. Capture measures/clamps active positions before copying; default
+fields keep legacy lazy capture. Restore rejects nonfinite/fractional/negative,
+portable-limit or actual-geometry-exceeding positions before field publication.
+Fonts and text are independently owned on receivers. No font/cache/VM pointer is
+serialized. Newer payloads with this bit require an updated receiver. Existing
+rootless scroll stubs are upgraded; captured/custom accessors retain their semantics.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -47,6 +60,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_TEXT_STATE_HAS_SCROLL` | macro / define | [src/standard/text_constants.h:49](../src/standard/text_constants.h#L49) |
 | `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../include/flashvm/standard_text.h#L68) |
 | `FVM_TextFieldScrollInfo` | struct | [include/flashvm/standard_text.h:44](../include/flashvm/standard_text.h#L44) |
 <!-- source-links:end -->

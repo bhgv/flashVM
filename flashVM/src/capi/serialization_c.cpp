@@ -730,9 +730,11 @@ struct Writer
              (s.auto_size_left ? FVM_TEXT_STATE_AUTO_SIZE_LEFT : 0UL) |
              (s.x != 0 || s.y != 0 ? FVM_TEXT_STATE_HAS_POSITION : 0UL) |
              (s.anchor == FVM_TEXT_ANCHOR_CENTER ? FVM_TEXT_STATE_CENTER : 0UL) |
-             (s.anchor == FVM_TEXT_ANCHOR_RIGHT ? FVM_TEXT_STATE_RIGHT : 0UL));
+             (s.anchor == FVM_TEXT_ANCHOR_RIGHT ? FVM_TEXT_STATE_RIGHT : 0UL) |
+             (s.scroll != 1 || s.hscroll != 0 ? FVM_TEXT_STATE_HAS_SCROLL : 0UL));
         byte(s.wrap ? 1 : 0);
         if (s.x != 0 || s.y != 0) { number(s.x); number(s.y); }
+        if (s.scroll != 1 || s.hscroll != 0) { number(s.scroll); number(s.hscroll); }
     }
     /* Implement callback for this subsystem. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1014,6 +1016,7 @@ struct Reader
         s.anchor = anchor == FVM_TEXT_STATE_RIGHT ? FVM_TEXT_ANCHOR_RIGHT :
                    anchor == FVM_TEXT_STATE_CENTER ? FVM_TEXT_ANCHOR_CENTER : FVM_TEXT_ANCHOR_LEFT;
         if (multiline & FVM_TEXT_STATE_HAS_POSITION) { s.x = number(); s.y = number(); }
+        if (multiline & FVM_TEXT_STATE_HAS_SCROLL) { s.scroll = number(); s.hscroll = number(); }
         return s;
     }
     /* Compute and return callback. */

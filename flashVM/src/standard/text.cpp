@@ -1941,6 +1941,15 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     if (!field || fvm_textfield_snapshot_size(object) == (size_t)-1)
         return FVM_UNSUPPORTED;
 
+    FVM_TextFieldScrollInfo info;
+    info.scroll = field->scroll;
+    info.hscroll = field->hscroll;
+    if (field->scroll != 1 || field->hscroll != 0)
+    {
+        FVM_Result result = scroll_geometry(object->owner, field, info);
+        if (result != FVM_OK)
+            return result;
+    }
     /* Computation / Вычисление и обновление состояния. */
     snapshot_style(object->owner, field->current, out.current);
     snapshot_style(object->owner, field->future, out.future);
@@ -1952,6 +1961,8 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     out.auto_size_left = field->auto_size_left;
     out.x = field->x; out.y = field->y;
     out.anchor = field->auto_size_left ? field->anchor : FVM_TEXT_ANCHOR_LEFT;
+    out.scroll = info.scroll; out.hscroll = info.hscroll;
+    field->scroll = info.scroll; field->hscroll = info.hscroll;
     return FVM_OK;
 }
 
@@ -1963,7 +1974,11 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         return FVM_UNSUPPORTED;
     size_t scalar_count = 0;
     /* Validate the same storage envelope as editing before allocating native state or fonts. */
-    if (!finite_range(state.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) || !finite_range(state.height, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
+    if (!finite_range(state.scroll, 1, FVM_TEXT_FIELD_MAX_SCROLL_LINES) ||
+        state.scroll != std::floor(state.scroll) ||
+        !finite_range(state.hscroll, 0, FVM_TEXT_FIELD_MAX_SCROLL_PIXELS) ||
+        state.hscroll != std::floor(state.hscroll) ||
+        !finite_range(state.width, 0, FVM_TEXT_FIELD_MAX_EXTENT) || !finite_range(state.height, 0, FVM_TEXT_FIELD_MAX_EXTENT) ||
         !finite_range(state.x, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION) ||
         !finite_range(state.y, -FVM_TEXT_FIELD_MAX_POSITION, FVM_TEXT_FIELD_MAX_POSITION) ||
         state.anchor > FVM_TEXT_ANCHOR_RIGHT || (!state.auto_size_left && state.anchor != FVM_TEXT_ANCHOR_LEFT) ||
@@ -2037,6 +2052,21 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         {
             delete field;
             return FVM_INVALID_ARGUMENT;
+        }
+        field->scroll = (unsigned long)state.scroll;
+        field->hscroll = (unsigned long)state.hscroll;
+        if (field->scroll != 1 || field->hscroll != 0)
+        {
+            /* Borrow only the temporary state while checking geometry before publication. */
+            field->text = state.text.c_str();
+            field->text_size = state.text.size();
+            FVM_TextFieldScrollInfo info;
+            result = scroll_geometry(context, field, info);
+            if (result != FVM_OK || info.scroll != field->scroll || info.hscroll != field->hscroll)
+            {
+                delete field;
+                return result == FVM_OK ? FVM_INVALID_ARGUMENT : result;
+            }
         }
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator legacy_auto =
             object->accessors.find("autoSize");

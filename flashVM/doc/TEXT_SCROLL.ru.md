@@ -36,6 +36,19 @@ lazy layout; clamp выполняется при следующем scroll obser
 Уведомление onScroller не создаётся. Старые callback selectors сохраняют ID;
 новые добавлены в конец, upgrade заменяет только rootless старые native stubs.
 
+
+## Владение при binary/channel передаче
+
+Ненулевое состояние прокрутки добавляет [FVM_TEXT_STATE_HAS_SCROLL](../src/standard/text_constants.h#L49) и два числа
+после optional position. При default scroll=1/hscroll=0 эти байты отсутствуют;
+старый payload восстанавливает defaults. Заряд snapshot включает optional 26
+wire bytes. Capture измеряет/clamp активные позиции; default fields сохраняют
+прежний lazy capture. Restore отклоняет нечисловые/дробные/отрицательные значения,
+превышение переносимых границ или фактической геометрии до публикации field.
+Шрифты и текст receiver владеет независимо; font/cache/VM pointers не передаются.
+Новый бит требует обновлённого receiver. Upgrade меняет только rootless старые
+scroll stubs; captured/custom accessors сохраняют семантику.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -46,6 +59,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_TEXT_STATE_HAS_SCROLL` | macro / define | [src/standard/text_constants.h:49](../src/standard/text_constants.h#L49) |
 | `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../include/flashvm/standard_text.h#L68) |
 | `FVM_TextFieldScrollInfo` | struct | [include/flashvm/standard_text.h:44](../include/flashvm/standard_text.h#L44) |
 <!-- source-links:end -->

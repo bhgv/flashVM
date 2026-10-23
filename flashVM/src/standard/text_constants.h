@@ -21,7 +21,7 @@
 #define FVM_TEXT_JUSTIFY_MIN_VERSION 8U /* AS2 justified paragraphs became available in SWF8. */
 #define FVM_TEXT_STYLE_HAS_INSETS 512UL /* Optional left/right/block inset numbers after spacing. */
 #define FVM_TEXT_STYLE_MAX_INSET 4096.0 /* Nonnegative integral paragraph inset envelope. */
-#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 320U /* Conservative fixed fields plus optional inset/indent numbers. */
+#define FVM_TEXT_FIELD_SNAPSHOT_OVERHEAD 346U /* Conservative fixed fields plus optional inset/indent numbers. */
 #define FVM_TEXT_STYLE_HAS_INDENT 1024UL /* Optional signed first-line number after paragraph insets. */
 #define FVM_TEXT_STYLE_MAX_INDENT 4096.0 /* Maximum absolute integral first-line indent. */
 #define FVM_TEXT_INDENT_NEGATIVE_MIN_VERSION 8U /* Hanging indentation became available in Flash8. */
@@ -46,7 +46,8 @@
 #define FVM_TEXT_STATE_HAS_POSITION 4UL /* Optional x/y numbers follow policy bytes. */
 #define FVM_TEXT_STATE_CENTER 8UL /* Center automatic anchor, requires fitting bit. */
 #define FVM_TEXT_STATE_RIGHT 16UL /* Right automatic anchor, exclusive with center. */
-#define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT | FVM_TEXT_STATE_HAS_POSITION | FVM_TEXT_STATE_CENTER | FVM_TEXT_STATE_RIGHT)
+#define FVM_TEXT_STATE_HAS_SCROLL 32UL /* Optional vertical/horizontal numbers after position. */
+#define FVM_TEXT_STATE_POLICY_MASK (FVM_TEXT_STATE_MULTILINE | FVM_TEXT_STATE_AUTO_SIZE_LEFT | FVM_TEXT_STATE_HAS_POSITION | FVM_TEXT_STATE_CENTER | FVM_TEXT_STATE_RIGHT | FVM_TEXT_STATE_HAS_SCROLL)
 #define FVM_TEXT_ANCHOR_LEFT 0UL /* Preserve left edge while fitting. */
 #define FVM_TEXT_ANCHOR_CENTER 1UL /* Preserve horizontal center while fitting. */
 #define FVM_TEXT_ANCHOR_RIGHT 2UL /* Preserve right edge while fitting. */
