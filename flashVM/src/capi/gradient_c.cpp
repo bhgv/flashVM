@@ -242,7 +242,7 @@ FVM_Result fvm_path_gradient_focal_quality(const FVM_Path *path, FVM_RasterSurfa
                                            unsigned int spread, unsigned int interpolation,
                                            double focal, bool antialias)
 {
-    if (!(focal > -1 && focal < 1) ||
+    if (!(focal > -FVM_GRADIENT_FOCAL_LIMIT && focal < FVM_GRADIENT_FOCAL_LIMIT) ||
         (focal != 0 && (!gradient || gradient->type != FVM_GRADIENT_RADIAL)))
         return FVM_INVALID_ARGUMENT;
     if (!(width >= 0 && width <= FVM_GRADIENT_MAX_STROKE_WIDTH) ||

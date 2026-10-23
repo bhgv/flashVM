@@ -27,8 +27,8 @@ Cairo share the same ramp evaluation. Colors outside the ramp use its endpoint
 values (pad). Duplicate stop positions select the last stop at that exact ratio.
 
 The C89 API in `include/flashvm/gradient.h` exposes the same linear/radial pad
-painting for ordinary editable paths. Initialize [FVM_Gradient](../include/flashvm/gradient.h#L37), supply a borrowed
-ordered array of 1..15 stops and its matrix, and call [fvm_path_draw_gradient](../include/flashvm/gradient.h#L51).
+painting for ordinary editable paths. Initialize [FVM_Gradient](../include/flashvm/gradient.h#L38), supply a borrowed
+ordered array of 1..15 stops and its matrix, and call [fvm_path_draw_gradient](../include/flashvm/gradient.h#L52).
 The matrix maps the normalized square -1..1 to destination pixels; SWF's square
 of +/-16384 twips is normalized during scene rendering. Matrices are bounded to
 absolute components <=1,000,000 and require absolute determinant >=1e-20.
@@ -116,6 +116,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../include/flashvm/gradient.h#L37) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../include/flashvm/gradient.h#L51) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:52](../include/flashvm/gradient.h#L52) |
 <!-- source-links:end -->

@@ -89,7 +89,7 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     if (focal_mode != record->properties.end())
     {
         const FVM_Value &value = focal_mode->second;
-        if (value.type != FVM_VALUE_NUMBER || !(value.number > -1 && value.number < 1))
+        if (value.type != FVM_VALUE_NUMBER || !(value.number > -FVM_GRADIENT_FOCAL_LIMIT && value.number < FVM_GRADIENT_FOCAL_LIMIT))
             return FVM_INVALID_ARGUMENT;
         focal = value.number;
     }

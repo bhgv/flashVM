@@ -1,6 +1,6 @@
 # Linear-light RGB gradients
 
-Explicit linearRGB interpolation is available for C89 gradient fills/strokes and the Flash 8 beginGradientFill/lineGradientStyle methods. The existing [FVM_Gradient](../include/flashvm/gradient.h#L37) layout, old entry-point defaults and callback identifiers remain unchanged. All nine roadmap stages remain open.
+Explicit linearRGB interpolation is available for C89 gradient fills/strokes and the Flash 8 beginGradientFill/lineGradientStyle methods. The existing [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, old entry-point defaults and callback identifiers remain unchanged. All nine roadmap stages remain open.
 
 ## C89 entries
 
@@ -10,15 +10,15 @@ Explicit linearRGB interpolation is available for C89 gradient fills/strokes and
 | --- | --- |
 | path | Non-null borrowed path; finite coordinates obey the existing raster/path limits. Commands are not changed. |
 | surface | Non-null RGBA destination and borrowed storage satisfying existing dimensions/stride limits. The caller provides exclusive access during painting. |
-| gradient | Non-null [FVM_Gradient](../include/flashvm/gradient.h#L37) with its existing bounded finite invertible matrix, sorted 1–15 stops and color-transform limits. Layout and ownership are unchanged. |
+| gradient | Non-null [FVM_Gradient](../include/flashvm/gradient.h#L38) with its existing bounded finite invertible matrix, sorted 1–15 stops and color-transform limits. Layout and ownership are unchanged. |
 | even_odd | Fill selector 0 or 1. The stroke entry uses the existing nonzero stroke mask. |
-| width | Stroke-only finite positive destination-pixel width, at most [FVM_GRADIENT_MAX_STROKE_WIDTH](../include/flashvm/gradient.h#L9). Zero is invalid; an explicit width 1 requests a one-pixel stroke. |
+| width | Stroke-only finite positive destination-pixel width, at most [FVM_GRADIENT_MAX_STROKE_WIDTH](../include/flashvm/gradient.h#L10). Zero is invalid; an explicit width 1 requests a one-pixel stroke. |
 | spread | Unsigned PAD=0, REFLECT=1 or REPEAT=2 selector, as in the existing spread API. |
-| interpolation | Unsigned [FVM_GRADIENT_INTERPOLATION_RGB](../include/flashvm/gradient.h#L27)=0 or [FVM_GRADIENT_INTERPOLATION_LINEAR_RGB](../include/flashvm/gradient.h#L28)=1. Other values, including UINT_MAX, are invalid. |
+| interpolation | Unsigned [FVM_GRADIENT_INTERPOLATION_RGB](../include/flashvm/gradient.h#L28)=0 or [FVM_GRADIENT_INTERPOLATION_LINEAR_RGB](../include/flashvm/gradient.h#L29)=1. Other values, including UINT_MAX, are invalid. |
 
 [FVM_OK](../include/flashvm/flashvm.h#L42) indicates successful painting. Invalid selectors, width, path, surface, stops or matrix return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before painting. A valid request without a graphics backend returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Allocation failure preparing samples or coverage returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and preserves destination bytes. One paint is transactional; prior successful paints in a scene are not rolled back by a later failure.
 
-The old [fvm_path_draw_gradient](../include/flashvm/gradient.h#L51) remains PAD/RGB. [fvm_path_draw_gradient_spread](../include/flashvm/gradient.h#L56) and [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L63) retain RGB for every spread selector. Explicit interpolation=RGB uses the same byte-domain sample arithmetic; full-surface tests compare it against those old entries. [fvm_gradient_init](../include/flashvm/gradient.h#L47) and the public gradient struct acquire no new field.
+The old [fvm_path_draw_gradient](../include/flashvm/gradient.h#L52) remains PAD/RGB. [fvm_path_draw_gradient_spread](../include/flashvm/gradient.h#L57) and [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L64) retain RGB for every spread selector. Explicit interpolation=RGB uses the same byte-domain sample arithmetic; full-surface tests compare it against those old entries. [fvm_gradient_init](../include/flashvm/gradient.h#L48) and the public gradient struct acquire no new field.
 
 ## Transfer and composition order
 
@@ -57,7 +57,7 @@ Primary API reference: Adobe [MovieClip beginGradientFill and lineGradientStyle]
 
 ## v0.1196 verification
 
-Linear-light RGB v0.1183–v0.1196: additive C89 fill/stroke interpolation selectors and SWF8 beginGradientFill/lineGradientStyle support linearRGB for linear and centered-radial PAD/REFLECT/REPEAT ramps. [FVM_Gradient](../include/flashvm/gradient.h#L37) layout, old RGB defaults and callback IDs remain unchanged. The sampler decodes at most fifteen sRGB stops into paint-local storage, interpolates RGB in linear light, re-encodes before color transforms and keeps alpha straight/linear. Endpoints and constant channels remain exact. Validation passes 105 selected native gradient/raster/scene/graph/GC/quality/tutorial tests, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent numeric tables cover dark transfer branches, duplicate stops, alpha/source-over and old RGB byte identity. Seventy-two real host/SWF8 AVM1 interpreter/manual/automatic JIT combinations check native counters; four OS workers complete 128 isolated paint/GC epochs; 96 affine/alpha/quality renders pass. Mixed RGB/linearRGB fill/stroke binary graphs retain independent policies after sender teardown. SDK-free C89 validation passes and two graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Counted names, version gates, copied inputs, duplicate/current-active aliases, raw metadata/getter exclusion and preparation fault sweeps are covered. DefineShape4/LineStyle2, nonzero focal, complete stroke scaling/caps/joins/mid-path fill semantics, per-pixel work metering and original-player/device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](LINEAR_RGB_GRADIENTS.md).
+Linear-light RGB v0.1183–v0.1196: additive C89 fill/stroke interpolation selectors and SWF8 beginGradientFill/lineGradientStyle support linearRGB for linear and centered-radial PAD/REFLECT/REPEAT ramps. [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, old RGB defaults and callback IDs remain unchanged. The sampler decodes at most fifteen sRGB stops into paint-local storage, interpolates RGB in linear light, re-encodes before color transforms and keeps alpha straight/linear. Endpoints and constant channels remain exact. Validation passes 105 selected native gradient/raster/scene/graph/GC/quality/tutorial tests, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent numeric tables cover dark transfer branches, duplicate stops, alpha/source-over and old RGB byte identity. Seventy-two real host/SWF8 AVM1 interpreter/manual/automatic JIT combinations check native counters; four OS workers complete 128 isolated paint/GC epochs; 96 affine/alpha/quality renders pass. Mixed RGB/linearRGB fill/stroke binary graphs retain independent policies after sender teardown. SDK-free C89 validation passes and two graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Counted names, version gates, copied inputs, duplicate/current-active aliases, raw metadata/getter exclusion and preparation fault sweeps are covered. DefineShape4/LineStyle2, nonzero focal, complete stroke scaling/caps/joins/mid-path fill semantics, per-pixel work metering and original-player/device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](LINEAR_RGB_GRADIENTS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -68,18 +68,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../include/flashvm/gradient.h#L37) |
-| `fvm_gradient_init` | function | [include/flashvm/gradient.h:47](../include/flashvm/gradient.h#L47) |
-| `FVM_GRADIENT_INTERPOLATION_LINEAR_RGB` | enum constant | [include/flashvm/gradient.h:28](../include/flashvm/gradient.h#L28) |
-| `FVM_GRADIENT_INTERPOLATION_RGB` | enum constant | [include/flashvm/gradient.h:27](../include/flashvm/gradient.h#L27) |
-| `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:9](../include/flashvm/gradient.h#L9) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
+| `FVM_GRADIENT_INTERPOLATION_LINEAR_RGB` | enum constant | [include/flashvm/gradient.h:29](../include/flashvm/gradient.h#L29) |
+| `FVM_GRADIENT_INTERPOLATION_RGB` | enum constant | [include/flashvm/gradient.h:28](../include/flashvm/gradient.h#L28) |
+| `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:10](../include/flashvm/gradient.h#L10) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../include/flashvm/gradient.h#L51) |
-| `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:70](../include/flashvm/gradient.h#L70) |
-| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:56](../include/flashvm/gradient.h#L56) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:63](../include/flashvm/gradient.h#L63) |
-| `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:76](../include/flashvm/gradient.h#L76) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:52](../include/flashvm/gradient.h#L52) |
+| `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:71](../include/flashvm/gradient.h#L71) |
+| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:57](../include/flashvm/gradient.h#L57) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:64](../include/flashvm/gradient.h#L64) |
+| `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:77](../include/flashvm/gradient.h#L77) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -8,7 +8,7 @@ Build the ordinary project with GRAPHICS_AGG or GRAPHICS_CAIRO enabled in DEFS.t
 and run `flashvm_examples_embedding_gradients_main`. NO_GRAPHICS is supported
 as a demonstration mode and prints how to enable a raster backend.
 
-Call [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L47) before setting the borrowed stop array. Stop ratios run
+Call [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L48) before setting the borrowed stop array. Stop ratios run
 from 0 to 1 in nondecreasing order. The gradient matrix maps the normalized square
 (-1,-1)..(1,1) to pixels, independently of the path. For a horizontal ramp covering
 a surface of width W, set xx=W/2 and x0=W/2; set a nonzero yy so the transform stays
@@ -55,7 +55,7 @@ stroke repeat: 128 255 255
 
 | Function | Purpose and ownership / Назначение и владение |
 | --- | --- |
-| [`fvm_path_stroke_gradient`](../../../include/flashvm/gradient.h#L63) | Synchronously borrows path, gradient/stops and destination; paints a positive destination-space stroke. Invalid input or preparation failure preserves pixels. [Contract / Контракт](../../../doc/GRADIENT_STROKES.md). |
+| [`fvm_path_stroke_gradient`](../../../include/flashvm/gradient.h#L64) | Synchronously borrows path, gradient/stops and destination; paints a positive destination-space stroke. Invalid input or preparation failure preserves pixels. [Contract / Контракт](../../../doc/GRADIENT_STROKES.md). |
 
 [Stroke contract / Контракт обводок](../../../doc/GRADIENT_STROKES.ru.md). This example checks the selected backend on the host; reference-player and physical-device acceptance remain separate.
 
@@ -67,7 +67,7 @@ Run `python3 flashVM/scripts/check_gradient_strokes_example.py <path-to-example>
 
 The annotated C89 `linear_rgb.inc` companion owns two local black/white stops and borrows main's path/buffer. It compares the same midpoint in fill and stroke coverage, from transparent black to opaque white. linearRGB changes the three color channels while alpha stays 128. Calls are synchronous and retain no VM, device or input pointers; errors return through main's normal path cleanup.
 
-C89 helper сравнивает реальный midpoint, не меняя ABI layout [`FVM_Gradient`](../../../include/flashvm/gradient.h#L37). Straight alpha интерполируется линейно в обоих режимах. Дополнительный вывод:
+C89 helper сравнивает реальный midpoint, не меняя ABI layout [`FVM_Gradient`](../../../include/flashvm/gradient.h#L38). Straight alpha интерполируется линейно в обоих режимах. Дополнительный вывод:
 
 ```text
 linear fill RGB: 128 128 128 128
@@ -78,8 +78,8 @@ linear stroke linearRGB: 188 188 188 128
 
 | Function | Purpose and ownership / Назначение и владение |
 | --- | --- |
-| [`fvm_path_draw_gradient_interpolated`](../../../include/flashvm/gradient.h#L70) | Borrow path, surface and gradient/stops until return; fill with unsigned spread/interpolation selectors. Invalid input or preparation failure preserves pixels. [Contract](../../../doc/LINEAR_RGB_GRADIENTS.md). |
-| [`fvm_path_stroke_gradient_interpolated`](../../../include/flashvm/gradient.h#L76) | Borrow the same inputs for a positive destination-pixel stroke with explicit color policy; no VM/device/root is retained. [Контракт](../../../doc/LINEAR_RGB_GRADIENTS.ru.md). |
+| [`fvm_path_draw_gradient_interpolated`](../../../include/flashvm/gradient.h#L71) | Borrow path, surface and gradient/stops until return; fill with unsigned spread/interpolation selectors. Invalid input or preparation failure preserves pixels. [Contract](../../../doc/LINEAR_RGB_GRADIENTS.md). |
+| [`fvm_path_stroke_gradient_interpolated`](../../../include/flashvm/gradient.h#L77) | Borrow the same inputs for a positive destination-pixel stroke with explicit color policy; no VM/device/root is retained. [Контракт](../../../doc/LINEAR_RGB_GRADIENTS.ru.md). |
 
 NO_GRAPHICS follows the earlier backend message and does not claim to render these values. Original-player and physical-platform comparisons remain separate.
 
@@ -102,11 +102,11 @@ AS2 companion также показывает отдельный SWF8 linearRGB-
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L47) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L48) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
 | [`fvm_path_add`](../../../include/flashvm/path.h#L54) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_create`](../../../include/flashvm/path.h#L50) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
 | [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h#L51) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h#L52) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-gradients).
 <!-- example-catalog-api:end -->
@@ -120,13 +120,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../../../include/flashvm/gradient.h#L37) |
-| `fvm_gradient_init` | function | [include/flashvm/gradient.h:47](../../../include/flashvm/gradient.h#L47) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../../../include/flashvm/gradient.h#L38) |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:48](../../../include/flashvm/gradient.h#L48) |
 | `fvm_path_add` | function | [include/flashvm/path.h:54](../../../include/flashvm/path.h#L54) |
 | `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../../../include/flashvm/gradient.h#L51) |
-| `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:70](../../../include/flashvm/gradient.h#L70) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:63](../../../include/flashvm/gradient.h#L63) |
-| `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:76](../../../include/flashvm/gradient.h#L76) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:52](../../../include/flashvm/gradient.h#L52) |
+| `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:71](../../../include/flashvm/gradient.h#L71) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:64](../../../include/flashvm/gradient.h#L64) |
+| `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:77](../../../include/flashvm/gradient.h#L77) |
 <!-- source-links:end -->

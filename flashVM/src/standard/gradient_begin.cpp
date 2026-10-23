@@ -325,7 +325,7 @@ static FVM_Result gradient_begin(FVM_Context *c, FVM_Object *clip, unsigned int 
         r = numeric(c, args[7], focal, DBL_MAX);
         if (r != FVM_OK)
             return r == FVM_INVALID_ARGUMENT ? FVM_OK : r;
-        if (!(focal > -1 && focal < 1))
+        if (!(focal > -FVM_GRADIENT_FOCAL_LIMIT && focal < FVM_GRADIENT_FOCAL_LIMIT))
             return FVM_UNSUPPORTED; /* Boundary/clamped endpoint policies remain explicit. */
         if (focal != 0 && c->swf_loaded &&
             c->swf_info.version < FVM_MOVIECLIP_GRADIENT_FOCAL_MIN_VERSION)
