@@ -78,6 +78,14 @@ v0.1009: Specify partial FIFO sizing, indivisible retries, admission-clock snaps
 
 v0.1010: Check exact changed final padding and segment offsets when one-frame headroom alters tail block boundaries.
 
+
+## v0.1011 verification / Проверка
+
+Adaptive event tails v0.999–v0.1011: the additive pump_tail_up_to fills fresh event-only blocks into partial FIFO headroom while preserving indivisible short retries. Paired EOF/gate and desktop root composition use it; the exact-size API and BASE retry ownership remain unchanged. Stream counters now carry the actual successful admission observation without a fallible post-write poll. Tests cover one-frame dequeue, changed retry caps, controls/errors/reentry, seeded exact clock limits, zero allocation after preparation, 256 epochs on four independent OS workers and real root Stop/Play/GC with interpreter/native JIT entries. Four existing desktop PCM oracles were updated for changed final padding and segment offsets, with exact sample checks. Final validation: 180 native regression/tutorial/CLI checks, 43 selected ASan/UBSan checks plus ten explicit --no-throw runs, and eight SDK-free core/tutorial checks pass. Ordinary builds cover exceptions/allocation faults; LeakSanitizer is disabled. The C89 exporter has eight modes with an independent rational PCM oracle. A renamed detached component configures with an explicit SDL SDK; its copied checker passes against the native executable, without a separate detached build. SDL is dummy-only. Child dictionaries/timelines, full codec/reference latency, sample-clock A/V/drift/seek, device/platform acceptance and all nine stages remain open.
+
+
+v0.1011: Record partial FIFO scheduling, coherent admission clocks, exact PCM evidence and the remaining SWF and device acceptance boundaries.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
