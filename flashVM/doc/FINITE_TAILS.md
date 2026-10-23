@@ -31,6 +31,9 @@ v0.1020: Verify 256 epochs with rejected held tails, newly permitted base, exact
 
 v0.1021: Add a ninth mode with four exact rejected blocks, a short final tail, unchanged base and explicit queued identity drain.
 
+
+v0.1022: Extend the rational PCM checker to all nine modes and assert exact finite output, four rejected blocks and drained sound identity.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

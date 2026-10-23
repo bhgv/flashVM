@@ -1,10 +1,12 @@
-Development version: **0.1021** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1022** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v0.974 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.1022: [Extend the rational PCM checker to all nine modes and assert exact finite output, four rejected blocks and drained sound identity.](doc/FINITE_TAILS.md).
 
 v0.1021: [Add a ninth mode with four exact rejected blocks, a short final tail, unchanged base and explicit queued identity drain.](doc/FINITE_TAILS.md).
 

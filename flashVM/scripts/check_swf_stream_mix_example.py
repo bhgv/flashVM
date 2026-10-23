@@ -100,10 +100,19 @@ def main():
         assert 'Shared clock submitted=14 queued=0 played=14 seconds=0.000291667' in headroom.stdout
         assert 'Identity id=8 end=14 played=0 active=1' in headroom.stdout
         assert 'Identity id=8 end=14 played=14 active=0' in headroom.stdout
+        finite_output = root / 'finite.pcm'
+        finite = subprocess.run([executable, str(finite_output), '--finite'], cwd=root,
+                                check=True, stdout=subprocess.PIPE, text=True)
+        assert finite_output.read_bytes() == struct.pack('=' + 'h' * len(headroom_values), *headroom_values)
+        assert 'Mixed 14 frames after source VM teardown.' in finite.stdout
+        assert 'Queue retained 4 rejected blocks.' in finite.stdout
+        assert 'Shared clock submitted=14 queued=14 played=0' in finite.stdout
+        assert 'Shared clock submitted=14 queued=0 played=14 seconds=0.000291667' in finite.stdout
+        assert 'Identity id=8 end=14 played=14 active=0' in finite.stdout
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()
-    print('PASS eight-mode stream/event C89 output, gated/adaptive retry, single saturation and native cleanup')
+    print('PASS nine-mode stream/event C89 output, gated/adaptive/finite retry, single saturation and native cleanup')
 
 
 if __name__ == '__main__':
