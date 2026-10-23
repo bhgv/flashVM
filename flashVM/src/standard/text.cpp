@@ -1134,8 +1134,13 @@ static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
         field->future.swap(next);
     else
     {
+        GeometryNotification notification(c, self);
+        result = notification.prepare(geometry, next, field->text, field->text_size);
+        if (result != FVM_OK)
+            return result;
         field->current.swap(next);
-        geometry.commit(*field);
+        fvm_value_undefined(out);
+        return notification.commit(geometry);
     }
     fvm_value_undefined(out);
     return FVM_OK;
