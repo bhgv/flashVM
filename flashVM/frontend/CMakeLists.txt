@@ -1340,6 +1340,9 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
     add_test(NAME flashvm_player_mixed_finite COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/mixed_finite_player.py $<TARGET_FILE:flashvm_player>)
     set_tests_properties(flashvm_player_mixed_finite PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+    add_test(NAME flashvm_player_mixed_adpcm_inferred COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/mixed_adpcm_inferred.py $<TARGET_FILE:flashvm_player>)
+    set_tests_properties(flashvm_player_mixed_adpcm_inferred PROPERTIES TIMEOUT 45 SKIP_RETURN_CODE 77)
     add_test(NAME flashvm_player_mixed_gates COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/mixed_gates_player.py $<TARGET_FILE:flashvm_player>)
     set_tests_properties(flashvm_player_mixed_gates PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)

@@ -12,3 +12,5 @@ v0.1067: Check invalid endings and short predictors, ambiguous mono rejection, m
 v0.1068: Use the inferred bounded snapshot policy for desktop stream segments while retaining aggregate peak budgets and preflight failure before device ownership.
 
 v0.1069: Check FWS CWS interpreter JIT exact rational PCM, packet restart, empty blocks, PCM successor and rejection before device acquisition.
+
+v0.1070: Real workers verify one-saturation stereo PCM and BASE19 TAIL0 for both finite policies, compressed SWF and both execution modes.

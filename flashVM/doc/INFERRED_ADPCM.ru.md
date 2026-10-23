@@ -12,3 +12,5 @@ v0.1067: Проверены неверные окончания, коротки�
 v0.1068: Desktop-сегменты используют inferred bounded snapshot с общим peak-бюджетом и ошибкой до открытия устройства.
 
 v0.1069: Проверены FWS/CWS, interpreter/JIT, точный PCM, restart, пустые блоки, PCM successor и отказ до устройства.
+
+v0.1070: Worker проверяет single-saturation stereo PCM и BASE19/TAIL0 для обоих finite-режимов, CWS/FWS и двух VM modes.
