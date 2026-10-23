@@ -144,15 +144,15 @@ struct Query
             if (!dx && !dy)
                 return;
             double size = std::sqrt(length), ux, uy;
-            if (size > 0)
+            if (length >= DBL_MIN)
             {
                 ux = dx / size;
                 uy = dy / size;
             }
             else
             {
-                /* Scale before squaring: a nonzero tangent may have a zero squared norm.
-                 * Preserve ordinary-segment arithmetic and normalize tiny vectors locally. */
+                /* Subnormal squared norms have reduced relative precision, even when nonzero.
+                 * Scale before squaring throughout that range; preserve normal norms. */
                 const double span = std::fabs(dx) > std::fabs(dy) ? std::fabs(dx) : std::fabs(dy);
                 const double sx = dx / span, sy = dy / span;
                 const double norm = std::sqrt(sx * sx + sy * sy);

@@ -1,5 +1,7 @@
 # Normalizing tiny stroke tangents
 
+Current precision correction / Уточнение точности: [EN](SUBNORMAL_STROKE_NORMS.md) / [RU](SUBNORMAL_STROKE_NORMS.ru.md). Scaling now covers every subnormal squared norm, not only zero.
+
 A nonzero segment no longer disappears when its squared length rounds to zero. Only that case divides components by their maximum magnitude before evaluating the norm. Ordinary segments retain their previous arithmetic. Certified linear Beziers now share this path without the former squared-norm rejection.
 
 Private [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L494) and [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L412) borrow an immutable path; callers own outputs. There is no allocation, VM callback or GC interaction. Concurrent mutation is forbidden. Existing argument validation and transactional bounds errors remain unchanged. The public legacy distance walker, curve subdivision, rasterizer and C89 ABI are unchanged.

@@ -1,5 +1,7 @@
 # Нормализация очень коротких штрихов
 
+Current precision correction / Уточнение точности: [EN](SUBNORMAL_STROKE_NORMS.md) / [RU](SUBNORMAL_STROKE_NORMS.ru.md). Scaling now covers every subnormal squared norm, not only zero.
+
 Ненулевой отрезок больше не исчезает, когда квадрат длины округляется до нуля. Только в этом случае компоненты делятся на максимальный модуль перед вычислением нормы. Обычные отрезки сохраняют прежний порядок вычислений. Сертифицированные линейные Bezier теперь используют тот же путь без прежнего отказа из-за квадрата нормы.
 
 Внутренние [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L494) и [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L412) заимствуют неизменяемый путь; результаты принадлежат вызывающему. Выделений, callbacks VM и GC нет. Совместная мутация запрещена. Валидация и транзакционные ошибки bounds сохраняются. Публичный прежний distance walker, деление кривых, rasterizer и C89 ABI не меняются.
