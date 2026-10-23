@@ -23,7 +23,7 @@ def sample(source, frame):
 
 
 def main():
-    """Exercise real file replacement, error cleanup, tails and no-side-effect CLI usage."""
+    """Exercise real file replacement, error cleanup, exact/adaptive tails and no-side-effect CLI usage."""
     executable = str(Path(sys.argv[1]).resolve())
     with tempfile.TemporaryDirectory(prefix='flashvm-stream-mix-') as directory:
         root = Path(directory)
@@ -86,6 +86,20 @@ def main():
         assert 'Mixed 17 frames after source VM teardown.' in gated.stdout
         assert 'Queue retained 5 rejected blocks.' in gated.stdout
         assert 'Identity id=8 end=14 played=17 active=0' in gated.stdout
+        headroom_output = root / 'headroom.pcm'
+        headroom = subprocess.run([executable, str(headroom_output), '--headroom'], cwd=root,
+                                  check=True, stdout=subprocess.PIPE, text=True)
+        headroom_values = []
+        for frame in range(14):
+            wide = sample([30000] * 8, frame) + sample([-30000] * 12, frame)
+            headroom_values.extend([max(-32768, min(32767, wide))] * 2)
+        assert headroom_output.read_bytes() == struct.pack('=' + 'h' * len(headroom_values), *headroom_values)
+        assert 'Mixed 14 frames after source VM teardown.' in headroom.stdout
+        assert 'Queue retained 14 rejected blocks.' in headroom.stdout
+        assert 'Shared clock submitted=14 queued=14 played=0' in headroom.stdout
+        assert 'Shared clock submitted=14 queued=0 played=14 seconds=0.000291667' in headroom.stdout
+        assert 'Identity id=8 end=14 played=0 active=1' in headroom.stdout
+        assert 'Identity id=8 end=14 played=14 active=0' in headroom.stdout
         failed = subprocess.run([executable, str(root / 'missing' / 'file.pcm')],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert failed.returncode and not (root / 'missing').exists()

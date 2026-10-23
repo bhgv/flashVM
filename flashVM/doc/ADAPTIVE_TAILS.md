@@ -50,6 +50,9 @@ v0.1006: Exercise production C89 worker scheduling in interpreter and native JIT
 
 v0.1007: Add an event-only headroom mode with fourteen one-frame rejected blocks, unchanged source position and shared ID clock drain.
 
+
+v0.1008: Check all eight export modes including exact fourteen-frame headroom PCM, rejected retries and queued-to-drained identity lifetime.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

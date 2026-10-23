@@ -48,6 +48,9 @@ v0.1006: Production C89 worker проверен в interpreter/native JIT с GC,
 
 v0.1007: Добавлен C89 headroom-режим: 14 коротких retry, неизменный source cursor и общий drain часов и ID.
 
+
+v0.1008: Независимый PCM-оракул проверяет восемь режимов, 14 кадров headroom, retry и queued/drained lifetime ID.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
