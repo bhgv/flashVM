@@ -1345,7 +1345,12 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
             result = prepare_field_geometry(c, field->current, field->text, field->text_size, geometry);
             if (result != FVM_OK)
                 return result;
-            geometry.commit(*field);
+            GeometryNotification notification(c, self);
+            result = notification.prepare(geometry);
+            if (result != FVM_OK)
+                return result;
+            fvm_value_undefined(out);
+            return notification.commit(geometry);
         }
     }
     fvm_value_undefined(out);
