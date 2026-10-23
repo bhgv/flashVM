@@ -185,12 +185,14 @@ applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains ope
 ## Scroll observer mode
 
 `--scroll-events` first runs the analytic scroll mode, then installs a field
-handler and a listener. The actual trace is `1 2 1 2 1`: two effective changes
+handler and a listener. The actual trace is `1 2 1 2 1 1 1`: two effective changes
 notify both, an unchanged write emits nothing, and removal excludes the listener
-from the last change. Final state is top=2/hscroll=3. Native query/path export
+from later changes. Width=60 and height=200 then remove horizontal overflow
+and clamp the top line. Final state is top=1/hscroll=0. Native query/path export
 emit no callbacks. Main owns callback userdata until context teardown; managed
-roots retain fields/listeners independently. Geometry-wide notifications and
-input are outside this bounded mode. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
+roots retain fields/listeners independently. Dimension and layout-policy notifications follow the
+[geometry contract](../../../doc/TEXT_GEOMETRY_EVENTS.md). Text/style-triggered
+events and input remain open. See [event contract](../../../doc/TEXT_SCROLL_EVENTS.md).
 
 | API | Individual contract |
 | --- | --- |

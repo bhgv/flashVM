@@ -2133,7 +2133,8 @@ translation of independent glyph contours. See [scroll contract](../doc/TEXT_SCR
 
 
 The [standard_text](embedding/standard_text/README.md) `--scroll-events` mode
-records field-first callbacks, unchanged suppression and listener removal using
+records field-first callbacks, unchanged suppression, listener removal and dimension
+range notifications using
 host userdata alive until VM teardown. [Contract](../doc/TEXT_SCROLL_EVENTS.md).
 
 <!-- source-links:start -->

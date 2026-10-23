@@ -33,6 +33,10 @@ static int scroll_events_demo(FVM_Context *context, FVM_Object *field, FVM_Examp
     if (fvm_object_call(context, field, "removeListener", 1, &argument, &result) != FVM_OK || !result.boolean) return 1; /* The next event must exclude this identity. */
     fvm_value_number(&value, 2); /* Return to the second visual line after listener removal. */
     if (fvm_object_set(context, field, "scroll", &value) != FVM_OK) return 1; /* Only the field handler remains. */
+    fvm_value_number(&value, 60); /* Widen beyond the logical text width and remove horizontal overflow. */
+    if (fvm_object_set(context, field, "_width", &value) != FVM_OK) return 1; /* Range change delivers one field callback after listener removal. */
+    fvm_value_number(&value, 200); /* Fit every visual line and clamp the top line back to one. */
+    if (fvm_object_set(context, field, "_height", &value) != FVM_OK) return 1; /* The handler sees the new height and vertical range together. */
     info.struct_size = sizeof(info); /* Copy final committed state before printing. */
     if (fvm_textfield_scroll_info(context, field, &info) != FVM_OK) return 1; /* This observation emits no notification. */
     printf("scroll events:"); for (index = 0; index < events->count; ++index) printf(" %u", events->trace[index]); putchar('\n'); /* Show actual synchronous receiver order. */
