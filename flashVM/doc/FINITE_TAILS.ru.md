@@ -22,6 +22,9 @@ v0.1017: Добавлен явный finite mixed-tail startup policy и CLI-ф�
 
 v0.1018: CLI проверяет точный короткий WAV при root Stop/gates для FWS/CWS в interpreter/JIT и mute без устройства.
 
+
+v0.1019: Проверены errors/reentry, сохранение pending после stop/ошибки clear и отсутствие нативных аллокаций после подготовки.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -22,6 +22,9 @@ v0.1017: Add explicit finite mixed-tail startup policy and CLI option before wor
 
 v0.1018: Check exact short WAV output under root Stop and future gates for FWS/CWS in interpreter and JIT, plus device-free mute.
 
+
+v0.1019: Exercise callback errors and recursion, unchanged pending bytes after stops, failed clear preservation and zero native allocations after preparation.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
