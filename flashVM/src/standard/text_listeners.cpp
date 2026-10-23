@@ -6,6 +6,7 @@
 #include "flashvm/property.h"
 #include "../core/optional_method.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/numeric_constants.h"
 #include <cstring>
 
 namespace
