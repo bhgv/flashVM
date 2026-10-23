@@ -37,8 +37,8 @@ v0.1022: Extend the rational PCM checker to all nine modes and assert exact fini
 
 ## Finite native producers
 
-[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L239) uses the adaptive FIFO contract of
-[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L230), additionally limiting fresh zero-base
+[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L270) uses the adaptive FIFO contract of
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L261), additionally limiting fresh zero-base
 work to the live mixer horizon. maximum is 1..queue capacity; target is positive
 and bounded by SOUND_OUTPUT_MAX_QUEUE. accepted is optional and cleared first.
 No voices/full FIFO/insufficient retry room returns NOT_FOUND; null/busy/invalid
@@ -107,8 +107,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:239](../include/flashvm/swf_sound_mix_queue.h#L239) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:230](../include/flashvm/swf_sound_mix_queue.h#L230) |
+| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:270](../include/flashvm/swf_sound_mix_queue.h#L270) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:261](../include/flashvm/swf_sound_mix_queue.h#L261) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
 | `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
 | `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |

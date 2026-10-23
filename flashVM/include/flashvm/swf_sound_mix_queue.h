@@ -59,6 +59,37 @@ extern "C"
      * VM or GC. This prediction does not enable either optional mode. */
     FVM_API FVM_Result fvm_swf_sound_mix_queue_storage_required_for_modes(
         unsigned int channels, size_t block, int identities, int origins, size_t *out);
+    /* BASE identifies adapted.write frames, including silence/mixed events; TAIL identifies
+     * explicit event-only pumping. These are accepted/dequeued categories, not source or DAC time. */
+    typedef struct FVM_SWFSoundMixQueueOriginInfo
+    {
+        size_t struct_size; /* Caller supplies exact sizeof. */
+        double base_submitted_frames; /* Accepted BASE frames since origin epoch begin/clear. */
+        double base_played_frames; /* BASE frames removed by validated software FIFO dequeue. */
+        double tail_submitted_frames; /* Accepted TAIL frames, excluding pending retry. */
+        double tail_played_frames; /* Dequeued TAIL frames in the same exact epoch. */
+        size_t base_queued_frames; /* Accepted BASE frames still represented in FIFO. */
+        size_t tail_queued_frames; /* Accepted TAIL frames still represented in FIFO. */
+    } FVM_SWFSoundMixQueueOriginInfo;
+    /* Enable at active zero clock/no pending; disable only after observed drain/no pending.
+     * Both may coexist with ID tracking. enabled is 0/1; repeated selection is a no-op.
+     * Enable budget covers owner/PCM/current ID table/origin bitmap, excluding other owners.
+     * Failure preserves mode/counters; valid queue polls may refresh dequeue state. Invalid
+     * flags/state/reentry INVALID_ARGUMENT, insufficient/allocation budget OUT_OF_MEMORY;
+     * backend errors propagate, callback exceptions ERROR. Mode allocation occurs here only.
+     * While enabled clock begin/end reject; acknowledged clear resets category epoch and
+     * pending ownership, preserving allocated mode. Serialize/retain all borrowed owners.
+     * Tracked writes poll FIFO before render and reject insufficient bitmap room with
+     * NOT_FOUND, preserving retry/voices. Only acknowledged writes enter the origin ring. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_set_origin_tracking(FVM_SWFSoundMixQueue *,
+                                                                  int enabled, size_t budget);
+    /* Fresh validated category observation, no render/allocation/VM/GC. Required exact-size
+     * out preserved on errors. Disabled UNSUPPORTED; invalid/reentry INVALID_ARGUMENT;
+     * backend/clock errors propagate, callback exceptions ERROR. Retain/serialize queue,
+     * mixer/backend. Accepted categories sum to shared clock; pending PCM is excluded.
+     * This neither advances source phase nor performs automatic A/V or seek alignment. */
+    FVM_API FVM_Result fvm_swf_sound_mix_queue_origin_info(FVM_SWFSoundMixQueue *,
+                                                        FVM_SWFSoundMixQueueOriginInfo *);
     /* Copy fixed storage observation, independent of pending/accepted queue frames.
      * Live serialized queue and exact-size out required; invalid/reentry preserves out.
      * No allocation/callback/VM/GC. Counts allocation requests, not actual RSS. */

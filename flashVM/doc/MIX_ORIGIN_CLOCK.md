@@ -4,6 +4,9 @@
 
 v0.1038: Add exact mode-aware native storage prediction for optional accepted-frame origin accounting without changing legacy predictor meaning.
 
+
+v0.1039: Add opt-in fixed bitmap origin accounting, validated FIFO retirement and exact category clock observations while preserving legacy callbacks.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

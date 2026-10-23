@@ -96,6 +96,35 @@ struct MixBusyScope
         queue->busy = false;
     }
 };
+/* Observe under an existing callback barrier; declared before tracked write admission. */
+FVM_Result observe_locked(FVM_SWFSoundMixQueue *, size_t *);
+/* Record only acknowledged frames; a backend can consume but cannot add unrelated PCM. */
+void origin_accept(FVM_SWFSoundMixQueue *queue, size_t frames, bool tail)
+{
+    for (size_t i = 0; i < frames; ++i)
+    {
+        size_t at = (queue->origin_head + queue->origin_count + i) % FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES;
+        unsigned char mask = (unsigned char)(1U << (at % FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS));
+        if (tail) queue->origins[at / FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS] &= (unsigned char)~mask;
+        else queue->origins[at / FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS] |= mask;
+    }
+    queue->origin_count += frames;
+    if (!tail) queue->origin_base_submitted += (double)frames;
+}
+/* Retire acknowledged FIFO consumption in order, without interpreting PCM sample values. */
+void origin_consume(FVM_SWFSoundMixQueue *queue, size_t frames)
+{
+    size_t base = 0;
+    for (size_t i = 0; i < frames; ++i)
+    {
+        size_t at = (queue->origin_head + i) % FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES;
+        if (queue->origins[at / FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS] &
+            (1U << (at % FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS))) ++base;
+    }
+    queue->origin_head = (queue->origin_head + frames) % FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES;
+    queue->origin_count -= frames;
+    queue->origin_base_played += (double)base;
+}
 /* Validate new input or match its complete original witness; never remix a rejected block. */
 FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
 {
@@ -118,7 +147,14 @@ FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
                 (!tail && std::memcmp(pcm, queue->original.begin(), bytes)))
                 return FVM_INVALID_ARGUMENT;
         }
-        else
+        if (!queue->origins.empty())
+        {
+            size_t queued = 0;
+            FVM_Result observed = observe_locked(queue, &queued);
+            if (observed != FVM_OK) return observed;
+            if (frames > FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES - queued) return FVM_NOT_FOUND;
+        }
+        if (!queue->pending)
         {
             if (tail)
             {
@@ -144,6 +180,7 @@ FVM_Result write_composed(void *raw, const short *pcm, size_t frames, bool tail)
             queue->backend.write(queue->backend.userdata, queue->mixed.begin(), frames);
         if (result == FVM_OK)
         {
+            if (!queue->origins.empty()) origin_accept(queue, frames, tail);
             queue->pending = 0;
             queue->tail = false;
             if (queue->clock_active) queue->clock_submitted += (double)frames;
@@ -175,6 +212,13 @@ FVM_Result observe_locked(FVM_SWFSoundMixQueue *queue, size_t *out)
                     (double)frames > queue->clock_submitted) return FVM_ERROR;
                 double played = queue->clock_submitted - (double)frames;
                 if (played < queue->clock_played) return FVM_ERROR;
+                if (!queue->origins.empty())
+                {
+                    if (frames > queue->origin_count ||
+                        played - queue->clock_played != (double)(queue->origin_count - frames))
+                        return FVM_ERROR;
+                    origin_consume(queue, queue->origin_count - frames);
+                }
                 queue->clock_played = played;
             }
             *out = frames;
@@ -230,6 +274,8 @@ FVM_Result clear_queue(void *raw)
             }
             queue->pending = 0;
             queue->tail = false;
+            queue->origin_head = queue->origin_count = 0;
+            queue->origin_base_submitted = queue->origin_base_played = 0;
             if (queue->clock_active)
                 queue->clock_submitted = queue->clock_played = 0;
         }
@@ -385,7 +431,7 @@ FVM_Result fvm_swf_sound_mix_queue_pump_tail_observed(FVM_SWFSoundMixQueue *queu
             clock->submitted_frames = queue->clock_submitted;
             clock->played_frames = queue->clock_played;
             clock->seconds = queue->clock_played / queue->backend.sample_rate;
-            clock->queued_frames = queued + frames;
+            clock->queued_frames = (size_t)(queue->clock_submitted - queue->clock_played);
         }
     }
     return result;
@@ -408,7 +454,7 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_pump_tail_finite(FVM_SWFSoundMixQu
 /* Explicitly begin a fresh shared epoch; do not infer a queue baseline at construction. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *queue)
 {
-    if (!queue || queue->busy || queue->pending || !queue->identities.empty())
+    if (!queue || queue->busy || queue->pending || !queue->identities.empty() || !queue->origins.empty())
         return FVM_INVALID_ARGUMENT;
     if (DBL_MANT_DIG < FVM_SWF_SOUND_OUTPUT_CLOCK_BITS) return FVM_UNSUPPORTED;
     MixBusyScope scope(queue);
@@ -428,7 +474,7 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_begin(FVM_SWFSoundMixQueue *
 /* Relinquish accounting only after acknowledged retry ownership and backlog are empty. */
 extern "C" FVM_Result fvm_swf_sound_mix_queue_clock_end(FVM_SWFSoundMixQueue *queue)
 {
-    if (!queue || queue->busy || queue->pending || !queue->identities.empty())
+    if (!queue || queue->busy || queue->pending || !queue->identities.empty() || !queue->origins.empty())
         return FVM_INVALID_ARGUMENT;
     if (!queue->clock_active) return FVM_NOT_FOUND;
     size_t queued = 0;
@@ -566,6 +612,58 @@ extern "C" FVM_Result fvm_swf_sound_mix_queue_set_identity_tracking(FVM_SWFSound
         return FVM_OK;
     }
     catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
+}
+
+/* Configure a fixed origin ring only at an empty accounting boundary. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_set_origin_tracking(FVM_SWFSoundMixQueue *queue,
+    int enabled, size_t budget)
+{
+    if (!queue || queue->busy || (enabled != 0 && enabled != 1)) return FVM_INVALID_ARGUMENT;
+    if ((enabled != 0) == !queue->origins.empty()) return FVM_OK;
+    if (!queue->clock_active || queue->pending ||
+        (enabled && (queue->clock_submitted || queue->clock_played))) return FVM_INVALID_ARGUMENT;
+    MixBusyScope scope(queue);
+    size_t queued = 0;
+    FVM_Result result = observe_locked(queue, &queued);
+    if (result != FVM_OK) return result;
+    if (queued) return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundMixQueueStorageInfo storage;
+    result = storage_with_modes(queue->backend.channels, queue->capacity, queue->identities.size(),
+                                  enabled != 0, storage);
+    if (result != FVM_OK) return result;
+    if (enabled && storage.retained_bytes > budget) return FVM_OUT_OF_MEMORY;
+    try
+    {
+        fvm_detail::vector<unsigned char> bitmap;
+        if (enabled) bitmap.resize(FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES / FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_BITS);
+        queue->origins.swap(bitmap);
+        queue->origin_head = queue->origin_count = 0;
+        queue->origin_base_submitted = queue->origin_base_played = 0;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
+}
+
+/* Copy category clocks after one validated dequeue observation, excluding retained retries. */
+extern "C" FVM_Result fvm_swf_sound_mix_queue_origin_info(FVM_SWFSoundMixQueue *queue,
+    FVM_SWFSoundMixQueueOriginInfo *out)
+{
+    if (!queue || queue->busy || !out || out->struct_size != sizeof(*out)) return FVM_INVALID_ARGUMENT;
+    if (queue->origins.empty()) return FVM_UNSUPPORTED;
+    MixBusyScope scope(queue);
+    size_t queued = 0;
+    FVM_Result result = observe_locked(queue, &queued);
+    if (result != FVM_OK) return result;
+    FVM_SWFSoundMixQueueOriginInfo info;
+    info.struct_size = sizeof(info);
+    info.base_submitted_frames = queue->origin_base_submitted;
+    info.base_played_frames = queue->origin_base_played;
+    info.tail_submitted_frames = queue->clock_submitted - queue->origin_base_submitted;
+    info.tail_played_frames = queue->clock_played - queue->origin_base_played;
+    info.base_queued_frames = (size_t)(info.base_submitted_frames - info.base_played_frames);
+    info.tail_queued_frames = queued - info.base_queued_frames;
+    *out = info;
+    return FVM_OK;
 }
 
 /* Track actual future composition from the far side of every already rendered retry. */

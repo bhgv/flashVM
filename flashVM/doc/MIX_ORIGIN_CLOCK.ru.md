@@ -4,6 +4,9 @@
 
 v0.1038: Добавлен точный расчёт памяти BASE/TAIL origin-учёта без изменения смысла прежних predictors.
 
+
+v0.1039: Добавлены фиксированный origin bitmap, проверенный dequeue и точные BASE/TAIL счётчики; legacy callbacks сохранены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
