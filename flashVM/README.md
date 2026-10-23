@@ -1,4 +1,4 @@
-Development version: **0.1165** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1166** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -6,6 +6,8 @@ snapshot; complete SWF 8 compatibility is still pending. CMake reads the same ve
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
 
+
+v0.1166: [Verified spread graphs after duplication transfer GC and sender teardown](doc/GRADIENT_SPREAD.md).
 
 v0.1165: [Verified host/Flash8 spread state and unchanged older-version rejection](doc/GRADIENT_SPREAD.md).
 

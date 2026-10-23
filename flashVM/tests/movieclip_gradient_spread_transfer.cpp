@@ -1,0 +1,17 @@
+/* Immutable spread descriptors survive duplicate aliases, binary/channel transfer and sender destruction. */
+#include "gradient_spread_fixture.hpp"
+int main()
+{
+    FVM_Config cfg;FVM_Runtime *rt=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK);
+    for(unsigned mode=1;mode<=2;++mode)for(unsigned radial=0;radial<2;++radial)
+    {
+        FVM_Context *c=0,*d=0,*e=0;assert(fvm_context_create(rt,&c)==FVM_OK && fvm_context_create(rt,&d)==FVM_OK && fvm_context_create(rt,&e)==FVM_OK && fvm_standard_install(c)==FVM_OK);FVM_Object *root=0;assert(fvm_movieclip_create(c,"root",1,&root)==FVM_OK && fvm_gc_pin(c,root)==FVM_OK);FVM_Object *clip=new_child(c,root,"source",1);FVM_Value args[8],out;spread_arguments(c,args,mode,radial!=0);assert(fvm_object_call(c,clip,"beginGradientFill",8,args,&out)==FVM_OK);geometry(c,clip,false);FVM_Object *record=clip->resource_result.object->properties["gradient"].object;
+        FVM_Value duplicate[2];assert(fvm_value_string(duplicate,"copy")==FVM_OK);fvm_value_number(duplicate+1,2);assert(fvm_object_call(c,clip,"duplicateMovieClip",2,duplicate,&out)==FVM_OK);FVM_Object *copy=out.object,*data=copy->resource_result.object,*cloned=data->properties["gradient"].object;assert(cloned!=record && cloned->properties["spread"].number==mode && data->properties["active"].object->properties["gradient"].object==cloned);
+        set(c,args[4].object,"w",900);FVM_Value changed;fvm_value_number(&changed,0);assert(fvm_table_set_index(c,args[1].object,0,&changed)==FVM_OK);spread_pixels(c,clip,mode,radial!=0);spread_pixels(c,copy,mode,radial!=0);
+        FVM_Value value;ref(&value,copy);unsigned char *wire=0;size_t size=0;assert(fvm_value_serialize(c,&value,&wire,&size)==FVM_OK && fvm_value_deserialize(d,wire,size,&out)==FVM_OK && fvm_gc_pin(d,out.object)==FVM_OK);fvm_serialized_free(wire);FVM_Object *binary=out.object;
+        FVM_Channel *channel=0;assert(fvm_channel_create(&channel)==FVM_OK && fvm_channel_send_value(c,channel,&value,0)==FVM_OK);fvm_context_destroy(c);assert(fvm_channel_receive_value(e,channel,&out,0)==FVM_OK && fvm_gc_pin(e,out.object)==FVM_OK);fvm_channel_destroy(channel);FVM_Object *received=out.object;
+        assert(fvm_gc_collect(d,0)==FVM_OK && fvm_gc_collect(e,0)==FVM_OK);spread_pixels(d,binary,mode,radial!=0);spread_pixels(e,received,mode,radial!=0);
+        binary->resource_result.object->properties["gradient"].object->properties.erase("spread");spread_pixels(d,binary,0,radial!=0);spread_pixels(e,received,mode,radial!=0);assert(!d->gc_frames && !d->gc_native_depth && !e->gc_frames && !e->gc_native_depth);fvm_context_destroy(d);fvm_context_destroy(e);
+    }
+    fvm_runtime_destroy(rt);return 0;
+}
