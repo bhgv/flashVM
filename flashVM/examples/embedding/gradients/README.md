@@ -63,6 +63,26 @@ Run `python3 flashVM/scripts/check_gradient_strokes_example.py <path-to-example>
 
 Проверка C89 вывода выполняется отдельным checker и CTest; NO_GRAPHICS явно пропускается. AS2 source показывает lineStyle перед lineGradientStyle и копирование массива цветов; его компиляция в SWF не входит в эту CMake-проверку.
 
+## RGB and linearRGB / Цветовые политики
+
+The annotated C89 `linear_rgb.inc` companion owns two local black/white stops and borrows main's path/buffer. It compares the same midpoint in fill and stroke coverage, from transparent black to opaque white. linearRGB changes the three color channels while alpha stays 128. Calls are synchronous and retain no VM, device or input pointers; errors return through main's normal path cleanup.
+
+C89 helper сравнивает реальный midpoint, не меняя ABI layout [`FVM_Gradient`](../../../include/flashvm/gradient.h#L37). Straight alpha интерполируется линейно в обоих режимах. Дополнительный вывод:
+
+```text
+linear fill RGB: 128 128 128 128
+linear fill linearRGB: 188 188 188 128
+linear stroke RGB: 128 128 128 128
+linear stroke linearRGB: 188 188 188 128
+```
+
+| Function | Purpose and ownership / Назначение и владение |
+| --- | --- |
+| [`fvm_path_draw_gradient_interpolated`](../../../include/flashvm/gradient.h#L70) | Borrow path, surface and gradient/stops until return; fill with unsigned spread/interpolation selectors. Invalid input or preparation failure preserves pixels. [Contract](../../../doc/LINEAR_RGB_GRADIENTS.md). |
+| [`fvm_path_stroke_gradient_interpolated`](../../../include/flashvm/gradient.h#L76) | Borrow the same inputs for a positive destination-pixel stroke with explicit color policy; no VM/device/root is retained. [Контракт](../../../doc/LINEAR_RGB_GRADIENTS.ru.md). |
+
+NO_GRAPHICS follows the earlier backend message and does not claim to render these values. Original-player and physical-platform comparisons remain separate.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
@@ -96,10 +116,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:37](../../../include/flashvm/gradient.h#L37) |
 | `fvm_gradient_init` | function | [include/flashvm/gradient.h:47](../../../include/flashvm/gradient.h#L47) |
 | `fvm_path_add` | function | [include/flashvm/path.h:54](../../../include/flashvm/path.h#L54) |
 | `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
 | `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
 | `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:51](../../../include/flashvm/gradient.h#L51) |
+| `fvm_path_draw_gradient_interpolated` | function | [include/flashvm/gradient.h:70](../../../include/flashvm/gradient.h#L70) |
 | `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:63](../../../include/flashvm/gradient.h#L63) |
+| `fvm_path_stroke_gradient_interpolated` | function | [include/flashvm/gradient.h:76](../../../include/flashvm/gradient.h#L76) |
 <!-- source-links:end -->
