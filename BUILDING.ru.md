@@ -1,5 +1,8 @@
 # Нативная сборка и сборка для другой ОС/процессора
 
+Root builds now use selected owned sources in tools/; detached SDK overrides remain.
+[First steps / Первые шаги](README-FIRSTSTEPS.md) · [Source manifests](tools/UPSTREAMS.md).
+
 [English](BUILDING.md). Кросс-сборка подтверждает компиляцию/линковку, но не
 исполнение на другой машине. [Приёмка](flashVM/doc/ROADMAP.md) требует реальных
 запусков, устройств и проверки совместимости; этап 9 ещё открыт.

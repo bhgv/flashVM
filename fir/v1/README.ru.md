@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.5.4**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.5.5**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -79,3 +79,9 @@ python fir/v1/view_docs.py --no-browser --port 8766
 
 [Source diagnostic schema 1 / Диагностика исходников](doc/SOURCE_DIAGNOSTICS.md) ·
 [C99 diagnostic example / Пример C99](examples/diagnostics/README.md).
+
+[Own compiler priority / Приоритет Limbo](../../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../../tools/UPSTREAMS.md).
+
+[Source compilation debug info / Debug info собственного компилятора](doc/SOURCE_DEBUG.md).

@@ -6,7 +6,7 @@
   host development tooling.
 - All application UI control uses typed channels, including local operations.
   Add missing channel capabilities instead of adding a direct UI access shortcut.
-- Keep Dis and its required dependencies isolated under flashVM/external/dis/;
+- Keep Dis and its required dependencies isolated under root disVM/;
   preserve upstream licenses and keep source provenance explicit. Do not import
   Inferno Draw/Tk/Prefab or crypto/Keyring. Do not mix Dis core with AVM1 core.
 - Required runtime outcomes include x86-64, arm64 and riscv64 JITs and
@@ -45,3 +45,10 @@
 - Ship the IDE application as interpreted/JIT bytecode modules (Dis and/or SWF).
   Host Python and native compiler tools must not become the deployed IDE runtime.
   Keep SWF/Dis format unification and new container tags deferred until designed.
+
+- Native legacy Limbo is a temporary source-built bootstrap in tools/limbo-bootstrap/,
+  not the primary compiler implementation. Prioritize our Coco/R Limbo compiler,
+  debug information and .m-driven external C/AS/other-language scaffolds.
+- Dis and SWF are complementary execution engines with isolated owners/heaps and
+  checked typed channel/module adapters. Possible later unification must not be
+  assumed to exist or introduced by silently changing containers/ABIs.

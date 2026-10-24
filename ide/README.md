@@ -69,3 +69,7 @@ explicitly deferred. Current module delivery does not depend on that decision.
 include original byte spans and Unicode-character offsets; `source_sha256`
 identifies the captured snapshot. Compare it and the live revision before using
 late results. Without the option, legacy compiler messages remain supported.
+
+[Own compiler priority / Приоритет Limbo](../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../tools/UPSTREAMS.md).

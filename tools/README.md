@@ -48,3 +48,5 @@ that missing target C++ cannot silently fall back to a host compiler.
 and reserved keyword tables of all three AS frontends. Regeneration needs
 Python; building the checked-in C99 tables does not. See
 [lexical profile](../compiler/LEXICAL_PROFILE.md).
+
+[Owned Coco/R/Limbo sources and update policy / Источники](UPSTREAMS.md) · [Русский](UPSTREAMS.ru.md).

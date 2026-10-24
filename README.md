@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1526**. [Русская версия](README.ru.md).
+Development version: **0.1527**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -132,3 +132,7 @@ acceptance remain open.
 [Limbo history tutorial](ide/dis/examples/history/README.md).
 
 [Compiler/IDE 0.1526 acceptance and remaining VM regressions](ide/dis/SERIES_0_4_0.md).
+
+[DisVM interpreter/JIT core](disVM/README.md) ·
+[Owned tool sources and revisions](tools/UPSTREAMS.md) ·
+[.m: external AS modules for Dis and AS callers of Dis](compiler/limbo/examples/external-modules/README.md).

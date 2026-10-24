@@ -1,89 +1,81 @@
-# First steps
+# First steps: source-owned build tools
 
-[Подробное руководство на русском](README-FIRSTSTEPS.md) · [Build reference](BUILDING.md)
+[Русский](README-FIRSTSTEPS.md) · [Build reference](BUILDING.md) ·
+[Source provenance](tools/UPSTREAMS.md)
 
-Run from the repository root with Bash, CMake 3.16+, a native C/C++ compiler,
-Make/Ninja and Python 3 for tests. The optional root script preserves independent
-component builds. Termux prerequisites: `pkg install git clang make cmake python`.
-Physical Android was not tested in this series.
-
-Build the external generator once:
-
-```bash
-git clone https://github.com/bhgv/coco-r-C.git ../coco-r-C
-make -C ../coco-r-C/sources -f unix.mk
-export COCOR_ROOT="$(cd ../coco-r-C && pwd)"
-export COCOR_EXECUTABLE="$COCOR_ROOT/sources/cocor"
-```
-
-For IDE builds supply `LIMBO_EXECUTABLE` pointing to your native Limbo compiler.
-For IDE tests/demo also supply native `EMU_EXECUTABLE` and `LIMBO_MODULE_DIR`
-containing sys.m. See [SDK and reference execution](ide/dis/README.md) and
-[reference runtime](ide/dis/REFERENCE_RUNTIME.md). Tools must match the host OS
-and architecture. External Inferno/Dis is not downloaded or embedded by this script.
+Use Bash, CMake 3.16+, native C/C++ and Make/Ninja. Python 3 is used by the menu
+and tests; Node is an optional test runtime for generated common-AS code only.
+Termux prerequisites: `pkg install git clang make cmake python`.
+Physical Android execution is not accepted by this series.
 
 ```bash
-./build-workspace.sh --help
-./build-workspace.sh --jobs 2
-./build-workspace.sh --jobs 2 --tests
-./build-workspace.sh --projects vm,linker
-./build-workspace.sh --projects compilers,fir
-./build-workspace.sh --projects ide --demo
+python3 build-menu.py
+./build-workspace.sh
+./build-workspace.sh --projects cocor,cocor-limbo,limbo-bootstrap --tests
+./build-workspace.sh --projects compilers,fir,linker,symbols,disvm --tests
 ```
 
-Repeat commands for incremental builds. Default outputs are in build/workspace,
-with one directory per selected project and temporary files in tmp. Use
-`--build-root build/another` when changing SDK/compiler; `--config Debug` changes
-configuration. SDK checks precede builds; failures stop subsequent work and retain
-partial outputs. No installation, cleanup, Git operation or scheduling occurs.
+Choose one number/name, several separated by commas/spaces, or all. Individual
+language projects are as1/as2/as3/limbo. Explicit tools and disvm have separate menu
+entries. Builds are incremental; --build-root, --jobs and --config remain available.
+No downloads, installation, cleanup, Git operation or scheduling is performed.
 
-Outputs include vm/flashvm_reference_swf, fir/{fir1_source,fir1,fir1_opt},
-linker/swl, symbols/sblmap and ide/{idecore.dis,idecore.sbl}. Syntax drivers are under
-compilers/LANGUAGE/frontend/. Multi-config generators may add configuration folders.
-The Russian guide includes a complete source → FIR → SWO → SWF command example;
-see also the [pipeline tutorial](fir/v1/doc/PIPELINE.md).
+Default Coco/R is source-built from tools/coco-r-C. The optional C/Limbo generators
+are in tools/coco-r-limbo, including cocor.b/runtime fragments. Complex IDE code
+uses the temporary source-built tools/limbo-bootstrap from the owner's experiment.
+Both C and Limbo compiler versions are retained as references. Our Coco/R Limbo
+compiler remains the priority; see compiler/limbo/OWN_COMPILER.md.
 
-`--demo` runs the documented [Limbo navigation client](ide/dis/examples/navigation/README.md)
-in both reference emulator modes; expect `PASS idecore navigation 16 checks`.
-The library core has no standalone init entry point. The graphical IDE and embedded
-Dis/JIT remain under development. Reference modes do not prove new native JIT entry.
-Compiler syntax recognition and numeric lowering are bounded, not complete languages.
-The optional windowed [SDL2 player](flashVM/frontend/README.md) has a separate SDK/build.
+Explicit overrides remain: supply COCOR_ROOT+COCOR_EXECUTABLE together, optionally
+LIMBO_EXECUTABLE and LIMBO_MODULE_DIR. Detached projects accept those SDK paths;
+the root does not create implicit sibling dependencies inside components.
 
-## Component menu
+Outputs under build/workspace include vm/flashvm_reference_swf,
+fir/{fir1_source,fir1,fir1_opt}, linker/swl, symbols/sblmap,
+disvm/libdisvm_core.a and ide/{idecore.dis,idecore.sbl}. The Dis archive contains
+the actual interpreter/JIT objects but is not yet a standalone host runner.
+OS/kernel/scheduler/module-registration/native ABI work remains. It is not an
+EMU_EXECUTABLE and no complete Dis/SWF runtime integration is claimed.
 
-Run `python3 build-menu.py` in a terminal. Select one number, several numbers
-such as `1,4,6`, names such as `vm linker ide`, or `all`. Enter `q` to exit.
-The menu offers tests and, when IDE is selected, its console example.
-`compilers` groups all four syntax frontends. The shared Bash builder handles
-SDK checks and builds; Python is host tooling only.
-
-For unattended use:
+## IDE examples
 
 ```bash
-python3 build-menu.py --projects linker --tests
-python3 build-menu.py --projects vm,linker --jobs 4
-python3 build-menu.py --projects ide --demo
-python3 build-menu.py --projects all --dry-run
+# Production bytecode/debug data build from local sources requires no ready-made SDK.
+./build-workspace.sh --projects ide
+# Execution requires explicitly selected ABI-compatible native emu/compiler/headers.
+python3 build-menu.py --projects ide --tests --demo history
 ```
 
-`--build-root` and `--config` also work. SDK variables are inherited.
-Dry-run prints the command without executing it; normal execution streams build
-output and returns the builder exit status. Ctrl-C exits with status 130.
+--demo alone selects navigation; history selects Undo/Redo. A compiler and runtime
+from different forks are not assumed frame/layout compatible. Supply the matching
+compiler/header overrides when using another reference runtime. These examples
+are console developer clients, not a complete graphical IDE. Historical full-VM
+regression failures remain in ide/dis/SERIES_0_4_0.md.
 
-Select individual frontends with `--projects as1` or `--projects as2,limbo`.
-`all` uses the grouped compiler build without duplicate individual builds.
+## Our compiler: debug and two-way external modules
 
-## History and source diagnostics
+```bash
+./build-workspace.sh --projects limbo,fir
+mkdir -p build/output
+export TMPDIR="$PWD/build/workspace/tmp"
+build/workspace/fir/fir1_source limbo --input fir/v1/examples/limbo/scopes.b build/output/scopes.fir -g build/output/scopes.debug.json
+build/workspace/limbo/frontend/limbo_bindings --format as-module compiler/limbo/examples/external-modules/arithmetic.m build/output/arithmetic-as.as --prefix arithmetic_as
+build/workspace/limbo/frontend/limbo_bindings --format as-proxy compiler/limbo/examples/external-modules/arithmetic.m build/output/arithmetic-dis.as --prefix arithmetic_dis
+```
 
-Run `python3 build-menu.py --projects ide --tests --demo history` for the new
-channel-only Undo/Redo example. `--demo` alone still selects navigation.
-After building FIR, run `build/workspace/fir/fir1_diagnostic_example` for the
-commented C99 diagnostic client. `ide/build.py --structured-diagnostics` opts in
-to validated byte spans and Unicode positions from FIR 0.5.4. Match snapshot
-SHA-256 and live revision before applying late diagnostics.
-[History](ide/dis/HISTORY.md) · [Diagnostic schema](fir/v1/doc/SOURCE_DIAGNOSTICS.md).
+One .m describes an external AS implementation callable from Limbo/Dis and an AS
+caller of Dis. C99/Python/JSON outputs share declaration identities. The generated
+adapters require a real checked host transport/loader/marshaler; source scaffolds
+do not install that bridge. Full own AS/Limbo executable lowering remains open.
+[Detailed example](compiler/limbo/examples/external-modules/README.md).
 
-For manual compiler/example invocations in a host without /tmp, export
-`TMPDIR="$PWD/build/workspace/tmp"` and create that directory first. The root
-script sets build-owned temporary paths for its own children only.
+FIRDBG1 records source snapshots, pre-optimization SSA origins and unique lexical
+owners. It is not final SWF/Dis/JIT PC relocation.
+[Debug contract](fir/v1/doc/SOURCE_DEBUG.md).
+For manual compiler invocations without /tmp, set writable TMPDIR explicitly.
+The root script supplies build-owned temporary paths for its children only.
+
+[Complete FIR → SWO → SWF pipeline](fir/v1/doc/PIPELINE.md),
+[optional SDL2 player](flashVM/frontend/README.md),
+[Dis update workflow](tools/UPSTREAMS.md),
+[complementary runtime architecture](disVM/ARCHITECTURE.md).

@@ -41,3 +41,5 @@ pragma, отступы, повторяемость и повреждённые �
 [test_toolchain_contract.py](test_toolchain_contract.py) запускает реальные
 изолированные CMake configure пробы; параметры --cmake, --cc и --cxx задают
 хостовые инструменты. Проверяется запрет неявного host C++ fallback.
+
+[Owned Coco/R/Limbo sources and update policy / Источники](UPSTREAMS.md) · [Русский](UPSTREAMS.ru.md).

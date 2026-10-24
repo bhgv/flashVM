@@ -80,3 +80,7 @@ Include-файлы не раскрываются; cast по именованно
 Добавлен [C99-каталог интерфейсов](frontend/INTERFACES.ru.md): области модулей,
 экспорты, группы имён, исходные диапазоны типов и проверка повторных имён.
 Полное разрешение импортов/типов и генерация C ещё не реализованы.
+
+[Own compiler priority / Приоритет Limbo](../../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../../tools/UPSTREAMS.md).

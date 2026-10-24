@@ -42,33 +42,33 @@ python3 build-menu.py --projects 1,4 --dry-run
 Меню использует тот же `build-workspace.sh` и те же переменные SDK, описанные
 ниже. Python — инструмент сборки на хосте; для исполнения Limbo-ядра он не нужен.
 
-## Подготовить внешние компиляторы
+## Локальные инструменты из ваших исходников
 
-Парсеры используют внешний Coco/R. Подготовьте его один раз:
-
-```bash
-git clone https://github.com/bhgv/coco-r-C.git ../coco-r-C
-make -C ../coco-r-C/sources -f unix.mk
-export COCOR_ROOT="$(cd ../coco-r-C && pwd)"
-export COCOR_EXECUTABLE="$COCOR_ROOT/sources/cocor"
-```
-
-IDE сейчас собирается внешним нативным компилятором Limbo. Укажите пути
-к своему готовому Inferno SDK; команды ниже содержат заменяемый путь:
+Готовые внешние Coco/R и Limbo SDK больше не обязательны. Нужные выборки
+расположены в tools/coco-r-C, tools/coco-r-limbo и tools/limbo-bootstrap.
+Dis interpreter/JIT перенесён отдельно в disVM/. Источники, commit, лицензии и
+обновление описаны в [tools/UPSTREAMS.ru.md](tools/UPSTREAMS.ru.md).
 
 ```bash
-export INFERNO_SDK=/absolute/path/to/inferno
-export LIMBO_EXECUTABLE="$INFERNO_SDK/Linux/amd64/bin/limbo"
-export EMU_EXECUTABLE="$INFERNO_SDK/emu/Linux/o.emu"
-export LIMBO_MODULE_DIR="$INFERNO_SDK/module"
+# Обычная сборка сама сначала соберёт нужные dependency tools из tools/.
+./build-workspace.sh
+# Отдельные инструменты:
+./build-workspace.sh --projects cocor,cocor-limbo,limbo-bootstrap --tests
+# Настоящее ядро interpreter/JIT; полный host runner ещё в работе.
+./build-workspace.sh --projects disvm --tests
 ```
 
-Пути Linux/amd64 приведены как пример, не как универсальная схема SDK.
-[Инструкции reference runtime](ide/dis/REFERENCE_RUNTIME.md) и
-[сборка Limbo-модуля](ide/dis/README.md) описывают отдельные требования.
-Целевой перенос Dis ведётся по
-[Inferno experiment](https://github.com/bhgv/Inferno-OS-bhgv/tree/experiment).
-Корневой скрипт не скачивает и не собирает внешнюю ОС и не встраивает её в FlashVM.
+Native Limbo — временный source-built bootstrap для сложного кода IDE, а не
+готовый собственный компилятор. Приоритет — наш Coco/R Limbo/FIR, debug info и
+внешние модули C/AS по `.m`; см. [контракт](compiler/limbo/OWN_COMPILER.ru.md).
+Обе upstream-версии Limbo, C и Limbo, сохранены рядом с bootstrap для переноса.
+
+При необходимости отдельного совместимого SDK можно переопределить
+COCOR_ROOT+COCOR_EXECUTABLE вместе, LIMBO_EXECUTABLE и LIMBO_MODULE_DIR.
+Независимые/отделённые проекты по-прежнему принимают явные SDK-пути.
+Для запуска IDE tests/demo нужен явный **совместимый** EMU_EXECUTABLE.
+Архив libdisvm_core.a ещё не заменяет исполняемый эмулятор; compiler/runtime из
+разных forks нельзя автоматически считать ABI-совместимыми.
 
 ## Собрать и регулярно пересобирать
 
@@ -76,11 +76,11 @@ export LIMBO_MODULE_DIR="$INFERNO_SDK/module"
 ./build-workspace.sh --help
 ./build-workspace.sh --jobs 2
 # Повторите ту же команду после обновления исходников: сборка инкрементальная.
-./build-workspace.sh --jobs 2 --tests
+./build-workspace.sh --projects compilers,fir,linker,symbols,disvm --jobs 2 --tests
 ```
 
-По умолчанию собираются VM, четыре синтаксических фронтенда, FIR-инструменты,
-SWF-линкер, читатель отладочных символов sblmap и Limbo-ядро IDE. SDK проверяются до начала сборки. Первая ошибка
+По умолчанию собираются FlashVM, Dis interpreter/JIT core, четыре фронтенда,
+FIR-инструменты, SWF-линкер, SBL reader и Limbo-ядро IDE. SDK проверяются до начала сборки. Первая ошибка
 останавливает работу; частичные результаты сохраняются для диагностики.
 Скрипт ничего не устанавливает, не удаляет, не коммитит и не запускает по расписанию.
 
@@ -106,6 +106,8 @@ SWF-линкер, читатель отладочных символов sblmap 
 | build/workspace/fir/fir1_opt | Явная оптимизация FIR |
 | build/workspace/linker/swl | SWO/SWA → SWF8 |
 | build/workspace/symbols/sblmap | Проверка/чтение Limbo SBL |
+| build/workspace/disvm/libdisvm_core.a | Dis/JIT core, ещё без standalone host runner |
+| build/workspace/limbo-bootstrap/limbo-bootstrap | Временный локальный native compiler |
 | build/workspace/ide/idecore.dis, idecore.sbl | Ядро IDE и отладочные данные |
 
 Многоконфигурационные генераторы могут добавлять подкаталог Release/Debug.
@@ -118,7 +120,7 @@ SWF-линкер, читатель отладочных символов sblmap 
 ./build-workspace.sh --projects ide --demo
 ```
 
-Это собирает Limbo-ядро и запускает комментированный
+При заданном совместимом EMU_EXECUTABLE это собирает Limbo-ядро и запускает комментированный
 [пример навигации](ide/dis/examples/navigation/README.ru.md) в двух режимах
 внешнего reference emu. Ожидается `PASS idecore navigation 16 checks`.
 Пример использует типизированные каналы: открывает документ, ищет текст,
@@ -177,3 +179,18 @@ python3 ide/build.py ide/examples/numeric/program.as build/workspace/demo.swf --
 снимка. Это host-инструмент; Python не входит в runtime IDE.
 [История](ide/dis/HISTORY.ru.md) ·
 [Схема ошибок](fir/v1/doc/SOURCE_DIAGNOSTICS.ru.md).
+
+## Внешний AS-модуль для Dis и AS-клиент Dis по одному .m
+
+Собственный генератор находится в build/workspace/limbo/frontend/limbo_bindings
+после `./build-workspace.sh --projects limbo`.
+`--format as-module` выдаёт адаптер реализации внешнего не-Dis AS-модуля,
+`--format as-proxy` — AS-клиент Dis-экспортов из того же заголовка.
+Есть профили as1/as2/as3, C99, Python и JSON. Имена/типы/ID не поддерживаются вручную.
+[Подробный двусторонний пример](compiler/limbo/examples/external-modules/README.ru.md).
+Native transport/loader/type marshaler ещё в работе; generation не означает
+готовое cross-VM исполнение.
+
+Собственный `fir1_source ... -g DEBUG.json` выдаёт FIRDBG1 с исходником, SSA origins,
+уникальными lexical scopes и переменными до оптимизации.
+[Единицы и границы debug info](fir/v1/doc/SOURCE_DEBUG.ru.md).

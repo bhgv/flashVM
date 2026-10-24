@@ -79,3 +79,7 @@ Inferno compiler or Dis generator.
 The [C99 interface catalog](frontend/INTERFACES.md) now owns module/export identities,
 grouped names and authored type spans, with exact scope-name duplicate checks.
 This partial declaration pass does not resolve imports/types or emit native C.
+
+[Own compiler priority / Приоритет Limbo](../../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../../tools/UPSTREAMS.md).

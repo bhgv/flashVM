@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1526**. [English](README.md).
+Версия разработки: **0.1527**. [English](README.md).
 
 ## Просмотр документации
 
@@ -133,3 +133,7 @@ Reply ABI изменён в 0.3.0: пересоберите ядро и клие
 [Limbo history tutorial](ide/dis/examples/history/README.md).
 
 [Compiler/IDE 0.1526 acceptance and remaining VM regressions](ide/dis/SERIES_0_4_0.md).
+
+[DisVM interpreter/JIT core](disVM/README.md) ·
+[Owned tool sources and revisions](tools/UPSTREAMS.md) ·
+[.m: external AS modules for Dis and AS callers of Dis](compiler/limbo/examples/external-modules/README.md).

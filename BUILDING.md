@@ -1,5 +1,8 @@
 # Native and cross builds
 
+Root builds now use selected owned sources in tools/; detached SDK overrides remain.
+[First steps / Первые шаги](README-FIRSTSTEPS.md) · [Source manifests](tools/UPSTREAMS.md).
+
 [Русский](BUILDING.ru.md). A successful cross build is compilation/link evidence,
 not execution on that CPU/OS. Final [release gates](flashVM/doc/ROADMAP.md) remain
 open until native/device and compatibility checks are complete.

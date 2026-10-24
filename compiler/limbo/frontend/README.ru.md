@@ -125,3 +125,7 @@ C99 API и отдельная утилита `limbo_tree`. Проверен та
 Добавлены C99-библиотека `limbo_interfaces` и утилита `limbo_interface` поверх
 того же дерева Coco/R. [Контракт, ограничения и ориентиры C backend](INTERFACES.ru.md).
 [Проверки](INTERFACE_VALIDATION.md).
+
+[Own compiler priority / Приоритет Limbo](../../../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../../../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../../../tools/UPSTREAMS.md).

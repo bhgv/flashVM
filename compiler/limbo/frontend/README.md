@@ -122,3 +122,7 @@ C helpers in the authoritative ATG: [NamedCastAhead](limbo.atg#L112).
 `limbo_interfaces` library and `limbo_interface` inspector over the same Coco/R
 tree. [Contract, supported declarations and native-backend reference](INTERFACES.md).
 [Validation and limits](INTERFACE_VALIDATION.md).
+
+[Own compiler priority / Приоритет Limbo](../../../compiler/limbo/OWN_COMPILER.md) ·
+[Two-way .m external AS/Dis modules / Внешние модули](../../../compiler/limbo/examples/external-modules/README.md) ·
+[Owned tools / Инструменты](../../../tools/UPSTREAMS.md).

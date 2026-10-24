@@ -2,8 +2,9 @@
 """Interactive native workspace build selector; delegates builds to Bash.
 
 Uses only Python 3's standard library. External SDK paths are inherited from
-COCOR_ROOT, COCOR_EXECUTABLE, LIMBO_EXECUTABLE, EMU_EXECUTABLE and
-LIMBO_MODULE_DIR, exactly as documented for build-workspace.sh.
+Default dependencies are source-built from tools/. Explicit SDK overrides use
+COCOR_ROOT/COCOR_EXECUTABLE, LIMBO_EXECUTABLE, EMU_EXECUTABLE and
+LIMBO_MODULE_DIR, as documented for build-workspace.sh.
 """
 
 import argparse
@@ -25,7 +26,11 @@ COMPONENTS = (
     ("as1", "Только синтаксический фронтенд AS1"),
     ("as2", "Только синтаксический фронтенд AS2"),
     ("as3", "Только синтаксический фронтенд AS3"),
-    ("limbo", "Только синтаксический фронтенд Limbo"),
+    ("limbo", "Собственный Coco/R Limbo: синтаксис, .m и внешние заготовки"),
+    ("disvm", "Dis interpreter/JIT core; полный host runner ещё в работе"),
+    ("cocor", "Coco/R C: локальная сборка из tools/coco-r-C"),
+    ("cocor-limbo", "Coco/R Limbo: C generator и cocor.dis"),
+    ("limbo-bootstrap", "Временный native bootstrap из вашего experiment"),
 )
 
 
@@ -35,7 +40,7 @@ def selection(value):
     names = [name for name, _ in COMPONENTS]
     tokens = value.replace(",", " ").split()
     if tokens in (["all"], ["все"], ["*"]):
-        return names[:6]
+        return names[:6] + ["disvm"]
     if not tokens:
         raise ValueError("Выберите хотя бы один компонент")
     result = []
