@@ -19,3 +19,4 @@
 - 0.1.17: Cover IDE build cli.
 - 0.1.18: Cover IDE build cleanup.
 - 0.1.19: Add real numeric build example and record toolchain acceptance.
+- 0.1.20: Adopt Limbo/Dis-hosted IDE and channel-only FlashVM UI architecture.

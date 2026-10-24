@@ -22,7 +22,7 @@ python view_docs.py
 | Путь | Назначение |
 | --- | --- |
 | [LICENSE](LICENSE) | Общая лицензия MIT для собственного кода, автор bhgv |
-| [ide/](ide/README.ru.md) | Независимый backend сборки для редактора: явный toolchain, JSON-диагностика и транзакционная публикация SWF |
+| [ide/](ide/README.ru.md) | Архитектура IDE на Limbo/Dis, UI только через каналы и host-инструменты сборки |
 | [compiler/](compiler/README.ru.md) | Независимые синтаксические проекты AS1, AS2, AS3 и Limbo на C99 |
 | [linker/](linker/README.ru.md) | Независимый C99-линкер SWO/SWA и ресурсов в SWF8 |
 | [flashVM/](flashVM/README.md) | Исходники VM, встроенные зависимости, примеры, документация, инструменты и настройки сборки |

@@ -21,7 +21,7 @@ with Python 3, not presented as a fresh Python 2.7.9 runtime validation.
 | Path | Purpose |
 | --- | --- |
 | [LICENSE](LICENSE) | Shared MIT license for first-party workspace code, copyright bhgv |
-| [ide/](ide/README.md) | Independent editor build backend: explicit toolchain, JSON diagnostics and transactional SWF publication |
+| [ide/](ide/README.md) | Limbo/Dis IDE architecture, channel-only UI and host build tools |
 | [compiler/](compiler/README.md) | Independent AS1, AS2, AS3 and Limbo C99 syntax projects |
 | [linker/](linker/README.md) | Independent C99 SWO/SWA and resource linker to SWF8 |
 | [flashVM/](flashVM/README.md) | VM source, bundled dependencies, examples, documentation, tools and build configuration |
