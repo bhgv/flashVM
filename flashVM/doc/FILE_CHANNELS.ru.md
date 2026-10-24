@@ -12,7 +12,7 @@
 
 `send`/`receive` и `trySend`/`tryReceive` передают типизированные сериализованные записи. На конце файла неблокирующее чтение возвращает [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) (`tryReceive()` — undefined), блокирующее — [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Оно не ждёт бесконечно дописывания другим процессом. Нарушение режима и операции после закрытия возвращают ошибку. `available` проверяет наличие оставшихся байтов, но не корректность следующей записи. Ёмкость очереди и количество сообщений для файла не поддерживаются.
 
-Для обычных файлов есть [`fvm_channel_file_read`](../include/flashvm/channel.h#L34) и [`fvm_channel_file_write`](../include/flashvm/channel.h#L36), работающие с необработанными байтами, включая NUL. Они используют те же позиции. Не смешивайте байты и сообщения, если байты не представляют целые записи формата. В мосте ActionScript пока доступны типизированные сообщения.
+Для обычных файлов есть [`fvm_channel_file_read`](../include/flashvm/channel.h#L57) и [`fvm_channel_file_write`](../include/flashvm/channel.h#L59), работающие с необработанными байтами, включая NUL. Они используют те же позиции. Не смешивайте байты и сообщения, если байты не представляют целые записи формата. В мосте ActionScript пока доступны типизированные сообщения.
 
 ## Формат сохранения графа
 
@@ -64,9 +64,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_file_read` | function | [include/flashvm/channel.h:34](../include/flashvm/channel.h#L34) |
-| `fvm_channel_file_write` | function | [include/flashvm/channel.h:36](../include/flashvm/channel.h#L36) |
-| `fvm_channel_open_file` | function | [include/flashvm/channel.h:28](../include/flashvm/channel.h#L28) |
+| `fvm_channel_file_read` | function | [include/flashvm/channel.h:57](../include/flashvm/channel.h#L57) |
+| `fvm_channel_file_write` | function | [include/flashvm/channel.h:59](../include/flashvm/channel.h#L59) |
+| `fvm_channel_open_file` | function | [include/flashvm/channel.h:51](../include/flashvm/channel.h#L51) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

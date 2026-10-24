@@ -69,11 +69,11 @@ processes and network transport.
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | context: release heap, registrations and namespace, ending borrowed object lifetimes. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | runtime: release outer owner after context teardown. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_serialization_register_callback`](../../../include/flashvm/serialization.h#L30) | context, stable name, callback: bind local code in each heap; no native userdata is copied. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | channel output: acquire one unbounded FIFO handle, released after receive. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | channel output: acquire one unbounded FIFO handle, released after receive. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
 | [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | source context, queue, root, blocking=0: copy graph before enqueue; no source pointers retained. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
 | [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | destination, queue, output, blocking=0: decode one message into destination-owned objects; empty open queue returns [FVM_NOT_FOUND](../../../include/flashvm/flashvm.h#L47). [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
 | [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | destination, optional freed count=NULL: explicitly collect unreachable state while the imported root is pinned. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
-| [`fvm_channel_release`](../../../include/flashvm/channel.h#L47) | queue: release acquired handle after operations stop; last owner frees pending messages. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_release`](../../../include/flashvm/channel.h#L70) | queue: release acquired handle after operations stop; last owner frees pending messages. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
 
 ## Callback and values
 
@@ -112,9 +112,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../../../include/flashvm/broadcaster.h#L19) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
 | `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
-| `fvm_channel_release` | function | [include/flashvm/channel.h:47](../../../include/flashvm/channel.h#L47) |
+| `fvm_channel_release` | function | [include/flashvm/channel.h:70](../../../include/flashvm/channel.h#L70) |
 | `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../../../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |

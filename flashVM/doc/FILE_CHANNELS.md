@@ -14,7 +14,7 @@ Each handle has independent read and write positions. Reading starts at byte zer
 ([`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L48)). It never waits indefinitely for another process to append. Read/write permission errors and operations after close throw resource exceptions
 from AS methods; low-level native calls retain error statuses. See [exceptions](EXCEPTIONS.md). `available` checks for remaining bytes; it does not validate the next record. Queue capacity and pending-message count are unsupported for file channels.
 
-[`fvm_channel_file_read`](../include/flashvm/channel.h#L34) and [`fvm_channel_file_write`](../include/flashvm/channel.h#L36) provide raw byte access to ordinary files, including embedded NUL bytes. These operations use the same read/write positions. Do not interleave raw data and typed records unless the raw data forms complete records. The ActionScript bridge currently exposes typed messages only.
+[`fvm_channel_file_read`](../include/flashvm/channel.h#L57) and [`fvm_channel_file_write`](../include/flashvm/channel.h#L59) provide raw byte access to ordinary files, including embedded NUL bytes. These operations use the same read/write positions. Do not interleave raw data and typed records unless the raw data forms complete records. The ActionScript bridge currently exposes typed messages only.
 
 ## Persistent graph format
 
@@ -68,9 +68,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_file_read` | function | [include/flashvm/channel.h:34](../include/flashvm/channel.h#L34) |
-| `fvm_channel_file_write` | function | [include/flashvm/channel.h:36](../include/flashvm/channel.h#L36) |
-| `fvm_channel_open_file` | function | [include/flashvm/channel.h:28](../include/flashvm/channel.h#L28) |
+| `fvm_channel_file_read` | function | [include/flashvm/channel.h:57](../include/flashvm/channel.h#L57) |
+| `fvm_channel_file_write` | function | [include/flashvm/channel.h:59](../include/flashvm/channel.h#L59) |
+| `fvm_channel_open_file` | function | [include/flashvm/channel.h:51](../include/flashvm/channel.h#L51) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |

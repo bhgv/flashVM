@@ -16,7 +16,7 @@ Host владеет runtime/context, диспетчером и native-адапт
 корнем. Callback снимается до адаптера; сессии отключаются до dispatcher destroy.
 Service здесь детерминированно ставит команды. Реальный транспорт должен ждать
 событий с отменой, проверкой сессии, лимитами и защитой от lost wakeup. Нельзя
-reenter/collect/destroy context из service. Сокеты, [FVM_Channel](../../../src/capi/channel_c.c#L26) graph bridge,
+reenter/collect/destroy context из service. Сокеты, [FVM_Channel](../../../src/capi/channel_c.c#L27) graph bridge,
 потоки, удалённая аутентификация и 9P не демонстрируются.
 
 | API | Назначение и владение |
@@ -56,7 +56,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../../../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../../../src/capi/channel_c.c#L27) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |

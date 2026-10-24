@@ -23,11 +23,11 @@
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_channel_close`](../../../include/flashvm/channel.h#L40) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L49) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_receive`](../../../include/flashvm/channel.h#L55) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_send`](../../../include/flashvm/channel.h#L53) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_close`](../../../include/flashvm/channel.h#L63) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_receive`](../../../include/flashvm/channel.h#L78) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_send`](../../../include/flashvm/channel.h#L76) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-channels).
@@ -42,10 +42,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_close` | function | [include/flashvm/channel.h:40](../../../include/flashvm/channel.h#L40) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../../../include/flashvm/channel.h#L49) |
-| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../../../include/flashvm/channel.h#L55) |
-| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../../../include/flashvm/channel.h#L53) |
+| `fvm_channel_close` | function | [include/flashvm/channel.h:63](../../../include/flashvm/channel.h#L63) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../../../include/flashvm/channel.h#L72) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:78](../../../include/flashvm/channel.h#L78) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:76](../../../include/flashvm/channel.h#L76) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 <!-- source-links:end -->

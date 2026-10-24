@@ -69,11 +69,11 @@ pin защищают частичное построение и позднее �
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | context: освободить кучу, подписки и пространство имён; заимствованные указатели перестают действовать. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | runtime: освободить внешнего владельца после разрушения контекста. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_serialization_register_callback`](../../../include/flashvm/serialization.h#L30) | context, стабильное имя, callback: привязать локальный код в каждой куче; userdata не копируется. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | выход channel: получить один неограниченный FIFO; освободить после получения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | выход channel: получить один неограниченный FIFO; освободить после получения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
 | [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | исходный context, очередь, root, blocking=0: скопировать граф до отправки; ссылки на исходную кучу не удерживаются. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
 | [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | получатель, очередь, выход, blocking=0: восстановить сообщение в куче получателя; пустая открытая очередь даёт [FVM_NOT_FOUND](../../../include/flashvm/flashvm.h#L47). [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
 | [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | получатель, необязательный счётчик freed=NULL: собрать недостижимое при закреплённом импортированном корне. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
-| [`fvm_channel_release`](../../../include/flashvm/channel.h#L47) | queue: освободить handle после остановки операций; последний владелец удаляет оставшиеся сообщения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_release`](../../../include/flashvm/channel.h#L70) | queue: освободить handle после остановки операций; последний владелец удаляет оставшиеся сообщения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
 
 ## Callback и значения
 
@@ -112,9 +112,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../../../include/flashvm/broadcaster.h#L19) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
 | `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
-| `fvm_channel_release` | function | [include/flashvm/channel.h:47](../../../include/flashvm/channel.h#L47) |
+| `fvm_channel_release` | function | [include/flashvm/channel.h:70](../../../include/flashvm/channel.h#L70) |
 | `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../../../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |

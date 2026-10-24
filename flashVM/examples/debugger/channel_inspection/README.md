@@ -41,8 +41,8 @@ NATURAL/FORCE — политика VM, независимая от CMake Release
 
 ## Используемые функции
 
-- [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) — декларация и контракт общего VM API.
-- [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L49) — декларация и контракт общего VM API.
+- [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) — декларация и контракт общего VM API.
+- [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) — декларация и контракт общего VM API.
 - [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) — декларация и контракт общего VM API.
 - [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) — декларация и контракт общего VM API.
 - [`fvm_debug_channel_freeze`](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — подробный debugger/runtime-контракт.
@@ -78,8 +78,8 @@ function links to its detailed reference or public ownership contract.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L49) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
 | [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
 | [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
 | [`fvm_debug_channel_freeze`](../../../include/flashvm/debug.h#L114) | [DEBUG_API.md#fvm_debug_channel_freeze](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — Параметры, статусы, время жизни и ограничения вызова. |
@@ -99,8 +99,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../../../include/flashvm/channel.h#L49) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../../../include/flashvm/channel.h#L72) |
 | `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
 | `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../../../include/flashvm/debug.h#L114) |

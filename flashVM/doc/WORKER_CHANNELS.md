@@ -1,10 +1,10 @@
 # Worker/channel integration (C89 API)
 
-Each [`FVM_Worker`](../src/capi/worker_c.c#L12) creates an independent Runtime and Context on a native OS thread. Its callback receives that context as the first argument. Ordinary AVM1 object pointers must never cross the context boundary. Host code may instead pass pointers to separately created [`FVM_Channel`](../src/capi/channel_c.c#L26) instances in the callback's `userdata`; that pointer must remain valid until `join` completes.
+Each [`FVM_Worker`](../src/capi/worker_c.c#L12) creates an independent Runtime and Context on a native OS thread. Its callback receives that context as the first argument. Ordinary AVM1 object pointers must never cross the context boundary. Host code may instead pass pointers to separately created [`FVM_Channel`](../src/capi/channel_c.c#L27) instances in the callback's `userdata`; that pointer must remain valid until `join` completes.
 
 ## Message lifetime and errors
 
-[`fvm_channel_send`](../include/flashvm/channel.h#L53) copies primitive values and NUL-terminated UTF-8 strings. It rejects object values. [`fvm_channel_receive`](../include/flashvm/channel.h#L55) waits until a message arrives or the channel is closed. [`fvm_channel_try_receive`](../include/flashvm/channel.h#L70) never waits: [`FVM_OK`](../include/flashvm/flashvm.h#L42) means a message was consumed, [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) means open and empty, and [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) means closed and empty. Both receive functions return borrowed string pointers, valid until the next successful receive on the same channel or channel destruction. A single channel is a FIFO queue, **not** a paired endpoint; use two channels for independent request and response directions.
+[`fvm_channel_send`](../include/flashvm/channel.h#L76) copies primitive values and NUL-terminated UTF-8 strings. It rejects object values. [`fvm_channel_receive`](../include/flashvm/channel.h#L78) waits until a message arrives or the channel is closed. [`fvm_channel_try_receive`](../include/flashvm/channel.h#L93) never waits: [`FVM_OK`](../include/flashvm/flashvm.h#L42) means a message was consumed, [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) means open and empty, and [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) means closed and empty. Both receive functions return borrowed string pointers, valid until the next successful receive on the same channel or channel destruction. A single channel is a FIFO queue, **not** a paired endpoint; use two channels for independent request and response directions.
 
 [`fvm_worker_stop`](../include/flashvm/worker.h#L52) is cooperative and does not interrupt a blocked `receive`. The owner should close the appropriate channel to wake a blocked worker before joining it. The host must ensure no thread is accessing a channel when it is destroyed. Channel ownership and reference counting across contexts are not implemented yet.
 
@@ -19,10 +19,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
-| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../include/flashvm/channel.h#L55) |
-| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../include/flashvm/channel.h#L53) |
-| `fvm_channel_try_receive` | function | [include/flashvm/channel.h:70](../include/flashvm/channel.h#L70) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:78](../include/flashvm/channel.h#L78) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:76](../include/flashvm/channel.h#L76) |
+| `fvm_channel_try_receive` | function | [include/flashvm/channel.h:93](../include/flashvm/channel.h#L93) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

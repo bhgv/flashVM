@@ -72,7 +72,7 @@ missed,size,bytes`. Большой payload: S_LIMIT; неверные ID: S_INVA
 
 Аутентифицированный адаптер передаёт запросы в [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L29) и
 кодирует ответы/события. Реальный тест использует этот путь для команд и обеих
-подписок. Сетевой listener, мост графов [FVM_Channel](../src/capi/channel_c.c#L26), Styx/9P и mount пока не
+подписок. Сетевой listener, мост графов [FVM_Channel](../src/capi/channel_c.c#L27), Styx/9P и mount пока не
 добавлены. Нельзя без разбора рассылать приватные сведения отладчика. Ресурсы
 могут иметь разных владельцев; этот адаптер обслуживает ровно один context.
 
@@ -97,7 +97,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
 | `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_RDEBUG_BREAKPOINT` | macro / define | [include/flashvm/rdebug.h:12](../include/flashvm/rdebug.h#L12) |

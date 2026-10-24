@@ -2,7 +2,7 @@
 
 ## Реализованный API
 
-В `include/flashvm/channel.h` объявлен непрозрачный тип [`FVM_Channel`](../src/capi/channel_c.c#L26) и функции [`fvm_channel_create`](../include/flashvm/channel.h#L23), [`fvm_channel_send`](../include/flashvm/channel.h#L53), [`fvm_channel_receive`](../include/flashvm/channel.h#L55), [`fvm_channel_available`](../include/flashvm/channel.h#L74), [`fvm_channel_close`](../include/flashvm/channel.h#L40), [`fvm_channel_destroy`](../include/flashvm/channel.h#L49).
+В `include/flashvm/channel.h` объявлен непрозрачный тип [`FVM_Channel`](../src/capi/channel_c.c#L27) и функции [`fvm_channel_create`](../include/flashvm/channel.h#L46), [`fvm_channel_send`](../include/flashvm/channel.h#L76), [`fvm_channel_receive`](../include/flashvm/channel.h#L78), [`fvm_channel_available`](../include/flashvm/channel.h#L97), [`fvm_channel_close`](../include/flashvm/channel.h#L63), [`fvm_channel_destroy`](../include/flashvm/channel.h#L72).
 
 - Канал — неограниченная FIFO-очередь, допускающая несколько отправителей и получателей. Каждый участник может читать и писать, но каждое сообщение получает только один читатель.
 - `send` копирует значение, в том числе строку до завершающего нулевого байта. Объекты не принимаются: глубокое копирование объектов между контекстами VM ещё не реализовано.
@@ -27,12 +27,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
-| `fvm_channel_available` | function | [include/flashvm/channel.h:74](../include/flashvm/channel.h#L74) |
-| `fvm_channel_close` | function | [include/flashvm/channel.h:40](../include/flashvm/channel.h#L40) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../include/flashvm/channel.h#L23) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../include/flashvm/channel.h#L49) |
-| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../include/flashvm/channel.h#L55) |
-| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../include/flashvm/channel.h#L53) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
+| `fvm_channel_available` | function | [include/flashvm/channel.h:97](../include/flashvm/channel.h#L97) |
+| `fvm_channel_close` | function | [include/flashvm/channel.h:63](../include/flashvm/channel.h#L63) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../include/flashvm/channel.h#L46) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../include/flashvm/channel.h#L72) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:78](../include/flashvm/channel.h#L78) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:76](../include/flashvm/channel.h#L76) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 <!-- source-links:end -->

@@ -65,7 +65,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
 | `fvm_channel_value_copy` | function | [include/flashvm/channel_value.h:26](../include/flashvm/channel_value.h#L26) |
 | `fvm_channel_value_create` | function | [include/flashvm/channel_value.h:22](../include/flashvm/channel_value.h#L22) |
 | `fvm_channel_value_from_channel` | function | [include/flashvm/channel_value.h:24](../include/flashvm/channel_value.h#L24) |

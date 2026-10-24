@@ -17,7 +17,7 @@ Detach the callback before adapter destruction, and disconnect sessions before
 dispatcher destruction. Service deterministically queues commands here. A real
 transport must wait with cancellation, authenticated identity, quotas and lost-
 wakeup protection. Never reenter/collect/destroy this context from service. This
-example does not open sockets or demonstrate a [FVM_Channel](../../../src/capi/channel_c.c#L26) graph bridge, workers,
+example does not open sockets or demonstrate a [FVM_Channel](../../../src/capi/channel_c.c#L27) graph bridge, workers,
 remote authentication or 9P.
 
 | API | Purpose and ownership |
@@ -57,7 +57,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../../../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../../../src/capi/channel_c.c#L27) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |

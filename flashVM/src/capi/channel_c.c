@@ -20,6 +20,7 @@ typedef struct FVM_ChannelNode
     FVM_Value value;
     char *owned_string;
     struct FVM_ChannelNode *next;
+    int *receipt; /* Borrowed sender-stack acknowledgement, protected by channel sync. */
 } FVM_ChannelNode;
 
 /* Define FVM_Channel struct and its representation. */
@@ -42,7 +43,61 @@ struct FVM_Channel
     size_t pending;
     size_t capacity;
     size_t references;
+    size_t waiting_senders;   /* Native waiters, including rendezvous receipt waits. */
+    size_t waiting_receivers; /* Native waiters for data or debugger thaw. */
+    int rendezvous;           /* Explicit zero-buffer handshake mode. */
 };
+
+/* Record a native sleep under the same mutex used by observer snapshots. */
+static void channel_wait(FVM_Channel *channel, int sending)
+{
+    size_t *count = sending ? &channel->waiting_senders : &channel->waiting_receivers;
+    ++*count;
+    fvm_port_sync_wait(channel->sync);
+    --*count;
+}
+
+/* Capacity is independent of rendezvous: an offer occupies its one transfer slot. */
+static int channel_send_waits(FVM_Channel *channel, int blocking)
+{
+    if (channel->rendezvous)
+        return channel->pending != 0 || (!blocking && (!channel->waiting_receivers || channel->frozen));
+    return channel->capacity && channel->pending >= channel->capacity;
+}
+
+/* The receiver acknowledges before freeing the node while holding this mutex.
+ * On close, withdraw an unreceived offer before its sender stack disappears. */
+static FVM_Result channel_finish_send(FVM_Channel *channel, FVM_ChannelNode *node, int *delivered)
+{
+    FVM_ChannelNode *previous;
+    FVM_ChannelNode *current;
+    fvm_port_sync_signal_all(channel->sync);
+    if (!node->receipt)
+        return FVM_OK;
+    while (!*delivered && !channel->closed)
+        channel_wait(channel, 1);
+    if (*delivered)
+        return FVM_OK;
+    previous = 0;
+    current = channel->head;
+    while (current && current != node)
+    {
+        previous = current;
+        current = current->next;
+    }
+    if (current)
+    {
+        if (previous)
+            previous->next = node->next;
+        else
+            channel->head = node->next;
+        if (channel->tail == node)
+            channel->tail = previous;
+        --channel->pending;
+    }
+    fvm_port_sync_signal_all(channel->sync);
+    return FVM_ERROR;
+}
 
 /* Create channel. */
 FVM_Result fvm_channel_create(FVM_Channel **out)
@@ -178,7 +233,7 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
     *data = 0;
     *size = 0;
     while (c->frozen && !c->closed && blocking && !inspecting)
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 0);
     if (c->closed)
         return FVM_ERROR;
     if (c->frozen && !inspecting)
@@ -328,7 +383,7 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
     fvm_port_sync_lock(c->sync);
     /* Wait before capturing the rollback cursor: another resumed reader may run first. */
     while (c->frozen && !c->closed && blocking)
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 0);
     if (c->closed)
     {
         fvm_port_sync_unlock(c->sync);
@@ -443,6 +498,8 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
 
     /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
+    int delivered = 0;
+    FVM_Result completion;
     size_t len;
     if (!c || !v || v->type < FVM_VALUE_UNDEFINED || v->type >= FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
@@ -483,7 +540,7 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
         n->value.string = n->owned_string;
     }
     fvm_port_sync_lock(c->sync);
-    while (!c->closed && c->capacity && c->pending >= c->capacity)
+    while (!c->closed && channel_send_waits(c, blocking))
     {
         if (!blocking)
         {
@@ -492,7 +549,7 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
             free(n);
             return FVM_NOT_FOUND;
         }
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 1);
     }
     if (c->closed)
     {
@@ -501,6 +558,8 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
         free(n);
         return FVM_ERROR;
     }
+    if (c->rendezvous && blocking)
+        n->receipt = &delivered;
     if (c->tail)
         c->tail->next = n;
     else
@@ -509,9 +568,14 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
     /* Computation / Вычисление и обновление состояния. */
     c->tail = n;
     ++c->pending;
-    fvm_port_sync_signal_all(c->sync);
+    completion = channel_finish_send(c, n, &delivered);
     fvm_port_sync_unlock(c->sync);
-    return FVM_OK;
+    if (completion != FVM_OK)
+    {
+        free(n->owned_string);
+        free(n);
+    }
+    return completion;
 }
 
 /* Receive channel. */
@@ -527,7 +591,7 @@ FVM_Result fvm_channel_receive(FVM_Channel *c, FVM_Value *out)
         return file_primitive(c, out, 1, 1);
     fvm_port_sync_lock(c->sync);
     while ((!c->head || c->frozen) && !c->closed)
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 0);
     if (!c->head || c->frozen)
     {
         fvm_port_sync_unlock(c->sync);
@@ -545,6 +609,8 @@ FVM_Result fvm_channel_receive(FVM_Channel *c, FVM_Value *out)
 
     /* Computation / Вычисление и обновление состояния. */
     --c->pending;
+    if (n->receipt)
+        *n->receipt = 1;
     fvm_port_sync_signal_all(c->sync);
     *out = n->value;
     previous = c->last_string;
@@ -587,6 +653,8 @@ FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out)
 
     /* Computation / Вычисление и обновление состояния. */
     --c->pending;
+    if (n->receipt)
+        *n->receipt = 1;
     fvm_port_sync_signal_all(c->sync);
     *out = n->value;
     previous = c->last_string;
@@ -675,7 +743,7 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blockin
         return file_primitive(c, out, blocking, 0);
     fvm_port_sync_lock(c->sync);
     while ((!c->head || c->frozen) && !c->closed && blocking)
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 0);
     if (!c->head || c->frozen)
     {
         r = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
@@ -694,6 +762,8 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blockin
 
     /* Computation / Вычисление и обновление состояния. */
     --c->pending;
+    if (n->receipt)
+        *n->receipt = 1;
     *out = n->value;
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
@@ -716,6 +786,8 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
                                    FVM_Result (*retain)(void *), int blocking)
 {
     FVM_ChannelNode *n;
+    int delivered = 0;
+    FVM_Result completion;
     if (!c || !packet || !release || !retain)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
@@ -729,7 +801,7 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
     /* Computation / Вычисление и обновление состояния. */
     n->retain_packet = retain;
     fvm_port_sync_lock(c->sync);
-    while (!c->closed && c->capacity && c->pending >= c->capacity)
+    while (!c->closed && channel_send_waits(c, blocking))
     {
         if (!blocking)
         {
@@ -737,7 +809,7 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
             free(n);
             return FVM_NOT_FOUND;
         }
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 1);
     }
     if (c->closed)
     {
@@ -745,6 +817,8 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
         free(n);
         return FVM_ERROR;
     }
+    if (c->rendezvous && blocking)
+        n->receipt = &delivered;
     if (c->tail)
         c->tail->next = n;
     else
@@ -753,9 +827,13 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
     /* Computation / Вычисление и обновление состояния. */
     c->tail = n;
     ++c->pending;
-    fvm_port_sync_signal_all(c->sync);
+    completion = channel_finish_send(c, n, &delivered);
     fvm_port_sync_unlock(c->sync);
-    return FVM_OK;
+    if (completion != FVM_OK)
+    {
+        free(n);
+    }
+    return completion;
 }
 
 /* Receive channel mixed. */
@@ -772,7 +850,7 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
         return FVM_UNSUPPORTED;
     fvm_port_sync_lock(c->sync);
     while ((!c->head || c->frozen) && !c->closed && blocking)
-        fvm_port_sync_wait(c->sync);
+        channel_wait(c, 0);
     if (!c->head || c->frozen)
     {
         r = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
@@ -788,6 +866,8 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
 
     /* Computation / Вычисление и обновление состояния. */
     --c->pending;
+    if (n->receipt)
+        *n->receipt = 1;
     *packet = n->packet;
     *out = n->value;
     fvm_port_sync_signal_all(c->sync);
@@ -1105,4 +1185,74 @@ FVM_Result fvm_channel_stream_peek(FVM_Context *context, FVM_Channel *c, size_t 
 const char *fvm_channel_file_path(FVM_Channel *c)
 {
     return c ? c->file_path : 0;
+}
+
+/* Observe native waiters without waiting for a message, peer or free capacity. */
+FVM_Result fvm_channel_wait_state(FVM_Channel *channel, FVM_ChannelWaitState *out)
+{
+    FVM_ChannelWaitState state;
+    if (!channel || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (channel->file_channel || channel->remote_request)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(channel->sync);
+    state.pending = channel->pending;
+    state.waiting_senders = channel->waiting_senders;
+    state.waiting_receivers = channel->waiting_receivers;
+    state.directions = 0;
+    if (state.waiting_senders)
+        state.directions |= FVM_CHANNEL_WAIT_SEND;
+    if (state.waiting_receivers)
+        state.directions |= FVM_CHANNEL_WAIT_RECEIVE;
+    state.closed = channel->closed;
+    state.frozen = channel->frozen;
+    state.rendezvous = channel->rendezvous;
+    *out = state;
+    fvm_port_sync_unlock(channel->sync);
+    return FVM_OK;
+}
+
+/* Mode changes require exclusive idle ownership, preserving existing queued data. */
+FVM_Result fvm_channel_set_rendezvous(FVM_Channel *channel, int enabled)
+{
+    if (!channel || (enabled != 0 && enabled != 1))
+        return FVM_INVALID_ARGUMENT;
+    if (channel->file_channel || channel->remote_request)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(channel->sync);
+    if (channel->closed || channel->pending || channel->waiting_senders || channel->waiting_receivers)
+    {
+        fvm_port_sync_unlock(channel->sync);
+        return FVM_INVALID_ARGUMENT;
+    }
+    channel->rendezvous = enabled;
+    fvm_port_sync_unlock(channel->sync);
+    return FVM_OK;
+}
+
+/* Register a cancellable script wait without blocking its owning context. */
+void fvm_channel_poll_wait_begin(FVM_Channel *channel, int sending)
+{
+    if (!channel || channel->file_channel || channel->remote_request)
+        return;
+    fvm_port_sync_lock(channel->sync);
+    if (sending)
+        ++channel->waiting_senders;
+    else
+        ++channel->waiting_receivers;
+    fvm_port_sync_signal_all(channel->sync);
+    fvm_port_sync_unlock(channel->sync);
+}
+
+/* End exactly one polling scope after success, cancellation, close or error. */
+void fvm_channel_poll_wait_end(FVM_Channel *channel, int sending)
+{
+    if (!channel || channel->file_channel || channel->remote_request)
+        return;
+    fvm_port_sync_lock(channel->sync);
+    if (sending)
+        --channel->waiting_senders;
+    else
+        --channel->waiting_receivers;
+    fvm_port_sync_unlock(channel->sync);
 }

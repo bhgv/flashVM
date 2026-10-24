@@ -2,7 +2,7 @@
 
 ## Implemented API
 
-`include/flashvm/channel.h` declares an opaque [`FVM_Channel`](../src/capi/channel_c.c#L26) and the functions [`fvm_channel_create`](../include/flashvm/channel.h#L23), [`fvm_channel_send`](../include/flashvm/channel.h#L53), [`fvm_channel_receive`](../include/flashvm/channel.h#L55), [`fvm_channel_available`](../include/flashvm/channel.h#L74), [`fvm_channel_close`](../include/flashvm/channel.h#L40), and [`fvm_channel_destroy`](../include/flashvm/channel.h#L49).
+`include/flashvm/channel.h` declares an opaque [`FVM_Channel`](../src/capi/channel_c.c#L27) and the functions [`fvm_channel_create`](../include/flashvm/channel.h#L46), [`fvm_channel_send`](../include/flashvm/channel.h#L76), [`fvm_channel_receive`](../include/flashvm/channel.h#L78), [`fvm_channel_available`](../include/flashvm/channel.h#L97), [`fvm_channel_close`](../include/flashvm/channel.h#L63), and [`fvm_channel_destroy`](../include/flashvm/channel.h#L72).
 
 - Channels are unbounded, FIFO, and can be used by multiple producers and consumers. They are bidirectional in the sense that any participant can send or receive, but a message is consumed by exactly one receiver.
 - `send` copies the value, including the bytes of a NUL-terminated string. Objects are rejected because object ownership and deep copying between VM contexts have not been implemented.
@@ -27,12 +27,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
-| `fvm_channel_available` | function | [include/flashvm/channel.h:74](../include/flashvm/channel.h#L74) |
-| `fvm_channel_close` | function | [include/flashvm/channel.h:40](../include/flashvm/channel.h#L40) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../include/flashvm/channel.h#L23) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../include/flashvm/channel.h#L49) |
-| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../include/flashvm/channel.h#L55) |
-| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../include/flashvm/channel.h#L53) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
+| `fvm_channel_available` | function | [include/flashvm/channel.h:97](../include/flashvm/channel.h#L97) |
+| `fvm_channel_close` | function | [include/flashvm/channel.h:63](../include/flashvm/channel.h#L63) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../include/flashvm/channel.h#L46) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../include/flashvm/channel.h#L72) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:78](../include/flashvm/channel.h#L78) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:76](../include/flashvm/channel.h#L76) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 <!-- source-links:end -->

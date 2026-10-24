@@ -379,7 +379,7 @@ Five focused native checks pass. Four C debugger/protocol fixtures also pass
 ASan/UBSan with leak enumeration disabled; the underlying VM/SDL build is ordinary.
 The two-client POSIX fixture uses a blocking owner condition-variable service.
 Отладчик получает команды через двоичный интерфейс; сетевой listener, Styx/9P,
-[FVM_Channel](../src/capi/channel_c.c#L26) graph bridge и полный экспорт locals/objects пока не реализованы.
+[FVM_Channel](../src/capi/channel_c.c#L27) graph bridge и полный экспорт locals/objects пока не реализованы.
 See [EN](RESOURCE_DEBUGGER.md) / [RU](RESOURCE_DEBUGGER.ru.md). All stages remain open.
 
 v0.729 adds independent bounded resource observers, filtered metadata discovery,
@@ -2480,7 +2480,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
 | `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |

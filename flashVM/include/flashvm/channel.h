@@ -17,6 +17,29 @@ extern "C"
      * Do not destroy a channel while other threads are using it.
      */
     typedef struct FVM_Channel FVM_Channel;
+    /* Wait directions are flags: both can occur on one bidirectional queue. */
+#define FVM_CHANNEL_WAIT_SEND 1U
+#define FVM_CHANNEL_WAIT_RECEIVE 2U
+    /* One mutex-protected snapshot; no wait for data, capacity or a peer occurs.
+     * It is observation, never a reservation; state can change immediately. */
+    typedef struct FVM_ChannelWaitState
+    {
+        size_t pending;           /* Messages currently offered for reception. */
+        size_t waiting_senders;   /* Threads waiting/polling for space or receipt. */
+        size_t waiting_receivers; /* Threads waiting/polling for input or thaw. */
+        unsigned int directions; /* SEND/RECEIVE flags from the two counts. */
+        int closed;              /* Close has been requested. */
+        int frozen;              /* Debugger currently suspends delivery. */
+        int rendezvous;          /* Blocking send waits for actual receipt. */
+    } FVM_ChannelWaitState;
+    /* Local in-process channels only; file/remote endpoints return UNSUPPORTED.
+     * Briefly takes the channel mutex. Errors leave out unchanged. */
+    FVM_API FVM_Result fvm_channel_wait_state(FVM_Channel *, FVM_ChannelWaitState *out);
+    /* Select rendezvous on an empty, idle, open local queue. Changing a live
+     * queue is rejected. Buffered FIFO remains the compatibility default.
+     * In rendezvous mode blocking send completes after receipt; try_send needs
+     * an already waiting receiver. Close cancels an unreceived blocking send. */
+    FVM_API FVM_Result fvm_channel_set_rendezvous(FVM_Channel *, int enabled);
     /* Implement channel identity for this subsystem. */
     FVM_API unsigned long fvm_channel_identity(FVM_Channel *);
     /* Create channel. */

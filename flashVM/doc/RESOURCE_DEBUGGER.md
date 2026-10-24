@@ -77,7 +77,7 @@ consumed change only on S_OK. It does not grant rights or authenticate a sender.
 An authenticated transport can feed requests through [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L29)
 and encode replies/events. The real test does so for debugger requests and both
 observers' stop events. This is the common command/event boundary, not a supplied
-network listener, [FVM_Channel](../src/capi/channel_c.c#L26) graph bridge, Styx/9P server or filesystem mount.
+network listener, [FVM_Channel](../src/capi/channel_c.c#L27) graph bridge, Styx/9P server or filesystem mount.
 Do not broadcast private debug state indiscriminately. Different resource owners
 can live in other processes, but this adapter owns exactly one VM context.
 
@@ -110,7 +110,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
 | `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |

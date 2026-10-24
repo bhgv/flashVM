@@ -7,7 +7,7 @@
 отмена не прерывает произвольный нативный callback.
 
 `fvm_channel_receive_owned(channel, &value, blocking)` передаёт выделенную строку
-потребителю. Освобождать один раз через [`fvm_channel_message_release`](../include/flashvm/channel.h#L65). Значение
+потребителю. Освобождать один раз через [`fvm_channel_message_release`](../include/flashvm/channel.h#L88). Значение
 не инвалидируется следующим receive или уничтожением канала. Это API для
 нескольких потребителей строк. Старый receive возвращает заимствованную строку
 и требует внешней синхронизации до завершения её чтения. `try_send` возвращает
@@ -35,8 +35,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_message_release` | function | [include/flashvm/channel.h:65](../include/flashvm/channel.h#L65) |
-| `fvm_channel_receive_owned` | function | [include/flashvm/channel.h:63](../include/flashvm/channel.h#L63) |
+| `fvm_channel_message_release` | function | [include/flashvm/channel.h:88](../include/flashvm/channel.h#L88) |
+| `fvm_channel_receive_owned` | function | [include/flashvm/channel.h:86](../include/flashvm/channel.h#L86) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

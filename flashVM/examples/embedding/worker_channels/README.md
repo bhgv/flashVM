@@ -21,13 +21,13 @@ This example does not implement `thread.run`, `<...>` or `<-` in ActionScript.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_channel_available`](../../../include/flashvm/channel.h#L74) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_close`](../../../include/flashvm/channel.h#L40) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L49) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_receive`](../../../include/flashvm/channel.h#L55) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_send`](../../../include/flashvm/channel.h#L53) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_try_receive`](../../../include/flashvm/channel.h#L70) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_available`](../../../include/flashvm/channel.h#L97) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_close`](../../../include/flashvm/channel.h#L63) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_receive`](../../../include/flashvm/channel.h#L78) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_send`](../../../include/flashvm/channel.h#L76) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_try_receive`](../../../include/flashvm/channel.h#L93) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
@@ -49,13 +49,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_available` | function | [include/flashvm/channel.h:74](../../../include/flashvm/channel.h#L74) |
-| `fvm_channel_close` | function | [include/flashvm/channel.h:40](../../../include/flashvm/channel.h#L40) |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../../../include/flashvm/channel.h#L49) |
-| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../../../include/flashvm/channel.h#L55) |
-| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../../../include/flashvm/channel.h#L53) |
-| `fvm_channel_try_receive` | function | [include/flashvm/channel.h:70](../../../include/flashvm/channel.h#L70) |
+| `fvm_channel_available` | function | [include/flashvm/channel.h:97](../../../include/flashvm/channel.h#L97) |
+| `fvm_channel_close` | function | [include/flashvm/channel.h:63](../../../include/flashvm/channel.h#L63) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../../../include/flashvm/channel.h#L72) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:78](../../../include/flashvm/channel.h#L78) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:76](../../../include/flashvm/channel.h#L76) |
+| `fvm_channel_try_receive` | function | [include/flashvm/channel.h:93](../../../include/flashvm/channel.h#L93) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |

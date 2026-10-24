@@ -10,6 +10,10 @@
 extern "C"
 {
 #endif
+    /* Balance ActionScript's cancellable polling scopes with the same native
+     * waiter counters. Caller retains the channel through the matching end. */
+    void fvm_channel_poll_wait_begin(FVM_Channel *, int sending);
+    void fvm_channel_poll_wait_end(FVM_Channel *, int sending);
     /* Remote operation codes: 0 status, 4 close, 5 send graph, 6 receive graph,
        7 debugger freeze/resume, 8 debugger state snapshot, 9 indexed debugger message copy. */
     typedef FVM_Result (*FVM_RemoteChannelFn)(void *, FVM_Context *, int, const unsigned char *,

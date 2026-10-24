@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Build/runtime checkpoint v0.1534: local channels add an explicit rendezvous mode and mutex-protected native waiter snapshots. Dis host adapters reuse FlashVM platform files/sockets/threads; experimental native register isolation is not full parallel-VM/GC acceptance. No compatibility stage is closed. See [shared host and native threads](../../disVM/host/README.md).
+
 Build checkpoint v0.1531: the native library and reference SWF runner build with real CMake 3.10.2. Build-only Python discovery compatibility; no runtime/graphics compatibility stage is closed. See [workspace build paths](../../README-FIRSTSTEPS.md).
 
 Checkpoint v0.1524 / Контрольная точка v0.1524: tiny public round-stroke queries avoid squared-distance underflow. Seventeen new fixtures; 360 no-graphics Release and 182 no-graphics ASan/UBSan executables pass. All nine stages and reference/device acceptance remain open. [EN](PUBLIC_ROUND_SCALE.md) / [RU](PUBLIC_ROUND_SCALE.ru.md).

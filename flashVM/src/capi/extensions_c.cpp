@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "channel_method_constants.h"
 #include "flashvm/extensions.h"
 #include "flashvm/mutex.h"
 #include "flashvm/capability.h"
@@ -197,20 +198,32 @@ GC_WRAPPER(gc_count, 4)
 struct ChannelWaitScope
 {
     void *wait;
+    FVM_Channel *channel;
+    int sending;
     /* Wait for Channel Scope. */
-    ChannelWaitScope() : wait(0)
+    ChannelWaitScope() : wait(0), channel(0), sending(0)
     {
     }
     /* Release the resources owned by this ChannelWaitScope instance. */
     ~ChannelWaitScope()
     {
+        if (channel)
+            fvm_channel_poll_wait_end(channel, sending);
         fvm_debug_channel_wait_end(wait);
     }
     /* Compute and return record. */
     bool record(FVM_Context *c, FVM_Channel *ch, int sending)
     {
         if (!wait)
+        {
             wait = fvm_debug_channel_wait_begin(c, ch, sending);
+            if (wait)
+            {
+                channel = ch;
+                this->sending = sending;
+                fvm_channel_poll_wait_begin(channel, sending);
+            }
+        }
         return wait != 0;
     }
 };
@@ -326,6 +339,23 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
         fvm_value_number(out, (double)pending);
         return r;
     }
+    if (op == FVM_CHANNEL_OP_WAIT_SENDERS || op == FVM_CHANNEL_OP_WAIT_RECEIVERS ||
+        op == FVM_CHANNEL_OP_WAIT_DIRECTIONS)
+    {
+        FVM_ChannelWaitState state;
+        if (n)
+            return FVM_INVALID_ARGUMENT;
+        r = fvm_channel_wait_state(ch, &state);
+        if (r != FVM_OK)
+            return r;
+        if (op == FVM_CHANNEL_OP_WAIT_SENDERS)
+            fvm_value_number(out, (double)state.waiting_senders);
+        else if (op == FVM_CHANNEL_OP_WAIT_RECEIVERS)
+            fvm_value_number(out, (double)state.waiting_receivers);
+        else
+            fvm_value_number(out, (double)state.directions);
+        return FVM_OK;
+    }
     if (n != 1 || !integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
@@ -353,6 +383,12 @@ CHANNEL_WRAPPER(ch_ready, 5)
 CHANNEL_WRAPPER(ch_pending, 6)
 /* Dispatch this channel method through the shared channel bridge. */
 CHANNEL_WRAPPER(ch_capacity, 7)
+/* Observe send waiters without waiting for a peer or allocating an object. */
+CHANNEL_WRAPPER(ch_wait_senders, FVM_CHANNEL_OP_WAIT_SENDERS)
+/* Observe receive waiters, including cancellable ActionScript polling scopes. */
+CHANNEL_WRAPPER(ch_wait_receivers, FVM_CHANNEL_OP_WAIT_RECEIVERS)
+/* Return SEND/RECEIVE bits; both may be present at the same time. */
+CHANNEL_WRAPPER(ch_wait_directions, FVM_CHANNEL_OP_WAIT_DIRECTIONS)
 /* Create channel. */
 static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                                  FVM_Value *out, void *)
@@ -856,6 +892,9 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
         method(o, "ready", ch_ready, 5);
         method(o, "pending", ch_pending, 6);
         method(o, "capacity", ch_capacity, 7);
+        method(o, "waitingSenders", ch_wait_senders, FVM_CHANNEL_OP_WAIT_SENDERS);
+        method(o, "waitingReceivers", ch_wait_receivers, FVM_CHANNEL_OP_WAIT_RECEIVERS);
+        method(o, "waitDirections", ch_wait_directions, FVM_CHANNEL_OP_WAIT_DIRECTIONS);
     }
     catch (...)
     {
