@@ -25,6 +25,11 @@ def main():
             assert output.read_bytes() == b"old artifact"
             legacy = subprocess.run(command, capture_output=True, timeout=10)
             assert legacy.returncode == 1 and legacy.stderr.startswith(b"source line 1:"), legacy
+        # Recovery/later lowering failures cannot replace the first identifier.
+        source.write_text("trace(missing);\ntrace(other);", encoding="utf-8")
+        result = subprocess.run(command + ["--diagnostics-json"], capture_output=True, timeout=10)
+        item = json.loads(result.stderr)
+        assert result.returncode == 1 and (item["byte_offset"], item["byte_length"], item["line"]) == (6, 7, 1), item
         # A syntax failure at EOF is a point; canonical byte columns include tabs.
         source.write_bytes(b"\ttrace(1 +")
         result = subprocess.run(command + ["--diagnostics-json"], capture_output=True, timeout=10)

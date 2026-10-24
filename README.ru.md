@@ -131,3 +131,5 @@ Reply ABI изменён в 0.3.0: пересоберите ядро и клие
 [FIR 0.5.4 source diagnostics](fir/v1/doc/SOURCE_DIAGNOSTICS.md) ·
 [IDE 0.4.0 Undo/Redo](ide/dis/HISTORY.md) ·
 [Limbo history tutorial](ide/dis/examples/history/README.md).
+
+[Compiler/IDE 0.1526 acceptance and remaining VM regressions](ide/dis/SERIES_0_4_0.md).

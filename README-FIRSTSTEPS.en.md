@@ -83,3 +83,7 @@ commented C99 diagnostic client. `ide/build.py --structured-diagnostics` opts in
 to validated byte spans and Unicode positions from FIR 0.5.4. Match snapshot
 SHA-256 and live revision before applying late diagnostics.
 [History](ide/dis/HISTORY.md) · [Diagnostic schema](fir/v1/doc/SOURCE_DIAGNOSTICS.md).
+
+For manual compiler/example invocations in a host without /tmp, export
+`TMPDIR="$PWD/build/workspace/tmp"` and create that directory first. The root
+script sets build-owned temporary paths for its own children only.

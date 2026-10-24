@@ -136,6 +136,9 @@ SWF-линкер, читатель отладочных символов sblmap 
 После сборки fir,linker,vm:
 
 ```bash
+# Явный writable temp для ручных запусков, включая среды без /tmp.
+export TMPDIR="$PWD/build/workspace/tmp"
+mkdir -p "$TMPDIR"
 build/workspace/fir/fir1_source as2 --input fir/v1/examples/as2/variables.as build/workspace/variables.fir --module variables
 build/workspace/fir/fir1 check build/workspace/variables.fir
 build/workspace/fir/fir1_opt build/workspace/variables.fir build/workspace/variables.opt.fir

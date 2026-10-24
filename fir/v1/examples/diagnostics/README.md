@@ -12,7 +12,7 @@ From the repository root, after preparing the external Coco/R SDK:
 
 ```sh
 ./build-workspace.sh --projects fir --tests
-build/workspace/fir/fir1_diagnostic_example
+TMPDIR="$PWD/build/workspace/tmp" build/workspace/fir/fir1_diagnostic_example
 ```
 
 Expected output:

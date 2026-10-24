@@ -12,7 +12,7 @@
 
 ```sh
 ./build-workspace.sh --projects fir --tests
-build/workspace/fir/fir1_diagnostic_example
+TMPDIR="$PWD/build/workspace/tmp" build/workspace/fir/fir1_diagnostic_example
 ```
 
 Ожидается сообщение `read before initialized declaration`, диапазон [14,21),

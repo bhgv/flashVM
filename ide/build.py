@@ -68,6 +68,7 @@ def _source_diagnostic(message, data, source):
             return item
         if not isinstance(record.get("message"), str):
             return item
+        record["message"].encode("utf-8")
         for key in ("code", "byte_offset", "byte_length", "line", "column"):
             if type(record.get(key)) is not int or not 0 <= record[key] <= 2147483647:
                 return item
@@ -98,7 +99,7 @@ def _source_diagnostic(message, data, source):
             line=line, column=len(prefix.rsplit("\n", 1)[-1]) + 1,
             coordinate_units="unicode_characters",
         )
-    except (ValueError, TypeError, UnicodeError):
+    except (ValueError, TypeError, UnicodeError, RecursionError):
         pass
     return item
 

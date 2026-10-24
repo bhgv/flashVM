@@ -73,3 +73,5 @@ loaded in the VM; physical rendering/audio-device playback was not tested.
 Coco/R revision: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.
 
 [0.5.3 lexical-source and IDE continuation acceptance](../../../ide/dis/SERIES_0_3_1.md).
+
+[FIR 0.5.4 / IDE 0.4.0 acceptance, runtime checks and remaining VM failures](../../../ide/dis/SERIES_0_4_0.md).

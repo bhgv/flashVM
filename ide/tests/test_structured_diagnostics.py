@@ -57,12 +57,12 @@ class TestStructuredDiagnostics(BuildCase):
                     self.record(byte_offset=999), self.record(byte_length=999),
                     self.record(byte_offset=3), self.record(byte_offset=4, byte_length=1),
                     self.record(line=2), self.record(column=13), self.record(has_location=1),
-                    self.record(message=None), self.record(has_location=False),
+                    self.record(message=None), self.record(message="\ud800"), self.record(has_location=False),
                     self.record(byte_offset=2147483648)]
         messages = [json.dumps(v) for v in variants] + ["source:3:7: opaque", "{}", "[]", "null",
                     '{"schema":1,"schema":1}',
                     json.dumps(self.record()).replace('"schema": 1', '"schema": 2, "schema": 1'),
-                    json.dumps(self.record()) + "noise"]
+                    json.dumps(self.record()) + "noise", "[" * 2000 + "0" + "]" * 2000]
         for message in messages:
             with self.subTest(message=message):
                 item = driver._source_diagnostic(message, data, self.source)

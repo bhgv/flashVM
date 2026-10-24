@@ -106,3 +106,5 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 
 [Undo/Redo 0.4.0](HISTORY.md) · [Русский](HISTORY.ru.md) ·
 [History example / Пример истории](examples/history/README.md).
+
+[0.4.0 acceptance / Приёмка: новые проверки и открытые сбои VM](SERIES_0_4_0.md).
