@@ -8,3 +8,4 @@
 - 0.1.6: Cover symbol source-map empty.
 - 0.1.7: Cover symbol source-map opaque.
 - 0.1.8: Cover symbol source-map versions.
+- 0.1.9: Cover symbol source-map cuts.

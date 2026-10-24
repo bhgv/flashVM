@@ -1,6 +1,6 @@
 # Limbo symbol source maps
 
-Version **0.1.8**. [Русский](README.ru.md).
+Version **0.1.9**. [Русский](README.ru.md).
 
 Independent C99/CocoR reader of the **source-map prefix of limbo .sbl 2.1**. This is executable debugger infrastructure, not a complete Limbo compiler, Dis embedding or debugger UI. Types, functions, locals and globals after the PC prefix are deliberately opaque and not semantically validated. Older .sbl versions are unsupported in this first component.
 
