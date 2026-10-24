@@ -29,6 +29,11 @@ Widths whose half-width itself underflows to zero are outside this validation ra
 
 343 native, 97 no-graphics and 97 ASan/UBSan tests pass. LeakSanitizer is disabled. Documentation, source links and the C89 tutorial checks pass. Fourteen new fixtures cover the three corrections. Physical devices and complete Flash acceptance are not claimed.
 
+
+## Public round-distance extension
+
+The subsequent [public round query correction](PUBLIC_ROUND_SCALE.md) avoids tiny squared distances in the public legacy round-distance path. The earlier selected cap/join policy remains unchanged. Half-width underflow and general exact predicates remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
