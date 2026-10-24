@@ -1,6 +1,6 @@
 # IDE build backend
 
-Version **0.1.21**. [Русский](README.ru.md).
+Version **0.1.22**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -47,3 +47,5 @@ Unit fixtures use deterministic process doubles and test orchestration, not comp
 [Numeric example](examples/numeric/README.md) · [Validation / Проверки](VALIDATION.md).
 
 [Human-readable code rules](AGENTS.md): comments before functions/types, explicit channel ownership, GC and JIT/debug invariants.
+
+[AS1/AS2 ↔ Dis module interface](MODULE_INTEROP.md): planned bidirectional module support; later AS IDE port is allowed.

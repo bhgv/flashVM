@@ -14,4 +14,8 @@
 
 ## Обязательная приёмка JIT/debug targets
 
-После запуска interpreter/bridge отдельно принять x86/i386, x86-64, arm64 и riscv64 с доказательством JIT-entry и эквивалентности отладки. Успех одного интерпретатора этот пункт не закрывает. Runtime изолируется в flashVM/external/dis/. См. [обязательные контракты отладки](ARCHITECTURE.ru.md).
+После запуска interpreter/bridge отдельно принять x86-64, arm64 и riscv64 с доказательством JIT-entry и эквивалентности отладки. Успех одного интерпретатора этот пункт не закрывает. Runtime изолируется в flashVM/external/dis/. См. [обязательные контракты отладки](ARCHITECTURE.ru.md).
+
+## Приёмка AS module bridge
+
+Принять [оба направления модулей](MODULE_INTEROP.ru.md), проверку интерфейсов, точные значения, GC/cancellation/unload, debugger boundary frames и interpreter/JIT combinations до объявления mixed-language module support.

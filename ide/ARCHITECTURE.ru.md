@@ -51,7 +51,7 @@ Dis и FlashVM сохраняют отдельные collectors/heaps. Межд�
 
 Планируемый корень импорта — `flashVM/external/dis/`: исходники Dis, необходимые runtime-зависимости, лицензии, описание сборки, JIT-backends и runtime-тесты изолируются там. На границе FlashVM остаётся узкая host/channel integration. Реализации heap, scheduler и инструкций Dis не смешиваются с ядром AVM1. Это планируемое размещение; данный патч ещё не импортирует runtime.
 
-JIT — обязательный результат продукта, а не необязательная замена interpreter-only приёмке. Запись x66 пока трактуется как x86; ранее запрошенный x86-64 сохраняется явно. Требуемые targets: x86/i386, x86-64, AArch64/arm64 и RISC-V64. Подходящие backends experiment нужно изучить/переиспользовать, отдельно учитывая операции, interpreter fallback, instruction-cache synchronization, calling conventions, executable memory и настоящее target execution. Успешный fallback не доказывает выполнение native JIT code. Исключённые MIPS/SPARC/PowerPC backends не изменяются.
+JIT — обязательный результат продукта, а не необязательная замена interpreter-only приёмке. Пользователь уточнил: x66 означало x86-64. Новые обязательные targets: x86-64, AArch64/arm64 и RISC-V64. Прежний x86/i386 JIT сохраняется как база переиспользования/сравнения; новый i386-порт не запрошен. Подходящие backends experiment нужно изучить/переиспользовать, отдельно учитывая операции, interpreter fallback, instruction-cache synchronization, calling conventions, executable memory и настоящее target execution. Успешный fallback не доказывает выполнение native JIT code. Исключённые MIPS/SPARC/PowerPC backends не изменяются.
 
 Отладчик обязателен и для интерпретатора, и для JIT. Канальные сервисы поддерживают attach/detach, stop/resume, breakpoints, step into/over/out, stack frames, locals/arguments, module/source positions, exceptions и выбранное состояние каналов/процессов. Нужно определить, какие процессы Limbo останавливаются, без заморозки display/input pump FlashVM. Debug information компилятора и соответствие source → logical Dis PC → native code сохраняются при JIT transitions, fallback и module reload. Native addresses не являются публичными transport handles. Breakpoints и pending debug requests требуют поколений модулей и явного retirement при reload.
 
@@ -62,3 +62,7 @@ JIT — обязательный результат продукта, а не н
 IDE Limbo и необходимые модули Dis поставляются с host/resources FlashVM как одно приложение. Поведение загрузки SWF <= 8 сохраняется. Загрузка Dis-модулей — явная опциональная runtime capability; байткод не должен маскироваться под AVM1 и не требует нового SWF tag до проектирования формата. Сборки без этой возможности честно возвращают её отсутствие.
 
 [Шаги приёмки](DIS_ACCEPTANCE.ru.md) задают порядок реализации. Платформенные graphics/input ports переиспользуются из FlashVM; адаптеры Dis, упаковка и реальные платформы всё равно проверяются.
+
+## Смешанная IDE и позднейший AS-порт
+
+Первоначальная IDE преимущественно на Limbo; компоненты AS1/AS2 допускаются. Последующий AS-порт опирается на общие [требования двустороннего интерфейса модулей Dis](MODULE_INTEROP.ru.md). UI обоих языков сохраняет канальную границу. Расширение запланировано, но не реализовано.

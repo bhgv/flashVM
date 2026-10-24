@@ -14,4 +14,8 @@ Each step needs executable tests and a concise EN/RU contract before it is marke
 
 ## Mandatory JIT/debug target gate
 
-After interpreter/bridge bring-up, accept x86/i386, x86-64, arm64 and riscv64 separately with actual JIT-entry evidence and debugger parity. Interpreter-only success does not close this gate. Isolate the runtime under flashVM/external/dis/. See [required debugger contracts](ARCHITECTURE.md).
+After interpreter/bridge bring-up, accept x86-64, arm64 and riscv64 separately with actual JIT-entry evidence and debugger parity. Interpreter-only success does not close this gate. Isolate the runtime under flashVM/external/dis/. See [required debugger contracts](ARCHITECTURE.md).
+
+## AS module bridge gate
+
+Accept [both module directions](MODULE_INTEROP.md), interface checks, lossless values, GC/cancellation/unload, debugger boundary frames and interpreter/JIT combinations before advertising mixed-language module support.

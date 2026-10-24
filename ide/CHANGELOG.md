@@ -21,3 +21,5 @@
 - 0.1.19: Add real numeric build example and record toolchain acceptance.
 - 0.1.20: Adopt Limbo/Dis-hosted IDE and channel-only FlashVM UI architecture.
 - 0.1.21: Require human-readable commented IDE/runtime bridge code; format host tools and tests without changing Python semantics.
+- 0.1.22: Specify bidirectional AS1/AS2-Dis module interfaces and mixed-language IDE requirements.
+  Clarification: new JIT targets are x86-64, arm64 and riscv64; existing x86 is retained.

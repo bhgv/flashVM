@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.1.21**. [English](README.md).
+Версия **0.1.22**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -47,3 +47,5 @@ Unit fixtures используют детерминированные process do
 [Numeric example](examples/numeric/README.ru.md) · [Validation / Проверки](VALIDATION.md).
 
 [Правила читаемого кода](AGENTS.md): комментарии перед функциями/типами, явное канальное владение, инварианты GC и JIT/debug.
+
+[AS1/AS2 ↔ Dis module interface](MODULE_INTEROP.ru.md): planned bidirectional module support; later AS IDE port is allowed.

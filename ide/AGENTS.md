@@ -1,14 +1,17 @@
 # IDE development rules
 
 - The target IDE application and complex widget logic are written in Limbo and
-  run in embedded Dis inside FlashVM. Python here is host development tooling.
+  run in embedded Dis inside FlashVM. AS1/AS2 components and a later AS port
+  are permitted through the shared module/channel interfaces. Python here is
+  host development tooling.
 - All application UI control uses typed channels, including local operations.
   Add missing channel capabilities instead of adding a direct UI access shortcut.
 - Keep Dis and its required dependencies isolated under flashVM/external/dis/;
   preserve upstream licenses and keep source provenance explicit. Do not import
   Inferno Draw/Tk/Prefab or crypto/Keyring. Do not mix Dis core with AVM1 core.
-- Required runtime outcomes include x86/i386, x86-64, arm64 and riscv64 JITs and
-  debugger parity with the interpreter. Do not advertise an untested backend or
+- Required runtime outcomes include x86-64, arm64 and riscv64 JITs and
+  debugger parity with the interpreter. Keep the existing x86/i386 JIT as a
+  reference/reuse baseline; no new i386 port is requested. Do not advertise an untested backend or
   interpreter fallback as native JIT execution. MIPS/SPARC/PowerPC remain outside
   the current integration scope.
 - Write code for people: use consistent indentation, descriptive names and one
@@ -34,3 +37,7 @@
   dependency on sibling source directories or mandatory deployed Python runtime.
 - Produce local work-branch format-patches only. Do not commit on master or push
   FlashVM. Both author and committer are bhgv <bhgv@bhgv.bhgv>.
+
+- AS1/AS2 and Dis need bidirectional typed module adapters. Preserve separate
+  heaps/owners, check signatures, retain pending-call roots and expose debugger
+  boundary frames. Module invocation must not bypass channel-only UI control.
