@@ -8,3 +8,4 @@
 - 0.1.6: Cover IDE build verify optimised failure.
 - 0.1.7: Cover IDE build object failure.
 - 0.1.8: Cover IDE build link failure.
+- 0.1.9: Cover IDE build run failure.
