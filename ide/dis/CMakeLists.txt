@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.2.4 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.2.5 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -68,3 +68,7 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/build_guard.py" "${CMAKE_COMMAND}"
     "${CMAKE_CURRENT_SOURCE_DIR}/compile_module.cmake")
 endif()
+
+# Install only production module/interface/debug data, never bootstrap tests or reduced-limit fixtures.
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/idecore.dis" "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl"
+  "${CMAKE_CURRENT_SOURCE_DIR}/idecore.m" DESTINATION share/flashvm/ide/dis)
