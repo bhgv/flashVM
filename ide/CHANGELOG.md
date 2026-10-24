@@ -15,3 +15,4 @@
 - 0.1.13: Cover IDE build invalid requests.
 - 0.1.14: Cover IDE build missing artifacts.
 - 0.1.15: Cover IDE build invalid artifacts.
+- 0.1.16: Cover IDE build unicode paths.
