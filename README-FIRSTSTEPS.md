@@ -5,7 +5,7 @@
 
 Запускайте команды из корня репозитория. Общая сборка необязательна:
 каждый проект сохраняет собственный CMakeLists.txt и независимые зависимости.
-Скрипт рассчитан на нативную сборку Bash + CMake 3.16+, C99/C++ компилятором,
+Скрипт рассчитан на нативную сборку Bash + CMake 3.10+, C99/C++ компилятором,
 Make или Ninja и Python 3 для тестов. На Termux подготовьте инструменты:
 
 ```bash
@@ -205,3 +205,17 @@ python3 build-menu.py --projects ide --demo replaceall
 [Interface migration / Обновление интерфейса](ide/dis/REPLACE_ALL.ru.md): rebuild the module and every client with the same idecore.m.
 
 [Real FIR diagnostics in Limbo IDE / Диагностика FIR в Limbo IDE](ide/dis/examples/compiler-location/README.ru.md): `./build-workspace.sh --projects fir,ide --tests` with a matching Limbo/module/emu SDK.
+
+## CMake 3.10.2 / Make / Inferno mk
+
+```sh
+# Полная сборка из исходников с CMake 3.10.2:
+./build-workspace.sh
+# Генератор yacc, временный Limbo и модуль IDE одним запуском:
+./build-workspace.sh --projects iyacc,limbo-bootstrap,ide
+# Прямая сборка компиляторов и линкера без CMake:
+./build-workspace.sh --backend mk --projects compilers,linker,iyacc
+./build-workspace.sh --backend make --projects compilers,linker
+```
+
+[Подробная инструкция и границы поддержки](BUILD-NATIVE.ru.md).

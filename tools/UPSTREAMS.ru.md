@@ -60,3 +60,5 @@ bootstrap-исходников, а не нашим новым компилято
 Наши парсеры остаются Coco/R. Приоритет — собственный Limbo: семантика, debug info,
 Dis/SWF backend и внешние C/AS/другие заготовки по `.m`.
 [Контракт собственного компилятора](../compiler/limbo/OWN_COMPILER.ru.md).
+
+[Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment 3e3536578b969cf1a460210d8ec667713869ccfc, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.

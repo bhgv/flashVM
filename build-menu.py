@@ -31,6 +31,8 @@ COMPONENTS = (
     ("cocor", "Coco/R C: локальная сборка из tools/coco-r-C"),
     ("cocor-limbo", "Coco/R Limbo: C generator и cocor.dis"),
     ("limbo-bootstrap", "Временный native bootstrap из вашего experiment"),
+    ("mk", "Inferno mk: нативная сборка из выбранных исходников"),
+    ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
 )
 
 
@@ -40,7 +42,7 @@ def selection(value):
     names = [name for name, _ in COMPONENTS]
     tokens = value.replace(",", " ").split()
     if tokens in (["all"], ["все"], ["*"]):
-        return names[:6] + ["disvm"]
+        return names[:6] + ["disvm", "mk", "iyacc"]
     if not tokens:
         raise ValueError("Выберите хотя бы один компонент")
     result = []
@@ -107,6 +109,7 @@ def build_command(args, projects, bash):
         command.extend(["--build-root", args.build_root])
     if args.tests:
         command.append("--tests")
+    command.extend(["--backend", args.backend])
     if args.demo:
         command.extend(["--demo", args.demo])
     return command
@@ -119,6 +122,7 @@ def main(argv=None):
     parser.add_argument("--projects", help="Names/numbers separated by commas; all for every component")
     parser.add_argument("--jobs", type=int, default=2, help="Parallel jobs (default 2)")
     parser.add_argument("--config", default="Release")
+    parser.add_argument("--backend", choices=("cmake", "mk", "make"), default="cmake")
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
     parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history", "replaceall"),

@@ -2,10 +2,11 @@
 # Optional workspace orchestration. Builds use selected, repository-owned SDK sources.
 set -euo pipefail
 ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-projects=vm,compilers,fir,linker,symbols,disvm,ide
+projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,ide
 build_root="$ROOT/build/workspace"
 jobs=2
 config=Release
+backend=cmake
 tests=OFF
 demo=0
 demo_example=navigation
@@ -18,7 +19,8 @@ usage() {
 Usage: ./build-workspace.sh [options]
   --projects LIST    vm,compilers,fir,linker,symbols,disvm,ide (default all seven)
                     Individual frontends: as1,as2,as3,limbo
-                    Explicit tools: cocor,cocor-limbo,limbo-bootstrap
+                    Explicit tools: cocor,cocor-limbo,limbo-bootstrap,mk,iyacc
+  --backend NAME    cmake (3.10+), mk or make; mk/make support compilers/linker/tools
   --build-root DIR   Default build/workspace; repeated builds are incremental
   --jobs N           Parallel jobs (default 2)
   --config NAME      CMake configuration (default Release)
@@ -54,13 +56,14 @@ while (($#)); do
                 demo_example=$1
                 shift
             fi ;;
-        --projects|--build-root|--jobs|--config)
+        --projects|--build-root|--jobs|--config|--backend)
             (($# >= 2)) || fail "Missing value for $1"
             case "$1" in
                 --projects) projects=$2 ;;
                 --build-root) build_root=$2 ;;
                 --jobs) jobs=$2 ;;
                 --config) config=$2 ;;
+                --backend) backend=$2 ;;
             esac
             shift 2 ;;
         *) fail "Unknown argument: $1" ;;
@@ -72,7 +75,7 @@ done
 IFS=, read -r -a selected <<< "$projects"
 for project in "${selected[@]}"; do
     case "$project" in
-        vm|compilers|fir|linker|symbols|disvm|ide|as1|as2|as3|limbo|cocor|cocor-limbo|limbo-bootstrap) ;;
+        vm|compilers|fir|linker|symbols|disvm|ide|as1|as2|as3|limbo|cocor|cocor-limbo|limbo-bootstrap|mk|iyacc) ;;
         *) fail "Unknown project: $project" ;;
     esac
 done
@@ -93,11 +96,33 @@ absolute() {
         *) printf '%s/%s\n' "$PWD" "$1" ;;
     esac
 }
-command -v "$cmake" >/dev/null || fail 'CMake not found'
-if [[ "$tests" == ON || "$demo" == 1 ]]; then
-    command -v "$ctest" >/dev/null || fail 'CTest not found'
-fi
 build_root=$(absolute "$build_root")
+case "$backend" in cmake|mk|make) ;; *) fail "Unknown backend: $backend" ;; esac
+if [[ "$backend" != cmake ]]; then
+    [[ "$tests" == OFF && "$demo" == 0 ]] || fail 'Use the CMake 3.10 backend for --tests/--demo; native products can be tested directly'
+    for project in "${selected[@]}"; do
+        case "$project" in mk|iyacc|cocor|compilers|as1|as2|as3|limbo|linker) ;;
+            *) fail "Backend $backend does not yet build $project; use CMake 3.10 for this component" ;;
+        esac
+    done
+    export BUILD_ROOT="$build_root"
+    cd "$ROOT"
+    if [[ "$backend" == mk ]]; then
+        "$ROOT/tools/mk/bootstrap.sh" "$build_root/mk"
+        exec "$build_root/mk/mk" -f "$ROOT/mkfile" "${selected[@]}"
+    fi
+    exec "${MAKE:-make}" -f "$ROOT/Makefile" "${selected[@]}"
+fi
+need_cmake=0
+for project in "${selected[@]}"; do
+    case "$project" in mk|iyacc) ;; *) need_cmake=1 ;; esac
+done
+if [[ "$need_cmake" == 1 ]]; then
+    command -v "$cmake" >/dev/null || fail 'CMake 3.10+ not found; --backend mk/make can build compilers, linker and native tools'
+    if [[ "$tests" == ON || "$demo" == 1 ]]; then
+        command -v "$ctest" >/dev/null || fail 'CTest not found'
+    fi
+fi
 need_cocor=0
 need_limbo=0
 if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo; then
@@ -112,7 +137,7 @@ if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || h
         COCOR_EXECUTABLE="$build_root/cocor/cocor"
     fi
 fi
-if has ide || has cocor-limbo; then
+if has ide || has cocor-limbo || has limbo-bootstrap; then
     if [[ -n "${LIMBO_EXECUTABLE:-}" ]]; then
         [[ -f "$LIMBO_EXECUTABLE" && -x "$LIMBO_EXECUTABLE" ]] || fail 'LIMBO_EXECUTABLE must be a native executable'
         LIMBO_EXECUTABLE=$(absolute "$LIMBO_EXECUTABLE")
@@ -132,23 +157,54 @@ fi
 mkdir -p "$build_root/tmp"
 export TMPDIR="$build_root/tmp" TEMP="$build_root/tmp" TMP="$build_root/tmp"
 
+# Run from the build directory (CTest 3.10), and fail if no tests match.
+run_tests() {
+    local directory=$1 listing
+    shift
+    listing=$(cd "$directory" && "$ctest" -N -C "$config" "$@")
+    if [[ ! "$listing" =~ Total[[:space:]]Tests:[[:space:]]([0-9]+) ]] || [[ "${BASH_REMATCH[1]}" == 0 ]]; then
+        fail "No tests found in $directory"
+    fi
+    (cd "$directory" && "$ctest" -C "$config" --output-on-failure "$@")
+}
+
 # One configure/build/test path for tools and products. Selected projects keep
 # standalone entry points; dependency tools are built first and never downloaded.
 build_project() {
     local project=$1 source=$2
     shift 2
-    "$cmake" -S "$ROOT/$source" -B "$build_root/$project" \
-        "-DCMAKE_BUILD_TYPE=$config" "-DBUILD_TESTING=$tests" "$@"
-    "$cmake" --build "$build_root/$project" --config "$config" --parallel "$jobs"
+    mkdir -p "$build_root/$project"
+    # CMake 3.10 uses a positional source path from the build directory.
+    (cd "$build_root/$project" && "$cmake" "$ROOT/$source" \
+        "-DCMAKE_BUILD_TYPE=$config" "-DBUILD_TESTING=$tests" "$@")
+    "$cmake" --build "$build_root/$project" --config "$config" -- "-j$jobs"
     if [[ "$tests" == ON ]]; then
-        "$ctest" --test-dir "$build_root/$project" -C "$config" --output-on-failure --no-tests=error
+        run_tests "$build_root/$project"
     fi
 }
+# Native host tools bootstrap without requiring CMake, Make or an installed mk.
+if has iyacc || has limbo-bootstrap || [[ "$need_limbo" == 1 ]]; then
+    BUILD_ROOT="$build_root" "$ROOT/tools/build-native.sh" iyacc
+    IYACC_EXECUTABLE="$build_root/iyacc/iyacc"
+    IYACC_ROOT="$build_root/iyacc"
+elif has mk; then
+    BUILD_ROOT="$build_root" "$ROOT/tools/build-native.sh" mk
+fi
+if [[ "$tests" == ON ]]; then
+    if has mk || has iyacc || [[ "$need_limbo" == 1 ]]; then
+        "${PYTHON:-python3}" "$ROOT/tools/mk/tests/smoke.py" "$build_root/mk/mk"
+    fi
+    if has iyacc || [[ "$need_limbo" == 1 ]]; then
+        "${PYTHON:-python3}" "$ROOT/tools/iyacc/tests/smoke.py" "$build_root/iyacc/iyacc" \
+            "$build_root/iyacc" "$ROOT/tools/limbo-bootstrap/upstream/limbo/limbo.y" \
+            "$ROOT/tools/limbo-bootstrap/upstream/limbo/y.tab.h"
+    fi
+fi
 if [[ "$need_cocor" == 1 ]] || has cocor; then
     build_project cocor tools/coco-r-C
 fi
 if [[ "$need_limbo" == 1 ]] || has limbo-bootstrap; then
-    build_project limbo-bootstrap tools/limbo-bootstrap
+    build_project limbo-bootstrap tools/limbo-bootstrap "-DIYACC_EXECUTABLE=${IYACC_EXECUTABLE:-}" "-DIYACC_ROOT=${IYACC_ROOT:-}"
 fi
 if has cocor-limbo; then
     build_project cocor-limbo tools/coco-r-limbo \
@@ -192,6 +248,6 @@ if [[ "$demo" == 1 ]]; then
     demo_test=ide_dis_navigation_mode_
     [[ "$demo_example" != history ]] || demo_test=ide_dis_history_example_mode_
     [[ "$demo_example" != replaceall ]] || demo_test=ide_dis_replaceall_example_mode_
-    "$ctest" --test-dir "$build_root/ide" -C "$config" -R "^${demo_test}[01]$" -V --no-tests=error
+    run_tests "$build_root/ide" -R "^${demo_test}[01]$" -V
 fi
 printf 'Build complete: %s\n' "$build_root"

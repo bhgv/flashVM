@@ -50,3 +50,5 @@ Python; building the checked-in C99 tables does not. See
 [lexical profile](../compiler/LEXICAL_PROFILE.md).
 
 [Owned Coco/R/Limbo sources and update policy / Источники](UPSTREAMS.md) · [Русский](UPSTREAMS.ru.md).
+
+[Inferno mk](mk/README.md) · [Inferno iyacc](iyacc/README.md): selected experiment 3e3536578b969cf1a460210d8ec667713869ccfc, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.

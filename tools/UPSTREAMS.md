@@ -72,3 +72,5 @@ requires no yacc installation to build. Our AS/Limbo/FIR parsers remain Coco/R.
 Priorities for our compiler are source/debug information, semantic lowering,
 Dis/SWF emission and `.m`-driven C/AS/other-language external module support.
 See [the own compiler contract](../compiler/limbo/OWN_COMPILER.md).
+
+[Inferno mk](mk/README.md) · [Inferno iyacc](iyacc/README.md): selected experiment 3e3536578b969cf1a460210d8ec667713869ccfc, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.

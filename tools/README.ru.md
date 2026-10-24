@@ -43,3 +43,5 @@ pragma, отступы, повторяемость и повреждённые �
 хостовые инструменты. Проверяется запрет неявного host C++ fallback.
 
 [Owned Coco/R/Limbo sources and update policy / Источники](UPSTREAMS.md) · [Русский](UPSTREAMS.ru.md).
+
+[Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment 3e3536578b969cf1a460210d8ec667713869ccfc, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.

@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1529**. [Русская версия](README.ru.md).
+Development version: **0.1531**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -138,3 +138,5 @@ acceptance remain open.
 [.m: external AS modules for Dis and AS callers of Dis](compiler/limbo/examples/external-modules/README.md).
 
 [Compiler signatures / Сигнатуры компилятора](compiler/limbo/frontend/SIGNATURES.md) · [IDE ReplaceAll](ide/dis/REPLACE_ALL.md)
+
+[CMake 3.10 / Make / Inferno mk](BUILD-NATIVE.md)

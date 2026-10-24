@@ -3,7 +3,7 @@
 [Русский](README-FIRSTSTEPS.md) · [Build reference](BUILDING.md) ·
 [Source provenance](tools/UPSTREAMS.md)
 
-Use Bash, CMake 3.16+, native C/C++ and Make/Ninja. Python 3 is used by the menu
+Use Bash, CMake 3.10+, native C/C++ and Make/Ninja. Python 3 is used by the menu
 and tests; Node is an optional test runtime for generated common-AS code only.
 Termux prerequisites: `pkg install git clang make cmake python`.
 Physical Android execution is not accepted by this series.
@@ -90,3 +90,17 @@ python3 build-menu.py --projects ide --demo replaceall
 [Interface migration / Обновление интерфейса](ide/dis/REPLACE_ALL.md): rebuild the module and every client with the same idecore.m.
 
 [Real FIR diagnostics in Limbo IDE / Диагностика FIR в Limbo IDE](ide/dis/examples/compiler-location/README.md): `./build-workspace.sh --projects fir,ide --tests` with a matching Limbo/module/emu SDK.
+
+## CMake 3.10.2 / Make / Inferno mk
+
+```sh
+# Полная сборка из исходников с CMake 3.10.2:
+./build-workspace.sh
+# Генератор yacc, временный Limbo и модуль IDE одним запуском:
+./build-workspace.sh --projects iyacc,limbo-bootstrap,ide
+# Прямая сборка компиляторов и линкера без CMake:
+./build-workspace.sh --backend mk --projects compilers,linker,iyacc
+./build-workspace.sh --backend make --projects compilers,linker
+```
+
+[Detailed build paths and limitations](BUILD-NATIVE.md).
