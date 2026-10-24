@@ -42,6 +42,11 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/find_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/find_test.b"
     DEPENDS tests/find_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_find_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/find_test.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/navigation.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/navigation.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/navigation/main.b"
+    DEPENDS examples/navigation/main.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_navigation_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/navigation.dis")
   set(revision_root "${CMAKE_CURRENT_BINARY_DIR}/revision-root")
   file(MAKE_DIRECTORY "${revision_root}")
   configure_file(idecore.b "${revision_root}/idecore.b" COPYONLY)
@@ -59,6 +64,10 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
   add_custom_target(ide_dis_revision_module ALL DEPENDS "${revision_root}/idecore.dis"
     "${revision_root}/revision_test.dis")
   foreach(mode 0 1)
+    add_test(NAME ide_dis_navigation_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module navigation.dis)
+    set_tests_properties(ide_dis_navigation_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
     add_test(NAME ide_dis_find_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
       --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module find_test.dis)

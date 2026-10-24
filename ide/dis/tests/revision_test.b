@@ -67,6 +67,19 @@ init()
     result = exchange(commands, core->Close, 4, "");
     require(result.status == core->RevisionLimit && result.opened && result.text == "c",
             "close cannot wrap or discard text");
+    # Read-only navigation/search remain useful even when revision cannot advance.
+    query := chan of core->Reply;
+    commands <-= core->Request(0, core->Locate, 4, 1, 0, "", query);
+    location := <-query;
+    require(location.status == core->Ok && location.offset == 1 && location.column == 1 &&
+            location.line == 1 && location.revision == 4, "locate at maximum");
+    commands <-= core->Request(0, core->Offset, 4, 1, 1, "", query);
+    location = <-query;
+    require(location.status == core->Ok && location.offset == 1, "offset at maximum");
+    commands <-= core->Request(0, core->Find, 4, 0, 1, "c", query);
+    location = <-query;
+    require(location.status == core->Ok && location.offset == 0 && location.saved == 4,
+            "find at maximum");
     result = exchange(commands, core->Shutdown, 4, "");
     require(result.status == core->Ok, "shutdown allowed at maximum");
     commands = core->start();

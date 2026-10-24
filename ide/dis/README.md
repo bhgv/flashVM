@@ -99,3 +99,5 @@ channel. Rebuild all clients: Reply now includes offset/line/column.
 [Coordinate contract](PROTOCOL.md#revision-bound-source-navigation-030).
 The reference coordinate regression round-trips all boundaries of empty, Unicode,
 LF and CRLF documents and checks stale/closed/range errors in both modes.
+
+[Runnable navigation/search example / Пример навигации и поиска](examples/navigation/README.md).

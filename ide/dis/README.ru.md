@@ -95,3 +95,5 @@ IDE должна поставляться в интерпретируемом/JI
 ревизии. Пересоберите всех клиентов: Reply дополнен offset/line/column.
 [Контракт координат](PROTOCOL.ru.md). Тест в обоих режимах проверяет все границы
 пустых/Unicode/LF/CRLF текстов и ошибки stale/closed/range.
+
+[Runnable navigation/search example / Пример навигации и поиска](examples/navigation/README.md).
