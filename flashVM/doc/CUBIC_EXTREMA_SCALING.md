@@ -41,6 +41,11 @@ The [executable C89 tutorial](../examples/embedding/cubic_extrema/README.md) cre
 | [path_cubic_scale_sampling](../tests/path_cubic_scale_sampling.cpp) | 1025 independent de Casteljau samples |
 | [path_cubic_scale_threads](../tests/path_cubic_scale_threads.cpp) | Four OS workers and 196 stroke checks |
 
+
+## Translated controls
+
+Nearby translated controls now use exact local subtraction before derivative formation and restore the origin once. See [contract and limits](TRANSLATED_CURVE_EXTREMA.md). This extends the tiny-discriminant work without claiming general numerical acceptance.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

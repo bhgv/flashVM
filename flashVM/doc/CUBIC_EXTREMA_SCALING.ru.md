@@ -41,6 +41,11 @@ Cubic остаётся native path-командой: managed MovieClip по-пр
 | [path_cubic_scale_sampling](../tests/path_cubic_scale_sampling.cpp) | 1025 independent de Casteljau samples |
 | [path_cubic_scale_threads](../tests/path_cubic_scale_threads.cpp) | Four OS workers and 196 stroke checks |
 
+
+## Перенесённые controls
+
+Близкие перенесённые controls теперь используют точное локальное вычитание перед вычислением производной и однократное восстановление origin. См. [контракт и ограничения](TRANSLATED_CURVE_EXTREMA.ru.md). Это продолжает исправление малого discriminant без заявления полной численной совместимости.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
