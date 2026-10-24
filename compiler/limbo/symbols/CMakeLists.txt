@@ -1,6 +1,6 @@
 # Independent C99 symbol source-map component; generator is an explicit host tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_sblmap VERSION 0.1.20 LANGUAGES C)
+project(limbo_sblmap VERSION 0.1.21 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -20,7 +20,7 @@ set_source_files_properties("${generated}/sblmapp.c" "${generated}/sblmaps.c" PR
 add_library(sblmap_generated OBJECT src/parser.c src/scanner.c "${generated}/sblmapp.c" "${generated}/sblmaps.c")
 target_include_directories(sblmap_generated PRIVATE include src "${generated}")
 target_compile_definitions(sblmap_generated PRIVATE CUSTOM_BUFF)
-add_library(limbo_sblmap src/map.c)
+add_library(limbo_sblmap src/map.c src/queries.c)
 target_include_directories(limbo_sblmap PUBLIC include PRIVATE src "${generated}")
 target_link_libraries(limbo_sblmap PRIVATE sblmap_generated)
 target_compile_definitions(limbo_sblmap PRIVATE CUSTOM_BUFF)

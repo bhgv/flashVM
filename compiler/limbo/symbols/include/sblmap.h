@@ -55,6 +55,23 @@ extern "C"
      */
     SblResult sblmap_find(const SblMap *map, size_t file, uint32_t line, size_t first_pc,
                           size_t *pc);
+    /* Find the first PC >= first_pc containing an authored position (inclusive endpoints).
+     * Only ordered spans within one file and with nonzero endpoint lines participate.
+     * Line must be nonzero; column zero is a valid producer position.
+     * INVALID/NOT_FOUND preserve *pc. No path basename matching or filesystem access. */
+    SblResult sblmap_position(const SblMap *map, size_t file, uint32_t line,
+                             uint32_t column, size_t first_pc, size_t *pc);
+    /* Resolve an editor line to the earliest authored start line >= line and <= last_line.
+     * Among equal lines choose the smallest PC >= first_pc. Zero lines never participate.
+     * Explicit inclusive last_line bounds forward sliding; no hidden 80-line heuristic.
+     * INVALID/NOT_FOUND preserve *pc. This selects a candidate, not an installed breakpoint. */
+    SblResult sblmap_breakpoint(const SblMap *map, size_t file, uint32_t line,
+                               uint32_t last_line, size_t first_pc, size_t *pc);
+    /* Find the first later PC with a different producer statement identity.
+     * This is a linear map query, NOT runtime stepping, control-flow traversal or StepOver.
+     * The host must observe actual execution/frame/module changes through Dis debug controls.
+     * INVALID/NOT_FOUND preserve *next_pc; an absent starting PC returns NOT_FOUND. */
+    SblResult sblmap_next_statement(const SblMap *map, size_t pc, size_t *next_pc);
 #ifdef __cplusplus
 }
 #endif
