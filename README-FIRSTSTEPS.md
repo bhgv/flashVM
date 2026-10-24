@@ -224,3 +224,16 @@ python3 build-menu.py --projects ide --demo replaceall
 Выбор: `--backend cmake|meson|make|mk|auto`; меню также спрашивает движок.
 Meson, Make и mk поддерживают нативную выборку компиляторов/линкера/инструментов;
 полная сборка и общие тесты выполняются через CMake 3.10.
+
+### Выбор mk в меню
+
+`mk`, `make` и `meson` пока собирают только `compilers`, `as1`, `as2`,
+`as3`, `limbo`, `linker`, `cocor`, `mk`, `iyacc`. Полный набор `all`,
+тесты workspace и пример IDE требуют `cmake` или `auto` (CMake 3.10+).
+Меню проверяет совместимость до запуска: при `all` + `mk` предлагает
+изменить двигатель или заново выбрать компоненты, ничего не исключая автоматически.
+Для нативных двигателей вопросы о тестах и примере IDE не выводятся.
+
+```sh
+python3 build-menu.py --projects compilers,linker,mk,iyacc --backend mk
+```

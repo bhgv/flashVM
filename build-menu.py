@@ -39,6 +39,48 @@ COMPONENTS = (
 )
 
 
+NATIVE_COMPONENTS = frozenset((
+    "mk", "iyacc", "cocor", "as1", "as2", "as3", "limbo", "compilers", "linker",
+))
+NATIVE_BACKENDS = ("meson", "make", "mk")
+
+
+def validate_backend(backend, projects, tests=False, demo=None):
+    """Reject unsupported native requests before creating any build products."""
+    if backend not in NATIVE_BACKENDS:
+        return
+    unsupported = [name for name in projects if name not in NATIVE_COMPONENTS]
+    problems = []
+    if unsupported:
+        problems.append("не поддерживает компоненты: " + ", ".join(unsupported))
+    if tests or demo:
+        problems.append("не поддерживает --tests/--demo")
+    if problems:
+        raise ValueError(backend + ": " + "; ".join(problems) +
+                         ". Для полного выбора используйте cmake или auto. "
+                         "Для нативной сборки выберите compilers,linker,mk,iyacc.")
+
+
+def choose_compatible_backend(projects, backend=None):
+    """Keep the full component selection unless the user explicitly replaces it."""
+    while True:
+        backend = backend or choose_backend()
+        try:
+            validate_backend(backend, projects)
+            return projects, backend
+        except ValueError as error:
+            print(error)
+        value = input("1 — изменить двигатель, 2 — выбрать компоненты заново [1]: ").strip()
+        if value == "2":
+            print("Для {} доступны: {}".format(backend, ", ".join(
+                name for name, _ in COMPONENTS if name in NATIVE_COMPONENTS)))
+            projects = choose_components()
+            if projects is None:
+                return None, backend
+        else:
+            backend = None
+
+
 # Validate the complete selection before spawning a process or writing files.
 def selection(value):
     """Resolve comma/space-separated numbers or names; preserve unique order."""
@@ -190,11 +232,12 @@ def main(argv=None):
         projects = choose_components()
         if projects is None:
             return 0
-        if args.backend is None:
-            args.backend = choose_backend()
-        if not args.tests:
+        projects, args.backend = choose_compatible_backend(projects, args.backend)
+        if projects is None:
+            return 0
+        if args.backend not in NATIVE_BACKENDS and not args.tests:
             args.tests = ask_yes("Запустить тесты выбранных компонентов?")
-        if "ide" in projects and not args.demo:
+        if args.backend not in NATIVE_BACKENDS and "ide" in projects and not args.demo:
             if ask_yes("Запустить консольный пример IDE?"):
                 args.demo = choose_example()
     else:
@@ -204,6 +247,10 @@ def main(argv=None):
             parser.error(str(error))
     if args.backend is None:
         args.backend = "auto"
+    try:
+        validate_backend(args.backend, projects, args.tests, args.demo)
+    except ValueError as error:
+        parser.error(str(error))
     if args.demo and "ide" not in projects:
         parser.error("--demo requires ide in the selection")
     bash = shutil.which("bash")

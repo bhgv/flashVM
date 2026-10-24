@@ -41,6 +41,46 @@ class MenuTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()), patch('builtins.input', return_value=''):
             self.assertEqual(menu.choose_backend(), 'auto')
 
+    def test_incompatible_selection_reprompts(self):
+        """The screenshot's all/mk choice must never reach the builder."""
+        projects = menu.selection('all')
+        with contextlib.redirect_stdout(io.StringIO()), patch(
+                'builtins.input', side_effect=['4', '1', '1']):
+            selected, backend = menu.choose_compatible_backend(projects)
+        self.assertEqual(selected, projects)
+        self.assertEqual(backend, 'cmake')
+
+    def test_native_reselection_is_explicit(self):
+        """Switching components requires an explicit user choice."""
+        with contextlib.redirect_stdout(io.StringIO()), patch(
+                'builtins.input', side_effect=['4', '2', '2,4,15,16']):
+            selected, backend = menu.choose_compatible_backend(menu.selection('all'))
+        self.assertEqual(backend, 'mk')
+        self.assertEqual(selected, ['compilers', 'linker', 'mk', 'iyacc'])
+
+    def test_native_menu_skips_unavailable_options(self):
+        """A valid mk build asks neither for tests nor for an IDE example."""
+        with contextlib.redirect_stdout(io.StringIO()), patch.object(
+                menu.sys.stdin, 'isatty', return_value=True), patch(
+                'builtins.input', side_effect=['2,4', '4']), patch.object(
+                menu.subprocess, 'call', return_value=0) as run:
+            self.assertEqual(menu.main([]), 0)
+        command = run.call_args[0][0]
+        self.assertIn('mk', command)
+        self.assertNotIn('--tests', command)
+        self.assertNotIn('--demo', command)
+
+    def test_invalid_cli_rejected_before_launch(self):
+        """CLI errors identify every unsupported part without spawning Bash."""
+        with contextlib.redirect_stderr(io.StringIO()) as errors, patch.object(
+                menu.subprocess, 'call') as run:
+            with self.assertRaises(SystemExit) as failure:
+                menu.main(['--projects', 'all', '--backend', 'mk', '--tests', '--demo'])
+        self.assertEqual(failure.exception.code, 2)
+        self.assertIn('vm', errors.getvalue())
+        self.assertIn('--tests/--demo', errors.getvalue())
+        run.assert_not_called()
+
     def test_missing_override_is_reported(self):
         """An invalid CMAKE override is not displayed as a detected system CMake."""
         with patch.dict(os.environ, {'CMAKE': '/missing-test-path/cmake'}):

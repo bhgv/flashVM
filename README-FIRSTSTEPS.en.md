@@ -109,3 +109,16 @@ List engines: `python3 build-menu.py --list-backends`.
 Selection: `--backend cmake|meson|make|mk|auto`; the interactive menu also asks.
 Meson/Make/mk support the native compiler/linker/tool subset. Full workspace
 builds and shared tests use CMake 3.10.
+
+### Selecting mk in the menu
+
+`mk`, `make` and `meson` currently build only `compilers`, `as1`, `as2`,
+`as3`, `limbo`, `linker`, `cocor`, `mk`, and `iyacc`. The full `all` selection,
+workspace tests and the IDE example require `cmake` or `auto` (CMake 3.10+).
+The menu validates compatibility before starting. Selecting `all` with `mk`
+asks you to change the engine or explicitly choose components again; it never
+silently drops components. Native engines skip the unavailable test/demo prompts.
+
+```sh
+python3 build-menu.py --projects compilers,linker,mk,iyacc --backend mk
+```
