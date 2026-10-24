@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.16)
-project(disvm VERSION 0.1.0 LANGUAGES C)
+project(disvm VERSION 0.1.1 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()
@@ -53,7 +53,7 @@ include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
-  foreach(driver integer-ops channel-queues channel-transfers dis-loader pointer-maps vm-widths dis-layout)
+  foreach(driver integer-ops channel-queues channel-transfers dis-loader pointer-maps vm-widths dis-layout array-indices descriptor-index heap-bounds reference-slots string-branches channels)
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
