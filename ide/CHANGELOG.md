@@ -37,3 +37,6 @@
 - 0.3.0: Add revision-bound character offset/line/column queries to the Limbo core.
   Reply gains three fields; all clients must be rebuilt. Preserve state and
   round-trip every LF/Unicode/CRLF character boundary through typed channels.
+
+- 0.3.1: Add exact bounded Unicode-character Find through the document channel,
+  with revision checks, explicit NotFound and a linear-time private prefix table.

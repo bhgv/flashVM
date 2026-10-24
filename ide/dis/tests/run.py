@@ -15,7 +15,7 @@ def main():
     parser.add_argument(
         "--module",
         default="idecore_test.dis",
-        choices=("idecore_test.dis", "limits_test.dis", "revision_test.dis", "coordinates_test.dis"),
+        choices=("idecore_test.dis", "limits_test.dis", "revision_test.dis", "coordinates_test.dis", "find_test.dis"),
     )
     args = parser.parse_args()
     root = args.build.resolve()
@@ -36,7 +36,7 @@ def main():
     output = result.stdout.decode("utf-8", errors="replace")
     assert result.returncode == 0, (result.returncode, output, result.stderr)
     assert "FAIL" not in output and re.search(
-        r"^PASS idecore (?:(?:limits|revision|coordinates) )?\d+ checks$", output, re.MULTILINE
+        r"^PASS idecore (?:(?:limits|revision|coordinates|find) )?\d+ checks$", output, re.MULTILINE
     ), (output, result.stderr)
     print(output.strip())
 

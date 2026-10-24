@@ -92,3 +92,21 @@ the same idecore.m; mixing 0.2.x clients with 0.3.x modules is unsupported. Exis
 operation and status numbers retain their values. There is no live ABI upgrade.
 Navigation scans at most MaxCharacters characters with constant extra storage;
 a long query holds this owner until its reply. Never pump it on the render owner.
+
+## Exact range search (0.3.1)
+
+Find requires an open document and exact expected revision, like Locate/Offset.
+first/last select a half-open character range [first,last) within the document;
+text is a nonempty literal pattern. Range errors precede empty-pattern Invalid.
+Find returns the first exact case-sensitive occurrence wholly inside that range,
+with its offset/line/column and complete unchanged state. No match returns the
+new appended NotFound status with coordinate fields -1. Empty patterns are Invalid;
+there is no implicit wrap, regex, case folding or Unicode normalization. A match
+may include LF/CRLF and combining characters. The caller knows the selection's
+length from the request's pattern and must keep its revision before applying it.
+
+Prefix-table matching takes O(range length + pattern length), plus at most one
+document prefix scan for the successful coordinate conversion. It uses O(pattern
+length) private Dis-managed integers, bounded by MaxCharacters. No prefix table
+is allocated when the pattern cannot fit. The request still occupies the sole
+owner until its reply; asynchronous cancellation and render budgets remain open.

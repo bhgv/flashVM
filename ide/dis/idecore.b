@@ -30,7 +30,7 @@ handle(document: ref Document, request: Request): (Reply, int)
 {
     if(request.id < 0)
         return (snapshot(document, request.id, Invalid), 0);
-    if(request.operation < Open || request.operation > Offset)
+    if(request.operation < Open || request.operation > Find)
         return (snapshot(document, request.id, Unknown), 0);
     if(request.operation == Snapshot)
         return (snapshot(document, request.id, Ok), 0);
@@ -53,6 +53,8 @@ handle(document: ref Document, request: Request): (Reply, int)
     }
     if(!document.opened)
         return (snapshot(document, request.id, Closed), 0);
+    if(request.operation == Find)
+        return (find(document, request), 0);
     if(request.operation == Locate || request.operation == Offset)
         return (coordinates(document, request), 0);
     if(request.operation == MarkSaved){
@@ -127,6 +129,45 @@ coordinates(document: ref Document, request: Request): Reply
     result.line = line;
     result.column = column;
     return result;
+}
+
+# Search one revision's explicit half-open character range without wrapping.
+# Prefix fallback gives linear time even for repeated near-matches; the table
+# is bounded by the admitted document length and belongs only to this request.
+find(document: ref Document, request: Request): Reply
+{
+    if(request.first < 0 || request.last < request.first || request.last > len document.text)
+        return snapshot(document, request.id, RangeError);
+    needle := request.text;
+    if(len needle == 0)
+        return snapshot(document, request.id, Invalid);
+    if(len needle > request.last - request.first)
+        return snapshot(document, request.id, NotFound);
+    # [GC:] The owner roots document/needle and this private prefix table while
+    # scanning. No array, mutable state or native pointer crosses a reply channel.
+    prefix := array[len needle] of int;
+    matched := 0;
+    for(index := 1; index < len needle; index++){
+        while(matched > 0 && needle[index] != needle[matched])
+            matched = prefix[matched - 1];
+        if(needle[index] == needle[matched])
+            matched++;
+        prefix[index] = matched;
+    }
+    matched = 0;
+    for(index = request.first; index < request.last; index++){
+        while(matched > 0 && document.text[index] != needle[matched])
+            matched = prefix[matched - 1];
+        if(document.text[index] == needle[matched])
+            matched++;
+        if(matched == len needle){
+            location := request;
+            location.operation = Locate;
+            location.first = index + 1 - matched;
+            return coordinates(document, location);
+        }
+    }
+    return snapshot(document, request.id, NotFound);
 }
 
 # Own request ordering and reply backpressure; shutdown returns only after its acknowledgement.
