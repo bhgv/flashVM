@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1524 / Контрольная точка v0.1524: tiny public round-stroke queries avoid squared-distance underflow. Seventeen new fixtures; 360 no-graphics Release and 182 no-graphics ASan/UBSan executables pass. All nine stages and reference/device acceptance remain open. [EN](PUBLIC_ROUND_SCALE.md) / [RU](PUBLIC_ROUND_SCALE.ru.md).
+
 Checkpoint v0.1504 / Контрольная точка v0.1504: nearby translated Bezier controls retain extrema through exact local subtraction. Seventeen new fixtures; fresh no-graphics Release 149 and no-graphics ASan/UBSan 149 pass. Earlier native AGG/JIT 395 passed before workspace maintenance; interrupted text-JIT sanitizer run is not counted. All nine stages and physical/reference acceptance remain open. [EN](TRANSLATED_CURVE_EXTREMA.md) / [RU](TRANSLATED_CURVE_EXTREMA.ru.md).
 
 Checkpoint v0.1484 / Контрольная точка v0.1484: 378 native direct-launch, 132 no-graphics CTest, 132 ASan/UBSan CTest checks pass. Tiny cubic derivative scaling preserves analytic extrema and round bounds; an executable C89 example demonstrates the public path API. General numerical/reference/device acceptance and all nine stages remain open. [EN](CUBIC_EXTREMA_SCALING.md) / [RU](CUBIC_EXTREMA_SCALING.ru.md).

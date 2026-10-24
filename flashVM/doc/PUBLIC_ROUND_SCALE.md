@@ -20,6 +20,33 @@ Widths whose half-width itself rounds to zero are outside this extension. Near-b
 
 Seventeen independent executable fixtures cover horizontal/vertical/diagonal segments, reflections, constant segments, scales down to 2^-1000, the normal/subnormal square transition, ordinary ranges, public transactional transform/append, both ends, distant queries, a tiny radius on an ordinary segment, a wide disk around a tiny segment, a cross-product matrix and four native OS workers using independent paths. Expected hits follow analytic perpendicular and endpoint distances; they do not call the private selected-stroke query as an oracle.
 
+
+## v0.1524 checkpoint
+
+All 360 selected no-graphics Release executables and 182 selected no-graphics ASan/UBSan Debug executables exit zero with assertions enabled. Both profiles include the seventeen new fixtures, previous tiny/translated curve and selected-stroke regressions, public path queries, affine/Point geometry and the existing C89 tutorials. The Release run also includes additional sound/stream/mix regressions; these are regression evidence, not new audio functionality. LeakSanitizer is disabled; sanitizer executable-name lookup warnings can limit symbolization. No device, Cairo or new native-JIT acceptance is claimed.
+
+The twenty-commit format-patch series is checked by git am --3way against a clean published v0.1504 base, with final trees, consecutive versions and both identities compared. Public headers are unchanged. Source links and frontend tutorial checks pass; generated logs remain outside Git. All nine roadmap stages remain open.
+
+| Fixture / Проверка | Source / Исходник |
+| --- | --- |
+| analytic | [analytic](../tests/path_public_round_scale_analytic.cpp) |
+| vertical | [vertical](../tests/path_public_round_scale_vertical.cpp) |
+| diagonal | [diagonal](../tests/path_public_round_scale_diagonal.cpp) |
+| negative | [negative](../tests/path_public_round_scale_negative.cpp) |
+| zero segment | [zero_segment](../tests/path_public_round_scale_zero_segment.cpp) |
+| scales | [scales](../tests/path_public_round_scale_scales.cpp) |
+| transition | [transition](../tests/path_public_round_scale_transition.cpp) |
+| normal | [normal](../tests/path_public_round_scale_normal.cpp) |
+| tiny zero | [tiny_zero](../tests/path_public_round_scale_tiny_zero.cpp) |
+| transform | [transform](../tests/path_public_round_scale_transform.cpp) |
+| append | [append](../tests/path_public_round_scale_append.cpp) |
+| caps | [caps](../tests/path_public_round_scale_caps.cpp) |
+| far | [far](../tests/path_public_round_scale_far.cpp) |
+| thin | [thin](../tests/path_public_round_scale_thin.cpp) |
+| wide | [wide](../tests/path_public_round_scale_wide.cpp) |
+| matrix | [matrix](../tests/path_public_round_scale_matrix.cpp) |
+| threads | [threads](../tests/path_public_round_scale_threads.cpp) |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

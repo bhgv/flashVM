@@ -20,6 +20,33 @@
 
 Семнадцать независимых executable fixtures проверяют горизонтальные, вертикальные и диагональные отрезки, отражения, постоянные отрезки, масштабы до 2^-1000, переход normal/subnormal квадратов, обычные диапазоны, публичные transactional transform/append, оба торца, далёкие точки, малый радиус на обычном отрезке, широкий диск около малого отрезка, матрицу сочетаний и четыре native OS workers с независимыми paths. Ожидания следуют из аналитических расстояний до тела и торцов; private selected-stroke query не используется как oracle.
 
+
+## Контрольная точка v0.1524
+
+Все 360 выбранных executable no-graphics Release и 182 no-graphics ASan/UBSan Debug завершаются нулём при включённых assertions. Оба профиля включают семнадцать новых fixtures, прежние tiny/translated curve и selected-stroke регрессии, публичные path queries, affine/Point geometry и существующие C89 tutorials. Release также включает дополнительные sound/stream/mix регрессии; это свидетельство регрессий, а не новая функциональность аудио. LeakSanitizer отключён; предупреждения поиска имени sanitizer executable могут ограничивать символизацию. Device, Cairo и новая native-JIT приёмка не заявляются.
+
+Серия format-patch из двадцати коммитов проверяется через git am --3way на чистой опубликованной базе v0.1504 со сверкой итоговых деревьев, последовательных версий и обеих подписей. Публичные заголовки не меняются. Source links и frontend tutorial checks проходят; generated logs остаются вне Git. Все девять этапов roadmap открыты.
+
+| Fixture / Проверка | Source / Исходник |
+| --- | --- |
+| analytic | [analytic](../tests/path_public_round_scale_analytic.cpp) |
+| vertical | [vertical](../tests/path_public_round_scale_vertical.cpp) |
+| diagonal | [diagonal](../tests/path_public_round_scale_diagonal.cpp) |
+| negative | [negative](../tests/path_public_round_scale_negative.cpp) |
+| zero segment | [zero_segment](../tests/path_public_round_scale_zero_segment.cpp) |
+| scales | [scales](../tests/path_public_round_scale_scales.cpp) |
+| transition | [transition](../tests/path_public_round_scale_transition.cpp) |
+| normal | [normal](../tests/path_public_round_scale_normal.cpp) |
+| tiny zero | [tiny_zero](../tests/path_public_round_scale_tiny_zero.cpp) |
+| transform | [transform](../tests/path_public_round_scale_transform.cpp) |
+| append | [append](../tests/path_public_round_scale_append.cpp) |
+| caps | [caps](../tests/path_public_round_scale_caps.cpp) |
+| far | [far](../tests/path_public_round_scale_far.cpp) |
+| thin | [thin](../tests/path_public_round_scale_thin.cpp) |
+| wide | [wide](../tests/path_public_round_scale_wide.cpp) |
+| matrix | [matrix](../tests/path_public_round_scale_matrix.cpp) |
+| threads | [threads](../tests/path_public_round_scale_threads.cpp) |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
