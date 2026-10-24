@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.2.2 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.2.3 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -30,6 +30,22 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/limits_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/limits_test.b"
     DEPENDS tests/limits_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_limits_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/limits_test.dis")
+  set(revision_root "${CMAKE_CURRENT_BINARY_DIR}/revision-root")
+  file(MAKE_DIRECTORY "${revision_root}")
+  configure_file(idecore.b "${revision_root}/idecore.b" COPYONLY)
+  configure_file(idecore.m "${revision_root}/idecore.m" COPYONLY)
+  file(READ "${revision_root}/idecore.m" revision_header)
+  string(REPLACE "MaxRevision: con 2147483647;" "MaxRevision: con 4;" revision_header "${revision_header}")
+  file(WRITE "${revision_root}/idecore.m" "${revision_header}")
+  add_custom_command(OUTPUT "${revision_root}/idecore.dis" "${revision_root}/revision_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${revision_root}" -o "${revision_root}/idecore.dis"
+      "${revision_root}/idecore.b"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${revision_root}" -I "${LIMBO_MODULE_DIR}"
+      -o "${revision_root}/revision_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/revision_test.b"
+    DEPENDS tests/revision_test.b "${revision_root}/idecore.b" "${revision_root}/idecore.m"
+      "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_revision_module ALL DEPENDS "${revision_root}/idecore.dis"
+    "${revision_root}/revision_test.dis")
   foreach(mode 0 1)
     add_test(NAME ide_dis_reference_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
@@ -37,6 +53,9 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
     add_test(NAME ide_dis_limits_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
       --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module limits_test.dis)
+    add_test(NAME ide_dis_revision_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${revision_root}" --mode ${mode} --module revision_test.dis)
   endforeach()
-  set_tests_properties(ide_dis_reference_mode_0 ide_dis_reference_mode_1 ide_dis_limits_mode_0 ide_dis_limits_mode_1 PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+  set_tests_properties(ide_dis_reference_mode_0 ide_dis_reference_mode_1 ide_dis_limits_mode_0 ide_dis_limits_mode_1 ide_dis_revision_mode_0 ide_dis_revision_mode_1 PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
 endif()
