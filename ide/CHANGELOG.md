@@ -12,3 +12,4 @@
 - 0.1.10: Cover IDE build trace.
 - 0.1.11: Cover IDE build timeout.
 - 0.1.12: Cover IDE build aliases.
+- 0.1.13: Cover IDE build invalid requests.
