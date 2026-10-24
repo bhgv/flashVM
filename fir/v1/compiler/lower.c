@@ -100,7 +100,11 @@ static int32_t integer_literal(const char *text, int negative)
         }
         value = value * base + digit;
     }
-    return negative ? value == UINT32_C(2147483648) ? INT32_MIN : -(int32_t)value : (int32_t)value;
+    if (!negative)
+        return (int32_t)value;
+    if (value == UINT32_C(2147483648))
+        return INT32_MIN;
+    return -(int32_t)value;
 }
 /* AS numeric literals are binary64; Limbo retains checked i32 spellings. */
 int source_constant(int negative)
@@ -183,6 +187,7 @@ int source_name(void)
     active[name_count] = 1;
     return name_count++;
 }
+/* Resolve the nearest active binding to its current SSA definition. */
 int source_read(int name)
 {
     if (bindings[name] < 0)
@@ -218,6 +223,7 @@ void source_bind(int name, int value, int declaration)
         reject("assignment before declaration");
     bindings[name] = value;
 }
+/* Restrict numeric AS annotations without claiming a general type checker. */
 void source_annotation(void)
 {
     if (profile == 1)
@@ -225,11 +231,13 @@ void source_annotation(void)
     if (strcmp(token, "Number"))
         reject("only Number annotations are supported");
 }
+/* Emit the tutorial observable only while the translation remains valid. */
 void source_trace(int value)
 {
     if (!failed)
         fprintf(destination, "    trace %%v%d\n", value);
 }
+/* Require implement and module declarations to use the same spelling. */
 void source_module(int first)
 {
     if (first)
@@ -237,6 +245,7 @@ void source_module(int first)
     else if (strcmp(token, module_name))
         reject("module name mismatch");
 }
+/* Reject a parsed source family that disagrees with the requested profile. */
 void source_language(int limbo)
 {
     if (integer_mode != limbo)
@@ -253,6 +262,7 @@ int source_negate(int value)
                 integer_mode ? "i32" : "f64");
     return source_binary(value, minus, '*');
 }
+/* Enforce AS3-only constants and retain their immutability in flat AS scope. */
 void source_declare(int name, int value, int constant)
 {
     if (constant && profile != 3)
@@ -260,12 +270,14 @@ void source_declare(int name, int value, int constant)
     source_bind(name, value, 1);
     immutable[name] = constant;
 }
+/* Lower compound assignment before updating the visible lexical binding. */
 void source_assign(int name, int value, int op)
 {
     if (op)
         value = source_binary(source_read(name), value, op);
     source_bind(name, value, 0);
 }
+/* Keep native Limbo comments from silently changing AS lexical coverage. */
 void source_hash_comment(void)
 {
     if (!integer_mode)

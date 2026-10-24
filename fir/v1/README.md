@@ -72,6 +72,6 @@ use. Generated Coco/R code and upstream libraries are excluded.
 
 [Extended structural parser and C API](frontend/README.md).
 
-[0.5.3: literal module storage](doc/MODULE_STORAGE.md).
+[0.5.2: literal module storage](doc/MODULE_STORAGE.md).
 
 [Limbo lexical blocks / Лексические блоки](doc/LEXICAL_SCOPES.md).

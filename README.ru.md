@@ -115,3 +115,11 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 [каталог примеров компиляторов](compiler/examples.ru.md).
 
 [Парсеры AS1/AS2/AS3/Limbo/FIR: серия 0.6.0](compiler/PARSER_COVERAGE.ru.md).
+
+## Продолжение компиляторов и IDE
+
+[FIR 0.5.3: лексические блоки Limbo](fir/v1/doc/LEXICAL_SCOPES.ru.md) ·
+[IDE 0.3.1: навигация/поиск через каналы](ide/dis/examples/navigation/README.ru.md).
+Reply ABI изменён в 0.3.0: пересоберите ядро и клиентов вместе. Реализованы
+ограниченные рабочие компоненты; полные компиляторы, встраивание Dis, JIT
+и execution debugger ещё не прошли итоговую приёмку.

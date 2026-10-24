@@ -47,3 +47,6 @@ proof of executing the movie; use an explicit runner for runtime acceptance.
 The registered `fir1_source_scopes` regression checks eight valid lowering/
 optimization cases and nine rejected inputs with destination rollback. Existing
 embedding tests also recover from incomplete parenthesized input in one process.
+
+With explicit FIR_SWL and FIR_FLASHVM_RUNNER, the same eight accepted cases
+produce and execute both original and optimized SWFs (16 trace comparisons).

@@ -114,3 +114,11 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 [compiler example catalog](compiler/examples.md).
 
 [AS1/AS2/AS3/Limbo/FIR parsers: series 0.6.0](compiler/PARSER_COVERAGE.md).
+
+## Compiler / IDE continuation
+
+[FIR 0.5.3 Limbo lexical lowering](fir/v1/doc/LEXICAL_SCOPES.md) ·
+[IDE 0.3.1 channel navigation/search](ide/dis/examples/navigation/README.md).
+The IDE Reply ABI changed at 0.3.0: rebuild clients and core together. These are
+working bounded components; full language compilers and embedded Dis/JIT/debugger
+acceptance remain open.

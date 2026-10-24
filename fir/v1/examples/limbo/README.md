@@ -47,3 +47,12 @@ fast-math. AS3 does not emit ABC; Limbo lowers only i32 value(), without a gener
 module/channel ABI. Cross-built compilers execute on their target machine.
 [Native/cross builds](../../../../BUILDING.md),
 [C tutorial combining all stages](../../../../linker/examples/ide/README.md).
+
+## Lexical scopes tutorial
+
+[scopes.b](scopes.b) comments every declaration, scope transition and assignment.
+Outer x=5 is shadowed by x=7 and then x=1; total is an outer variable updated to
+43. Leaving both blocks restores visibility of x=5, so return traces 48.
+[Commands, semantics and limits](../../doc/LEXICAL_SCOPES.md) explain the real
+Coco/R → FIR → SWO → SWL path. The new executable regression checks both original
+and optimized movies when FIR_SWL/FIR_FLASHVM_RUNNER are explicitly selected.

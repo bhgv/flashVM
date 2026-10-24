@@ -58,3 +58,5 @@ an embedded FlashVM runtime. [Typed channel protocol](dis/PROTOCOL.md).
 The deployed IDE must be interpreted/JIT bytecode (Dis and/or SWF); this Python
 backend remains host tooling. Combined SWF/Dis packaging and extra SWF tags are
 explicitly deferred. Current module delivery does not depend on that decision.
+
+[Limbo navigation/search tutorial / Навигация и поиск](dis/examples/navigation/README.md) · [Channel contract / Контракт каналов](dis/PROTOCOL.md).

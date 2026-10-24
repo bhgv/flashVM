@@ -58,3 +58,5 @@ FlashVM. [Типизированный канальный протокол](dis/
 Поставляемая IDE должна быть интерпретируемым/JIT-байткодом Dis и/или SWF;
 Python остаётся инструментом сборки на хосте. Общий контейнер SWF/Dis и новые теги
 отложены; нынешняя поставка модуля не требует решения об объединении.
+
+[Limbo navigation/search tutorial / Навигация и поиск](dis/examples/navigation/README.md) · [Channel contract / Контракт каналов](dis/PROTOCOL.md).

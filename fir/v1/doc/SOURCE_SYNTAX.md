@@ -14,6 +14,7 @@ frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
 | `x+=1; x-=1; x*=2;` | yes | yes |
 | `# comment` | rejected | yes |
 | `;` | empty statement | empty statement |
+| Nested `{ ... }` | rejected | lexical scope and shadowing |
 
 Precedence: unary, then */ (AS division only), then +/-. Binary operators associate left-to-right.
 A signed literal admits i32 minimum; minus on groups/variables lowers as multiply
@@ -30,7 +31,7 @@ traces. Use fir1_source, fir1_opt, fir1 object and swl link as in the
 AS2/AS3 allow only Number annotations. No strings, objects, AS if/loops/functions,
 Limbo channels or general module ABI. // and /* */ in Limbo remain compatible
 with old tutorials; # is the native comment. Limits: 64 KiB, 256 names, 1000 SSA
-values, 64 group/unary levels, 255-byte tokens.
+values, 64 block/group/unary levels, 255-byte tokens.
 
 AS additionally supports / and /=, with multiplication precedence and left
 associativity. The Limbo i32 profile explicitly rejects them. Tests cover -0

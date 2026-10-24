@@ -15,7 +15,14 @@ def main():
     parser.add_argument(
         "--module",
         default="idecore_test.dis",
-        choices=("idecore_test.dis", "limits_test.dis", "revision_test.dis", "coordinates_test.dis", "find_test.dis", "navigation.dis"),
+        choices=(
+            "idecore_test.dis",
+            "limits_test.dis",
+            "revision_test.dis",
+            "coordinates_test.dis",
+            "find_test.dis",
+            "navigation.dis",
+        ),
     )
     args = parser.parse_args()
     root = args.build.resolve()

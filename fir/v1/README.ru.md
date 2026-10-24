@@ -73,6 +73,6 @@ python fir/v1/view_docs.py --no-browser --port 8766
 
 [Расширенный структурный парсер и C API](frontend/README.ru.md).
 
-[0.5.3: literal module storage](doc/MODULE_STORAGE.ru.md).
+[0.5.2: literal module storage](doc/MODULE_STORAGE.ru.md).
 
 [Limbo lexical blocks / Лексические блоки](doc/LEXICAL_SCOPES.md).
