@@ -97,3 +97,5 @@ IDE должна поставляться в интерпретируемом/JI
 пустых/Unicode/LF/CRLF текстов и ошибки stale/closed/range.
 
 [Runnable navigation/search example / Пример навигации и поиска](examples/navigation/README.md).
+
+[0.3.1 compiler/IDE acceptance / Приёмка серии](SERIES_0_3_1.md).

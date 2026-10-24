@@ -71,3 +71,5 @@ dependencies. The sanitizer host disables LSan and ASan stack instrumentation;
 heap/global ASan and UBSan were exercised, not leaks/stack. The resource SWF
 loaded in the VM; physical rendering/audio-device playback was not tested.
 Coco/R revision: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.
+
+[0.5.3 lexical-source and IDE continuation acceptance](../../../ide/dis/SERIES_0_3_1.md).

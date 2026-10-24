@@ -70,3 +70,5 @@ C embedding-тесты проверяют повторные вызовы пос
 stack instrumentation; проверены heap/global ASan и UBSan, не утечки/стек.
 Ресурсный SWF загружен VM; физическая отрисовка/аудиовывод не проверялись.
 Coco/R revision: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.
+
+[0.5.3 lexical-source and IDE continuation acceptance](../../../ide/dis/SERIES_0_3_1.md).

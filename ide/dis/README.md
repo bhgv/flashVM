@@ -101,3 +101,5 @@ The reference coordinate regression round-trips all boundaries of empty, Unicode
 LF and CRLF documents and checks stale/closed/range errors in both modes.
 
 [Runnable navigation/search example / Пример навигации и поиска](examples/navigation/README.md).
+
+[0.3.1 compiler/IDE acceptance / Приёмка серии](SERIES_0_3_1.md).

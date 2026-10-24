@@ -62,3 +62,5 @@ magic-only files; they are not valid executable module fixtures.
 пути компилятора: продуктовый модуль им не собирается. Новые Limbo compilation,
 Dis execution, SWF pipeline, debugger/JIT/device результаты не заявляются.
 [Контракт и пример](PRODUCT_ADMISSION.ru.md) / [Contract and example](PRODUCT_ADMISSION.md).
+
+[0.3.1 compiler/IDE acceptance / Приёмка серии](SERIES_0_3_1.md).

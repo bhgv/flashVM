@@ -212,7 +212,10 @@ PRODUCTIONS
 
   /* Empty statements emit no instruction; at least one statement is required. */
   TraceProgram =
-                                                                        (. depth = 0; source_language(0); .)
+                                                                        (.
+                                                                            depth = 0;
+                                                                            source_language(0);
+                                                                        .)
     Statement
     {
         Statement
@@ -297,11 +300,14 @@ PRODUCTIONS
   .
 
   /* Limbo inferred declarations and initialized int declarations stay distinct
-  * from reassignment. No arbitrary module loader ABI is implied. */
+  * from reassignment. The IF resolvers consume an over-budget brace without
+  * descent, and otherwise admit bounded block recursion. Neither may leave an
+  * opening brace unconsumed in the enclosing statement repetition.
+  * No arbitrary module loader ABI is implied. */
   LimboStatement =
                                                                         (. int name = 0, value = 0, op = 0; .)
     ";"
-    | IF(Sym==LbraceSym && depth>=64) "{"                              (. source_scope_limit(); .)
+    | IF(Sym==LbraceSym && depth>=64) "{"                               (. source_scope_limit(); .)
     | IF(Sym==LbraceSym && depth<64) LimboBlock
     | Name<&name>
     (
@@ -312,16 +318,16 @@ PRODUCTIONS
   .
 
   /* Limbo braces delimit lexical bindings; writes to outer bindings persist.
-   * The shared nesting budget bounds blocks, groups and unary recursion. */
+  * The shared nesting budget bounds blocks, groups and unary recursion. */
   LimboBlock =
-    "{"                                                    (.
+    "{"                                                                 (.
                                                                             ++depth;
                                                                             source_enter_scope();
                                                                         .)
     {
         LimboStatement
     }
-    "}"                                                                (.
+    "}"                                                                 (.
                                                                             source_leave_scope();
                                                                             --depth;
                                                                         .)
