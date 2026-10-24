@@ -1,6 +1,6 @@
 # Portable IDE document core
 
-Version 0.2.8. [Русский](README.ru.md).
+Version 0.3.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
@@ -91,3 +91,11 @@ validate type/local debug records or implement debugger control. Source filename
 may contain build-machine paths and need source mapping in the eventual host.
 Keep source and debug data together; do not silently treat missing source as a
 successful debugger integration. [Validation](VALIDATION.md).
+
+## Source navigation
+
+Version 0.3.0 adds revision-bound Locate/Offset queries through the same typed
+channel. Rebuild all clients: Reply now includes offset/line/column.
+[Coordinate contract](PROTOCOL.md#revision-bound-source-navigation-030).
+The reference coordinate regression round-trips all boundaries of empty, Unicode,
+LF and CRLF documents and checks stale/closed/range errors in both modes.

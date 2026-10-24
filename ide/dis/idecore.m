@@ -9,7 +9,7 @@ Idecore: module
     MaxRevision: con 2147483647;
 
     # Snapshot is read-only; all other operations use the expected revision as specified below.
-    Open, Replace, Snapshot, MarkSaved, Close, Shutdown: con iota;
+    Open, Replace, Snapshot, MarkSaved, Close, Shutdown, Locate, Offset: con iota;
 
     # Every accepted request with a non-nil reply channel receives exactly one response.
     Ok, Conflict, RangeError, TooLarge, Invalid, Closed, RevisionLimit, Unknown: con iota;
@@ -20,8 +20,8 @@ Idecore: module
         id: int;                 # Nonnegative caller correlation ID; no deduplication is implied.
         operation: int;          # One operation above; unknown values have no side effects.
         expected: int;           # Required current revision except for Snapshot.
-        first: int;              # Inclusive character offset for Replace.
-        last: int;               # Exclusive character offset for Replace.
+        first: int;              # Replace/Locate: character offset; Offset: one-based line.
+        last: int;               # Replace: exclusive end; Offset: zero-based character column.
         text: string;            # Complete initial text for Open, replacement text for Replace.
         reply: chan of Reply;    # Required rendezvous destination; nil requests are ignored.
     };
@@ -35,6 +35,9 @@ Idecore: module
         revision: int;           # Monotonic service-lifetime content/session revision.
         saved: int;              # Revision acknowledged by MarkSaved, Open or Close.
         text: string;            # Current document; empty when closed.
+        offset: int;             # Locate/Offset result in characters; -1 for other replies/errors.
+        line: int;               # Locate/Offset one-based LF-delimited line; -1 otherwise.
+        column: int;             # Locate/Offset zero-based character column; -1 otherwise.
     };
 
     # Spawn one owner process and return its unbuffered request channel.

@@ -33,3 +33,7 @@
   Check unsigned Dis XMAGIC and exact LF/CRLF physical symbol prefixes with bounded
   reads; expand host admission regressions from six to 46 cases. No Dis/JIT runtime
   or full bytecode verification claim is added.
+
+- 0.3.0: Add revision-bound character offset/line/column queries to the Limbo core.
+  Reply gains three fields; all clients must be rebuilt. Preserve state and
+  round-trip every LF/Unicode/CRLF character boundary through typed channels.

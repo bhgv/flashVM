@@ -22,7 +22,7 @@ start(): chan of Request
 # Copy observable state into a response without transferring the private mutable document.
 snapshot(document: ref Document, id: int, status: int): Reply
 {
-    return Reply(id, status, document.opened, document.revision, document.saved, document.text);
+    return Reply(id, status, document.opened, document.revision, document.saved, document.text, -1, -1, -1);
 }
 
 # Validate and apply one serialized command; the second result requests terminal shutdown.
@@ -30,7 +30,7 @@ handle(document: ref Document, request: Request): (Reply, int)
 {
     if(request.id < 0)
         return (snapshot(document, request.id, Invalid), 0);
-    if(request.operation < Open || request.operation > Shutdown)
+    if(request.operation < Open || request.operation > Offset)
         return (snapshot(document, request.id, Unknown), 0);
     if(request.operation == Snapshot)
         return (snapshot(document, request.id, Ok), 0);
@@ -53,6 +53,8 @@ handle(document: ref Document, request: Request): (Reply, int)
     }
     if(!document.opened)
         return (snapshot(document, request.id, Closed), 0);
+    if(request.operation == Locate || request.operation == Offset)
+        return (coordinates(document, request), 0);
     if(request.operation == MarkSaved){
         document.saved = document.revision;
         return (snapshot(document, request.id, Ok), 0);
@@ -79,6 +81,52 @@ handle(document: ref Document, request: Request): (Reply, int)
     document.saved = document.revision;
     document.text = "";
     return (snapshot(document, request.id, Ok), 0);
+}
+
+# Resolve coordinates against the serialized revision without changing any state.
+# LF alone starts a line; CR remains a character so every offset round-trips,
+# including the position between CR and LF. No UTF-8/UTF-16/display conversion.
+coordinates(document: ref Document, request: Request): Reply
+{
+    result := snapshot(document, request.id, RangeError);
+    offset := 0;
+    line := 1;
+    column := 0;
+    if(request.operation == Locate){
+        if(request.first < 0 || request.first > len document.text)
+            return result;
+        offset = request.first;
+        for(index := 0; index < offset; index++){
+            if(document.text[index] == '\n'){
+                line++;
+                column = 0;
+            }else
+                column++;
+        }
+    }else{
+        if(request.first < 1 || request.last < 0)
+            return result;
+        while(line < request.first && offset < len document.text){
+            if(document.text[offset] == '\n')
+                line++;
+            offset++;
+        }
+        if(line != request.first)
+            return result;
+        # Compare against the available line span before adding the column.
+        end := offset;
+        while(end < len document.text && document.text[end] != '\n')
+            end++;
+        if(request.last > end - offset)
+            return result;
+        column = request.last;
+        offset += column;
+    }
+    result.status = Ok;
+    result.offset = offset;
+    result.line = line;
+    result.column = column;
+    return result;
 }
 
 # Own request ordering and reply backpressure; shutdown returns only after its acknowledgement.

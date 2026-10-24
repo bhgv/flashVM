@@ -66,3 +66,29 @@ as TooLarge, then exhausted revision. Other document operations reject a closed
 document as Closed. Replace checks range, length, no-op, then revision cap.
 All rejected commands return the unchanged complete state; no partial edit occurs.
 Channel nil-reply ignoring is separate from these acknowledged status outcomes.
+
+## Revision-bound source navigation (0.3.0)
+
+Locate and Offset are read-only document requests. They require the current
+expected revision, an open document and a nonnegative correlation ID. Usual
+Conflict/Closed precedence applies. Neither operation changes text, revision or
+saved state, including at MaxRevision. Both return the same full state snapshot.
+
+- Locate: first is a character offset in [0, len text], including EOF; last/text
+  are ignored. Returns offset, one-based line and zero-based character column.
+- Offset: first is a one-based line, last a zero-based character column; text is
+  ignored. The column may point to line end (before LF), never across LF.
+  The final empty line after a trailing LF is valid.
+
+LF alone starts a line. CR counts as an ordinary character, including in CRLF.
+Every character boundary therefore round-trips, even the boundary between CR and
+LF. Astral characters count once; combining marks count separately. These are
+Limbo string units, not UTF-8 bytes, UTF-16 units, graphemes or screen columns.
+Compiler/debug producer positions need an explicit conversion before these calls.
+
+Reply appends offset/line/column, each -1 for errors and all other operations.
+This changes the Limbo interface signature: rebuild core and every client against
+the same idecore.m; mixing 0.2.x clients with 0.3.x modules is unsupported. Existing
+operation and status numbers retain their values. There is no live ABI upgrade.
+Navigation scans at most MaxCharacters characters with constant extra storage;
+a long query holds this owner until its reply. Never pump it on the render owner.
