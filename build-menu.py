@@ -85,14 +85,16 @@ def ask_yes(prompt):
 
 # Select a runnable Limbo client after the caller opts into a console example.
 def choose_example():
-    """Choose navigation or history; empty input preserves the original default."""
+    """Choose navigation, history or replaceall; empty input preserves the original default."""
     while True:
-        value = input("Пример: 1 — navigation, 2 — history [1]: ").strip().lower()
+        value = input("Пример: 1 — navigation, 2 — history, 3 — replaceall [1]: ").strip().lower()
         if value in ("", "1", "navigation"):
             return "navigation"
         if value in ("2", "history"):
             return "history"
-        print("Введите 1/navigation или 2/history.")
+        if value in ("3", "replaceall"):
+            return "replaceall"
+        print("Введите 1/navigation, 2/history или 3/replaceall.")
 
 
 # Build an argv list, never a shell expression; SDK preflight belongs to Bash.
@@ -119,7 +121,7 @@ def main(argv=None):
     parser.add_argument("--config", default="Release")
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
-    parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history"),
+    parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history", "replaceall"),
                         help="Run a Limbo IDE example (default navigation; requires ide)")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)

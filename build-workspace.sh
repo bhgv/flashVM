@@ -23,7 +23,7 @@ Usage: ./build-workspace.sh [options]
   --jobs N           Parallel jobs (default 2)
   --config NAME      CMake configuration (default Release)
   --tests            Build/run selected component tests; stop on failure
-  --demo [NAME]      Run navigation (default) or history in a matching reference emu
+  --demo [NAME]      Run navigation (default), history or replaceall in a matching reference emu
   --help             Show help
 Default generator: tools/coco-r-C, compiled locally when needed.
 Default IDE bootstrap: tools/limbo-bootstrap, from bhgv/Inferno-OS-bhgv experiment.
@@ -50,7 +50,7 @@ while (($#)); do
         --demo)
             demo=1
             shift
-            if (($#)) && [[ "$1" == navigation || "$1" == history ]]; then
+            if (($#)) && [[ "$1" == navigation || "$1" == history || "$1" == replaceall ]]; then
                 demo_example=$1
                 shift
             fi ;;
@@ -172,6 +172,10 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm ide; do
         ide)
             source=ide/dis
             args+=("-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")
+            args+=("-DFIR_SOURCE_EXECUTABLE=")
+            if has fir && [[ "$tests" == ON ]]; then
+                args+=("-DFIR_SOURCE_EXECUTABLE=$build_root/fir/fir1_source")
+            fi
             if has symbols && [[ "$tests" == ON ]]; then
                 args+=("-DSBLMAP_EXECUTABLE=$build_root/symbols/sblmap")
             fi
@@ -187,6 +191,7 @@ fi
 if [[ "$demo" == 1 ]]; then
     demo_test=ide_dis_navigation_mode_
     [[ "$demo_example" != history ]] || demo_test=ide_dis_history_example_mode_
+    [[ "$demo_example" != replaceall ]] || demo_test=ide_dis_replaceall_example_mode_
     "$ctest" --test-dir "$build_root/ide" -C "$config" -R "^${demo_test}[01]$" -V --no-tests=error
 fi
 printf 'Build complete: %s\n' "$build_root"
