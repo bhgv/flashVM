@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.6.4 LANGUAGES C)
+project(limbo_frontend VERSION 0.6.5 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -160,3 +160,10 @@ if(BUILD_TESTING)
   add_test(NAME limbo_interface_allocation_recovery COMMAND limbo_interface_alloc)
 endif()
 
+# Optional external checkout corpus; never download or vendor it during a build.
+set(LIMBO_INTERFACE_UPSTREAM "" CACHE PATH "Explicit Inferno checkout for optional .m/native-name tests")
+if(BUILD_TESTING AND LIMBO_INTERFACE_UPSTREAM)
+  add_test(NAME limbo_interface_upstream COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/interface_upstream.py --upstream ${LIMBO_INTERFACE_UPSTREAM}
+    --tool $<TARGET_FILE:limbo_interface>)
+endif()
