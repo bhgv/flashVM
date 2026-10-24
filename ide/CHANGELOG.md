@@ -17,3 +17,4 @@
 - 0.1.15: Cover IDE build invalid artifacts.
 - 0.1.16: Cover IDE build unicode paths.
 - 0.1.17: Cover IDE build cli.
+- 0.1.18: Cover IDE build cleanup.
