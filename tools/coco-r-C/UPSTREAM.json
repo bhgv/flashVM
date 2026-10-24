@@ -1,0 +1,46 @@
+{
+  "repository": "https://github.com/bhgv/coco-r-C",
+  "branch": "master",
+  "revision": "312d377d2bdf7b2e180b0801a89ca651950a4873",
+  "destination": "upstream",
+  "include": [
+    "sources/*.c",
+    "sources/*.h",
+    "sources/cr.atg",
+    "sources/cr.frm",
+    "frames/*.frm",
+    "read.me"
+  ],
+  "exclude": [
+    "frames/cplus2/*"
+  ],
+  "files": {
+    "upstream/frames/compiler.frm": "2641e88d8037ae678aed41c4ab4272e32c200db34da43efe1d48adcfa99ff1ba",
+    "upstream/frames/parser_c.frm": "b819d4de398b2edca765f474e53abe9451662e9522324ae13b912b276d7d691e",
+    "upstream/frames/parser_h.frm": "906a7dacc7865e49fde037a520ea6c3f79ee2c409ec942b479a4c2e6d8ae52cf",
+    "upstream/frames/scan_c.frm": "a74ddb79eb3c93c2df922cb00fde62bbf35b5f8b3962471ff8f2496b9b6cb5b1",
+    "upstream/frames/scan_h.frm": "a82c5423d8d2ce6c1df1b7c3a076a6d330bba5f7cf2e62c673a8fb478cce130c",
+    "upstream/read.me": "6912c022038f2b330577d741a2e30cbaf80bd69bebdeb27aa5da3483753b5bb8",
+    "upstream/sources/collect.c": "2f4745b417684015e4919ed6b74c42c6e760cc676b1fb0805252bee804025321",
+    "upstream/sources/collect.h": "f46a94bcfc6deaf696263614a646809d0bcc1b832298f1ddd1582334cd76c77f",
+    "upstream/sources/cr.atg": "0d3f5bb4e0a74ba57f472fb2a709f6bae42b477106e8f0ec7e3216a8573d559b",
+    "upstream/sources/cr.c": "f504bbb6b7e4905055985f70fec3664683a0627d36ba90d35cceb78f1d1ffd19",
+    "upstream/sources/cr.frm": "fad0cde03b1fdd17b6b88fcda16abb283b339ae3b45edc86fc4d5a9279a21e3d",
+    "upstream/sources/cra.c": "2ebf2d8172a073278b0ca34b8fa797e29fa4a5768f338dcfd58827d970597ebd",
+    "upstream/sources/cra.h": "5f2a4348464bcff62c24cd75feb6e7cb74683e14e2c1f40771b9f7322dcacfe9",
+    "upstream/sources/crc.h": "534360603dd6fd276cdd1d80a9c91503425d61ac32419f636614971098ea435d",
+    "upstream/sources/cre.h": "4ed61877a3b208216c5589da99c047dcd51e54a572f5468dce231f05d01e69f1",
+    "upstream/sources/crf.c": "b4ef2e835508e2fc9299214cc4f690be89d0f456209132990eb9660d94fc7dbc",
+    "upstream/sources/crf.h": "2a70121ced567e48d1a5a75fdcf3b3b36380814905d0ad0968ee6c81e26f8587",
+    "upstream/sources/crp.c": "9be40d5d903facbb1d2f1d6c1a53e49ae9de5625dda333934f12b569249abe34",
+    "upstream/sources/crp.h": "9e120c1c83c1edd2b4986122a4392381633d43f38b0903826365f5c7e3307f3c",
+    "upstream/sources/crs.c": "8edb4f059db5d8e5581f19dadd39c2bb792c0d2bd81d48b88f9649e32135fdc4",
+    "upstream/sources/crs.h": "1fe40234af00e5125047339af47dda4eea6fa7b0b7d1be71df59f1be4d2aa22b",
+    "upstream/sources/crt.c": "aeac01c7f5db6123f713a6df8876b659900ab86f622c917d7b8c3da10b2c1664",
+    "upstream/sources/crt.h": "08630bcb3d205399e7eaeccbecb9ceb56ca4116c12ccea4530b77f9483abb35c",
+    "upstream/sources/crx.c": "8723088b02dd268b5217ae40dabfab781998952f6c3de986cc33b449119c2ae2",
+    "upstream/sources/crx.h": "e179c1b11d61b79afeb35e2d5066f5b3fca799c149ccd680bec1481d1670634d",
+    "upstream/sources/set.c": "353256e4e2d080c6f35076a7524d0c763e9b8a0264dfc1262162983f8ab886fb",
+    "upstream/sources/set.h": "c9d50257aa2dad02501d6d8e4b9647ed0483081e026a2d3cee8dca66d9420d28"
+  }
+}

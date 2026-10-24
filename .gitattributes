@@ -1,2 +1,7 @@
 # ATG rules end with a standalone period and an intentional blank line.
 *.atg whitespace=-blank-at-eof
+# Imported blobs remain byte-for-byte; upstream layout is not first-party formatting.
+tools/coco-r-C/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+tools/coco-r-limbo/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+tools/limbo-bootstrap/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+disVM/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

@@ -1,0 +1,146 @@
+# Temporary native Limbo bootstrap from selected owned upstream sources.
+cmake_minimum_required(VERSION 3.16)
+project(limbo_bootstrap VERSION 0.1.0 LANGUAGES C)
+if(NOT UNIX)
+  message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
+endif()
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-fno-strict-aliasing)
+endif()
+set(u "${CMAKE_CURRENT_SOURCE_DIR}/upstream")
+set(host_include "${CMAKE_CURRENT_SOURCE_DIR}/host/include")
+# The upstream lib9 header is shared POSIX C declarations; ARM assembly is never built.
+set(sdk_include "${host_include}" "${u}/Linux/arm/include" "${u}/include" "${u}/libinterp")
+
+add_library(limbo_bootstrap_lib9 STATIC
+  upstream/lib9/convD2M.c
+  upstream/lib9/convM2D.c
+  upstream/lib9/convM2S.c
+  upstream/lib9/convS2M.c
+  upstream/lib9/fcallfmt.c
+  upstream/lib9/runestrchr.c
+  upstream/lib9/runestrlen.c
+  upstream/lib9/runetype.c
+  upstream/lib9/strtoll.c
+  upstream/lib9/strtoull.c
+  upstream/lib9/rune.c
+  upstream/lib9/argv0.c
+  upstream/lib9/charstod.c
+  upstream/lib9/cistrcmp.c
+  upstream/lib9/cistrncmp.c
+  upstream/lib9/cistrstr.c
+  upstream/lib9/cleanname.c
+  upstream/lib9/create.c
+  upstream/lib9/dirwstat.c
+  upstream/lib9/dofmt.c
+  upstream/lib9/dorfmt.c
+  upstream/lib9/errfmt.c
+  upstream/lib9/exits.c
+  upstream/lib9/fmt.c
+  upstream/lib9/fmtfd.c
+  upstream/lib9/fmtlock.c
+  upstream/lib9/fmtprint.c
+  upstream/lib9/fmtquote.c
+  upstream/lib9/fmtrune.c
+  upstream/lib9/fmtstr.c
+  upstream/lib9/fmtvprint.c
+  upstream/lib9/fprint.c
+  upstream/lib9/getfields.c
+  upstream/lib9/nulldir.c
+  upstream/lib9/pow10.c
+  upstream/lib9/print.c
+  upstream/lib9/qsort.c
+  upstream/lib9/readn.c
+  upstream/lib9/rerrstr.c
+  upstream/lib9/runeseprint.c
+  upstream/lib9/runesmprint.c
+  upstream/lib9/runesnprint.c
+  upstream/lib9/runevseprint.c
+  upstream/lib9/seek.c
+  upstream/lib9/seprint.c
+  upstream/lib9/smprint.c
+  upstream/lib9/snprint.c
+  upstream/lib9/sprint.c
+  upstream/lib9/strdup.c
+  upstream/lib9/strecpy.c
+  upstream/lib9/sysfatal.c
+  upstream/lib9/tokenize.c
+  upstream/lib9/u16.c
+  upstream/lib9/u32.c
+  upstream/lib9/u64.c
+  upstream/lib9/utflen.c
+  upstream/lib9/utfnlen.c
+  upstream/lib9/utfrrune.c
+  upstream/lib9/utfrune.c
+  upstream/lib9/utfecpy.c
+  upstream/lib9/vfprint.c
+  upstream/lib9/vseprint.c
+  upstream/lib9/vsmprint.c
+  upstream/lib9/vsnprint.c
+  upstream/lib9/dirstat-posix.c
+  upstream/lib9/errstr-posix.c
+  upstream/lib9/getuser-posix.c
+  upstream/lib9/getwd-posix.c
+  upstream/lib9/sbrk-posix.c
+  upstream/lib9/isnan-posix.c
+)
+target_include_directories(limbo_bootstrap_lib9 PUBLIC ${sdk_include})
+add_library(limbo_bootstrap_bio STATIC
+  upstream/libbio/bbuffered.c
+  upstream/libbio/bfildes.c
+  upstream/libbio/bflush.c
+  upstream/libbio/bgetc.c
+  upstream/libbio/bgetd.c
+  upstream/libbio/bgetrune.c
+  upstream/libbio/binit.c
+  upstream/libbio/boffset.c
+  upstream/libbio/bprint.c
+  upstream/libbio/bputc.c
+  upstream/libbio/bputrune.c
+  upstream/libbio/brdline.c
+  upstream/libbio/brdstr.c
+  upstream/libbio/bread.c
+  upstream/libbio/bseek.c
+  upstream/libbio/bvprint.c
+  upstream/libbio/bwrite.c
+)
+target_link_libraries(limbo_bootstrap_bio PUBLIC limbo_bootstrap_lib9)
+add_library(limbo_bootstrap_support STATIC host/bootstrap_support.c
+  upstream/libmath/FPcontrol-Linux.c upstream/libmath/dtoa.c upstream/libmath/g_fmt.c upstream/libmath/gfltconv.c
+  upstream/libsec/port/md5.c upstream/libsec/port/md5block.c)
+target_link_libraries(limbo_bootstrap_support PUBLIC limbo_bootstrap_lib9 m)
+add_executable(limbo-bootstrap
+  upstream/limbo/asm.c
+  upstream/limbo/com.c
+  upstream/limbo/decls.c
+  upstream/limbo/dis.c
+  upstream/limbo/dtocanon.c
+  upstream/limbo/ecom.c
+  upstream/limbo/gen.c
+  upstream/limbo/lex.c
+  upstream/limbo/nodes.c
+  upstream/limbo/optab.c
+  upstream/limbo/optim.c
+  upstream/limbo/sbl.c
+  upstream/limbo/stubs.c
+  upstream/limbo/typecheck.c
+  upstream/limbo/types.c
+  upstream/limbo/y.tab.c
+)
+target_include_directories(limbo-bootstrap PRIVATE "${u}/limbo")
+target_compile_definitions(limbo-bootstrap PRIVATE "INCPATH=\"${u}/module\"")
+# Repeat support archives to resolve the old mutually dependent lib9/math helpers.
+target_link_libraries(limbo-bootstrap PRIVATE limbo_bootstrap_bio limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support m)
+
+include(CTest)
+if(BUILD_TESTING)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME limbo_bootstrap_products COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/smoke.py" $<TARGET_FILE:limbo-bootstrap>)
+  set_tests_properties(limbo_bootstrap_products PROPERTIES TIMEOUT 60
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
