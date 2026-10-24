@@ -46,3 +46,6 @@ build/frontend/limbo_parse examples/Polymorphic.b
 [Grammar and API contract](../README.md) · [Build](../../../BUILDING.md)
 
 [NamedCasts.b](NamedCasts.b) is a new 0.4.2 syntax fixture. Check it with `build/frontend/limbo_parse examples/NamedCasts.b`. Exit 0 means accepted syntax, without execution or type checking.
+
+[NativeExample.m](NativeExample.m) is a self-contained explicit module interface for
+the declaration catalog. It does not include a C implementation or target layout.

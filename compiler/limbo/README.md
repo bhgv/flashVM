@@ -1,10 +1,10 @@
 # LIMBO
 
-Version 0.6.5. [Русский](README.ru.md).
+Version 0.6.6. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend with owned concrete production trees: [grammar and build](frontend/README.md),
-[tree API and limits](frontend/TREE.md). Semantic analysis, typed AST construction,
+[tree API and limits](frontend/TREE.md). Full semantic analysis, typed AST construction,
 bytecode and SWF emission are not implemented yet.
 
 Configure this directory with the same explicit tool paths as in the frontend guide:
@@ -73,3 +73,9 @@ Inferno compiler or Dis generator.
 [Lexical profile 0.6.0](../LEXICAL_PROFILE.md).
 
 [Independent .sbl source-map reader](symbols/README.md) · [C/Limbo/CocoR compiler direction](symbols/COMPILER_DIRECTION.md).
+
+## Explicit interface declarations
+
+The [C99 interface catalog](frontend/INTERFACES.md) now owns module/export identities,
+grouped names and authored type spans, with exact scope-name duplicate checks.
+This partial declaration pass does not resolve imports/types or emit native C.

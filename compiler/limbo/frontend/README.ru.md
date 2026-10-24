@@ -1,6 +1,6 @@
 # Синтаксический фронтенд LIMBO
 
-Версия 0.6.5. [English](README.md).
+Версия 0.6.6. [English](README.md).
 
 Читаемый файл [limbo.atg](limbo.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -119,3 +119,9 @@ Include-файлы не раскрываются; cast по именованно
 Добавлены [деревья конкретных правил с собственным владением](TREE.ru.md),
 C99 API и отдельная утилита `limbo_tree`. Проверен также C-host/C-output путь
 [coco-r-limbo](https://github.com/bhgv/coco-r-limbo).
+
+## Проход объявлений интерфейса
+
+Добавлены C99-библиотека `limbo_interfaces` и утилита `limbo_interface` поверх
+того же дерева Coco/R. [Контракт, ограничения и ориентиры C backend](INTERFACES.ru.md).
+[Проверки](INTERFACE_VALIDATION.md).

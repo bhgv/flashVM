@@ -1,6 +1,6 @@
 # LIMBO
 
-Версия 0.6.5. [English](README.md).
+Версия 0.6.6. [English](README.md).
 
 Независимый проект компилятора на C99. Сейчас реализован синтаксический
 фронтенд: [грамматика, сборка и ограничения](frontend/README.ru.md).
@@ -74,3 +74,9 @@ Include-файлы не раскрываются; cast по именованно
 [Лексический профиль 0.6.0](../LEXICAL_PROFILE.ru.md).
 
 [Independent .sbl source-map reader](symbols/README.ru.md) · [C/Limbo/CocoR compiler direction](symbols/COMPILER_DIRECTION.ru.md).
+
+## Явные интерфейсы
+
+Добавлен [C99-каталог интерфейсов](frontend/INTERFACES.ru.md): области модулей,
+экспорты, группы имён, исходные диапазоны типов и проверка повторных имён.
+Полное разрешение импортов/типов и генерация C ещё не реализованы.

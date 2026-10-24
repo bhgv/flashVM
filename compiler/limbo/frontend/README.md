@@ -1,6 +1,6 @@
 # LIMBO syntax frontend
 
-Version 0.6.5. [Русская версия](README.ru.md).
+Version 0.6.6. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -115,3 +115,10 @@ C helpers in the authoritative ATG: [NamedCastAhead](limbo.atg#L112).
 [Lexical profile 0.6.0](../../LEXICAL_PROFILE.md).
 
 0.6.0: [AheadArrow](limbo.atg#L18).
+
+## Interface declaration pass
+
+[interface.h](interface.h) / [interface.c](interface.c) add a separate C99
+`limbo_interfaces` library and `limbo_interface` inspector over the same Coco/R
+tree. [Contract, supported declarations and native-backend reference](INTERFACES.md).
+[Validation and limits](INTERFACE_VALIDATION.md).
