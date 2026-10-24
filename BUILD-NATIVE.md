@@ -16,7 +16,7 @@ bounded reads instead of file(SIZE). Modern CMake remains supported.
 python3 build-menu.py
 ```
 
-The default builds mk and iyacc from the owner's selected sources plus the seven
+The default builds mk and iyacc from the owner's selected sources plus the eight
 workspace products. Explicit selectors remain available. When the source Limbo
 bootstrap is needed, mk/iyacc are built automatically and its parser regenerated.
 Builds never download source, tool binaries or SDKs. Python 3 is needed for tests

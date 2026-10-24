@@ -150,3 +150,15 @@ with status 3; this is not successful IDE execution. Other selected workspace
 components and their tests continue to build; failed checks still stop the build.
 
 [Embedded Dis host requirements](disVM/HOST-REQUIREMENTS.md).
+
+## Shared FlashVM/Dis host
+
+```sh
+./build-workspace.sh --projects disvm-host --tests
+# Experimental REG isolation, not a completed parallel VM:
+DVM_NATIVE_REGISTERS=ON ./build-workspace.sh --projects disvm --tests
+```
+
+Menu component `17` (`disvm-host`) is included in `all`.
+[Four platforms, module sources and experiment limits](disVM/host/README.md).
+[Blocking channels and waiter snapshots](flashVM/doc/CHANNEL_RENDEZVOUS.md).

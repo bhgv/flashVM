@@ -65,3 +65,5 @@ Dis-parser/error cleanup, pointer maps, serialization/layout widths и наст�
 [Состав и проверки обновления 0.1.1](SYNC.ru.md)
 
 [Необходимые службы встроенного хоста](HOST-REQUIREMENTS.ru.md)
+
+[Общий ввод-вывод, TLS-регистры и четыре порта](host/README.ru.md) · [Пример передачи модуля](examples/module-image/README.ru.md)

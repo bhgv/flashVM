@@ -267,3 +267,15 @@ Limbo-компилятор из выбранных исходников ваше
 Непрошедшая проверка по-прежнему останавливает сборку.
 
 [Какие службы нужны встроенному Dis](disVM/HOST-REQUIREMENTS.ru.md).
+
+## Общий хост FlashVM/Dis
+
+```sh
+./build-workspace.sh --projects disvm-host --tests
+# Экспериментальная изоляция REG, не готовая параллельная VM:
+DVM_NATIVE_REGISTERS=ON ./build-workspace.sh --projects disvm --tests
+```
+
+В меню добавлен компонент `17` (`disvm-host`), входящий в `all`.
+[Четыре платформы, источники модулей и границы эксперимента](disVM/host/README.ru.md).
+[Блокирующие каналы и снимки ожидающих сторон](flashVM/doc/CHANNEL_RENDEZVOUS.ru.md).

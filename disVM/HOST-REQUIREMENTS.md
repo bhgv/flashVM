@@ -45,3 +45,7 @@ round trips and cancellation/error tests against the chosen protocol version.
 The source-built `mk`, `iyacc` and native Limbo bootstrap use POSIX C support,
 not these runtime modules. They can build before the embedded runner exists.
 Native Limbo remains temporary; the owned Coco/R Limbo → FIR compiler has priority.
+
+## Implemented host foundation (v0.1534)
+
+[Shared host](host/README.md) now implements owned module images from memory, embedded bytes, FlashVM files, sockets and channels; an adapter invokes production parsemod. Real native threads/synchronization reuse FlashVM ports, and opt-in TLS register isolation is tested. The chosen experiment targets actual parallel OS threads. Global GC/module/process synchronization and a complete executable host remain open.

@@ -2,7 +2,7 @@
 # Optional workspace orchestration. Builds use selected, repository-owned SDK sources.
 set -euo pipefail
 ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,ide
+projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,disvm-host,ide
 build_root="$ROOT/build/workspace"
 jobs=2
 config=Release
@@ -17,7 +17,7 @@ ctest=${CTEST:-ctest}
 usage() {
     cat <<'HELP'
 Usage: ./build-workspace.sh [options]
-  --projects LIST    vm,compilers,fir,linker,symbols,disvm,ide (default all seven)
+  --projects LIST    vm,compilers,fir,linker,symbols,disvm,disvm-host,ide (default all eight)
                     Individual frontends: as1,as2,as3,limbo
                     Explicit tools: cocor,cocor-limbo,limbo-bootstrap,mk,iyacc
   --backend NAME    auto, cmake (3.10+), meson, mk or make; native subset documented
@@ -75,7 +75,7 @@ done
 IFS=, read -r -a selected <<< "$projects"
 for project in "${selected[@]}"; do
     case "$project" in
-        vm|compilers|fir|linker|symbols|disvm|ide|as1|as2|as3|limbo|cocor|cocor-limbo|limbo-bootstrap|mk|iyacc) ;;
+        vm|compilers|fir|linker|symbols|disvm|disvm-host|ide|as1|as2|as3|limbo|cocor|cocor-limbo|limbo-bootstrap|mk|iyacc) ;;
         *) fail "Unknown project: $project" ;;
     esac
 done
@@ -277,7 +277,7 @@ if has cocor-limbo; then
     build_project cocor-limbo tools/coco-r-limbo \
         "-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR"
 fi
-for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm ide; do
+for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-host ide; do
     has "$project" || continue
     args=()
     case "$project" in
@@ -291,7 +291,14 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm ide; do
             [[ "$project" != symbols ]] || source=compiler/limbo/symbols
             args+=("-DCOCOR_ROOT=$COCOR_ROOT" "-DCOCOR_EXECUTABLE=$COCOR_EXECUTABLE") ;;
         linker) source=linker ;;
-        disvm) source=disVM ;;
+        disvm)
+            source=disVM
+            args+=("-DDVM_NATIVE_REGISTERS=${DVM_NATIVE_REGISTERS:-OFF}")
+            args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM") ;;
+        disvm-host)
+            source=disVM/host
+            args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
+            args+=("-DDVM_FLASHVM_LIBRARIES=${DVM_FLASHVM_LIBRARIES:-}") ;;
         ide)
             source=ide/dis
             args+=("-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")

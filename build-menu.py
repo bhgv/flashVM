@@ -36,6 +36,7 @@ COMPONENTS = (
     ("limbo-bootstrap", "Временный native bootstrap из вашего experiment"),
     ("mk", "Inferno mk: нативная сборка из выбранных исходников"),
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
+    ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
 )
 
 
@@ -90,7 +91,7 @@ def selection(value):
     names = [name for name, _ in COMPONENTS]
     tokens = value.replace(",", " ").split()
     if tokens in (["all"], ["все"], ["*"]):
-        return names[:6] + ["disvm", "mk", "iyacc"]
+        return names[:6] + ["disvm", "disvm-host", "mk", "iyacc"]
     if not tokens:
         raise ValueError("Выберите хотя бы один компонент")
     result = []

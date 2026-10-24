@@ -80,3 +80,5 @@ The temporary native source bootstrap lives in tools/limbo-bootstrap, not here.
 [Selected synchronization 0.1.1 and checks](SYNC.md)
 
 [Embedded host requirements](HOST-REQUIREMENTS.md)
+
+[Shared I/O, native TLS registers and four host ports](host/README.md) · [Module input example](examples/module-image/README.md)
