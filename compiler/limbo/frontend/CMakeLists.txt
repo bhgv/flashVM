@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.6.6 LANGUAGES C)
+project(limbo_frontend VERSION 0.7.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -166,4 +166,32 @@ if(BUILD_TESTING AND LIMBO_INTERFACE_UPSTREAM)
   add_test(NAME limbo_interface_upstream COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/interface_upstream.py --upstream ${LIMBO_INTERFACE_UPSTREAM}
     --tool $<TARGET_FILE:limbo_interface>)
+endif()
+
+# Real C99 scaffold generation consumes the existing authoritative Coco/R tree.
+add_executable(limbo_bindings bindings.c)
+target_link_libraries(limbo_bindings PRIVATE limbo_interfaces)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(limbo_bindings PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(BUILD_TESTING)
+  add_test(NAME limbo_external_scaffolds COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/bindings_check.py" $<TARGET_FILE:limbo_bindings>
+    "${CMAKE_C_COMPILER}")
+endif()
+# Workspace-only interoperability check; standalone Limbo has no sibling source dependency.
+if(BUILD_TESTING AND TARGET as1_parse AND TARGET as2_parse AND TARGET as3_parse)
+  add_test(NAME limbo_external_as_scaffolds COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/as_bindings_check.py" $<TARGET_FILE:limbo_bindings>
+    $<TARGET_FILE:as1_parse> $<TARGET_FILE:as2_parse> $<TARGET_FILE:as3_parse>)
+endif()
+# Optional host-only execution of the common AS/ECMAScript transport templates.
+# This does not replace the three Coco/R AS syntax checks or claim SWF execution.
+if(BUILD_TESTING)
+  find_program(LIMBO_BINDINGS_NODE_EXECUTABLE NAMES node)
+  if(LIMBO_BINDINGS_NODE_EXECUTABLE)
+    add_test(NAME limbo_bidirectional_as_contract COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/as_bridge_check.py" $<TARGET_FILE:limbo_bindings>
+      "${LIMBO_BINDINGS_NODE_EXECUTABLE}")
+  endif()
 endif()
