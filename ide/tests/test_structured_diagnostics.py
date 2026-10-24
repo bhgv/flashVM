@@ -30,6 +30,25 @@ class TestStructuredDiagnostics(BuildCase):
         self.assertIn("--diagnostics-json", result["steps"][0]["argv"])
         self.assertEqual(item["coordinate_units"], "unicode_characters")
 
+    # A live source edit during compilation must not rewrite snapshot provenance.
+    def test_live_source_change_does_not_relabel_snapshot(self):
+        from unittest.mock import patch
+        original = "/*中*/\ttrace(missing);".encode()
+        self.source.write_bytes(original)
+
+        # Simulate a concurrent editor write after the host captured the source.
+        def changed_source(*args):
+            self.source.write_text("trace(42);", encoding="utf-8")
+            raise driver.BuildFailure(json.dumps(self.record()))
+
+        with patch.object(driver, "_run", side_effect=changed_source):
+            result = self.build(structured_diagnostics=True)
+        self.rejected(result, "source")
+        digest = hashlib.sha256(original).hexdigest()
+        self.assertEqual(result["source_sha256"], digest)
+        self.assertEqual(result["diagnostics"][0]["source_sha256"], digest)
+        self.assertNotEqual(digest, hashlib.sha256(self.source.read_bytes()).hexdigest())
+
     # Invalid records remain useful raw logs, but must never fabricate navigation.
     def test_malformed_coordinates_stay_unlocated(self):
         data = "/*中*/\ttrace(missing);".encode()

@@ -50,6 +50,14 @@ def main():
         result = subprocess.run(command + ["--diagnostics-json", "--module", "bad-name"],
                                 capture_output=True, timeout=10)
         assert result.returncode == 1 and json.loads(result.stderr)["kind"] == "argument"
+        # A multiline RHS must not move an operator error to the last literal.
+        limbo = "implement Op; Op: module { value: fn(): int; }; value(): int { return 8 /\n2; }"
+        source.write_text(limbo)
+        result = subprocess.run([compiler, "limbo", "--input", str(source), str(output),
+                                 "--diagnostics-json"], capture_output=True, timeout=10)
+        item = json.loads(result.stderr)
+        assert result.returncode == 1 and item["kind"] == "semantic"
+        assert limbo.encode()[item["byte_offset"]:item["byte_offset"] + item["byte_length"]] == b"/", item
         source.unlink()
         result = subprocess.run(command + ["--diagnostics-json"], capture_output=True, timeout=10)
         assert result.returncode == 2 and json.loads(result.stderr)["kind"] == "input"
