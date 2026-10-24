@@ -16,3 +16,4 @@
 - 0.1.14: Cover IDE build missing artifacts.
 - 0.1.15: Cover IDE build invalid artifacts.
 - 0.1.16: Cover IDE build unicode paths.
+- 0.1.17: Cover IDE build cli.

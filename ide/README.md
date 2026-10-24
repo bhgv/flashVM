@@ -1,6 +1,6 @@
 # IDE build backend
 
-Version **0.1.16**. [Русский](README.ru.md).
+Version **0.1.17**. [Русский](README.ru.md).
 
 This is an independent Python 3.9+ host build backend for an editor, not a graphical IDE. The explicitly selected C99 source compiler, FIR tools and SWL remain independent projects. Current source coverage is their numeric AS1/AS2/AS3/Limbo profile; AS3 produces AVM1 compatibility code, not ABC. No complete AS2 compiler is claimed.
 
