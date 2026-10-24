@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.2.1 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.2.2 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -25,10 +25,18 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/idecore_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/idecore_test.b"
     DEPENDS tests/idecore_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_test_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idecore_test.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/limits_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/limits_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/limits_test.b"
+    DEPENDS tests/limits_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_limits_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/limits_test.dis")
   foreach(mode 0 1)
     add_test(NAME ide_dis_reference_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
       --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module idecore_test.dis)
+    add_test(NAME ide_dis_limits_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module limits_test.dis)
   endforeach()
-  set_tests_properties(ide_dis_reference_mode_0 ide_dis_reference_mode_1 PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+  set_tests_properties(ide_dis_reference_mode_0 ide_dis_reference_mode_1 ide_dis_limits_mode_0 ide_dis_limits_mode_1 PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
 endif()
