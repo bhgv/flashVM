@@ -12,3 +12,4 @@
 - 0.1.10: Cover symbol source-map counts.
 - 0.1.11: Cover symbol source-map coordinates.
 - 0.1.12: Cover symbol source-map lengths.
+- 0.1.13: Cover symbol source-map nul.
