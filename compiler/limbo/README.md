@@ -1,10 +1,11 @@
 # LIMBO
 
-Version 0.5.5. [Русский](README.ru.md).
+Version 0.5.6. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
-frontend: [grammar, build and limitations](frontend/README.md). Semantic
-analysis, AST construction, bytecode and SWF emission are not implemented yet.
+frontend with owned concrete production trees: [grammar and build](frontend/README.md),
+[tree API and limits](frontend/TREE.md). Semantic analysis, typed AST construction,
+bytecode and SWF emission are not implemented yet.
 
 Configure this directory with the same explicit tool paths as in the frontend guide:
 

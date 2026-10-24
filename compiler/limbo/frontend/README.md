@@ -1,12 +1,15 @@
 # LIMBO syntax frontend
 
-Version 0.5.5. [Русская версия](README.ru.md).
+Version 0.5.6. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
 The embedded predicates are C99; the executable and generated code are built as
 C99 with extensions disabled. This is a syntax recognizer, not yet a complete
-compiler: there is no AST, symbol table, type checker, code generator or SWF writer.
+compiler: there is no typed AST, symbol table, type checker, code generator or SWF writer.
+Optional [owned concrete production trees](TREE.md) are now available through C99
+and the separate `limbo_tree` inspector. The external C-host/C-output generator
+of [coco-r-limbo](https://github.com/bhgv/coco-r-limbo) is also tested.
 
 ## Build and detach
 
