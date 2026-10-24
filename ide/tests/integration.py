@@ -2,6 +2,7 @@
 """Acceptance against explicitly selected real compiler/linker/FlashVM tools."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -17,6 +18,7 @@ def main():
         parser.add_argument(
             "--" + name, required=True, type=lambda p: str(Path(p).resolve())
         )
+    parser.add_argument("--structured-diagnostics", action="store_true")
     args = parser.parse_args()
     driver = Path(__file__).resolve().parents[1] / "build.py"
     cases = {
@@ -51,6 +53,8 @@ def main():
                 "--module",
                 "ide." + language,
             ]
+            if args.structured_diagnostics:
+                command.append("--structured-diagnostics")
             for optimise in (True, False):
                 source.write_text(text, encoding="utf-8")
                 request = (
@@ -73,6 +77,20 @@ def main():
             assert report["diagnostics"][0]["stage"] == "source", report
             assert output.read_bytes() == previous
             checks += 1
+            if args.structured_diagnostics:
+                broken = "/*中*/\ttrace(missing);"
+                if language == "limbo":
+                    broken = ("implement Bad; Bad: module { value: fn(): int; }; "
+                              "value(): int { #中\n\treturn missing; }")
+                source.write_text(broken, encoding="utf-8")
+                result = subprocess.run(command, capture_output=True, timeout=60)
+                report = json.loads(result.stdout)
+                item = report["diagnostics"][0]
+                assert result.returncode == 1 and item["kind"] == "semantic", report
+                assert broken[item["character_offset"]:item["character_offset"] + item["character_length"]] == "missing"
+                assert item["source_sha256"] == hashlib.sha256(broken.encode()).hexdigest()
+                assert output.read_bytes() == previous
+                checks += 1
             source.write_text(text, encoding="utf-8")
             result = subprocess.run(
                 command + ["--expect-trace", "incorrect trace\n"],

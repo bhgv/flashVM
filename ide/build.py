@@ -39,6 +39,70 @@ def _diagnostic(stage, message, source=None):
     return item
 
 
+# Reject duplicate JSON keys rather than silently accepting the final spelling.
+def _unique_object(pairs):
+    """Build a JSON object with an unambiguous field value for every key."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate diagnostic key")
+        result[key] = value
+    return result
+
+
+# Admit coordinates only when a complete record agrees with the captured bytes.
+def _source_diagnostic(message, data, source):
+    """Validate schema 1, preserve byte spans and add Unicode-character positions.
+
+    Malformed, unlocated or foreign diagnostics retain raw text without guessed
+    positions. A caller must compare source_sha256 (and its own live revision)
+    before using a late result to navigate or edit a live document.
+    """
+    item = {"severity": "error", "stage": "source", "message": message}
+    try:
+        record = json.loads(message, object_pairs_hook=_unique_object)
+        if not isinstance(record, dict) or type(record.get("schema")) is not int:
+            return item
+        kinds = {"argument", "input", "encoding", "limit", "resource", "syntax", "semantic", "output"}
+        if record["schema"] != 1 or record.get("kind") not in kinds:
+            return item
+        if not isinstance(record.get("message"), str):
+            return item
+        for key in ("code", "byte_offset", "byte_length", "line", "column"):
+            if type(record.get(key)) is not int or not 0 <= record[key] <= 2147483647:
+                return item
+        if type(record.get("has_location")) is not bool:
+            return item
+        if (record["kind"] == "syntax") != (record["code"] > 0):
+            return item
+        if not record["has_location"]:
+            # No coordinate fields are meaningful in an explicitly unlocated record.
+            return item
+        start, length = record["byte_offset"], record["byte_length"]
+        end = start + length
+        if start > len(data) or end > len(data):
+            return item
+        data.decode("utf-8")
+        prefix = data[:start].decode("utf-8")
+        selected = data[start:end].decode("utf-8")
+        byte_prefix = data[:start]
+        line = byte_prefix.count(b"\n") + 1
+        column = len(byte_prefix.rsplit(b"\n", 1)[-1]) + 1
+        if (line, column) != (record["line"], record["column"]):
+            return item
+        item.update(
+            message=record["message"], kind=record["kind"], code=record["code"],
+            file=str(source), source_sha256=hashlib.sha256(data).hexdigest(),
+            byte_offset=start, byte_length=length, byte_column=column,
+            character_offset=len(prefix), character_length=len(selected),
+            line=line, column=len(prefix.rsplit("\n", 1)[-1]) + 1,
+            coordinate_units="unicode_characters",
+        )
+    except (ValueError, TypeError, UnicodeError):
+        pass
+    return item
+
+
 # Read bounded diagnostic bytes without retaining an unbounded child log in RAM.
 def _text(stream):
     """Read bounded diagnostic bytes without retaining an unbounded child log in RAM."""
@@ -112,6 +176,7 @@ def build(
     optimise=True,
     runner=None,
     expect_trace=None,
+    structured_diagnostics=False,
 ):
     """Build one source snapshot; publish only after all selected stages succeed.
 
@@ -158,6 +223,7 @@ def build(
             data = stream.read(SOURCE_LIMIT + 1)
         if len(data) > SOURCE_LIMIT:
             raise BuildFailure("source exceeds the numeric profile's 64 KiB limit")
+        result["source_sha256"] = hashlib.sha256(data).hexdigest()
         # Stage beside the destination so the final replace stays on one filesystem.
         with tempfile.TemporaryDirectory(
             prefix=".ide-build-", dir=output.parent
@@ -170,9 +236,12 @@ def build(
                 for name in ("source.fir", "optimised.fir", "module.swo", "movie.swf")
             ]
             stage = "source"
+            source_command = [tools[0], language, "--input", snapshot, original, "--module", module]
+            if structured_diagnostics:
+                source_command.append("--diagnostics-json")
             _run(
                 stage,
-                [tools[0], language, "--input", snapshot, original, "--module", module],
+                source_command,
                 work,
                 timeout,
                 result,
@@ -219,7 +288,10 @@ def build(
             os.replace(movie, output)
             result.update(ok=True, published=True, sha256=checksum)
     except (BuildFailure, OSError, ValueError) as error:
-        result["diagnostics"].append(_diagnostic(stage, str(error), source))
+        if stage == "source" and structured_diagnostics:
+            result["diagnostics"].append(_source_diagnostic(str(error), data, source))
+        else:
+            result["diagnostics"].append(_diagnostic(stage, str(error), source))
     except KeyboardInterrupt:
         result["diagnostics"].append(_diagnostic(stage, "build cancelled", source))
     return result
@@ -240,6 +312,8 @@ def main(argv=None):
     parser.add_argument("--no-optimise", dest="optimise", action="store_false")
     parser.add_argument("--runner")
     parser.add_argument("--expect-trace")
+    parser.add_argument("--structured-diagnostics", action="store_true",
+                        help="Opt in to fir1_source schema-1 byte diagnostics")
     args = vars(parser.parse_args(argv))
     result = build(**args)
     print(json.dumps(result, ensure_ascii=False))
