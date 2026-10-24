@@ -4,3 +4,4 @@
 - 0.1.2: Cover symbol source-map basic.
 - 0.1.3: Cover symbol source-map inherited.
 - 0.1.4: Cover symbol source-map files.
+- 0.1.5: Cover symbol source-map crlf.
