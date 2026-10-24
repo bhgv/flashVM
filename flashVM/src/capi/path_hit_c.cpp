@@ -170,6 +170,34 @@ struct Query
         }
         segment = false;
     }
+    /* Compare a legacy round stroke without squaring tiny lengths or radii.
+     * Normalize only the tangent, clamp a distance along the finite segment,
+     * then compare bounded residual/radius ratios. A constant segment is a disk. */
+    void scaled_round(double ax, double ay, double dx, double dy)
+    {
+        double ex = x - ax, ey = y - ay;
+        const double span = std::fabs(dx) > std::fabs(dy) ? std::fabs(dx) : std::fabs(dy);
+        if (span > 0)
+        {
+            const double sx = dx / span, sy = dy / span;
+            const double norm = std::sqrt(sx * sx + sy * sy);
+            const double ux = sx / norm, uy = sy / norm;
+            const double size = span * norm;
+            double along = ex * ux + ey * uy;
+            if (along < 0)
+                along = 0;
+            if (along > size)
+                along = size;
+            ex -= along * ux;
+            ey -= along * uy;
+        }
+        /* Reject before division so a distant query cannot overflow the ratios. */
+        if (std::fabs(ex) > radius || std::fabs(ey) > radius)
+            return;
+        const double sx = ex / radius, sy = ey / radius;
+        if (sx * sx + sy * sy <= 1)
+            edge = true;
+    }
     /* Accumulate a fill crossing, a selected stroke body, or legacy round distance. */
     void line(double ax, double ay, double bx, double by)
     {
@@ -211,6 +239,13 @@ struct Query
                 segment = true;
             }
             last_x = bx; last_y = by; last_dx = ux; last_dy = uy;
+            return;
+        }
+        /* Keep ordinary legacy distances unchanged; avoid reduced-precision squares
+         * only for a positive round radius or a subnormal squared segment norm. */
+        if (!styled && radius > 0 && (length < DBL_MIN || radius * radius < DBL_MIN))
+        {
+            scaled_round(ax, ay, dx, dy);
             return;
         }
         if (!length && !radius)

@@ -8,7 +8,7 @@ The endpoint span supplies a frexp exponent; ldexp increases all exact differenc
 
 ## Contract and limits
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L529) still borrows an immutable path and requires positive finite width up to 1,000,000, valid selectors and two caller-owned outputs. Admission allocates nothing, invokes no callbacks/GC and needs no VM. Errors and unsupported geometry preserve both outputs; concurrent path mutation is forbidden. Axis paths retain their fast path. Non-axis reduction additionally requires a nonzero norm so tangent underflow in the existing segment walker cannot turn a previous fallback into an empty stroke.
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L564) still borrows an immutable path and requires positive finite width up to 1,000,000, valid selectors and two caller-owned outputs. Admission allocates nothing, invokes no callbacks/GC and needs no VM. Errors and unsupported geometry preserve both outputs; concurrent path mutation is forbidden. Axis paths retain their fast path. Non-axis reduction additionally requires a nonzero norm so tangent underflow in the existing segment walker cannot turn a previous fallback into an empty stroke.
 
 Controls must lie inside the endpoint rectangle and be exactly collinear after scaling. Bounded unordered cubic controls remain admitted. Lost subtraction tails, fractional scaled components, nonzero orientation and unnormalizable tangents retain [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for non-round styles. Round/round retains general analytic bounds. Finite bodies, caps, joins and Close are unchanged.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:529](../src/capi/path_hit_c.cpp#L529) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:564](../src/capi/path_hit_c.cpp#L564) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
