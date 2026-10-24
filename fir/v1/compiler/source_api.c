@@ -18,6 +18,8 @@ static FirSourceDiagnostic *active_diagnostic;
 static const unsigned char *source_bytes;
 static size_t source_length;
 static int error_recorded;
+static FILE *active_debug;
+static int first_debug_event;
 
 /* Preserve the first error independently of the caller's optional text buffer.
  * Derive canonical byte columns from original bytes, never scanner tab expansion. */
@@ -56,6 +58,55 @@ void source_error(FirSourceDiagnosticKind kind, int code, long offset, size_t le
     active_diagnostic->column = column;
 }
 
+/* Quote a validated source snapshot/name without retaining its bytes. */
+static void debug_string(FILE *out, const unsigned char *text, size_t size)
+{
+    size_t i;
+    fputc('"', out);
+    for (i = 0; i < size; ++i)
+    {
+        unsigned ch = text[i];
+        if (ch == '"' || ch == '\\')
+            fprintf(out, "\\%c", ch);
+        else if (ch < 32)
+            fprintf(out, "\\u%04x", ch);
+        else
+            fputc(ch, out);
+    }
+    fputc('"', out);
+}
+
+/* Append an origin event to private staging. SSA IDs refer to pre-optimization
+ * FIR only; optimized/native locations need a later explicit relocation pass. */
+void source_debug_event(const char *kind, int value, const char *name, int scope, int depth, SourceMark mark)
+{
+    size_t i, line = 1, column = 1;
+    if (!active_debug || error_recorded)
+        return;
+    fprintf(active_debug, "%s{\"kind\":", first_debug_event ? "" : ",");
+    first_debug_event = 0;
+    debug_string(active_debug, (const unsigned char *)kind, strlen(kind));
+    fprintf(active_debug, ",\"value\":%d,\"scope\":%d,\"scope_depth\":%d,\"name\":", value, scope, depth);
+    debug_string(active_debug, (const unsigned char *)name, strlen(name));
+    if (mark.offset >= 0 && (size_t)mark.offset <= source_length &&
+        mark.length <= source_length - (size_t)mark.offset)
+    {
+        for (i = 0; i < (size_t)mark.offset; ++i)
+        {
+            if (source_bytes[i] == '\n')
+            {
+                ++line;
+                column = 1;
+            }
+            else
+                ++column;
+        }
+        fprintf(active_debug, ",\"byte_offset\":%ld,\"byte_length\":%zu,\"line\":%zu,\"column\":%zu",
+                mark.offset, mark.length, line, column);
+    }
+    fputc('}', active_debug);
+}
+
 /* Adapt Coco/R's callback while retaining its syntax code and legacy message. */
 static void report(int code, int line, int column, long offset)
 {
@@ -87,11 +138,12 @@ static int valid_name(const char *name)
 /* Compile one bounded snapshot into a private stream before copying it out.
  * Rejected input/translation preserves output; final output I/O failure may leave
  * a prefix. The caller owns both streams and serializes all generated parsers. */
-int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *name,
-                  char *error, size_t capacity, FirSourceDiagnostic *diagnostic)
+int fir_source_debug(FILE *input, FILE *output, FirLanguage language, const char *name,
+                     char *error, size_t capacity, FirSourceDiagnostic *diagnostic, FILE *debug_output)
 {
     unsigned char *text = NULL;
     FILE *temporary = NULL;
+    FILE *debug_temporary = NULL;
     size_t length;
     int ok = 0;
     active_error = error;
@@ -100,20 +152,25 @@ int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *n
     source_bytes = NULL;
     source_length = 0;
     error_recorded = 0;
+    active_debug = NULL;
+    first_debug_event = 1;
     if (error && capacity)
         error[0] = 0;
     if (diagnostic)
         memset(diagnostic, 0, sizeof(*diagnostic));
     if (!name)
         name = "tutorial";
-    if (!input || !output || language < FIR_AS1 || language > FIR_LIMBO || !valid_name(name))
+    if ((debug_output && (debug_output == input || debug_output == output)) ||
+        !input || !output || language < FIR_AS1 || language > FIR_LIMBO || !valid_name(name))
     {
         source_error(FIR_DIAG_ARGUMENT, 0, -1, 0, "invalid source arguments");
         goto done;
     }
     text = (unsigned char *)calloc(65538, 1);
     temporary = fir_temporary();
-    if (!text || !temporary)
+    if (debug_output)
+        debug_temporary = fir_temporary();
+    if (!text || !temporary || (debug_output && !debug_temporary))
     {
         source_error(FIR_DIAG_RESOURCE, 0, -1, 0, "temporary allocation failure");
         goto done;
@@ -136,6 +193,15 @@ int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *n
     }
     source_bytes = text;
     source_length = length;
+    if (debug_temporary)
+    {
+        active_debug = debug_temporary;
+        fputs("{\"schema\":1,\"format\":\"FIRDBG1\",\"stage\":\"source-unoptimized-fir\",\"module\":", active_debug);
+        debug_string(active_debug, (const unsigned char *)name, strlen(name));
+        fputs(",\"source\":", active_debug);
+        debug_string(active_debug, text, length);
+        fputs(",\"events\":[", active_debug);
+    }
     source_config(temporary, (int)language);
     Custom_Error = report;
     fprintf(temporary,
@@ -152,6 +218,15 @@ int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *n
     fputs("    return\n}\n", temporary);
     if (!Successful() || source_failed() || error_recorded)
         goto done;
+    if (debug_temporary)
+    {
+        fputs("]}\n", debug_temporary);
+        if (ferror(debug_temporary) || fflush(debug_temporary) || fseek(debug_temporary, 0, SEEK_SET))
+        {
+            source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "debug staging I/O failure");
+            goto done;
+        }
+    }
     if (ferror(temporary) || fflush(temporary) || fseek(temporary, 0, SEEK_SET))
     {
         source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "temporary FIR write/seek failure");
@@ -170,9 +245,26 @@ int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *n
         source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "FIR stream I/O failure");
         goto done;
     }
+    if (debug_temporary)
+    {
+        while ((length = fread(text, 1, 65536, debug_temporary)) != 0)
+        {
+            if (fwrite(text, 1, length, debug_output) != length)
+            {
+                source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "debug output write failure");
+                goto done;
+            }
+        }
+        if (ferror(debug_temporary) || ferror(debug_output))
+        {
+            source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "debug output I/O failure");
+            goto done;
+        }
+    }
     ok = 1;
 done:
     Custom_Error = 0;
+    active_debug = NULL;
     source_release();
     active_error = NULL;
     active_capacity = 0;
@@ -181,8 +273,17 @@ done:
     source_length = 0;
     if (temporary)
         fclose(temporary);
+    if (debug_temporary)
+        fclose(debug_temporary);
     free(text);
     return ok;
+}
+
+/* Keep the structured-diagnostic API source-compatible without debug staging. */
+int fir_source_ex(FILE *input, FILE *output, FirLanguage language, const char *name,
+                  char *error, size_t capacity, FirSourceDiagnostic *diagnostic)
+{
+    return fir_source_debug(input, output, language, name, error, capacity, diagnostic, NULL);
 }
 
 /* Preserve source compatibility for hosts that only consume legacy text errors. */

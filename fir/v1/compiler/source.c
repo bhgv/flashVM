@@ -45,6 +45,8 @@ static void report(int json, const FirSourceDiagnostic *diagnostic, const char *
 int main(int argc, char **argv)
 {
     FILE *input = NULL, *temporary = NULL, *output = NULL;
+    FILE *debug = NULL, *debug_file = NULL;
+    const char *debug_path = NULL;
     unsigned char buffer[8192];
     size_t length;
     int json = 0, have_module = 0, i, status = 2;
@@ -55,13 +57,13 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.5.4 (numeric tutorial profiles; diagnostic schema 1)");
+        puts("fir1_source 0.5.5 (numeric tutorial profiles; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir\n"
-             "                   [--module NAME] [--diagnostics-json]\n"
+             "                   [--module NAME] [--diagnostics-json] [-g DEBUG.json]\n"
              "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
              "AS3 const; Limbo lexical blocks and value(): int tutorial ABI.\n"
              "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
@@ -89,10 +91,13 @@ int main(int argc, char **argv)
             module = argv[++i];
             have_module = 1;
         }
+        else if (!strcmp(argv[i], "-g") && !debug_path && i + 1 < argc)
+            debug_path = argv[++i];
         else
             goto usage;
     }
-    if (!strcmp(argv[3], argv[4]))
+    if (!strcmp(argv[3], argv[4]) || (debug_path &&
+        (!strcmp(debug_path, argv[3]) || !strcmp(debug_path, argv[4]))))
     {
         diagnostic.kind = FIR_DIAG_ARGUMENT;
         strcpy(error, "different input/output paths required");
@@ -106,14 +111,16 @@ int main(int argc, char **argv)
         goto done;
     }
     temporary = fir_temporary();
-    if (!temporary)
+    if (debug_path)
+        debug = fir_temporary();
+    if (!temporary || (debug_path && !debug))
     {
         diagnostic.kind = FIR_DIAG_RESOURCE;
         strcpy(error, "cannot create temporary FIR output");
         goto done;
     }
     status = 1;
-    if (!fir_source_ex(input, temporary, language, module, error, sizeof(error), &diagnostic))
+    if (!fir_source_debug(input, temporary, language, module, error, sizeof(error), &diagnostic, debug))
         goto done;
     if (fflush(temporary) || fseek(temporary, 0, SEEK_SET))
         goto output_error;
@@ -133,6 +140,27 @@ int main(int argc, char **argv)
         goto output_error;
     }
     output = NULL;
+    if (debug)
+    {
+        if (fflush(debug) || fseek(debug, 0, SEEK_SET))
+            goto output_error;
+        debug_file = fopen(debug_path, "wb");
+        if (!debug_file)
+            goto output_error;
+        while ((length = fread(buffer, 1, sizeof(buffer), debug)) != 0)
+        {
+            if (fwrite(buffer, 1, length, debug_file) != length)
+                goto output_error;
+        }
+        if (ferror(debug))
+            goto output_error;
+        if (fclose(debug_file))
+        {
+            debug_file = NULL;
+            goto output_error;
+        }
+        debug_file = NULL;
+    }
     status = 0;
     goto done;
 output_error:
@@ -146,11 +174,15 @@ done:
         fclose(temporary);
     if (output)
         fclose(output);
+    if (debug)
+        fclose(debug);
+    if (debug_file)
+        fclose(debug_file);
     if (status)
         report(json, &diagnostic, error[0] ? error : "source operation failed");
     return status;
 usage:
     fputs("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir "
-          "[--module NAME] [--diagnostics-json]\n", stderr);
+          "[--module NAME] [--diagnostics-json] [-g DEBUG.json]\n", stderr);
     return 2;
 }

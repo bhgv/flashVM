@@ -195,6 +195,12 @@ extern "C"
      * be serialized, including calls through the legacy wrapper below. */
     int fir_source_ex(FILE *, FILE *, FirLanguage, const char *module_name,
                       char *, size_t, FirSourceDiagnostic *);
+    /* Compile with an optional FIRDBG1 source snapshot/value/binding sidecar.
+     * This maps unoptimized FIR SSA identities, not final SWF/Dis/native PCs.
+     * Streams are caller-owned/disjoint. Rejected translation writes neither;
+     * final copy failures can leave prefixes and are not a two-file transaction. */
+    int fir_source_debug(FILE *, FILE *, FirLanguage, const char *module_name,
+                         char *, size_t, FirSourceDiagnostic *, FILE *debug_output);
     int fir_source(FILE *, FILE *, FirLanguage, const char *module_name, char *, size_t);
     int fir_run(FirTask, FILE *, FILE *, const FirRunOptions *, char *, size_t);
 #ifdef __cplusplus

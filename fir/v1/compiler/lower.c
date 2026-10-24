@@ -18,6 +18,8 @@ static char names[256][256];
 static int bindings[256], immutable[256], name_count, source_line;
 /* Retired lexical bindings are never reused during one bounded translation unit. */
 static int binding_scope[256], active[256], scope_depth;
+/* Debug owners are unique across sibling blocks, unlike lexical depth. */
+static int debug_scopes[65], debug_scope_serial;
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language)
 {
@@ -28,7 +30,8 @@ void source_config(FILE *out, int language)
     destination = out;
     profile = language;
     integer_mode = language == 4;
-    serial = failed = name_count = scope_depth = 0;
+    serial = failed = name_count = scope_depth = debug_scope_serial = 0;
+    debug_scopes[0] = 0;
 }
 /* Query semantic rejection separately from generated syntax diagnostics. */
 int source_failed(void)
@@ -137,6 +140,8 @@ int source_constant(int negative)
         else
             fprintf(destination, "%.17g\n", value);
     }
+    if (!failed)
+        source_debug_event("constant", result, "", debug_scopes[scope_depth], scope_depth, location);
     return result;
 }
 /* Emit a three-address instruction; source operators are left associative. */
@@ -155,6 +160,8 @@ int source_binary(int left, int right, int op)
                 : op == '/' ? "div"
                             : "mul",
                 integer_mode ? ".wrap" : "", left, right);
+    if (!failed)
+        source_debug_event("binary", result, "", debug_scopes[scope_depth], scope_depth, location);
     return result;
 }
 /* Scanner bridge rejects complete oversized tokens before any spelling copy. */
@@ -228,6 +235,9 @@ void source_bind(int name, int value, int declaration)
     if (!declaration && bindings[name] < 0)
         reject("assignment before declaration");
     bindings[name] = value;
+    if (!failed)
+        source_debug_event(declaration ? "declare" : "assign", value, names[name],
+                           debug_scopes[binding_scope[name]], binding_scope[name], location);
 }
 /* Restrict numeric AS annotations without claiming a general type checker. */
 void source_annotation(void)
@@ -241,7 +251,10 @@ void source_annotation(void)
 void source_trace(int value)
 {
     if (!failed)
+    {
         fprintf(destination, "    trace %%v%d\n", value);
+        source_debug_event("trace", value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
 }
 /* Require implement and module declarations to use the same spelling. */
 void source_module(int first)
@@ -264,8 +277,11 @@ int source_negate(int value)
     if (serial > 1000)
         reject("expression size limit exceeded");
     if (!failed)
+    {
         fprintf(destination, "    %%v%d: %s = const.%s -1\n", minus, integer_mode ? "i32" : "f64",
                 integer_mode ? "i32" : "f64");
+        source_debug_event("constant", minus, "", debug_scopes[scope_depth], scope_depth, location);
+    }
     return source_binary(value, minus, '*');
 }
 /* Enforce AS3-only constants and retain their immutability in flat AS scope. */
@@ -294,6 +310,8 @@ void source_hash_comment(void)
 void source_enter_scope(void)
 {
     ++scope_depth;
+    debug_scopes[scope_depth] = ++debug_scope_serial;
+    source_debug_event("scope-enter", -1, "", debug_scopes[scope_depth], scope_depth, location);
 }
 
 /* Retire only local names; values assigned to outer names remain current. */
@@ -305,6 +323,7 @@ void source_leave_scope(void)
         if (active[i] && binding_scope[i] == scope_depth)
             active[i] = 0;
     }
+    source_debug_event("scope-leave", -1, "", debug_scopes[scope_depth], scope_depth, location);
     --scope_depth;
 }
 

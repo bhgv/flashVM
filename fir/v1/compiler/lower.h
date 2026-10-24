@@ -14,6 +14,8 @@ void source_restore(SourceMark);
 /* Record only the first error; a negative offset explicitly means unlocated. */
 void source_error(FirSourceDiagnosticKind, int, long, size_t, const char *);
 void source_release(void);
+/* Record copied source origins without exposing compiler-owned storage. */
+void source_debug_event(const char *, int, const char *, int, int, SourceMark);
 void source_config(FILE *, int);
 int source_failed(void);
 void source_token(const char *, int, long, size_t, int);
