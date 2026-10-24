@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.5.0. [Русский](README.ru.md).
+Version 0.5.1. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
