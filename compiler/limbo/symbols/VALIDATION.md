@@ -13,3 +13,14 @@ The twenty-commit format-patch series is checked against a clean published base,
 Переименованная отдельная копия с корневой MIT LICENSE собирается и проходит оба CTests только с явными внешними generator paths. .atg formatter и проверки documentation targets/source lines проходят. Generated globals имеют namespace; queries работают с собственными неизменяемыми maps, без VM state. LeakSanitizer отключён, executable-name warnings могут ограничивать символизацию. Полная allocation-fault cleanup и foreign/physical target execution не приняты.
 
 Серия format-patch из 20 коммитов проверяется на чистой опубликованной базе с последовательными версиями компонента, обеими подписями bhgv и совпадающим итоговым деревом. Dis runtime, Tk/Draw/crypto, JIT backend, полный symbol reader и новый compiler backend не импортируются. Это source-map infrastructure; types/functions/locals, debugger channels и полные C/Limbo/AS компиляторы остаются открытыми.
+
+## Query extension 0.1.24
+
+Native C99 and ASan+UBSan builds using external coco-r-limbo C-host/C-output
+both pass all three CTest targets (embedding, query API, Python source-prefix
+suite). The Python suite now has 19 test methods, including 240 deterministic
+randomized query/oracle comparisons and malformed CLI argument checks.
+Sanitizer leak detection is disabled as in the previous checkpoint; this is not
+an allocation-fault, thread-race, native Limbo generator or runtime Dis acceptance.
+An initial test fixture used an incorrect literal byte length; corrected to strlen
+before acceptance. No source behavior was changed to accommodate the fixture.

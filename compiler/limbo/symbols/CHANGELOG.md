@@ -20,3 +20,10 @@
 - 0.1.18: Cover symbol source-map line endings.
 - 0.1.19: Check source-map decoding against the upstream Limbo symbol writer.
 - 0.1.20: Record source-map generator, sanitizer and upstream interoperability acceptance.
+
+## 0.1.21–0.1.24
+
+Immutable coordinate, bounded forward-line breakpoint and statement-ID queries;
+checked native sblquery inspector; C output-preservation/edge tests and 240
+independent randomized CLI oracle queries. See README for the precise policies
+and the boundary between static source queries and runtime Dis stepping.

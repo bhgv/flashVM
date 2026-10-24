@@ -1,6 +1,6 @@
 # Limbo symbol source maps
 
-Version **0.1.23**. [Русский](README.ru.md).
+Version **0.1.24**. [Русский](README.ru.md).
 
 Independent C99/CocoR reader of the **source-map prefix of limbo .sbl 2.1**. This is executable debugger infrastructure, not a complete Limbo compiler, Dis embedding or debugger UI. Types, functions, locals and globals after the PC prefix are deliberately opaque and not semantically validated. Older .sbl versions are unsupported in this first component.
 
@@ -57,3 +57,57 @@ python3 compiler/limbo/symbols/tests/upstream_writer.py \
 [Upstream references](UPSTREAM.md) distinguish Dis debug services from wm/Tk presentation. [Compiler direction](COMPILER_DIRECTION.md) records C/Limbo/CocoR and later AS requirements. The next debugger layers still need full symbol/type/local decoding, module identity/reload handling, existing Dis control adaptation, channel transport, JIT mappings and actual target execution.
 
 [Validation checkpoint / Проверки](VALIDATION.md).
+
+## Debugger source queries
+
+The immutable [query implementation](src/queries.c) exposes three policies in the
+[public C99 header](include/sblmap.h). Calls do not use generated parser globals;
+retain the map while querying it and serialize destruction with all readers.
+All failures preserve the caller's PC output. File IDs are exact numeric table
+indices: `a/main.b` and `b/main.b` never alias through basename stripping.
+
+- `sblmap_position`: first matching PC at/after `first_pc`; lexicographic
+  `(line, column)` containment with inclusive endpoints. Only ordered spans in
+  one file with nonzero endpoint lines participate. A zero column is valid.
+- `sblmap_breakpoint`: choose the smallest authored start line in the explicit
+  inclusive `[line, last_line]` window, then the smallest PC at/after `first_pc`.
+  `last_line == line` disables forward sliding. This does not install a breakpoint
+  or validate an instruction against a loaded module. A source start can be a
+  candidate even when its stop is in another file or before the start.
+- `sblmap_next_statement`: first later logical PC with a different statement ID,
+  including transitions from/to ID zero. This scans map order only. It cannot
+  predict executed branches, frames, calls or loops and is not Step/StepOver.
+
+The separate [CLI](src/query_main.c) preserves the original `sblmap` TSV interface:
+
+```sh
+sblquery program.sbl position 0 12 4 0
+sblquery program.sbl breakpoint 0 12 20 0
+sblquery program.sbl statement 17
+```
+
+Each prints one decimal logical PC. Exit status is 0 for a candidate, 3 for no
+candidate, 1 for malformed map/invalid query/output failure, 2 for usage/input I/O
+failure. Numeric arguments are unsigned decimal uint32 values; signs, whitespace,
+trailing bytes and overflow are rejected. Source positions retain producer units.
+Queries are O(number of remaining PCs), use constant auxiliary space and never
+open source filenames, process devices or executable mappings.
+
+### Dis integration boundary
+
+Upstream experiment was rechecked at
+[`72616af5`](https://github.com/bhgv/Inferno-OS-bhgv/commit/72616af5ccb7a89473596c2a1409c1f064bc9f6e).
+Its JIT work remains upstream and is not copied by this patch. Existing
+[Debug source queries and stepping](https://github.com/bhgv/Inferno-OS-bhgv/blob/72616af5ccb7a89473596c2a1409c1f064bc9f6e/appl/lib/debug.b)
+are the behavioral reference: `Prog.step` observes actual stack/module/frame
+state, while `Sym.srctopc` also uses a legacy forward-line heuristic. Our explicit
+window and lexicographic position policy are intentionally documented rather than
+claiming drop-in compatibility with that heuristic. Real execution control must
+remain in a Dis host adapter, with typed channel requests, module-instance identity
+and PC/frame/JIT mappings. No such adapter, VM import, IDE UI or full Limbo compiler
+is implemented by these source-map queries.
+
+The compiler direction remains C99 and Limbo implementations with Coco/R `.atg`
+parsers, using [coco-r-limbo](https://github.com/bhgv/coco-r-limbo) rather than
+recreating its port. Current tests exercise that repository's C-host/C-output
+path only. Embedded C grammar actions still require a separate Limbo implementation.
