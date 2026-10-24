@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.16)
-project(fir1 VERSION 0.5.1 LANGUAGES C)
+project(fir1 VERSION 0.5.2 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -97,4 +97,10 @@ if(FIR_BUILD_SYNTAX_FRONTEND)
   add_subdirectory(frontend)
   target_link_libraries(fir1 PRIVATE firsyn_frontend)
   target_compile_definitions(fir1 PRIVATE FIR_HAS_SYNTAX_FRONTEND=1)
+endif()
+
+# Object storage names must remain literal AVM1 variables for every accepted module name.
+if(BUILD_TESTING)
+  add_test(NAME fir1_module_names COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/module_names.py $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
 endif()

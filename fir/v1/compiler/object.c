@@ -68,11 +68,27 @@ static void real(Bytes *b, double x)
     dword(b, (uint32_t)(bits >> 32));
     dword(b, (uint32_t)bits);
 }
-/* Push the generated storage name for one SSA value. */
+/* Encode every module-name byte as two hex digits. AVM1 variable names must
+ * not reinterpret an accepted module separator as a property/target path.
+ * Fixed-width encoding is injective, including dots, underscores and case.
+ * The dollar prefix cannot overlap legacy names beginning with __fir1_. */
 static void variable(Bytes *b, const FirModule *m, int index)
 {
-    char name[FIR_TEXT + 40];
-    snprintf(name, sizeof(name), "__fir1_%s_value_%d", m->module + 1, index);
+    static const char digits[] = "0123456789abcdef";
+    char name[FIR_TEXT * 2 + 40];
+    const unsigned char *module = (const unsigned char *)m->module + 1;
+    size_t used = 0;
+    const char prefix[] = "__fir1$";
+    memcpy(name, prefix, sizeof(prefix) - 1);
+    used = sizeof(prefix) - 1;
+    while (*module)
+    {
+        unsigned byte_value = *module++;
+        name[used++] = digits[byte_value >> 4];
+        name[used++] = digits[byte_value & 15];
+    }
+    /* Verified module names and SSA indices fit the spelling plus this suffix. */
+    snprintf(name + used, sizeof(name) - used, "_value_%d", index);
     text(b, name);
 }
 /* Retrieve one SSA value from its generated object-local variable. */

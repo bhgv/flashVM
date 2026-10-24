@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.5.1**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.5.2**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -72,3 +72,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Сборка для своей и другой ОС/CPU](../../BUILDING.ru.md).
 
 [Расширенный структурный парсер и C API](frontend/README.ru.md).
+
+[0.5.2: literal module storage](doc/MODULE_STORAGE.ru.md).
