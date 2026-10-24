@@ -8,6 +8,7 @@ typedef struct TreeNode
 {
     LimboNode view;
     size_t last_child;
+    size_t depth;
 } TreeNode;
 
 /* One ownership boundary for the source snapshot and a bounded, relocatable node array. */
@@ -61,6 +62,7 @@ void limbo_tree_enter(const char *kind, long start)
     node->view.kind = kind;
     node->view.begin = node->view.end = (size_t)start;
     node->view.parent = tree->current;
+    node->depth = tree->current == SIZE_MAX ? 0 : tree->nodes[tree->current].depth + 1;
     node->view.first_child = node->view.next_sibling = node->last_child = SIZE_MAX;
     if (tree->current != SIZE_MAX)
     {
@@ -190,3 +192,24 @@ int limbo_tree_node(const LimboTree *tree, size_t index, LimboNode *out)
     return 1;
 }
 
+/* Select an innermost grammar context without allocating, recursing or inspecting tokens. */
+int limbo_tree_locate(const LimboTree *tree, size_t byte_offset, size_t *index)
+{
+    size_t i, best = SIZE_MAX, depth = 0;
+    if (!tree || !index || byte_offset >= tree->size)
+        return 0;
+    for (i = 0; i < tree->count; ++i)
+    {
+        const TreeNode *node = &tree->nodes[i];
+        if (node->view.begin <= byte_offset && byte_offset < node->view.end &&
+            (best == SIZE_MAX || node->depth > depth))
+        {
+            best = i;
+            depth = node->depth;
+        }
+    }
+    if (best == SIZE_MAX)
+        return 0;
+    *index = best;
+    return 1;
+}

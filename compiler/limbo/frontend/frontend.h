@@ -54,6 +54,10 @@ extern "C"
     size_t limbo_tree_size(const LimboTree *tree);
     /* Copy one view; invalid arguments/index return zero and preserve output. */
     int limbo_tree_node(const LimboTree *tree, size_t index, LimboNode *out);
+    /* Find the deepest nonempty half-open span containing byte_offset; preorder breaks ties.
+     * Root covers the full snapshot, including leading trivia. EOF is outside all spans.
+     * Return zero for invalid arguments/absent position and preserve *index; no parser access. */
+    int limbo_tree_locate(const LimboTree *tree, size_t byte_offset, size_t *index);
 #ifdef __cplusplus
 }
 #endif

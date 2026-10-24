@@ -11,7 +11,7 @@ int main(void)
     LimboTree *tree = NULL, *other = NULL, *before;
     LimboNode node, saved;
     LimboDiagnostic diagnostic;
-    size_t count, i;
+    size_t count, i, index = SIZE_MAX;
     char *flat;
     char deep[4096];
     assert(limbo_tree_parse(source, strlen(source), &tree, &diagnostic));
@@ -22,6 +22,15 @@ int main(void)
     assert(limbo_tree_size(tree) == sizeof(source) - 1);
     assert(limbo_tree_node(tree, 0, &node));
     assert(!strcmp(node.kind, "Limbo") && node.parent == SIZE_MAX);
+    assert(limbo_tree_locate(tree, 0, &index) && index == 0);
+    assert(limbo_tree_locate(tree, 30, &index));
+    assert(limbo_tree_node(tree, index, &node));
+    assert(node.begin <= 30 && 30 < node.end);
+    index = SIZE_MAX;
+    assert(!limbo_tree_locate(tree, sizeof(source) - 1, &index) && index == SIZE_MAX);
+    assert(!limbo_tree_locate(tree, SIZE_MAX, &index) && index == SIZE_MAX);
+    assert(!limbo_tree_locate(NULL, 0, &index) && index == SIZE_MAX);
+    assert(!limbo_tree_locate(tree, 0, NULL));
     saved = node;
     assert(!limbo_tree_node(tree, count, &node) && !memcmp(&node, &saved, sizeof(node)));
     assert(!limbo_tree_node(NULL, 0, &node) && !memcmp(&node, &saved, sizeof(node)));
