@@ -29,6 +29,29 @@ inline void curve_bounds(double p0, double p1, double p2, double p3, bool cubic,
 {
     extent(cubic ? p3 : p2, low, high);
 
+    /* Nearby same-sign controls admit exact subtraction by Sterbenz's lemma.
+     * Compute derivatives and Bernstein values relative to the first control;
+     * restore the origin once, rather than cancelling large weighted controls.
+     * Other configurations retain their existing arithmetic path. */
+    double origin = p0;
+    double magnitude = std::fabs(origin);
+    bool relative = origin != 0;
+    const double controls[3] = {p1, p2, cubic ? p3 : p2};
+    for (unsigned int i = 0; i < 3 && relative; ++i)
+        relative = ((controls[i] > 0) == (origin > 0)) &&
+                   std::fabs(controls[i]) >= magnitude * 0.5 &&
+                   std::fabs(controls[i]) <= magnitude * 2;
+    if (relative)
+    {
+        p1 -= origin;
+        p2 -= origin;
+        if (cubic)
+            p3 -= origin;
+        p0 = 0;
+    }
+    else
+        origin = 0;
+
     /* Initialization / Инициализация локального состояния. */
     double a = cubic ? -p0 + 3 * p1 - 3 * p2 + p3 : 0;
     double b = cubic ? 2 * (p0 - 2 * p1 + p2) : p0 - 2 * p1 + p2;
@@ -73,7 +96,7 @@ inline void curve_bounds(double p0, double p1, double p2, double p3, bool cubic,
     }
     for (unsigned int i = 0; i < n; ++i)
         if (roots[i] > 0 && roots[i] < 1)
-            extent(bezier(p0, p1, p2, p3, roots[i], cubic), low, high);
+            extent(origin + bezier(p0, p1, p2, p3, roots[i], cubic), low, high);
 }
 
 } /* namespace fvm_geometry */
