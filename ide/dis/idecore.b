@@ -1,6 +1,14 @@
 implement Idecore;
 include "idecore.m";
 
+# [GC:] Private immutable snapshot stacks belong to the document owner. Replies
+# contain text values, never mutable History references or list nodes.
+History: adt
+{
+    undo: list of string;   # Most recent previous text first.
+    redo: list of string;   # Most recent undone text first.
+};
+
 # Private state belongs to one service process; it is never exposed as a mutable UI object.
 Document: adt
 {
@@ -8,13 +16,14 @@ Document: adt
     revision: int;     # Never reset by close/reopen, so stale edits cannot acquire a new session.
     saved: int;        # The last explicitly acknowledged clean revision.
     text: string;      # Character-indexed document content, bounded by MaxCharacters.
+    history: ref History; # Private bounded Undo/Redo roots; cleared across sessions.
 };
 
 # Create a typed channel boundary; no native UI or host-runtime call occurs here.
 start(): chan of Request
 {
     commands := chan of Request;
-    document := ref Document(0, 0, 0, "");
+    document := ref Document(0, 0, 0, "", ref History(nil, nil));
     spawn serve(commands, document);
     return commands;
 }
@@ -30,7 +39,7 @@ handle(document: ref Document, request: Request): (Reply, int)
 {
     if(request.id < 0)
         return (snapshot(document, request.id, Invalid), 0);
-    if(request.operation < Open || request.operation > Find)
+    if(request.operation < Open || request.operation > Redo)
         return (snapshot(document, request.id, Unknown), 0);
     if(request.operation == Snapshot)
         return (snapshot(document, request.id, Ok), 0);
@@ -49,10 +58,13 @@ handle(document: ref Document, request: Request): (Reply, int)
         document.opened = 1;
         document.saved = document.revision;
         document.text = request.text;
+        document.history = ref History(nil, nil);
         return (snapshot(document, request.id, Ok), 0);
     }
     if(!document.opened)
         return (snapshot(document, request.id, Closed), 0);
+    if(request.operation == Undo || request.operation == Redo)
+        return (travel(document, request), 0);
     if(request.operation == Find)
         return (find(document, request), 0);
     if(request.operation == Locate || request.operation == Offset)
@@ -71,7 +83,13 @@ handle(document: ref Document, request: Request): (Reply, int)
             return (snapshot(document, request.id, Ok), 0);
         if(document.revision == MaxRevision)
             return (snapshot(document, request.id, RevisionLimit), 0);
-        document.text = document.text[:request.first] + request.text + document.text[request.last:];
+        # [GC:] Prepare text and bounded private history before publishing either.
+        # Allocation traps belong to the runtime; no recovery guarantee is implied.
+        text := document.text[:request.first] + request.text + document.text[request.last:];
+        (_, undo) := pack(nil, document.text :: document.history.undo);
+        history := ref History(undo, nil);
+        document.text = text;
+        document.history = history;
         document.revision++;
         return (snapshot(document, request.id, Ok), 0);
     }
@@ -82,7 +100,80 @@ handle(document: ref Document, request: Request): (Reply, int)
     document.opened = 0;
     document.saved = document.revision;
     document.text = "";
+    document.history = ref History(nil, nil);
     return (snapshot(document, request.id, Ok), 0);
+}
+
+# Count logical snapshots/characters, including empty strings as entries.
+# The current document and list/heap overhead are outside these logical budgets.
+size(stack: list of string): (int, int)
+{
+    entries := 0;
+    characters := 0;
+    for(; stack != nil; stack = tl stack){
+        entries++;
+        characters += len hd stack;
+    }
+    return (entries, characters);
+}
+
+# Drop the farthest snapshot without changing existing persistent list nodes.
+# [GC:] Rebuilt nodes are private; retained text values remain runtime-owned.
+dropoldest(stack: list of string): list of string
+{
+    if(stack == nil)
+        return nil;
+    reverse: list of string;
+    for(; tl stack != nil; stack = tl stack)
+        reverse = hd stack :: reverse;
+    result: list of string;
+    for(; reverse != nil; reverse = tl reverse)
+        result = hd reverse :: result;
+    return result;
+}
+
+# Prefer the newly pushed inverse snapshot: evict farthest source entries first,
+# then farthest target entries. Work is bounded by MaxHistoryEntries + one.
+pack(source, target: list of string): (list of string, list of string)
+{
+    (se, sc) := size(source);
+    (te, tc) := size(target);
+    while(se + te > MaxHistoryEntries || sc + tc > MaxHistoryCharacters){
+        if(source != nil){
+            source = dropoldest(source);
+            (se, sc) = size(source);
+        }else{
+            target = dropoldest(target);
+            (te, tc) = size(target);
+        }
+    }
+    return (source, target);
+}
+
+# Undo/Redo restores text as a NEW revision; old IDs never become valid again.
+# saved remains the acknowledged disk revision, so text equality does not mark clean.
+travel(document: ref Document, request: Request): Reply
+{
+    source := document.history.undo;
+    target := document.history.redo;
+    if(request.operation == Redo){
+        source = document.history.redo;
+        target = document.history.undo;
+    }
+    if(source == nil)
+        return snapshot(document, request.id, NotFound);
+    if(document.revision == MaxRevision)
+        return snapshot(document, request.id, RevisionLimit);
+    text := hd source;
+    (source, target) = pack(tl source, document.text :: target);
+    history := ref History(source, target);
+    if(request.operation == Redo)
+        history = ref History(target, source);
+    # [GC:] Publish only completed text/history; old Reply values keep their text.
+    document.text = text;
+    document.history = history;
+    document.revision++;
+    return snapshot(document, request.id, Ok);
 }
 
 # Resolve coordinates against the serialized revision without changing any state.

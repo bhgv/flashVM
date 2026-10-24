@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.3.1 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.4.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -47,6 +47,32 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/navigation.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/navigation/main.b"
     DEPENDS examples/navigation/main.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_navigation_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/navigation.dis")
+  # Production history regression and a private reduced-budget fixture.
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/history_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/history_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/history_test.b"
+    DEPENDS tests/history_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_history_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/history_test.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/history.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/history.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/history/main.b"
+    DEPENDS examples/history/main.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_history_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/history.dis")
+  set(history_root "${CMAKE_CURRENT_BINARY_DIR}/history-root")
+  file(MAKE_DIRECTORY "${history_root}")
+  configure_file(idecore.b "${history_root}/idecore.b" COPYONLY)
+  configure_file(idecore.m "${history_root}/idecore.m" COPYONLY)
+  file(READ "${history_root}/idecore.m" history_header)
+  string(REPLACE "MaxHistoryEntries: con 64;" "MaxHistoryEntries: con 3;" history_header "${history_header}")
+  string(REPLACE "MaxHistoryCharacters: con 1048576;" "MaxHistoryCharacters: con 6;" history_header "${history_header}")
+  file(WRITE "${history_root}/idecore.m" "${history_header}")
+  add_custom_command(OUTPUT "${history_root}/idecore.dis" "${history_root}/historylimits_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${history_root}" -o "${history_root}/idecore.dis" "${history_root}/idecore.b"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${history_root}" -I "${LIMBO_MODULE_DIR}"
+      -o "${history_root}/historylimits_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/historylimits_test.b"
+    DEPENDS tests/historylimits_test.b "${history_root}/idecore.b" "${history_root}/idecore.m"
+      "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_historylimits_module ALL DEPENDS "${history_root}/idecore.dis" "${history_root}/historylimits_test.dis")
   set(revision_root "${CMAKE_CURRENT_BINARY_DIR}/revision-root")
   file(MAKE_DIRECTORY "${revision_root}")
   configure_file(idecore.b "${revision_root}/idecore.b" COPYONLY)
@@ -64,6 +90,18 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
   add_custom_target(ide_dis_revision_module ALL DEPENDS "${revision_root}/idecore.dis"
     "${revision_root}/revision_test.dis")
   foreach(mode 0 1)
+    add_test(NAME ide_dis_history_example_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module history.dis)
+    set_tests_properties(ide_dis_history_example_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+    add_test(NAME ide_dis_history_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module history_test.dis)
+    add_test(NAME ide_dis_historylimits_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${history_root}" --mode ${mode} --module historylimits_test.dis)
+    set_tests_properties(ide_dis_history_mode_${mode} ide_dis_historylimits_mode_${mode}
+      PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
     add_test(NAME ide_dis_navigation_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
       --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module navigation.dis)

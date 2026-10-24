@@ -93,6 +93,25 @@ init()
             "reopen cannot wrap or revive a retired session");
     result = exchange(commands, core->Shutdown, 4, "");
     require(result.status == core->Ok, "stop closed owner at maximum");
+    # At the terminal revision, a nonempty history must not be consumed by
+    # repeated failed Undo. Redo stays empty, and a no-op still remains legal.
+    commands = core->start();
+    result = exchange(commands, core->Open, 0, "a");
+    result = exchange(commands, core->Replace, 1, "b");
+    result = exchange(commands, core->Replace, 2, "c");
+    result = exchange(commands, core->Replace, 3, "d");
+    result = exchange(commands, core->Undo, 4, "");
+    require(result.status == core->RevisionLimit && result.text == "d" && result.saved == 1,
+            "undo cannot revive an old revision at maximum");
+    result = exchange(commands, core->Undo, 4, "");
+    require(result.status == core->RevisionLimit && result.revision == 4,
+            "failed undo does not consume its source stack");
+    result = exchange(commands, core->Redo, 4, "");
+    require(result.status == core->NotFound && result.text == "d", "empty redo precedes revision cap");
+    result = exchange(commands, core->Replace, 4, "d");
+    require(result.status == core->Ok && result.revision == 4, "no-op edit retains terminal history");
+    result = exchange(commands, core->Shutdown, 4, "");
+    require(result.status == core->Ok, "stop history owner at maximum");
     sys->print("PASS idecore revision %d checks\n", checks);
     halt();
 }

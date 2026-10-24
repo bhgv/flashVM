@@ -7,9 +7,12 @@ Idecore: module
     # Document and insertion lengths count Unicode characters, not UTF-8 bytes or screen columns.
     MaxCharacters: con 1048576;
     MaxRevision: con 2147483647;
+    # Combined Undo/Redo snapshot budgets; current text is separate.
+    MaxHistoryEntries: con 64;
+    MaxHistoryCharacters: con 1048576;
 
     # Snapshot is read-only; all other operations use the expected revision as specified below.
-    Open, Replace, Snapshot, MarkSaved, Close, Shutdown, Locate, Offset, Find: con iota;
+    Open, Replace, Snapshot, MarkSaved, Close, Shutdown, Locate, Offset, Find, Undo, Redo: con iota;
 
     # Every accepted request with a non-nil reply channel receives exactly one response.
     Ok, Conflict, RangeError, TooLarge, Invalid, Closed, RevisionLimit, Unknown, NotFound: con iota;
