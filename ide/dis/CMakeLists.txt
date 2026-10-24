@@ -17,9 +17,12 @@ add_custom_target(ide_dis ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idecore.dis"
 include(CTest)
 set(EMU_EXECUTABLE "" CACHE FILEPATH "Optional explicit reference Dis emulator for channel regression")
 set(LIMBO_MODULE_DIR "" CACHE PATH "External module headers for the test bootstrap's Sys interface")
-if(BUILD_TESTING AND EMU_EXECUTABLE)
-  if(NOT EXISTS "${EMU_EXECUTABLE}" OR NOT EXISTS "${LIMBO_MODULE_DIR}/sys.m")
-    message(FATAL_ERROR "Provide reference EMU_EXECUTABLE and LIMBO_MODULE_DIR")
+if(BUILD_TESTING AND (LIMBO_MODULE_DIR OR EMU_EXECUTABLE))
+  if(NOT EXISTS "${LIMBO_MODULE_DIR}/sys.m")
+    message(FATAL_ERROR "Provide LIMBO_MODULE_DIR for compiling test/example modules")
+  endif()
+  if(EMU_EXECUTABLE AND NOT EXISTS "${EMU_EXECUTABLE}")
+    message(FATAL_ERROR "Explicit EMU_EXECUTABLE does not exist")
   endif()
   # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
   if(CMAKE_VERSION VERSION_LESS "3.12")
@@ -111,6 +114,9 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_revision_module ALL DEPENDS "${revision_root}/idecore.dis"
     "${revision_root}/revision_test.dis")
+  # Compile the clients regardless of runtime availability. Only execution
+  # tests depend on a reference emulator; product checks work without one.
+  if(EMU_EXECUTABLE)
   foreach(mode 0 1)
     add_test(NAME ide_dis_utf8span_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
@@ -159,6 +165,7 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       --build "${revision_root}" --mode ${mode} --module revision_test.dis)
   endforeach()
   set_tests_properties(ide_dis_reference_mode_0 ide_dis_reference_mode_1 ide_dis_limits_mode_0 ide_dis_limits_mode_1 ide_dis_revision_mode_0 ide_dis_revision_mode_1 PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+  endif()
 endif()
 
 if(BUILD_TESTING)

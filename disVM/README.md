@@ -78,3 +78,5 @@ Our Limbo compiler and external module generators remain separate:
 The temporary native source bootstrap lives in tools/limbo-bootstrap, not here.
 
 [Selected synchronization 0.1.1 and checks](SYNC.md)
+
+[Embedded host requirements](HOST-REQUIREMENTS.md)

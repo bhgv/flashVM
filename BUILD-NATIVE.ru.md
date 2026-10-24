@@ -36,10 +36,11 @@ build/mk/mk -f mkfile compilers linker
 ```
 
 Рецепты компилируют напрямую через CC/ar без делегирования CMake. Поддерживаются
-mk, iyacc, cocor, as1/as2/as3, limbo (parse/tree/interface/bindings), compilers и
-линкер SWO/SWA/SWF. Все парсеры генерирует локально собранный Coco/R. Выбор
-VM/FIR/SBL/IDE/DisVM либо --tests/--demo для нативного backend явно отвергается:
-для них используйте CMake 3.10 или запускайте тесты отдельных продуктов напрямую.
+mk, iyacc, limbo-bootstrap, cocor, as1/as2/as3, limbo (parse/tree/interface/bindings), compilers и
+линкер SWO/SWA/SWF. Собственные парсеры генерирует локальный Coco/R, временный
+Limbo bootstrap использует локальный iyacc. Нативные --tests доступны, если вся
+выборка состоит из mk, iyacc и limbo-bootstrap. VM/FIR/SBL/IDE/DisVM и --demo
+пока не поддержаны нативными движками; для этих сборок используйте CMake 3.10.
 Meson 0.54+ и Ninja поддерживают ту же нативную выборку через настоящие run targets без вызова CMake. Нативные рецепты всегда пересобирают продукты;
 инкрементальная сборка остаётся в CMake. По умолчанию CC=cc, AR=ar,
 BUILD_ROOT=build/native; корневой скрипт использует build/workspace.
@@ -87,3 +88,5 @@ mk. Неподдерживаемый полный набор отвергает�
 без требования установить выбранный движок. Meson 1.5.2/Ninja 1.11.1 в этой серии
 действительно собрали четыре фронтенда и линкер. Auto проверен с настоящим CMake
 3.10.2 для тестов линкера и с Make при отсутствующих CMake/Meson.
+
+[Сборка mk/iyacc/Limbo из исходников и компиляция IDE без emu](README-FIRSTSTEPS.md)

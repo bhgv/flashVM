@@ -52,6 +52,27 @@ class BuildInvocationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn('No tests found', result.stderr)
 
+    def test_demo_without_runtime_builds_before_reporting_unavailable(self):
+        """Missing emu must not stop compilation or masquerade as demo execution."""
+        with tempfile.TemporaryDirectory(prefix='no runtime ') as directory:
+            root = Path(directory)
+            log = root / 'calls'
+            cmake = root / 'cmake'
+            cmake.write_text('#!/bin/sh\nif [ "$1" = "--version" ]; then echo "cmake version 3.10.2"; exit 0; fi\n'
+                             'printf "%s\\n" "$@" >> "$PROBE_LOG"\n')
+            cmake.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(CMAKE=str(cmake), PROBE_LOG=str(log),
+                               LIMBO_EXECUTABLE=str(cmake), EMU_EXECUTABLE='')
+            result = subprocess.run(['bash', str(ROOT / 'build-workspace.sh'), '--projects', 'ide',
+                                     '--demo', '--build-root', str(root / 'output')],
+                                    capture_output=True, text=True, env=environment)
+            self.assertEqual(result.returncode, 3, result.stderr)
+            self.assertIn('--build', log.read_text())
+            self.assertIn('-DEMU_EXECUTABLE=', log.read_text())
+            self.assertIn('Build complete', result.stdout)
+            self.assertIn('NOT RUN', result.stderr)
+
     def test_unknown_backend_is_rejected(self):
         """Validate backend before configuring any component."""
         result, log, _ = self.probe(extra=['--backend', 'unknown'])

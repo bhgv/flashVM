@@ -63,3 +63,5 @@ Dis-parser/error cleanup, pointer maps, serialization/layout widths и наст�
 Временный native bootstrap вынесен в tools/limbo-bootstrap.
 
 [Состав и проверки обновления 0.1.1](SYNC.ru.md)
+
+[Необходимые службы встроенного хоста](HOST-REQUIREMENTS.ru.md)

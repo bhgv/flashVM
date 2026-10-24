@@ -81,6 +81,26 @@ class MenuTests(unittest.TestCase):
         self.assertIn('--tests/--demo', errors.getvalue())
         run.assert_not_called()
 
+    def test_native_tool_tests_are_supported(self):
+        """All three source-built tools can be tested through mk without CMake."""
+        menu.validate_backend('mk', ['mk', 'iyacc', 'limbo-bootstrap'], tests=True)
+        with contextlib.redirect_stdout(io.StringIO()), patch.object(
+                menu.sys.stdin, 'isatty', return_value=True), patch(
+                'builtins.input', side_effect=['14,15,16', '4', 'y']), patch.object(
+                menu.subprocess, 'call', return_value=0) as run:
+            self.assertEqual(menu.main([]), 0)
+        self.assertIn('--tests', run.call_args[0][0])
+
+    def test_no_emu_does_not_offer_demo(self):
+        """A full interactive selection must not invite an unavailable demo."""
+        with patch.dict(os.environ, {'EMU_EXECUTABLE': ''}), contextlib.redirect_stdout(
+                io.StringIO()) as output, patch.object(menu.sys.stdin, 'isatty', return_value=True), patch(
+                'builtins.input', side_effect=['all', '', 'y']), patch.object(
+                menu.subprocess, 'call', return_value=0) as run:
+            self.assertEqual(menu.main([]), 0)
+        self.assertNotIn('--demo', run.call_args[0][0])
+        self.assertIn('Dis/.sbl', output.getvalue())
+
     def test_missing_override_is_reported(self):
         """An invalid CMAKE override is not displayed as a detected system CMake."""
         with patch.dict(os.environ, {'CMAKE': '/missing-test-path/cmake'}):

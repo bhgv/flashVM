@@ -34,7 +34,7 @@ Optional explicit SDK overrides:
   COCOR_ROOT + COCOR_EXECUTABLE     Supply BOTH or neither
   LIMBO_EXECUTABLE                 Native compiler override (bootstrap, not our FIR compiler)
   LIMBO_MODULE_DIR                 Default: bundled bootstrap module headers
-  EMU_EXECUTABLE                   Required for IDE tests/demo, with matching module ABI
+  EMU_EXECUTABLE                   Optional reference runtime; no emu needed for building or compiler tests
   CMAKE, CTEST, PYTHON              Optional host executable paths
 No downloads, upstream changes, installation, cleanup or Git operations.
 HELP
@@ -111,9 +111,13 @@ version_at_least() {
 }
 native_selection=1
 for project in "${selected[@]}"; do
-    case "$project" in mk|iyacc|cocor|compilers|as1|as2|as3|limbo|linker) ;; *) native_selection=0 ;; esac
+    case "$project" in mk|iyacc|limbo-bootstrap|cocor|compilers|as1|as2|as3|limbo|linker) ;; *) native_selection=0 ;; esac
 done
-if [[ "$tests" != OFF || "$demo" != 0 ]]; then native_selection=0; fi
+native_tests=1
+for project in "${selected[@]}"; do
+    case "$project" in mk|iyacc|limbo-bootstrap) ;; *) native_tests=0 ;; esac
+done
+if [[ "$demo" != 0 || ( "$tests" != OFF && "$native_tests" == 0 ) ]]; then native_selection=0; fi
 if [[ "$backend" == auto ]]; then
     if version_at_least "$cmake" cmake 3 10; then backend=cmake
     elif [[ "$native_selection" == 1 ]]; then
@@ -125,17 +129,27 @@ if [[ "$backend" == auto ]]; then
     printf 'Build backend: %s (auto)\n' "$backend"
 fi
 if [[ "$backend" != cmake ]]; then
-    [[ "$tests" == OFF && "$demo" == 0 ]] || fail 'Use the CMake 3.10 backend for --tests/--demo; native products can be tested directly'
+    [[ "$demo" == 0 && ( "$tests" == OFF || "$native_tests" == 1 ) ]] || fail 'Native --tests supports mk,iyacc,limbo-bootstrap only; --demo requires CMake and an executable Dis host'
     for project in "${selected[@]}"; do
-        case "$project" in mk|iyacc|cocor|compilers|as1|as2|as3|limbo|linker) ;;
+        case "$project" in mk|iyacc|limbo-bootstrap|cocor|compilers|as1|as2|as3|limbo|linker) ;;
             *) fail "Backend $backend does not yet build $project; use CMake 3.10 for this component" ;;
         esac
     done
     export BUILD_ROOT="$build_root"
     cd "$ROOT"
+    # Keep test execution outside the engine so Make, mk and Meson share the
+    # same real-product checks and preserve build/test failures.
+    finish_native() {
+        if [[ "$tests" == ON ]]; then
+            "$ROOT/tools/test-native-tools.sh" "${selected[@]}"
+        fi
+        printf 'Build complete: %s\n' "$build_root"
+    }
     if [[ "$backend" == mk ]]; then
         "$ROOT/tools/mk/bootstrap.sh" "$build_root/mk"
-        exec "$build_root/mk/mk" -f "$ROOT/mkfile" "${selected[@]}"
+        "$build_root/mk/mk" -f "$ROOT/mkfile" "${selected[@]}"
+        finish_native
+        exit 0
     fi
     if [[ "$backend" == meson ]]; then
         meson=${MESON:-meson}
@@ -152,10 +166,13 @@ if [[ "$backend" != cmake ]]; then
         for project in "${selected[@]}"; do
             "$meson" compile -C "$meson_dir" -j "$jobs" "$project"
         done
+        finish_native
         exit 0
     fi
     command -v "${MAKE:-make}" >/dev/null || fail 'Make not found; explicit selection is not replaced automatically'
-    exec "${MAKE:-make}" -f "$ROOT/Makefile" "${selected[@]}"
+    "${MAKE:-make}" -f "$ROOT/Makefile" "${selected[@]}"
+    finish_native
+    exit 0
 fi
 need_cmake=0
 for project in "${selected[@]}"; do
@@ -163,7 +180,7 @@ for project in "${selected[@]}"; do
 done
 if [[ "$need_cmake" == 1 ]]; then
     command -v "$cmake" >/dev/null || fail 'CMake 3.10+ not found; --backend mk/make can build compilers, linker and native tools'
-    if [[ "$tests" == ON || "$demo" == 1 ]]; then
+    if [[ "$tests" == ON || ( "$demo" == 1 && -n "${EMU_EXECUTABLE:-}" ) ]]; then
         command -v "$ctest" >/dev/null || fail 'CTest not found'
     fi
 fi
@@ -192,9 +209,15 @@ if has ide || has cocor-limbo || has limbo-bootstrap; then
     LIMBO_MODULE_DIR=$(absolute "${LIMBO_MODULE_DIR:-$ROOT/tools/limbo-bootstrap/upstream/module}")
     [[ -f "$LIMBO_MODULE_DIR/sys.m" ]] || fail 'LIMBO_MODULE_DIR must contain sys.m'
 fi
+ide_runtime=0
 if has ide && [[ "$tests" == ON || "$demo" == 1 ]]; then
-    [[ -f "${EMU_EXECUTABLE:-}" && -x "$EMU_EXECUTABLE" ]] || fail 'IDE execution requires explicit matching EMU_EXECUTABLE; disVM host runner is not yet complete'
-    EMU_EXECUTABLE=$(absolute "$EMU_EXECUTABLE")
+    if [[ -n "${EMU_EXECUTABLE:-}" ]]; then
+        [[ -f "$EMU_EXECUTABLE" && -x "$EMU_EXECUTABLE" ]] || fail 'EMU_EXECUTABLE must be executable when explicitly supplied'
+        EMU_EXECUTABLE=$(absolute "$EMU_EXECUTABLE")
+        ide_runtime=1
+    else
+        printf '%s\n' 'IDE: building Dis/debug products without emu; runtime tests are unavailable (embedded host pending).' >&2
+    fi
     command -v "${PYTHON:-python3}" >/dev/null || fail 'Python 3 not found for IDE host tests'
 fi
 [[ "$demo" != 1 ]] || has ide || fail '--demo requires ide in --projects'
@@ -279,14 +302,22 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm ide; do
             if has symbols && [[ "$tests" == ON ]]; then
                 args+=("-DSBLMAP_EXECUTABLE=$build_root/symbols/sblmap")
             fi
-            if [[ "$tests" == ON || "$demo" == 1 ]]; then
-                args+=(-DBUILD_TESTING=ON "-DEMU_EXECUTABLE=$EMU_EXECUTABLE" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR")
+            # Always reset the cached reference runner; a previous build must not
+            # silently enable runtime execution after the override is removed.
+            args+=("-DEMU_EXECUTABLE=" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR")
+            if [[ "$ide_runtime" == 1 ]]; then
+                args+=(-DBUILD_TESTING=ON "-DEMU_EXECUTABLE=$EMU_EXECUTABLE")
             fi ;;
     esac
     build_project "$project" "$source" "${args[@]}"
 done
 if has ide && [[ "$tests" == ON ]]; then
     "${PYTHON:-python3}" -m unittest discover -s "$ROOT/ide/tests"
+fi
+if [[ "$demo" == 1 && "$ide_runtime" == 0 ]]; then
+    printf 'Build complete: %s\n' "$build_root"
+    printf '%s\n' 'NOT RUN: requested IDE demo needs an executable Dis host; compilation succeeded, runtime execution is not available.' >&2
+    exit 3
 fi
 if [[ "$demo" == 1 ]]; then
     demo_test=ide_dis_navigation_mode_

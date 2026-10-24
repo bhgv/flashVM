@@ -40,8 +40,9 @@ COMPONENTS = (
 
 
 NATIVE_COMPONENTS = frozenset((
-    "mk", "iyacc", "cocor", "as1", "as2", "as3", "limbo", "compilers", "linker",
+    "mk", "iyacc", "limbo-bootstrap", "cocor", "as1", "as2", "as3", "limbo", "compilers", "linker",
 ))
+NATIVE_TEST_COMPONENTS = frozenset(("mk", "iyacc", "limbo-bootstrap"))
 NATIVE_BACKENDS = ("meson", "make", "mk")
 
 
@@ -53,12 +54,14 @@ def validate_backend(backend, projects, tests=False, demo=None):
     problems = []
     if unsupported:
         problems.append("не поддерживает компоненты: " + ", ".join(unsupported))
-    if tests or demo:
-        problems.append("не поддерживает --tests/--demo")
+    if demo:
+        problems.append("не поддерживает --demo")
+    if tests and not set(projects).issubset(NATIVE_TEST_COMPONENTS):
+        problems.append("--tests поддерживает только mk,iyacc,limbo-bootstrap; --tests/--demo для workspace требуют CMake")
     if problems:
         raise ValueError(backend + ": " + "; ".join(problems) +
                          ". Для полного выбора используйте cmake или auto. "
-                         "Для нативной сборки выберите compilers,linker,mk,iyacc.")
+                         "Для нативной сборки выберите compilers,linker,mk,iyacc,limbo-bootstrap.")
 
 
 def choose_compatible_backend(projects, backend=None):
@@ -126,7 +129,8 @@ def show_backends():
     print("Сборочные двигатели:")
     for number, (name, detail) in enumerate(backend_status(), 1):
         print("  {}. {:7s} {}".format(number, name, detail))
-    print("CMake: весь workspace. Meson/Make/mk: компиляторы, линкер и инструменты; без --tests/--demo.")
+    print("CMake: весь workspace. Meson/Make/mk: фронтенды, линкер, mk, iyacc, limbo-bootstrap.")
+    print("Нативные --tests: mk, iyacc, limbo-bootstrap; запуск IDE пока требует отдельного Dis-хоста.")
 
 
 # Give explicit engine choice while retaining auto as the empty-input default.
@@ -235,11 +239,15 @@ def main(argv=None):
         projects, args.backend = choose_compatible_backend(projects, args.backend)
         if projects is None:
             return 0
-        if args.backend not in NATIVE_BACKENDS and not args.tests:
+        if (args.backend not in NATIVE_BACKENDS or
+                set(projects).issubset(NATIVE_TEST_COMPONENTS)) and not args.tests:
             args.tests = ask_yes("Запустить тесты выбранных компонентов?")
         if args.backend not in NATIVE_BACKENDS and "ide" in projects and not args.demo:
-            if ask_yes("Запустить консольный пример IDE?"):
-                args.demo = choose_example()
+            if shutil.which(os.environ.get("EMU_EXECUTABLE", "")):
+                if ask_yes("Запустить консольный пример IDE?"):
+                    args.demo = choose_example()
+            else:
+                print("IDE будет скомпилирована в Dis/.sbl. Запуск пока недоступен: встроенный Dis-хост не завершён.")
     else:
         try:
             projects = selection(args.projects)
