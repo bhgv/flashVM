@@ -1,5 +1,7 @@
 # Рабочее пространство FlashVM
 
+Меню сборки: `python3 build-menu.py`.
+
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
 Версия разработки: **0.1524**. [English](README.md).

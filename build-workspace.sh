@@ -16,6 +16,7 @@ usage() {
     cat <<'HELP'
 Usage: ./build-workspace.sh [options]
   --projects LIST    Comma-separated vm,compilers,fir,linker,symbols,ide (default all)
+                    Individual frontends: as1,as2,as3,limbo
   --build-root DIR   Build directory (default build/workspace)
   --jobs N           Parallel jobs (default 2)
   --config NAME      CMake configuration (default Release)
@@ -58,7 +59,7 @@ done
 [[ -n "$projects" && "$projects" != ,* && "$projects" != *, && "$projects" != *,,* ]] || fail 'Invalid project list'
 IFS=, read -r -a selected <<< "$projects"
 for project in "${selected[@]}"; do
-    case "$project" in vm|compilers|fir|linker|symbols|ide) ;; *) fail "Unknown project: $project" ;; esac
+    case "$project" in vm|compilers|fir|linker|symbols|ide|as1|as2|as3|limbo) ;; *) fail "Unknown project: $project" ;; esac
 done
 
 # Membership uses exact names, never shell evaluation of the supplied list.
@@ -78,7 +79,7 @@ command -v "$cmake" >/dev/null || fail 'CMake not found'
 if [[ "$tests" == ON || "$demo" == 1 ]]; then
     command -v "$ctest" >/dev/null || fail 'CTest not found'
 fi
-if has compilers || has fir || has symbols; then
+if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo; then
     [[ -f "${COCOR_ROOT:-}/frames/scan_c.frm" ]] || fail 'Set COCOR_ROOT to bhgv/coco-r-C'
     [[ -f "${COCOR_EXECUTABLE:-}" && -x "$COCOR_EXECUTABLE" ]] || fail 'Set COCOR_EXECUTABLE to native cocor'
     COCOR_ROOT=$(absolute "$COCOR_ROOT")
@@ -101,15 +102,16 @@ export TMPDIR="$build_root/tmp" TEMP="$build_root/tmp" TMP="$build_root/tmp"
 
 # Configure/build in fixed dependency order. Repeated calls reuse CMake outputs.
 # Failure preserves partial artifacts for inspection and stops subsequent work.
-for project in vm compilers fir linker symbols ide; do
+for project in vm compilers as1 as2 as3 limbo fir linker symbols ide; do
     has "$project" || continue
     args=("-DCMAKE_BUILD_TYPE=$config" "-DBUILD_TESTING=$tests")
     case "$project" in
         vm)
             source=flashVM
             args+=("-DFVM_BUILD_TESTS=$tests" -DFVM_BUILD_EXAMPLES=OFF -DFVM_BUILD_REFERENCE_RUNNER=ON) ;;
-        compilers|fir|symbols)
+        compilers|fir|symbols|as1|as2|as3|limbo)
             source=compiler
+            case "$project" in as1|as2|as3|limbo) source="compiler/$project" ;; esac
             [[ "$project" != fir ]] || source=fir/v1
             [[ "$project" != symbols ]] || source=compiler/limbo/symbols
             args+=("-DCOCOR_ROOT=$COCOR_ROOT" "-DCOCOR_EXECUTABLE=$COCOR_EXECUTABLE") ;;

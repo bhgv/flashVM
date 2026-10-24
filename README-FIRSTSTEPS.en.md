@@ -49,3 +49,27 @@ The library core has no standalone init entry point. The graphical IDE and embed
 Dis/JIT remain under development. Reference modes do not prove new native JIT entry.
 Compiler syntax recognition and numeric lowering are bounded, not complete languages.
 The optional windowed [SDL2 player](flashVM/frontend/README.md) has a separate SDK/build.
+
+## Component menu
+
+Run `python3 build-menu.py` in a terminal. Select one number, several numbers
+such as `1,4,6`, names such as `vm linker ide`, or `all`. Enter `q` to exit.
+The menu offers tests and, when IDE is selected, its console example.
+`compilers` groups all four syntax frontends. The shared Bash builder handles
+SDK checks and builds; Python is host tooling only.
+
+For unattended use:
+
+```bash
+python3 build-menu.py --projects linker --tests
+python3 build-menu.py --projects vm,linker --jobs 4
+python3 build-menu.py --projects ide --demo
+python3 build-menu.py --projects all --dry-run
+```
+
+`--build-root` and `--config` also work. SDK variables are inherited.
+Dry-run prints the command without executing it; normal execution streams build
+output and returns the builder exit status. Ctrl-C exits with status 130.
+
+Select individual frontends with `--projects as1` or `--projects as2,limbo`.
+`all` uses the grouped compiler build without duplicate individual builds.

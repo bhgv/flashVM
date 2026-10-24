@@ -16,6 +16,32 @@ pkg install git clang make cmake python
 должны соответствовать вашей ОС и архитектуре; Linux amd64 SDK нельзя
 использовать как Android arm64 SDK.
 
+## Меню выбора компонентов
+
+```bash
+python3 build-menu.py
+```
+
+Введите один номер (например, `4` — линкер), несколько (`1,4,6`) или имена
+(`vm linker ide`). `all` выбирает всё, `q` завершает меню. Затем можно включить
+тесты и консольный пример IDE. Скрипт сразу запускает выбранную сборку,
+передаёт её вывод в терминал и возвращает её код завершения.
+Каждый пункт — отдельный компонент; `compilers` собирает четыре фронтенда вместе.
+
+Без интерактивных вопросов:
+
+```bash
+python3 build-menu.py --projects linker --tests
+python3 build-menu.py --projects vm,linker --jobs 4
+python3 build-menu.py --projects ide --demo
+python3 build-menu.py --projects all --build-root build/release
+# Только показать команду, ничего не собирать:
+python3 build-menu.py --projects 1,4 --dry-run
+```
+
+Меню использует тот же `build-workspace.sh` и те же переменные SDK, описанные
+ниже. Python — инструмент сборки на хосте; для исполнения Limbo-ядра он не нужен.
+
 ## Подготовить внешние компиляторы
 
 Парсеры используют внешний Coco/R. Подготовьте его один раз:
@@ -124,3 +150,11 @@ build/workspace/vm/flashvm_reference_swf build/workspace/variables.swf
 [host-инструменты IDE](ide/README.ru.md).
 Для окна проигрывателя отдельно соберите SDL2 frontend по
 [его руководству](flashVM/frontend/README.md); он требует SDL2 SDK.
+
+```bash
+# Один фронтенд или несколько отдельных языков:
+python3 build-menu.py --projects as1
+python3 build-menu.py --projects as2,limbo
+```
+
+`all` включает группу `compilers`; отдельные языки повторно не собираются.
