@@ -1,6 +1,6 @@
 # Синтаксический фронтенд LIMBO
 
-Версия 0.5.4. [English](README.md).
+Версия 0.5.5. [English](README.md).
 
 Читаемый файл [limbo.atg](limbo.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).

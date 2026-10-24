@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.5.4 LANGUAGES C)
+project(limbo_frontend VERSION 0.5.5 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -100,4 +100,18 @@ if(BUILD_TESTING)
     target_compile_options(limbo_tree_locate PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Werror)
   endif()
   add_test(NAME limbo_tree_source_context COMMAND limbo_tree_locate)
+endif()
+
+if(BUILD_TESTING)
+  # Override allocation only in the owned store; generated scanner allocation is separate.
+  add_library(limbo_tree_fault_store OBJECT tree.c)
+  target_include_directories(limbo_tree_fault_store PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+  target_compile_definitions(limbo_tree_fault_store PRIVATE
+    malloc=limbo_test_malloc calloc=limbo_test_calloc realloc=limbo_test_realloc)
+  add_executable(limbo_tree_alloc tests/tree_alloc.c $<TARGET_OBJECTS:limbo_tree_fault_store>)
+  target_link_libraries(limbo_tree_alloc PRIVATE limbo_frontend)
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(limbo_tree_alloc PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  add_test(NAME limbo_tree_allocation_recovery COMMAND limbo_tree_alloc)
 endif()
