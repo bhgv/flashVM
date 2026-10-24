@@ -4,3 +4,4 @@
 - 0.1.2: Cover IDE build success.
 - 0.1.3: Cover IDE build source failure.
 - 0.1.4: Cover IDE build verify failure.
+- 0.1.5: Cover IDE build optimise failure.
