@@ -6,3 +6,4 @@
 - 0.1.4: Cover symbol source-map files.
 - 0.1.5: Cover symbol source-map crlf.
 - 0.1.6: Cover symbol source-map empty.
+- 0.1.7: Cover symbol source-map opaque.
