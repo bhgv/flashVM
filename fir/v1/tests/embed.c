@@ -23,7 +23,7 @@ int main(void)
     int i,j,count=0; char error[512];
     FirRunOptions options={1,snapshots,&count};
     for(i=0;i<8;++i) for(j=FIR_AS1;j<=FIR_LIMBO;++j) {
-        FILE *bad=input("trace(1 + );"), *fir=fir_temporary(), *obj=fir_temporary(), *src;
+        FILE *bad=input("trace((1 + );"), *fir=fir_temporary(), *obj=fir_temporary(), *src;
         unsigned char magic[4];
         if(!bad || !fir || !obj) return 1;
         if(fir_source(bad,fir,(FirLanguage)j,"broken",error,sizeof(error)) || ftell(fir)!=0 || !error[0]) return 2;

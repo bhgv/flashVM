@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     char error[512] = "source operation failed";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.5.2 (numeric tutorial profiles)");
+        puts("fir1_source 0.5.3 (numeric tutorial profiles)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -26,11 +26,11 @@ int main(int argc, char **argv)
              "AS: var x = 1, y = .5; x += y; trace(x); AS3 const supported.\n"
              "AS2/AS3 also allow var x:Number = 1; AS1 rejects annotations.\n"
              "Limbo: value(): int tutorial with x: int = 1; or x:=16r2a; and return.\n"
-             "One scope, initialized declarations, no implicit globals/hoisting.\n"
+             "Limbo lexical blocks/shadowing; AS flat scope. Initialized declarations.\n"
              "AS uses f64 including / and /=; Limbo i32 wrap rejects division.\n"
              "AS3 emits AVM1 compatibility, not ABC. FIR carries a source profile.\n"
              "Limits: 64 KiB input, 255-byte tokens, 256 names, 1000 SSA values,\n"
-             "64 nested group/unary levels. Source syntax is compiler/src1.atg; lowering is C99.\n"
+             "64 nested block/group/unary levels. Source syntax is compiler/src1.atg; lowering is C99.\n"
              "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"
              "See fir/v1/doc/COVERAGE.md and examples/ (also .ru.md).");
         return 0;

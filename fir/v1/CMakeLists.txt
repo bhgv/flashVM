@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.16)
-project(fir1 VERSION 0.5.2 LANGUAGES C)
+project(fir1 VERSION 0.5.3 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -103,4 +103,10 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME fir1_module_names COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/module_names.py $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+endif()
+
+# Source lexical scopes must survive real generation, lowering and IR optimization.
+if(BUILD_TESTING)
+  add_test(NAME fir1_source_scopes COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/scopes.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
 endif()

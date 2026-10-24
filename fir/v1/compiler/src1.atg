@@ -212,7 +212,7 @@ PRODUCTIONS
 
   /* Empty statements emit no instruction; at least one statement is required. */
   TraceProgram =
-                                                                        (. source_language(0); .)
+                                                                        (. depth = 0; source_language(0); .)
     Statement
     {
         Statement
@@ -277,6 +277,7 @@ PRODUCTIONS
   LimboProgram =
                                                                         (.
                                                                             int value = 0;
+                                                                            depth = 0;
                                                                             source_language(1);
                                                                         .)
     "implement" ident                                                   (.
@@ -300,12 +301,30 @@ PRODUCTIONS
   LimboStatement =
                                                                         (. int name = 0, value = 0, op = 0; .)
     ";"
+    | IF(Sym==LbraceSym && depth>=64) "{"                              (. source_scope_limit(); .)
+    | IF(Sym==LbraceSym && depth<64) LimboBlock
     | Name<&name>
     (
         ":" "int" "=" Expression<&value> ";"                            (. source_bind(name, value, 1); .)
         | ":=" Expression<&value> ";"                                   (. source_bind(name, value, 1); .)
         | AssignmentOperator<&op> Expression<&value> ";"                (. source_assign(name, value, op); .)
     )
+  .
+
+  /* Limbo braces delimit lexical bindings; writes to outer bindings persist.
+   * The shared nesting budget bounds blocks, groups and unary recursion. */
+  LimboBlock =
+    "{"                                                    (.
+                                                                            ++depth;
+                                                                            source_enter_scope();
+                                                                        .)
+    {
+        LimboStatement
+    }
+    "}"                                                                (.
+                                                                            source_leave_scope();
+                                                                            --depth;
+                                                                        .)
   .
 
   /* Addition/subtraction bind less tightly than multiplication, left to right. */

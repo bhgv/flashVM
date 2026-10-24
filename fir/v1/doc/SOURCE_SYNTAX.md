@@ -37,3 +37,5 @@ associativity. The Limbo i32 profile explicitly rejects them. Tests cover -0
 divisors, NaN and preservation through optimization. Source compilation writes
 matched source_language/source_semantics fields, retained across round trips and
 optimization. Division requires SWL >=0.3.2.
+
+[Limbo lexical blocks / Лексические блоки](LEXICAL_SCOPES.md).

@@ -17,6 +17,8 @@ static char module_name[256];
 /* Flat translation-unit bindings. source_config resets the live prefix. */
 static char names[256][256];
 static int bindings[256], immutable[256], name_count, source_line;
+/* Retired lexical bindings are never reused during one bounded translation unit. */
+static int binding_scope[256], active[256], scope_depth;
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language, char *error, size_t capacity)
 {
@@ -26,7 +28,7 @@ void source_config(FILE *out, int language, char *error, size_t capacity)
     destination = out;
     profile = language;
     integer_mode = language == 4;
-    serial = failed = name_count = 0;
+    serial = failed = name_count = scope_depth = 0;
 }
 /* Query semantic rejection separately from generated syntax diagnostics. */
 int source_failed(void)
@@ -166,8 +168,8 @@ void source_token(const char *text, int line, int oversized)
 int source_name(void)
 {
     int i;
-    for (i = 0; i < name_count; ++i)
-        if (!strcmp(names[i], token))
+    for (i = name_count - 1; i >= 0; --i)
+        if (active[i] && !strcmp(names[i], token))
             return i;
     if (name_count == 256)
     {
@@ -177,6 +179,8 @@ int source_name(void)
     strcpy(names[name_count], token);
     bindings[name_count] = -1;
     immutable[name_count] = 0;
+    binding_scope[name_count] = scope_depth;
+    active[name_count] = 1;
     return name_count++;
 }
 int source_read(int name)
@@ -188,8 +192,24 @@ int source_read(int name)
     }
     return bindings[name];
 }
+/* Bind declarations in their lexical owner; initialization reads the outer binding.
+ * Nondeclaration writes keep targeting the nearest active outer binding. */
 void source_bind(int name, int value, int declaration)
 {
+    if (declaration && integer_mode && binding_scope[name] < scope_depth)
+    {
+        if (name_count == 256)
+        {
+            reject("variable limit exceeded");
+            return;
+        }
+        strcpy(names[name_count], names[name]);
+        name = name_count++;
+        bindings[name] = -1;
+        immutable[name] = 0;
+        binding_scope[name] = scope_depth;
+        active[name] = 1;
+    }
     if (declaration && bindings[name] >= 0)
         reject("duplicate declaration");
     if (!declaration && immutable[name])
@@ -250,4 +270,28 @@ void source_hash_comment(void)
 {
     if (!integer_mode)
         reject("# comments require Limbo profile");
+}
+
+/* Enter a lexical Limbo owner; parser nesting independently bounds recursion. */
+void source_enter_scope(void)
+{
+    ++scope_depth;
+}
+
+/* Retire only local names; values assigned to outer names remain current. */
+void source_leave_scope(void)
+{
+    int i;
+    for (i = 0; i < name_count; ++i)
+    {
+        if (active[i] && binding_scope[i] == scope_depth)
+            active[i] = 0;
+    }
+    --scope_depth;
+}
+
+/* Consume over-budget block openers without recursive descent or recovery loops. */
+void source_scope_limit(void)
+{
+    reject("block/group/unary nesting limit exceeded");
 }

@@ -18,4 +18,7 @@ int source_negate(int);
 void source_declare(int, int, int);
 void source_assign(int, int, int);
 void source_hash_comment(void);
+void source_scope_limit(void);
+void source_enter_scope(void);
+void source_leave_scope(void);
 #endif
