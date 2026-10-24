@@ -38,7 +38,7 @@ def main():
         command += shlex.split(os.environ.get('CFLAGS', '-O1 -g'))
         command += ['-DDVM_NATIVE_REGISTERS=1', '-pthread']
         command += ['-I' + str(path) for path in [root / 'host/include', root / 'upstream/include',
-                    root / 'upstream/libinterp', root / 'include', fvm / 'include', fvm / 'ports']]
+                    root / 'upstream/libinterp', root / 'upstream/emu/port', root / 'include', fvm / 'include', fvm / 'ports']]
         command += [str(source), str(root / 'host/native_registers.c'), str(root / 'host/native_context.c'),
                     str(root / 'host/flashvm_thread.c'), str(fvm / 'ports/linux/thread.c'),
                     str(fvm / 'ports/linux/channel_sync.c'), '-o', str(output / 'test')]

@@ -82,3 +82,5 @@ The temporary native source bootstrap lives in tools/limbo-bootstrap, not here.
 [Embedded host requirements](HOST-REQUIREMENTS.md)
 
 [Shared I/O, native TLS registers and four host ports](host/README.md) · [Module input example](examples/module-image/README.md)
+
+Native host checkpoint v0.1535 embeds active REG in extended up and adds cooperative collector safepoints/root rendezvous; full parallel GC/VM execution remains unfinished. [Contract](host/README.md).

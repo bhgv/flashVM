@@ -130,3 +130,56 @@ not presented as a complete VM. Windows/macOS/Android execution and full Dis/JIT
 runtime acceptance remain open.
 
 UBSan checks also pass for the TLS instruction fixture and changed channel queue paths. Address/LeakSanitizer attempts could not finalize in this environment (restricted `/proc` thread inspection); they are not counted as passing sanitizer acceptance.
+
+## Extended up and collection safepoints (v0.1535)
+
+The typed constructor [dvm_native_process_create](../include/disvm/native_process.h)
+now allocates an extended native `up`: the retained `Proc` is its first member,
+with the active `REG` embedded after it. `getup()` exposes the compatible Proc
+prefix through the same TLS owner. The register adapter derives the active REG
+from that up allocation; there is no second TLS key for R. The current process
+accessor maps directly to `up->iprog`. Existing `Proc` error frames and OS/FPU
+environment fields remain part of the same per-thread object. `Prog.R` still
+holds the saved state of a suspended process, not the active native registers.
+
+Use `dvm_native_process_create`, then `dvm_native_context_bind`, for interpreter
+threads. The generic context constructor remains available for host-only state,
+but is not a valid Inferno up and cannot drive the typed register adapter.
+`native_registers.c` supplies getup for this selected host; do not link another
+Inferno OS getup implementation into the same executable. Full Proc environment,
+FPU setup, child groups and cleanup still require the remaining host integration.
+No native-pointer width change or Dis bytecode/frame ABI change is introduced.
+
+[Native worlds](../include/disvm/native_world.h) coordinate collector access:
+
+1. A bound native owner joins a world, publishing its register/process root set.
+   An installed poll hook prevents context unbind until explicit detach.
+2. Enter marks an active mutator. Normal instructions run without the world mutex.
+3. Poll between complete instructions parks if collection was requested. The
+   experimental generated xec view inserts this poll immediately before decode,
+   C-translated steps and leaf-JIT dispatch in the normal instruction loop.
+4. Leave publishes stable roots before blocking in I/O/channels or going inactive.
+   Reenter waits for collection to finish. Roots and referenced storage must remain
+   live and unchanged while inactive. The host must integrate these calls around
+   actual blocking runtime operations; they are not automatically wired yet.
+5. A distinct bound collector calls stop_begin, visits all published root sets,
+   then stop_end. Competing/nested collectors are rejected. The prior parked
+   generation drains before another stop can begin. No forced OS suspension occurs.
+
+The root visitor runs with the world mutex held: no reentry, blocking, exceptions,
+longjmp, context destruction or root storage release is allowed. A real collector
+must prepare fallible work outside this callback and pair every successful stop
+with resume even on failure. Uncooperative instructions/native callbacks can delay
+collection indefinitely; no timeout or asynchronous thread termination is claimed.
+Legacy whole-module compiled paths have no internal poll instrumentation here.
+
+This implements coordination/root publication, not production GC marking or sweep.
+Global heaps, module tables, native modules, exceptions, scheduler/spawn and JIT
+publication still need to obey the corresponding ownership/synchronization rules.
+Do not enable unrestricted shared-heap parallel execution based on this test alone.
+
+The new test runs two retained production addw bodies with extended up state and
+100 stop/scan/resume cycles; each scan checks both real register/operand snapshots.
+The earlier 4000-instruction test now also checks independent up error/process
+fields. The generated-source test rejects an unrecognized dispatch boundary
+rather than silently placing a safepoint in the wrong location.

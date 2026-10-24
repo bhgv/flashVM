@@ -1,8 +1,10 @@
 /* Run the retained addw instruction concurrently with independent real REG files. */
 #include "lib9.h"
+#include "dat.h"
 #include "isa.h"
 #include "interp.h"
 #include "disvm/native_context.h"
+#include "disvm/native_process.h"
 #include "disvm/flashvm_host.h"
 #ifdef NDEBUG
 #undef NDEBUG /* Product checks must execute in Release builds too. */
@@ -57,6 +59,8 @@ static void execute(void *argument)
     assert(dvm_native_context_runtime(worker->context) == worker);
     assert(dvm_native_context_set_process(worker->context, worker));
     assert(dvm_native_context_process(worker->context) == worker);
+    assert(up && up->iprog == worker);
+    up->nerr = (int)worker->identity;
     worker->register_address = &DVM_R;
     for (index = 0; index < 2000; index++) {
         left = worker->identity;
@@ -69,8 +73,10 @@ static void execute(void *argument)
         rendezvous(worker->barrier);
         addw();
         assert(result == left + right && DVM_R.t == worker->identity);
+        assert(up->nerr == (int)worker->identity && up->iprog == worker);
         rendezvous(worker->barrier);
     }
+    up->nerr = 0;
     assert(dvm_native_context_set_process(worker->context, 0));
     assert(dvm_native_context_unbind(worker->context));
     assert(!dvm_native_context_current());
@@ -90,7 +96,7 @@ int main(void)
         workers[index].barrier = &barrier;
         workers[index].identity = 1000 * (index + 1);
         workers[index].register_address = 0;
-        workers[index].context = dvm_native_context_create(sizeof(REG), &workers[index]);
+        workers[index].context = dvm_native_process_create(&workers[index]);
         assert(workers[index].context);
         assert(!dvm_native_context_registers(workers[index].context));
         threads[index] = dvm_host_thread_start(execute, &workers[index]);

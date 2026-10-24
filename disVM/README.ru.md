@@ -67,3 +67,5 @@ Dis-parser/error cleanup, pointer maps, serialization/layout widths и наст�
 [Необходимые службы встроенного хоста](HOST-REQUIREMENTS.ru.md)
 
 [Общий ввод-вывод, TLS-регистры и четыре порта](host/README.ru.md) · [Пример передачи модуля](examples/module-image/README.ru.md)
+
+Контрольная точка v0.1535: активный REG встроен в расширенный up, добавлены безопасные точки и остановка для обхода корней. Полные параллельные GC/VM ещё не завершены. [Контракт](host/README.ru.md).

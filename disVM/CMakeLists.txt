@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.10)
-project(disvm VERSION 0.1.1 LANGUAGES C)
+project(disvm VERSION 0.1.2 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()

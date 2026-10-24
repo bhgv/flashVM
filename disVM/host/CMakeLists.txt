@@ -1,6 +1,6 @@
 # Shared host adapters build independently of the unfinished native Dis host ABI.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_shared_host VERSION 0.1.0 LANGUAGES C)
+project(disvm_shared_host VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(DVM_FLASHVM_SOURCE_ROOT "" CACHE PATH "Explicit FlashVM source root with include/ and ports/")
@@ -26,7 +26,7 @@ if(NOT TARGET disvm_module_image)
   add_library(disvm_module_image STATIC module_image.c)
 endif()
 target_include_directories(disvm_module_image PUBLIC "${dvm_root}/include")
-add_library(disvm_flashvm_host STATIC flashvm_file.c flashvm_socket.c flashvm_channel.c flashvm_thread.c native_context.c)
+add_library(disvm_flashvm_host STATIC flashvm_file.c flashvm_socket.c flashvm_channel.c flashvm_thread.c native_context.c native_world.c)
 target_include_directories(disvm_flashvm_host PUBLIC "${dvm_root}/include" "${fvm}/include" "${fvm}/ports")
 target_link_libraries(disvm_flashvm_host PUBLIC disvm_module_image)
 set(DVM_FLASHVM_TARGET "" CACHE STRING "Existing FlashVM CMake target, if embedded in one parent build")
@@ -89,4 +89,11 @@ if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
     "${dvm_root}/tests/native_registers.py" --flashvm-root "${fvm}")
   set_tests_properties(disvm_native_thread_registers PROPERTIES TIMEOUT 30
     ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+    AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_native_world_stop COMMAND "${PYTHON_EXECUTABLE}"
+    "${dvm_root}/tests/native_world.py" --flashvm-root "${fvm}")
+  set_tests_properties(disvm_native_world_stop PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()

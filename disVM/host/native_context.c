@@ -15,10 +15,15 @@
  * the Dis host's responsibility. Context-local lock protects exclusive binding. */
 struct DVM_NativeContext {
     FVM_PortSync *sync;    /* Protect exclusive bind/unbind ownership. */
-    void *registers;       /* Owned zeroed storage, aligned by calloc. */
+    void *storage;         /* Owned register-only or extended-up allocation. */
+    void *host_process;    /* Extended up base, null for the legacy generic constructor. */
+    void *registers;       /* Borrowed aligned subobject of storage. */
     size_t register_size; /* Exact extent checked by the typed REG adapter. */
     void *runtime;        /* Borrowed for the complete context lifetime. */
-    void *process;        /* Owner-thread process reference; cleared on unbind. */
+    void *process;        /* Generic constructor's current-process storage. */
+    void **process_slot;  /* Generic process field or extended up.iprog subobject. */
+    DVM_NativePoll poll; /* Owner's safepoint hook, if registered. */
+    void *poll_user;       /* Borrowed until explicit hook removal. */
     int bound;            /* Nonzero while one native TLS slot owns this context. */
 };
 
@@ -83,13 +88,15 @@ DVM_NativeContext *dvm_native_context_create(size_t register_size, void *runtime
     if (!context)
         return 0;
     context->sync = fvm_port_sync_create();
-    context->registers = calloc(1, register_size);
+    context->storage = calloc(1, register_size);
+    context->registers = context->storage;
     context->runtime = runtime;
     context->register_size = register_size;
+    context->process_slot = &context->process;
     if (!context->sync || !context->registers) {
         if (context->sync)
             fvm_port_sync_destroy(context->sync);
-        free(context->registers);
+        free(context->storage);
         free(context);
         return 0;
     }
@@ -108,7 +115,7 @@ int dvm_native_context_destroy(DVM_NativeContext *context)
     }
     fvm_port_sync_unlock(context->sync);
     fvm_port_sync_destroy(context->sync);
-    free(context->registers);
+    free(context->storage);
     free(context);
     return 1;
 }
@@ -134,14 +141,14 @@ int dvm_native_context_bind(DVM_NativeContext *context)
 /* Detach while still owning the context; another native thread cannot unbind it. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
-    if (!context || tls_get() != context)
+    if (!context || tls_get() != context || context->poll)
         return 0;
     fvm_port_sync_lock(context->sync);
     if (!tls_set(0)) {
         fvm_port_sync_unlock(context->sync);
         return 0;
     }
-    context->process = 0;
+    *context->process_slot = 0;
     context->bound = 0;
     fvm_port_sync_unlock(context->sync);
     return 1;
@@ -165,14 +172,14 @@ void *dvm_native_context_runtime(DVM_NativeContext *context)
 /* Borrow the current Dis process without transferring a heap reference. */
 void *dvm_native_context_process(DVM_NativeContext *context)
 {
-    return context && tls_get() == context ? context->process : 0;
+    return context && tls_get() == context ? *context->process_slot : 0;
 }
 /* [GC:] Host must root the process before binding and clear it before release. */
 int dvm_native_context_set_process(DVM_NativeContext *context, void *process)
 {
     if (!context || tls_get() != context)
         return 0;
-    context->process = process;
+    *context->process_slot = process;
     return 1;
 }
 
@@ -180,4 +187,62 @@ int dvm_native_context_set_process(DVM_NativeContext *context, void *process)
 size_t dvm_native_context_register_size(DVM_NativeContext *context)
 {
     return context && tls_get() == context ? context->register_size : 0;
+}
+
+/* Install only on the owner; the hook itself coordinates any external readers. */
+int dvm_native_context_set_poll(DVM_NativeContext *context, DVM_NativePoll poll, void *user)
+{
+    if (!context || tls_get() != context || !poll || context->poll)
+        return 0;
+    context->poll = poll;
+    context->poll_user = user;
+    return 1;
+}
+/* Remove only the exact owner's registration, preventing a dangling callback. */
+int dvm_native_context_clear_poll(DVM_NativeContext *context, DVM_NativePoll poll, void *user)
+{
+    if (!context || tls_get() != context || context->poll != poll || context->poll_user != user)
+        return 0;
+    context->poll = 0;
+    context->poll_user = 0;
+    return 1;
+}
+/* No hook preserves the previous TLS-only fixture; no bound context fails closed. */
+int dvm_native_context_poll(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    if (!context)
+        return 0;
+    return context->poll ? context->poll(context->poll_user) : 1;
+}
+
+/* The typed adapter passes offsetof(ExtendedProc, active) to retain C alignment. */
+DVM_NativeContext *dvm_native_context_create_embedded(size_t storage_size, size_t register_offset,
+                                                    size_t register_size, size_t process_offset, void *runtime)
+{
+    DVM_NativeContext *context;
+    void *storage;
+    if (!storage_size || !register_size || register_offset > storage_size ||
+        register_size > storage_size - register_offset || process_offset > storage_size ||
+        sizeof(void *) > storage_size - process_offset)
+        return 0;
+    context = dvm_native_context_create(register_size, runtime);
+    if (!context)
+        return 0;
+    storage = calloc(1, storage_size);
+    if (!storage) {
+        dvm_native_context_destroy(context);
+        return 0;
+    }
+    free(context->storage);
+    context->storage = storage;
+    context->host_process = storage;
+    context->process_slot = (void **)((unsigned char *)storage + process_offset);
+    context->registers = (unsigned char *)storage + register_offset;
+    return context;
+}
+/* One TLS owner supplies both up and its embedded active register state. */
+void *dvm_native_context_host_process(DVM_NativeContext *context)
+{
+    return context && tls_get() == context ? context->host_process : 0;
 }
