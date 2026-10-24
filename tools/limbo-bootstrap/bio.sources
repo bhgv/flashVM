@@ -1,0 +1,18 @@
+# Selected translation units; shared with the standalone CMake build.
+upstream/libbio/bbuffered.c
+upstream/libbio/bfildes.c
+upstream/libbio/bflush.c
+upstream/libbio/bgetc.c
+upstream/libbio/bgetd.c
+upstream/libbio/bgetrune.c
+upstream/libbio/binit.c
+upstream/libbio/boffset.c
+upstream/libbio/bprint.c
+upstream/libbio/bputc.c
+upstream/libbio/bputrune.c
+upstream/libbio/brdline.c
+upstream/libbio/brdstr.c
+upstream/libbio/bread.c
+upstream/libbio/bseek.c
+upstream/libbio/bvprint.c
+upstream/libbio/bwrite.c

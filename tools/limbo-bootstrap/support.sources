@@ -1,0 +1,8 @@
+# Selected translation units; shared with the standalone CMake build.
+host/bootstrap_support.c
+upstream/libmath/FPcontrol-Linux.c
+upstream/libmath/dtoa.c
+upstream/libmath/g_fmt.c
+upstream/libmath/gfltconv.c
+upstream/libsec/port/md5.c
+upstream/libsec/port/md5block.c

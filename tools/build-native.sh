@@ -18,7 +18,7 @@ defines=()
 # Fail on unsupported selections before touching products; never silently omit a project.
 for component in "$@"; do
     case "$component" in
-        mk|iyacc|cocor|as1|as2|as3|limbo|compilers|linker) ;;
+        mk|iyacc|limbo-bootstrap|cocor|as1|as2|as3|limbo|compilers|linker) ;;
         *) printf 'Native backend does not yet build %s; use the CMake 3.10 path for this component.\n' "$component" >&2; exit 2 ;;
     esac
 done
@@ -87,6 +87,10 @@ build_component() {
         iyacc)
             build_component mk
             MK_SUPPORT_ROOT="$build_root/mk" "$ROOT/tools/iyacc/bootstrap.sh" "$output" ;;
+        limbo-bootstrap)
+            build_component iyacc
+            IYACC_EXECUTABLE="$build_root/iyacc/iyacc" IYACC_ROOT="$build_root/iyacc" \
+                "$ROOT/tools/limbo-bootstrap/bootstrap.sh" "$output" ;;
         cocor)
             mkdir -p "$output"
             source="$ROOT/tools/coco-r-C/upstream/sources"

@@ -1,0 +1,15 @@
+# Parser and lexer are freshly generated/copied by bootstrap.sh.
+upstream/limbo/asm.c
+upstream/limbo/com.c
+upstream/limbo/decls.c
+upstream/limbo/dis.c
+upstream/limbo/dtocanon.c
+upstream/limbo/ecom.c
+upstream/limbo/gen.c
+upstream/limbo/nodes.c
+upstream/limbo/optab.c
+upstream/limbo/optim.c
+upstream/limbo/sbl.c
+upstream/limbo/stubs.c
+upstream/limbo/typecheck.c
+upstream/limbo/types.c

@@ -46,5 +46,27 @@ Successful compilation/header/source-map checks are not VM execution acceptance.
 The upstream legacy compiler emits its existing 32-bit Dis data/frame conventions;
 new 64-bit JIT leaf support alone does not finish all native frame/layout ports.
 A compiler and emulator from different forks must not be assumed ABI-compatible.
-IDE tests/demo still require an explicitly selected matching EMU_EXECUTABLE;
+IDE execution tests/demo still require an explicitly selected matching EMU_EXECUTABLE;
 when using another runtime, provide its matching compiler/header overrides too.
+
+## Direct build with mk, Make or Meson
+
+```sh
+./build-workspace.sh --backend mk --projects mk,iyacc,limbo-bootstrap --tests
+```
+
+This builds actual native mk and iyacc, regenerates `limbo.y`, compiles native
+Limbo with CC/ar, then tests all three products. Neither CMake nor emu is needed.
+The same selection works with `--backend make` and `--backend meson`; the latter
+requires Meson/Ninja. `bootstrap.sh` uses the explicit `*.sources` lists, mirrors
+the standalone CMake archive/link order and writes only into the output tree.
+`CC`, `AR`, `CPPFLAGS`, `CFLAGS`, `LDFLAGS` follow the other bundled native tools.
+Direct invocation requires an already built matching iyacc and skeleton root:
+
+```sh
+IYACC_EXECUTABLE="$PWD/build/workspace/iyacc/iyacc" \
+IYACC_ROOT="$PWD/build/workspace/iyacc" \
+  bash tools/limbo-bootstrap/bootstrap.sh build/workspace/limbo-bootstrap
+```
+
+No runtime modules or whole Inferno installation are imported for this path.

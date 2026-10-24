@@ -45,3 +45,26 @@ Legacy compiler сохраняет исходные 32-битные соглаш
 Компилятор и эмулятор из разных forks нельзя автоматически считать совместимыми.
 Для IDE --tests/--demo по-прежнему нужен явный совместимый EMU_EXECUTABLE;
 при другом runtime задавайте и его matching compiler/header overrides.
+
+## Прямая сборка через mk, Make или Meson
+
+```sh
+./build-workspace.sh --backend mk --projects mk,iyacc,limbo-bootstrap --tests
+```
+
+Команда собирает настоящие mk и iyacc, заново генерирует парсер из `limbo.y`,
+компилирует нативный Limbo через CC/ar и проверяет продукты всех трёх инструментов.
+Ни CMake, ни emu не требуются. Та же команда работает с `--backend make` и
+`--backend meson` (для последнего нужны Meson/Ninja).
+`bootstrap.sh` использует явные списки `*.sources`, сохраняет порядок библиотек
+из standalone CMake и пишет только в каталог сборки. Поддерживаются `CC`, `AR`,
+`CPPFLAGS`, `CFLAGS`, `LDFLAGS`, как у остальных нативных инструментов.
+Для прямого вызова нужны уже собранный iyacc и его каталог со скелетом парсера:
+
+```sh
+IYACC_EXECUTABLE="$PWD/build/workspace/iyacc/iyacc" \
+IYACC_ROOT="$PWD/build/workspace/iyacc" \
+  bash tools/limbo-bootstrap/bootstrap.sh build/workspace/limbo-bootstrap
+```
+
+Модули времени исполнения и полная установка Inferno этому пути не нужны.

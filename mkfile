@@ -1,7 +1,7 @@
 # Native Inferno mk rules. Run tools/mk/bootstrap.sh once, or use build-workspace.sh.
 # These recipes compile directly through CC/ar; there is no CMake delegation.
 # BUILD_ROOT, CC, AR and standard compiler flags are inherited by the shell builder.
-all:V: compilers linker iyacc
+all:V: compilers linker limbo-bootstrap
 
 mk:V:
 	bash tools/build-native.sh mk
@@ -29,3 +29,6 @@ limbo:V:
 
 linker:V:
 	bash tools/build-native.sh linker
+
+limbo-bootstrap:V:
+	bash tools/build-native.sh limbo-bootstrap
