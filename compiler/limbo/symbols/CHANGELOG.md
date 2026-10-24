@@ -17,3 +17,4 @@
 - 0.1.15: Cover symbol source-map extent.
 - 0.1.16: Cover symbol source-map spellings.
 - 0.1.17: Cover symbol source-map zeros.
+- 0.1.18: Cover symbol source-map line endings.
