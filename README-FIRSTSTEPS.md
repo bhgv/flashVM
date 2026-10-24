@@ -158,3 +158,19 @@ python3 build-menu.py --projects as2,limbo
 ```
 
 `all` включает группу `compilers`; отдельные языки повторно не собираются.
+
+## История правок и точные ошибки компилятора
+
+```bash
+python3 build-menu.py --projects ide --tests --demo history
+build/workspace/fir/fir1_diagnostic_example
+python3 ide/build.py ide/examples/numeric/program.as build/workspace/demo.swf --language as2 --compiler build/workspace/fir/fir1_source --ir build/workspace/fir/fir1 --linker build/workspace/linker/swl --structured-diagnostics
+```
+
+Первый запуск требует Limbo/emu/module SDK и показывает Undo/Redo через каналы.
+Второй — комментированный C99-клиент ожидаемой ошибки (нужна сборка fir).
+Третий публикует SWF только после успешной цепочки компиляции и возвращает JSON;
+ошибки исходника получают проверенные байтовые/символьные диапазоны и SHA-256
+снимка. Это host-инструмент; Python не входит в runtime IDE.
+[История](ide/dis/HISTORY.ru.md) ·
+[Схема ошибок](fir/v1/doc/SOURCE_DIAGNOSTICS.ru.md).

@@ -1,6 +1,6 @@
 # FlashVM Limbo IDE and host build tools
 
-Version **0.3.1**. [Русский](README.ru.md).
+Version **0.4.0**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -30,7 +30,7 @@ Each direct child is killed and reaped on timeout/cancellation. Descendant proce
 
 ## JSON and Python API
 
-The synchronous [`build`](build.py#L103) function returns caller-owned Python data. It does not mutate environment globals. Result fields: schema=1, ok, published, steps, diagnostics; accepted inputs add canonical source/output, language and module, and a successful publication includes sha256. Each step records stage, argv, returncode, bounded stdout/stderr and truncation flags; timeout adds timed_out. Logs keep at most 65536 bytes per stream in the result, with replacement decoding for invalid UTF-8. Temporary log files are not disk-quota bounded. JSON contains local executable and temporary paths, so the caller decides where to retain/share it.
+The synchronous [`build`](build.py) function returns caller-owned Python data. It does not mutate environment globals. Result fields: schema=1, ok, published, steps, diagnostics; accepted inputs add canonical source/output, language and module, and a successful publication includes sha256. Each step records stage, argv, returncode, bounded stdout/stderr and truncation flags; timeout adds timed_out. Logs keep at most 65536 bytes per stream in the result, with replacement decoding for invalid UTF-8. Temporary log files are not disk-quota bounded. JSON contains local executable and temporary paths, so the caller decides where to retain/share it.
 
 Diagnostic fields are severity, stage and raw message. Source messages with source:line:column or source line N gain reported coordinates and the original resolved source file. The driver invents no coordinates for other messages. Source-line-only semantics keep column absent. Stages are input, source, verify, optimise, verify_optimised, object, link, run and publish. Build stages before execution may have a diagnostic without a completed step record.
 
@@ -60,3 +60,12 @@ backend remains host tooling. Combined SWF/Dis packaging and extra SWF tags are
 explicitly deferred. Current module delivery does not depend on that decision.
 
 [Limbo navigation/search tutorial / Навигация и поиск](dis/examples/navigation/README.md) · [Channel contract / Контракт каналов](dis/PROTOCOL.md).
+
+[Revision-bound Undo/Redo / История правок](dis/HISTORY.md) ·
+[Runnable Limbo history example / Пример](dis/examples/history/README.md) ·
+[Validated source diagnostics / Диагностика](../fir/v1/doc/SOURCE_DIAGNOSTICS.md).
+
+`--structured-diagnostics` opts into the FIR 0.5.4 schema. Accepted locations
+include original byte spans and Unicode-character offsets; `source_sha256`
+identifies the captured snapshot. Compare it and the live revision before using
+late results. Without the option, legacy compiler messages remain supported.

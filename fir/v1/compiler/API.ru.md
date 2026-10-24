@@ -1,4 +1,4 @@
-# Встраиваемые C API 0.3.2
+# Встраиваемые C API 0.5.4
 
 [FIR API](../include/fir.h) доступен без argv, stdout/stderr и запуска процессов.
 Консольные драйверы только открывают файлы, выбирают операции и печатают ошибки.
@@ -32,3 +32,11 @@ FIR и source-парсеры имеют разные символы и могу�
 компиляции четырёх профилей, вызывает snapshots и проверяет SWO1 без subprocess.
 Генерируемый код остаётся в build; wrappers reset/guard — обычный C99, грамматики
 по-прежнему `.atg`. Полные синтаксические фронтенды — отдельные API/проекты.
+
+## Source diagnostics 0.5.4
+
+`fir_source_ex` adds an optional caller-owned FirSourceDiagnostic result after
+the existing arguments. `fir_source` remains a wrapper. First error wins,
+success clears the result, positions use original UTF-8 bytes.
+[English contract](../doc/SOURCE_DIAGNOSTICS.md) ·
+[Полный контракт на русском](../doc/SOURCE_DIAGNOSTICS.ru.md).

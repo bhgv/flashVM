@@ -110,3 +110,8 @@ document prefix scan for the successful coordinate conversion. It uses O(pattern
 length) private Dis-managed integers, bounded by MaxCharacters. No prefix table
 is allocated when the pattern cannot fit. The request still occupies the sole
 owner until its reply; asynchronous cancellation and render budgets remain open.
+
+## Undo/Redo 0.4.0
+
+Appended opcodes preserve existing Request/Reply fields.
+[English contract](HISTORY.md) · [Контракт на русском](HISTORY.ru.md).

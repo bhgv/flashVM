@@ -107,3 +107,8 @@ column и неизменённое состояние. При отсутстви
 память — O(длина шаблона) Dis-managed int, ограниченная MaxCharacters. Если шаблон
 не помещается в диапазон, таблица не создаётся. Владелец занят до ответа;
 асинхронная отмена и render budgets ещё не реализованы.
+
+## Undo/Redo 0.4.0
+
+Appended opcodes preserve existing Request/Reply fields.
+[English contract](HISTORY.md) · [Контракт на русском](HISTORY.ru.md).

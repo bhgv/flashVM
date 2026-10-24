@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.3.1**. [English](README.md).
+Версия **0.4.0**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -30,7 +30,7 @@ python3 ide/build.py program.as movie.swf --language as2 \
 
 ## JSON и Python API
 
-Синхронная функция [`build`](build.py#L103) возвращает данные, принадлежащие вызывающей стороне, и не меняет глобальное окружение. Поля результата: schema=1, ok, published, steps, diagnostics; допустимый ввод добавляет canonical source/output, language и module, успешная публикация — sha256. Стадия содержит stage, argv, returncode, ограниченные stdout/stderr и truncation flags; timeout добавляет timed_out. В результате сохраняется до 65536 байт каждого потока с replacement decoding некорректного UTF-8. Temporary log files не имеют disk quota. JSON содержит локальные executable/temp paths; хранение и распространение выбирает вызывающая сторона.
+Синхронная функция [`build`](build.py) возвращает данные, принадлежащие вызывающей стороне, и не меняет глобальное окружение. Поля результата: schema=1, ok, published, steps, diagnostics; допустимый ввод добавляет canonical source/output, language и module, успешная публикация — sha256. Стадия содержит stage, argv, returncode, ограниченные stdout/stderr и truncation flags; timeout добавляет timed_out. В результате сохраняется до 65536 байт каждого потока с replacement decoding некорректного UTF-8. Temporary log files не имеют disk quota. JSON содержит локальные executable/temp paths; хранение и распространение выбирает вызывающая сторона.
 
 Диагностика содержит severity, stage и исходное сообщение. Сообщения source:line:column или source line N получают сообщённые координаты и исходный resolved source file. Для остальных координаты не выдумываются. При одной только строке column отсутствует. Стадии: input, source, verify, optimise, verify_optimised, object, link, run и publish. Ошибка запуска может дать диагностику без завершённой записи стадии.
 
@@ -60,3 +60,12 @@ Python остаётся инструментом сборки на хосте. �
 отложены; нынешняя поставка модуля не требует решения об объединении.
 
 [Limbo navigation/search tutorial / Навигация и поиск](dis/examples/navigation/README.md) · [Channel contract / Контракт каналов](dis/PROTOCOL.md).
+
+[Revision-bound Undo/Redo / История правок](dis/HISTORY.md) ·
+[Runnable Limbo history example / Пример](dis/examples/history/README.md) ·
+[Validated source diagnostics / Диагностика](../fir/v1/doc/SOURCE_DIAGNOSTICS.md).
+
+`--structured-diagnostics` opts into the FIR 0.5.4 schema. Accepted locations
+include original byte spans and Unicode-character offsets; `source_sha256`
+identifies the captured snapshot. Compare it and the live revision before using
+late results. Without the option, legacy compiler messages remain supported.

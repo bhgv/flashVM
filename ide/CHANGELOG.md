@@ -40,3 +40,10 @@
 
 - 0.3.1: Add exact bounded Unicode-character Find through the document channel,
   with revision checks, explicit NotFound and a linear-time private prefix table.
+
+- 0.4.0: Add bounded channel-only Undo/Redo with fresh monotonic revisions,
+  shared snapshot/character budgets, source-first farthest eviction and session
+  retirement. Preserve Redo on no-op/rejected edits and MarkSaved; retain old
+  Reply snapshots. Add real Limbo history/budget/cap regressions and tutorial.
+  Host driver optionally validates FIR schema-1 byte spans against exact UTF-8
+  snapshots, converts to character positions and returns snapshot SHA-256.

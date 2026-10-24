@@ -78,6 +78,18 @@ def ask_yes(prompt):
         print("Введите y/да или n/нет.")
 
 
+# Select a runnable Limbo client after the caller opts into a console example.
+def choose_example():
+    """Choose navigation or history; empty input preserves the original default."""
+    while True:
+        value = input("Пример: 1 — navigation, 2 — history [1]: ").strip().lower()
+        if value in ("", "1", "navigation"):
+            return "navigation"
+        if value in ("2", "history"):
+            return "history"
+        print("Введите 1/navigation или 2/history.")
+
+
 # Build an argv list, never a shell expression; SDK preflight belongs to Bash.
 def build_command(args, projects, bash):
     """Construct the shared builder command with literal paths and arguments."""
@@ -89,7 +101,7 @@ def build_command(args, projects, bash):
     if args.tests:
         command.append("--tests")
     if args.demo:
-        command.append("--demo")
+        command.extend(["--demo", args.demo])
     return command
 
 
@@ -102,7 +114,8 @@ def main(argv=None):
     parser.add_argument("--config", default="Release")
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
-    parser.add_argument("--demo", action="store_true", help="Run IDE navigation example (requires ide)")
+    parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history"),
+                        help="Run a Limbo IDE example (default navigation; requires ide)")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)
     if args.jobs < 1:
@@ -118,7 +131,8 @@ def main(argv=None):
         if not args.tests:
             args.tests = ask_yes("Запустить тесты выбранных компонентов?")
         if "ide" in projects and not args.demo:
-            args.demo = ask_yes("Запустить консольный пример IDE?")
+            if ask_yes("Запустить консольный пример IDE?"):
+                args.demo = choose_example()
     else:
         try:
             projects = selection(args.projects)

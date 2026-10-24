@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1524**. [Русская версия](README.ru.md).
+Development version: **0.1526**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -126,3 +126,7 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 The IDE Reply ABI changed at 0.3.0: rebuild clients and core together. These are
 working bounded components; full language compilers and embedded Dis/JIT/debugger
 acceptance remain open.
+
+[FIR 0.5.4 source diagnostics](fir/v1/doc/SOURCE_DIAGNOSTICS.md) ·
+[IDE 0.4.0 Undo/Redo](ide/dis/HISTORY.md) ·
+[Limbo history tutorial](ide/dis/examples/history/README.md).

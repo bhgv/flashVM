@@ -1,4 +1,4 @@
-# Embeddable C APIs 0.3.2
+# Embeddable C APIs 0.5.4
 
 [FIR API](../include/fir.h) works without argv, stdout/stderr or subprocesses.
 CLI drivers only open files, select operations and present returned diagnostics.
@@ -32,3 +32,11 @@ state. Do not mutate one module concurrently.
 compilations of four profiles, invokes snapshots and checks SWO1 without child
 processes. Generated code stays in build; reset/guard wrappers are C99 and
 `.atg` remains authoritative. Broader syntax frontends are separate APIs/projects.
+
+## Source diagnostics 0.5.4
+
+`fir_source_ex` adds an optional caller-owned FirSourceDiagnostic result after
+the existing arguments. `fir_source` remains a wrapper. First error wins,
+success clears the result, positions use original UTF-8 bytes.
+[English contract](../doc/SOURCE_DIAGNOSTICS.md) ·
+[Полный контракт на русском](../doc/SOURCE_DIAGNOSTICS.ru.md).

@@ -73,3 +73,13 @@ output and returns the builder exit status. Ctrl-C exits with status 130.
 
 Select individual frontends with `--projects as1` or `--projects as2,limbo`.
 `all` uses the grouped compiler build without duplicate individual builds.
+
+## History and source diagnostics
+
+Run `python3 build-menu.py --projects ide --tests --demo history` for the new
+channel-only Undo/Redo example. `--demo` alone still selects navigation.
+After building FIR, run `build/workspace/fir/fir1_diagnostic_example` for the
+commented C99 diagnostic client. `ide/build.py --structured-diagnostics` opts in
+to validated byte spans and Unicode positions from FIR 0.5.4. Match snapshot
+SHA-256 and live revision before applying late diagnostics.
+[History](ide/dis/HISTORY.md) · [Diagnostic schema](fir/v1/doc/SOURCE_DIAGNOSTICS.md).

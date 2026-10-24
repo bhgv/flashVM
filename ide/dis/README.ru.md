@@ -1,6 +1,6 @@
 # Переносимое ядро документа IDE
 
-Версия 0.3.1. [English](README.md).
+Версия 0.4.0. [English](README.md).
 
 **Реализован** Limbo-модуль `idecore.dis` с `idecore.sbl`: владелец состояния одного
 документа, управляемый типизированными каналами. Это первая исполняемая часть IDE,
@@ -99,3 +99,6 @@ IDE должна поставляться в интерпретируемом/JI
 [Runnable navigation/search example / Пример навигации и поиска](examples/navigation/README.md).
 
 [0.3.1 compiler/IDE acceptance / Приёмка серии](SERIES_0_3_1.md).
+
+[Undo/Redo 0.4.0](HISTORY.md) · [Русский](HISTORY.ru.md) ·
+[History example / Пример истории](examples/history/README.md).

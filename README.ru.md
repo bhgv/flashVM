@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1524**. [English](README.md).
+Версия разработки: **0.1526**. [English](README.md).
 
 ## Просмотр документации
 
@@ -127,3 +127,7 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 Reply ABI изменён в 0.3.0: пересоберите ядро и клиентов вместе. Реализованы
 ограниченные рабочие компоненты; полные компиляторы, встраивание Dis, JIT
 и execution debugger ещё не прошли итоговую приёмку.
+
+[FIR 0.5.4 source diagnostics](fir/v1/doc/SOURCE_DIAGNOSTICS.md) ·
+[IDE 0.4.0 Undo/Redo](ide/dis/HISTORY.md) ·
+[Limbo history tutorial](ide/dis/examples/history/README.md).

@@ -8,6 +8,7 @@ jobs=2
 config=Release
 tests=OFF
 demo=0
+demo_example=navigation
 cmake=${CMAKE:-cmake}
 ctest=${CTEST:-ctest}
 
@@ -21,7 +22,7 @@ Usage: ./build-workspace.sh [options]
   --jobs N           Parallel jobs (default 2)
   --config NAME      CMake configuration (default Release)
   --tests            Build and run selected component tests; stop on failure
-  --demo             Build and run Limbo navigation example (requires ide)
+  --demo [NAME]      Run Limbo navigation (default) or history example; requires ide
   --help             Show this help
 External SDK environment variables (native host executables):
   COCOR_ROOT, COCOR_EXECUTABLE       Required for compilers/fir/symbols
@@ -41,7 +42,13 @@ while (($#)); do
     case "$1" in
         --help|-h) usage; exit 0 ;;
         --tests) tests=ON; shift ;;
-        --demo) demo=1; shift ;;
+        --demo)
+            demo=1
+            shift
+            if (($#)) && [[ "$1" == navigation || "$1" == history ]]; then
+                demo_example=$1
+                shift
+            fi ;;
         --projects|--build-root|--jobs|--config)
             (($# >= 2)) || fail "Missing value for $1"
             case "$1" in
@@ -95,6 +102,9 @@ if has ide; then
         LIMBO_MODULE_DIR=$(absolute "$LIMBO_MODULE_DIR")
     fi
 fi
+if has ide && [[ "$tests" == ON ]]; then
+    command -v "${PYTHON:-python3}" >/dev/null || fail 'Python 3 not found for IDE host tests'
+fi
 [[ "$demo" != 1 ]] || has ide || fail '--demo requires ide in --projects'
 build_root=$(absolute "$build_root")
 mkdir -p "$build_root/tmp"
@@ -118,6 +128,9 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols ide; do
         linker) source=linker ;;
         ide)
             source=ide/dis
+            if has symbols && [[ "$tests" == ON ]]; then
+                args+=("-DSBLMAP_EXECUTABLE=$build_root/symbols/sblmap")
+            fi
             args+=("-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")
             if [[ "$tests" == ON || "$demo" == 1 ]]; then
                 args+=(-DBUILD_TESTING=ON "-DEMU_EXECUTABLE=$EMU_EXECUTABLE" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR")
@@ -129,7 +142,12 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols ide; do
         "$ctest" --test-dir "$build_root/$project" -C "$config" --output-on-failure --no-tests=error
     fi
 done
+if has ide && [[ "$tests" == ON ]]; then
+    "${PYTHON:-python3}" -m unittest discover -s "$ROOT/ide/tests"
+fi
 if [[ "$demo" == 1 ]]; then
-    "$ctest" --test-dir "$build_root/ide" -C "$config" -R '^ide_dis_navigation_mode_[01]$' -V --no-tests=error
+    demo_test=ide_dis_navigation_mode_
+    [[ "$demo_example" != history ]] || demo_test=ide_dis_history_example_mode_
+    "$ctest" --test-dir "$build_root/ide" -C "$config" -R "^${demo_test}[01]$" -V --no-tests=error
 fi
 printf 'Build complete: %s\n' "$build_root"
