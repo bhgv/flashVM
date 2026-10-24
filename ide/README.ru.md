@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.1.18**. [English](README.md).
+Версия **0.1.19**. [English](README.md).
 
 Это независимый host-backend сборки на Python 3.9+ для редактора, а не графическая IDE. Явно выбранные C99-компилятор, FIR tools и SWL остаются отдельными проектами. Сейчас доступны их численные профили AS1/AS2/AS3/Limbo; AS3 создаёт совместимый AVM1, а не ABC. Полный компилятор AS2 не заявляется.
 
@@ -41,3 +41,5 @@ python3 ide/tests/integration.py --compiler /host/fir1_source --ir /host/fir1 \
 ```
 
 Unit fixtures используют детерминированные process doubles и проверяют orchestration, а не семантику компилятора. Integration требует настоящих инструментов и проверяет optimized/unoptimized запуск и rollback после syntax/trace ошибок для четырёх численных профилей. Проверки и driver работают после копирования/переименования IDE-каталога; отдельному дистрибутиву нужен общий MIT LICENSE. Windows, физический Android и desktop UI проверяются отдельно. Editor buffers, incremental compilation, source maps, project files и debugger UI здесь ещё не реализованы.
+
+[Numeric example](examples/numeric/README.ru.md) · [Validation / Проверки](VALIDATION.md).

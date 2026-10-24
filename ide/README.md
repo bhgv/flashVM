@@ -1,6 +1,6 @@
 # IDE build backend
 
-Version **0.1.18**. [Русский](README.ru.md).
+Version **0.1.19**. [Русский](README.ru.md).
 
 This is an independent Python 3.9+ host build backend for an editor, not a graphical IDE. The explicitly selected C99 source compiler, FIR tools and SWL remain independent projects. Current source coverage is their numeric AS1/AS2/AS3/Limbo profile; AS3 produces AVM1 compatibility code, not ABC. No complete AS2 compiler is claimed.
 
@@ -41,3 +41,5 @@ python3 ide/tests/integration.py --compiler /host/fir1_source --ir /host/fir1 \
 ```
 
 Unit fixtures use deterministic process doubles and test orchestration, not compiler semantics. Integration requires real tools and checks optimized/unoptimized execution plus rollback after syntax and trace failures for all four numeric profiles. Tests and the driver work after the IDE directory is copied/renamed; only the shared MIT LICENSE must accompany a detached distribution. Windows, physical Android and desktop UI integration remain separate acceptance work. Editor buffers, incremental compilation, source maps, project files and debugger UI are not implemented here.
+
+[Numeric example](examples/numeric/README.md) · [Validation / Проверки](VALIDATION.md).

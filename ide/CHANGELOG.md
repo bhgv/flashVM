@@ -18,3 +18,4 @@
 - 0.1.16: Cover IDE build unicode paths.
 - 0.1.17: Cover IDE build cli.
 - 0.1.18: Cover IDE build cleanup.
+- 0.1.19: Add real numeric build example and record toolchain acceptance.
