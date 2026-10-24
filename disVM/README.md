@@ -4,8 +4,8 @@
 [Owned tools/update policy](../tools/UPSTREAMS.md) · [Architecture](ARCHITECTURE.md)
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
-This branch is actively changing. The initial snapshot pins
-fa2366ca2acaee899da4a8b2e450d5d2629e279b; every imported file has a manifest hash.
+This branch is actively changing. The current snapshot pins
+3e3536578b969cf1a460210d8ec667713869ccfc; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -64,7 +64,7 @@ retain their upstream scope/licences.
 
 ## Acceptance scope
 
-Nine tests on Linux AMD64 cover production integer helpers, channel queues and
+Fifteen tests on Linux AMD64 cover production integer helpers, channel queues and
 transfers, Dis parsing/error cleanup, pointer maps, serialization/layout widths,
 and actual native AMD64 leaf execution in WORD32 and WORD64 fixture models.
 The JIT fixture uses real mmap RW allocation and RX publication and executes
@@ -76,3 +76,5 @@ Our Limbo compiler and external module generators remain separate:
 [priority](../compiler/limbo/OWN_COMPILER.md),
 [one .m for external AS and AS callers of Dis](../compiler/limbo/examples/external-modules/README.md).
 The temporary native source bootstrap lives in tools/limbo-bootstrap, not here.
+
+[Selected synchronization 0.1.1 and checks](SYNC.md)

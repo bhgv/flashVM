@@ -12,8 +12,8 @@ The workspace MIT licence does not replace upstream component licences.
 | --- | --- | --- | --- |
 | [coco-r-C](coco-r-C/README.md) | https://github.com/bhgv/coco-r-C | master / 312d377d2bdf7b2e180b0801a89ca651950a4873 | C generator and C frames actually used by our compiler grammars |
 | [coco-r-limbo](coco-r-limbo/README.md) | https://github.com/bhgv/coco-r-limbo | master / a7364dcdfe8b7926b0e8473cdc1b81797d380a89 | C-to-Limbo generator and source Limbo generator, runtime fragments |
-| [limbo-bootstrap](limbo-bootstrap/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / fa2366ca2acaee899da4a8b2e450d5d2629e279b | Temporary native compiler, mature debug/native-stub reference, C and Limbo source versions |
-| [../disVM](../disVM/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / fa2366ca2acaee899da4a8b2e450d5d2629e279b | Interpreter core, 64-bit leaf JITs and selected regressions |
+| [limbo-bootstrap](limbo-bootstrap/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 3e3536578b969cf1a460210d8ec667713869ccfc | Temporary native compiler, mature debug/native-stub reference, C and Limbo source versions |
+| [../disVM](../disVM/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 3e3536578b969cf1a460210d8ec667713869ccfc | Interpreter core, 64-bit leaf JITs and selected regressions |
 
 Each folder's `UPSTREAM.json` is authoritative for repository, branch, resolved
 commit, selection rules and SHA-256 of every imported file. No `.git` directory,

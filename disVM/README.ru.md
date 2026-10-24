@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Первый импорт фиксирует fa2366ca2acaee899da4a8b2e450d5d2629e279b. Каждый файл имеет
+Текущий снимок фиксирует 3e3536578b969cf1a460210d8ec667713869ccfc. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -51,7 +51,7 @@ Upstream blobs неизменны, их лицензии сохранены.
 
 ## Проверки
 
-На Linux AMD64 девять тестов проверяют integer helpers, queues/transfers каналов,
+На Linux AMD64 пятнадцать тестов проверяют integer helpers, queues/transfers каналов,
 Dis-parser/error cleanup, pointer maps, serialization/layout widths и настоящее
 исполнение опубликованных AMD64 leaf-функций для WORD32/WORD64 fixture models.
 Используются реальные mmap RW и RX publication. Другие VM-границы в fixtures
@@ -61,3 +61,5 @@ Dis-parser/error cleanup, pointer maps, serialization/layout widths и наст�
 [Собственный Limbo — приоритет](../compiler/limbo/OWN_COMPILER.ru.md).
 [Один .m для внешнего AS и AS-клиента Dis](../compiler/limbo/examples/external-modules/README.ru.md).
 Временный native bootstrap вынесен в tools/limbo-bootstrap.
+
+[Состав и проверки обновления 0.1.1](SYNC.ru.md)
