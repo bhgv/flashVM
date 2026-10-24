@@ -14,3 +14,4 @@
 - 0.1.12: Cover symbol source-map lengths.
 - 0.1.13: Cover symbol source-map nul.
 - 0.1.14: Cover symbol source-map random.
+- 0.1.15: Cover symbol source-map extent.
