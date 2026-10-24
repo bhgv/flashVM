@@ -9,7 +9,7 @@ static void capture(void)
     char text[256] = "";
     if (S_Len < 256)
         S_GetString(S_Pos, S_Len, text, 255);
-    source_token(text, S_Line, S_Len >= 256);
+    source_token(text, S_Line, S_Pos, (size_t)S_Len, S_Len >= 256);
 }
 static int depth;
 /* Signed literals need a direct path for the i32 minimum; general unary
@@ -170,7 +170,10 @@ PRAGMAS
     }
   .
 
-                                                                        (. source_hash_comment(); .)
+                                                                        (.
+                                                                            source_token("", S_NextLine, S_NextPos, (size_t)S_NextLen, 0);
+                                                                            source_hash_comment();
+                                                                        .)
   /* Human-readable tutorial comments are ignored by parsing. */
   linecomment =
     "//"
@@ -224,11 +227,12 @@ PRODUCTIONS
 
   /* Declarations bind left-to-right; assignment is a statement, not an expression. */
   Statement =
-                                                                        (. int name = 0, value = 0, op = 0; .)
+                                                                        (. int name = 0, value = 0, op = 0; SourceMark target; .)
     (
         "trace" "(" Expression<&value> ")" ";"                          (. source_trace(value); .)
         | ASDeclaration ";"
-        | Name<&name> AssignmentOperator<&op> Expression<&value> ";"    (. source_assign(name, value, op); .)
+        | Name<&name>                                                   (. target = source_mark(); .)
+        AssignmentOperator<&op> Expression<&value> ";"                  (. source_restore(target); source_assign(name, value, op); .)
         | ";"
     )
   .
@@ -248,15 +252,15 @@ PRODUCTIONS
 
   /* Every numeric binding needs an initializer in this restricted profile. */
   Binding<int constant> =
-                                                                        (. int name = 0, value = 0; .)
-    Name<&name>
+                                                                        (. int name = 0, value = 0; SourceMark target; .)
+    Name<&name>                                                         (. target = source_mark(); .)
     [
         ":" ident                                                       (.
                                                                             capture();
                                                                             source_annotation();
                                                                         .)
     ]
-    "=" Expression<&value>                                              (. source_declare(name, value, constant); .)
+    "=" Expression<&value>                                              (. source_restore(target); source_declare(name, value, constant); .)
   .
 
   /* Compound arithmetic is explicit; C lowering rejects /= in the i32 profile. */
@@ -305,15 +309,15 @@ PRODUCTIONS
   * opening brace unconsumed in the enclosing statement repetition.
   * No arbitrary module loader ABI is implied. */
   LimboStatement =
-                                                                        (. int name = 0, value = 0, op = 0; .)
+                                                                        (. int name = 0, value = 0, op = 0; SourceMark target; .)
     ";"
     | IF(Sym==LbraceSym && depth>=64) "{"                               (. source_scope_limit(); .)
     | IF(Sym==LbraceSym && depth<64) LimboBlock
-    | Name<&name>
+    | Name<&name>                                                       (. target = source_mark(); .)
     (
-        ":" "int" "=" Expression<&value> ";"                            (. source_bind(name, value, 1); .)
-        | ":=" Expression<&value> ";"                                   (. source_bind(name, value, 1); .)
-        | AssignmentOperator<&op> Expression<&value> ";"                (. source_assign(name, value, op); .)
+        ":" "int" "=" Expression<&value> ";"                            (. source_restore(target); source_bind(name, value, 1); .)
+        | ":=" Expression<&value> ";"                                   (. source_restore(target); source_bind(name, value, 1); .)
+        | AssignmentOperator<&op> Expression<&value> ";"                (. source_restore(target); source_assign(name, value, op); .)
     )
   .
 

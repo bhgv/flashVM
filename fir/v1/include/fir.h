@@ -165,6 +165,36 @@ extern "C"
         FirSnapshot snapshot;
         void *user;
     } FirRunOptions;
+    /* First source failure, copied into caller storage. Locations use original
+     * UTF-8 bytes: zero-based offset/length, one-based physical line/byte column.
+     * LF alone starts a line. No location means all location fields are zero. */
+    typedef enum
+    {
+        FIR_DIAG_NONE = 0,
+        FIR_DIAG_ARGUMENT,
+        FIR_DIAG_INPUT,
+        FIR_DIAG_ENCODING,
+        FIR_DIAG_LIMIT,
+        FIR_DIAG_RESOURCE,
+        FIR_DIAG_SYNTAX,
+        FIR_DIAG_SEMANTIC,
+        FIR_DIAG_OUTPUT
+    } FirSourceDiagnosticKind;
+    typedef struct
+    {
+        FirSourceDiagnosticKind kind;
+        int code;           /* Coco/R syntax code; zero for other failures. */
+        int has_location;   /* A zero-length location is an insertion/EOF point. */
+        size_t byte_offset;
+        size_t byte_length;
+        size_t line;
+        size_t column;
+    } FirSourceDiagnostic;
+    /* Additive source API: diagnostic may be NULL, cleared on every call.
+     * No borrowed source/error/stream pointer survives return. Parser calls must
+     * be serialized, including calls through the legacy wrapper below. */
+    int fir_source_ex(FILE *, FILE *, FirLanguage, const char *module_name,
+                      char *, size_t, FirSourceDiagnostic *);
     int fir_source(FILE *, FILE *, FirLanguage, const char *module_name, char *, size_t);
     int fir_run(FirTask, FILE *, FILE *, const FirRunOptions *, char *, size_t);
 #ifdef __cplusplus

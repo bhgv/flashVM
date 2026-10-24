@@ -1,5 +1,5 @@
 /* C99 numeric source lowering; parser actions are declared in lower.h. */
-#include <stdio.h>
+#include "lower.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -7,8 +7,7 @@
 #include <stdint.h>
 /* Borrowed output and diagnostic storage; never closed/freed by lowering. */
 static FILE *destination;
-static char *diagnostic;
-static size_t diagnostic_capacity;
+static SourceMark location;
 /* Complete consumed spelling; overlong input is rejected before copying. */
 static char token[256];
 /* Numeric mode, next SSA number, sticky first-error state and selected language. */
@@ -20,10 +19,11 @@ static int bindings[256], immutable[256], name_count, source_line;
 /* Retired lexical bindings are never reused during one bounded translation unit. */
 static int binding_scope[256], active[256], scope_depth;
 /* Configure one translation unit; each process owns one generated parser. */
-void source_config(FILE *out, int language, char *error, size_t capacity)
+void source_config(FILE *out, int language)
 {
-    diagnostic = error;
-    diagnostic_capacity = capacity;
+    location.line = 0;
+    location.offset = -1;
+    location.length = 0;
     source_line = 0;
     destination = out;
     profile = language;
@@ -38,8 +38,9 @@ int source_failed(void)
 /* Report the first semantic failure without producing a deliverable file. */
 static void reject(const char *message)
 {
-    if (!failed && diagnostic && diagnostic_capacity)
-        snprintf(diagnostic, diagnostic_capacity, "source line %d: %s", source_line, message);
+    char text[512];
+    snprintf(text, sizeof(text), "source line %d: %s", source_line, message);
+    source_error(FIR_DIAG_SEMANTIC, 0, location.offset, location.length, text);
     failed = 1;
 }
 /* Capture a complete spelling; never silently truncate a long token. */
@@ -157,9 +158,12 @@ int source_binary(int left, int right, int op)
     return result;
 }
 /* Scanner bridge rejects complete oversized tokens before any spelling copy. */
-void source_token(const char *text, int line, int oversized)
+void source_token(const char *text, int line, long offset, size_t length, int oversized)
 {
     source_line = line;
+    location.line = line;
+    location.offset = offset;
+    location.length = length;
     if (oversized)
     {
         reject("token exceeds 255 bytes");
@@ -208,7 +212,9 @@ void source_bind(int name, int value, int declaration)
             reject("variable limit exceeded");
             return;
         }
-        strcpy(names[name_count], names[name]);
+        /* Table rows are disjoint, but memmove also makes the bounded copy
+         * explicit to fortified compilers before name_count is advanced. */
+        memmove(names[name_count], names[name], sizeof(names[name_count]));
         name = name_count++;
         bindings[name] = -1;
         immutable[name] = 0;
@@ -306,4 +312,23 @@ void source_leave_scope(void)
 void source_scope_limit(void)
 {
     reject("block/group/unary nesting limit exceeded");
+}
+
+/* Return a copied token span, independent of later scanner/token mutations. */
+SourceMark source_mark(void)
+{
+    return location;
+}
+
+/* Attribute target-side errors to the identifier rather than the final RHS. */
+void source_restore(SourceMark mark)
+{
+    location = mark;
+    source_line = mark.line;
+}
+
+/* Retire caller-owned stream roots after every translation, including failure. */
+void source_release(void)
+{
+    destination = NULL;
 }

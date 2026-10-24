@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.16)
-project(fir1 VERSION 0.5.3 LANGUAGES C)
+project(fir1 VERSION 0.5.4 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -56,7 +56,7 @@ target_include_directories(fir1_source_api PUBLIC include)
 target_include_directories(fir1_source_api PRIVATE "${generated}")
 target_link_libraries(fir1_source_api PRIVATE fir1_source_generated fir1_io)
 add_executable(fir1_source compiler/source.c)
-target_include_directories(fir1_source_generated PRIVATE compiler)
+target_include_directories(fir1_source_generated PRIVATE compiler include)
 target_link_libraries(fir1_source PRIVATE fir1_source_api)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(fir1_source PRIVATE -Wall -Wextra -Wpedantic -Werror)
@@ -109,4 +109,13 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME fir1_source_scopes COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/scopes.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+endif()
+
+# First-failure diagnostics are tested through both the public C API and CLI.
+if(BUILD_TESTING)
+  add_executable(fir1_source_diagnostics tests/source_diagnostics.c)
+  target_link_libraries(fir1_source_diagnostics PRIVATE fir1_source_api)
+  add_test(NAME fir1_source_diagnostics COMMAND fir1_source_diagnostics)
+  add_test(NAME fir1_source_json COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/source_json.py" $<TARGET_FILE:fir1_source>)
 endif()

@@ -1,10 +1,22 @@
 /* Semantic bridge used by the generated Coco/R source parser. */
 #ifndef FIR_SOURCE_LOWER_H
 #define FIR_SOURCE_LOWER_H
-#include <stdio.h>
-void source_config(FILE *, int, char *, size_t);
+#include "fir.h"
+/* Parser-local value: capture before RHS parsing and restore for target errors. */
+typedef struct
+{
+    int line;
+    long offset;
+    size_t length;
+} SourceMark;
+SourceMark source_mark(void);
+void source_restore(SourceMark);
+/* Record only the first error; a negative offset explicitly means unlocated. */
+void source_error(FirSourceDiagnosticKind, int, long, size_t, const char *);
+void source_release(void);
+void source_config(FILE *, int);
 int source_failed(void);
-void source_token(const char *, int, int);
+void source_token(const char *, int, long, size_t, int);
 int source_constant(int);
 int source_binary(int, int, int);
 int source_name(void);

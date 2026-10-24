@@ -1,101 +1,156 @@
-/* CLI for the Coco/R src1.atg teaching adapters. Generated parser globals
- * live only in this executable. fir1 owns the different FIR grammar globals. */
+/* CLI for Coco/R numeric source profiles. JSON diagnostics are opt-in, while
+ * the C99 source API and legacy human-readable invocation remain available. */
 #include "fir.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-extern int fir_utf8(const unsigned char *, size_t);
-/* Select the tutorial language, parse once and publish only successful FIR. */
-extern FILE *fir_temporary(void);
+
+/* Print a bounded UTF-8 message as JSON, escaping control bytes and quotes. */
+static void json_string(FILE *stream, const char *text)
+{
+    const unsigned char *p = (const unsigned char *)text;
+    fputc('"', stream);
+    for (; *p; ++p)
+    {
+        if (*p == '"' || *p == '\\')
+            fprintf(stream, "\\%c", *p);
+        else if (*p < 32)
+            fprintf(stream, "\\u%04x", (unsigned)*p);
+        else
+            fputc(*p, stream);
+    }
+    fputc('"', stream);
+}
+
+/* Emit exactly one record on a parsed request's failure, never a success log. */
+static void report(int json, const FirSourceDiagnostic *diagnostic, const char *message)
+{
+    static const char *kinds[] = {"none", "argument", "input", "encoding", "limit",
+                                "resource", "syntax", "semantic", "output"};
+    if (!json)
+    {
+        fprintf(stderr, "%s\n", message);
+        return;
+    }
+    fprintf(stderr, "{\"schema\":1,\"kind\":\"%s\",\"code\":%d,\"has_location\":%s,"
+            "\"byte_offset\":%zu,\"byte_length\":%zu,\"line\":%zu,\"column\":%zu,\"message\":",
+            kinds[diagnostic->kind], diagnostic->code,
+            diagnostic->has_location ? "true" : "false", diagnostic->byte_offset,
+            diagnostic->byte_length, diagnostic->line, diagnostic->column);
+    json_string(stderr, message);
+    fputs("}\n", stderr);
+}
+
+/* Validate options, stage compilation, and open the destination only on success.
+ * Output copy failures can leave a prefix; source rejection preserves old files. */
 int main(int argc, char **argv)
 {
-    FILE *input, *temporary, *output;
-    unsigned char *text;
+    FILE *input = NULL, *temporary = NULL, *output = NULL;
+    unsigned char buffer[8192];
     size_t length;
-    int ok;
+    int json = 0, have_module = 0, i, status = 2;
+    FirLanguage language;
+    const char *module = NULL;
     char error[512] = "source operation failed";
+    FirSourceDiagnostic diagnostic;
+    memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.5.3 (numeric tutorial profiles)");
+        puts("fir1_source 0.5.4 (numeric tutorial profiles; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
-        puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"
-             "Numeric subset: literals, names, unary +/-, + - * /, parentheses.\n"
-             "AS: var x = 1, y = .5; x += y; trace(x); AS3 const supported.\n"
-             "AS2/AS3 also allow var x:Number = 1; AS1 rejects annotations.\n"
-             "Limbo: value(): int tutorial with x: int = 1; or x:=16r2a; and return.\n"
-             "Limbo lexical blocks/shadowing; AS flat scope. Initialized declarations.\n"
-             "AS uses f64 including / and /=; Limbo i32 wrap rejects division.\n"
-             "AS3 emits AVM1 compatibility, not ABC. FIR carries a source profile.\n"
-             "Limits: 64 KiB input, 255-byte tokens, 256 names, 1000 SSA values,\n"
-             "64 nested block/group/unary levels. Source syntax is compiler/src1.atg; lowering is C99.\n"
+        puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir\n"
+             "                   [--module NAME] [--diagnostics-json]\n"
+             "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
+             "AS3 const; Limbo lexical blocks and value(): int tutorial ABI.\n"
+             "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
+             "Limits: 64 KiB, 255-byte tokens, 256 names, 1000 SSA values, depth 64.\n"
+             "JSON: one schema-1 stderr record on failure; original UTF-8 byte spans.\n"
+             "Options may appear in either order; duplicates are rejected.\n"
              "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"
-             "See fir/v1/doc/COVERAGE.md and examples/ (also .ru.md).");
+             "See doc/SOURCE_DIAGNOSTICS.md and doc/SOURCE_SYNTAX.md.");
         return 0;
     }
-    if ((argc != 5 && (argc != 7 || strcmp(argv[5], "--module"))) ||
-        (strcmp(argv[1], "as1") && strcmp(argv[1], "as2") && strcmp(argv[1], "as3") &&
-         strcmp(argv[1], "limbo")) ||
-        strcmp(argv[2], "--input"))
+    if (argc < 5 || strcmp(argv[2], "--input"))
+        goto usage;
+    if (!strcmp(argv[1], "limbo"))
+        language = FIR_LIMBO;
+    else if (!strcmp(argv[1], "as1") || !strcmp(argv[1], "as2") || !strcmp(argv[1], "as3"))
+        language = (FirLanguage)(argv[1][2] - '0');
+    else
+        goto usage;
+    for (i = 5; i < argc; ++i)
     {
-        fprintf(stderr,
-                "usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n");
-        return 2;
+        if (!strcmp(argv[i], "--diagnostics-json") && !json)
+            json = 1;
+        else if (!strcmp(argv[i], "--module") && !have_module && i + 1 < argc)
+        {
+            module = argv[++i];
+            have_module = 1;
+        }
+        else
+            goto usage;
     }
     if (!strcmp(argv[3], argv[4]))
     {
-        fprintf(stderr, "different paths required\n");
-        return 2;
+        diagnostic.kind = FIR_DIAG_ARGUMENT;
+        strcpy(error, "different input/output paths required");
+        goto done;
     }
     input = fopen(argv[3], "rb");
     if (!input)
     {
-        perror(argv[3]);
-        return 2;
+        diagnostic.kind = FIR_DIAG_INPUT;
+        strcpy(error, "cannot open source input");
+        goto done;
     }
-    text = (unsigned char *)calloc(65538, 1);
     temporary = fir_temporary();
-    if (!text || !temporary)
+    if (!temporary)
     {
-        free(text);
-        if (temporary)
-            fclose(temporary);
+        diagnostic.kind = FIR_DIAG_RESOURCE;
+        strcpy(error, "cannot create temporary FIR output");
+        goto done;
+    }
+    status = 1;
+    if (!fir_source_ex(input, temporary, language, module, error, sizeof(error), &diagnostic))
+        goto done;
+    if (fflush(temporary) || fseek(temporary, 0, SEEK_SET))
+        goto output_error;
+    output = fopen(argv[4], "wb");
+    if (!output)
+        goto output_error;
+    while ((length = fread(buffer, 1, sizeof(buffer), temporary)) != 0)
+    {
+        if (fwrite(buffer, 1, length, output) != length)
+            goto output_error;
+    }
+    if (ferror(temporary))
+        goto output_error;
+    if (fclose(output))
+    {
+        output = NULL;
+        goto output_error;
+    }
+    output = NULL;
+    status = 0;
+    goto done;
+output_error:
+    memset(&diagnostic, 0, sizeof(diagnostic));
+    diagnostic.kind = FIR_DIAG_OUTPUT;
+    strcpy(error, "FIR output I/O failure");
+done:
+    if (input)
         fclose(input);
-        return 2;
-    }
-    ok = fir_source(input, temporary,
-                    (FirLanguage)(!strcmp(argv[1], "limbo") ? 4 : argv[1][2] - '0'),
-                    argc == 7 ? argv[6] : NULL, error, sizeof(error));
-    if (ok && (fflush(temporary) || fseek(temporary, 0, SEEK_SET)))
-        ok = 0;
-    if (ok)
-    {
-        output = fopen(argv[4], "wb");
-        if (!output)
-        {
-            perror(argv[4]);
-            ok = 0;
-        }
-        else
-        {
-            while ((length = fread(text, 1, 65536, temporary)) != 0)
-                if (fwrite(text, 1, length, output) != length)
-                {
-                    ok = 0;
-                    break;
-                }
-            if (ferror(temporary))
-                ok = 0;
-            if (fclose(output))
-                ok = 0;
-        }
-    }
-    fclose(input);
-    fclose(temporary);
-    free(text);
-    if (!ok)
-        fprintf(stderr, "%s\n", error[0] ? error : "source output/I/O failure");
-    return ok ? 0 : 1;
+    if (temporary)
+        fclose(temporary);
+    if (output)
+        fclose(output);
+    if (status)
+        report(json, &diagnostic, error[0] ? error : "source operation failed");
+    return status;
+usage:
+    fputs("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir "
+          "[--module NAME] [--diagnostics-json]\n", stderr);
+    return 2;
 }
