@@ -1,0 +1,6 @@
+# Run from tools/iyacc. The support archive is an explicit dependency built from tools/mk.
+all:V: support
+	sh bootstrap.sh
+
+support:V:
+	sh ../mk/bootstrap.sh

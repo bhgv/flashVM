@@ -1,0 +1,3 @@
+# Run from tools/mk; build with a C compiler/ar only, including when mk rebuilds itself.
+all:V:
+	sh bootstrap.sh

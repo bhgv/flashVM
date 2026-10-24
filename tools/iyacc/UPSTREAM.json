@@ -1,0 +1,41 @@
+{
+  "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
+  "branch": "experiment",
+  "revision": "3e3536578b969cf1a460210d8ec667713869ccfc",
+  "destination": "upstream",
+  "include": [
+    "NOTICE",
+    "lib/legal/GPL",
+    "lib/legal/LGPL",
+    "lib/legal/NOTICE.*",
+    "utils/NOTICE",
+    "lib9/NOTICE",
+    "libbio/NOTICE",
+    "utils/iyacc/yacc.c",
+    "utils/iyacc/yaccpar",
+    "utils/iyacc/mkfile",
+    "lib9/argv0.c",
+    "lib9/print.c",
+    "libbio/bputrune.c"
+  ],
+  "exclude": [],
+  "files": {
+    "upstream/NOTICE": "edbf98a46656b2d2033e3bdb7dcdef113c678664dc02d0c930f7547bdae711b1",
+    "upstream/lib/legal/GPL": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+    "upstream/lib/legal/LGPL": "04ff402deb2f11cffd906bf851ad8b2c7178eab005833f641a4b6127212f8b3d",
+    "upstream/lib/legal/NOTICE.app": "45f42468f03a634a5fb186302d6ec1ce77d83c65362d675dc2dafc88f1cc7048",
+    "upstream/lib/legal/NOTICE.ffal": "58df77a48e6816cb66615a2ec45ca0f596c4092e4ea3a55e3457d3b79f0a5c14",
+    "upstream/lib/legal/NOTICE.gpl": "56fed170386ae25f53c4f140cac83e0fc15ba7b3f401c3c4638ec8c26f8fdf88",
+    "upstream/lib/legal/NOTICE.lgpl": "8b00d2bd4571d425de7d96444253479a2ea8d4b4ca3b41b5788d49d8985a8353",
+    "upstream/lib/legal/NOTICE.liberal": "e16128cef8cba22a6d0e5d3f341636437251a88462c493f34bec55462eb214f6",
+    "upstream/lib9/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
+    "upstream/lib9/argv0.c": "b0df130f812b13a506245f31d9f453633b86feb14d825fe19fe228d0e974220c",
+    "upstream/lib9/print.c": "f4af0c81606cb228e91104ff13b0f199032f2656c1a650a980698ce630abd7cb",
+    "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
+    "upstream/libbio/bputrune.c": "a3dbd6d21018162a6504eb45416537a0b5549230d92b325e727932eaac99901e",
+    "upstream/utils/NOTICE": "995ae9dd40e344cf93be797358052cf58f33fc97bf6e4a7f761e6b9eed290e3c",
+    "upstream/utils/iyacc/mkfile": "d01cbd04dc97c26cd446999f3bb02c8b465b8e52781db76102e4b7526ae1139a",
+    "upstream/utils/iyacc/yacc.c": "ac76b38bf8d3b8c9e2ba321eb534f9476ad753a9f2c75d1024e5fab685223ecb",
+    "upstream/utils/iyacc/yaccpar": "76ea631809f6d2b4794d37296cddff423c657b9af6d5bf3daabb97829c24a18c"
+  }
+}
