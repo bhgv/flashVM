@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.5.6 LANGUAGES C)
+project(limbo_frontend VERSION 0.6.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -114,4 +114,12 @@ if(BUILD_TESTING)
     target_compile_options(limbo_tree_alloc PRIVATE -UNDEBUG -Wall -Wextra -Wpedantic -Werror)
   endif()
   add_test(NAME limbo_tree_allocation_recovery COMMAND limbo_tree_alloc)
+endif()
+
+# The declaration catalog consumes the existing Coco/R tree, not a second parser.
+add_library(limbo_interfaces interface.c)
+target_link_libraries(limbo_interfaces PUBLIC limbo_frontend)
+target_include_directories(limbo_interfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(limbo_interfaces PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
