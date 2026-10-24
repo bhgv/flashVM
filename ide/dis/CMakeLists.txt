@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.2.5 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.2.6 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -72,3 +72,15 @@ endif()
 # Install only production module/interface/debug data, never bootstrap tests or reduced-limit fixtures.
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/idecore.dis" "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl"
   "${CMAKE_CURRENT_SOURCE_DIR}/idecore.m" DESTINATION share/flashvm/ide/dis)
+
+# Optional independent reader verifies the emitted source-map prefix, without a sibling dependency.
+set(SBLMAP_EXECUTABLE "" CACHE FILEPATH "Optional explicit C99 sblmap reader")
+if(BUILD_TESTING AND SBLMAP_EXECUTABLE)
+  if(NOT EXISTS "${SBLMAP_EXECUTABLE}")
+    message(FATAL_ERROR "SBLMAP_EXECUTABLE does not exist")
+  endif()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME ide_dis_source_map COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/symbols_check.py" "${SBLMAP_EXECUTABLE}"
+    "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl")
+endif()
