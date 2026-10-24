@@ -80,3 +80,5 @@ boundary frames отладчику. Proxy копирует верхний args-�
 проверяют AS тремя Coco/R-парсерами и опционально исполняют сгенерированный общий
 AS-код в Node с Dis transport double. Node — тестовый хост, не runtime-зависимость
 IDE и не доказательство исполнения SWF.
+
+[Argument/result guards and function bindings / Проверки аргументов и результата](../../frontend/SIGNATURES.ru.md)

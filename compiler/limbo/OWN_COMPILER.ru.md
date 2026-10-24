@@ -41,3 +41,5 @@ native module loader. C-thunks — заготовки, не угаданный D
 aliases, ADT layouts, structural signatures, GC maps и сложные значения требуют
 семантического слоя/host bridge. Полное AS-понижение/ABC и собственный полный
 Limbo→Dis backend продолжают разрабатываться.
+
+[Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.ru.md)

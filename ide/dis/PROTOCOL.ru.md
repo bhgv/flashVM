@@ -112,3 +112,9 @@ column и неизменённое состояние. При отсутстви
 
 Appended opcodes preserve existing Request/Reply fields.
 [English contract](HISTORY.md) · [Контракт на русском](HISTORY.ru.md).
+
+## ReplaceAll 0.5.0
+
+[Contract / Контракт](REPLACE_ALL.ru.md). Request adds replacement before reply; Reply appends matches. Recompile all clients.
+
+[Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.ru.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.ru.md)

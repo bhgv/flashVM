@@ -1,12 +1,13 @@
 # LIMBO syntax frontend
 
-Version 0.6.6. [Русская версия](README.ru.md).
+Version 0.8.0. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
 The embedded predicates are C99; the executable and generated code are built as
 C99 with extensions disabled. This is a syntax recognizer, not yet a complete
-compiler: there is no typed AST, symbol table, type checker, code generator or SWF writer.
+compiler: the optional declaration/signature passes provide a first parameter-binding
+check, but there is no complete typed AST, type checker, Dis backend or SWF writer.
 Optional [owned concrete production trees](TREE.md) are now available through C99
 and the separate `limbo_tree` inspector. The external C-host/C-output generator
 of [coco-r-limbo](https://github.com/bhgv/coco-r-limbo) is also tested.
@@ -14,7 +15,8 @@ of [coco-r-limbo](https://github.com/bhgv/coco-r-limbo) is also tested.
 ## Build and detach
 
 Provide an already-built external C generator and its matching `frames/` directory.
-No Coco/R source, frame or documentation is copied into this repository. Run from
+Root builds can build the selected owned generator under tools/coco-r-C;
+detached frontend builds still take explicit generator/frame paths. Run from
 this frontend directory:
 
 ```sh
@@ -126,3 +128,5 @@ tree. [Contract, supported declarations and native-backend reference](INTERFACES
 [Own compiler priority / Приоритет Limbo](../../../compiler/limbo/OWN_COMPILER.md) ·
 [Two-way .m external AS/Dis modules / Внешние модули](../../../compiler/limbo/examples/external-modules/README.md) ·
 [Owned tools / Инструменты](../../../tools/UPSTREAMS.md).
+
+[Function signatures / Сигнатуры функций](SIGNATURES.md)

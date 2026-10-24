@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.4.0**. [English](README.md).
+Версия **0.5.0**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -73,3 +73,7 @@ late results. Without the option, legacy compiler messages remain supported.
 [Own compiler priority / Приоритет Limbo](../compiler/limbo/OWN_COMPILER.md) ·
 [Two-way .m external AS/Dis modules / Внешние модули](../compiler/limbo/examples/external-modules/README.md) ·
 [Owned tools / Инструменты](../tools/UPSTREAMS.md).
+
+[Bulk replacement, one Undo / Массовая замена и один Undo](dis/REPLACE_ALL.ru.md)
+
+[Series 0.5.0 validation / Проверки серии](dis/SERIES_0_5_0.ru.md)

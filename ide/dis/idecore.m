@@ -13,7 +13,8 @@ Idecore: module
     MaxHistoryCharacters: con 1048576;
 
     # Snapshot is read-only; all other operations use the expected revision as specified below.
-    Open, Replace, Snapshot, MarkSaved, Close, Shutdown, Locate, Offset, Find, Undo, Redo, ReplaceAll, Utf8Span: con iota;
+    Open, Replace, Snapshot, MarkSaved, Close, Shutdown, Locate, Offset, Find,
+    Undo, Redo, ReplaceAll, Utf8Span: con iota;
 
     # Every accepted request with a non-nil reply channel receives exactly one response.
     Ok, Conflict, RangeError, TooLarge, Invalid, Closed, RevisionLimit, Unknown, NotFound: con iota;
@@ -41,9 +42,9 @@ Idecore: module
         revision: int;           # Monotonic service-lifetime content/session revision.
         saved: int;              # Revision acknowledged by MarkSaved, Open or Close.
         text: string;            # Current document; empty when closed.
-        offset: int;             # Locate/Offset/Find result in characters; -1 for other replies/errors.
-        line: int;               # Locate/Offset/Find one-based LF-delimited line; -1 otherwise.
-        column: int;             # Locate/Offset/Find zero-based character column; -1 otherwise.
+        offset: int;             # Locate/Offset/Find/Utf8Span result in characters; -1 for other replies/errors.
+        line: int;               # Locate/Offset/Find/Utf8Span one-based LF-delimited line; -1 otherwise.
+        column: int;             # Locate/Offset/Find/Utf8Span zero-based character column; -1 otherwise.
         matches: int;            # ReplaceAll success: nonoverlapping matches; -1 for other replies.
         selection_end: int;      # Utf8Span success: exclusive character end; -1 otherwise.
     };

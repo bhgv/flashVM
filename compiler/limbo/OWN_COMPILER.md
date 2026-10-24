@@ -43,3 +43,5 @@ installed native module loader. Current C thunks are implementation starting poi
 not guessed Dis ABI layouts. Includes, aliases, ADT layouts, structural signatures,
 GC maps and complex-value marshaling still require the semantic/host layers.
 Full AS source lowering/ABC and full own Limbo→Dis emission remain in progress.
+
+[Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.md)

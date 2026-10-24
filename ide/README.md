@@ -1,6 +1,6 @@
 # FlashVM Limbo IDE and host build tools
 
-Version **0.4.0**. [Русский](README.ru.md).
+Version **0.5.0**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -73,3 +73,7 @@ late results. Without the option, legacy compiler messages remain supported.
 [Own compiler priority / Приоритет Limbo](../compiler/limbo/OWN_COMPILER.md) ·
 [Two-way .m external AS/Dis modules / Внешние модули](../compiler/limbo/examples/external-modules/README.md) ·
 [Owned tools / Инструменты](../tools/UPSTREAMS.md).
+
+[Bulk replacement, one Undo / Массовая замена и один Undo](dis/REPLACE_ALL.md)
+
+[Series 0.5.0 validation / Проверки серии](dis/SERIES_0_5_0.md)

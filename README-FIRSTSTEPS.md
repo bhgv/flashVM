@@ -194,3 +194,14 @@ Native transport/loader/type marshaler ещё в работе; generation не �
 Собственный `fir1_source ... -g DEBUG.json` выдаёт FIRDBG1 с исходником, SSA origins,
 уникальными lexical scopes и переменными до оптимизации.
 [Единицы и границы debug info](fir/v1/doc/SOURCE_DEBUG.ru.md).
+
+## ReplaceAll — IDE 0.5.0
+
+```sh
+python3 build-menu.py --projects ide --demo replaceall
+```
+
+[Example / Пример](ide/dis/examples/replaceall/README.ru.md).
+[Interface migration / Обновление интерфейса](ide/dis/REPLACE_ALL.ru.md): rebuild the module and every client with the same idecore.m.
+
+[Real FIR diagnostics in Limbo IDE / Диагностика FIR в Limbo IDE](ide/dis/examples/compiler-location/README.ru.md): `./build-workspace.sh --projects fir,ide --tests` with a matching Limbo/module/emu SDK.

@@ -90,3 +90,5 @@ under development. No actual cross-VM execution is claimed here. Tests compile/r
 C scaffolds, check AS through three Coco/R parsers and optionally execute the
 actual common-AS output in Node against a Dis transport double. Node is a test
 runtime only, not a deployed dependency or proof of SWF execution.
+
+[Argument/result guards and function bindings / Проверки аргументов и результата](../../frontend/SIGNATURES.md)

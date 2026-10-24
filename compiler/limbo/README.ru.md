@@ -1,6 +1,6 @@
 # LIMBO
 
-Версия 0.6.6. [English](README.md).
+Версия 0.8.0. [English](README.md).
 
 Независимый проект компилятора на C99. Сейчас реализован синтаксический
 фронтенд: [грамматика, сборка и ограничения](frontend/README.ru.md).
@@ -84,3 +84,5 @@ Include-файлы не раскрываются; cast по именованно
 [Own compiler priority / Приоритет Limbo](../../compiler/limbo/OWN_COMPILER.md) ·
 [Two-way .m external AS/Dis modules / Внешние модули](../../compiler/limbo/examples/external-modules/README.md) ·
 [Owned tools / Инструменты](../../tools/UPSTREAMS.md).
+
+[Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.ru.md)

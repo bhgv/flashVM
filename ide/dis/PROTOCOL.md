@@ -115,3 +115,9 @@ owner until its reply; asynchronous cancellation and render budgets remain open.
 
 Appended opcodes preserve existing Request/Reply fields.
 [English contract](HISTORY.md) · [Контракт на русском](HISTORY.ru.md).
+
+## ReplaceAll 0.5.0
+
+[Contract / Контракт](REPLACE_ALL.md). Request adds replacement before reply; Reply appends matches. Recompile all clients.
+
+[Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.md)

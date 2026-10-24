@@ -50,3 +50,6 @@ FlashVM embedding and instrumented x86-64/arm64/riscv64 JIT entry remain open.
 byte arrays, сохраняя настоящий тест KMP, но не заявляя приёмку проблемной
 конкатенации или всех ownership-путей runtime. Пользовательская experiment
 просмотрена на `bfa6a601`, но не исполнялась; встраивание и native JIT ещё открыты.
+
+The [0.5.0 series](SERIES_0_5_0.md) records another allocation-workload-dependent
+self-concatenation failure and an optional probe; no native runtime fix is claimed.

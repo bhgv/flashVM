@@ -47,3 +47,6 @@
   Reply snapshots. Add real Limbo history/budget/cap regressions and tutorial.
   Host driver optionally validates FIR schema-1 byte spans against exact UTF-8
   snapshots, converts to character positions and returns snapshot SHA-256.
+
+- 0.5.0: Literal revision-checked ReplaceAll through typed channels; one Undo, bounded size checks, balanced rendering, Unicode example, appended replacement/matches fields (recompile every client).
+- 0.5.0: Revision-bound UTF-8 diagnostic ranges to editor selections, Unicode boundary validation and real FIR-to-Limbo navigation tests. Reply also appends selection_end.

@@ -79,3 +79,14 @@ The root script supplies build-owned temporary paths for its children only.
 [optional SDL2 player](flashVM/frontend/README.md),
 [Dis update workflow](tools/UPSTREAMS.md),
 [complementary runtime architecture](disVM/ARCHITECTURE.md).
+
+## ReplaceAll — IDE 0.5.0
+
+```sh
+python3 build-menu.py --projects ide --demo replaceall
+```
+
+[Example / Пример](ide/dis/examples/replaceall/README.md).
+[Interface migration / Обновление интерфейса](ide/dis/REPLACE_ALL.md): rebuild the module and every client with the same idecore.m.
+
+[Real FIR diagnostics in Limbo IDE / Диагностика FIR в Limbo IDE](ide/dis/examples/compiler-location/README.md): `./build-workspace.sh --projects fir,ide --tests` with a matching Limbo/module/emu SDK.

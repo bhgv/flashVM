@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1527**. [English](README.md).
+Версия разработки: **0.1528**. [English](README.md).
 
 ## Просмотр документации
 
@@ -137,3 +137,5 @@ Reply ABI изменён в 0.3.0: пересоберите ядро и клие
 [DisVM interpreter/JIT core](disVM/README.md) ·
 [Owned tool sources and revisions](tools/UPSTREAMS.md) ·
 [.m: external AS modules for Dis and AS callers of Dis](compiler/limbo/examples/external-modules/README.md).
+
+[Compiler signatures / Сигнатуры компилятора](compiler/limbo/frontend/SIGNATURES.ru.md) · [IDE ReplaceAll](ide/dis/REPLACE_ALL.ru.md)

@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.6.6. [Русский](README.ru.md).
+Version 0.8.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend with owned concrete production trees: [grammar and build](frontend/README.md),
@@ -83,3 +83,5 @@ This partial declaration pass does not resolve imports/types or emit native C.
 [Own compiler priority / Приоритет Limbo](../../compiler/limbo/OWN_COMPILER.md) ·
 [Two-way .m external AS/Dis modules / Внешние модули](../../compiler/limbo/examples/external-modules/README.md) ·
 [Owned tools / Инструменты](../../tools/UPSTREAMS.md).
+
+[Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.md)

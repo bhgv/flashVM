@@ -1,6 +1,6 @@
 # Portable IDE document core
 
-Version 0.4.0. [Русский](README.ru.md).
+Version 0.5.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
@@ -104,7 +104,11 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 
 [0.3.1 compiler/IDE acceptance / Приёмка серии](SERIES_0_3_1.md).
 
-[Undo/Redo 0.4.0](HISTORY.md) · [Русский](HISTORY.ru.md) ·
+[Undo/Redo 0.5.0](HISTORY.md) · [Русский](HISTORY.ru.md) ·
 [History example / Пример истории](examples/history/README.md).
 
-[0.4.0 acceptance / Приёмка: новые проверки и открытые сбои VM](SERIES_0_4_0.md).
+[0.5.0 acceptance / Приёмка: новые проверки и открытые сбои VM](SERIES_0_4_0.md).
+
+[Bulk replacement / Массовая замена](REPLACE_ALL.md) · [Example / Пример](examples/replaceall/README.md)
+
+[Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.md)
