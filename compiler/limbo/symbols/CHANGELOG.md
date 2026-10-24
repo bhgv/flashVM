@@ -16,3 +16,4 @@
 - 0.1.14: Cover symbol source-map random.
 - 0.1.15: Cover symbol source-map extent.
 - 0.1.16: Cover symbol source-map spellings.
+- 0.1.17: Cover symbol source-map zeros.
