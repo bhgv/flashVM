@@ -1,5 +1,7 @@
 # FlashVM workspace
 
+[First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
+
 Development version: **0.1524**. [Русская версия](README.ru.md).
 
 ## Browse documentation
@@ -57,7 +59,7 @@ FlashVM, language syntax frontends, FIR/compiler/optimizer and SWL are separate
 working projects. A Flash source/image editor remains future work. Each project
 owns its source, dependencies, build entry point, version, documentation,
 examples and tests. No root build is required.
-Future workspace automation may orchestrate builds, but must remain optional.
+Optional workspace orchestration is available through `build-workspace.sh`; see the first-steps guide.
 
 A project must remain buildable after copying its directory to another location
 or repository, including under a different directory name. Do not include sibling
