@@ -227,12 +227,18 @@ PRODUCTIONS
 
   /* Declarations bind left-to-right; assignment is a statement, not an expression. */
   Statement =
-                                                                        (. int name = 0, value = 0, op = 0; SourceMark target; .)
+                                                                        (.
+                                                                            int name = 0, value = 0, op = 0;
+                                                                            SourceMark target;
+                                                                        .)
     (
         "trace" "(" Expression<&value> ")" ";"                          (. source_trace(value); .)
         | ASDeclaration ";"
         | Name<&name>                                                   (. target = source_mark(); .)
-        AssignmentOperator<&op> Expression<&value> ";"                  (. source_restore(target); source_assign(name, value, op); .)
+        AssignmentOperator<&op> Expression<&value> ";"                  (.
+                                                                            source_restore(target);
+                                                                            source_assign(name, value, op);
+                                                                        .)
         | ";"
     )
   .
@@ -252,7 +258,10 @@ PRODUCTIONS
 
   /* Every numeric binding needs an initializer in this restricted profile. */
   Binding<int constant> =
-                                                                        (. int name = 0, value = 0; SourceMark target; .)
+                                                                        (.
+                                                                            int name = 0, value = 0;
+                                                                            SourceMark target;
+                                                                        .)
     Name<&name>                                                         (. target = source_mark(); .)
     [
         ":" ident                                                       (.
@@ -260,7 +269,10 @@ PRODUCTIONS
                                                                             source_annotation();
                                                                         .)
     ]
-    "=" Expression<&value>                                              (. source_restore(target); source_declare(name, value, constant); .)
+    "=" Expression<&value>                                              (.
+                                                                            source_restore(target);
+                                                                            source_declare(name, value, constant);
+                                                                        .)
   .
 
   /* Compound arithmetic is explicit; C lowering rejects /= in the i32 profile. */
@@ -309,15 +321,30 @@ PRODUCTIONS
   * opening brace unconsumed in the enclosing statement repetition.
   * No arbitrary module loader ABI is implied. */
   LimboStatement =
-                                                                        (. int name = 0, value = 0, op = 0; SourceMark target; .)
+                                                                        (.
+                                                                            int name = 0, value = 0, op = 0;
+                                                                            SourceMark target;
+                                                                        .)
     ";"
-    | IF(Sym==LbraceSym && depth>=64) "{"                               (. source_scope_limit(); .)
+    | IF(Sym==LbraceSym && depth>=64) "{"                               (.
+                                                                            capture();
+                                                                            source_scope_limit();
+                                                                        .)
     | IF(Sym==LbraceSym && depth<64) LimboBlock
     | Name<&name>                                                       (. target = source_mark(); .)
     (
-        ":" "int" "=" Expression<&value> ";"                            (. source_restore(target); source_bind(name, value, 1); .)
-        | ":=" Expression<&value> ";"                                   (. source_restore(target); source_bind(name, value, 1); .)
-        | AssignmentOperator<&op> Expression<&value> ";"                (. source_restore(target); source_assign(name, value, op); .)
+        ":" "int" "=" Expression<&value> ";"                            (.
+                                                                            source_restore(target);
+                                                                            source_bind(name, value, 1);
+                                                                        .)
+        | ":=" Expression<&value> ";"                                   (.
+                                                                            source_restore(target);
+                                                                            source_bind(name, value, 1);
+                                                                        .)
+        | AssignmentOperator<&op> Expression<&value> ";"                (.
+                                                                            source_restore(target);
+                                                                            source_assign(name, value, op);
+                                                                        .)
     )
   .
 
@@ -339,27 +366,55 @@ PRODUCTIONS
 
   /* Addition/subtraction bind less tightly than multiplication, left to right. */
   Expression<int *result> =
-                                                                        (. int right = 0, op = 0; .)
+                                                                        (.
+                                                                            int right = 0, op = 0;
+                                                                            SourceMark operator;
+                                                                        .)
     Product<result>
     {
         (
-            "+"                                                         (. op = '+'; .)
-            | "-"                                                       (. op = '-'; .)
+            "+"                                                         (.
+                                                                            op = '+';
+                                                                            capture();
+                                                                            operator = source_mark();
+                                                                        .)
+            | "-"                                                       (.
+                                                                            op = '-';
+                                                                            capture();
+                                                                            operator = source_mark();
+                                                                        .)
         )
-        Product<&right>                                                 (. *result = source_binary(*result, right, op); .)
+        Product<&right>                                                 (.
+                                                                            source_restore(operator);
+                                                                            *result = source_binary(*result, right, op);
+                                                                        .)
     }
   .
 
   /* Multiplication and division associate left; division is AS-only. */
   Product<int *result> =
-                                                                        (. int right = 0, op = 0; .)
+                                                                        (.
+                                                                            int right = 0, op = 0;
+                                                                            SourceMark operator;
+                                                                        .)
     Unary<result>
     {
         (
-            "*"                                                         (. op = '*'; .)
-            | "/"                                                       (. op = '/'; .)
+            "*"                                                         (.
+                                                                            op = '*';
+                                                                            capture();
+                                                                            operator = source_mark();
+                                                                        .)
+            | "/"                                                       (.
+                                                                            op = '/';
+                                                                            capture();
+                                                                            operator = source_mark();
+                                                                        .)
         )
-        Unary<&right>                                                   (. *result = source_binary(*result, right, op); .)
+        Unary<&right>                                                   (.
+                                                                            source_restore(operator);
+                                                                            *result = source_binary(*result, right, op);
+                                                                        .)
     }
   .
 

@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
-/* Borrowed output and diagnostic storage; never closed/freed by lowering. */
+/* Borrowed output stream and copied source position; released after parsing. */
 static FILE *destination;
 static SourceMark location;
 /* Complete consumed spelling; overlong input is rejected before copying. */

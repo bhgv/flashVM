@@ -119,3 +119,10 @@ if(BUILD_TESTING)
   add_test(NAME fir1_source_json COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/source_json.py" $<TARGET_FILE:fir1_source>)
 endif()
+
+# A standalone commented C99 client demonstrates copied diagnostic ownership.
+add_executable(fir1_diagnostic_example examples/diagnostics/main.c)
+target_link_libraries(fir1_diagnostic_example PRIVATE fir1_source_api)
+if(BUILD_TESTING)
+  add_test(NAME fir1_diagnostic_example COMMAND fir1_diagnostic_example)
+endif()
