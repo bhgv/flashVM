@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.4.3 LANGUAGES C)
+project(limbo_frontend VERSION 0.5.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -35,7 +35,7 @@ add_custom_command(
     "${COCOR_ROOT}/frames/parser_h.frm"
   VERBATIM)
 set_source_files_properties("${generated}/limbop.c" "${generated}/limbos.c" PROPERTIES HEADER_FILE_ONLY TRUE)
-add_library(limbo_frontend api.c parser.c scanner.c "${generated}/limbop.c" "${generated}/limbos.c")
+add_library(limbo_frontend api.c tree.c parser.c scanner.c "${generated}/limbop.c" "${generated}/limbos.c")
 target_include_directories(limbo_frontend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(limbo_frontend PRIVATE "${generated}")
 target_compile_definitions(limbo_frontend PRIVATE CUSTOM_BUFF Custom_Error=limbo_Custom_Error GenError=limbo_GenError Parse=limbo_Parse SemError=limbo_SemError Successful=limbo_Successful SynError=limbo_SynError S_Col=limbo_S_Col S_CurrLine=limbo_S_CurrLine S_CurrentCh=limbo_S_CurrentCh S_Get=limbo_S_Get S_GetName=limbo_S_GetName S_GetString=limbo_S_GetString S_Len=limbo_S_Len S_Line=limbo_S_Line S_LineStart=limbo_S_LineStart S_NextCol=limbo_S_NextCol S_NextLen=limbo_S_NextLen S_NextLine=limbo_S_NextLine S_NextPos=limbo_S_NextPos S_Pos=limbo_S_Pos S_Reset=limbo_S_Reset S_src=limbo_S_src)
@@ -65,4 +65,9 @@ if(BUILD_TESTING)
   add_test(NAME limbo_generator_failure COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/generator_check.py ${CMAKE_COMMAND}
     ${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake ${COCOR_EXECUTABLE} ${COCOR_ROOT})
+endif()
+
+# Handwritten owned storage is checked independently of generated legacy runtime warnings.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  set_source_files_properties(tree.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Wpedantic;-Werror")
 endif()

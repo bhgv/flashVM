@@ -1,6 +1,6 @@
 /*
  * Читаемая грамматика и C99-предикаты синтаксического фронтенда.
- * Правила ниже не создают AST и не выполняют проверку типов.
+ * Правила ниже создают необязательное конкретное дерево, но не проверяют типы.
  * main.c проверяет кодировку UTF-8 до запуска байтового сканера.
  * Квадратные скобки — необязательная часть, фигурные — повторение.
  * IF(...) проверяет выбор без потребления входного токена.
@@ -12,6 +12,10 @@ COMPILER Limbo
  * The embedding wrapper turns limit exhaustion into a returned diagnostic. */
 void limbo_syntax_enter(void);
 void limbo_syntax_leave(void);
+/* Optional owned concrete-tree recorder; offsets are UTF-8 byte positions.
+ * Disabled during ordinary syntax checks. Empty rules anchor at lookahead. */
+void limbo_tree_enter(const char *kind, long start);
+void limbo_tree_leave(long end);
 
 /* Scan ahead without changing Coco/R scanner state. Delimiters inside strings,
    comments or nested expressions do not terminate the current qualifier. */
@@ -371,831 +375,1073 @@ IGNORE
 PRODUCTIONS
   /* Единица Limbo: необязательный implement позволяет разбирать также интерфейсы .m. */
   Limbo =
-    [
-        "implement" Names ";"
-    ]
-    {
-        Top
-    }
-    EOF
+                                                                        (. limbo_tree_enter("Limbo", 0); .)
+    (
+        [
+            "implement" Names ";"
+        ]
+        {
+            Top
+        }
+        EOF
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Верхний уровень Limbo: include, объявление/функция или распаковка кортежа. */
   Top =
-    "include" text ";"
-    | ident NamedTop
-    | "(" Names ")" ":=" Expression ";"
+                                                                        (. limbo_tree_enter("Top", S_NextPos); .)
+    (
+        "include" text ";"
+        | ident NamedTop
+        | "(" Names ")" ":=" Expression ";"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* После общего имени различаются определение функции и объявление данных. */
   NamedTop =
-    PolyParameters
-    {
-        "." ident PolyParameters
-    }
-    FunctionTail
-    |
-    {
-        "," ident
-    }
-    DeclarationTail
+                                                                        (. limbo_tree_enter("NamedTop", S_NextPos); .)
+    (
+        PolyParameters
+        {
+            "." ident PolyParameters
+        }
+        FunctionTail
+        |
+        {
+            "," ident
+        }
+        DeclarationTail
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Объявление с типом, выводом типа := либо инициализацией =. */
   DeclarationTail =
-    ":" DeclType ";"
-    |
+                                                                        (. limbo_tree_enter("DeclarationTail", S_NextPos); .)
     (
-        ":="
-        | "="
+        ":" DeclType ";"
+        |
+        (
+            ":="
+            | "="
+        )
+        Expression ";"
     )
-    Expression ";"
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Категории объявлений Limbo: константа, импорт, псевдоним, module, adt или тип. */
   DeclType =
-                                                                        (. limbo_syntax_enter(); .)
+                                                                        (. limbo_tree_enter("DeclType", S_NextPos); .)
     (
-        "con" Expression
-        | "import" Expression
-        | "type" Type
-        | "module" "{"
-        {
-            Top
-        }
-        "}"
-        | "exception"
-        [
-            "(" TypeList ")"
-        ]
-        | "adt" PolyParameters ForPoly "{"
-        {
-            AdtMember
-        }
-        "}" ForPoly
-        |
-        [
-            "cyclic"
-        ]
-        Type
-        [
-            "=" Expression
-        ]
-    )
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            "con" Expression
+            | "import" Expression
+            | "type" Type
+            | "module" "{"
+            {
+                Top
+            }
+            "}"
+            | "exception"
+            [
+                "(" TypeList ")"
+            ]
+            | "adt" PolyParameters ForPoly "{"
+            {
+                AdtMember
+            }
+            "}" ForPoly
+            |
+            [
+                "cyclic"
+            ]
+            Type
+            [
+                "=" Expression
+            ]
+        )
                                                                         (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Члены ADT, включая размеченные варианты pick.
   Предпросмотр => не позволяет принять имя следующего варианта за поле. */
   AdtMember =
-    Names ":" DeclType ";"
-    | "pick" "{"
-    {
-        Tags "=>"
+                                                                        (. limbo_tree_enter("AdtMember", S_NextPos); .)
+    (
+        Names ":" DeclType ";"
+        | "pick" "{"
         {
-            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym )
-            Names ":" DeclType ";"
+            Tags "=>"
+            {
+                IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym )
+                Names ":" DeclType ";"
+            }
         }
-    }
-    "}"
+        "}"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Группа имён, разделённых запятыми; используется в объявлениях и параметрах. */
   /* Метки вариантов ADT соединяются ключевым словом or. */
   Tags =
-    ident
-    {
-        "or" ident
-    }
+                                                                        (. limbo_tree_enter("Tags", S_NextPos); .)
+    (
+        ident
+        {
+            "or" ident
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   Names =
-    Name
-    {
-        "," Name
-    }
+                                                                        (. limbo_tree_enter("Names", S_NextPos); .)
+    (
+        Name
+        {
+            "," Name
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Имя либо nil для безымянного параметра; проверка контекста — семантическая. */
   Name =
-    ident
-    | "nil"
+                                                                        (. limbo_tree_enter("Name", S_NextPos); .)
+    (
+        ident
+        | "nil"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Базовые, составные и именованные типы Limbo. ref и контейнеры
   рекурсивно охватывают внутренний тип; fn содержит отдельную сигнатуру. */
   Type =
+                                                                        (. limbo_tree_enter("Type", S_NextPos); .)
+    (
                                                                         (. limbo_syntax_enter(); .)
-    (
-        "byte"
-        | "int"
-        | "big"
-        | "real"
-        | "string"
-        | FixedType
-        |
-        (
-            "array"
-            | "list"
-            | "chan"
-        )
-        "of" Type
-        | "ref" Type
-        | "fn" PolyParameters Parameters
-        [
-            IF(Sym == ColonSym) ":" Type
-        ]
-        ForPoly Raises
-        | "(" TypeList ")"
-        | NamedType
-    )
-                                                                        (. limbo_syntax_leave(); .)
-  .
-
-  /* Скобки вокруг необязательного списка формальных параметров Limbo. */
-  Parameters =
-                                                                        (. int variadic = 0; .)
-    "("
-    [
-                                                                        (. variadic = Sym == StarSym; .)
-        Formal
-        {
-            ","                                                         (.
-                                                                            if (variadic)
-                                                                                SemError(1302);
-                                                                            variadic = Sym == StarSym;
-                                                                        .)
-            Formal
-        }
-    ]
-    ")"
-  .
-
-  /* Формальный параметр: группа имён и тип, self-параметр либо вариативная звёздочка. */
-  Formal =
-    "*"
-    | Names ":"
-    (
-        "self"
-        [
-            "ref"
-        ]
-        NamedType
-        | Type
-    )
-  .
-
-  /* Сигнатура определения Limbo и тело: возвращаемый тип необязателен. */
-  FunctionTail =
-    Parameters
-    [
-        IF(Sym == ColonSym) ":" Type
-    ]
-    ForPoly Raises Block
-  .
-
-  /* Блок ограничивает последовательность элементов фигурными скобками. */
-  Block =
-    "{"
-    {
-        Statement
-    }
-    "}"
-  .
-
-  /* Инструкции Limbo. Декларация локальной переменной использует общий
-  префикс выражения; после двоеточия разбирается DeclType.
-  Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
-  Statement =
-                                                                        (. limbo_syntax_enter(); .)
-    (
-        IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
-        | Block
-        [
-            IF(Sym == exceptionSym) "exception"
-            [
-                ident
-            ]
-            "{"
-            {
-                CaseArm
-            }
-            "}"
-        ]
-        | ";"
-        | "include" text ";"
-        | IfStatement
-        | LabeledStatement
-        | "return"
-        [
-            Expression
-        ]
-        ";"
-        |
-        (
-            "break"
-            | "continue"
-        )
-        [
-            ident
-        ]
-        ";"
-        | "raise"
-        [
-            Expression
-        ]
-        ";"
-        | "exit" ";"
-        | "spawn" Expression ";"
-        | Expression
-        [
-            ":" DeclType
-        ]
-        ";"
-    )
-                                                                        (. limbo_syntax_leave(); .)
-  .
-
-  /* Only the six labelable control statements admit a leading label. */
-  LabeledStatement =
-    WhileStatement
-    | ForStatement
-    | CaseStatement
-    | AltStatement
-    | PickStatement
-  .
-
-  /* Ближайший незавершённый if получает else; вход проверяется без Get(). */
-  IfStatement =
-    "if" "(" Expression ")" Statement
-    [
-        IF(Sym == elseSym) "else" Statement
-    ]
-  .
-
-  /* В Limbo условие while может отсутствовать: такой цикл бесконечен. */
-  WhileStatement =
-    "while" "("
-    [
-        Expression
-    ]
-    ")" Statement
-    | "do" Statement "while" "("
-    [
-        Expression
-    ]
-    ")" ";"
-  .
-
-  /* Три части for разделены точками с запятой; каждая может отсутствовать. */
-  ForStatement =
-    "for" "("
-    [
-        Expression
-    ]
-    ";"
-    [
-        Expression
-    ]
-    ";"
-    [
-        Expression
-    ]
-    ")" Statement
-  .
-
-  /* case сравнивает выражение с условиями; alt выбирает доступную операцию
-  канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
-  CaseStatement =
-    "case" Expression "{" CaseArm
-    {
-        CaseArm
-    }
-    "}"
-  .
-
-  /* Выбор готовой операции канала; выражение после alt не требуется. */
-  AltStatement =
-    "alt" "{" CaseArm
-    {
-        CaseArm
-    }
-    "}"
-  .
-
-  /* Тело ветви может быть пустым. Предикат отличает следующую метку =>
-  от начала инструкции; закрывающая скобка и EOF явно исключены. */
-  CaseArm =
-    Qualifiers "=>"
-    [
-        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
-        ArmBody
-    ]
-  .
-
-  /* pick связывает имя с выбранным вариантом ADT; типовая корректность
-  значения и существование перечисленных тегов здесь не проверяются. */
-  PickStatement =
-    "pick" ident ":=" Expression "{" PickArm
-    {
-        PickArm
-    }
-    "}"
-  .
-
-  /* Теги варианта соединяются or; звёздочка задаёт запасной вариант. */
-  PickArm =
-    (
-        Tags
-        | "*"
-    )
-    "=>"
-    [
-        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
-        ArmBody
-    ]
-  .
-
-  /* Первая инструкция обязательна: пустота разрешена в вызывающем правиле.
-  Продолжение не поглощает следующую метку или конец блока. */
-  ArmBody =
-    Statement
-    {
-        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
-        Statement
-    }
-  .
-
-  /* Условия case/alt: выражение, диапазон to, объединение or либо звёздочка. */
-  Qualifiers =
-    Qualifier
-    {
-        "or" Qualifier
-    }
-  .
-
-  /* Wildcards end at or/=>; *p is instead an ordinary dereference expression. */
-  Qualifier =
-    IF(Sym==StarSym && WildcardAhead()) "*"
-    | Expression
-    [
-        "to" Expression
-    ]
-  .
-
-  /* Самый низкий приоритет: последовательность выражений через запятую. */
-  Expression =
-    Assignment
-    {
-        "," Assignment
-    }
-  .
-
-  /* Присваивание разбирается рекурсией справа: a = b = c.
-  Проверка допустимости левой части относится к будущему семантическому проходу. */
-  Assignment =
-                                                                        (. limbo_syntax_enter(); .)
-    (
-        LoadExpression
-        [
-            (
-                "="
-                | ":="
-                | "+="
-                | "-="
-                | "*="
-                | "/="
-                | "%="
-                | "**="
-                | "&="
-                | "|="
-                | "^="
-                | "<<="
-                | ">>="
-                | "<-"
-                [
-                    "="
-                ]
-                | "<-="
-            )
-            Assignment
-        ]
-    )
-                                                                        (. limbo_syntax_leave(); .)
-  .
-
-  /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
-  Cons =
-                                                                        (. limbo_syntax_enter(); .)
-    BitOr
-    [
-        "::" Cons
-    ]
-                                                                        (. limbo_syntax_leave(); .)
-  .
-
-  /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
-  LogicalOr =
-    LogicalAnd
-    {
-        "||" LogicalAnd
-    }
-  .
-
-  /* Логическое И; следующий уровень — побитовое ИЛИ. */
-  LogicalAnd =
-    Cons
-    {
-        "&&" Cons
-    }
-  .
-
-  /* Побитовое ИЛИ. Повторение задаёт левую ассоциативность этого уровня. */
-  BitOr =
-    BitXor
-    {
-        "|" BitXor
-    }
-  .
-
-  /* Побитовое исключающее ИЛИ; операнды имеют более высокий приоритет. */
-  BitXor =
-    BitAnd
-    {
-        "^" BitAnd
-    }
-  .
-
-  /* Побитовое И; сравнения равенства связываются сильнее. */
-  BitAnd =
-    Equality
-    {
-        "&" Equality
-    }
-  .
-
-  /* Сравнения равенства; каждый операнд сначала проходит относительные сравнения. */
-  Equality =
-    Relational
-    {
-        (
-            "=="
-            | "!="
-        )
-        Relational
-    }
-  .
-
-  /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
-  Relational =
-    Shift
-    {
-        (
-            "<"
-            | ">"
-            | "<="
-            | ">="
-        )
-        Shift
-    }
-  .
-
-  /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
-  Shift =
-    Additive
-    {
-        (
-            "<<"
-            | ">>"
-        )
-        Additive
-    }
-  .
-
-  /* Сложение/вычитание: повторение — левая ассоциативность, Product — сильнее. */
-  Additive =
-    Product
-    {
-        (
-            "+"
-            | "-"
-        )
-        Product
-    }
-  .
-
-  /* Умножение, деление и остаток: операнды разбираются как унарные выражения. */
-  Product =
-    Unary
-    {
-        (
-            "*"
-            | "/"
-            | "%"
-        )
-        Unary
-    }
-  .
-
-  /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
-  /* chan/array создают составные значения; ref, <- и преобразования типов
-  являются префиксами. load содержит имя типа загружаемого модуля. */
-  Unary =
-                                                                        (. limbo_syntax_enter(); .)
-    (
-        IF(NamedCastAhead(Sym == identSym)) NamedType Unary
-        |
-        (
-            "!"
-            | "~"
-            | "+"
-            | "-"
-            | "++"
-            | "--"
-            | "<-"
-            | "hd"
-            | "tl"
-            | "len"
-            | "tagof"
-            | "ref"
-            | "byte"
-            | "int"
-            | "big"
-            | "real"
-            | "string"
-            | "*"
-        )
-        Unary
-        | FixedType Unary
-        | "chan"
-        [
-            "[" Expression "]"
-        ]
-        "of" Type
-        | ArrayCreation
-        | "list" "of" "{" ListElements "}"
-        | Power
-    )
-                                                                        (. limbo_syntax_leave(); .)
-  .
-
-  /* An omitted size is legal only when initializer values determine it. */
-  ArrayCreation =
-                                                                        (. int sized = 0; .)
-    "array"
-    (
-        "["
-        [
-            Expression                                                  (. sized = 1; .)
-        ]
-        "]" "of"
-        (
-            Type                                                        (.
-                                                                            if (!sized)
-                                                                                SemError(1301);
-                                                                        .)
-            | "{" InitializerList "}"
-        )
-        | "of"
         (
             "byte"
             | "int"
             | "big"
             | "real"
             | "string"
+            | FixedType
+            |
+            (
+                "array"
+                | "list"
+                | "chan"
+            )
+            "of" Type
+            | "ref" Type
+            | "fn" PolyParameters Parameters
+            [
+                IF(Sym == ColonSym) ":" Type
+            ]
+            ForPoly Raises
+            | "(" TypeList ")"
+            | NamedType
         )
-        Unary
+                                                                        (. limbo_syntax_leave(); .)
     )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Скобки вокруг необязательного списка формальных параметров Limbo. */
+  Parameters =
+                                                                        (. limbo_tree_enter("Parameters", S_NextPos); .)
+    (
+                                                                        (. int variadic = 0; .)
+        "("
+        [
+                                                                        (. variadic = Sym == StarSym; .)
+            Formal
+            {
+                ","                                                     (.
+                                                                            if (variadic)
+                                                                                SemError(1302);
+                                                                            variadic = Sym == StarSym;
+                                                                        .)
+                Formal
+            }
+        ]
+        ")"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Формальный параметр: группа имён и тип, self-параметр либо вариативная звёздочка. */
+  Formal =
+                                                                        (. limbo_tree_enter("Formal", S_NextPos); .)
+    (
+        "*"
+        | Names ":"
+        (
+            "self"
+            [
+                "ref"
+            ]
+            NamedType
+            | Type
+        )
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Сигнатура определения Limbo и тело: возвращаемый тип необязателен. */
+  FunctionTail =
+                                                                        (. limbo_tree_enter("FunctionTail", S_NextPos); .)
+    (
+        Parameters
+        [
+            IF(Sym == ColonSym) ":" Type
+        ]
+        ForPoly Raises Block
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Блок ограничивает последовательность элементов фигурными скобками. */
+  Block =
+                                                                        (. limbo_tree_enter("Block", S_NextPos); .)
+    (
+        "{"
+        {
+            Statement
+        }
+        "}"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Инструкции Limbo. Декларация локальной переменной использует общий
+  префикс выражения; после двоеточия разбирается DeclType.
+  Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
+  Statement =
+                                                                        (. limbo_tree_enter("Statement", S_NextPos); .)
+    (
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            IF(Sym==identSym && LabelAhead()) ident ":"
+            LabeledStatement
+            | Block
+            [
+                IF(Sym == exceptionSym) "exception"
+                [
+                    ident
+                ]
+                "{"
+                {
+                    CaseArm
+                }
+                "}"
+            ]
+            | ";"
+            | "include" text ";"
+            | IfStatement
+            | LabeledStatement
+            | "return"
+            [
+                Expression
+            ]
+            ";"
+            |
+            (
+                "break"
+                | "continue"
+            )
+            [
+                ident
+            ]
+            ";"
+            | "raise"
+            [
+                Expression
+            ]
+            ";"
+            | "exit" ";"
+            | "spawn" Expression ";"
+            | Expression
+            [
+                ":" DeclType
+            ]
+            ";"
+        )
+                                                                        (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Only the six labelable control statements admit a leading label. */
+  LabeledStatement =
+                                                                        (. limbo_tree_enter("LabeledStatement", S_NextPos); .)
+    (
+        WhileStatement
+        | ForStatement
+        | CaseStatement
+        | AltStatement
+        | PickStatement
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Ближайший незавершённый if получает else; вход проверяется без Get(). */
+  IfStatement =
+                                                                        (. limbo_tree_enter("IfStatement", S_NextPos); .)
+    (
+        "if" "(" Expression ")" Statement
+        [
+            IF(Sym == elseSym) "else" Statement
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* В Limbo условие while может отсутствовать: такой цикл бесконечен. */
+  WhileStatement =
+                                                                        (. limbo_tree_enter("WhileStatement", S_NextPos); .)
+    (
+        "while" "("
+        [
+            Expression
+        ]
+        ")" Statement
+        | "do" Statement "while" "("
+        [
+            Expression
+        ]
+        ")" ";"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Три части for разделены точками с запятой; каждая может отсутствовать. */
+  ForStatement =
+                                                                        (. limbo_tree_enter("ForStatement", S_NextPos); .)
+    (
+        "for" "("
+        [
+            Expression
+        ]
+        ";"
+        [
+            Expression
+        ]
+        ";"
+        [
+            Expression
+        ]
+        ")" Statement
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* case сравнивает выражение с условиями; alt выбирает доступную операцию
+  канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
+  CaseStatement =
+                                                                        (. limbo_tree_enter("CaseStatement", S_NextPos); .)
+    (
+        "case" Expression "{" CaseArm
+        {
+            CaseArm
+        }
+        "}"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Выбор готовой операции канала; выражение после alt не требуется. */
+  AltStatement =
+                                                                        (. limbo_tree_enter("AltStatement", S_NextPos); .)
+    (
+        "alt" "{" CaseArm
+        {
+            CaseArm
+        }
+        "}"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Тело ветви может быть пустым. Предикат отличает следующую метку =>
+  от начала инструкции; закрывающая скобка и EOF явно исключены. */
+  CaseArm =
+                                                                        (. limbo_tree_enter("CaseArm", S_NextPos); .)
+    (
+        Qualifiers "=>"
+        [
+            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+            ArmBody
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* pick связывает имя с выбранным вариантом ADT; типовая корректность
+  значения и существование перечисленных тегов здесь не проверяются. */
+  PickStatement =
+                                                                        (. limbo_tree_enter("PickStatement", S_NextPos); .)
+    (
+        "pick" ident ":=" Expression "{" PickArm
+        {
+            PickArm
+        }
+        "}"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Теги варианта соединяются or; звёздочка задаёт запасной вариант. */
+  PickArm =
+                                                                        (. limbo_tree_enter("PickArm", S_NextPos); .)
+    (
+        (
+            Tags
+            | "*"
+        )
+        "=>"
+        [
+            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+            ArmBody
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Первая инструкция обязательна: пустота разрешена в вызывающем правиле.
+  Продолжение не поглощает следующую метку или конец блока. */
+  ArmBody =
+                                                                        (. limbo_tree_enter("ArmBody", S_NextPos); .)
+    (
+        Statement
+        {
+            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+            Statement
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Условия case/alt: выражение, диапазон to, объединение or либо звёздочка. */
+  Qualifiers =
+                                                                        (. limbo_tree_enter("Qualifiers", S_NextPos); .)
+    (
+        Qualifier
+        {
+            "or" Qualifier
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Wildcards end at or/=>; *p is instead an ordinary dereference expression. */
+  Qualifier =
+                                                                        (. limbo_tree_enter("Qualifier", S_NextPos); .)
+    (
+        IF(Sym==StarSym && WildcardAhead()) "*"
+        | Expression
+        [
+            "to" Expression
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Самый низкий приоритет: последовательность выражений через запятую. */
+  Expression =
+                                                                        (. limbo_tree_enter("Expression", S_NextPos); .)
+    (
+        Assignment
+        {
+            "," Assignment
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Присваивание разбирается рекурсией справа: a = b = c.
+  Проверка допустимости левой части относится к будущему семантическому проходу. */
+  Assignment =
+                                                                        (. limbo_tree_enter("Assignment", S_NextPos); .)
+    (
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            LoadExpression
+            [
+                (
+                    "="
+                    | ":="
+                    | "+="
+                    | "-="
+                    | "*="
+                    | "/="
+                    | "%="
+                    | "**="
+                    | "&="
+                    | "|="
+                    | "^="
+                    | "<<="
+                    | ">>="
+                    | "<-"
+                    [
+                        "="
+                    ]
+                    | "<-="
+                )
+                Assignment
+            ]
+        )
+                                                                        (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
+  Cons =
+                                                                        (. limbo_tree_enter("Cons", S_NextPos); .)
+    (
+                                                                        (. limbo_syntax_enter(); .)
+        BitOr
+        [
+            "::" Cons
+        ]
+                                                                        (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
+  LogicalOr =
+                                                                        (. limbo_tree_enter("LogicalOr", S_NextPos); .)
+    (
+        LogicalAnd
+        {
+            "||" LogicalAnd
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Логическое И; следующий уровень — побитовое ИЛИ. */
+  LogicalAnd =
+                                                                        (. limbo_tree_enter("LogicalAnd", S_NextPos); .)
+    (
+        Cons
+        {
+            "&&" Cons
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Побитовое ИЛИ. Повторение задаёт левую ассоциативность этого уровня. */
+  BitOr =
+                                                                        (. limbo_tree_enter("BitOr", S_NextPos); .)
+    (
+        BitXor
+        {
+            "|" BitXor
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Побитовое исключающее ИЛИ; операнды имеют более высокий приоритет. */
+  BitXor =
+                                                                        (. limbo_tree_enter("BitXor", S_NextPos); .)
+    (
+        BitAnd
+        {
+            "^" BitAnd
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Побитовое И; сравнения равенства связываются сильнее. */
+  BitAnd =
+                                                                        (. limbo_tree_enter("BitAnd", S_NextPos); .)
+    (
+        Equality
+        {
+            "&" Equality
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Сравнения равенства; каждый операнд сначала проходит относительные сравнения. */
+  Equality =
+                                                                        (. limbo_tree_enter("Equality", S_NextPos); .)
+    (
+        Relational
+        {
+            (
+                "=="
+                | "!="
+            )
+            Relational
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
+  Relational =
+                                                                        (. limbo_tree_enter("Relational", S_NextPos); .)
+    (
+        Shift
+        {
+            (
+                "<"
+                | ">"
+                | "<="
+                | ">="
+            )
+            Shift
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
+  Shift =
+                                                                        (. limbo_tree_enter("Shift", S_NextPos); .)
+    (
+        Additive
+        {
+            (
+                "<<"
+                | ">>"
+            )
+            Additive
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Сложение/вычитание: повторение — левая ассоциативность, Product — сильнее. */
+  Additive =
+                                                                        (. limbo_tree_enter("Additive", S_NextPos); .)
+    (
+        Product
+        {
+            (
+                "+"
+                | "-"
+            )
+            Product
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Умножение, деление и остаток: операнды разбираются как унарные выражения. */
+  Product =
+                                                                        (. limbo_tree_enter("Product", S_NextPos); .)
+    (
+        Unary
+        {
+            (
+                "*"
+                | "/"
+                | "%"
+            )
+            Unary
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
+  /* chan/array создают составные значения; ref, <- и преобразования типов
+  являются префиксами. load содержит имя типа загружаемого модуля. */
+  Unary =
+                                                                        (. limbo_tree_enter("Unary", S_NextPos); .)
+    (
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            IF(NamedCastAhead(Sym == identSym)) NamedType Unary
+            |
+            (
+                "!"
+                | "~"
+                | "+"
+                | "-"
+                | "++"
+                | "--"
+                | "<-"
+                | "hd"
+                | "tl"
+                | "len"
+                | "tagof"
+                | "ref"
+                | "byte"
+                | "int"
+                | "big"
+                | "real"
+                | "string"
+                | "*"
+            )
+            Unary
+            | FixedType Unary
+            | "chan"
+            [
+                "[" Expression "]"
+            ]
+            "of" Type
+            | ArrayCreation
+            | "list" "of" "{" ListElements "}"
+            | Power
+        )
+                                                                        (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* An omitted size is legal only when initializer values determine it. */
+  ArrayCreation =
+                                                                        (. limbo_tree_enter("ArrayCreation", S_NextPos); .)
+    (
+                                                                        (. int sized = 0; .)
+        "array"
+        (
+            "["
+            [
+                Expression                                              (. sized = 1; .)
+            ]
+            "]" "of"
+            (
+                Type                                                    (.
+                                                                            if (!sized)
+                                                                                SemError(1301);
+                                                                        .)
+                | "{" InitializerList "}"
+            )
+            | "of"
+            (
+                "byte"
+                | "int"
+                | "big"
+                | "real"
+                | "string"
+            )
+            Unary
+        )
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* A single trailing comma is allowed; an empty initializer list is not. */
   InitializerList =
-    Initializer
-    {
-        IF(Sym==CommaSym && InitializerAfterComma()) "," Initializer
-    }
-    [
-        ","
-    ]
+                                                                        (. limbo_tree_enter("InitializerList", S_NextPos); .)
+    (
+        Initializer
+        {
+            IF(Sym==CommaSym && InitializerAfterComma()) ","
+            Initializer
+        }
+        [
+            ","
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Элемент array initializer либо индекс => значение, включая * => значение. */
   Initializer =
-    IF(Sym==StarSym && WildcardAhead()) "*" "=>" Assignment
-    | Assignment
-    [
-        "=>" Assignment
-    ]
+                                                                        (. limbo_tree_enter("Initializer", S_NextPos); .)
+    (
+        IF(Sym==StarSym && WildcardAhead()) "*" "=>" Assignment
+        | Assignment
+        [
+            "=>" Assignment
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
-    Primary
-    {
-        "." ident
-        | "->" ident
-        | Subscript
-        | "("
+                                                                        (. limbo_tree_enter("Postfix", S_NextPos); .)
+    (
+        Primary
+        {
+            "." ident
+            | "->" ident
+            | Subscript
+            | "("
+            [
+                Expression
+            ]
+            ")"
+        }
         [
-            Expression
+            "++"
+            | "--"
         ]
-        ")"
-    }
-    [
-        "++"
-        | "--"
-    ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Index or slice: either bound may be omitted, but an empty index is illegal. */
   Subscript =
-    "["
+                                                                        (. limbo_tree_enter("Subscript", S_NextPos); .)
     (
-        ":"
-        [
-            Expression
-        ]
-        | Export
+        "["
         (
             ":"
             [
                 Expression
             ]
-            |
-            {
-                "," Export
-            }
+            | Export
+            (
+                ":"
+                [
+                    Expression
+                ]
+                |
+                {
+                    "," Export
+                }
+            )
         )
+        "]"
     )
-    "]"
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
   Primary =
-                                                                        (. limbo_syntax_enter(); .)
+                                                                        (. limbo_tree_enter("Primary", S_NextPos); .)
     (
-        ident
-        | number
-        | radix
-        | text
-        | character
-        | "nil"
-        | "(" Expression ")"
-    )
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            ident
+            | number
+            | radix
+            | text
+            | character
+            | "nil"
+            | "(" Expression ")"
+        )
                                                                         (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Polymorphic declaration variables, not instantiation types. */
   PolyParameters =
-    [
-        "[" Names "]"
-    ]
+                                                                        (. limbo_tree_enter("PolyParameters", S_NextPos); .)
+    (
+        [
+            "[" Names "]"
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Named types can be instantiated at each module/ADT qualification level. */
   NamedType =
-    ident TypeArguments
-    {
-        (
-            "->"
-            | "."
-        )
+                                                                        (. limbo_tree_enter("NamedType", S_NextPos); .)
+    (
         ident TypeArguments
-    }
+        {
+            (
+                "->"
+                | "."
+            )
+            ident TypeArguments
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Concrete type arguments; empty instantiations are not legal. */
   TypeArguments =
-    [
-        "[" TypeList "]"
-    ]
+                                                                        (. limbo_tree_enter("TypeArguments", S_NextPos); .)
+    (
+        [
+            "[" TypeList "]"
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Tuple/instantiation types retain optional cyclic qualifiers per element. */
   TypeList =
-    [
-        "cyclic"
-    ]
-    Type
-    {
-        ","
+                                                                        (. limbo_tree_enter("TypeList", S_NextPos); .)
+    (
         [
             "cyclic"
         ]
         Type
-    }
+        {
+            ","
+            [
+                "cyclic"
+            ]
+            Type
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Constraint groups name one or more polymorphic variables, followed by their required fields. */
   ForPoly =
-    [
-        IF(Sym == forSym) "for" "{" ConstraintGroup
-        {
-            ConstraintGroup
-        }
-        "}"
-    ]
+                                                                        (. limbo_tree_enter("ForPoly", S_NextPos); .)
+    (
+        [
+            IF(Sym == forSym) "for" "{" ConstraintGroup
+            {
+                ConstraintGroup
+            }
+            "}"
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* A constraint group can have zero fields, but for {} cannot omit all variable groups. */
   ConstraintGroup =
-    Names "=>"
-    {
-        IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
-        Names ":"
-        [
-            "cyclic"
-        ]
-        Type ";"
-    }
+                                                                        (. limbo_tree_enter("ConstraintGroup", S_NextPos); .)
+    (
+        Names "=>"
+        {
+            IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym)
+            Names ":"
+            [
+                "cyclic"
+            ]
+            Type ";"
+        }
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Declared exception names are identifiers or identifier tuples, never arbitrary expressions. */
   Raises =
-    [
-        IF(Sym == raisesSym) "raises"
-        (
-            "(" ExceptionNames ")"
-            | ident
-        )
-    ]
+                                                                        (. limbo_tree_enter("Raises", S_NextPos); .)
+    (
+        [
+            IF(Sym == raisesSym) "raises"
+            (
+                "(" ExceptionNames ")"
+                | ident
+            )
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Nested exception-name tuples use the same source spelling as the reference grammar. */
   ExceptionNames =
-                                                                        (. limbo_syntax_enter(); .)
+                                                                        (. limbo_tree_enter("ExceptionNames", S_NextPos); .)
     (
-        ident
-        | "nil"
-        | "(" ExceptionNames ")"
-    )
-    {
-        ","
+                                                                        (. limbo_syntax_enter(); .)
         (
             ident
             | "nil"
             | "(" ExceptionNames ")"
         )
-    }
+        {
+            ","
+            (
+                ident
+                | "nil"
+                | "(" ExceptionNames ")"
+            )
+        }
                                                                         (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Fixed-point type/conversion has one or two scale expressions. */
   FixedType =
-    "fixed" "(" Assignment
-    [
-        "," Assignment
-    ]
-    ")"
+                                                                        (. limbo_tree_enter("FixedType", S_NextPos); .)
+    (
+        "fixed" "(" Assignment
+        [
+            "," Assignment
+        ]
+        ")"
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Load binds less strongly than logical operators and more strongly than assignment. */
   LoadExpression =
-                                                                        (. limbo_syntax_enter(); .)
+                                                                        (. limbo_tree_enter("LoadExpression", S_NextPos); .)
     (
-        "load" ident LoadExpression
-        | LogicalOr
-    )
+                                                                        (. limbo_syntax_enter(); .)
+        (
+            "load" ident LoadExpression
+            | LogicalOr
+        )
                                                                         (. limbo_syntax_leave(); .)
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Exponentiation associates right; postfix operations bind before it. */
   Power =
-    Postfix
-    [
-        "**" Unary
-    ]
+                                                                        (. limbo_tree_enter("Power", S_NextPos); .)
+    (
+        Postfix
+        [
+            "**" Unary
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* A single trailing comma is permitted in nonempty list literals. */
   ListElements =
-    Assignment
-    {
-        IF(Sym == CommaSym && InitializerAfterComma()) ","
+                                                                        (. limbo_tree_enter("ListElements", S_NextPos); .)
+    (
         Assignment
-    }
-    [
-        ","
-    ]
+        {
+            IF(Sym == CommaSym && InitializerAfterComma()) ","
+            Assignment
+        }
+        [
+            ","
+        ]
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
   /* Export brackets accept either types or expressions. A builtin/composite type
   may also prefix a conversion expression; list-of-{...} stays a value literal.
   Type-name binding and instantiation arity are checked by a later semantic pass. */
   Export =
-    IF(Sym == byteSym || Sym == intSym || Sym == bigSym || Sym == realSym ||
+                                                                        (. limbo_tree_enter("Export", S_NextPos); .)
+    (
+        IF(Sym == byteSym || Sym == intSym || Sym == bigSym || Sym == realSym ||
        Sym == stringSym || Sym == cyclicSym ||
        (Sym == listSym && S_CurrentCh(Trivia(Trivia(S_NextPos + S_NextLen) + 2)) != '{') ||
        (Sym == arraySym && S_CurrentCh(Trivia(S_NextPos + S_NextLen)) != '['))
-    [
-        "cyclic"
-    ]
-    Type
-    [
-        IF(Sym != RbrackSym && Sym != CommaSym && Sym != ColonSym && Sym != EOF_Sym)
-        Assignment
-    ]
-    | Assignment
+        [
+            "cyclic"
+        ]
+        Type
+        [
+            IF(Sym != RbrackSym && Sym != CommaSym && Sym != ColonSym && Sym != EOF_Sym)
+            Assignment
+        ]
+        | Assignment
+    )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 
 END
