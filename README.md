@@ -140,3 +140,5 @@ acceptance remain open.
 [Compiler signatures / Сигнатуры компилятора](compiler/limbo/frontend/SIGNATURES.md) · [IDE ReplaceAll](ide/dis/REPLACE_ALL.md)
 
 [CMake 3.10 / Make / Inferno mk](BUILD-NATIVE.md)
+
+[Separate GC comparison](docs/GC-COMPARISON.md).

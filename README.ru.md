@@ -141,3 +141,5 @@ Reply ABI изменён в 0.3.0: пересоберите ядро и клие
 [Compiler signatures / Сигнатуры компилятора](compiler/limbo/frontend/SIGNATURES.ru.md) · [IDE ReplaceAll](ide/dis/REPLACE_ALL.ru.md)
 
 [CMake 3.10 / Make / Inferno mk](BUILD-NATIVE.ru.md)
+
+[Отдельное сравнение GC](docs/GC-COMPARISON.ru.md).
