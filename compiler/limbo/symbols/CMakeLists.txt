@@ -1,6 +1,6 @@
 # Independent C99 symbol source-map component; generator is an explicit host tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_sblmap VERSION 0.1.9 LANGUAGES C)
+project(limbo_sblmap VERSION 0.1.10 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
