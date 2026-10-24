@@ -153,9 +153,11 @@ static int NamedCastAhead(int is_ident)
             break;
     }
     ch = S_CurrentCh(pos);
+    /* A contiguous != is comparison, not the start of a unary cast operand.
+     * Keep !x and ~x valid after a named type; trivia cannot split an operator token. */
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
            (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128 || ch == 34 || ch == 39 ||
-           ch == '!' || ch == '~';
+           (ch == '!' && S_CurrentCh(pos + 1) != '=') || ch == '~';
 }
 /* Match a whole keyword after a candidate label without reading a token. */
 static int WordAt(long pos, const char *word)

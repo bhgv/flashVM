@@ -6,6 +6,13 @@ import tempfile
 from pathlib import Path
 
 CASES = [
+ ('not-equal-ident', 'f(){ if(x!=nil) return; y:=a!=b; }', True),
+ ('not-equal-qualified', 'f(){ x:=m->value!=nil; y:=a.field!=b.field; }', True),
+ ('not-equal-index', 'f(){ x:=a[i]!=b; y:=a[0:2]!=nil; }', True),
+ ('not-equal-trivia', 'f(){ x:=a # before comparison\n != # after comparison\n b; }', True),
+ ('named-cast-unary', 'f(){ x:=T !a; y:=m->T ~b; z:=T !!a; }', True),
+ ('bad-not-equal-operand', 'f(){ x:=a!=; }', False),
+ ('bad-split-not-equal', 'f(){ x:=a! = b; }', False),
  ('literal-qualifier', 'implement L; f() { case x { 0 => f(); list of {1,2} => g(); (array[] of {0 => 1, * => 2})[0] => h(); } }', True),
  ('literal-qualifier-comments', 'implement L; f() { case x { 0 => f(); list of # => ignored\n {1,2} => g(); } }', True),
  ('bad-literal-qualifier', 'implement L; f() { case x { 0 => f(); list of {1,} g(); } }', False),
