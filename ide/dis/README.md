@@ -1,6 +1,6 @@
 # Portable IDE document core
 
-Version 0.2.6. [Русский](README.ru.md).
+Version 0.2.7. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first

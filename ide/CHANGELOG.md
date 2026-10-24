@@ -23,3 +23,8 @@
 - 0.1.21: Require human-readable commented IDE/runtime bridge code; format host tools and tests without changing Python semantics.
 - 0.1.22: Specify bidirectional AS1/AS2-Dis module interfaces and mixed-language IDE requirements.
   Clarification: new JIT targets are x86-64, arm64 and riscv64; existing x86 is retained.
+
+- 0.2.0–0.2.7: Introduce the actual Limbo/Dis document core, typed channel/session
+  semantics, interpreter/reference-mode regressions, Unicode/bounds/concurrency
+  cases, revision guards, checked module/debug outputs, production-only install,
+  source-map reader acceptance and explicit bytecode delivery requirements.

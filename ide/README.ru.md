@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.2.6**. [English](README.md).
+Версия **0.2.7**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -49,3 +49,12 @@ Unit fixtures используют детерминированные process do
 [Правила читаемого кода](AGENTS.md): комментарии перед функциями/типами, явное канальное владение, инварианты GC и JIT/debug.
 
 [AS1/AS2 ↔ Dis module interface](MODULE_INTEROP.ru.md): planned bidirectional module support; later AS IDE port is allowed.
+
+## Исполняемая часть IDE
+
+[Ядро документа](dis/README.ru.md) реализовано на Limbo и собирается в `idecore.dis`
+с `.sbl`. Это исполняемая библиотечная часть, не полная IDE и не встроенный runtime
+FlashVM. [Типизированный канальный протокол](dis/PROTOCOL.ru.md).
+Поставляемая IDE должна быть интерпретируемым/JIT-байткодом Dis и/или SWF;
+Python остаётся инструментом сборки на хосте. Общий контейнер SWF/Dis и новые теги
+отложены; нынешняя поставка модуля не требует решения об объединении.

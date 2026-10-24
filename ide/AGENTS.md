@@ -41,3 +41,7 @@
 - AS1/AS2 and Dis need bidirectional typed module adapters. Preserve separate
   heaps/owners, check signatures, retain pending-call roots and expose debugger
   boundary frames. Module invocation must not bypass channel-only UI control.
+
+- Ship the IDE application as interpreted/JIT bytecode modules (Dis and/or SWF).
+  Host Python and native compiler tools must not become the deployed IDE runtime.
+  Keep SWF/Dis format unification and new container tags deferred until designed.

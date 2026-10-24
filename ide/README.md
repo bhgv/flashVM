@@ -1,6 +1,6 @@
-# IDE build backend
+# FlashVM Limbo IDE and host build tools
 
-Version **0.2.6**. [Русский](README.ru.md).
+Version **0.2.7**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -49,3 +49,12 @@ Unit fixtures use deterministic process doubles and test orchestration, not comp
 [Human-readable code rules](AGENTS.md): comments before functions/types, explicit channel ownership, GC and JIT/debug invariants.
 
 [AS1/AS2 ↔ Dis module interface](MODULE_INTEROP.md): planned bidirectional module support; later AS IDE port is allowed.
+
+## Executable IDE component
+
+The [portable document core](dis/README.md) is implemented in Limbo and builds to
+`idecore.dis` plus `.sbl`. It is an executable library component, not a full IDE or
+an embedded FlashVM runtime. [Typed channel protocol](dis/PROTOCOL.md).
+The deployed IDE must be interpreted/JIT bytecode (Dis and/or SWF); this Python
+backend remains host tooling. Combined SWF/Dis packaging and extra SWF tags are
+explicitly deferred. Current module delivery does not depend on that decision.

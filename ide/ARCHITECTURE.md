@@ -66,3 +66,13 @@ Ship the Limbo IDE and required Dis modules with the FlashVM host/resources as o
 ## Mixed-language and later AS IDE
 
 The initial IDE is primarily Limbo, with AS1/AS2 components permitted. A later AS port is supported by the shared [bidirectional Dis module interface requirements](MODULE_INTEROP.md). Both languages retain the channel-only UI boundary. This extension is planned, not implemented.
+
+## Executable delivery checkpoint
+
+The application must exist as interpreted/JIT bytecode: Dis for initial Limbo
+components and potentially SWF for AS components. The [document core](dis/README.md)
+is now an executable Limbo/Dis library with typed request/reply channels. It is
+not the editor UI or proof of the embedded Dis runtime. Host tools are build aids.
+Keep Dis modules and SWF resources separate initially; a combined container,
+additional tags and common loader are intentionally deferred. Standard asset
+linkage alone does not define Dis signatures, scheduling, ownership or channels.
