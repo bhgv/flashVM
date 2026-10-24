@@ -11,3 +11,4 @@
 - 0.1.9: Cover IDE build run failure.
 - 0.1.10: Cover IDE build trace.
 - 0.1.11: Cover IDE build timeout.
+- 0.1.12: Cover IDE build aliases.
