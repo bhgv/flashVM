@@ -1,6 +1,6 @@
 # IDE build backend
 
-Version **0.1.20**. [Русский](README.ru.md).
+Version **0.1.21**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -30,7 +30,7 @@ Each direct child is killed and reaped on timeout/cancellation. Descendant proce
 
 ## JSON and Python API
 
-The synchronous [`build`](build.py#L85) function returns caller-owned Python data. It does not mutate environment globals. Result fields: schema=1, ok, published, steps, diagnostics; accepted inputs add canonical source/output, language and module, and a successful publication includes sha256. Each step records stage, argv, returncode, bounded stdout/stderr and truncation flags; timeout adds timed_out. Logs keep at most 65536 bytes per stream in the result, with replacement decoding for invalid UTF-8. Temporary log files are not disk-quota bounded. JSON contains local executable and temporary paths, so the caller decides where to retain/share it.
+The synchronous [`build`](build.py#L103) function returns caller-owned Python data. It does not mutate environment globals. Result fields: schema=1, ok, published, steps, diagnostics; accepted inputs add canonical source/output, language and module, and a successful publication includes sha256. Each step records stage, argv, returncode, bounded stdout/stderr and truncation flags; timeout adds timed_out. Logs keep at most 65536 bytes per stream in the result, with replacement decoding for invalid UTF-8. Temporary log files are not disk-quota bounded. JSON contains local executable and temporary paths, so the caller decides where to retain/share it.
 
 Diagnostic fields are severity, stage and raw message. Source messages with source:line:column or source line N gain reported coordinates and the original resolved source file. The driver invents no coordinates for other messages. Source-line-only semantics keep column absent. Stages are input, source, verify, optimise, verify_optimised, object, link, run and publish. Build stages before execution may have a diagnostic without a completed step record.
 
@@ -45,3 +45,5 @@ python3 ide/tests/integration.py --compiler /host/fir1_source --ir /host/fir1 \
 Unit fixtures use deterministic process doubles and test orchestration, not compiler semantics. Integration requires real tools and checks optimized/unoptimized execution plus rollback after syntax and trace failures for all four numeric profiles. Tests and the driver work after the IDE directory is copied/renamed; only the shared MIT LICENSE must accompany a detached distribution. Windows, physical Android and desktop UI integration remain separate acceptance work. Editor buffers, incremental compilation, source maps, project files and debugger UI are not implemented here.
 
 [Numeric example](examples/numeric/README.md) · [Validation / Проверки](VALIDATION.md).
+
+[Human-readable code rules](AGENTS.md): comments before functions/types, explicit channel ownership, GC and JIT/debug invariants.

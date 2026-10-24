@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.1.20**. [English](README.md).
+Версия **0.1.21**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -30,7 +30,7 @@ python3 ide/build.py program.as movie.swf --language as2 \
 
 ## JSON и Python API
 
-Синхронная функция [`build`](build.py#L85) возвращает данные, принадлежащие вызывающей стороне, и не меняет глобальное окружение. Поля результата: schema=1, ok, published, steps, diagnostics; допустимый ввод добавляет canonical source/output, language и module, успешная публикация — sha256. Стадия содержит stage, argv, returncode, ограниченные stdout/stderr и truncation flags; timeout добавляет timed_out. В результате сохраняется до 65536 байт каждого потока с replacement decoding некорректного UTF-8. Temporary log files не имеют disk quota. JSON содержит локальные executable/temp paths; хранение и распространение выбирает вызывающая сторона.
+Синхронная функция [`build`](build.py#L103) возвращает данные, принадлежащие вызывающей стороне, и не меняет глобальное окружение. Поля результата: schema=1, ok, published, steps, diagnostics; допустимый ввод добавляет canonical source/output, language и module, успешная публикация — sha256. Стадия содержит stage, argv, returncode, ограниченные stdout/stderr и truncation flags; timeout добавляет timed_out. В результате сохраняется до 65536 байт каждого потока с replacement decoding некорректного UTF-8. Temporary log files не имеют disk quota. JSON содержит локальные executable/temp paths; хранение и распространение выбирает вызывающая сторона.
 
 Диагностика содержит severity, stage и исходное сообщение. Сообщения source:line:column или source line N получают сообщённые координаты и исходный resolved source file. Для остальных координаты не выдумываются. При одной только строке column отсутствует. Стадии: input, source, verify, optimise, verify_optimised, object, link, run и publish. Ошибка запуска может дать диагностику без завершённой записи стадии.
 
@@ -45,3 +45,5 @@ python3 ide/tests/integration.py --compiler /host/fir1_source --ir /host/fir1 \
 Unit fixtures используют детерминированные process doubles и проверяют orchestration, а не семантику компилятора. Integration требует настоящих инструментов и проверяет optimized/unoptimized запуск и rollback после syntax/trace ошибок для четырёх численных профилей. Проверки и driver работают после копирования/переименования IDE-каталога; отдельному дистрибутиву нужен общий MIT LICENSE. Windows, физический Android и desktop UI проверяются отдельно. Editor buffers, incremental compilation, source maps, project files и debugger UI здесь ещё не реализованы.
 
 [Numeric example](examples/numeric/README.ru.md) · [Validation / Проверки](VALIDATION.md).
+
+[Правила читаемого кода](AGENTS.md): комментарии перед функциями/типами, явное канальное владение, инварианты GC и JIT/debug.

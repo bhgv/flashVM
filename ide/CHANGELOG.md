@@ -20,3 +20,4 @@
 - 0.1.18: Cover IDE build cleanup.
 - 0.1.19: Add real numeric build example and record toolchain acceptance.
 - 0.1.20: Adopt Limbo/Dis-hosted IDE and channel-only FlashVM UI architecture.
+- 0.1.21: Require human-readable commented IDE/runtime bridge code; format host tools and tests without changing Python semantics.
