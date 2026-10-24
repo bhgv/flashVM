@@ -1,4 +1,4 @@
-# Сборка через CMake 3.10, Make и Inferno mk
+# Сборка через CMake 3.10, Meson, Make и Inferno mk
 
 [English](BUILD-NATIVE.md) · [Первые шаги](README-FIRSTSTEPS.md) ·
 [mk](tools/mk/README.ru.md) · [iyacc](tools/iyacc/README.ru.md)
@@ -40,7 +40,7 @@ mk, iyacc, cocor, as1/as2/as3, limbo (parse/tree/interface/bindings), compilers 
 линкер SWO/SWA/SWF. Все парсеры генерирует локально собранный Coco/R. Выбор
 VM/FIR/SBL/IDE/DisVM либо --tests/--demo для нативного backend явно отвергается:
 для них используйте CMake 3.10 или запускайте тесты отдельных продуктов напрямую.
-Поддержка Meson не заявляется. Нативные рецепты всегда пересобирают продукты;
+Meson 0.54+ и Ninja поддерживают ту же нативную выборку через настоящие run targets без вызова CMake. Нативные рецепты всегда пересобирают продукты;
 инкрементальная сборка остаётся в CMake. По умолчанию CC=cc, AR=ar,
 BUILD_ROOT=build/native; корневой скрипт использует build/workspace.
 
@@ -66,3 +66,24 @@ bootstrap; Limbo-тесты с явным эталонным SDK прошли 25
 Серия заменяет предложенный патч 0.1530 с запретом старого CMake. База —
 опубликованный 0.1529. Применяйте новый патч на эту базу; старый 0.1530
 не требуется как предварительный шаг.
+
+## Engine selection / Выбор движка
+
+```sh
+python3 build-menu.py --list-backends
+python3 build-menu.py --projects compilers,linker --backend meson
+python3 build-menu.py --projects all --backend cmake
+python3 build-menu.py --projects compilers,linker --backend make
+python3 build-menu.py --projects compilers,linker --backend mk
+python3 build-menu.py --projects all --backend auto
+```
+
+Пути движков задаются CMAKE/MESON/MAKE, Ninja — NINJA. Интерактивное меню
+показывает наличие инструментов и предлагает cmake, meson, make, mk либо auto.
+mk может быть собран из локальных исходников. Auto сначала выбирает CMake 3.10+;
+для поддерживаемой нативной выборки затем проверяет Meson/Ninja, Make и локальный
+mk. Неподдерживаемый полный набор отвергается без пропуска компонентов.
+Явный выбор никогда не заменяется другим движком. --dry-run показывает команду
+без требования установить выбранный движок. Meson 1.5.2/Ninja 1.11.1 в этой серии
+действительно собрали четыре фронтенда и линкер. Auto проверен с настоящим CMake
+3.10.2 для тестов линкера и с Make при отсутствующих CMake/Meson.

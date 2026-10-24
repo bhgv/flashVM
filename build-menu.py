@@ -8,11 +8,14 @@ LIMBO_MODULE_DIR, as documented for build-workspace.sh.
 """
 
 import argparse
+import os
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import sys
+
+ROOT = Path(__file__).resolve().parent
 
 
 # Stable display order also determines the component numbers in the menu.
@@ -47,13 +50,57 @@ def selection(value):
         raise ValueError("Выберите хотя бы один компонент")
     result = []
     for token in tokens:
-        if token.isascii() and token.isdigit() and 1 <= int(token) <= len(names):
+        if token.isdigit() and all("0" <= ch <= "9" for ch in token) and 1 <= int(token) <= len(names):
             token = names[int(token) - 1]
         if token not in names:
             raise ValueError("Неизвестный компонент: " + token)
         if token not in result:
             result.append(token)
     return result
+
+
+# Report local tools without installing them; source bootstrap is a distinct capability.
+def backend_status():
+    """Describe executable discovery and the native subset for each engine."""
+    entries = []
+    for name, variable, executable in (("cmake", "CMAKE", "cmake"),
+                                        ("meson", "MESON", "meson"),
+                                        ("make", "MAKE", "make")):
+        path = shutil.which(os.environ.get(variable, executable))
+        detail = path if path else "не найден"
+        if name == "meson":
+            ninja = shutil.which(os.environ.get("NINJA", "ninja"))
+            detail += "; Ninja: " + (ninja if ninja else "не найден")
+        entries.append((name, detail))
+    bootstrap = ROOT / "tools/mk/bootstrap.sh"
+    entries.append(("mk", "исходники есть, будет собран локально" if bootstrap.is_file() else "исходники отсутствуют"))
+    entries.append(("auto", "CMake 3.10+, затем Meson/Ninja, Make, локальный mk; с учётом выбора компонентов"))
+    return entries
+
+
+# Print discovery separately from actual version/selection validation in the launcher.
+def show_backends():
+    """Display what exists on this machine; no probe is build acceptance."""
+    print("Сборочные двигатели:")
+    for number, (name, detail) in enumerate(backend_status(), 1):
+        print("  {}. {:7s} {}".format(number, name, detail))
+    print("CMake: весь workspace. Meson/Make/mk: компиляторы, линкер и инструменты; без --tests/--demo.")
+
+
+# Give explicit engine choice while retaining auto as the empty-input default.
+def choose_backend():
+    """Accept one engine name or its displayed number, never evaluate user input."""
+    show_backends()
+    names = [name for name, _ in backend_status()]
+    while True:
+        value = input("Двигатель [auto]: ").strip().lower()
+        if not value:
+            return "auto"
+        if value in names:
+            return value
+        if value in ("1", "2", "3", "4", "5"):
+            return names[int(value) - 1]
+        print("Выберите cmake, meson, make, mk или auto.")
 
 
 # Ask until a valid selection is supplied; EOF and Ctrl-C are handled by main.
@@ -122,13 +169,17 @@ def main(argv=None):
     parser.add_argument("--projects", help="Names/numbers separated by commas; all for every component")
     parser.add_argument("--jobs", type=int, default=2, help="Parallel jobs (default 2)")
     parser.add_argument("--config", default="Release")
-    parser.add_argument("--backend", choices=("cmake", "mk", "make"), default="cmake")
+    parser.add_argument("--backend", choices=("cmake", "meson", "make", "mk", "auto"), default=None)
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
     parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history", "replaceall"),
                         help="Run a Limbo IDE example (default navigation; requires ide)")
+    parser.add_argument("--list-backends", action="store_true", help="Show locally available build engines")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)
+    if args.list_backends:
+        show_backends()
+        return 0
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     if not args.config or args.build_root == "":
@@ -139,6 +190,8 @@ def main(argv=None):
         projects = choose_components()
         if projects is None:
             return 0
+        if args.backend is None:
+            args.backend = choose_backend()
         if not args.tests:
             args.tests = ask_yes("Запустить тесты выбранных компонентов?")
         if "ide" in projects and not args.demo:
@@ -149,6 +202,8 @@ def main(argv=None):
             projects = selection(args.projects)
         except ValueError as error:
             parser.error(str(error))
+    if args.backend is None:
+        args.backend = "auto"
     if args.demo and "ide" not in projects:
         parser.error("--demo requires ide in the selection")
     bash = shutil.which("bash")

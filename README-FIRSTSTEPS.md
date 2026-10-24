@@ -219,3 +219,8 @@ python3 build-menu.py --projects ide --demo replaceall
 ```
 
 [Подробная инструкция и границы поддержки](BUILD-NATIVE.ru.md).
+
+Доступные движки: `python3 build-menu.py --list-backends`.
+Выбор: `--backend cmake|meson|make|mk|auto`; меню также спрашивает движок.
+Meson, Make и mk поддерживают нативную выборку компиляторов/линкера/инструментов;
+полная сборка и общие тесты выполняются через CMake 3.10.

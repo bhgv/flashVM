@@ -1,0 +1,2 @@
+# Absolute output directory supplied by the workspace launcher; empty uses BUILD/products.
+option('native_output_root', type: 'string', value: '', description: 'Direct compiler/linker output root')

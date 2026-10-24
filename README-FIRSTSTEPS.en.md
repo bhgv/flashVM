@@ -104,3 +104,8 @@ python3 build-menu.py --projects ide --demo replaceall
 ```
 
 [Detailed build paths and limitations](BUILD-NATIVE.md).
+
+List engines: `python3 build-menu.py --list-backends`.
+Selection: `--backend cmake|meson|make|mk|auto`; the interactive menu also asks.
+Meson/Make/mk support the native compiler/linker/tool subset. Full workspace
+builds and shared tests use CMake 3.10.

@@ -6,7 +6,7 @@ projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,ide
 build_root="$ROOT/build/workspace"
 jobs=2
 config=Release
-backend=cmake
+backend=auto
 tests=OFF
 demo=0
 demo_example=navigation
@@ -20,7 +20,7 @@ Usage: ./build-workspace.sh [options]
   --projects LIST    vm,compilers,fir,linker,symbols,disvm,ide (default all seven)
                     Individual frontends: as1,as2,as3,limbo
                     Explicit tools: cocor,cocor-limbo,limbo-bootstrap,mk,iyacc
-  --backend NAME    cmake (3.10+), mk or make; mk/make support compilers/linker/tools
+  --backend NAME    auto, cmake (3.10+), meson, mk or make; native subset documented
   --build-root DIR   Default build/workspace; repeated builds are incremental
   --jobs N           Parallel jobs (default 2)
   --config NAME      CMake configuration (default Release)
@@ -97,7 +97,33 @@ absolute() {
     esac
 }
 build_root=$(absolute "$build_root")
-case "$backend" in cmake|mk|make) ;; *) fail "Unknown backend: $backend" ;; esac
+case "$backend" in auto|cmake|meson|mk|make) ;; *) fail "Unknown backend: $backend" ;; esac
+# Probe versions without installing anything. Auto only selects an engine that
+# supports the complete requested component set; explicit choices never fall back.
+version_at_least() {
+    local executable=$1 expected=$2 minimum_major=$3 minimum_minor=$4 banner major minor
+    command -v "$executable" >/dev/null 2>&1 || return 1
+    banner=$("$executable" --version 2>/dev/null) || return 1
+    if [[ "$expected" == cmake ]]; then banner=${banner#cmake version }; fi
+    [[ "$banner" =~ ^([0-9]{1,4})\.([0-9]{1,4})(\.|$) ]] || return 1
+    major=$((10#${BASH_REMATCH[1]})); minor=$((10#${BASH_REMATCH[2]}))
+    ((major > minimum_major || (major == minimum_major && minor >= minimum_minor)))
+}
+native_selection=1
+for project in "${selected[@]}"; do
+    case "$project" in mk|iyacc|cocor|compilers|as1|as2|as3|limbo|linker) ;; *) native_selection=0 ;; esac
+done
+if [[ "$tests" != OFF || "$demo" != 0 ]]; then native_selection=0; fi
+if [[ "$backend" == auto ]]; then
+    if version_at_least "$cmake" cmake 3 10; then backend=cmake
+    elif [[ "$native_selection" == 1 ]]; then
+        if version_at_least "${MESON:-meson}" meson 0 54 && command -v "${NINJA:-ninja}" >/dev/null 2>&1; then backend=meson
+        elif command -v "${MAKE:-make}" >/dev/null 2>&1; then backend=make
+        elif command -v "${CC:-cc}" >/dev/null 2>&1 && command -v "${AR:-ar}" >/dev/null 2>&1; then backend=mk
+        else fail 'No available native build engine/compiler toolchain'; fi
+    else fail 'This selection needs CMake 3.10+; native engines support compilers/linker/tools without --tests/--demo'; fi
+    printf 'Build backend: %s (auto)\n' "$backend"
+fi
 if [[ "$backend" != cmake ]]; then
     [[ "$tests" == OFF && "$demo" == 0 ]] || fail 'Use the CMake 3.10 backend for --tests/--demo; native products can be tested directly'
     for project in "${selected[@]}"; do
@@ -111,6 +137,24 @@ if [[ "$backend" != cmake ]]; then
         "$ROOT/tools/mk/bootstrap.sh" "$build_root/mk"
         exec "$build_root/mk/mk" -f "$ROOT/mkfile" "${selected[@]}"
     fi
+    if [[ "$backend" == meson ]]; then
+        meson=${MESON:-meson}
+        version_at_least "$meson" meson 0 54 || fail 'Meson 0.54+ not found; choose another available backend'
+        command -v "${NINJA:-ninja}" >/dev/null || fail 'Meson backend requires Ninja (or NINJA=/path/ninja)'
+        meson_dir="$build_root/meson"
+        if [[ -f "$meson_dir/meson-private/coredata.dat" ]]; then
+            "$meson" setup --reconfigure "$meson_dir" "$ROOT" "-Dnative_output_root=$build_root"
+        else
+            "$meson" setup "$meson_dir" "$ROOT" "-Dnative_output_root=$build_root"
+        fi
+        # Aggregate and individual selections can share outputs; serialize selected
+        # run targets while allowing each native recipe to own its dependencies.
+        for project in "${selected[@]}"; do
+            "$meson" compile -C "$meson_dir" -j "$jobs" "$project"
+        done
+        exit 0
+    fi
+    command -v "${MAKE:-make}" >/dev/null || fail 'Make not found; explicit selection is not replaced automatically'
     exec "${MAKE:-make}" -f "$ROOT/Makefile" "${selected[@]}"
 fi
 need_cmake=0

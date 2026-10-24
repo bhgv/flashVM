@@ -21,7 +21,7 @@ class BuildInvocationTests(unittest.TestCase):
             log = root / "calls"
             cmake = root / "cmake"
             ctest = root / "ctest"
-            cmake.write_text('#!/bin/sh\nprintf "CALL %s\\n" "$PWD" >> "$PROBE_LOG"\n'
+            cmake.write_text('#!/bin/sh\nif [ "$1" = "--version" ]; then echo "cmake version 3.10.2"; exit 0; fi\nprintf "CALL %s\\n" "$PWD" >> "$PROBE_LOG"\n'
                              'printf "%s\\n" "$@" >> "$PROBE_LOG"\n')
             ctest.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$PROBE_LOG"\n'
                              'case " $* " in *" -N "*) echo "Total Tests: ' +
