@@ -89,3 +89,5 @@ Native host checkpoint v0.1535 embeds active REG in extended up and adds coopera
 [GC worker contract](host/GC.md) — v0.1536.
 
 [Обновление experiment и готовность к IDE / experiment update and IDE readiness](UPSTREAM-UPDATE.md).
+
+[Value/channel UI bridge](UI-BRIDGE.md) · [Канальный мост и ввод FlashVM](UI-BRIDGE.ru.md).

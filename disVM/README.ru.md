@@ -78,3 +78,5 @@ host/GC и покрытие эмиттеров. Физическое испол�
 [Контракт исполнителей GC](host/GC.ru.md) — v0.1536.
 
 [Обновление experiment и готовность к IDE / experiment update and IDE readiness](UPSTREAM-UPDATE.md).
+
+[Value/channel UI bridge](UI-BRIDGE.md) · [Канальный мост и ввод FlashVM](UI-BRIDGE.ru.md).

@@ -141,4 +141,41 @@ if(DVM_NATIVE_REGISTERS)
   target_sources(disvm_core PRIVATE host/native_registers.c)
   target_include_directories(disvm_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
   target_link_libraries(disvm_core PUBLIC disvm_flashvm_host)
+  # Explicit byte-array boundary; callers retain the production Dis scheduler/GC owner.
+  add_library(disvm_ui_dis_channel STATIC host/dis_ui_channel.c)
+  target_include_directories(disvm_ui_dis_channel PRIVATE ${sdk_include}
+    "${DVM_FLASHVM_SOURCE_ROOT}/include")
+  target_link_libraries(disvm_ui_dis_channel PUBLIC disvm_core disvm_flashvm_host)
+  if(BUILD_TESTING AND DVM_FLASHVM_LIBRARIES AND NOT CMAKE_CROSSCOMPILING
+      AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID)
+    add_test(NAME disvm_ui_dis_channels COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/dis_ui_channel.py"
+      --flashvm-root "${DVM_FLASHVM_SOURCE_ROOT}"
+      --adapter "$<TARGET_FILE:disvm_ui_dis_channel>"
+      --host "$<TARGET_FILE:disvm_flashvm_host>"
+      --libraries "${DVM_FLASHVM_LIBRARIES}")
+    set_tests_properties(disvm_ui_dis_channels PROPERTIES TIMEOUT 120
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  endif()
+
+endif()
+
+# Optional source-built bootstrap; no hidden downloaded SDK or deployed Python runtime.
+set(DVM_LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit Limbo compiler for bridge modules")
+if(DVM_LIMBO_EXECUTABLE)
+  if(NOT EXISTS "${DVM_LIMBO_EXECUTABLE}")
+    message(FATAL_ERROR "DVM_LIMBO_EXECUTABLE does not exist")
+  endif()
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/uibridge.dis"
+    COMMAND "${DVM_LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/module"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/uibridge.dis" "${CMAKE_CURRENT_SOURCE_DIR}/limbo/uibridge.b"
+    DEPENDS module/uibridge.m limbo/uibridge.b "${DVM_LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis"
+    COMMAND "${DVM_LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}/module"
+      -I "${CMAKE_CURRENT_SOURCE_DIR}/examples/ui-channel"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/ui-channel/uiecho.b"
+    DEPENDS module/uibridge.m examples/ui-channel/uiecho.m examples/ui-channel/uiecho.b
+      "${DVM_LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(disvm_ui_modules ALL DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/uibridge.dis" "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis")
 endif()
