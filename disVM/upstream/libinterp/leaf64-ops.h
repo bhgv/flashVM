@@ -8,12 +8,20 @@ struct LeafLayout {
 	int listdata, listtail;
 	int fp, fixedtmp;
 	int arraytype, typesize;
+	int framelr, framefp;
+	int fixedcoef;
+	int module, linkmodule, moduleprog, modulenprog, instbytes;
+	int heaptype;
 };
 typedef struct LeafOp LeafOp;
 struct LeafOp {
 	int kind, bytes, input, alu, condition;
 };
 enum {
+	LeafTypeCheck = 104,
+	LeafCall = 100,
+	LeafFixedCoefficient = 102,
+	LeafProgramAddress = 103,
 	LeafMove = 1, LeafAlu, LeafBranch, LeafJump, LeafAddress, LeafNop,
 	LeafRealBranch, LeafShift, LeafDivide, LeafLength, LeafIndex, LeafNegReal,
 	LeafDescriptorIndex, LeafFixedFrame, LeafRealResize, LeafIntegerReal, LeafFixedShift, LeafPower, LeafHeadCopy, LeafCopy, LeafStringIndex, LeafStringLength, LeafHead, LeafListLength,
@@ -26,14 +34,20 @@ leafop(LeafOp *p, int op, int wordbytes)
 	memset(p, 0, sizeof(*p));
 	p->bytes = wordbytes;
 	switch(op){
+	case ITCMP: p->kind = LeafTypeCheck; break;
 	case IBEQF: case IBNEF: case IBLTF: case IBLEF: case IBGTF: case IBGEF:
 		p->kind = LeafRealBranch; p->bytes = 8;
 		p->condition = op == IBEQF ? 0 : op == IBNEF ? 1 : op == IBLTF ? 2 :
 			op == IBLEF ? 3 : op == IBGTF ? 4 : 5;
 		break;
 	case IINDX:
-		if(wordbytes != 8) return 0;
 		p->kind = LeafDescriptorIndex; break;
+	case IMULX1: p->kind = LeafFixedCoefficient; p->condition = 1; break;
+	case IDIVX1: p->kind = LeafFixedCoefficient; p->condition = 1; p->alu = 1; break;
+	case ICVTXX1: p->kind = LeafFixedCoefficient; p->condition = 1; p->alu = 2; break;
+	case IMULX0: p->kind = LeafFixedCoefficient; break;
+	case IDIVX0: p->kind = LeafFixedCoefficient; p->alu = 1; break;
+	case ICVTXX0: p->kind = LeafFixedCoefficient; p->alu = 2; break;
 	case IMULX: p->kind = LeafFixedFrame; break;
 	case IDIVX: p->kind = LeafFixedFrame; p->alu = 1; break;
 	case ICVTRF: p->kind = LeafRealResize; p->input = 4; p->bytes = 8; break;
@@ -54,10 +68,9 @@ leafop(LeafOp *p, int op, int wordbytes)
 	case INEGF: p->kind = LeafNegReal; p->bytes = 8; break;
 	case ILENA: p->kind = LeafLength; break;
 	case IINDB: case IINDW: case IINDL: case IINDF:
-		/* Address-producing VM slots must be able to hold a native pointer. */
-		if(wordbytes != 8) return 0;
+		/* Match the C interpreter: validate a native address, then store WORD. */
 		p->kind = LeafIndex;
-		p->bytes = op == IINDB ? 1 : 8;
+		p->bytes = op == IINDB ? 1 : op == IINDW ? wordbytes : 8;
 		break;
 	case IRUNT: p->kind = LeafNop; break;
 	case IMOVB: p->bytes = 1; /* fall through */
@@ -68,9 +81,10 @@ leafop(LeafOp *p, int op, int wordbytes)
 	case ICVTWB: p->kind = LeafMove; p->bytes = 1; p->input = wordbytes; break;
 	case ICVTWS: p->kind = LeafMove; p->bytes = 2; p->input = wordbytes; break;
 	case ILEA:
-		if(wordbytes != 8) return 0;
 		p->kind = LeafAddress;
 		break;
+	case IMOVPC: p->kind = LeafProgramAddress; p->bytes = 8; break;
+	case ICALL: p->kind = LeafCall; break;
 	case IJMP: p->kind = LeafJump; break;
 	case IADDB: p->bytes = 1; /* fall through */
 	case IADDW: p->kind = LeafAlu; p->alu = 0; break;

@@ -1,0 +1,278 @@
+#include "u.h"
+#include "../port/lib.h"
+#include "mem.h"
+#include "dat.h"
+#include "fns.h"
+#include "../port/error.h"
+#include "interp.h"
+#include "isa.h"
+#include "runt.h"
+#include "kernel.h"
+#include "raise.h"
+
+static int
+ematch(char *pat, char *exp)
+{
+	int l;
+
+	if(strcmp(pat, exp) == 0)
+		return 1;
+
+	l = strlen(pat);
+	if(l == 0)
+		return 0;
+	if(pat[l-1] == '*') {
+		if(l == 1)
+			return 1;
+		if(strncmp(pat, exp, l-1) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+static void
+setstr(String *s, char *p)
+{
+	if(s == H)
+		return;
+	if(s->len < 0 || s->max < 4)
+		return;
+	kstrcpy(s->Sascii, p, s->max);	/* TO DO: we are assuming they aren't runes */
+	s->len = strlen(s->Sascii);
+}
+
+static String *exstr;
+
+void
+excinit(void)
+{
+	exstr = newstring(ERRMAX);
+	poolimmutable(D2H(exstr));
+}
+
+static String*
+newestring(char *estr)
+{
+	String *s;
+
+	if(waserror()){
+		setstr(exstr, estr);
+		D2H(exstr)->ref++;
+		return exstr;
+	}
+	s = c2string(estr, strlen(estr));
+	poperror();
+	return s;
+}
+
+#define NOPC	0xffffffff
+
+/* Read Dis frame metadata without requiring native C structure alignment. */
+static Type*
+frametype(uchar *fp)
+{
+	Type *type;
+
+	memmove(&type, fp+O(Frame, t), sizeof(type));
+	if(type == nil)
+		type = SEXTYPE((Frame*)fp)->reg.TR;
+	return type;
+}
+
+/*
+ * clear up an uncalled frame
+ */
+static void
+freeframe(uchar *fp, int setsp)
+{
+	Frame *f;
+	Type *type;
+
+	f = (Frame*)fp;
+	memmove(&type, fp+O(Frame, t), sizeof(type));
+	if(type == nil)
+		unextend(f);
+	else if(type->np)
+		freeptrs(f, type);
+	if(setsp)
+		R.SP = fp;
+}
+
+/* Check exception storage and cleanup maps before selecting a handler. */
+static int
+exceptionframe(uchar *fp, Handler *handler)
+{
+	Type *frame, *cleanup;
+	ulong offset, slot, bytes;
+	int i, bit;
+
+	frame = frametype(fp);
+	if(frame == nil || frame == H || frame->size < (int)sizeof(Frame) ||
+	   frame->np < 0 || frame->np > frame->size/(8*sizeof(void*))+
+	   (frame->size%(8*sizeof(void*)) != 0))
+		return 0;
+	offset = handler->eoff;
+	if(offset < sizeof(Frame) || offset%sizeof(void*) != 0 ||
+	   offset > (ulong)frame->size-sizeof(void*))
+		return 0;
+	slot = offset/sizeof(void*);
+	if(slot/8 >= frame->np || (frame->map[slot/8] & (0x80>>(slot%8))) == 0)
+		return 0;
+
+	cleanup = handler->t;
+	if(cleanup == nil)
+		return 1;
+	if(cleanup == H || cleanup->size < 0 || cleanup->size > frame->size ||
+	   cleanup->np < 0 || cleanup->np > cleanup->size/(8*sizeof(void*))+
+	   (cleanup->size%(8*sizeof(void*)) != 0))
+		return 0;
+	for(i = 0; i < cleanup->np; i++)
+		for(bit = 0; bit < 8; bit++)
+			if(cleanup->map[i] & (0x80>>bit)){
+				bytes = (i*8+bit)*sizeof(void*);
+				if(bytes < sizeof(Frame) || bytes > (ulong)cleanup->size ||
+				   sizeof(void*) > (ulong)cleanup->size-bytes)
+					return 0;
+			}
+	return 1;
+}
+
+/* Search only usable handlers, retaining diagnostic storage on allocation failure. */
+int
+handler(char *estr)
+{
+	Prog *p;
+	Modlink *m, *mr;
+	int str, ne;
+	ulong pc, newpc;
+	long eoff;
+	uchar *fp, *eadr;
+	Frame *f, frame;
+	Type *t, *zt;
+	Handler *h;
+	Except *e;
+	void *v, *old;
+
+	p = currun();
+	if(*estr == 0 || p == nil)
+		return 0;
+	str = p->exval == H || D2H(p->exval)->t == &Tstring;
+	m = R.M;
+	if(m->compiled)
+		pc = (ulong)R.PC-(ulong)m->prog;
+	else
+		pc = R.PC-m->prog;
+	pc--;
+	fp = R.FP;
+	while(fp != nil){		/* look for a handler */
+		if((h = m->m->htab) != nil){
+			for( ; h->etab != nil; h++){
+				if(pc < h->pc1 || pc >= h->pc2)
+					continue;
+				if(!exceptionframe(fp, h))
+					continue;
+				eoff = h->eoff;
+				zt = h->t;
+				for(e = h->etab, ne = h->ne; e->s != nil; e++, ne--){
+					if(ematch(e->s, estr) && (str && ne <= 0 || !str && ne > 0)){
+						newpc = e->pc;
+						goto found;
+					}
+				}
+				newpc = e->pc;
+				if(newpc != NOPC)
+					goto found;
+			}
+		}
+		if(!str && fp != R.FP){		/* becomes a string exception in immediate caller */
+			v = p->exval;
+			memmove(&p->exval, v, sizeof(p->exval));
+			D2H(p->exval)->ref++;
+			destroy(v);
+			str = 1;
+			continue;
+		}
+		memmove(&frame, fp, sizeof(frame));
+		/* The root has no caller PC to reconstruct. */
+		if(frame.fp == nil)
+			break;
+		if(frame.mr != nil)
+			m = frame.mr;
+		if(m->compiled)
+			pc = (ulong)frame.lr-(ulong)m->prog;
+		else
+			pc = frame.lr-m->prog;
+		pc--;
+		fp = frame.fp;
+	}
+	destroy(p->exval);
+	p->exval = H;
+	return 0;
+found:
+	{
+		int n;
+		char name[3*KNAMELEN], *text;
+
+		pc = modstatus(&R, name, sizeof(name));
+		n = 10+1+strlen(name)+1+strlen(estr)+1;
+		text = realloc(p->exstr, n);
+		if(text != nil){
+			p->exstr = text;
+			snprint(p->exstr, n, "%lud %s %s", pc, name, estr);
+		}
+	}
+
+	/*
+	 * there may be an uncalled frame at the top of the stack
+	 */
+	t = frametype(R.FP);
+	if(R.FP < R.EX || R.FP >= R.TS)
+		freeframe(R.EX+OA(Stkext, reg.tos.fr), 0);
+	else if(R.FP+t->size < R.SP)
+		freeframe(R.FP+t->size, 1);
+
+	m = R.M;
+	while(R.FP != fp){
+		f = (Frame*)R.FP;
+		memmove(&frame, R.FP, sizeof(frame));
+		R.PC = frame.lr;
+		R.FP = frame.fp;
+		R.SP = (uchar*)f;
+		mr = frame.mr;
+		if(frame.t == nil)
+			unextend(f);
+		else if(frame.t->np)
+			freeptrs(f, frame.t);
+		if(mr != nil){
+			m = mr;
+			destroy(R.M);
+			R.M = m;
+			R.MP = m->MP;
+		}
+	}
+	if(zt != nil){
+		freeptrs(fp, zt);
+		initmem(zt, fp);
+	}
+	eadr = fp+eoff;
+	memmove(&old, eadr, sizeof(old));
+	v = H;
+	memmove(eadr, &v, sizeof(v));
+	destroy(old);
+	if(p->exval == H)
+		v = newestring(estr);	/* might fail; the result slot already owns nil */
+	else{
+		D2H(p->exval)->ref++;
+		v = p->exval;
+	}
+	memmove(eadr, &v, sizeof(v));
+	if(m->compiled)
+		R.PC = (Inst*)((ulong)m->prog+newpc);
+	else
+		R.PC = m->prog+newpc;
+	memmove(&p->R, &R, sizeof(R));
+	p->kill = nil;
+	destroy(p->exval);
+	p->exval = H;
+	return 1;
+}

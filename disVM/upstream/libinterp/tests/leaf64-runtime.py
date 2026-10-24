@@ -350,7 +350,7 @@ static void characters(Module *m) {
 /* Compare both dispatch paths with a high-bit-first modular power oracle. */
 static void powers(Module *m) {
     union { uvlong align; uchar bytes[64]; } slots;
-    uchar expected[64];
+    uchar expected[64],captured[64];
     WORD minimum=(UWORD)1<<(sizeof(WORD)*8-1),n,wordbase;
     WORD exponents[]={minimum,-3,-2,-1,0,1,2,3,7,31,32,63,64,(WORD)((UWORD)minimum-1)};
     LONG bases[]={0,1,-1,2,-2,(-9223372036854775807LL-1),9223372036854775807LL},base;
@@ -381,6 +381,7 @@ static void powers(Module *m) {
                 offset=alias==0?36:alias==1?4:alias==2?20:alias==3?8:24;
                 if(valid)memcpy(expected+offset,&want,width);
                 R.s=slots.bytes+4;R.m=slots.bytes+20;R.d=slots.bytes+offset;R.PC=pc;
+                if(!mode){memmove(captured,slots.bytes,sizeof(captured));assert(entry(&R)==valid);memmove(slots.bytes,captured,sizeof(captured));}
                 assert(kprotect(dispatch,nil)==valid && R.PC==pc);
                 assert(!memcmp(slots.bytes,expected,sizeof(expected)));
             }
@@ -514,7 +515,7 @@ static void arrays(Module *m) {
     for(op=0;op<4;op++)for(i=-1;i<=8;i++) {
         owner=&array;index=i;out=123;
         R.s=&owner;R.d=&index;R.m=&out;activeop=operations[op];
-        if(sizeof(WORD)==4)assert(!m->jit->entry[activeop]);
+        assert(m->jit->entry[activeop]);
         if(i<0 || i>=8){assert(!kprotect(dispatch,nil));assert(out==123);}
         else {
             stride=op==0?1:op==1?sizeof(WORD):8;
@@ -535,7 +536,7 @@ static void arrays(Module *m) {
 }
 /* Compile, invoke, reject invalid metadata and retry without changing Dis PCs. */
 int main(void) {
-    Module m={0}, *owned;Inst instructions[36]={{0}};
+    Module m={0}, *owned;Inst instructions[48]={{0}};
     WORD a=3,b=7,out=0;
     int i;
     instructions[0].op=ISUBW;instructions[1].op=IADDW;
@@ -547,16 +548,21 @@ int main(void) {
     instructions[17].op=IHEADB;instructions[18].op=IHEADW;instructions[19].op=IHEADL;instructions[20].op=IHEADF;instructions[21].op=ILENL;instructions[22].op=IINDC;instructions[23].op=IEXPW;instructions[24].op=IEXPL;instructions[25].op=IEXPF;instructions[26].op=IHEADM;
     instructions[27].op=IBEQF;instructions[28].op=IBNEF;instructions[29].op=IBLTF;
     instructions[30].op=IBLEF;instructions[31].op=IBGTF;instructions[32].op=IBGEF;
-    instructions[33].op=IMULX;instructions[34].op=IDIVX;instructions[35].op=IINDX;
-    m.prog=instructions;m.nprog=36;
+    instructions[33].op=IMULX;instructions[34].op=IDIVX;instructions[35].op=IINDX;instructions[36].op=ICALL;instructions[37].op=IMULX0;instructions[38].op=IDIVX0;instructions[39].op=ICVTXX0;instructions[40].op=IMULX1;instructions[41].op=IDIVX1;instructions[42].op=ICVTXX1;instructions[43].op=IMOVPC;instructions[44].op=ITCMP;instructions[45].op=IMULB;instructions[46].op=IMULW;instructions[47].op=IMULL;
+    m.prog=instructions;m.nprog=48;
     for(i=1;i<=5;i++) {
-        fail=i;assert(!compile(&m,36,nil));assert(!m.jit && !m.compiled && m.prog==instructions && mappings==0);
+        fail=i;assert(!compile(&m,48,nil));assert(!m.jit && !m.compiled && m.prog==instructions && mappings==0);
     }
     fail=0;
     assert(!compile(nil,36,nil));assert(!compile(&m,3,nil));
-    assert(compile(&m,36,nil));assert(m.jit && !m.compiled && m.prog==instructions);
+    assert(compile(&m,48,nil));assert(m.jit && !m.compiled && m.prog==instructions);
+    assert(m.jit->entry[ICALL] && m.jit->entry[ITCMP]);
+    assert(m.jit->entry[IMOVPC]);
+    assert(m.jit->entry[IMULB] && m.jit->entry[IMULW] && m.jit->entry[IMULL]);
+    assert(m.jit->entry[IMULX1] && m.jit->entry[IDIVX1] && m.jit->entry[ICVTXX1]);
+    assert(m.jit->entry[IMULX0] && m.jit->entry[IDIVX0] && m.jit->entry[ICVTXX0]);
     assert(m.jit->entry[IMOVP]==nil && m.jit->entry[IMULX] && m.jit->entry[IDIVX]);
-    assert(!!m.jit->entry[IINDX]==(sizeof(WORD)==8));
+    assert(m.jit->entry[IINDX]);
     assert(protections==1 && mappings==1);
     R.s=&a;R.m=&b;R.d=&out;
 #if EXECUTE_NATIVE
@@ -564,9 +570,9 @@ int main(void) {
     R.d=&a;assert(m.jit->entry[IADDW](&R)==1 && a==10);
     descriptorindex();fixedframe();realarithmetic();integerreal();shiftdivision();integeralu();fixedscale();scalartransfers();arithmetic(&m);arrays(&m);realnegation(&m);records(&m);stringlengths(&m);listheads(&m);listlengths(&m);characters(&m);powers(&m);headrecords(&m);realbranches(&m);
 #endif
-    assert(compile(&m,36,nil));dropmodule(&m);
-    for(i=0;i<36;i++)instructions[i].op=IMOVP;
-    assert(!compile(&m,36,nil) && !m.jit);
+    assert(compile(&m,48,nil));dropmodule(&m);
+    for(i=0;i<48;i++)instructions[i].op=IMOVP;
+    assert(!compile(&m,48,nil) && !m.jit);
     owned=calloc(1,sizeof(*owned));assert(owned);
     owned->prog=calloc(1,sizeof(Inst));assert(owned->prog);
     owned->nprog=1;owned->prog[0].op=IADDW;
@@ -577,13 +583,30 @@ int main(void) {
 }
 '''
 unit=unit.replace('comp-amd64.c','comp-'+backend+'.c').replace('EXECUTE_NATIVE','1' if backend=='amd64' else '0').replace('BACKEND',backend)
-if backend=='riscv64':unit='#define RV_CODE_PAGES\n#define __riscv_mul 1\n'+unit
+if backend=='riscv64':
+    profile=os.environ.get('RV_FEATURE_PROFILE','m')
+    if profile not in ('i','zmmul','m'):raise ValueError(profile)
+    definitions='#define RV_CODE_PAGES\n'
+    if profile!='i':definitions+='#define __riscv_mul 1\n'
+    if profile=='m':definitions+='#define __riscv_div 1\n'
+    unit=definitions+unit
+    unit=unit.replace('assert(m.jit->entry[IMULX1] && m.jit->entry[IDIVX1] && m.jit->entry[ICVTXX1]);',
+        'assert(!!m.jit->entry[IMULX1]=='+str(int(profile=='m'))+');assert(!!m.jit->entry[IDIVX1]=='+str(int(profile=='m'))+');assert(!!m.jit->entry[ICVTXX1]=='+str(int(profile=='m'))+');')
+    unit=unit.replace('assert(m.jit->entry[IMULX0] && m.jit->entry[IDIVX0] && m.jit->entry[ICVTXX0]);',
+        'assert(!!m.jit->entry[IMULX0]=='+str(int(profile=='m'))+');assert(!!m.jit->entry[IDIVX0]=='+str(int(profile=='m'))+');assert(!!m.jit->entry[ICVTXX0]=='+str(int(profile=='m'))+');')
+    unit=unit.replace('assert(m.jit->entry[IMOVP]==nil && m.jit->entry[IMULX] && m.jit->entry[IDIVX]);',
+        'assert(!m.jit->entry[IMOVP]);assert(!!m.jit->entry[IMULX]=='+str(1)+');'
+        'assert(!!m.jit->entry[IDIVX]=='+str(int(profile=='m'))+');'
+        'assert(!!m.jit->entry[IDIVW]=='+str(int(profile=='m'))+');'
+        'assert(!!m.jit->entry[IMODW]=='+str(int(profile=='m'))+');')
+    unit=unit.replace('assert(m.jit->entry[IINDX]);', 'assert(!!m.jit->entry[IINDX]=='+str(int(profile!='i'))+');')
+
 load=(root/'libinterp/load.c').read_text()
 a=load.index('void\nfreemod(');b=load.index('\nvoid\nunload(',a)
 unit=unit.replace('FREEMOD',load[a:b])
 xec=Path(os.environ.get('LEAF_VM_SOURCE',str(root/'libinterp/xec.c'))).read_text()
 parts=[]
-for signature in ('static LONG\nfixedshift(', 'static LONG\nfixeddivide(', 'OP(mulx)', 'OP(divx)', 'OP(addf)', 'OP(subf)', 'OP(mulf)', 'OP(divf)', 'OP(negf)', 'OP(cvtrf)', 'OP(cvtfr)', 'OP(cvtxf)', 'OP(cvtwf)', 'OP(cvtlf)', 'static WORD\nshiftcount(', 'OP(shlb)', 'OP(shrb)', 'OP(shll)', 'OP(shrl)', 'OP(lsrl)', 'OP(divb)', 'OP(modb)', 'OP(divl)', 'OP(modl)', 'OP(addb)', 'OP(subb)', 'OP(mulb)', 'OP(andb)', 'OP(orb)', 'OP(xorb)', 'OP(addw)', 'OP(subw)', 'OP(mulw)', 'OP(andw)', 'OP(orw)', 'OP(xorw)', 'OP(addl)', 'OP(subl)', 'OP(mull)', 'OP(andl)', 'OP(orl)', 'OP(xorl)', 'OP(cvtxx)', 'OP(movb)', 'OP(movw)', 'OP(movl)', 'OP(movf)', 'OP(cvtbw)', 'OP(cvtwb)', 'OP(cvtws)', 'OP(cvtsw)', 'OP(cvtwl)', 'OP(cvtlw)', 'static List*\nlisthead(', 'OP(lenl)', 'OP(headb)', 'OP(headw)', 'OP(headl)', 'OP(headf)', 'OP(headm)', 'static void\nbranchreal(', 'OP(beqf)', 'OP(bnef)', 'OP(bltf)', 'OP(blef)', 'OP(bgtf)', 'OP(bgef)', 'OP(iexpw)', 'OP(iexpl)', 'OP(iexpf)', 'OP(movm)', 'OP(divw)', 'OP(modw)', 'OP(shlw)', 'OP(shrw)', 'OP(lsrw)', 'static uchar*\narrayaddress(', 'static void\narrayindex(', 'OP(indx)', 'OP(indb)', 'OP(indw)', 'OP(indl)', 'OP(indf)', 'OP(lena)'):
+for signature in ('static WORD\nfixedword(', 'static LONG\nfixedshift(', 'static LONG\nfixeddivide(', 'OP(mulx)', 'OP(divx)', 'OP(addf)', 'OP(subf)', 'OP(mulf)', 'OP(divf)', 'OP(negf)', 'OP(cvtrf)', 'OP(cvtfr)', 'OP(cvtxf)', 'OP(cvtwf)', 'OP(cvtlf)', 'static WORD\nshiftcount(', 'OP(shlb)', 'OP(shrb)', 'OP(shll)', 'OP(shrl)', 'OP(lsrl)', 'OP(divb)', 'OP(modb)', 'OP(divl)', 'OP(modl)', 'OP(addb)', 'OP(subb)', 'OP(mulb)', 'OP(andb)', 'OP(orb)', 'OP(xorb)', 'OP(addw)', 'OP(subw)', 'OP(mulw)', 'OP(andw)', 'OP(orw)', 'OP(xorw)', 'OP(addl)', 'OP(subl)', 'OP(mull)', 'OP(andl)', 'OP(orl)', 'OP(xorl)', 'OP(cvtxx)', 'OP(movb)', 'OP(movw)', 'OP(movl)', 'OP(movf)', 'OP(cvtbw)', 'OP(cvtwb)', 'OP(cvtws)', 'OP(cvtsw)', 'OP(cvtwl)', 'OP(cvtlw)', 'static List*\nlisthead(', 'OP(lenl)', 'OP(headb)', 'OP(headw)', 'OP(headl)', 'OP(headf)', 'OP(headm)', 'static void\nbranchreal(', 'OP(beqf)', 'OP(bnef)', 'OP(bltf)', 'OP(blef)', 'OP(bgtf)', 'OP(bgef)', 'OP(iexpw)', 'OP(iexpl)', 'OP(iexpf)', 'OP(movm)', 'OP(divw)', 'OP(modw)', 'OP(shlw)', 'OP(shrw)', 'OP(lsrw)', 'static uchar*\narrayaddress(', 'static void\narrayindex(', 'OP(indx)', 'OP(indb)', 'OP(indw)', 'OP(indl)', 'OP(indf)', 'OP(lena)'):
     if signature.startswith('static ') and signature not in xec:continue
     start=xec.index(signature);brace=xec.index('{',start);depth=0
     for token in re.finditer(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|/\*[\s\S]*?\*/|//[^\n]*|[{}]',xec[brace:]):

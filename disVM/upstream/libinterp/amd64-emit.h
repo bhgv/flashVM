@@ -110,7 +110,95 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	b.n = 0;
 	/* ENDBR64 also permits entry when the host enables indirect-branch tracking. */
 	x64byte(&b, 0xf3); x64byte(&b, 0x0f); x64byte(&b, 0x1e); x64byte(&b, 0xfa);
-	if(p.kind == LeafDescriptorIndex){
+	if(p.kind == LeafTypeCheck){
+		/* Capture both owners before inspecting their immutable heap types. */
+		if(abi->heaptype <= 0 || abi->heaptype > 255 || abi->heaptype%8) return 0;
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
+		x64ptr(&b, 1, abi->d); x64load(&b, 1, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff);
+		x64byte(&b, 0x74); done=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf9); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64field(&b, 2, 0, -abi->heaptype, 8);
+		x64field(&b, 0, 1, -abi->heaptype, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd0); x64guard(&b, 0x74);
+		b.bytes[done]=b.n-done-1;
+	}else if(p.kind == LeafProgramAddress){
+		/* Materialize a Dis PC only after validating the module, index and native span. */
+		if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
+		   abi->linkmodule < 0 || abi->linkmodule > 2047 || abi->linkmodule%8 ||
+		   abi->moduleprog < 0 || abi->moduleprog > 2047 || abi->moduleprog%8 ||
+		   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
+		   abi->instbytes < 1 || abi->instbytes > 2047) return 0;
+		x64ptr(&b, 0, abi->module); x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0xc0);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64field(&b, 0, 0, abi->linkmodule, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
+		x64field(&b, 1, 0, abi->modulenprog, 4);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x79);
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
+		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8); x64guard(&b, 0x72);
+		x64byte(&b, 0x48); x64byte(&b, 0x69); x64byte(&b, 0xc0); x64word(&b, abi->instbytes);
+		x64field(&b, 2, 11, abi->moduleprog, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
+		x64ptr(&b, 2, abi->d); x64store(&b, 0, 8);
+	}else if(p.kind == LeafFixedCoefficient){
+		/* Capture frame parameters and both operands before any aliased result write. */
+		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 ||
+		   abi->fixedcoef < 0 || abi->fixedcoef > 2047) return 0;
+		x64ptr(&b, 1, abi->fp); x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0xc8);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64field(&b, 2, 9, abi->fixedcoef, abi->wordbytes);
+		if(p.alu != 1){
+			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
+			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
+			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xd3);
+		}
+		if(p.alu == 2){x64ptr(&b, 1, abi->m); x64load(&b, 1, abi->wordbytes);}
+		else x64field(&b, 1, 9, abi->fixedtmp, abi->wordbytes);
+		if(p.condition){
+			/* Nonzero rounding flags retain the complete C rounding path. */
+			x64byte(&b, 0x89); x64byte(&b, 0xc8); x64byte(&b, 0x83); x64byte(&b, 0xe0); x64byte(&b, 3);
+			x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x74);
+			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xf9); x64byte(&b, 2);
+		}
+		x64byte(&b, 0x48); x64byte(&b, 0x8d); x64byte(&b, 0x41); x64byte(&b, 63);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 127); x64guard(&b, 0x72);
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
+		if(p.alu == 1){
+			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
+		}else if(p.alu == 0){x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc2);}
+		if(p.alu != 2){x64ptr(&b, 0, abi->m); x64load(&b, 0, abi->wordbytes); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0xaf); x64byte(&b, 0xc2);}
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9);
+		x64byte(&b, 0x78); x64byte(&b, 5); x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xe0);
+		x64byte(&b, 0xeb); x64byte(&b, 6); x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd9); x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xf8);
+		x64byte(&b, 0x48); x64byte(&b, 0x99); x64byte(&b, 0x49); x64byte(&b, 0xf7); x64byte(&b, 0xfb);
+		x64ptr(&b, 2, abi->d); x64store(&b, 0, abi->wordbytes);
+	}else if(p.kind == LeafCall){
+		/* Capture the target and old links before touching an aliased frame. */
+		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 ||
+		   abi->framelr < 0 || abi->framelr > 2047 || abi->framelr%8 ||
+		   abi->framefp < 0 || abi->framefp > 2047 || abi->framefp%8 ||
+		   abi->framelr == abi->framefp) return 0;
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64ptr(&b, 1, abi->d); x64load(&b, 1, 8);
+		x64ptr(&b, 0, abi->pc); x64ptr(&b, 1, abi->fp);
+		x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0x80); x64word(&b, abi->framelr);
+		x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0x88); x64word(&b, abi->framefp);
+		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->fp);
+		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x8f); x64word(&b, abi->pc);
+	}else if(p.kind == LeafDescriptorIndex){
 		/* Positive strides have bounded products; empty elements retain any backing identity. */
 		if(abi->arraylen < 0 || abi->arraylen > 2047 || abi->arraydata < 0 || abi->arraydata > 2047 ||
 		   abi->arraytype < 0 || abi->arraytype > 2047 || abi->typesize < 0 || abi->typesize > 2047 ||
@@ -119,9 +207,9 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
 		x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
-		x64field(&b, 1, 0, abi->arraylen, 8);
+		x64field(&b, 1, 0, abi->arraylen, abi->wordbytes);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x79);
-		x64ptr(&b, 0, abi->d); x64load(&b, 0, 8);
+		x64ptr(&b, 0, abi->d); x64load(&b, 0, abi->wordbytes);
 		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8); x64guard(&b, 0x72);
 		x64field(&b, 2, 11, abi->arraytype, 8);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
@@ -141,7 +229,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		b.bytes[empty]=b.n-empty-1;
 		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xd0);
 		b.bytes[done]=b.n-done-1;
-		x64ptr(&b, 2, abi->m); x64store(&b, 0, 8);
+		x64ptr(&b, 2, abi->m); x64store(&b, 0, abi->wordbytes);
 	}else if(p.kind == LeafFixedFrame){
 		/* Read the explicit frame layout before capturing either arithmetic operand. */
 		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047) return 0;
@@ -244,10 +332,26 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xf8); /* sar rax,cl */
 		x64ptr(&b, 2, abi->d); x64store(&b, 0, abi->wordbytes);
 	}else if(p.kind == LeafPower){
-		/* Let the VM apply negative-exponent results and zero-base exceptions. */
+		/* Negative exponents need only zero/one tests and parity, never negation. */
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
-		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x79);
 		x64ptr(&b, 1, abi->m); x64load(&b, 1, p.bytes);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0);
+		x64byte(&b, 0x79); scale=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x75);
+		x64byte(&b, 0xba); x64word(&b, 1);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf9); x64byte(&b, 1);
+		x64byte(&b, 0x74); empty=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x31); x64byte(&b, 0xd2);
+		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf9); x64byte(&b, 0xff);
+		x64byte(&b, 0x75); other=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x89); x64byte(&b, 0xc2); x64byte(&b, 0x83); x64byte(&b, 0xe2); x64byte(&b, 1);
+		x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xda);
+		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd2);
+		x64byte(&b, 0x48); x64byte(&b, 0xff); x64byte(&b, 0xc2);
+		b.bytes[empty]=b.n-empty-1; b.bytes[other]=b.n-other-1;
+		x64ptr(&b, 2, abi->d); x64store(&b, 2, p.bytes);
+		x64byte(&b, 0xb8); x64word(&b, 1); x64byte(&b, 0xc3);
+		b.bytes[scale]=b.n-scale-1;
 		x64byte(&b, 0xba); x64word(&b, 1); /* rdx = result */
 		loop = b.n;
 		x64byte(&b, 0xa8); x64byte(&b, 1);
@@ -377,18 +481,18 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
 			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
 			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3); /* r11=array */
-			x64field(&b, 1, 0, abi->arraylen, 8);
+			x64field(&b, 1, 0, abi->arraylen, abi->wordbytes);
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x79);
-			x64ptr(&b, 0, abi->d); x64load(&b, 0, 8);
+			x64ptr(&b, 0, abi->d); x64load(&b, 0, abi->wordbytes);
 			x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8); x64guard(&b, 0x72);
-			scale = p.bytes == 1 ? 0 : 3;
+			scale = p.bytes == 1 ? 0 : p.bytes == 4 ? 2 : 3;
 			x64byte(&b, 0x48); x64byte(&b, 0x3d); x64word(&b, 0x7fffffff>>scale); x64guard(&b, 0x76);
 			x64field(&b, 1, 11, abi->arraydata, 8);
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x75);
 			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf9); x64byte(&b, 0xff); x64guard(&b, 0x75);
 			if(scale){ x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, scale); }
 			x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xc8); x64guard(&b, 0x73);
-			x64ptr(&b, 2, abi->m); x64store(&b, 0, 8);
+			x64ptr(&b, 2, abi->m); x64store(&b, 0, abi->wordbytes);
 		}
 	}else if(p.kind == LeafMove || p.kind == LeafAddress || p.kind == LeafNegReal){
 		x64ptr(&b, 0, abi->s);

@@ -45,6 +45,7 @@ OP(jmp)
 OP(movpc)
 {
 	WORD pc;
+	uintptr offset;
 	Inst *target;
 	Modlink *ml;
 
@@ -52,9 +53,14 @@ OP(movpc)
 	if(ml == H || ml == nil || ml->m == H || ml->m == nil)
 		error(exModule);
 	memmove(&pc, R.s, sizeof(pc));
-	if(pc < 0 || pc >= ml->m->nprog || ml->m->prog == nil)
+	if(pc < 0 || pc >= ml->m->nprog || ml->m->prog == nil || ml->m->prog == H)
 		error(exBounds);
-	target = &ml->m->prog[pc];
+	if((uvlong)pc > (uintptr)-1/sizeof(Inst))
+		error(exBounds);
+	offset = (uintptr)pc*sizeof(Inst);
+	if((uintptr)ml->m->prog > (uintptr)-1-offset)
+		error(exBounds);
+	target = (Inst*)((uintptr)ml->m->prog+offset);
 	memmove(R.d, &target, sizeof(target));
 }
 /* Capture possibly four-byte-aligned lengths before validating or copying. */
@@ -890,15 +896,15 @@ OP(cvtfw)
 	result = (WORD)f;
 	memmove(R.d, &result, sizeof(result));
 }
+/* Capture the owner before parsing and publish a complete possibly unaligned big. */
 OP(cvtcl)
 {
 	String *s;
+	LONG value;
 
-	s = S(s);
-	if(s == H)
-		V(d) = 0;
-	else
-		V(d) = strtoll(string2c(s), nil, 10);
+	memmove(&s, R.s, sizeof(s));
+	value = strtoll(string2c(s), nil, 10);
+	memmove(R.d, &value, sizeof(value));
 }
 
 /* Capture operands before computing a modular power or its negative-exponent rule. */
@@ -1562,15 +1568,20 @@ OP(igoto)
 	}
 	R.PC = R.M->prog + t[0];
 }
+/* Capture both operands before frame-link stores can overwrite an aliased target. */
 OP(call)
 {
 	Frame *f;
+	Inst *target;
 
-	f = T(s);
-	f->lr = R.PC;
-	f->fp = R.FP;
+	memmove(&f, R.s, sizeof(f));
+	if(f == nil || f == H)
+		error(exNilref);
+	memmove(&target, R.d, sizeof(target));
+	memmove((uchar*)f+offsetof(Frame, lr), &R.PC, sizeof(f->lr));
+	memmove((uchar*)f+offsetof(Frame, fp), &R.FP, sizeof(f->fp));
 	R.FP = (uchar*)f;
-	JMP(d);
+	R.PC = target;
 }
 typedef struct SpawnProg SpawnProg;
 struct SpawnProg {
@@ -1615,43 +1626,54 @@ spawnmodule(Modlink *ml, Inst *pc)
 /* Spawn only after the frame and process can both be constructed. */
 OP(spawn)
 {
-	spawnmodule(R.M, *(Inst**)R.d);
+	Inst *target;
+
+	if(R.M == nil || R.M == H)
+		error(exModule);
+	memmove(&target, R.d, sizeof(target));
+	spawnmodule(R.M, target);
 }
 
 /* Validate module ownership before reading a child entry or creating its stack. */
 OP(mspawn)
 {
+	WORD index;
 	Modlink *ml;
 	Modl entry;
 
-	ml = *(Modlink**)R.d;
+	memmove(&ml, R.d, sizeof(ml));
 	if(ml == H || ml == nil || ml->m == H || ml->m == nil)
 		error(exModule);
 	if(ml->prog == nil)
 		error(exSpawn);
-	if(!moduleentry(ml, W(m), &entry))
+	memmove(&index, R.m, sizeof(index));
+	if(!moduleentry(ml, index, &entry))
 		error("invalid mspawn");
 	spawnmodule(ml, entry.u.pc);
 }
+/* Capture frame links before release, without requiring host pointer alignment. */
 OP(ret)
 {
-	Frame *f;
+	Frame *f, links;
 	Modlink *m;
 
+	if(R.FP == nil || R.FP == H)
+		error(exNilref);
 	f = (Frame*)R.FP;
-	R.FP = f->fp;
+	memmove(&links, f, sizeof(links));
+	R.FP = links.fp;
 	if(R.FP == nil) {
 		R.FP = (uchar*)f;
 		error("");
 	}
 	R.SP = (uchar*)f;
-	R.PC = f->lr;
-	m = f->mr;
+	R.PC = links.lr;
+	m = links.mr;
 
-	if(f->t == nil)
+	if(links.t == nil)
 		unextend(f);
-	else if (f->t->np)
-		freeptrs(f, f->t);
+	else if (links.t->np)
+		freeptrs(f, links.t);
 
 	if(m != nil) {
 		if(R.M->compiled != m->compiled) {
@@ -1687,7 +1709,9 @@ OP(iload)
 	char *n;
 	Import *ldt;
 	Module *m;
-	Modlink *ml, **mp, *t;
+	Modlink *ml, *t;
+	String *name;
+	WORD index;
 	Heap *h;
 
 	if(R.M == H || R.M == nil || R.M->m == H || R.M->m == nil)
@@ -1695,8 +1719,10 @@ OP(iload)
 	m = R.M->m;
 	if(!(m->rt & HASLDT))
 		error("obsolete dis");
-	ldt = moduleimports(m, W(m));
-	n = string2c(S(s));
+	memmove(&index, R.m, sizeof(index));
+	memmove(&name, R.s, sizeof(name));
+	ldt = moduleimports(m, index);
+	n = string2c(name);
 	if(strcmp(n, "$self") == 0) {
 		if(R.M->MP == nil)
 			error(exModule);
@@ -1716,30 +1742,35 @@ OP(iload)
 		ml = linkmod(m, ldt, 1);
 	}
 
-	mp = R.d;
-	t = *mp;
-	*mp = ml;
+	memmove(&t, R.d, sizeof(t));
+	memmove(R.d, &ml, sizeof(ml));
 	destroy(t);
 }
 /* Resolve the complete link index before publishing a frame or changing modules. */
 OP(mcall)
 {
+	WORD index;
 	Heap *h;
 	Prog *p;
-	Frame *f;
+	Frame *f, links;
+	Modlink *caller;
 	Modl entry;
 	Modlink *ml;
 
-	ml = *(Modlink**)R.d;
+	memmove(&ml, R.d, sizeof(ml));
 	if(ml == H)
 		error(exModule);
-	if(!moduleentry(ml, W(m), &entry))
+	memmove(&index, R.m, sizeof(index));
+	if(!moduleentry(ml, index, &entry))
 		error("invalid mcall");
-	f = T(s);
-	f->lr = R.PC;
-	f->fp = R.FP;
-	f->mr = R.M;
+	memmove(&f, R.s, sizeof(f));
+	if(f == nil || f == H)
+		error(exNilref);
+	memmove((uchar*)f+offsetof(Frame, lr), &R.PC, sizeof(f->lr));
+	memmove((uchar*)f+offsetof(Frame, fp), &R.FP, sizeof(f->fp));
+	memmove((uchar*)f+offsetof(Frame, mr), &R.M, sizeof(f->mr));
 
+	caller = R.M;
 	R.FP = (uchar*)f;
 	R.M = ml;
 	h = D2H(ml);
@@ -1748,13 +1779,14 @@ OP(mcall)
 	if(ml->prog == nil) {
 		entry.u.runt(f);
 		h->ref--;
-		R.M = f->mr;
+		memmove(&links, f, sizeof(links));
+		R.M = links.mr;
 		R.SP = R.FP;
-		R.FP = f->fp;
-		if(f->t == nil)
+		R.FP = links.fp;
+		if(links.t == nil)
 			unextend(f);
-		else if (f->t->np)
-			freeptrs(f, f->t);
+		else if (links.t->np)
+			freeptrs(f, links.t);
 		p = currun();
 		if(p->kill != nil)
 			error(p->kill);
@@ -1765,7 +1797,7 @@ OP(mcall)
 	R.PC = entry.u.pc;
 	R.t = 1;
 
-	if(f->mr->compiled != R.M->compiled)
+	if(caller->compiled != R.M->compiled)
 		R.IC = 1;
 }
 /* Capture and publish array lengths without aligned operand casts. */
@@ -2009,7 +2041,7 @@ csendalt(Channel *c, void *ip, Type *t, int len)
 {
 	REG rsav;
 
-	if(c == H)
+	if(c == H || c == nil)
 		error(exNilref);
 
 	if(c->recv->prog == nil && (c->buf == H || c->size == c->buf->len)){
@@ -2415,24 +2447,44 @@ OP(badop)
 {
 	error(exOp);
 }
+/* Validate the owner and prepare its message before publishing an exception value. */
 OP(iraise)
 {
 	void *v;
+	String *message;
+	char *text;
 	Heap *h;
 	Prog *p;
 
-	p = currun();
-	v = T(s);
-	if(v == H)
+	memmove(&v, R.s, sizeof(v));
+	if(v == H || v == nil)
 		error(exNilref);
-	p->exval = v;
 	h = D2H(v);
-	h->ref++;
 	if(h->t == &Tstring)
-		error(string2c((String*)v));
-	else
-		error(string2c(*(String**)v));
+		message = v;
+	else{
+		if(h->t == nil || h->t == H || h->t->size < (int)sizeof(message))
+			error(exType);
+		memmove(&message, v, sizeof(message));
+	}
+	text = string2c(message);
+	p = currun();
+	h->ref++;
+	p->exval = v;
+	error(text);
 }
+/* Read a full VM frame word without arithmetic on nil frame identities. */
+static WORD
+fixedword(int offset)
+{
+	WORD value;
+
+	if(R.FP == nil || R.FP == H)
+		error(exNilref);
+	memmove(&value, R.FP+offset, sizeof(value));
+	return value;
+}
+
 /* Shift a fixed intermediate with bounded counts and unsigned left-shift bits. */
 static LONG
 fixedshift(LONG value, WORD count)
@@ -2479,7 +2531,7 @@ OP(mulx)
 	WORD p, x, y, result;
 	LONG r;
 
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
+	p = fixedword((NREG+2)*IBY2WD);
 	memmove(&x, R.m, sizeof(x));
 	memmove(&y, R.s, sizeof(y));
 	r = (LONG)((uvlong)(LONG)x*(uvlong)(LONG)y);
@@ -2494,7 +2546,7 @@ OP(divx)
 	WORD p, value, divisor, result;
 	LONG s;
 
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
+	p = fixedword((NREG+2)*IBY2WD);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
@@ -2526,8 +2578,8 @@ OP(mulx0)
 
 	memmove(&x, R.m, sizeof(x));
 	memmove(&y, R.s, sizeof(y));
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
-	memmove(&a, R.FP+NREG*IBY2WD, sizeof(a));
+	p = fixedword((NREG+2)*IBY2WD);
+	a = fixedword(NREG*IBY2WD);
 	if(a == 0)
 		error(exZdiv);
 	if(x == 0 || y == 0){
@@ -2550,8 +2602,8 @@ OP(divx0)
 
 	memmove(&x, R.m, sizeof(x));
 	memmove(&y, R.s, sizeof(y));
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
-	memmove(&b, R.FP+NREG*IBY2WD, sizeof(b));
+	p = fixedword((NREG+2)*IBY2WD);
+	b = fixedword(NREG*IBY2WD);
 	if(y == 0)
 		error(exZdiv);
 	if(x == 0){
@@ -2574,7 +2626,7 @@ OP(cvtxx0)
 
 	memmove(&x, R.s, sizeof(x));
 	memmove(&p, R.m, sizeof(p));
-	memmove(&a, R.FP+NREG*IBY2WD, sizeof(a));
+	a = fixedword(NREG*IBY2WD);
 	if(a == 0)
 		error(exZdiv);
 	if(x == 0){
@@ -2598,8 +2650,8 @@ OP(mulx1)
 
 	memmove(&x, R.m, sizeof(x));
 	memmove(&y, R.s, sizeof(y));
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
-	memmove(&a, R.FP+NREG*IBY2WD, sizeof(a));
+	p = fixedword((NREG+2)*IBY2WD);
+	a = fixedword(NREG*IBY2WD);
 	if(a == 0)
 		error(exZdiv);
 	if(x == 0 || y == 0){
@@ -2639,8 +2691,8 @@ OP(divx1)
 
 	memmove(&x, R.m, sizeof(x));
 	memmove(&y, R.s, sizeof(y));
-	memmove(&p, R.FP+(NREG+2)*IBY2WD, sizeof(p));
-	memmove(&b, R.FP+NREG*IBY2WD, sizeof(b));
+	p = fixedword((NREG+2)*IBY2WD);
+	b = fixedword(NREG*IBY2WD);
 	if(y == 0)
 		error(exZdiv);
 	if(x == 0){
@@ -2678,7 +2730,7 @@ OP(cvtxx1)
 
 	memmove(&x, R.s, sizeof(x));
 	memmove(&p, R.m, sizeof(p));
-	memmove(&a, R.FP+NREG*IBY2WD, sizeof(a));
+	a = fixedword(NREG*IBY2WD);
 	if(a == 0)
 		error(exZdiv);
 	if(x == 0){
@@ -2766,6 +2818,7 @@ OP(self)
 	destroy(t);
 }
 
+/* Capture frame links before releasing owners in possibly four-byte aligned frames. */
 void
 destroystack(REG *reg)
 {
@@ -2773,7 +2826,7 @@ destroystack(REG *reg)
 	Frame *f, *fp;
 	Modlink *m;
 	Stkext *sx;
-	uchar *ex;
+	uchar *ex, *next;
 
 	ex = reg->EX;
 	reg->EX = nil;
@@ -2784,11 +2837,12 @@ destroystack(REG *reg)
 			f = (Frame*)reg->FP;
 			if(f == nil)
 				break;
-			reg->FP = f->fp;
-			t = f->t;
+			memmove(&next, (uchar*)f+O(Frame, fp), sizeof(next));
+			memmove(&t, (uchar*)f+O(Frame, t), sizeof(t));
+			reg->FP = next;
 			if(t == nil)
 				t = sx->reg.TR;
-			m = f->mr;
+			memmove(&m, (uchar*)f+O(Frame, mr), sizeof(m));
 			if (t->np)
 				freeptrs(f, t);
 			if(m != nil) {
@@ -2826,7 +2880,9 @@ movtmp(void)
 {
 	Type *t;
 
-	t = *(Type**)R.m;
+	memmove(&t, R.m, sizeof(t));
+	if(t == nil || t == H || t->size < 0)
+		error(exType);
 	if(t->size == 0)
 		return;
 

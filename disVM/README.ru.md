@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 3e3536578b969cf1a460210d8ec667713869ccfc. Каждый файл имеет
+Текущий снимок фиксирует 24892373ee09a2a23dc39b9dedc01fb7af61d8c1. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -12,9 +12,13 @@ SHA-256 в manifest. Сборки сами не подтягивают неиз�
 ./build-workspace.sh --projects disvm --tests
 ```
 
-Либо независимо: `cmake -S disVM -B build/disvm`,
-`cmake --build build/disvm --parallel 2`,
-`ctest --test-dir build/disvm --output-on-failure`.
+Либо независимо, в том числе с CMake 3.10:
+
+```sh
+cmake -HdisVM -Bbuild/disvm
+cmake --build build/disvm -- -j2
+(cd build/disvm && ctest --output-on-failure)
+```
 
 Собирается **libdisvm_core.a** — настоящие upstream interpreter-объекты и JIT
 по host CPU: amd64/arm64/riscv64. Для архива нужны POSIX C и CMake; тестам —
@@ -51,12 +55,13 @@ Upstream blobs неизменны, их лицензии сохранены.
 
 ## Проверки
 
-На Linux AMD64 пятнадцать тестов проверяют integer helpers, queues/transfers каналов,
+На Linux AMD64 регрессии проверяют integer helpers, queues/transfers каналов,
 Dis-parser/error cleanup, pointer maps, serialization/layout widths и настоящее
 исполнение опубликованных AMD64 leaf-функций для WORD32/WORD64 fixture models.
 Используются реальные mmap RW и RX publication. Другие VM-границы в fixtures
 инъецированы: это не целый Limbo-процесс с scheduler/GC и не Dis/SWF-интеграция.
-Физическое исполнение ARM64/RV64 не заявляется.
+При включённых native registers текущий набор содержит 39 тестов, включая
+host/GC и покрытие эмиттеров. Физическое исполнение ARM64/RV64 не заявляется.
 
 [Собственный Limbo — приоритет](../compiler/limbo/OWN_COMPILER.ru.md).
 [Один .m для внешнего AS и AS-клиента Dis](../compiler/limbo/examples/external-modules/README.ru.md).
@@ -71,3 +76,5 @@ Dis-parser/error cleanup, pointer maps, serialization/layout widths и наст�
 Контрольная точка v0.1535: активный REG встроен в расширенный up, добавлены безопасные точки и остановка для обхода корней. Полные параллельные GC/VM ещё не завершены. [Контракт](host/README.ru.md).
 
 [Контракт исполнителей GC](host/GC.ru.md) — v0.1536.
+
+[Обновление experiment и готовность к IDE / experiment update and IDE readiness](UPSTREAM-UPDATE.md).

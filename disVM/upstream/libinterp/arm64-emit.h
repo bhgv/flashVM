@@ -54,6 +54,16 @@ a64field(A64Buf *b, int result, int owner, int offset, int bytes)
 		(u32int)(offset/bytes)<<10 | owner<<5 | result);
 }
 
+/* Sign-extend WORD metadata before testing lengths in the native address domain. */
+static void
+a64wordfield(A64Buf *b, int result, int owner, int offset, int wordbytes)
+{
+	if(wordbytes == 4)
+		a64put(b, 0xb9800000U | (u32int)(offset/4)<<10 | owner<<5 | result);
+	else
+		a64field(b, result, owner, offset, 8);
+}
+
 /* Turn x12/x13 bits into signed keys using x14, leaving FP state untouched. */
 static void
 a64realkey(A64Buf *b, int reg)
@@ -97,16 +107,91 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	   !leafop(&p, op, abi->wordbytes)) return 0;
 	b.n = 0;
 	a64put(&b, 0xd503245f); /* BTI c; a compatible hint on earlier cores */
-	if(p.kind == LeafDescriptorIndex){
+	if(p.kind == LeafTypeCheck){
+		/* The header displacement is private and independent of the Dis WORD. */
+		if(abi->heaptype <= 0 || abi->heaptype > 255 || abi->heaptype%8) return 0;
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
+		a64ptr(&b, 10, abi->d); a64load(&b, 13, 10, 8);
+		a64put(&b, 0xb100059f);
+		empty=b.n; a64put(&b, 0x54000000);
+		a64guard(&b, 0xb500006c); a64guard(&b, 0xb500006d);
+		a64put(&b, 0xb10005bf); a64guard(&b, 0x54000061);
+		a64put(&b, 0xf8400000U | ((u32int)-abi->heaptype&511)<<12 | 12<<5 | 14);
+		a64put(&b, 0xf8400000U | ((u32int)-abi->heaptype&511)<<12 | 13<<5 | 15);
+		a64put(&b, 0xeb0f01df); a64guard(&b, 0x54000060);
+		b.code[empty] |= (b.n-empty)<<5;
+	}else if(p.kind == LeafProgramAddress){
+		/* All metadata offsets are supplied by the compiler's native layout adapter. */
+		if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
+		   abi->linkmodule < 0 || abi->linkmodule > 2047 || abi->linkmodule%8 ||
+		   abi->moduleprog < 0 || abi->moduleprog > 2047 || abi->moduleprog%8 ||
+		   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
+		   abi->instbytes < 1 || abi->instbytes > 2047) return 0;
+		a64ptr(&b, 12, abi->module); a64guard(&b, 0xb500006c);
+		a64put(&b, 0xb100059f); a64guard(&b, 0x54000061);
+		a64field(&b, 12, 12, abi->linkmodule, 8); a64guard(&b, 0xb500006c);
+		a64put(&b, 0xb100059f); a64guard(&b, 0x54000061);
+		a64put(&b, 0xb9800000U | (abi->modulenprog/4)<<10 | 12<<5 | 13);
+		a64put(&b, 0xf10001bf); a64guard(&b, 0x5400006a);
+		a64ptr(&b, 9, abi->s); a64load(&b, 14, 9, abi->wordbytes);
+		a64put(&b, 0xeb0d01df); a64guard(&b, 0x54000063);
+		a64put(&b, 0xd280000dU | abi->instbytes<<5); a64put(&b, 0x9b0d7dce);
+		a64field(&b, 15, 12, abi->moduleprog, 8); a64guard(&b, 0xb500006f);
+		a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);
+		a64put(&b, 0xab0e01ee); a64guard(&b, 0x54000063);
+		a64ptr(&b, 11, abi->d); a64store(&b, 14, 8);
+	}else if(p.kind == LeafFixedCoefficient){
+		/* Coefficient slots follow the VM frame layout, not native pointer alignment. */
+		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 ||
+		   abi->fixedcoef < 0 || abi->fixedcoef > 2047) return 0;
+		a64ptr(&b, 9, abi->fp); a64guard(&b, 0xb5000069);
+		a64put(&b, 0xb100053f); a64guard(&b, 0x54000061);
+		/* Form byte offsets explicitly, including four-byte-aligned WORD64 slots. */
+		a64put(&b, 0x91000000U | abi->fixedcoef<<10 | 9<<5 | 10); a64load(&b, 14, 10, abi->wordbytes);
+		if(p.alu != 1){a64put(&b, 0xaa0e03ef); a64guard(&b, 0xb500006f); a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);}
+		if(p.alu == 2)a64ptr(&b, 10, abi->m);
+		else a64put(&b, 0x91000000U | abi->fixedtmp<<10 | 9<<5 | 10);
+		a64load(&b, 13, 10, abi->wordbytes); if(abi->wordbytes == 4)a64put(&b, 0x93407dad);
+		if(p.condition){
+			/* Preserve full rounding semantics by declining nonzero flag bits. */
+			a64put(&b, 0x924005aa); a64guard(&b, 0xb400006a); a64put(&b, 0x9342fdad);
+		}
+		a64put(&b, 0x9100fdaa); a64put(&b, 0xf101fd5f); a64guard(&b, 0x54000063);
+		if(p.alu == 1){
+			a64ptr(&b, 10, abi->s); a64load(&b, 15, 10, abi->wordbytes);
+			if(abi->wordbytes == 4)a64put(&b, 0x93407def);
+			a64guard(&b, 0xb500006f); a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);
+		}else if(p.alu == 0){a64ptr(&b, 10, abi->s); a64load(&b, 14, 10, abi->wordbytes);if(abi->wordbytes == 4)a64put(&b, 0x93407dce);}
+		a64ptr(&b, 10, p.alu == 2 ? abi->s : abi->m); a64load(&b, 12, 10, abi->wordbytes);
+		if(abi->wordbytes == 4)a64put(&b, 0x93407d8c);
+		if(p.alu != 2)a64put(&b, 0x9b0e7d8c);
+		a64put(&b, 0xf10001bf); a64put(&b, 0x5400006b); a64put(&b, 0x9acd218c); a64put(&b, 0x14000003);
+		a64put(&b, 0xcb0d03ed); a64put(&b, 0x9acd298c); a64put(&b, 0x9acf0d8c);
+		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
+	}else if(p.kind == LeafCall){
+		/* The target may reside in either frame link about to be replaced. */
+		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 ||
+		   abi->framelr < 0 || abi->framelr > 2047 || abi->framelr%8 ||
+		   abi->framefp < 0 || abi->framefp > 2047 || abi->framefp%8 ||
+		   abi->framelr == abi->framefp) return 0;
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8); a64guard(&b, 0xb500006c);
+		a64put(&b, 0xb100059f); a64guard(&b, 0x54000061);
+		a64ptr(&b, 9, abi->d); a64load(&b, 13, 9, 8);
+		a64ptr(&b, 14, abi->pc); a64ptr(&b, 15, abi->fp);
+		a64put(&b, 0xf9000000U | (abi->framelr/8)<<10 | 12<<5 | 14);
+		a64put(&b, 0xf9000000U | (abi->framefp/8)<<10 | 12<<5 | 15);
+		a64put(&b, 0xf9000000U | (abi->fp/8)<<10 | 12);
+		a64put(&b, 0xf9000000U | (abi->pc/8)<<10 | 13);
+	}else if(p.kind == LeafDescriptorIndex){
 		/* Descriptor pointers and signed sizes are validated before forming an address. */
 		if(abi->arraylen < 0 || abi->arraylen > 2047 || abi->arraydata < 0 || abi->arraydata > 2047 ||
 		   abi->arraytype < 0 || abi->arraytype > 2047 || abi->typesize < 0 || abi->typesize > 2047 ||
 		   (abi->arraylen|abi->arraydata|abi->arraytype)%8 || abi->typesize%4) return 0;
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8); a64guard(&b, 0xb500006c);
 		a64put(&b, 0xb100059f); a64guard(&b, 0x54000061);
-		a64field(&b, 13, 12, abi->arraylen, 8);
+		a64wordfield(&b, 13, 12, abi->arraylen, abi->wordbytes);
 		a64put(&b, 0xf10001bf); a64guard(&b, 0x5400006a);
-		a64ptr(&b, 9, abi->d); a64load(&b, 14, 9, 8);
+		a64ptr(&b, 9, abi->d); a64load(&b, 14, 9, abi->wordbytes);
 		a64put(&b, 0xeb0d01df); a64guard(&b, 0x54000063);
 		a64field(&b, 15, 12, abi->arraytype, 8); a64guard(&b, 0xb500006f);
 		a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);
@@ -122,7 +207,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		done=b.n; a64put(&b, 0x14000000);
 		b.code[empty] |= (b.n-empty)<<5; a64put(&b, 0xaa0d03ee);
 		b.code[done] |= b.n-done;
-		a64ptr(&b, 11, abi->m); a64store(&b, 14, 8);
+		a64ptr(&b, 11, abi->m); a64store(&b, 14, abi->wordbytes);
 	}else if(p.kind == LeafFixedFrame){
 		/* Frame temporary slots may have only four-byte alignment, even in WORD64. */
 		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047) return 0;
@@ -208,10 +293,24 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		a64put(&b, 0xcb0d03ed); a64put(&b, 0x9acd298c); /* neg count; asr */
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
 	}else if(p.kind == LeafPower){
+		/* Minimum negative exponents are handled by parity without signed negation. */
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, abi->wordbytes);
-		a64put(&b, abi->wordbytes == 8 ? 0xf100019fU : 0x7100019fU);
-		a64guard(&b, 0x5400006a);
 		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, p.bytes);
+		a64put(&b, abi->wordbytes == 8 ? 0xf100019fU : 0x7100019fU);
+		scale=b.n; a64put(&b, 0x5400000a);
+		a64guard(&b, 0xb500006d);
+		a64put(&b, 0xd280002e);
+		a64put(&b, p.bytes == 8 ? 0xf10005bf : 0x710005bf);
+		empty=b.n; a64put(&b, 0x54000000);
+		a64put(&b, 0xd280000e);
+		a64put(&b, p.bytes == 8 ? 0xb10005bf : 0x310005bf);
+		other=b.n; a64put(&b, 0x54000001);
+		a64put(&b, 0x9240018e); a64put(&b, 0xcb0e03ee);
+		a64put(&b, 0x8b0e01ce); a64put(&b, 0x910005ce);
+		b.code[empty] |= (b.n-empty)<<5; b.code[other] |= (b.n-other)<<5;
+		a64ptr(&b, 11, abi->d); a64store(&b, 14, p.bytes);
+		a64put(&b, 0x52800020); a64put(&b, 0xd65f03c0);
+		b.code[scale] |= (b.n-scale)<<5;
 		a64put(&b, 0x5280002e); /* result = 1 */
 		loop = b.n;
 		a64put(&b, 0x3600004c); a64put(&b, 0x9b0d7dce);
@@ -330,11 +429,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		}else{
 			a64guard(&b, 0xb500006c);
 			a64put(&b, 0xb100059f); a64guard(&b, 0x54000061);
-			a64field(&b, 13, 12, abi->arraylen, 8);
+			a64wordfield(&b, 13, 12, abi->arraylen, abi->wordbytes);
 			a64put(&b, 0xf10001bf); a64guard(&b, 0x5400006a); /* nonnegative length */
-			a64ptr(&b, 9, abi->d); a64load(&b, 14, 9, 8);
+			a64ptr(&b, 9, abi->d); a64load(&b, 14, 9, abi->wordbytes);
 			a64put(&b, 0xeb0d01df); a64guard(&b, 0x54000063); /* index < length */
-			scale = p.bytes == 1 ? 0 : 3; limit = 0x7fffffff>>scale;
+			scale = p.bytes == 1 ? 0 : p.bytes == 4 ? 2 : 3; limit = 0x7fffffff>>scale;
 			a64put(&b, 0xd280000fU | (limit&0xffff)<<5);
 			a64put(&b, 0xf2a0000fU | (limit>>16)<<5);
 			a64put(&b, 0xeb0f01df); a64guard(&b, 0x54000069); /* bounded byte offset */
@@ -343,7 +442,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			a64put(&b, 0xb10005bf); a64guard(&b, 0x54000061);
 			a64put(&b, 0xab000000U | 14<<16 | scale<<10 | 13<<5 | 14);
 			a64guard(&b, 0x54000063); /* no native address carry */
-			a64ptr(&b, 11, abi->m); a64store(&b, 14, 8);
+			a64ptr(&b, 11, abi->m); a64store(&b, 14, abi->wordbytes);
 		}
 	}else if(p.kind == LeafMove || p.kind == LeafAddress || p.kind == LeafNegReal){
 		a64ptr(&b, 9, abi->s);

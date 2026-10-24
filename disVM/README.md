@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-3e3536578b969cf1a460210d8ec667713869ccfc; every imported file has a manifest hash.
+24892373ee09a2a23dc39b9dedc01fb7af61d8c1; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -64,13 +64,14 @@ retain their upstream scope/licences.
 
 ## Acceptance scope
 
-Fifteen tests on Linux AMD64 cover production integer helpers, channel queues and
+The core regressions on Linux AMD64 cover production integer helpers, channel queues and
 transfers, Dis parsing/error cleanup, pointer maps, serialization/layout widths,
 and actual native AMD64 leaf execution in WORD32 and WORD64 fixture models.
 The JIT fixture uses real mmap RW allocation and RX publication and executes
 published code directly. Other VM boundaries in these fixtures are injected;
 this is not a complete Limbo program, scheduler/GC or Dis/SWF execution test.
-ARM64/RV64 sources are retained but no physical target execution is claimed.
+With native registers enabled, the current suite has 39 tests, including host/GC
+checks and emitter coverage. ARM64/RV64 physical execution is not claimed.
 
 Our Limbo compiler and external module generators remain separate:
 [priority](../compiler/limbo/OWN_COMPILER.md),
@@ -86,3 +87,5 @@ The temporary native source bootstrap lives in tools/limbo-bootstrap, not here.
 Native host checkpoint v0.1535 embeds active REG in extended up and adds cooperative collector safepoints/root rendezvous; full parallel GC/VM execution remains unfinished. [Contract](host/README.md).
 
 [GC worker contract](host/GC.md) — v0.1536.
+
+[Обновление experiment и готовность к IDE / experiment update and IDE readiness](UPSTREAM-UPDATE.md).

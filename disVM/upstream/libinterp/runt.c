@@ -54,6 +54,10 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 	isr = 0;
 	if(s1 == H || n <= 0)
 		return 0;
+	if(s1 == nil || buf == nil || buf == H)
+		error(exNilref);
+	if(s1->len == (-0x7fffffff-1))
+		error(exInval);
 	nc = s1->len;
 	if(nc < 0) {
 		nc = -nc;
@@ -64,7 +68,7 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 	eb = buf+n-1;
 	while(nc > 0) {
 		nc--;
-		c = isr ? s1->Srune[sip] : s1->Sascii[sip];
+		c = isr ? s1->Srune[sip] : (uchar)s1->Sascii[sip];
 		sip++;
 		if(c != '%') {
 			if(b < eb) {
@@ -82,7 +86,7 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 			nc--;
 			if(f-fmt > sizeof(fmt)-UTFmax-1)
 				error(exInval);
-			c = isr ? s1->Srune[sip] : s1->Sascii[sip];
+			c = isr ? s1->Srune[sip] : (uchar)s1->Sascii[sip];
 			sip++;
 			*f++ = c;
 			*f = '\0';
@@ -111,7 +115,11 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 				break;
 			case 'q':
 			case 's':
-				ss = *(String**)va;
+				memmove(&ss, va, sizeof(ss));
+				if(ss == nil)
+					error(exNilref);
+				if(ss != H && ss->len == (-0x7fffffff-1))
+					error(exInval);
 				va += IBY2WD;
 				if(ss == H)
 					p = "";
@@ -139,7 +147,7 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 			case 'G':
 				while((va - fp) & (sizeof(REAL)-1))
 					va++;
-				d = *(REAL*)va;
+				memmove(&d, va, sizeof(d));
 				b += xsnprint(b, eb-b+1, fmt, d);
 				va += sizeof(REAL);
 				break;
@@ -151,7 +159,7 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 				if(isbig) {
 					while((va - fp) & (IBY2LG-1))
 						va++;
-					bg = *(LONG*)va;
+					memmove(&bg, va, sizeof(bg));
 					b += xsnprint(b, eb-b+1, fmt, bg);
 					va += IBY2LG;
 				}
@@ -171,7 +179,9 @@ xprint(Prog *xp, void *vfp, void *vva, String *s1, char *buf, int n)
 				break;
 /* Debugging formats - may disappear */
 			case 'H':
-				ptr = *(ulong**)va;
+				memmove(&ptr, va, sizeof(ptr));
+				if(ptr == nil)
+					error(exNilref);
 				c = -1;
 				t = nil;
 				if(ptr != H) {
@@ -265,7 +275,7 @@ buildprintresult(void *arg)
 	if(result->array)
 		result->value = mem2array(result->text, result->length);
 	else
-		result->value = c2string(result->text, strlen(result->text));
+		result->value = c2string(result->text, result->length);
 	return 1;
 }
 
@@ -303,8 +313,8 @@ Sys_sprint(void *fp)
 		n = bigxprint(currun(), f, &f->vargs, f->s, &b, sizeof(buf));
 	b[n] = '\0';
 	result = printresult(b, n, 0, b != buf);
-	old = *f->ret;
-	*f->ret = result;
+	memmove(&old, f->ret, sizeof(old));
+	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
 }
 
@@ -322,17 +332,17 @@ Sys_aprint(void *fp)
 	if(n >= sizeof(buf)-UTFmax-2)
 		n = bigxprint(currun(), f, &f->vargs, f->s, &b, sizeof(buf));
 	result = printresult(b, n, 1, b != buf);
-	old = *f->ret;
-	*f->ret = result;
+	memmove(&old, f->ret, sizeof(old));
+	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
 }
 
-/* A nil delimiter string denotes an empty set of separator characters. */
+/* Compare unsigned byte characters with runes; nil denotes no separators. */
 static int
 tokdelim(int c, String *d)
 {
 	int l;
-	char *p;
+	uchar *p;
 	Rune *r;
 
 	if(d == H)
@@ -345,7 +355,7 @@ tokdelim(int c, String *d)
 				return 1;
 		return 0;
 	}
-	for(p = d->Sascii; l != 0; l--)
+	for(p = (uchar*)d->Sascii; l != 0; l--)
 		if(*p++ == c)
 			return 1;
 	return 0;
@@ -374,6 +384,12 @@ buildtokens(void *arg)
 	d = result->delimiters;
 	if(s == H)
 		return 1;
+	if(s == nil || d == nil)
+		error(exNilref);
+	/* Validate before negating rune counts or allocating partial words. */
+	if(s->len == (-0x7fffffff-1) ||
+	   (d != H && d->len == (-0x7fffffff-1)))
+		error(exInval);
 	h = &result->words;
 	first = 0;
 	srune = 0;
@@ -384,14 +400,14 @@ buildtokens(void *arg)
 	}
 	while(first < nc){
 		while(first < nc){
-			c = srune ? s->Srune[first] : s->Sascii[first];
+			c = srune ? s->Srune[first] : (uchar)s->Sascii[first];
 			if(!tokdelim(c, d))
 				break;
 			first++;
 		}
 		last = first;
 		while(last < nc){
-			c = srune ? s->Srune[last] : s->Sascii[last];
+			c = srune ? s->Srune[last] : (uchar)s->Sascii[last];
 			if(tokdelim(c, d))
 				break;
 			last++;
@@ -412,15 +428,21 @@ buildtokens(void *arg)
 	return 1;
 }
 
-/* Publish complete token lists, releasing all partial words on a VM error. */
+/* Publish tuple fields through byte copies after every allocation succeeds. */
 void
 Sys_tokenize(void *fp)
 {
+	typedef struct { WORD count; List *words; } Value;
 	F_Sys_tokenize *f;
 	TokenizeResult result;
 	List *old;
+	WORD count;
+	uchar *ret;
 
 	f = fp;
+	ret = (uchar*)f->ret;
+	if(ret == nil || ret == H)
+		error(exNilref);
 	result.source = f->s;
 	result.delimiters = f->delim;
 	result.words = H;
@@ -429,9 +451,10 @@ Sys_tokenize(void *fp)
 		destroy(result.words);
 		krethrow();
 	}
-	old = f->ret->t1;
-	f->ret->t0 = result.count;
-	f->ret->t1 = result.words;
+	count = result.count;
+	memmove(&old, ret+O(Value, words), sizeof(old));
+	memmove(ret+O(Value, count), &count, sizeof(count));
+	memmove(ret+O(Value, words), &result.words, sizeof(result.words));
 	destroy(old);
 }
 
@@ -448,79 +471,87 @@ sysutfarray(Array *a)
 	return (int)a->len;
 }
 
-/* Count only complete UTF sequences within the validated byte prefix. */
+/* Validate result slots before UTF operations can modify an aliased byte array. */
+static uchar*
+sysutfresult(void *slot)
+{
+	if(slot == nil || slot == H)
+		error(exNilref);
+	return slot;
+}
+
+/* Count complete UTF sequences and publish WORD without requiring alignment. */
 void
 Sys_utfbytes(void *fp)
 {
 	Array *a;
 	int nbyte, length;
+	WORD result;
+	uchar *ret;
 	F_Sys_utfbytes *f;
 
 	f = fp;
+	ret = sysutfresult(f->ret);
 	a = f->buf;
 	length = sysutfarray(a);
 	if(f->n < 0 || f->n > length)
 		error(exBounds);
 
 	utfnleng((char*)a->data, (int)f->n, &nbyte);
-	*f->ret = nbyte;
+	result = nbyte;
+	memmove(ret, &result, sizeof(result));
 }
 
-/* Validate the full VM offset before decoding one possibly incomplete rune. */
+/* Decode the complete tuple before publishing into a possibly unaligned slot. */
 void
 Sys_byte2char(void *fp)
 {
 	Rune r;
 	char *p;
-	int n, w, length;
+	int n, w, valid, length;
+	WORD result[3];
+	uchar *ret;
 	Array *a;
 	F_Sys_byte2char *f;
 
 	f = fp;
+	ret = sysutfresult(f->ret);
 	a = f->buf;
 	length = sysutfarray(a);
 	if(f->n < 0 || f->n >= length)
 		error(exBounds);
 	n = (int)f->n;
 	r = a->data[n];
-	if(r < Runeself){
-		f->ret->t0 = r;
-		f->ret->t1 = 1;
-		f->ret->t2 = 1;
-		return;
+	w = valid = 1;
+	if(r >= Runeself){
+		p = (char*)a->data+n;
+		if(length-n >= UTFmax || fullrune(p, length-n)){
+			w = chartorune(&r, p);
+			valid = r != Runeerror || w != 1;
+		}else{
+			r = Runeerror;
+			w = valid = 0;
+		}
 	}
-	p = (char*)a->data+n;
-	if(length-n >= UTFmax || fullrune(p, length-n))
-		w = chartorune(&r, p);
-	else {
-		/* insufficient data */
-		f->ret->t0 = Runeerror;
-		f->ret->t1 = 0;
-		f->ret->t2 = 0;
-		return;
-	}
-	if(r == Runeerror && w==1){	/* encoding error */
-		f->ret->t0 = Runeerror;
-		f->ret->t1 = 1;
-		f->ret->t2 = 0;
-		return;
-	}
-	f->ret->t0 = r;
-	f->ret->t1 = w;
-	f->ret->t2 = 1;
+	result[0] = r;
+	result[1] = w;
+	result[2] = valid;
+	memmove(ret, result, sizeof(result));
 }
 
-/* Preserve the full rune and offset until validation, including U+10FFFF. */
+/* Encode before publishing the count, preserving the full rune and offset. */
 void
 Sys_char2byte(void *fp)
 {
 	F_Sys_char2byte *f;
 	Array *a;
 	int n, length;
-	WORD c;
+	WORD c, result;
 	Rune r;
+	uchar *ret;
 
 	f = fp;
+	ret = sysutfresult(f->ret);
 	a = f->buf;
 	length = sysutfarray(a);
 	c = f->c;
@@ -529,17 +560,16 @@ Sys_char2byte(void *fp)
 	n = (int)f->n;
 	if(c < 0 || c > Runemax)
 		c = Runeerror;
+	result = 0;
 	if(c < Runeself){
 		a->data[n] = c;
-		*f->ret = 1;
-		return;
+		result = 1;
+	}else{
+		r = c;
+		if(length-n >= UTFmax || runelen(c) <= length-n)
+			result = runetochar((char*)a->data+n, &r);
 	}
-	r = c;
-	if(length-n >= UTFmax || runelen(c) <= length-n){
-		*f->ret = runetochar((char*)a->data+n, &r);
-		return;
-	}
-	*f->ret = 0;
+	memmove(ret, &result, sizeof(result));
 }
 
 typedef struct BuiltinModule BuiltinModule;
@@ -630,28 +660,37 @@ badtable:
 	return nil;
 }
 
+/* Prepare the string before publishing through a potentially unaligned return slot. */
 void
 retnstr(char *s, int n, String **d)
 {
-	String *s1;
+	String *s1, *old;
 
 	s1 = H;
 	if(n != 0)
 		s1 = c2string(s, n);
-	destroy(*d);
-	*d = s1;
+	memmove(&old, d, sizeof(old));
+	memmove(d, &s1, sizeof(s1));
+	destroy(old);
 }
 
+/* Retain the original owner until conversion and return-slot publication succeed. */
 void
 retstr(char *s, String **d)
 {
-	String *s1;
+	String *s1, *old;
+	uvlong length;
 
 	s1 = H;
-	if(s != nil)
-		s1 = c2string(s, strlen(s));
-	destroy(*d);
-	*d = s1;
+	if(s != nil){
+		length = strlen(s);
+		if(length > 0x7fffffff)
+			error(exHeap);
+		s1 = c2string(s, (int)length);
+	}
+	memmove(&old, d, sizeof(old));
+	memmove(d, &s1, sizeof(s1));
+	destroy(old);
 }
 
 Array*

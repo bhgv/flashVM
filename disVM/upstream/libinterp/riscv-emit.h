@@ -16,6 +16,11 @@ struct RvLayout {
 	int listdata, listtail;
 	int fp, fixedtmp;
 	int arraytype, typesize;
+	int hasdiv;	/* Zmmul provides multiplication without division. */
+	int framelr, framefp;
+	int fixedcoef;
+	int module, linkmodule, moduleprog, modulenprog, instbytes;
+	int heaptype;
 };
 typedef struct RvBuf RvBuf;
 struct RvBuf {
@@ -122,6 +127,52 @@ rvrealkey(RvBuf *b, int reg)
 	rvi(b, 0x13, 0, reg, Rvzero, 0);
 }
 
+/* Multiply modulo XLEN without M, using only dead operand-pointer registers.
+ * t3 and right hold captured operands; t0-t2 and t5 are scratch. Logical shifts
+ * terminate after at most the operand width in bits, including negative values. */
+static void
+rvmultiply(RvBuf *b, int right, int bytes)
+{
+	rvi(b, 0x13, 0, Rvt0, Rvt3, 0);
+	rvi(b, 0x13, 0, Rvt1, right, 0);
+	if(bytes == 4){
+		rvi(b, 0x13, 1, Rvt1, Rvt1, 32);
+		rvi(b, 0x13, 5, Rvt1, Rvt1, 32);
+	}
+	rvi(b, 0x13, 0, Rvt2, Rvzero, 0);
+	rvbranch(b, 0, Rvt1, Rvzero, 28);
+	rvi(b, 0x13, 7, Rvt5, Rvt1, 1);
+	rvbranch(b, 0, Rvt5, Rvzero, 8);
+	rvr(b, 0x33, 0, 0, Rvt2, Rvt2, Rvt0);
+	rvi(b, 0x13, 5, Rvt1, Rvt1, 1);
+	rvi(b, 0x13, 1, Rvt0, Rvt0, 1);
+	rvbranch(b, 1, Rvt1, Rvzero, -20);
+	rvi(b, 0x13, 0, Rvt3, Rvt2, 0);
+}
+
+/* Scale a bounded program index using RV64I when multiplication is absent.
+ * The constant multiplier is at most 2047, so the loop takes at most eleven
+ * iterations. t1 is dead after the source load; t0 must retain the Module. */
+static void
+rvprogramscale(RvBuf *b, int stride)
+{
+	if(b->abi->hasm){
+		rvi(b, 0x13, 0, Rvt6, Rvzero, stride);
+		rvr(b, 0x33, 0, 1, Rvt4, Rvt4, Rvt6);
+		return;
+	}
+	rvi(b, 0x13, 0, Rvt5, Rvzero, 0);
+	rvi(b, 0x13, 0, Rvt6, Rvzero, stride);
+	rvi(b, 0x13, 7, Rvt1, Rvt6, 1);
+	rvbranch(b, 0, Rvt1, Rvzero, 8);
+	rvr(b, 0x33, 0, 0, Rvt5, Rvt5, Rvt4);
+	rvi(b, 0x13, 5, Rvt6, Rvt6, 1);
+	rvbranch(b, 0, Rvt6, Rvzero, 12);
+	rvi(b, 0x13, 1, Rvt4, Rvt4, 1);
+	rvbranch(b, 0, Rvzero, Rvzero, -24);
+	rvi(b, 0x13, 0, Rvt4, Rvt5, 0);
+}
+
 /* Return instruction count, or 0 for unsupported/invalid/overflow. out==0
  * performs the same bounded sizing pass without touching memory. */
 static int
@@ -129,6 +180,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 {
 	RvBuf b;
 	int bytes, f3, f7, wide, rs, binary, branch, swap, invert, shift, division, scale, realbranch;
+	int coefconvert, coefdivide;
 
 	if((abi->xlen != 32 && abi->xlen != 64) ||
 	   (abi->wordbytes != 4 && abi->wordbytes != 8) ||
@@ -140,6 +192,95 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 	b.out=out; b.n=0; b.cap=cap; b.bad=0; b.abi=abi;
 	bytes=abi->wordbytes; f3=0; f7=0; binary=0; branch=0; swap=0; invert=0; shift=0; division=0; realbranch=0;
 	switch(op) {
+	case ITCMP:
+		/* Both owner slots are native pointers; headers have natural alignment. */
+		if(abi->xlen != 64 || abi->heaptype <= 0 || abi->heaptype > 255 || abi->heaptype%8) return 0;
+		rvptr(&b, Rvt1, abi->s); rvload(&b, Rvt3, Rvt1, 8);
+		rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt4, Rvt1, 8);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, -1);
+		rvbranch(&b, 0, Rvt3, Rvt6, 60);
+		rvguard(&b, 1, Rvt3, Rvzero); rvguard(&b, 1, Rvt4, Rvzero);
+		rvguard(&b, 1, Rvt4, Rvt6);
+		rvi(&b, 0x03, 3, Rvt3, Rvt3, -abi->heaptype);
+		rvi(&b, 0x03, 3, Rvt4, Rvt4, -abi->heaptype);
+		rvguard(&b, 0, Rvt3, Rvt4);
+		break;
+
+	case IMOVPC:
+		/* The bounded int-sized program length keeps the stride product in 64 bits. */
+		if(abi->xlen != 64) return 0;
+		if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
+		   abi->linkmodule < 0 || abi->linkmodule > 2047 || abi->linkmodule%8 ||
+		   abi->moduleprog < 0 || abi->moduleprog > 2047 || abi->moduleprog%8 ||
+		   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
+		   abi->instbytes < 1 || abi->instbytes > 2047) return 0;
+		rvptr(&b, Rvt0, abi->module); rvguard(&b, 1, Rvt0, Rvzero);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt0, Rvt6);
+		rvi(&b, 0x03, 3, Rvt0, Rvt0, abi->linkmodule); rvguard(&b, 1, Rvt0, Rvzero); rvguard(&b, 1, Rvt0, Rvt6);
+		rvi(&b, 0x03, 2, Rvt3, Rvt0, abi->modulenprog); rvguard(&b, 5, Rvt3, Rvzero);
+		rvptr(&b, Rvt1, abi->s); rvload(&b, Rvt4, Rvt1, abi->wordbytes); rvguard(&b, 6, Rvt4, Rvt3);
+		rvprogramscale(&b, abi->instbytes);
+		rvi(&b, 0x03, 3, Rvt3, Rvt0, abi->moduleprog); rvguard(&b, 1, Rvt3, Rvzero);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt3, Rvt6);
+		rvr(&b, 0x33, 0, 0, Rvt4, Rvt4, Rvt3); rvguard(&b, 7, Rvt4, Rvt3);
+		rvptr(&b, Rvt2, abi->d); rvstore(&b, Rvt2, Rvt4, 8);
+		break;
+
+	case IMULX1: case IDIVX1: case ICVTXX1:
+	case IMULX0: case IDIVX0: case ICVTXX0:
+		/* Capture frame parameters before source/destination aliases are changed. */
+		coefconvert = op == ICVTXX0 || op == ICVTXX1;
+		coefdivide = op == IDIVX0 || op == IDIVX1;
+		if(abi->xlen != 64 || !abi->hasdiv || (!coefconvert && !abi->hasm) ||
+		   abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 || abi->fixedtmp%4 ||
+		   abi->fixedcoef < 0 || abi->fixedcoef > 2047 || abi->fixedcoef%4) return 0;
+		rvptr(&b, Rvt1, abi->fp); rvguard(&b, 1, Rvt1, Rvzero);
+		rvi(&b, 0x13, 0, Rvt5, Rvzero, -1); rvguard(&b, 1, Rvt1, Rvt5);
+		rvi(&b, 0x13, 7, Rvt5, Rvt1, 3); rvguard(&b, 0, Rvt5, Rvzero);
+		rvi(&b, 0x13, 0, Rvt0, Rvt1, abi->fixedcoef); rvload(&b, Rvt6, Rvt0, abi->wordbytes);
+		if(!coefdivide){
+			rvguard(&b, 1, Rvt6, Rvzero);
+			rvi(&b, 0x13, 0, Rvt5, Rvzero, -1);
+			rvguard(&b, 1, Rvt6, Rvt5);
+		}
+		if(coefconvert)rvptr(&b, Rvt1, abi->m);else rvi(&b, 0x13, 0, Rvt1, Rvt1, abi->fixedtmp);
+		rvload(&b, Rvt4, Rvt1, abi->wordbytes);
+		if(op == IMULX1 || op == IDIVX1 || op == ICVTXX1){
+			/* The low two bits encode rounding modes, not part of the scale. */
+			rvi(&b, 0x13, 7, Rvt0, Rvt4, 3); rvguard(&b, 0, Rvt0, Rvzero);
+			rvi(&b, 0x13, 5, Rvt4, Rvt4, 0x400|2);
+		}
+		rvi(&b, 0x13, 0, Rvt0, Rvt4, 63); rvi(&b, 0x13, 0, Rvt5, Rvzero, 127);rvguard(&b, 6, Rvt0, Rvt5);
+		if(!coefconvert){
+			rvptr(&b, Rvt1, abi->s);rvload(&b, Rvt0, Rvt1, abi->wordbytes);
+			if(coefdivide){
+				rvguard(&b, 1, Rvt0, Rvzero);
+				rvi(&b, 0x13, 0, Rvt5, Rvzero, -1);
+				rvguard(&b, 1, Rvt0, Rvt5);
+			}
+		}
+		rvptr(&b, Rvt1, coefconvert ? abi->s : abi->m);rvload(&b, Rvt3, Rvt1, abi->wordbytes);
+		if(!coefconvert)rvr(&b, 0x33, 0, 1, Rvt3, Rvt3, coefdivide ? Rvt6 : Rvt0);
+		rvbranch(&b, 4, Rvt4, Rvzero, 12);rvr(&b, 0x33, 1, 0, Rvt3, Rvt3, Rvt4);rvbranch(&b, 0, Rvzero, Rvzero, 12);
+		rvr(&b, 0x33, 0, 32, Rvt4, Rvzero, Rvt4);rvr(&b, 0x33, 5, 32, Rvt3, Rvt3, Rvt4);
+		rvr(&b, 0x33, 4, 1, Rvt3, Rvt3, coefdivide ? Rvt0 : Rvt6);
+		rvptr(&b, Rvt2, abi->d);rvstore(&b, Rvt2, Rvt3, abi->wordbytes);
+		break;
+	case ICALL:
+		/* Four-byte-aligned VM frames use paired stores for native links. */
+		if(abi->xlen != 64 || abi->fp < 0 || abi->fp > 2047 || abi->fp%8 ||
+		   abi->framelr < 0 || abi->framelr > 2047 || abi->framelr%8 ||
+		   abi->framefp < 0 || abi->framefp > 2047 || abi->framefp%8 ||
+		   abi->framelr == abi->framefp) return 0;
+		rvptr(&b, Rvt1, abi->s); rvload(&b, Rvt0, Rvt1, 8); rvguard(&b, 1, Rvt0, Rvzero);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt0, Rvt6);
+		rvi(&b, 0x13, 7, Rvt5, Rvt0, 3); rvguard(&b, 0, Rvt5, Rvzero);
+		rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt3, Rvt1, 8);
+		rvptr(&b, Rvt4, abi->pc); rvptr(&b, Rvt6, abi->fp);
+		rvi(&b, 0x13, 0, Rvt1, Rvt0, abi->framelr); rvstore(&b, Rvt1, Rvt4, 8);
+		rvi(&b, 0x13, 0, Rvt1, Rvt0, abi->framefp); rvstore(&b, Rvt1, Rvt6, 8);
+		rvs(&b, 3, Rva0, Rvt0, abi->fp); rvs(&b, 3, Rva0, Rvt3, abi->pc);
+		break;
 	case IBEQF: case IBNEF: case IBLTF: case IBLEF: case IBGTF: case IBGEF:
 		if(abi->xlen != 64) return 0;
 		bytes=8; branch=1; realbranch=1;
@@ -148,14 +289,14 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		break;
 	case IINDX:
 		/* A bounded positive descriptor product fits 62 bits before the final bound check. */
-		if(abi->xlen != 64 || abi->wordbytes != 8 || !abi->hasm ||
+		if(abi->xlen != 64 || !abi->hasm ||
 		   abi->arraylen < 0 || abi->arraylen > 2047 || abi->arraydata < 0 || abi->arraydata > 2047 ||
 		   abi->arraytype < 0 || abi->arraytype > 2047 || abi->typesize < 0 || abi->typesize > 2047 ||
 		   (abi->arraylen|abi->arraydata|abi->arraytype)%8 || abi->typesize%4) return 0;
 		rvptr(&b, Rvt1, abi->s); rvload(&b, Rvt0, Rvt1, 8); rvguard(&b, 1, Rvt0, Rvzero);
 		rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt0, Rvt6);
-		rvi(&b, 0x03, 3, Rvt3, Rvt0, abi->arraylen); rvguard(&b, 5, Rvt3, Rvzero);
-		rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt4, Rvt1, 8); rvguard(&b, 6, Rvt4, Rvt3);
+		rvi(&b, 0x03, abi->wordbytes == 8 ? 3 : 2, Rvt3, Rvt0, abi->arraylen); rvguard(&b, 5, Rvt3, Rvzero);
+		rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt4, Rvt1, abi->wordbytes); rvguard(&b, 6, Rvt4, Rvt3);
 		rvi(&b, 0x03, 3, Rvt3, Rvt0, abi->arraytype); rvguard(&b, 1, Rvt3, Rvzero); rvguard(&b, 1, Rvt3, Rvt6);
 		rvi(&b, 0x03, 2, Rvt6, Rvt3, abi->typesize); rvguard(&b, 5, Rvt6, Rvzero);
 		rvi(&b, 0x03, 3, Rvt3, Rvt0, abi->arraydata);
@@ -165,11 +306,11 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		rvguard(&b, 7, Rvt0, Rvt4); rvr(&b, 0x33, 0, 1, Rvt4, Rvt4, Rvt6); rvguard(&b, 7, Rvt0, Rvt4);
 		rvguard(&b, 1, Rvt3, Rvzero); rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt3, Rvt6);
 		rvr(&b, 0x33, 0, 0, Rvt5, Rvt3, Rvt4); rvguard(&b, 7, Rvt5, Rvt3);
-		rvptr(&b, Rvt2, abi->m); rvstore(&b, Rvt2, Rvt5, 8);
+		rvptr(&b, Rvt2, abi->m); rvstore(&b, Rvt2, Rvt5, abi->wordbytes);
 		break;
 	case IMULX: case IDIVX:
-		/* Fixed 64-bit intermediates require RV64M and explicit frame offsets. */
-		if(abi->xlen != 64 || !abi->hasm || abi->fp < 0 || abi->fp > 2047 || abi->fp%8 ||
+		/* Preserve the signed 64-bit intermediate; only DIVX needs hardware division. */
+		if(abi->xlen != 64 || (op == IDIVX && !abi->hasdiv) || abi->fp < 0 || abi->fp > 2047 || abi->fp%8 ||
 		   abi->fixedtmp < 0 || abi->fixedtmp > 2047 || abi->fixedtmp%4) return 0;
 		rvptr(&b, Rvt1, abi->fp); rvguard(&b, 1, Rvt1, Rvzero);
 		rvi(&b, 0x13, 0, Rvt5, Rvzero, -1); rvguard(&b, 1, Rvt1, Rvt5);
@@ -181,7 +322,10 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 			rvguard(&b, 1, Rvt6, Rvzero); rvi(&b, 0x13, 0, Rvt5, Rvzero, -1); rvguard(&b, 1, Rvt6, Rvt5);
 		}
 		rvptr(&b, Rvt0, abi->m); rvload(&b, Rvt3, Rvt0, abi->wordbytes);
-		if(op == IMULX) rvr(&b, 0x33, 0, 1, Rvt3, Rvt3, Rvt6);
+		if(op == IMULX){
+			if(abi->hasm)rvr(&b, 0x33, 0, 1, Rvt3, Rvt3, Rvt6);
+			else rvmultiply(&b, Rvt6, 8);
+		}
 		rvbranch(&b, 4, Rvt4, Rvzero, 12);
 		rvr(&b, 0x33, 1, 0, Rvt3, Rvt3, Rvt4); rvbranch(&b, 0, Rvzero, Rvzero, 12);
 		rvr(&b, 0x33, 0, 32, Rvt4, Rvzero, Rvt4); rvr(&b, 0x33, 5, 32, Rvt3, Rvt3, Rvt4);
@@ -255,9 +399,19 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 	case IEXPW: case IEXPL:
 		if(abi->xlen != 64 || !abi->hasm) return 0;
 		rvptr(&b, Rvt0, abi->s); rvload(&b, Rvt4, Rvt0, abi->wordbytes);
-		rvguard(&b, 5, Rvt4, Rvzero);
 		bytes = op == IEXPL ? 8 : abi->wordbytes;
 		rvptr(&b, Rvt1, abi->m); rvload(&b, Rvt3, Rvt1, bytes);
+		/* No division or signed exponent negation is needed on the negative path. */
+		rvbranch(&b, 5, Rvt4, Rvzero, bytes == 8 ? 80 : 72);
+		rvguard(&b, 1, Rvt3, Rvzero);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, 1); rvi(&b, 0x13, 0, Rvt5, Rvzero, 1);
+		rvbranch(&b, 0, Rvt3, Rvt5, 32);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, 0); rvi(&b, 0x13, 0, Rvt5, Rvzero, -1);
+		rvbranch(&b, 1, Rvt3, Rvt5, 20);
+		rvi(&b, 0x13, 7, Rvt6, Rvt4, 1); rvi(&b, 0x13, 1, Rvt6, Rvt6, 1);
+		rvr(&b, 0x33, 0, 32, Rvt6, Rvzero, Rvt6); rvi(&b, 0x13, 0, Rvt6, Rvt6, 1);
+		rvptr(&b, Rvt2, abi->d); rvstore(&b, Rvt2, Rvt6, bytes);
+		rvi(&b, 0x13, 0, Rva0, Rvzero, 1); rvi(&b, 0x67, 0, Rvzero, Rvra, 0);
 		rvi(&b, 0x13, 0, Rvt6, Rvzero, 1);
 		rvi(&b, 0x13, 7, Rvt5, Rvt4, 1);
 		rvbranch(&b, 0, Rvt5, Rvzero, 8);
@@ -366,7 +520,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		break;
 	case ILENA:
 	case IINDB: case IINDW: case IINDL: case IINDF:
-		if(abi->xlen != 64 || (op != ILENA && abi->wordbytes != 8) ||
+		if(abi->xlen != 64 ||
 		   abi->arraylen < 0 || abi->arraydata < 0 || abi->arraylen > 2047 ||
 		   abi->arraydata > 2047 || (abi->arraylen|abi->arraydata)%8 != 0) return 0;
 		/* Dis operand slots can be four-byte aligned even for native pointers. */
@@ -383,11 +537,11 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		}else{
 			rvguard(&b, 1, Rvt0, Rvzero);
 			rvi(&b, 0x13, 0, Rvt6, Rvzero, -1); rvguard(&b, 1, Rvt0, Rvt6);
-			rvi(&b, 0x03, 3, Rvt3, Rvt0, abi->arraylen);
+			rvi(&b, 0x03, abi->wordbytes == 8 ? 3 : 2, Rvt3, Rvt0, abi->arraylen);
 			rvguard(&b, 5, Rvt3, Rvzero);
-			rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt4, Rvt1, 8);
+			rvptr(&b, Rvt1, abi->d); rvload(&b, Rvt4, Rvt1, abi->wordbytes);
 			rvguard(&b, 6, Rvt4, Rvt3);
-			scale = op == IINDB ? 0 : 3;
+			scale = op == IINDB ? 0 : op == IINDW && abi->wordbytes == 4 ? 2 : 3;
 			rvi(&b, 0x13, 0, Rvt6, Rvzero, -1);
 			rvi(&b, 0x13, 5, Rvt6, Rvt6, 33+scale);
 			rvguard(&b, 7, Rvt6, Rvt4);
@@ -397,7 +551,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 			if(scale) rvi(&b, 0x13, 1, Rvt4, Rvt4, scale);
 			rvr(&b, 0x33, 0, 0, Rvt5, Rvt3, Rvt4);
 			rvguard(&b, 7, Rvt5, Rvt3);
-			rvptr(&b, Rvt2, abi->m); rvstore(&b, Rvt2, Rvt5, 8);
+			rvptr(&b, Rvt2, abi->m); rvstore(&b, Rvt2, Rvt5, abi->wordbytes);
 		}
 		break;
 	case IRUNT:
@@ -442,9 +596,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		rvstore(&b, Rvt2, Rvt3, op == ICVTWL ? 8 : abi->wordbytes);
 		break;
 	case ILEA:
-		/* Existing xec.c stores addresses in WORD. Do not widen that slot. */
-		if(bytes*8 != abi->xlen)
-			return 0;
+		/* Truncate to WORD exactly as xec.c does, without widening the slot. */
 		rvptr(&b, Rvt3, abi->s);
 		rvptr(&b, Rvt2, abi->d);
 		rvstore(&b, Rvt2, Rvt3, bytes);
@@ -456,12 +608,12 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		break;
 	case IDIVB: case IMODB: bytes=1; /* fall through */
 	case IDIVW: case IMODW:
-		if(abi->xlen != 64 || !abi->hasm) return 0;
+		if(abi->xlen != 64 || !abi->hasdiv) return 0;
 		binary=1; division=1; f7=1;
 		f3=(op == IMODB || op == IMODW) ? 6 : 4;
 		break;
 	case IDIVL: case IMODL:
-		if(abi->xlen != 64 || !abi->hasm) return 0;
+		if(abi->xlen != 64 || !abi->hasdiv) return 0;
 		bytes=8; binary=1; division=1; f7=1; f3=op == IMODL ? 6 : 4;
 		break;
 	case ISHLL: case ISHRL: case ILSRL:
@@ -476,7 +628,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		swap=op == IBLEL || op == IBGTL;
 		break;
 	case IADDL: case ISUBL: case IMULL: case IANDL: case IORL: case IXORL:
-		if(abi->xlen != 64 || (op == IMULL && !abi->hasm)) return 0;
+		if(abi->xlen != 64) return 0;
 		bytes=8; binary=1;
 		f7=op == ISUBL ? 32 : op == IMULL ? 1 : 0;
 		f3=op == IANDL ? 7 : op == IORL ? 6 : op == IXORL ? 4 : 0;
@@ -487,7 +639,7 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 	case ISUBW: binary=1; f7=32; break;
 	case IMULB: bytes=1; /* fall through */
 	case IMULW:
-		if(!abi->hasm) return 0;
+		if(!abi->hasm && abi->xlen != 64) return 0;
 		binary=1; f7=1; break;
 	case IANDB: bytes=1; /* fall through */
 	case IANDW: binary=1; f3=7; break;
@@ -539,7 +691,10 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 			 * have no W encoding and are truncated by SW instead. */
 			wide=abi->xlen == 64 && bytes == 4 &&
 				(f3 == 0 || f3 == 1 || f3 == 5 || division);
-			rvr(&b, wide ? 0x3b : 0x33, f3, f7, Rvt3, Rvt3, Rvt4);
+			if(f7 == 1 && !division && !abi->hasm)
+				rvmultiply(&b, Rvt4, bytes);
+			else
+				rvr(&b, wide ? 0x3b : 0x33, f3, f7, Rvt3, Rvt3, Rvt4);
 			rvptr(&b, Rvt2, abi->d);
 			rvstore(&b, Rvt2, Rvt3, bytes);
 		}else{

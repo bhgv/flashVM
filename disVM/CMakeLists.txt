@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.10)
-project(disvm VERSION 0.1.2 LANGUAGES C)
+project(disvm VERSION 0.1.3 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()
@@ -70,7 +70,37 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/module_parser.py")
   set_tests_properties(disvm_memory_parser_adapter PROPERTIES TIMEOUT 120)
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
-  foreach(driver integer-ops channel-queues channel-transfers dis-loader pointer-maps vm-widths dis-layout array-indices descriptor-index heap-bounds reference-slots string-branches channels)
+  # Selected production regressions and their manifest-owned fixture dependencies.
+  foreach(driver
+    integer-ops
+    channel-queues
+    channel-transfers
+    dis-loader
+    pointer-maps
+    vm-widths
+    dis-layout
+    array-indices
+    descriptor-index
+    heap-bounds
+    reference-slots
+    string-branches
+    channels
+    stack-lifecycle
+    exception-frames
+    stack-unwind
+    stack-startup
+    call-slots
+    return-slots
+    raise-slots
+    string-slots
+    sys-print
+    sys-tokenize
+    sys-utf
+    vm-addresses
+    fixed-coeff
+    fixed-frame
+    jit-coverage
+  )
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
