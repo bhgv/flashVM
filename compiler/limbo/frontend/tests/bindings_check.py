@@ -30,6 +30,15 @@ def main():
         assert record['format'] == 'LIMBO-INTERFACE-1' and record['source'] == source
         functions = [d for d in record['declarations'] if d['kind'] == 'function']
         assert [d['name'] for d in functions] == ['add', '求值']
+        signature = functions[0]['signature']
+        assert signature['fixed_count'] == 2 and signature['result'] == 'int'
+        assert not signature['variadic'] and not signature['polymorphic']
+        assert [p['name'] for p in signature['parameters']] == ['a', 'b']
+        assert [p['kind'] for p in signature['parameters']] == ['int', 'int']
+        for parameter in signature['parameters']:
+            offset = parameter['byte_offset']
+            assert source.encode()[offset:offset + 1].decode() == parameter['name']
+        assert functions[1]['signature']['parameters'][0]['kind'] == 'ref'
         for d in record['declarations']:
             if not d['name']:
                 continue
@@ -56,7 +65,7 @@ def main():
                 pass
             else:
                 raise AssertionError('scaffold fabricated success')
-        for bad in ['M:module{f:fn();f:fn();};', 'implement M; M:module{f:fn();}; f(){}']:
+        for bad in ['M:module{f:fn(a:int,a:string);};', 'M:module{f:fn();f:fn();};', 'implement M; M:module{f:fn();}; f(){}']:
             inp.write_text(bad)
             output = root / 'bindings.c'
             output.write_bytes(b'old output')

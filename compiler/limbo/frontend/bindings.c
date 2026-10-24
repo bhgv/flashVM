@@ -1,6 +1,6 @@
 /* External module scaffolds from the existing Coco/R declaration catalog.
  * This pass never reparses Limbo types or guesses Dis/native frame layouts. */
-#include "interface.h"
+#include "signature.h"
 #include <stdlib.h>
 #include <string.h>
 #include "bindings_as_runtime.h"
@@ -69,6 +69,46 @@ static void position(const char *source, size_t offset, size_t *cursor, size_t *
     *cursor = offset;
 }
 
+/* Emit structured arity/types from Coco/R nodes; unresolved names stay explicit.
+ * Consumers must not infer native layouts from these grammar-level descriptors. */
+static void signature_json(FILE *out, const LimboInterface *catalog, size_t declaration)
+{
+    const LimboTree *tree = limbo_interface_tree(catalog);
+    const char *source = limbo_tree_source(tree);
+    LimboSignature signature;
+    LimboParameter parameter;
+    size_t previous = SIZE_MAX, count = 0;
+    const char *kind;
+    if (!limbo_interface_signature(catalog, declaration, &signature))
+    {
+        fputs("null", out);
+        return;
+    }
+    fprintf(out, "{\"fixed_count\":%zu,\"variadic\":%s,\"polymorphic\":%s,\"parameters\":[",
+            signature.parameter_count, signature.variadic ? "true" : "false",
+            signature.polymorphic ? "true" : "false");
+    while (limbo_interface_parameter_next(catalog, declaration, previous, &parameter))
+    {
+        previous = parameter.name_node;
+        fprintf(out, "%s{\"name\":", count++ ? "," : "");
+        quoted(out, source + parameter.name_begin, parameter.name_end - parameter.name_begin, 0);
+        kind = limbo_interface_type_kind(catalog, parameter.type_node);
+        fputs(",\"kind\":", out);
+        quoted(out, kind ? kind : "named", strlen(kind ? kind : "named"), 0);
+        fprintf(out, ",\"self\":%s,\"type_node\":%zu,\"byte_offset\":%zu}",
+                parameter.self_parameter ? "true" : "false", parameter.type_node, parameter.name_begin);
+    }
+    fputs("],\"result\":", out);
+    if (signature.result_node == SIZE_MAX)
+        quoted(out, "void", 4, 0);
+    else
+    {
+        kind = limbo_interface_type_kind(catalog, signature.result_node);
+        quoted(out, kind ? kind : "unresolved", strlen(kind ? kind : "unresolved"), 0);
+    }
+    fputc('}', out);
+}
+
 /* Emit an ABI-neutral declaration/debug manifest for other language generators.
  * Includes are recorded, never opened; type spelling is deliberately unresolved. */
 static void manifest(FILE *out, const LimboInterface *catalog)
@@ -99,6 +139,8 @@ static void manifest(FILE *out, const LimboInterface *catalog)
         fprintf(out, ",\"byte_offset\":%zu,\"byte_length\":%zu,\"line\":%zu,\"column\":%zu,\"type\":",
                 d.name_begin, d.name_end - d.name_begin, line, column);
         quoted(out, source + d.type_begin, d.type_end - d.type_begin, 0);
+        fputs(",\"signature\":", out);
+        signature_json(out, catalog, i);
         fputc('}', out);
     }
     fputs("]}\n", out);
@@ -232,6 +274,8 @@ static void as_scaffold(FILE *out, const LimboInterface *catalog, const char *pr
         quoted(out, d.name, strlen(d.name), 0);
         fputs(", limbo_type:", out);
         quoted(out, source + d.type_begin, d.type_end - d.type_begin, 0);
+        fputs(", signature:", out);
+        signature_json(out, catalog, i);
         fputc('}', out);
     }
     fputs("\n]};\n\n", out);
@@ -255,6 +299,7 @@ static void as_scaffold(FILE *out, const LimboInterface *catalog, const char *pr
                 fprintf(out, "%s_defaults[\"d%zu\"] = %s_call_%zu;\n", prefix, i, prefix, i);
         }
     }
+    as_template(out, as_guards_template, prefix);
     as_template(out, proxy ? as_proxy_template : as_module_template, prefix);
 }
 
@@ -307,6 +352,12 @@ int main(int argc, char **argv)
     if (!limbo_interface_parse(data, size, &catalog, &diagnostic))
     {
         fprintf(stderr, "interface E%d byte %ld: %s\n", diagnostic.code, diagnostic.offset, diagnostic.message);
+        goto done;
+    }
+    if (!limbo_interface_validate_functions(catalog, &diagnostic))
+    {
+        fprintf(stderr, "%d:%d: %s\n", diagnostic.line, diagnostic.column, diagnostic.message);
+        result = 1;
         goto done;
     }
     output = fopen(argv[4], "wb");

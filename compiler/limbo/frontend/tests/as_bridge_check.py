@@ -53,6 +53,15 @@ for (const bad of [Object.assign({}, request, {interface_id:'stale'}),
     assert.strictEqual(replies[replies.length - 1].status, 'error');
 }
 assert.strictEqual(calls, 1);
+// Primitive guards reject before executing an external callback.
+for (const args of [[], [1], [1,2,3], ['1',2], [1.5,2], [NaN,2], [Infinity,2], [2147483648,0]]) {
+    external.dispatch(Object.assign({}, request, {args}), r => assert.strictEqual(r.status, 'error'));
+}
+assert.strictEqual(calls, 1);
+handlers['d' + add.declaration] = () => 'wrong result';
+external.dispatch(request, r => assert.strictEqual(r.error, 'result type mismatch'));
+handlers['d' + add.declaration] = args => (args[0] + args[1]) | 0;
+external.dispatch(Object.assign({}, request, {args:[2147483647,1]}), r => assert.strictEqual(r.value,-2147483648));
 server_module(null).dispatch(request, r => {
     assert.strictEqual(r.status, 'error');
     assert.ok(r.error.indexOf('unimplemented') >= 0);
@@ -83,6 +92,16 @@ pending[1].receive(Object.assign({}, response, {id:second.id,status:'error',valu
 assert.strictEqual(completed[1].error, 'typed call rejected');
 assert.throws(() => proxy.call('Native', 'missing', [], () => {}));
 assert.throws(() => proxy.callById(String(add.declaration), [], () => {}));
+// Invalid caller arguments never reach transport or consume correlation IDs.
+for (const args of [[1], ['1',2], [0.5,2], [1,Infinity]]) {
+    assert.throws(() => proxy.callById(add.declaration, args, () => {}), /argument type/);
+}
+assert.strictEqual(pending.length, 2);
+const third = proxy.callById(add.declaration, [1,2], (v,e) => completed.push({value:v,error:e}));
+assert.strictEqual(third, 3);
+pending[2].receive(Object.assign({}, response, {id:third,value:'bad'}));
+pending[2].receive(Object.assign({}, response, {id:third,value:3}));
+assert.deepStrictEqual(completed[2], {value:null,error:'result type mismatch'});
 const failed = client_proxy(() => { throw 'transport failed'; });
 let errors = [];
 failed.call('Native','add',[1,2],(v,e) => errors.push(e));
