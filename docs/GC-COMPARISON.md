@@ -77,9 +77,28 @@ exists, but changing its default requires borrowed-string compatibility checks.
 
 ## Inferno allocator gate
 
+The allocator can be replaced with libc malloc/free/realloc or another backend;
+Dis does not intrinsically require the historical pool allocation algorithm.
+At audited upstream commit `3e3536578b969cf1a460210d8ec667713869ccfc`,
+`emu/Android/alloc-andr.c` already has alternative `dopoolalloc`, `poolfree` and
+`poolrealloc` bodies calling libc. FreeRTOS has the corresponding alternative.
+Both files currently define `ORIG_ALLOC=1`, disabling those bodies. Their presence
+is source evidence of the replacement route, not full-runtime acceptance.
+
+Keep allocation policy separate from GC bookkeeping. The current
+`libinterp/gc.c:rungc` enumerates heap blocks through `poolchain`, `Bhdr`, `B2NB`
+and `B2LIMIT`; `heap.c:hmsize` calls `poolmsize`. Individually malloc-allocated
+blocks need size/enumeration bookkeeping in an adapter, or a new GC iterator.
+Types, colours, reference counts and pointer maps still belong to the VM.
+Simply toggling the Android macro does not establish that contract: its
+alternative `poolmsize`, for example, returns zero. A thin compatibility layer
+can provide it without retaining the old allocation algorithm.
+
 The retained 32-byte pool quantum conflicts with native LP64 metadata: the leader
 Btail at offset 24 overlaps csize at offset 24, and minimum free blocks cannot fit
 the native header. Performance with that layout is not a valid GC comparison.
+This defect belongs to that pool backend, not Inferno's GC algorithm; a validated
+malloc backend is another legitimate route to the comparison.
 A separate owner-repository patch derives a sufficient quantum from Bhdr/Btail,
 preserves ILP32 and passes ILP32/LP64/LLP64 layout models under UBSan. The old source
 fails as a negative control. Auditing the fixed `ae99aac` gives PASS_LAYOUT_ONLY;
