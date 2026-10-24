@@ -37,3 +37,28 @@ The `-c1` run is not proof of instrumented native-code entry, specific JIT opcod
 coverage or real x86-64/arm64/riscv64 target acceptance. Full editor UI, rendering
 channels, files/save service, builds, debugger, AS module bridge, embedded Dis
 and SWF/Dis combined packaging are not implemented by this checkpoint.
+
+## 0.2.8 host product-signature checkpoint / Проверка сигнатур
+
+2026-10-24, Linux x86-64, Python 3.12.14, CMake 4.4.4:
+46 process-double admission contracts pass directly, through the registered
+CTest (`ide_dis_compiler_products`, 1/1), and from a detached renamed IDE copy
+with LICENSE. The expanded fixture fails against the parent script at
+`garbage-module`, demonstrating the original false admission. All 25 existing
+host build-backend unit tests pass. `git diff --check` passes.
+
+CTest configuration uses `/usr/bin/true` solely to satisfy the existing explicit
+compiler-path requirement; only the host product test runs. No production module
+is built with it. No new Limbo compilation, real Dis execution, full source-to-SWF
+integration, debugger or JIT/device acceptance is claimed. Earlier real-module
+measurements above remain historical evidence, not fresh results for this patch.
+The regression fixtures intentionally test signatures only, including successful
+magic-only files; they are not valid executable module fixtures.
+
+46 host-контрактов проходят напрямую, через CTest и в отделённой переименованной
+копии IDE с LICENSE; прежние 25 unit-тестов host backend также проходят.
+На исходном скрипте новый тест падает в `garbage-module`, подтверждая дефект.
+При настройке CTest `/usr/bin/true` служит только существующей проверке явного
+пути компилятора: продуктовый модуль им не собирается. Новые Limbo compilation,
+Dis execution, SWF pipeline, debugger/JIT/device результаты не заявляются.
+[Контракт и пример](PRODUCT_ADMISSION.ru.md) / [Contract and example](PRODUCT_ADMISSION.md).

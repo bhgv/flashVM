@@ -24,8 +24,19 @@ foreach(product "${OUTPUT}" "${SYMBOLS}")
     message(FATAL_ERROR "Empty Limbo build product")
   endif()
 endforeach()
-file(STRINGS "${SYMBOLS}" symbol_header LIMIT_COUNT 2)
-if(NOT "${symbol_header}" STREQUAL "limbo .sbl 2.1;Idecore")
+# XMAGIC=819248 uses discon's four-byte encoding c0 0c 80 30.
+# Only the normal unsigned compiler product is admitted; this is not a Dis verifier.
+# Read a fixed prefix, so admission never scans an arbitrarily large binary file.
+file(READ "${OUTPUT}" module_magic LIMIT 4 HEX)
+if(NOT "${module_magic}" STREQUAL "c00c8030")
+  file(REMOVE "${OUTPUT}" "${SYMBOLS}")
+  message(FATAL_ERROR "Unexpected IDE module signature; expected unsigned Dis XMAGIC")
+endif()
+# Match the first two physical lines byte-for-byte, including their terminators.
+# file(STRINGS) skips empty/non-text bytes and cannot validate this wire prefix.
+# Each line may use LF or CRLF, matching the existing Coco/R .sbl reader contract.
+file(READ "${SYMBOLS}" symbol_header LIMIT 25 HEX)
+if(NOT "${symbol_header}" MATCHES "^6c696d626f202e73626c20322e31(0d)?0a496465636f7265(0d)?0a")
   file(REMOVE "${OUTPUT}" "${SYMBOLS}")
   message(FATAL_ERROR "Unexpected IDE symbol header; expected limbo .sbl 2.1 / Idecore")
 endif()

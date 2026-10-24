@@ -1,6 +1,6 @@
 # Portable IDE document core
 
-Version 0.2.7. [Русский](README.ru.md).
+Version 0.2.8. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
@@ -33,7 +33,10 @@ and calls `start`. The relative PATH is resolved in the caller's resource namesp
 No Python runtime is needed to load/execute this module in a compatible Dis VM.
 
 The build removes stale output before invoking Limbo, requires a successful exit,
-nonempty module/debug files and a `limbo .sbl 2.1` / `Idecore` symbol prefix.
+nonempty module/debug files, unsigned Dis XMAGIC (`c0 0c 80 30`) and the
+exact first two physical symbol lines `limbo .sbl 2.1` / `Idecore`. Each symbol
+line must end in LF or CRLF; skipped blank/NUL bytes are not accepted. Only four
+module bytes and at most 25 symbol bytes are read for these signature checks.
 These are product-admission checks, not a full Dis verifier or atomic release
 publication. Failed compilation removes both outputs; keep any previously
 published release outside the private build directory.
@@ -62,7 +65,8 @@ bound, oversize rejection, copied request values, retained replies, backpressure
 and competing writers. `revision_test.b` compiles the unchanged production source
 with a test-only MaxRevision of 4, exercising terminal revision guards without
 billions of edits. That fixture is never installed or distributed as idecore.dis.
-`build_guard.py` checks six stale/missing/failure product-admission cases.
+`build_guard.py` checks 46 stale/missing/failure/signature cases.
+[Admission tutorial and limits](PRODUCT_ADMISSION.md) includes a standalone host check.
 
 Reference bootstrap tools were built from
 [InferNode abb1b686](https://github.com/infernode-os/infernode/tree/abb1b6860238f89eb5a10125e561eff4e0a34836)

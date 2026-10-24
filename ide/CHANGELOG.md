@@ -28,3 +28,8 @@
   semantics, interpreter/reference-mode regressions, Unicode/bounds/concurrency
   cases, revision guards, checked module/debug outputs, production-only install,
   source-map reader acceptance and explicit bytecode delivery requirements.
+
+- 0.2.8: Reject arbitrary module bytes and normalized-away symbol header corruption.
+  Check unsigned Dis XMAGIC and exact LF/CRLF physical symbol prefixes with bounded
+  reads; expand host admission regressions from six to 46 cases. No Dis/JIT runtime
+  or full bytecode verification claim is added.

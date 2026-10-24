@@ -1,6 +1,6 @@
 # FlashVM Limbo IDE and host build tools
 
-Version **0.2.7**. [Русский](README.ru.md).
+Version **0.2.8**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
