@@ -8,17 +8,17 @@
 
 /* Proc is the prefix consumed by retained host/kernel routines. Active registers
  * and native coordination are extensions, not incompatible edits to that prefix.
- * [GC:] common.iprog/prog/env and active registers belong to this native owner. */
+ * [GC:] Proc.iprog/prog/env and active registers belong to this native owner. */
 typedef struct DVM_ExtendedUp {
-    Proc common;  /* Error frames, current Prog links, OS/FPU environment. */
-    REG active;   /* The currently executing Dis register file. */
+    Proc Proc; /* Error frames, current Prog links, OS/FPU environment. */
+    REG R;     /* The currently executing Dis register file. */
 } DVM_ExtendedUp;
 
 /* Create up and REG in one native allocation, served through one TLS owner. */
 DVM_NativeContext *dvm_native_process_create(void *runtime)
 {
     return dvm_native_context_create_embedded(sizeof(DVM_ExtendedUp),
-        offsetof(DVM_ExtendedUp, active), sizeof(REG), offsetof(DVM_ExtendedUp, common.iprog), runtime);
+        offsetof(DVM_ExtendedUp, R), sizeof(REG), offsetof(DVM_ExtendedUp, Proc.iprog), runtime);
 }
 
 /* The normal Inferno up macro calls this same native TLS owner, not another key. */
@@ -34,7 +34,7 @@ REG *dvm_native_registers(void)
     DVM_ExtendedUp *process = (DVM_ExtendedUp *)getup();
     DVM_NativeContext *context = dvm_native_context_current();
     if (!process || dvm_native_context_register_size(context) != sizeof(REG) ||
-        dvm_native_context_registers(context) != &process->active)
+        dvm_native_context_registers(context) != &process->R)
         abort();
-    return &process->active;
+    return &process->R;
 }

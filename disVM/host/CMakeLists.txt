@@ -1,6 +1,6 @@
 # Shared host adapters build independently of the unfinished native Dis host ABI.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_shared_host VERSION 0.2.0 LANGUAGES C)
+project(disvm_shared_host VERSION 0.3.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(DVM_FLASHVM_SOURCE_ROOT "" CACHE PATH "Explicit FlashVM source root with include/ and ports/")
@@ -26,7 +26,7 @@ if(NOT TARGET disvm_module_image)
   add_library(disvm_module_image STATIC module_image.c)
 endif()
 target_include_directories(disvm_module_image PUBLIC "${dvm_root}/include")
-add_library(disvm_flashvm_host STATIC flashvm_file.c flashvm_socket.c flashvm_channel.c flashvm_thread.c native_context.c native_world.c)
+add_library(disvm_flashvm_host STATIC flashvm_file.c flashvm_socket.c flashvm_channel.c flashvm_thread.c native_context.c native_world.c gc_workers.c)
 target_include_directories(disvm_flashvm_host PUBLIC "${dvm_root}/include" "${fvm}/include" "${fvm}/ports")
 target_link_libraries(disvm_flashvm_host PUBLIC disvm_module_image)
 set(DVM_FLASHVM_TARGET "" CACHE STRING "Existing FlashVM CMake target, if embedded in one parent build")
@@ -53,6 +53,10 @@ if(BUILD_TESTING)
   add_executable(disvm_image_test "${dvm_root}/tests/module_image.c")
   target_link_libraries(disvm_image_test PRIVATE disvm_module_image)
   add_test(NAME disvm_module_images COMMAND disvm_image_test)
+  add_executable(disvm_gc_workers_control "${dvm_root}/tests/gc_workers_control.c")
+  target_link_libraries(disvm_gc_workers_control PRIVATE disvm_flashvm_host)
+  add_test(NAME disvm_gc_workers_control COMMAND disvm_gc_workers_control)
+  set_tests_properties(disvm_gc_workers_control PROPERTIES TIMEOUT 20)
   add_executable(disvm_host_test "${dvm_root}/tests/shared_host.c")
   target_link_libraries(disvm_host_test PRIVATE disvm_flashvm_host)
   add_test(NAME disvm_shared_native_host COMMAND disvm_host_test)
@@ -96,4 +100,18 @@ if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
   add_test(NAME disvm_native_world_stop COMMAND "${PYTHON_EXECUTABLE}"
     "${dvm_root}/tests/native_world.py" --flashvm-root "${fvm}")
   set_tests_properties(disvm_native_world_stop PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+    AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_inferno_gc_workers COMMAND "${PYTHON_EXECUTABLE}"
+    "${dvm_root}/tests/inferno_gc.py" --flashvm-root "${fvm}" --workers)
+  set_tests_properties(disvm_inferno_gc_workers PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+    AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_gc_workers_with_mutators COMMAND "${PYTHON_EXECUTABLE}"
+    "${dvm_root}/tests/native_world.py" --flashvm-root "${fvm}" --gc-workers)
+  set_tests_properties(disvm_gc_workers_with_mutators PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()

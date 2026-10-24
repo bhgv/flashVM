@@ -183,3 +183,5 @@ The new test runs two retained production addw bodies with extended up state and
 The earlier 4000-instruction test now also checks independent up error/process
 fields. The generated-source test rejects an unrecognized dispatch boundary
 rather than silently placing a safepoint in the wrong location.
+
+[GC backend and native Fast/Cycles workers](GC.md).

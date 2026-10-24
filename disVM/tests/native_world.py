@@ -13,6 +13,7 @@ from native_registers import instruction
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--flashvm-root', type=Path, required=True)
+    parser.add_argument('--gc-workers', action='store_true')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     fvm = args.flashvm_root.resolve()
@@ -28,13 +29,16 @@ def main():
         command += ['-I' + str(path) for path in [root / 'host/include', root / 'upstream/include',
                     root / 'upstream/libinterp', root / 'upstream/emu/port', root / 'include',
                     fvm / 'include', fvm / 'ports']]
+        if args.gc_workers:
+            command += ['-DDVM_GC_WORKERS=1', str(root / 'host/gc_workers.c')]
         command += [str(source), str(root / 'host/native_registers.c'), str(root / 'host/native_context.c'),
                     str(root / 'host/native_world.c'), str(root / 'host/flashvm_thread.c'),
                     str(fvm / 'ports/linux/thread.c'), str(fvm / 'ports/linux/channel_sync.c'),
                     '-o', str(output / 'test')]
         subprocess.run(command, check=True)
         subprocess.run([str(output / 'test')], check=True, timeout=25)
-    print('PASS extended up: 2 parallel mutators, 100 stopped-world root scans and native resume')
+    print('PASS extended up: 2 parallel mutators, 100 root scans and native resume' +
+          (' through separate Fast/Cycles OS threads' if args.gc_workers else ''))
 
 
 if __name__ == '__main__':

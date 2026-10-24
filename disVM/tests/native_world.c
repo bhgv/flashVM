@@ -5,6 +5,9 @@
 #include "interp.h"
 #include "disvm/native_process.h"
 #include "disvm/native_world.h"
+#ifdef DVM_GC_WORKERS
+#include "disvm/gc_workers.h"
+#endif
 #include "disvm/flashvm_host.h"
 #ifdef NDEBUG
 #undef NDEBUG
@@ -23,6 +26,11 @@ typedef struct Worker {
 typedef struct Scan {
     unsigned int count;
     int finish;
+#ifdef DVM_GC_WORKERS
+    DVM_NativeWorld *world;
+    DVM_NativeContext *Fast;
+    DVM_NativeContext *Cycles;
+#endif
 } Scan;
 
 PRODUCTION_ADDW
@@ -87,6 +95,35 @@ static void inspect_roots(DVM_NativeContext *context, void *registers, size_t si
         worker->stop = 1;
 }
 
+#ifdef DVM_GC_WORKERS
+/* These callbacks test scheduling/root publication; actual destroy/rungc are
+ * tested separately against the explicit allocator fixture. */
+static DVM_GCWorkResult check_pass(DVM_NativeContext *context, Scan *scan)
+{
+    DVM_WorldState state;
+    assert(context == dvm_native_context_current());
+    assert(scan->count == 2 && dvm_world_state(scan->world, &state));
+    assert(state.stopped && state.active == 2 && state.parked == 2);
+    return DVM_GC_DONE;
+}
+/* Record the native fast collector's distinct up/context. */
+static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, void *user)
+{
+    Scan *scan = user;
+    assert(budget == 1);
+    scan->Fast = context;
+    return check_pass(context, scan);
+}
+/* Record the separate cycle collector's distinct up/context. */
+static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, void *user)
+{
+    Scan *scan = user;
+    assert(budget == 1);
+    scan->Cycles = context;
+    return check_pass(context, scan);
+}
+#endif
+
 /* Collect 100 root snapshots while both workers remain genuinely active. */
 int main(void)
 {
@@ -98,6 +135,24 @@ int main(void)
     Scan scan;
     unsigned int index;
     unsigned int cycle;
+#ifdef DVM_GC_WORKERS
+    DVM_GCWorkersConfig config;
+    DVM_GCWorkers *gc;
+    DVM_GCWorkersState gc_state;
+    memset(&scan, 0, sizeof(scan));
+    memset(&config, 0, sizeof(config));
+    scan.world = world;
+    config.world = world;
+    config.create_context = dvm_native_process_create;
+    config.roots = inspect_roots;
+    config.Fast.run = fast_pass;
+    config.Fast.budget = 1;
+    config.Cycles.run = cycle_pass;
+    config.Cycles.budget = 1;
+    config.user = &scan;
+    gc = dvm_gc_workers_create(&config);
+    assert(gc);
+#endif
     assert(world && collector && dvm_native_context_bind(collector));
     for (index = 0; index < 2; index++) {
         memset(&workers[index], 0, sizeof(workers[index]));
@@ -119,6 +174,10 @@ int main(void)
     for (cycle = 0; cycle < 100; cycle++) {
         scan.count = 0;
         scan.finish = cycle == 99;
+#ifdef DVM_GC_WORKERS
+        assert(dvm_gc_workers_request(gc, cycle % 2 ? DVM_GC_CYCLES : DVM_GC_FAST));
+        assert(dvm_gc_workers_wait_idle(gc) && scan.count == 2);
+#else
         assert(dvm_world_stop_begin(world, collector));
         assert(!dvm_world_stop_begin(world, collector));
         assert(!dvm_native_context_unbind(collector));
@@ -127,7 +186,14 @@ int main(void)
         assert(dvm_world_visit(world, inspect_roots, &scan) && scan.count == 2);
         assert(dvm_world_stop_end(world));
         assert(!dvm_world_stop_end(world));
+#endif
     }
+#ifdef DVM_GC_WORKERS
+    assert(scan.Fast && scan.Cycles && scan.Fast != scan.Cycles);
+    assert(dvm_gc_workers_state(gc, &gc_state));
+    assert(gc_state.Fast.passes == 50 && gc_state.Cycles.passes == 50);
+    assert(dvm_gc_workers_destroy(gc));
+#endif
     for (index = 0; index < 2; index++) {
         dvm_host_thread_join(threads[index]);
         assert(workers[index].iterations > 0);
