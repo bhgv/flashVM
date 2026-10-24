@@ -1,5 +1,5 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(flashvm_ide_dis VERSION 0.5.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
@@ -21,7 +21,14 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
   if(NOT EXISTS "${EMU_EXECUTABLE}" OR NOT EXISTS "${LIMBO_MODULE_DIR}/sys.m")
     message(FATAL_ERROR "Provide reference EMU_EXECUTABLE and LIMBO_MODULE_DIR")
   endif()
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/idecore_test.dis"
     COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
       -o "${CMAKE_CURRENT_BINARY_DIR}/idecore_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/idecore_test.b"
@@ -155,7 +162,14 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
 endif()
 
 if(BUILD_TESTING)
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   add_test(NAME ide_dis_compiler_products COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/build_guard.py" "${CMAKE_COMMAND}"
     "${CMAKE_CURRENT_SOURCE_DIR}/compile_module.cmake")
@@ -171,7 +185,14 @@ if(BUILD_TESTING AND SBLMAP_EXECUTABLE)
   if(NOT EXISTS "${SBLMAP_EXECUTABLE}")
     message(FATAL_ERROR "SBLMAP_EXECUTABLE does not exist")
   endif()
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   add_test(NAME ide_dis_source_map COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/symbols_check.py" "${SBLMAP_EXECUTABLE}"
     "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl")

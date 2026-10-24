@@ -1,5 +1,5 @@
 # Standalone host: discover the linker through an explicit SDK/source location.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(swl_inspect_example LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

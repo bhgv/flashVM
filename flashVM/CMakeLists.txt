@@ -329,7 +329,14 @@ if(FVM_BUILD_TESTS)
 endif()
 
 if(FVM_BUILD_TESTS)
-  find_package(Python3 COMPONENTS Interpreter QUIET)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 QUIET)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+  endif()
 endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING AND TARGET flashvm_examples_embedding_gradients_main)
   add_test(NAME flashvm_gradient_strokes_tutorial

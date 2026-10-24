@@ -1,5 +1,5 @@
 # Temporary native Limbo bootstrap from selected owned upstream sources.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(limbo_bootstrap VERSION 0.1.0 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
@@ -112,6 +112,29 @@ add_library(limbo_bootstrap_support STATIC host/bootstrap_support.c
   upstream/libmath/FPcontrol-Linux.c upstream/libmath/dtoa.c upstream/libmath/g_fmt.c upstream/libmath/gfltconv.c
   upstream/libsec/port/md5.c upstream/libsec/port/md5block.c)
 target_link_libraries(limbo_bootstrap_support PUBLIC limbo_bootstrap_lib9 m)
+# Optional owner-supplied yacc regeneration; default standalone builds can still
+# consume committed bootstrap artifacts. New project grammars remain Coco/R.
+set(IYACC_EXECUTABLE "" CACHE FILEPATH "Optional source-built Inferno iyacc")
+set(IYACC_ROOT "" CACHE PATH "iyacc skeleton root, containing utils/lib/yaccpar")
+set(limbo_parser "${u}/limbo/y.tab.c")
+set(limbo_lexer "${u}/limbo/lex.c")
+if(IYACC_EXECUTABLE)
+  if(NOT EXISTS "${IYACC_EXECUTABLE}" OR NOT EXISTS "${IYACC_ROOT}/utils/lib/yaccpar")
+    message(FATAL_ERROR "Provide matching IYACC_EXECUTABLE and IYACC_ROOT")
+  endif()
+  set(parser_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  file(MAKE_DIRECTORY "${parser_dir}")
+  configure_file("${u}/limbo/lex.c" "${parser_dir}/lex.c" COPYONLY)
+  set(limbo_lexer "${parser_dir}/lex.c")
+  set(limbo_parser "${parser_dir}/y.tab.c")
+  add_custom_command(OUTPUT "${limbo_parser}" "${parser_dir}/y.tab.h"
+    COMMAND "${CMAKE_COMMAND}" -E copy "${u}/limbo/limbo.y" "${parser_dir}/limbo.y"
+    COMMAND "${CMAKE_COMMAND}" -E env "ROOT=${IYACC_ROOT}" "${IYACC_EXECUTABLE}" -d limbo.y
+    WORKING_DIRECTORY "${parser_dir}"
+    DEPENDS "${u}/limbo/limbo.y" "${IYACC_EXECUTABLE}" "${IYACC_ROOT}/utils/lib/yaccpar" VERBATIM)
+  # The copied lexer includes the newly generated token header from its own directory.
+  set_source_files_properties("${limbo_lexer}" PROPERTIES OBJECT_DEPENDS "${parser_dir}/y.tab.h")
+endif()
 add_executable(limbo-bootstrap
   upstream/limbo/asm.c
   upstream/limbo/com.c
@@ -120,7 +143,7 @@ add_executable(limbo-bootstrap
   upstream/limbo/dtocanon.c
   upstream/limbo/ecom.c
   upstream/limbo/gen.c
-  upstream/limbo/lex.c
+  "${limbo_lexer}"
   upstream/limbo/nodes.c
   upstream/limbo/optab.c
   upstream/limbo/optim.c
@@ -128,7 +151,7 @@ add_executable(limbo-bootstrap
   upstream/limbo/stubs.c
   upstream/limbo/typecheck.c
   upstream/limbo/types.c
-  upstream/limbo/y.tab.c
+  "${limbo_parser}"
 )
 target_include_directories(limbo-bootstrap PRIVATE "${u}/limbo")
 target_compile_definitions(limbo-bootstrap PRIVATE "INCPATH=\"${u}/module\"")
@@ -137,7 +160,14 @@ target_link_libraries(limbo-bootstrap PRIVATE limbo_bootstrap_bio limbo_bootstra
 
 include(CTest)
 if(BUILD_TESTING)
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
   add_test(NAME limbo_bootstrap_products COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/smoke.py" $<TARGET_FILE:limbo-bootstrap>)

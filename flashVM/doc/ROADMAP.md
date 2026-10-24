@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Build checkpoint v0.1531: the native library and reference SWF runner build with real CMake 3.10.2. Build-only Python discovery compatibility; no runtime/graphics compatibility stage is closed. See [workspace build paths](../../README-FIRSTSTEPS.md).
+
 Checkpoint v0.1524 / Контрольная точка v0.1524: tiny public round-stroke queries avoid squared-distance underflow. Seventeen new fixtures; 360 no-graphics Release and 182 no-graphics ASan/UBSan executables pass. All nine stages and reference/device acceptance remain open. [EN](PUBLIC_ROUND_SCALE.md) / [RU](PUBLIC_ROUND_SCALE.ru.md).
 
 Checkpoint v0.1504 / Контрольная точка v0.1504: nearby translated Bezier controls retain extrema through exact local subtraction. Seventeen new fixtures; fresh no-graphics Release 149 and no-graphics ASan/UBSan 149 pass. Earlier native AGG/JIT 395 passed before workspace maintenance; interrupted text-JIT sanitizer run is not counted. All nine stages and physical/reference acceptance remain open. [EN](TRANSLATED_CURVE_EXTREMA.md) / [RU](TRANSLATED_CURVE_EXTREMA.ru.md).

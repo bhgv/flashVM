@@ -1,5 +1,5 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(firsyn_frontend VERSION 0.1.1 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -53,7 +53,14 @@ target_link_libraries(firsyn_parse PRIVATE firsyn_frontend)
 # Each library owns namespaced globals; serialize calls to the same parser.
 include(CTest)
 if(BUILD_TESTING)
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   add_test(NAME fir_syntax COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/check.py $<TARGET_FILE:firsyn_parse>)
   add_executable(firsyn_embed tests/embed.c)
   target_link_libraries(firsyn_embed PRIVATE firsyn_frontend)

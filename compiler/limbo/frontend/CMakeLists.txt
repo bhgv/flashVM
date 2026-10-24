@@ -1,5 +1,5 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(limbo_frontend VERSION 0.8.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -44,7 +44,14 @@ target_link_libraries(limbo_parse PRIVATE limbo_frontend)
 # Each library owns namespaced globals; serialize calls to the same parser.
 include(CTest)
 if(BUILD_TESTING)
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
+  if(CMAKE_VERSION VERSION_LESS "3.12")
+    find_package(PythonInterp 3 REQUIRED)
+    set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+    set(Python3_Interpreter_FOUND "${PYTHONINTERP_FOUND}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
   add_test(NAME limbo_syntax
     COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tests/check.py"
       $<TARGET_FILE:limbo_parse>)
@@ -69,7 +76,7 @@ endif()
 
 # Handwritten owned storage is checked independently of generated legacy runtime warnings.
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-  set_source_files_properties(tree.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Wpedantic;-Werror")
+  set_source_files_properties(tree.c PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Wpedantic -Werror")
 endif()
 
 # The tree inspector is separate from the compatibility syntax-only CLI.

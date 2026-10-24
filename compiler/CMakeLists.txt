@@ -1,5 +1,5 @@
 # Optional compiler-only orchestration; each language/frontend builds alone too.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(flash_compilers LANGUAGES C)
 # Apply the same C99 contract to orchestration-owned embedding hosts.
 set(CMAKE_C_STANDARD 99)
