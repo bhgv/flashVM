@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.16)
-project(flashvm_ide_dis VERSION 0.4.0 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.5.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -58,6 +58,21 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/history.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/history/main.b"
     DEPENDS examples/history/main.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_dis_history_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/history.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/replaceall_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/replaceall_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/replaceall_test.b"
+    DEPENDS tests/replaceall_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_replaceall_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/replaceall_test.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/replaceall.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/replaceall.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/replaceall/main.b"
+    DEPENDS examples/replaceall/main.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_replaceall_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/replaceall.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/utf8span_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${LIMBO_MODULE_DIR}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/utf8span_test.dis" "${CMAKE_CURRENT_SOURCE_DIR}/tests/utf8span_test.b"
+    DEPENDS tests/utf8span_test.b idecore.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_dis_utf8span_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/utf8span_test.dis")
   set(history_root "${CMAKE_CURRENT_BINARY_DIR}/history-root")
   file(MAKE_DIRECTORY "${history_root}")
   configure_file(idecore.b "${history_root}/idecore.b" COPYONLY)
@@ -90,6 +105,18 @@ if(BUILD_TESTING AND EMU_EXECUTABLE)
   add_custom_target(ide_dis_revision_module ALL DEPENDS "${revision_root}/idecore.dis"
     "${revision_root}/revision_test.dis")
   foreach(mode 0 1)
+    add_test(NAME ide_dis_utf8span_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module utf8span_test.dis)
+    set_tests_properties(ide_dis_utf8span_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+    add_test(NAME ide_dis_replaceall_example_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module replaceall.dis)
+    set_tests_properties(ide_dis_replaceall_example_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
+    add_test(NAME ide_dis_replaceall_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module replaceall_test.dis)
+    set_tests_properties(ide_dis_replaceall_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 40)
     add_test(NAME ide_dis_history_example_mode_${mode} COMMAND ${Python3_EXECUTABLE}
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py" --emu "${EMU_EXECUTABLE}"
       --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode} --module history.dis)
@@ -148,4 +175,22 @@ if(BUILD_TESTING AND SBLMAP_EXECUTABLE)
   add_test(NAME ide_dis_source_map COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/symbols_check.py" "${SBLMAP_EXECUTABLE}"
     "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl")
+endif()
+
+# Optional cross-component test: an explicit real FIR compiler produces the span.
+# Standalone IDE builds never assume that a sibling FIR build exists.
+set(FIR_SOURCE_EXECUTABLE "" CACHE FILEPATH "Optional explicit FIR source compiler for diagnostic navigation")
+if(BUILD_TESTING AND EMU_EXECUTABLE AND FIR_SOURCE_EXECUTABLE)
+  if(NOT EXISTS "${FIR_SOURCE_EXECUTABLE}")
+    message(FATAL_ERROR "FIR_SOURCE_EXECUTABLE does not exist")
+  endif()
+  foreach(mode 0 1)
+    add_test(NAME ide_source_diagnostic_navigation_mode_${mode} COMMAND ${Python3_EXECUTABLE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/source_navigation.py"
+      --source-compiler "${FIR_SOURCE_EXECUTABLE}" --limbo "${LIMBO_EXECUTABLE}"
+      --module-dir "${LIMBO_MODULE_DIR}" --emu "${EMU_EXECUTABLE}"
+      --build "${CMAKE_CURRENT_BINARY_DIR}" --mode ${mode})
+    set_tests_properties(ide_source_diagnostic_navigation_mode_${mode}
+      PROPERTIES RUN_SERIAL TRUE TIMEOUT 80)
+  endforeach()
 endif()

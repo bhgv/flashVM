@@ -38,7 +38,7 @@ require(ok: int, message: string)
 exchange(commands: chan of core->Request, operation, expected, first, last: int): core->Reply
 {
     reply := chan of core->Reply;
-    commands <-= core->Request(42, operation, expected, first, last, "", reply);
+    commands <-= core->Request(42, operation, expected, first, last, "", "", reply);
     result := <-reply;
     require(result.id == 42, "correlation");
     return result;
@@ -57,7 +57,7 @@ roundtrip(text: string)
 {
     commands := core->start();
     reply := chan of core->Reply;
-    commands <-= core->Request(0, core->Open, 0, 0, 0, text, reply);
+    commands <-= core->Request(0, core->Open, 0, 0, 0, text, "", reply);
     absent(<-reply, core->Ok);
     line := 1;
     column := 0;
@@ -86,7 +86,7 @@ roundtrip(text: string)
     absent(exchange(commands, core->Offset, 1, 2147483647, 0), core->RangeError);
     absent(exchange(commands, core->Offset, 1, 1, 2147483647), core->RangeError);
     # A nil reply cannot mutate the document or stop the service.
-    commands <-= core->Request(0, core->Locate, 1, 0, 0, "", nil);
+    commands <-= core->Request(0, core->Locate, 1, 0, 0, "", "", nil);
     absent(exchange(commands, core->Snapshot, -1, 0, 0), core->Ok);
     absent(exchange(commands, core->Close, 1, 0, 0), core->Ok);
     absent(exchange(commands, core->Locate, 2, 0, 0), core->Closed);
@@ -110,7 +110,7 @@ init()
     # Reject crossing an LF into the following line through a large column.
     commands := core->start();
     reply := chan of core->Reply;
-    commands <-= core->Request(0, core->Open, 0, 0, 0, "a\nbc", reply);
+    commands <-= core->Request(0, core->Open, 0, 0, 0, "a\nbc", "", reply);
     absent(<-reply, core->Ok);
     absent(exchange(commands, core->Offset, 1, 1, 2), core->RangeError);
     absent(exchange(commands, core->Shutdown, 1, 0, 0), core->Ok);

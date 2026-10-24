@@ -38,7 +38,7 @@ require(ok: int, message: string)
 exchange(commands: chan of core->Request, operation, expected: int, text: string): core->Reply
 {
     response := chan of core->Reply;
-    commands <-= core->Request(1, operation, expected, 0, 1, text, response);
+    commands <-= core->Request(1, operation, expected, 0, 1, text, "", response);
     return <-response;
 }
 
@@ -69,17 +69,33 @@ init()
             "close cannot wrap or discard text");
     # Read-only navigation/search remain useful even when revision cannot advance.
     query := chan of core->Reply;
-    commands <-= core->Request(0, core->Locate, 4, 1, 0, "", query);
+    commands <-= core->Request(0, core->Locate, 4, 1, 0, "", "", query);
     location := <-query;
     require(location.status == core->Ok && location.offset == 1 && location.column == 1 &&
             location.line == 1 && location.revision == 4, "locate at maximum");
-    commands <-= core->Request(0, core->Offset, 4, 1, 1, "", query);
+    commands <-= core->Request(0, core->Offset, 4, 1, 1, "", "", query);
     location = <-query;
     require(location.status == core->Ok && location.offset == 1, "offset at maximum");
-    commands <-= core->Request(0, core->Find, 4, 0, 1, "c", query);
+    commands <-= core->Request(0, core->Find, 4, 0, 1, "c", "", query);
     location = <-query;
     require(location.status == core->Ok && location.offset == 0 && location.saved == 4,
             "find at maximum");
+    commands <-= core->Request(0, core->ReplaceAll, 4, 0, 1, "c", "x", query);
+    location = <-query;
+    require(location.status == core->RevisionLimit && location.text == "c" && location.matches == -1,
+            "bulk edit cannot advance past maximum");
+    commands <-= core->Request(0, core->ReplaceAll, 4, 0, 1, "c", "c", query);
+    location = <-query;
+    require(location.status == core->Ok && location.revision == 4 && location.matches == 1,
+            "bulk no-op still counts at maximum");
+    commands <-= core->Request(0, core->ReplaceAll, 4, 0, 1, "x", "y", query);
+    location = <-query;
+    require(location.status == core->NotFound && location.text == "c",
+            "no-match precedes revision cap");
+    commands <-= core->Request(0, core->Utf8Span, 4, 0, 1, "", "", query);
+    location = <-query;
+    require(location.status == core->Ok && location.offset == 0 && location.selection_end == 1 &&
+            location.revision == 4, "diagnostic span remains available at maximum revision");
     result = exchange(commands, core->Shutdown, 4, "");
     require(result.status == core->Ok, "shutdown allowed at maximum");
     commands = core->start();

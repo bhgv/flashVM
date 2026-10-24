@@ -40,7 +40,7 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int,
          text: string): core->Reply
 {
     reply := chan of core->Reply;                    # One rendezvous destination per request.
-    commands <-= core->Request(7, operation, expected, first, last, text, reply);
+    commands <-= core->Request(7, operation, expected, first, last, text, "", reply);
     result := <-reply;                              # Receive before issuing dependent work.
     require(result.id == 7, "correlation ID");       # This caller serializes its requests.
     return result;                                  # Retain a value snapshot, not mutable state.

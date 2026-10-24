@@ -39,7 +39,7 @@ exchange(commands: chan of core->Request, operation, expected, length: int,
          text: string): core->Reply
 {
     reply := chan of core->Reply;
-    commands <-= core->Request(1, operation, expected, 0, length, text, reply);
+    commands <-= core->Request(1, operation, expected, 0, length, text, "", reply);
     return <-reply;
 }
 

@@ -31,7 +31,7 @@ start(): chan of Request
 # Copy observable state into a response without transferring the private mutable document.
 snapshot(document: ref Document, id: int, status: int): Reply
 {
-    return Reply(id, status, document.opened, document.revision, document.saved, document.text, -1, -1, -1);
+    return Reply(id, status, document.opened, document.revision, document.saved, document.text, -1, -1, -1, -1, -1);
 }
 
 # Validate and apply one serialized command; the second result requests terminal shutdown.
@@ -39,7 +39,7 @@ handle(document: ref Document, request: Request): (Reply, int)
 {
     if(request.id < 0)
         return (snapshot(document, request.id, Invalid), 0);
-    if(request.operation < Open || request.operation > Redo)
+    if(request.operation < Open || request.operation > Utf8Span)
         return (snapshot(document, request.id, Unknown), 0);
     if(request.operation == Snapshot)
         return (snapshot(document, request.id, Ok), 0);
@@ -65,6 +65,10 @@ handle(document: ref Document, request: Request): (Reply, int)
         return (snapshot(document, request.id, Closed), 0);
     if(request.operation == Undo || request.operation == Redo)
         return (travel(document, request), 0);
+    if(request.operation == Utf8Span)
+        return (utf8span(document, request), 0);
+    if(request.operation == ReplaceAll)
+        return (replaceall(document, request), 0);
     if(request.operation == Find)
         return (find(document, request), 0);
     if(request.operation == Locate || request.operation == Offset)
@@ -222,6 +226,141 @@ coordinates(document: ref Document, request: Request): Reply
     return result;
 }
 
+# Count canonical UTF-8 bytes for one Unicode scalar, rejecting surrogate halves
+# and values outside Unicode. Limbo string indices themselves count characters.
+utf8width(character: int): int
+{
+    if(character < 0 || character > 16r10ffff ||
+       (character >= 16rd800 && character <= 16rdfff))
+        return 0;
+    if(character < 16r80)
+        return 1;
+    if(character < 16r800)
+        return 2;
+    if(character < 16r10000)
+        return 3;
+    return 4;
+}
+
+# Convert a compiler's original UTF-8 half-open span to revision-bound editor
+# coordinates. Both endpoints must be exact scalar boundaries, including EOF.
+# Scan the whole snapshot to reject non-Unicode Limbo strings consistently.
+# [GC:] Only scalar counters are temporary; text/reply retain the usual owner roots.
+utf8span(document: ref Document, request: Request): Reply
+{
+    if(request.first < 0 || request.last < request.first)
+        return snapshot(document, request.id, RangeError);
+    first := -1;
+    last := -1;
+    bytes := 0;
+    for(index := 0; index <= len document.text; index++){
+        if(bytes == request.first)
+            first = index;
+        if(bytes == request.last)
+            last = index;
+        if(index == len document.text)
+            break;
+        width := utf8width(document.text[index]);
+        if(width == 0)
+            return snapshot(document, request.id, Invalid);
+        # MaxCharacters * 4 fits a signed int; each admitted scalar adds at most 4.
+        bytes += width;
+    }
+    if(first < 0 || last < 0)
+        return snapshot(document, request.id, RangeError);
+    location := request;
+    location.operation = Locate;
+    location.first = first;
+    result := coordinates(document, location);
+    result.selection_end = last;
+    return result;
+}
+
+# Compute failure links once per literal needle; callers admit nonempty lengths.
+# [GC:] The returned private array is owned by the active serialized request.
+prefixes(needle: string): array of int
+{
+    prefix := array[len needle] of int;
+    matched := 0;
+    for(index := 1; index < len needle; index++){
+        while(matched > 0 && needle[index] != needle[matched])
+            matched = prefix[matched - 1];
+        if(needle[index] == needle[matched])
+            matched++;
+        prefix[index] = matched;
+    }
+    return prefix;
+}
+
+# Build the checked result with balanced concatenations, rather than appending
+# once per match (quadratic on long documents). Depth is O(log(matches + 1)).
+# [GC:] All source/replacement/hit roots remain private to this request. Limbo
+# values own the intermediate strings until their parent concatenation completes.
+render(text, replacement: string, width: int, hits: array of int,
+       low, high, first, last: int): string
+{
+    if(low == high)
+        return text[first:last];
+    middle := low + (high - low) / 2;
+    left := render(text, replacement, width, hits, low, middle, first, hits[middle]);
+    right := render(text, replacement, width, hits, middle + 1, high, hits[middle] + width, last);
+    joined := left + replacement;
+    return joined + right;
+}
+
+# Replace nonoverlapping matches in the ORIGINAL half-open character range.
+# Newly inserted text is never searched. Validate size/revision before rendering,
+# then publish one new revision and one Undo snapshot. No-match is NotFound.
+replaceall(document: ref Document, request: Request): Reply
+{
+    if(request.first < 0 || request.last < request.first || request.last > len document.text)
+        return snapshot(document, request.id, RangeError);
+    needle := request.text;
+    if(len needle == 0)
+        return snapshot(document, request.id, Invalid);
+    if(len needle > request.last - request.first)
+        return snapshot(document, request.id, NotFound);
+    prefix := prefixes(needle);
+    # [GC:] At most one integer per possible nonoverlapping match. The document
+    # bounds this scratch table; neither it nor the prefix array leaves the owner.
+    hits := array[(request.last - request.first) / len needle] of int;
+    matched := 0;
+    count := 0;
+    length := len document.text;
+    growth := len request.replacement - len needle;
+    for(index := request.first; index < request.last; index++){
+        while(matched > 0 && document.text[index] != needle[matched])
+            matched = prefix[matched - 1];
+        if(document.text[index] == needle[matched])
+            matched++;
+        if(matched == len needle){
+            # Check before adding: count*growth could overflow a Limbo int.
+            if(growth > 0 && growth > MaxCharacters - length)
+                return snapshot(document, request.id, TooLarge);
+            length += growth;
+            hits[count++] = index + 1 - matched;
+            matched = 0;
+        }
+    }
+    if(count == 0)
+        return snapshot(document, request.id, NotFound);
+    if(needle != request.replacement){
+        if(document.revision == MaxRevision)
+            return snapshot(document, request.id, RevisionLimit);
+        text := render(document.text, request.replacement, len needle, hits,
+                       0, count, 0, len document.text);
+        (_, undo) := pack(nil, document.text :: document.history.undo);
+        history := ref History(undo, nil);
+        # [GC:] Publish completed values together; retained replies keep old text.
+        document.text = text;
+        document.history = history;
+        document.revision++;
+    }
+    result := snapshot(document, request.id, Ok);
+    result.matches = count;
+    return result;
+}
+
 # Search one revision's explicit half-open character range without wrapping.
 # Prefix fallback gives linear time even for repeated near-matches; the table
 # is bounded by the admitted document length and belongs only to this request.
@@ -236,17 +375,9 @@ find(document: ref Document, request: Request): Reply
         return snapshot(document, request.id, NotFound);
     # [GC:] The owner roots document/needle and this private prefix table while
     # scanning. No array, mutable state or native pointer crosses a reply channel.
-    prefix := array[len needle] of int;
+    prefix := prefixes(needle);
     matched := 0;
-    for(index := 1; index < len needle; index++){
-        while(matched > 0 && needle[index] != needle[matched])
-            matched = prefix[matched - 1];
-        if(needle[index] == needle[matched])
-            matched++;
-        prefix[index] = matched;
-    }
-    matched = 0;
-    for(index = request.first; index < request.last; index++){
+    for(index := request.first; index < request.last; index++){
         while(matched > 0 && document.text[index] != needle[matched])
             matched = prefix[matched - 1];
         if(document.text[index] == needle[matched])

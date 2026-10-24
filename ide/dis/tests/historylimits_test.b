@@ -37,7 +37,7 @@ exchange(commands: chan of core->Request, operation: int, previous: core->Reply,
          text: string): core->Reply
 {
     reply := chan of core->Reply;
-    commands <-= core->Request(1, operation, previous.revision, 0, len previous.text, text, reply);
+    commands <-= core->Request(1, operation, previous.revision, 0, len previous.text, text, "", reply);
     return <-reply;
 }
 
@@ -57,7 +57,7 @@ init()
     require(core != nil && core->MaxHistoryEntries == 3 && core->MaxHistoryCharacters == 6,
             "reduced history fixture");
     commands := core->start();
-    empty := core->Reply(0, 0, 0, 0, 0, "", -1, -1, -1);
+    empty := core->Reply(0, 0, 0, 0, 0, "", -1, -1, -1, -1, -1);
     r := exchange(commands, core->Open, empty, "a");
     r = exchange(commands, core->Replace, r, "bb");
     r = exchange(commands, core->Replace, r, "ccc");

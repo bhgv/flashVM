@@ -25,6 +25,9 @@ def main():
             "history.dis",
             "history_test.dis",
             "historylimits_test.dis",
+            "replaceall_test.dis",
+            "replaceall.dis",
+            "utf8span_test.dis",
         ),
     )
     args = parser.parse_args()
@@ -46,7 +49,7 @@ def main():
     output = result.stdout.decode("utf-8", errors="replace")
     assert result.returncode == 0, (result.returncode, output, result.stderr)
     assert "FAIL" not in output and re.search(
-        r"^PASS idecore (?:(?:limits|revision|coordinates|find|navigation|history|historylimits|historyexample) )?\d+ checks$", output, re.MULTILINE
+        r"^PASS idecore (?:(?:limits|revision|coordinates|find|navigation|history|historylimits|historyexample|replaceall|replaceallexample|utf8span) )?\d+ checks$", output, re.MULTILINE
     ), (output, result.stderr)
     print(output.strip())
 

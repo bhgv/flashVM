@@ -41,7 +41,7 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int,
 {
     reply := chan of core->Reply;
     id := nextid++;
-    commands <-= core->Request(id, operation, expected, first, last, text, reply);
+    commands <-= core->Request(id, operation, expected, first, last, text, "", reply);
     result := <-reply;
     require(result.id == id, "correlation ID");
     return result;
@@ -78,8 +78,8 @@ init()
     state(exchange(commands, core->MarkSaved, 2, 0, 0, ""), core->Ok, 1, 2, 2, "A😀B");
     state(exchange(commands, 999, 2, 0, 0, ""), core->Unknown, 1, 2, 2, "A😀B");
     # A missing reply must neither modify text nor terminate the owner process.
-    commands <-= core->Request(0, core->Shutdown, 2, 0, 0, "", nil);
-    commands <-= core->Request(0, core->Replace, 2, 0, 3, "bad", nil);
+    commands <-= core->Request(0, core->Shutdown, 2, 0, 0, "", "", nil);
+    commands <-= core->Request(0, core->Replace, 2, 0, 3, "bad", "", nil);
     state(exchange(commands, core->Snapshot, -1, 0, 0, ""), core->Ok, 1, 2, 2, "A😀B");
     state(exchange(commands, core->Close, 2, 0, 0, ""), core->Ok, 0, 3, 3, "");
     state(exchange(commands, core->MarkSaved, 3, 0, 0, ""), core->Closed, 0, 3, 3, "");

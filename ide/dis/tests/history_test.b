@@ -37,7 +37,7 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int,
          text: string): core->Reply
 {
     reply := chan of core->Reply;
-    commands <-= core->Request(7, operation, expected, first, last, text, reply);
+    commands <-= core->Request(7, operation, expected, first, last, text, "", reply);
     return <-reply;
 }
 
@@ -67,7 +67,7 @@ init()
     state(exchange(commands, core->Undo, 2, 0, 0, ""), core->Ok, 3, 1, "A中😀");
     state(exchange(commands, core->Redo, 2, 0, 0, ""), core->Conflict, 3, 1, "A中😀");
     # A nil destination is ignored, including for a history-changing command.
-    commands <-= core->Request(0, core->Redo, 3, 0, 0, "", nil);
+    commands <-= core->Request(0, core->Redo, 3, 0, 0, "", "", nil);
     state(exchange(commands, core->Snapshot, 0, 0, 0, ""), core->Ok, 3, 1, "A中😀");
     state(exchange(commands, core->Replace, 3, 0, 3, "A中😀"), core->Ok, 3, 1, "A中😀");
     state(exchange(commands, core->Replace, 3, -1, 1, ""), core->RangeError, 3, 1, "A中😀");

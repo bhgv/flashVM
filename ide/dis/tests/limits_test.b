@@ -39,7 +39,7 @@ exchange(commands: chan of core->Request, id, operation, expected, first, last: 
          text: string): core->Reply
 {
     response := chan of core->Reply;
-    commands <-= core->Request(id, operation, expected, first, last, text, response);
+    commands <-= core->Request(id, operation, expected, first, last, text, "", response);
     return <-response;
 }
 
@@ -81,7 +81,7 @@ init()
 
     commands = core->start();
     response := chan of core->Reply;
-    request := core->Request(10, core->Open, 0, 0, 0, "A😀B", response);
+    request := core->Request(10, core->Open, 0, 0, 0, "A😀B", "", response);
     commands <-= request;
     # [GC:] The sent ADT is a channel value, not a shared mutable request reference.
     request.text = "changed after send";

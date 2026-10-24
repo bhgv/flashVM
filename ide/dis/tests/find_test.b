@@ -38,7 +38,7 @@ require(ok: int, message: string)
 exchange(commands: chan of core->Request, operation, expected, first, last: int, text: string): core->Reply
 {
     reply := chan of core->Reply;
-    commands <-= core->Request(42, operation, expected, first, last, text, reply);
+    commands <-= core->Request(42, operation, expected, first, last, text, "", reply);
     result := <-reply;
     require(result.id == 42, "correlation");
     return result;
