@@ -19,3 +19,4 @@
 - 0.1.17: Cover symbol source-map zeros.
 - 0.1.18: Cover symbol source-map line endings.
 - 0.1.19: Check source-map decoding against the upstream Limbo symbol writer.
+- 0.1.20: Record source-map generator, sanitizer and upstream interoperability acceptance.

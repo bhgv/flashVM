@@ -1,6 +1,6 @@
 # Карты исходников отладочных символов Limbo
 
-Версия **0.1.19**. [English](README.md).
+Версия **0.1.20**. [English](README.md).
 
 Независимый C99/CocoR reader **source-map prefix limbo .sbl 2.1**. Это исполняемая инфраструктура отладчика, а не полный компилятор Limbo, встраивание Dis или debugger UI. Types/functions/locals/globals после PC prefix намеренно непрозрачны и семантически не проверяются. Прежние версии .sbl первым компонентом не поддерживаются.
 
@@ -55,3 +55,5 @@ python3 compiler/limbo/symbols/tests/upstream_writer.py \
 ```
 
 [Upstream references](UPSTREAM.md) разделяет Dis debug services и wm/Tk presentation. [Направление компиляторов](COMPILER_DIRECTION.ru.md) фиксирует C/Limbo/CocoR и будущий AS. Следующие слои требуют полного symbol/type/local decoding, module identity/reload, адаптации имеющегося Dis control, channel transport, JIT mappings и настоящего target execution.
+
+[Validation checkpoint / Проверки](VALIDATION.md).
