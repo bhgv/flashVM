@@ -22,6 +22,34 @@
 
 Семнадцать fixtures сравнивают нормализованный результат с независимым long-double oracle производной на малых целочисленных controls до переноса. Допуск 0,51 единицы разрешает округление восстановленной абсолютной координаты и отвергает прежнюю ошибку почти в две единицы. Матрица меняет восемь форм, три оси, знаки и двоичные origins. Другие fixtures отдельно проверяют quadratic, linear, repeated-root, оба cubic humps, round strokes, native affine transforms и малые origins до 2^-900. Повторно запускаются прежние tiny-cubic и stroke регрессии.
 
+
+## Контрольная точка v0.1504
+
+Восстановленное изменение проходит 149 выбранных исполняемых проверок no-graphics Release и 149 no-graphics ASan/UBSan Debug в новых каталогах сборки. Оба набора включают все семнадцать новых fixtures и существующий пример C89 cubic. Все процессы завершаются нулём; assertions включены. LeakSanitizer отключён. Runtime выводит предупреждения поиска имени executable (errno 2), что может ограничивать символизацию; sanitizer violation не зарегистрирован, все тестовые процессы завершаются нулём. До обслуживания workspace тот же исходный код также прошёл 395 выбранных native AGG/JIT и 149 minimal проверок; завершения были подтверждены, но native-сборка удалена обслуживанием. Прерванный прежний text-JIT sanitizer запуск не учитывается.
+
+Публичные заголовки не меняются. Серия из двадцати коммитов применяется через git am --3way к чистому worktree от опубликованной базы v0.1484; проверяются совпадение итоговых деревьев, последовательные версии и обе подписи bhgv. Документация со ссылками на исходники и frontend tutorial checker проходят. Generated logs остаются вне Git. Ни один этап roadmap не закрывается.
+
+
+| Fixture / Проверка | Source / Исходник |
+| --- | --- |
+| analytic | [analytic](../tests/path_translated_curve_analytic.cpp) |
+| horizontal | [horizontal](../tests/path_translated_curve_horizontal.cpp) |
+| diagonal | [diagonal](../tests/path_translated_curve_diagonal.cpp) |
+| negative | [negative](../tests/path_translated_curve_negative.cpp) |
+| origins | [origins](../tests/path_translated_curve_origins.cpp) |
+| tiny | [tiny](../tests/path_translated_curve_tiny.cpp) |
+| quadratic | [quadratic](../tests/path_translated_curve_quadratic.cpp) |
+| hump | [hump](../tests/path_translated_curve_hump.cpp) |
+| linear | [linear](../tests/path_translated_curve_linear.cpp) |
+| repeated | [repeated](../tests/path_translated_curve_repeated.cpp) |
+| round | [round](../tests/path_translated_curve_round.cpp) |
+| round negative | [round_negative](../tests/path_translated_curve_round_negative.cpp) |
+| round tiny | [round_tiny](../tests/path_translated_curve_round_tiny.cpp) |
+| transform | [transform](../tests/path_translated_curve_transform.cpp) |
+| transform tiny | [transform_tiny](../tests/path_translated_curve_transform_tiny.cpp) |
+| transform round | [transform_round](../tests/path_translated_curve_transform_round.cpp) |
+| matrix | [matrix](../tests/path_translated_curve_matrix.cpp) |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

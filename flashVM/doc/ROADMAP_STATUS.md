@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1504 / Контрольная точка v0.1504: nearby translated Bezier controls retain extrema through exact local subtraction. Seventeen new fixtures; fresh no-graphics Release 149 and no-graphics ASan/UBSan 149 pass. Earlier native AGG/JIT 395 passed before workspace maintenance; interrupted text-JIT sanitizer run is not counted. All nine stages and physical/reference acceptance remain open. [EN](TRANSLATED_CURVE_EXTREMA.md) / [RU](TRANSLATED_CURVE_EXTREMA.ru.md).
+
 Checkpoint v0.1484 / Контрольная точка v0.1484: 378 native direct-launch, 132 no-graphics CTest, 132 ASan/UBSan CTest checks pass. Tiny cubic derivative scaling preserves analytic extrema and round bounds; an executable C89 example demonstrates the public path API. General numerical/reference/device acceptance and all nine stages remain open. [EN](CUBIC_EXTREMA_SCALING.md) / [RU](CUBIC_EXTREMA_SCALING.ru.md).
 
 Checkpoint v0.1464 / Контрольная точка v0.1464: 360 native, 114 no-graphics, 114 ASan/UBSan tests pass. Stable Y-column measurement preserves tiny nonzero stroke bounds; excessive affine components remain rejected. General transform/raster metrics, reference/devices and all nine stages remain open. [EN](SECONDARY_AXIS_BOUNDS.md) / [RU](SECONDARY_AXIS_BOUNDS.ru.md).

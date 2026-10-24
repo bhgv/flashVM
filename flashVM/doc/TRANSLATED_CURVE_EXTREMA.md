@@ -22,6 +22,34 @@ The fix is conditional local-coordinate arithmetic, not an interval enclosure pr
 
 Seventeen fixtures compare normalized output against an independent long-double derivative oracle on small integer controls before translation. A 0.51-unit tolerance permits rounding of the restored absolute coordinate; it rejects the old nearly two-unit error. The matrix varies eight shapes, three axes, signs and binary origins. Other fixtures isolate quadratic, linear and repeated-root cases, both cubic humps, round strokes, native affine transforms and tiny origins down to 2^-900. Existing tiny-cubic and stroke regression families are also rerun.
 
+
+## v0.1504 validation checkpoint
+
+The reconstructed change passes 149 selected no-graphics Release executables and 149 selected no-graphics ASan/UBSan Debug executables from fresh build directories. Both runs include all seventeen new fixtures and the existing C89 cubic example. Every process exits zero with assertions enabled. LeakSanitizer is disabled. The runtime emits executable-name lookup warnings (errno 2), which can limit symbolization; no sanitizer violation is reported and every test process exits zero. Before workspace maintenance, the same source change also passed 395 selected native AGG/JIT executables and 149 minimal executables; those earlier exits were observed, but that native build was removed by maintenance. The interrupted earlier text-JIT sanitizer run is not counted.
+
+Public headers are unchanged. The delivered twenty-commit series is applied with git am --3way to a clean worktree at the published v0.1484 base, with matching final trees, consecutive versions and both bhgv identities checked. Source-linked documentation and the frontend tutorial checker pass. Generated logs remain outside Git. This checkpoint does not close any roadmap stage.
+
+
+| Fixture / Проверка | Source / Исходник |
+| --- | --- |
+| analytic | [analytic](../tests/path_translated_curve_analytic.cpp) |
+| horizontal | [horizontal](../tests/path_translated_curve_horizontal.cpp) |
+| diagonal | [diagonal](../tests/path_translated_curve_diagonal.cpp) |
+| negative | [negative](../tests/path_translated_curve_negative.cpp) |
+| origins | [origins](../tests/path_translated_curve_origins.cpp) |
+| tiny | [tiny](../tests/path_translated_curve_tiny.cpp) |
+| quadratic | [quadratic](../tests/path_translated_curve_quadratic.cpp) |
+| hump | [hump](../tests/path_translated_curve_hump.cpp) |
+| linear | [linear](../tests/path_translated_curve_linear.cpp) |
+| repeated | [repeated](../tests/path_translated_curve_repeated.cpp) |
+| round | [round](../tests/path_translated_curve_round.cpp) |
+| round negative | [round_negative](../tests/path_translated_curve_round_negative.cpp) |
+| round tiny | [round_tiny](../tests/path_translated_curve_round_tiny.cpp) |
+| transform | [transform](../tests/path_translated_curve_transform.cpp) |
+| transform tiny | [transform_tiny](../tests/path_translated_curve_transform_tiny.cpp) |
+| transform round | [transform_round](../tests/path_translated_curve_transform_round.cpp) |
+| matrix | [matrix](../tests/path_translated_curve_matrix.cpp) |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
