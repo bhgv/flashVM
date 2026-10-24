@@ -6,3 +6,4 @@
 - 0.1.4: Cover IDE build verify failure.
 - 0.1.5: Cover IDE build optimise failure.
 - 0.1.6: Cover IDE build verify optimised failure.
+- 0.1.7: Cover IDE build object failure.
