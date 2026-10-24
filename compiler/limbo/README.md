@@ -70,3 +70,5 @@ Inferno compiler or Dis generator.
 [Polymorphic example](examples/Polymorphic.b), [upstream grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).
 
 [Lexical profile 0.6.0](../LEXICAL_PROFILE.md).
+
+[Independent .sbl source-map reader](symbols/README.md) · [C/Limbo/CocoR compiler direction](symbols/COMPILER_DIRECTION.md).

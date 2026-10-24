@@ -71,3 +71,5 @@ Include-файлы не раскрываются; cast по именованно
 [Полиморфный пример](examples/Polymorphic.b), [официальная грамматика](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).
 
 [Лексический профиль 0.6.0](../LEXICAL_PROFILE.ru.md).
+
+[Independent .sbl source-map reader](symbols/README.ru.md) · [C/Limbo/CocoR compiler direction](symbols/COMPILER_DIRECTION.ru.md).

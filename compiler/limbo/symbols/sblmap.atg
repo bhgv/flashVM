@@ -1,0 +1,71 @@
+/* Authoritative line framing and counted source-prefix structure for .sbl 2.1.
+ * Numeric compression is checked by the C99 actions; tail types remain opaque. */
+COMPILER Sblmap
+#include "state.h"
+#include <string.h>
+
+CHARACTERS
+  /* A record cannot hide an embedded line ending or NUL. */
+  body =
+    ANY - CHR(0) - CHR(10) - CHR(13)
+  .
+
+  /* Physical record terminators. */
+  lf =
+    CHR(10)
+  .
+
+  /* CR is accepted only as the first byte of CRLF. */
+  cr =
+    CHR(13)
+  .
+
+TOKENS
+  /* Preserve spaces and opaque file-name bytes inside each line. */
+  text =
+    body
+    {
+        body
+    }
+  .
+
+  /* Admit producer LF and conventional CRLF without ignoring interior CR. */
+  eol =
+    lf
+    | cr lf
+  .
+
+PRODUCTIONS
+  /* Parse bounded declared tables, then accept only line framing of the opaque tail. */
+  Sblmap =
+    Record<SBL_HEADER> Record<SBL_MODULE> Record<SBL_FILES>
+    {
+        IF(sblmap_need_files()) Record<SBL_FILE>
+    }
+    Record<SBL_PCS>
+    {
+        IF(sblmap_need_pc()) Record<SBL_PC>
+    }
+    {
+        Tail
+    }
+  .
+
+  /* Every prefix record is nonempty and ends with a complete terminator. */
+  Record<int role> =
+    text                                                                (. sblmap_capture(role, (size_t)S_Pos, (size_t)S_Len); .)
+    eol                                                                 (. sblmap_end(role, (size_t)(S_Pos + S_Len)); .)
+  .
+
+  /* Opaque type/function/global rows are not interpreted as source records. */
+  Tail =
+    [
+        text
+    ]
+    eol
+  .
+
+END
+  Sblmap
+  .
+
