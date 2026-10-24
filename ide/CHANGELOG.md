@@ -10,3 +10,4 @@
 - 0.1.8: Cover IDE build link failure.
 - 0.1.9: Cover IDE build run failure.
 - 0.1.10: Cover IDE build trace.
+- 0.1.11: Cover IDE build timeout.
