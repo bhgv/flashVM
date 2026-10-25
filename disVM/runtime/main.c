@@ -648,6 +648,7 @@ int main(int argc, char **argv)
     Module *module;
     Prog *process;
     Prog **slot;
+    char *entry;
     cflag = 1;
     while (argc > 1 && argv[1][0] == '-')
     {
@@ -677,14 +678,14 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.3.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.4.0: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
         {
             puts("usage: disvm [--jit|--no-jit] [--stats] [--test-control] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
-            puts("editor options: --font TTF [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES] [--capture PPM]");
+            puts("editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES] [--capture PPM]");
 #endif
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
             return 0;
@@ -728,14 +729,15 @@ int main(int argc, char **argv)
     mathmodinit();
     dvm_srv_initialize();
     srvmodinit();
+    entry = entry_resource(argv[1]);
 #ifdef DVM_RUNTIME_EDITOR
-    if (!dvm_editor_start())
+    if (!dvm_editor_default_font(module_directory) || !dvm_editor_start())
     {
         dvm_editor_stop();
         error("cannot initialize graphical editor");
     }
 #endif
-    module = load(entry_resource(argv[1]));
+    module = load(entry);
     if (!module)
     {
         error(failure);

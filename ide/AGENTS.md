@@ -53,3 +53,9 @@
 - Dis and SWF are complementary execution engines with isolated owners/heaps and
   checked typed channel/module adapters. Possible later unification must not be
   assumed to exist or introduced by silently changing containers/ABIs.
+
+- User instruction 2026-10-25: ship a free Unicode font (currently unmodified
+  Noto Sans Mono/OFL), default editor size 11, with no font-location question.
+  Ctrl+wheel and two-finger pinch must change scale through checked value/channel
+  boundaries; touch input is not Android-specific. Preserve source/licensing and
+  distinguish replay/dummy checks from physical desktop/touch acceptance.

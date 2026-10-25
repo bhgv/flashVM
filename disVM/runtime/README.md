@@ -167,5 +167,12 @@ graphics-free build. `$Idehost` is registered only by the editor executable and
 borrows stack-rooted channels until Limbo explicitly detaches. No cross-heap
 pointers are transmitted. File/save/history policy runs in Limbo; TextField
 presentation uses FlashVM, and the thin SDL host only presents pixels/events.
-The fixed first-page preview, mouse/scrolling/AS-worker/debugger limits are
-explicit in the tutorial. `--events` is offscreen replay, not physical UI proof.
+The Dis-selected viewport, mouse/scrolling, search/path fields and bundled-font scaling are documented in the tutorial; AS-worker/debugger integration remains open. `--events` is offscreen replay, not physical UI proof.
+
+### Bundled font and size (runtime 0.4.0)
+
+Noto Sans Mono/OFL is packaged beside the module; no font selection is required.
+Default size is 11. Ctrl+wheel and SDL two-finger pinch propose bounded Dis-owned
+zoom with actual row geometry, including desktop touch-capable adapters.
+[English contract](../../ide/dis/ZOOM.md) · [Русский](../../ide/dis/ZOOM.ru.md).
+The signed-int32 envelope fix is exercised by real NC64 codec tests.

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1553**. [English](README.md).
+Версия разработки: **0.1554**. [English](README.md).
 
-Текущая серия: [v0.1553](docs/releases/v0.1553.md) — графический редактор с логикой Limbo/Dis и TextField FlashVM; обновление Inferno experiment до `3c6f5dc`.
+Текущая серия: [v0.1554](docs/releases/v0.1554.md) — навигация, окно/мышь, Find/Replace/Open/SaveAs на Dis, встроенный Noto 11 и Ctrl+колесо/щипок; Inferno закреплён до `cc9c3199`.
 
 ## Просмотр документации
 

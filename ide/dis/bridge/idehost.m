@@ -15,6 +15,13 @@ Idehost: module
     SaveAs: con 65545;    # Revision-bound explicit destination; adopted only after a successful write.
     Open: con 65546;      # Revision-bound strict source load; dirty documents are never discarded.
 
+    Zoom: con 65547;      # Ticket/revision-bound zoom proposal: first +/-1, second measured rows.
+    Style: con 65548;     # View font size 6..48 and logical rows 1..128, both chosen/admitted by Dis.
+    Pinch: con 65550;     # Raw input pointer-code extension: first is a normalized +/-1 pinch step.
+
+    # Actual initial font geometry, returned as a bounded copied value without document access.
+    rows: fn(): int;
+
     # Borrow ports while init's stack roots remain live; no cross-heap pointers escape.
     # Returns zero on registration, minus one for invalid/repeated registration.
     attach: fn(input: chan of array of byte, output: chan of array of byte): int;

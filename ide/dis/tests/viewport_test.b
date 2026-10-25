@@ -23,16 +23,16 @@ init()
         text += "a\n";
     }
     (first, last, line) := viewport->window(state, text, 0, 1);
-    if (first != 0 || last != 48 || line != 0) {
+    if (first != 0 || last != 47 || line != 0) {
         raise "fail: initial logical viewport";
     }
     viewport->scroll(state, text, 3);
     (first, last, line) = viewport->window(state, text, 0, 0);
-    if (first != 6 || last != 54 || line != 3) {
+    if (first != 6 || last != 53 || line != 3) {
         raise "fail: scrolling moved the caret or used byte/visual coordinates";
     }
     (first, last, line) = viewport->window(state, text, 0, 1);
-    if (first != 0 || last != 48) {
+    if (first != 0 || last != 47) {
         raise "fail: reveal earlier caret";
     }
     (first, last, line) = viewport->window(state, text, 80, 1);

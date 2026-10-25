@@ -37,11 +37,37 @@ readword(frame: array of byte, offset: int): (int, int)
 }
 
 
+# Validate a fixed-width unsigned field while permitting classic int32 bit patterns.
+# value is copied; returns one only when its numeric representation fits the 32-bit wire.
+wordbits(value: int): int
+{
+    number := big value;
+    return number >= big -2147483648 && number <= big 16rffffffff;
+}
+
+
+# Interpret a wire argument as signed int32 even when the experimental int cell is wider.
+# value contains decoded 32-bit bits; returns the same signed value on classic and NC64.
+signedword(value: int): int
+{
+    number := big value;
+    if (number >= big 16r80000000) {
+        number -= big 16r100000000;
+    }
+    return int number;
+}
+
+
 # Check common envelope class and correlation, independently of service permissions.
 # message is borrowed and may be nil. Returns one for valid common fields, otherwise zero.
 valid(message: ref Message): int
 {
     if (message == nil || message.kind < Request || message.kind > View) {
+        return 0;
+    }
+    if (!wordbits(message.id) || !wordbits(message.code) || !wordbits(message.flags)
+        || big message.first < big -2147483648 || big message.first > big 2147483647
+        || big message.second < big -2147483648 || big message.second > big 2147483647) {
         return 0;
     }
     for (i := 0; i < len message.text; i++) {
@@ -95,8 +121,8 @@ decode(frame: array of byte): (int, ref Message)
         }
         fields[i] = value;
     }
-    message := ref Message(fields[0], fields[1], fields[2], fields[3], fields[4],
-        fields[5], string frame[Header:]);
+    message := ref Message(fields[0], fields[1], fields[2], fields[3], signedword(fields[4]),
+        signedword(fields[5]), string frame[Header:]);
     if (!valid(message)) {
         return (0, nil);
     }

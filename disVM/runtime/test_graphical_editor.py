@@ -24,14 +24,16 @@ def shortcut(letter):
 
 # Execute actual bytecode from a relocated cwd; collect independently decoded view snapshots.
 # Paths are explicit. Raises on timeout, failed execution or invalid mode counters.
-def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None):
+def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None):
     replay = directory / "input frames.bin"
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
-    command = [str(runtime), "--stats", "--jit" if mode == "jit" else "--no-jit",
-               "--font", str(font), "--new" if fresh else "--document", str(source),
-               "--window-events" if len(sys.argv) > 5 else "--events", str(replay),
-               "--capture", str(capture), str(module)]
+    command = [str(runtime), "--stats", "--jit" if mode == "jit" else "--no-jit"]
+    if font is not None:
+        command += ["--font", str(font)]
+    command += ["--new" if fresh else "--document", str(source),
+                "--window-events" if len(sys.argv) > 5 else "--events", str(replay),
+                "--capture", str(capture), str(module)]
     result = subprocess.run(command, cwd=directory, capture_output=True, text=True, timeout=40)
     if not success:
         if result.returncode == 0:
@@ -49,6 +51,13 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
             views.append((*map(int, words[1:6]), bytes.fromhex(words[6]).decode("utf-8")))
     if windows is not None:
         windows.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("WINDOW "))
+    if styles is not None:
+        styles.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("STYLE "))
+    if panels is not None:
+        for line in result.stdout.splitlines():
+            if line.startswith("PANEL "):
+                fields = line.split(" ", 3)
+                panels.append((int(fields[1]), int(fields[2]), bytes.fromhex(fields[3]).decode("utf-8")))
     raster = capture.read_bytes()
     header = b"P6\n960 640\n255\n"
     if not raster.startswith(header) or len(raster) != len(header) + 960 * 640 * 3:
@@ -123,13 +132,15 @@ def main():
         # Wheel scrolling changes only the Dis viewport. A stale hit must be refused.
         source.write_text("\n".join(f"L{i:02d} Я😀" for i in range(50)), encoding="utf-8")
         windows = []
+        styles = []
         events = [envelope(3, 5, 1), envelope(1, 65542, 1, "00000001", first=1, second=1),
                   envelope(3, 1, 1, first=40, second=40), envelope(3, 1, 3, first=40, second=40),
                   envelope(4, 34, 1), envelope(1, 65539)]
-        views = run(runtime, module, font, mode, directory, events, source, windows=windows)
+        views = run(runtime, module, font, mode, directory, events, source, windows=windows, styles=styles)
         if windows[1][1] != 21 or views[1][3] != 0 or views[2][1] != 1 or views[2][3] != 0:
             raise RuntimeError("wheel/stale view request changed document selection")
-        if views[3][3] != 21 or views[-1][3] != 189 or not (windows[-1][1] <= 189 <= windows[-1][2]):
+        expected_page = min(3 + styles[0][1], 49) * 7
+        if views[3][3] != 21 or views[-1][3] != expected_page or not (windows[-1][1] <= expected_page <= windows[-1][2]):
             raise RuntimeError("scrolled hit/page movement did not reveal the acknowledged caret")
         # The complete source remains owned while a long-line suffix follows Ctrl+End.
         source.write_text("Я😀" * 3000, encoding="utf-8")

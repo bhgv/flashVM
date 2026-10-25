@@ -7,6 +7,7 @@ Ideviewport: module
 
     State: adt
     {
+        rows: int;  # Actual renderer line capacity admitted by Dis, bounded 1..128.
         first: int; # Unicode scalar offset at the top; may enter a long line to reveal its caret.
     };
 

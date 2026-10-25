@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.3.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.4.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -107,7 +107,7 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   set(binary "${CMAKE_CURRENT_BINARY_DIR}/${test}-test.dis")
   add_custom_command(OUTPUT "${binary}"
@@ -215,6 +215,9 @@ endif()
 # Explicit opt-in: core/console builds still need no fonts, rasterizer or window SDK.
 option(DVM_EDITOR_SDL "Enable the real SDL2 editor window and native events" OFF)
 if(DVM_RUNTIME_EDITOR)
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fonts")
+  configure_file("${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" "${CMAKE_CURRENT_BINARY_DIR}/fonts/NotoSansMono-Regular.ttf" COPYONLY)
+  configure_file("${root}/ide/assets/fonts/OFL.txt" "${CMAKE_CURRENT_BINARY_DIR}/fonts/OFL.txt" COPYONLY)
   enable_language(CXX)
   set(CMAKE_CXX_STANDARD 98)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -245,7 +248,10 @@ if(DVM_RUNTIME_EDITOR)
   add_custom_target(disvm_graphical_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis")
 endif()
 
-set(DVM_EDITOR_TEST_FONT "" CACHE FILEPATH "Explicit font for real graphical editor checks")
+set(DVM_EDITOR_TEST_FONT "" CACHE FILEPATH "Optional explicit font override for graphical editor checks")
+if(DVM_RUNTIME_EDITOR AND NOT DVM_EDITOR_TEST_FONT)
+  set(DVM_EDITOR_TEST_FONT "${CMAKE_CURRENT_BINARY_DIR}/fonts/NotoSansMono-Regular.ttf")
+endif()
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
     add_test(NAME disvm_graphical_editor_${mode} COMMAND "${PYTHON_EXECUTABLE}"
@@ -268,5 +274,14 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_actions.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_graphical_actions_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_graphical_default_font_zoom_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_zoom.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}")
+    set_tests_properties(disvm_graphical_default_font_zoom_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

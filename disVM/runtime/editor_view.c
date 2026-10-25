@@ -19,6 +19,12 @@
 #define EDITOR_VIEW_BYTES 4096U        /* Bounded first-page TextField preview. */
 #define EDITOR_REPLY_META 56U          /* Seven canonical eight-character hexadecimal words. */
 #define EDITOR_SELECTION 65536UL       /* Dis selection notification code. */
+#define EDITOR_ZOOM 65547UL            /* Dis-admitted font-size step proposal. */
+#define EDITOR_STYLE 65548UL           /* Complete-view font-size and row geometry. */
+#define EDITOR_PINCH 65550UL           /* Normalized two-finger pinch input code. */
+#define EDITOR_FONT_MIN 6              /* Bounded minimum editor pixel size. */
+#define EDITOR_FONT_MAX 48             /* Bounded maximum editor pixel size. */
+#define EDITOR_PINCH_THRESHOLD 0.015   /* Normalized SDL distance change per admitted zoom step. */
 #define EDITOR_PANEL 65543UL           /* Dis-owned prompt mode, selection and counted field text. */
 #define EDITOR_VIEWPORT 65540UL        /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL          /* Ticket/revision-bound logical scroll request. */
@@ -26,6 +32,12 @@
 #define EDITOR_QUIT 65539UL            /* Dis controller's dirty-checked close operation. */
 
 static const char *font_path;          /* Borrowed explicit TTF/OpenType command-line path. */
+static char *default_font_path;        /* Owned relocatable sibling resource path, unless --font overrides. */
+static unsigned char *font_bytes;      /* Owned immutable face bytes for future actual size changes. */
+static size_t font_byte_count;         /* Active font byte extent, bounded during admission. */
+static int font_size = 11;             /* Initial pixel size; subsequent policy comes from Dis Style. */
+static unsigned long style_revision;   /* Expected content revision of the pending font style. */
+static double pinch_distance;          /* Bounded native gesture accumulator, never a document coordinate. */
 static const char *document_path = ""; /* Borrowed configured source/destination, never guessed. */
 static const char *event_path;         /* Optional deterministic counted-envelope input. */
 static const char *capture_path;       /* Optional final PPM capture destination. */
@@ -150,6 +162,150 @@ int dvm_editor_fresh(void)
 }
 
 
+/* Choose the bundled font relative to the entry module, preserving the caller's cwd.
+ * directory is borrowed. An explicit --font remains an optional override, never a prompt. */
+int dvm_editor_default_font(const char *directory)
+{
+    const char *relative = "/fonts/NotoSansMono-Regular.ttf";
+    size_t length;
+    if (font_path)
+    {
+        return 1;
+    }
+    if (!directory || strlen(directory) > 4000)
+    {
+        return 0;
+    }
+    length = strlen(directory) + strlen(relative) + 1;
+    default_font_path = malloc(length);
+    if (!default_font_path)
+    {
+        return 0;
+    }
+    snprintf(default_font_path, length, "%s%s", directory, relative);
+    font_path = default_font_path;
+    return 1;
+}
+
+
+/* Reserve enough native pixels for a readable prompt at the admitted face size.
+ * line_height is an actual finite font metric; returns bounded surface pixels, never text policy. */
+static int panel_height(double line_height)
+{
+    int height = line_height > 300 ? 320 : (int)ceil(line_height) + 12;
+    if (height < 48)
+    {
+        height = 48;
+    }
+    return height;
+}
+
+
+/* Measure bounded visible logical rows from the actual current face metrics.
+ * No arguments; returns 1..128, with a conservative single row on an unavailable metric. */
+int dvm_editor_rows(void)
+{
+    FVM_FontMetrics metrics;
+    int rows;
+    if (!layout_font || fvm_font_metrics(layout_font, &metrics) != FVM_OK || !(metrics.line_height > 0))
+    {
+        return 1;
+    }
+    rows = (int)floor((EDITOR_HEIGHT - panel_height(metrics.line_height) - 4) / metrics.line_height);
+    if (rows < 1)
+    {
+        rows = 1;
+    }
+    if (rows > 128)
+    {
+        rows = 128;
+    }
+    return rows;
+}
+
+
+/* Measure a proposed face size without changing the current view or either VM state.
+ * size is bounded 6..48; returns actual row capacity or zero on a font failure. */
+static int rows_for_size(int size)
+{
+    FVM_Font *font = 0;
+    FVM_FontMetrics metrics;
+    int rows;
+    if (size == font_size)
+    {
+        return dvm_editor_rows();
+    }
+    if (size < EDITOR_FONT_MIN || size > EDITOR_FONT_MAX ||
+        fvm_font_read(font_bytes, font_byte_count, 0, size, &font) != FVM_OK)
+    {
+        return 0;
+    }
+    if (fvm_font_metrics(font, &metrics) != FVM_OK || !(metrics.line_height > 0))
+    {
+        fvm_font_destroy(font);
+        return 0;
+    }
+    rows = (int)floor((EDITOR_HEIGHT - panel_height(metrics.line_height) - 4) / metrics.line_height);
+    fvm_font_destroy(font);
+    if (rows < 1)
+    {
+        rows = 1;
+    }
+    if (rows > 128)
+    {
+        rows = 128;
+    }
+    return rows;
+}
+
+
+/* Apply a Dis-admitted size to both real TextFields and the glyph-hit face.
+ * size is bounded; returns one on actual matching font/layout setup, zero on failure. */
+static int apply_font_size(int size)
+{
+    FVM_Object *format = 0;
+    FVM_Font *font = 0;
+    FVM_Value value;
+    FVM_Value argument;
+    FVM_Value ignored;
+    FVM_Result result;
+    if (size == font_size)
+    {
+        return 1;
+    }
+    if (size < EDITOR_FONT_MIN || size > EDITOR_FONT_MAX ||
+        fvm_font_read(font_bytes, font_byte_count, 0, size, &font) != FVM_OK ||
+        fvm_construct(context, "TextFormat", 0, 0, &format) != FVM_OK || fvm_gc_pin(context, format) != FVM_OK)
+    {
+        fvm_font_destroy(font);
+        return 0;
+    }
+    fvm_value_number(&value, size);
+    result = fvm_object_set(context, format, "size", &value);
+    fvm_value_undefined(&argument);
+    argument.type = FVM_VALUE_OBJECT;
+    argument.object = format;
+    if (result == FVM_OK)
+    {
+        result = fvm_object_call(context, field, "setNewTextFormat", 1, &argument, &ignored);
+    }
+    if (result == FVM_OK)
+    {
+        result = fvm_object_call(context, panel_field, "setNewTextFormat", 1, &argument, &ignored);
+    }
+    fvm_gc_unpin(context, format);
+    if (result != FVM_OK)
+    {
+        fvm_font_destroy(font);
+        return 0;
+    }
+    fvm_font_destroy(layout_font);
+    layout_font = font;
+    font_size = size;
+    return 1;
+}
+
+
 /* Load an explicitly selected bounded font and create a pinned uniform TextField.
  * Returns one on success, zero on any actual backend/SDK/file failure. */
 int dvm_editor_create(void)
@@ -162,7 +318,7 @@ int dvm_editor_create(void)
     FVM_Result result;
     if (!font_path)
     {
-        fprintf(stderr, "editor requires --font PATH (an explicit TTF/OpenType font)\n");
+        fprintf(stderr, "editor bundled font resource is unavailable\n");
         return 0;
     }
     font = fopen(font_path, "rb");
@@ -184,6 +340,8 @@ int dvm_editor_create(void)
         return 0;
     }
     fclose(font);
+    font_bytes = bytes;
+    font_byte_count = (size_t)size;
     result = fvm_config_init(&config);
     if (result == FVM_OK)
     {
@@ -203,9 +361,8 @@ int dvm_editor_create(void)
     }
     if (result == FVM_OK)
     {
-        result = fvm_font_read(bytes, (size_t)size, 0, 18, &layout_font);
+        result = fvm_font_read(bytes, (size_t)size, 0, font_size, &layout_font);
     }
-    free(bytes);
     if (result != FVM_OK || fvm_textfield_create(context, "Editor", EDITOR_WIDTH, EDITOR_HEIGHT, &field) != FVM_OK ||
         fvm_gc_pin(context, field) != FVM_OK ||
         fvm_textfield_create(context, "Editor", EDITOR_WIDTH - 16, 44, &panel_field) != FVM_OK ||
@@ -222,7 +379,7 @@ int dvm_editor_create(void)
         {
             return 0;
         }
-        fvm_value_number(&value, 18);
+        fvm_value_number(&value, font_size);
         result = fvm_object_set(context, format, "size", &value);
         fvm_value_undefined(&argument);
         argument.type = FVM_VALUE_OBJECT;
@@ -612,8 +769,20 @@ static int render_panel(FVM_RasterSurface *surface)
     FVM_RasterColor active = {197, 217, 252, 255};
     FVM_RasterColor ink = {24, 40, 72, 255};
     FVM_Result result;
-    if (!rectangle(
-            surface, 0, EDITOR_HEIGHT - 48, EDITOR_WIDTH, 48, panel_mode && panel_selected ? active : background))
+    FVM_FontMetrics metrics;
+    int height;
+    if (fvm_font_metrics(layout_font, &metrics) != FVM_OK)
+    {
+        return 0;
+    }
+    height = panel_height(metrics.line_height);
+    fvm_value_number(&value, height - 8);
+    if (fvm_object_set(context, panel_field, "_height", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    if (!rectangle(surface, 0, EDITOR_HEIGHT - height, EDITOR_WIDTH, height,
+                   panel_mode && panel_selected ? active : background))
     {
         return 0;
     }
@@ -638,7 +807,7 @@ static int render_panel(FVM_RasterSurface *surface)
     placement.xx = 1;
     placement.yy = 1;
     placement.x0 = 8;
-    placement.y0 = EDITOR_HEIGHT - 42;
+    placement.y0 = EDITOR_HEIGHT - height + 6;
     result = fvm_textfield_path(context, panel_field, &path);
     if (result == FVM_OK)
     {
@@ -765,6 +934,17 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code == EDITOR_STYLE)
+    {
+        if (assembling || message->size || message->first < EDITOR_FONT_MIN || message->first > EDITOR_FONT_MAX ||
+            message->second < 1 || message->second > 128 || !apply_font_size((int)message->first) ||
+            message->second != dvm_editor_rows())
+        {
+            return 0;
+        }
+        style_revision = message->flags;
+        return 1;
+    }
     if (message->code == EDITOR_PANEL)
     {
         if (assembling || message->first < 0 || message->first > 5 || message->second < 0 || message->second > 1 ||
@@ -832,6 +1012,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
             }
             putchar('\n');
             printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
+            printf("STYLE %d %d\n", font_size, dvm_editor_rows());
             printf("PANEL %lu %d ", panel_mode, panel_selected);
             for (index = 0; index < panel_size; index++)
             {
@@ -946,7 +1127,49 @@ static void resolve_pointer(DVM_UIMessage *message)
     {
         return;
     }
-    if (message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN)
+    {
+        FVM_KeyboardState state;
+        int wheel = message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN;
+        int pinch = message->code == EDITOR_PINCH;
+        int control;
+        memset(&state, 0, sizeof(state));
+        state.struct_size = sizeof(state);
+        control = fvm_input_get_keyboard(context, &state) == FVM_OK && state.down[FVM_KEY_CONTROL];
+        if ((wheel && control) || pinch)
+        {
+            int delta = pinch ? (message->first == 1    ? 1
+                                 : message->first == -1 ? -1
+                                                        : 0)
+                              : (message->code == FVM_MOUSE_WHEEL_UP ? 1 : -1);
+            int target = font_size + delta;
+            int rows;
+            if (target < EDITOR_FONT_MIN)
+            {
+                target = EDITOR_FONT_MIN;
+            }
+            if (target > EDITOR_FONT_MAX)
+            {
+                target = EDITOR_FONT_MAX;
+            }
+            rows = rows_for_size(target);
+            if (!rows)
+            {
+                message->first = 0;
+                message->second = 0;
+            }
+            else
+            {
+                message->first = delta;
+                message->second = rows;
+            }
+            message->code = EDITOR_ZOOM;
+        }
+    }
+    if (message->code == EDITOR_ZOOM)
+    {
+        /* Geometry was only measured above; Dis still validates and chooses its size. */
+    }
+    else if (message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN)
     {
         message->first = message->code == FVM_MOUSE_WHEEL_UP ? -3 : 3;
         message->second = 0;
@@ -1050,6 +1273,32 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             return -1;
         }
+        if (message->kind == DVM_UI_KEY && message->code >= 1 && message->code < FVM_KEYBOARD_CODE_COUNT &&
+            message->flags <= 1)
+        {
+            FVM_KeyboardState state;
+            memset(&state, 0, sizeof(state));
+            state.struct_size = sizeof(state);
+            if (fvm_input_get_keyboard(context, &state) != FVM_OK)
+            {
+                return -1;
+            }
+            state.down[message->code] = message->flags != 0;
+            state.last_code = (unsigned int)message->code;
+            state.last_ascii = 0;
+            if (fvm_input_set_keyboard(context, &state) != FVM_OK)
+            {
+                return -1;
+            }
+        }
+        if (message->kind == DVM_UI_FOCUS && !message->flags)
+        {
+            pinch_distance = 0;
+            if (fvm_input_reset_keyboard(context) != FVM_OK)
+            {
+                return -1;
+            }
+        }
         resolve_pointer(message);
         complete = 0;
         return 1;
@@ -1068,6 +1317,28 @@ int dvm_editor_event(DVM_UIMessage *message)
             message->code = EDITOR_QUIT;
             message->flags = (SDL_GetModState() & KMOD_SHIFT) != 0;
         }
+        else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
+        {
+            pinch_distance = 0;
+            return 0;
+        }
+        else if (event.type == SDL_MULTIGESTURE)
+        {
+            if (event.mgesture.numFingers < 2 || !(event.mgesture.dDist >= -1 && event.mgesture.dDist <= 1))
+            {
+                pinch_distance = 0;
+                return 0;
+            }
+            pinch_distance += event.mgesture.dDist;
+            if (fabs(pinch_distance) < EDITOR_PINCH_THRESHOLD)
+            {
+                return 0;
+            }
+            message->kind = DVM_UI_POINTER;
+            message->code = EDITOR_PINCH;
+            message->first = pinch_distance > 0 ? 1 : -1;
+            pinch_distance = 0;
+        }
         else if (event.type == SDL_MOUSEWHEEL)
         {
             if (!event.wheel.y)
@@ -1084,6 +1355,11 @@ int dvm_editor_event(DVM_UIMessage *message)
         else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP ||
                  (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)))
         {
+            if ((event.type == SDL_MOUSEMOTION && event.motion.which == SDL_TOUCH_MOUSEID) ||
+                (event.type != SDL_MOUSEMOTION && event.button.which == SDL_TOUCH_MOUSEID))
+            {
+                return 0;
+            }
             double x = event.type == SDL_MOUSEMOTION ? event.motion.x : event.button.x;
             double y = event.type == SDL_MOUSEMOTION ? event.motion.y : event.button.y;
             FVM_InputPhase phase = event.type == SDL_MOUSEBUTTONDOWN ? FVM_INPUT_BEGIN
@@ -1140,6 +1416,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
         else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
         {
+            pinch_distance = 0;
             if (fvm_input_reset_keyboard(context) != FVM_OK)
             {
                 return -1;
@@ -1196,4 +1473,6 @@ void dvm_editor_destroy(void)
     fvm_runtime_destroy(runtime);
     free(snapshot);
     free(pixels);
+    free(font_bytes);
+    free(default_font_path);
 }

@@ -115,6 +115,9 @@ init()
         raise "fail: graphical editor channel registration"; # Never continue without a receiver.
     }
     window := viewport->create(); # The Dis controller exclusively owns its viewport.
+    fontsize := 11; # Default size belongs to Dis policy, not native document logic.
+    window.rows = host->rows(); # Admit actual font geometry for the initial viewport.
+    state.page = window.rows; # Page navigation and visible logical lines use the same units.
     reveal := 1; # Initial presentation follows the acknowledged caret.
     ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
     mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 Replace needle, 5 replacement.
@@ -126,6 +129,12 @@ init()
         if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
             raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
         }
+        style := ref Uibridge->Message(codec->View, 0, host->Style, reply.revision, fontsize, window.rows, ""); # Publish Dis-owned font/row policy.
+        (styleok, stylewire) := codec->encode(style); # Style is a value, never a TextField pointer.
+        if (!styleok) { # Invalid style must fail visibly before the following snapshot.
+            raise "fail: graphical editor style"; # Never continue with mismatched hit geometry.
+        }
+        output <-= stylewire; # Native geometry is committed before the matching viewport/snapshot.
         paneltext := prompt; # Active input fields are Dis-owned values.
         if (mode == 0) { # An inactive panel reports the selected document path.
             paneltext = path; # Save As only changes this path after successful output.
@@ -163,6 +172,29 @@ init()
             raise "fail: graphical editor input"; # The native host reports failure.
         }
         reveal = 0; # Wheel/modifier events must not snap the viewport back to the caret.
+        if (event.kind == codec->Request && event.code == host->Zoom) { # Wheel/pinch changes are still requests to Dis.
+            expected := array of byte event.text; # Bind geometry to the exact completed view.
+            (known, seen) := codec->parseword(expected, 0); # Ticket changes even without a content edit.
+            if (!known || len expected != 8 || seen != ticket || event.flags != reply.revision) { # Reject stale gesture geometry.
+                reply.status = core->Conflict; # Text, history and current size remain unchanged.
+            } else if ((event.first != -1 && event.first != 1) || event.second < 1 || event.second > 128) { # Bound delta and measured rows.
+                reply.status = core->RangeError; # Do not accept unbounded native geometry proposals.
+            } else { # Apply explicit zoom policy on Dis.
+                candidate := fontsize + event.first; # One bounded wheel/pinch step per admitted event.
+                if (candidate < 6) { # Keep the minimum usable size explicit.
+                    candidate = 6; # Clamp without wrapping a view or font identity.
+                }
+                if (candidate > 48) { # Avoid unbounded font/layout allocation.
+                    candidate = 48; # A gesture at the maximum remains a no-op content-wise.
+                }
+                fontsize = candidate; # The renderer receives this size only through Style.
+                window.rows = event.second; # Native metrics are admitted as copied bounded values.
+                state.page = window.rows; # Keep page movement consistent after scaling.
+                reply.status = core->Ok; # Zoom never changes content revision or saved state.
+                reveal = 1; # Reveal the current caret in the resized logical viewport.
+            }
+            continue; # A zoom event is never also a text selection or ordinary scroll.
+        }
         if (mode != 0) { # Modal field policy executes entirely on Dis.
             if (event.kind == codec->Focus || (event.kind == codec->Key && (event.code == 16 || event.code == 17))) { # Keep modifier/focus state accurate.
                 (admitted, observed) := policy->apply(core, document, state, event); # Reuse the production modifier controller.
@@ -239,6 +271,7 @@ init()
                                 path = prompt; # Adopt the successfully loaded path.
                                 policy->observe(state, reply); # Reset old source positions.
                                 window = viewport->create(); # Retire old scroll coordinates too.
+                                window.rows = state.page; # Preserve admitted font geometry.
                                 dragging = 0; # Retire old gesture state.
                                 mode = 0; # Return to the new document.
                                 reveal = 1; # Show its initial caret.
@@ -303,6 +336,7 @@ init()
                     path = event.text; # Adopt the loaded source path.
                     policy->observe(state, reply); # Retire stale selections and goals.
                     window = viewport->create(); # Retire old source viewport coordinates.
+                    window.rows = state.page; # Preserve admitted font geometry.
                     dragging = 0; # Retire old drag state.
                     reveal = 1; # Display the new document start.
                 } else { # Read failure is visible and nondestructive.

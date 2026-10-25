@@ -460,6 +460,6 @@ availability is distinguished from executed function coverage in the status guid
 
 Build component `disvm-editor`, then use launch menu **8**. The controller is
 Limbo bytecode on our Dis VM; graphics use FlashVM TextField and an optional SDL2
-window. Select an explicit TTF/OpenType font. [English](ide/dis/examples/graphical-editor/README.md) ·
+window. Bundled OFL Noto Sans Mono starts at size 11; no font-location prompt. [English](ide/dis/examples/graphical-editor/README.md) ·
 [Русский](ide/dis/examples/graphical-editor/README.ru.md). This first graphical
 integration does not yet execute AS workers or connect the debugger.

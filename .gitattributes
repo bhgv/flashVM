@@ -9,3 +9,6 @@ tools/mk/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-
 tools/iyacc/upstream/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
 # Mail patches carry intentional context indentation and the standard mail footer.
 disVM/patches/*.patch -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+# Preserve shipped third-party font/license bytes on every checkout platform.
+ide/assets/fonts/*.ttf -text
+ide/assets/fonts/OFL.txt -text

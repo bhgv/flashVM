@@ -362,12 +362,11 @@ def show_products(args, bash, interactive):
             if not script.is_file():
                 print("Выберите disvm-editor или all в меню сборки.")
                 continue
-            font = os.environ.get("FVM_EDITOR_FONT") or input("Путь к TTF/OpenType шрифту: ").strip()
-            if not font:
-                print("Для отрисовки нужен явно выбранный шрифт.")
-                continue
+            font = os.environ.get("FVM_EDITOR_FONT")
             document = input("Файл UTF-8 (Enter — новый буфер без пути сохранения): ").strip()
-            command = [bash, str(script), "--font", font]
+            command = [bash, str(script)]
+            if font:
+                command += ["--font", font]
             if document:
                 command += ["--document", document]
             return subprocess.call(command)

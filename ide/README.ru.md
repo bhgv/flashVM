@@ -87,3 +87,10 @@ late results. Without the option, legacy compiler messages remain supported.
 [Series 0.5.0 validation / Проверки серии](dis/SERIES_0_5_0.ru.md)
 
 [Editor services / Сервисы редактора](EDITOR-CHANNELS.ru.md).
+
+## Editor series v0.1551–v0.1554 / Серия редактора
+
+[Navigation](dis/NAVIGATION.md) · [Viewport](dis/VIEWPORT.md) ·
+[Actions](dis/ACTIONS.md) · [Noto/zoom](dis/ZOOM.md).
+The current graphical package includes default Noto Sans Mono/11 without a font
+question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.

@@ -20,8 +20,8 @@ Uibridge: module
         id: int;       # Correlation ID bits; zero only for input events.
         code: int;     # Class-specific unsigned operation/status bits.
         flags: int;    # Class-specific unsigned flags.
-        first: int;    # Signed first argument or pointer X in twips.
-        second: int;   # Signed second argument or pointer Y in twips.
+        first: int;    # Signed int32 argument/X in twips, sign-extended on NC64.
+        second: int;   # Signed int32 argument/Y in twips, sign-extended on NC64.
         text: string;  # UTF-8 payload on the wire, including any embedded zero.
     };
 

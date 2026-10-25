@@ -238,14 +238,32 @@ class MenuTests(unittest.TestCase):
             script.write_text("#!/bin/sh\nexit 0\n")
             args = menu.argparse.Namespace(out=temporary, no_install=False)
             with contextlib.redirect_stdout(io.StringIO()), patch.dict(
-                menu.os.environ, {"FVM_EDITOR_FONT": ""}
-            ), patch("builtins.input", side_effect=["8", "/font with spaces.ttf", "source Я.b"]), patch.object(
+                menu.os.environ, {"FVM_EDITOR_FONT": "/font with spaces.ttf"}
+            ), patch("builtins.input", side_effect=["8", "source Я.b"]), patch.object(
                 menu.subprocess, "call", return_value=0
             ) as run:
                 status = menu.show_products(args, "/bin/bash", True)
             expected = ["/bin/bash", str(script), "--font", "/font with spaces.ttf", "--document", "source Я.b"]
             if status != 0 or run.call_args[0][0] != expected:
                 self.fail("graphical editor launch lost explicit literal arguments")
+
+    def test_graphical_menu_uses_bundled_font_without_question(self):
+        """The default graphical launch never asks the user to locate a font."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            (prefix / "disvm-editor").mkdir()
+            (prefix / "run-checks.sh").write_text("#!/bin/sh\nexit 0\n")
+            script = prefix / "disvm-editor/run-graphical-editor.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            with contextlib.redirect_stdout(io.StringIO()), patch.dict(
+                menu.os.environ, {"FVM_EDITOR_FONT": ""}
+            ), patch("builtins.input", side_effect=["8", ""]) as ask, patch.object(
+                menu.subprocess, "call", return_value=0
+            ) as run:
+                status = menu.show_products(args, "/bin/bash", True)
+            if status or run.call_args[0][0] != ["/bin/bash", str(script)] or ask.call_count != 2:
+                self.fail("default graphical launch requested a font or lost the bundled-font path")
 
     def test_menu_launches_standard_modules_without_switches(self):
         """The retained-library tutorial is available from the post-build menu."""

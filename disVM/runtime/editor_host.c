@@ -43,6 +43,16 @@ void Idehost_detach(void *frame)
 }
 
 
+/* Return initial renderer line capacity in the generated native-cell result slot.
+ * frame is borrowed; this reports actual font geometry without changing any document. */
+void Idehost_rows(void *frame)
+{
+    F_Idehost_rows *arguments = frame;
+    WORD rows = dvm_editor_rows();
+    memmove(arguments->ret, &rows, sizeof(rows));
+}
+
+
 /* Return the explicit new-document flag in a matching generated native-cell slot.
  * frame borrows the builtin invocation; no heap mutation or native I/O occurs. */
 void Idehost_fresh(void *frame)

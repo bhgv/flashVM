@@ -8,6 +8,15 @@
 int dvm_editor_option(const char *name, const char *value);
 
 
+/* Select the packaged default font beside the entry module; explicit --font wins.
+ * directory is borrowed; returns one after copying a bounded native resource path. */
+int dvm_editor_default_font(const char *directory);
+
+
+/* Return actual visible logical-line capacity for the current font size, bounded 1..128. */
+int dvm_editor_rows(void);
+
+
 /* Create the owner-local FlashVM field/window. Returns one or zero with a diagnostic. */
 int dvm_editor_create(void);
 

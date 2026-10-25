@@ -1,123 +1,105 @@
 # Graphical editor: Limbo/Dis logic, FlashVM graphics
 
-[Русский](README.ru.md) · [Controller source](main.b) ·
-[Native port interface](../../bridge/idehost.m) ·
-[Runtime](../../../../disVM/runtime/README.md) ·
-[Architecture](../../../EDITOR-CHANNELS.md)
+[Русский](README.ru.md) · [Fully commented controller](main.b) ·
+[Host interface](../../bridge/idehost.m) · [Runtime](../../../../disVM/runtime/README.md) ·
+[Navigation](../../NAVIGATION.md) · [Viewport/mouse](../../VIEWPORT.md) ·
+[Search/files](../../ACTIONS.md) · [Font/zoom](../../ZOOM.md).
 
-This is an executable first graphical editor, not a mockup. The parameterless
-[`init`](main.b) runs as NC64 Dis bytecode on our interpreter/JIT. It starts the
-existing [`Idecore`](../../idecore.m) document process and uses
-[`Ideinput`](../../bridge/ideinput.m) for editing/selection/history policy.
-[`Idebridge.sendreply`](../../bridge/idebridge.m) publishes bounded UTF-8 fragments.
-The controller alone performs source-file loading/saving through Sys. Python,
-Node, Inferno Draw/Tk and an external emu are not deployed runtime dependencies.
+The executable controller runs as real NC64 Dis bytecode on our interpreter/JIT.
+Idecore owns source/history in a separate channel process; Ideinput owns cursor,
+selection and navigation. Ideviewport chooses a bounded Unicode display window.
+Reusable Idefileops and Idesearch provide source I/O and document actions without
+a renderer dependency. The application, fields, dirty-state and zoom policy are
+Limbo. Python/Node, Inferno Draw/Tk and external emu are not deployed dependencies.
 
-The native host registers `$Idehost` and borrows two ordinary `chan of array of
-byte` ports while the Limbo entry stack roots them. Registration copies no heap
-pointers into FlashVM. The owner pump uses production Dis channel movers and real
-FlashVM queues. A separate FlashVM context owns a pinned TextField; only complete,
-validated Dis snapshots update it. Its contours, glyph-cluster selection/caret
-geometry and rasterization use FlashVM. SDL2 only presents pixels and captures
-native events; it owns no document, history or file-save policy. This initial
-renderer is a C embedding adapter; the existing AS presentation/worker sources
-are not yet compiled and executed by this graphical target.
+A separately owned FlashVM context displays pinned TextFields. Native code only
+renders complete checked channel values and converts actual glyph geometry to
+revision/ticket-bound hit proposals; Dis decides whether to apply them. SDL
+presents pixels and captures events. The existing AS worker/presentation sources
+are not yet executed by this target.
 
 ## Build and run
 
-From the workspace:
-
 ```sh
-# Native window SDK follows the existing explicit graphical-build preparation.
 ./build-workspace.sh --projects disvm-editor --jobs 4
-FVM_EDITOR_FONT=/absolute/path/font.ttf sh out/disvm-editor/run-graphical-editor.sh \
-    --document /absolute/path/existing-source.b
-# A new destination is never read or created until the first successful save.
-FVM_EDITOR_FONT=/absolute/path/font.ttf sh out/disvm-editor/run-graphical-editor.sh \
-    --new /absolute/path/new-source.b
+sh out/disvm-editor/run-graphical-editor.sh --new example.b
+# Open an existing strict UTF-8 source instead:
+sh out/disvm-editor/run-graphical-editor.sh --document existing.b
 ```
 
-Menu component `disvm-editor` builds the package; post-build launch **8** requests
-an explicit font and optional existing document. The font is copied by FlashVM;
-no system font discovery, redistribution or synthetic fallback is introduced.
-`--jit` and `--no-jit` select actual Dis dispatch modes. Module resources resolve
-beside the entry module while ordinary files use the caller's working directory.
-The installed package can be moved; no source checkout is needed to execute it.
+The root menu builds `disvm-editor`; post-build launch **8** starts it. Bundled
+OFL Noto Sans Mono starts at **11 pixels**, with no font-location question or
+system font search. Its face/license/provenance are shipped in `fonts/`.
+`--font PATH` / `FVM_EDITOR_FONT` is an optional override. The installed package
+can be moved; module/font resources resolve beside the entry module while ordinary
+file paths retain the caller's cwd. No network/font download occurs at execution.
 
-Direct CMake build, with an explicitly supplied SDL2 SDK:
+Direct CMake builds use `DVM_RUNTIME_EDITOR=ON`; SDL windows additionally use
+`DVM_EDITOR_SDL=ON` and an explicit SDL2 SDK. The console runtime remains independent
+of graphics. Without SDL, the graphical target still supports deterministic
+replay with actual FlashVM raster output. Matching Dis/.sbl modules are built from
+source. `--jit` / `--no-jit` selects real Dis dispatch.
 
 ```sh
 cmake -S disVM/runtime -B build/editor -DDVM_RUNTIME_EDITOR=ON \
-    -DDVM_EDITOR_SDL=ON -DSDL2_DIR=/absolute/path/SDL2/cmake \
-    -DDVM_EDITOR_TEST_FONT=/absolute/path/font.ttf
+    -DDVM_EDITOR_SDL=ON -DSDL2_DIR=/absolute/path/SDL2/cmake
 cmake --build build/editor -j4
 ctest --test-dir build/editor --output-on-failure
-build/editor/disvm-editor --font /absolute/path/font.ttf \
-    --new example.b build/editor/graphical-editor.dis
+build/editor/disvm-editor --new example.b build/editor/graphical-editor.dis
 ```
 
-The console/runtime targets remain buildable without this option or SDL/fonts.
-`DVM_RUNTIME_EDITOR=ON` without SDL supports deterministic offscreen replay and
-real FlashVM raster output. `DVM_EDITOR_TEST_FONT` explicitly enables the graphical
-CTest cases; an absent font does not count as a passed graphical test.
+## Interaction
 
-## Interaction and files
-
-| Input | Dis-owned behavior |
+| Input | Dis-owned effect |
 | --- | --- |
-| Native text/IME, Enter, Tab | Insert committed Unicode text through the document channel. |
-| Left/Right, Home/End, Shift | Move or extend selection in Unicode scalar coordinates. |
-| Backspace/Delete, Ctrl+A | Delete an acknowledged range or select the document. |
-| Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | Use the document owner's Undo/Redo history. |
-| Ctrl+S | Write UTF-8 to the configured path; mark only the written revision saved. |
-| Ctrl+O | Reload the configured path only when the current document is clean. |
-| Close window | Stop cleanly, or refuse closure with status Conflict when dirty. |
-| Shift + close window | Explicitly discard changes and stop. |
+| Native text/IME, Enter, Tab | Insert committed Unicode through the document channel. |
+| Left/Right, Up/Down, Home/End, Shift | Navigate/select source scalars; vertical moves retain their column across short lines. |
+| PageUp/PageDown, Ctrl+Home/End | Move by current visible logical rows or document boundary. |
+| Mouse, Shift+click, drag | Propose actual glyph positions; Dis checks the current revision/view ticket. |
+| Wheel | Scroll logical lines without editing source or moving the caret. |
+| Ctrl+wheel, two-finger pinch | Zoom in/out, bounded 6..48; default 11, actual row capacity follows the face. |
+| Backspace/Delete, Ctrl+A | Delete the acknowledged range or select the source. |
+| Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | Actual document Undo/Redo. |
+| Ctrl+F, F3 | Literal Find field, then repeat/wrap once. |
+| Ctrl+H | Separate literal needle/replacement fields; ReplaceAll is one Undo entry. |
+| Ctrl+O | Open a strict UTF-8 path after checking the current document is clean. |
+| Ctrl+S, Ctrl+Shift+S | Save selected path, or choose Save As and adopt it only after successful output. |
+| Field Ctrl+A, Backspace, Enter, Escape | Select/edit/accept/cancel the field without also editing source. |
+| Close / Shift+close | Refuse dirty closure / explicitly discard changes and stop. |
 
-The title shows revision, saved revision and status (`0` success, `1` conflict,
-`4` invalid/I/O failure). The controller sends all file operations through Sys;
-initial loading rejects malformed UTF-8 and files over 64 KiB. An initial read
-failure is terminal and never creates/truncates a file. Ordinary typing remains
-bounded by Idecore. Save overwrites the selected native file, handles short
-writes and acknowledges only success. It is not an atomic replacement or a
-power-loss durability guarantee; a failed write can leave partial disk content.
-`--new PATH` is explicit permission to replace that path when saving. Without a
-path, a new buffer can be edited, but Save reports an error. No Save As dialog yet.
+The title reports revision, saved revision, status and logical top line. Status
+0 is success, 1 conflict, 2 range, 3 too large, 4 invalid/I/O and 8 not found.
+Initial/Open source reads are limited to 64 KiB and reject malformed UTF-8 before
+retiring the old document. The file library itself has a bounded 4 MiB API for
+other callers. `--new PATH` selects a destination without touching it until Save;
+a pathless new buffer can use Save As. Successful save acknowledges the exact
+snapshot written. Writes are checked overwrite, not atomic replacement or a
+power-loss guarantee; native failure can leave a partial destination file.
 
-Focus loss resets held modifiers in Dis and FlashVM. A native event is consumed
-only after its predecessor's complete view; buffered transport owns each accepted
-copy until delivery. Quit stops the document service, then calls `detach` before
-the controller's stack can release the borrowed channel roots. Both VM heaps,
-collectors and execution state remain separate on one native owner.
+## Protocol, ownership and tests
 
-## Validation and limits
+Viewport, style and modal field values precede snapshot fragments; the final
+selection commits one complete view. Each view has a nonreused ticket, including
+scroll/zoom without content changes. Stale geometry is rejected. The renderer
+uses a bounded 4096-byte UTF-8 window; full source remains in Dis. Long lines can
+select a source suffix and follow horizontal pixel geometry. No private pointers
+cross heaps. The entry stack roots borrowed channels until acknowledged service
+shutdown and explicit detach; both VM heaps/collectors remain separate.
 
-[`test_graphical_editor.py`](../../../../disVM/runtime/test_graphical_editor.py)
-constructs independent wire envelopes. Its replay files contain a four-byte
-little-endian frame length followed by one `fvd1:` envelope; length is checked
-before copying. It runs actual compiled Limbo code, production rendezvous/GC,
-FlashVM TextField and raster output, checking Unicode offsets, Undo/Redo, dirty
-close/reload, save bytes, invalid UTF-8, oversize admission, snapshot fragmentation,
-relocated cwd and real dispatch counters. `--events FILE` is explicitly offscreen;
-`--capture FILE.ppm` records real pixels. EOF without acknowledged Quit is failure.
-`--window-events FILE` additionally uploads those pixels through a real SDL window;
-CTest uses SDL's dummy driver for presentation protocol checks. Those checks do
-not establish physical window, keyboard/IME or device acceptance.
+`test_graphical_editor.py`, `test_graphical_actions.py` and
+`test_graphical_zoom.py` under `disVM/runtime/` exercise actual compiled modules,
+channels/GC, glyphs/raster and files with independent expected results.
+`--events FILE` reads bounded little-endian length + `fvd1:` frames; EOF without
+acknowledged Quit fails. `--capture FILE.ppm` records real pixels.
+`--window-events FILE` additionally checks SDL upload using the same replay;
+CTest's dummy driver does not establish physical device behavior. Zoom checks
+start with bundled Noto and compare actual raster size changes/equivalence.
 
-Current acceptance is Linux AMD64, experimental NC64, one native owner. The
-viewport is fixed at 960×640; the first 4096 UTF-8 bytes are previewed without
-splitting a scalar. The full document is still owned/saved by Dis. Scrolling,
-Up/Down navigation, mouse hit-testing, mixed-color syntax, completion popups,
-AS-worker launch and compiler/debugger commands remain open. Selection/caret use
-glyph clusters; full bidi/grapheme editor interaction is not claimed. Font glyph
-coverage depends on the selected face. Standard-input/file/DNS calls may still
-block the single native owner. Full portable reusable embedding and multiple VM
-owners are separate work.
-
-## Viewport / Окно документа v0.1552
-
-[English contract](../../VIEWPORT.md) · [Русский](../../VIEWPORT.ru.md).
-Wheel, mouse click/Shift/drag, Up/Down/PageUp/PageDown and Ctrl+Home/End now run
-through the Dis controller. The old first-prefix/unfinished-mouse limitations
-above describe v0.1550 only. Windows are Dis-selected, bounded UTF-8 intervals;
-full text remains in the document owner. Physical device acceptance stays open.
+Acceptance is experimental Linux AMD64 NC64, one native owner. The SDL pinch
+path is not Android-specific and can serve Windows/macOS/Linux touch-capable
+frontends, but physical devices and complete other-platform runtime ports remain
+separate work. The viewport is fixed 960×640, with logical rather than soft-wrap
+navigation. Full bidi/grapheme editing, resize, syntax colors, completion popups,
+AS-worker execution, compiler commands and debugger UI remain open. Noto glyph
+coverage is finite; missing glyphs do not alter Unicode source/saved bytes.
+Synchronous I/O may block the sole native owner.

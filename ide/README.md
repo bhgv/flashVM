@@ -86,3 +86,10 @@ late results. Without the option, legacy compiler messages remain supported.
 Limbo controller, actual Dis runtime, channel-owned document/history/file I/O and
 FlashVM TextField rendering. Build component `disvm-editor`, launch menu item 8.
 AS-worker execution and debugger integration remain open.
+
+## Editor series v0.1551–v0.1554 / Серия редактора
+
+[Navigation](dis/NAVIGATION.md) · [Viewport](dis/VIEWPORT.md) ·
+[Actions](dis/ACTIONS.md) · [Noto/zoom](dis/ZOOM.md).
+The current graphical package includes default Noto Sans Mono/11 without a font
+question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.

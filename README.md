@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1553**. [Русская версия](README.ru.md).
+Development version: **0.1554**. [Русская версия](README.ru.md).
 
-Current series: [v0.1553](docs/releases/v0.1553.md) runs the Limbo/Dis graphical editor with FlashVM TextField rendering and synchronizes Inferno experiment through `3c6f5dc`.
+Current series: [v0.1554](docs/releases/v0.1554.md) completes the Dis editor series with navigation, scrolling/mouse, Find/Replace/Open/SaveAs, bundled Noto at size 11 and Ctrl-wheel/pinch zoom; Inferno is pinned through `cc9c3199`.
 
 ## Browse documentation
 

@@ -126,3 +126,10 @@ read-only resource previews through actual Sys seek/readn, used by the
 [Русское руководство](examples/graphical-editor/README.ru.md): executable Limbo
 controller, actual Dis channels and FlashVM TextField presentation; build
 `disvm-editor`, launch 8.
+
+## Editor series v0.1551–v0.1554 / Серия редактора
+
+[Navigation](NAVIGATION.md) · [Viewport](VIEWPORT.md) ·
+[Actions](ACTIONS.md) · [Noto/zoom](ZOOM.md).
+The current graphical package includes default Noto Sans Mono/11 without a font
+question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.
