@@ -69,20 +69,47 @@ int cflag;                                /* Native leaf compilation switch cons
 int keepbroken;                           /* No debugger retention is implemented in this initial runner. */
 Type *TFD;                                /* Descriptor owner for supported module/control input handles. */
 Type *TFileIO;                            /* Unavailable file-to-channel host type. */
-unsigned long dvm_runtime_instructions;   /* Decoded complete instructions across every Limbo process. */
+unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
-static int show_stats;                    /* Emit actual instruction counts on explicit request. */
-static int inspect_requested;             /* Explicit read-only post-execution module-data inspection. */
-static size_t inspect_offset;             /* Requested byte offset, aligned to the NC64 word width. */
-static size_t inspect_count;              /* Requested native words, bounded to 4096 before execution. */
-static uchar *inspect_data;               /* [GC:] Retained scalar-only entry-instance MP until report/cleanup. */
-static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
-static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+static unsigned long instruction_limit; /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
+static int instruction_boundary_error;  /* A budget rejection happens before fetching/advancing the current PC. */
+static int show_stats;                  /* Emit actual instruction counts on explicit request. */
+static int inspect_requested;           /* Explicit read-only post-execution module-data inspection. */
+static size_t inspect_offset;           /* Requested byte offset, aligned to the NC64 word width. */
+static size_t inspect_count;            /* Requested native words, bounded to 4096 before execution. */
+static uchar *inspect_data;             /* [GC:] Retained scalar-only entry-instance MP until report/cleanup. */
+static int test_control;                /* Explicit isolated-test halt capability; disabled for normal applications. */
+static FVM_PortFile *files[32];         /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+
+
+/* Print copied instruction/native counters only for an explicit --stats request.
+ * No parameters or VM mutation; terminal success/error/test-halt paths share this exact format. */
+static void runtime_statistics(void)
+{
+    if (show_stats)
+    {
+        fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
+    }
+}
+
+
+/* Admit one complete instruction boundary on this native owner, before decode or C/native execution.
+ * The optional total limit includes guarded fallbacks once and is never reset by UI/stdin progress.
+ * A rejection leaves the current PC and registers unmodified and raises through the process guard. */
+void dvm_runtime_step(void)
+{
+    if (instruction_limit && dvm_runtime_instructions >= instruction_limit)
+    {
+        instruction_boundary_error = 1;
+        error("instruction limit exceeded");
+    }
+    dvm_runtime_instructions++;
+}
 
 
 /* Parse one nonnegative decimal extent into caller storage, without signs, bases or overflow.
  * text is borrowed argv memory. Returns zero without publishing partial results on invalid input. */
-static int inspect_extent(const char *text, size_t *result)
+static int runtime_extent(const char *text, size_t *result)
 {
     size_t value = 0;
     const unsigned char *cursor = (const unsigned char *)text;
@@ -761,10 +788,23 @@ int main(int argc, char **argv)
         {
             show_stats = 1;
         }
+        else if (strcmp(argv[1], "--max-instructions") == 0)
+        {
+            size_t limit;
+            if (instruction_limit || argc < 3 || !runtime_extent(argv[2], &limit) || !limit)
+            {
+                fprintf(stderr, "--max-instructions requires one decimal value in 1..2147483647\n");
+                return 2;
+            }
+            instruction_limit = (unsigned long)limit;
+            argv += 2;
+            argc -= 2;
+            continue;
+        }
         else if (strcmp(argv[1], "--inspect-words") == 0)
         {
-            if (inspect_requested || argc < 4 || !inspect_extent(argv[2], &inspect_offset) ||
-                !inspect_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
+            if (inspect_requested || argc < 4 || !runtime_extent(argv[2], &inspect_offset) ||
+                !runtime_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
                 inspect_offset % 8U != 0)
             {
                 fprintf(stderr, "--inspect-words requires one aligned decimal byte offset and 1..4096 words\n");
@@ -789,13 +829,13 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.8.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.9.0: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
         {
             puts(
-                "usage: disvm [--jit|--no-jit] [--stats] [--test-control] [--inspect-words OFFSET COUNT] native-cell.dis");
+                "usage: disvm [--jit|--no-jit] [--stats] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
             puts(
                 "editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
@@ -834,6 +874,7 @@ int main(int argc, char **argv)
     {
         inspect_release();
         fprintf(stderr, "disvm: %s\n", failure);
+        runtime_statistics();
         return 1;
     }
     arena_init();
@@ -905,9 +946,10 @@ int main(int argc, char **argv)
                         "Dis process %d module %s pc %ld: %s\n",
                         process->pid,
                         DVM_R.M->m->path,
-                        (long)(DVM_R.PC - DVM_R.M->prog - 1),
+                        (long)(DVM_R.PC - DVM_R.M->prog - (instruction_boundary_error ? 0 : 1)),
                         failure);
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
+                runtime_statistics();
                 return 1;
             }
             delrun(Pexiting);
@@ -950,12 +992,10 @@ int main(int argc, char **argv)
     if (inspect_requested && !inspect_report())
     {
         fprintf(stderr, "disvm: inspection output failed\n");
+        runtime_statistics();
         return 1;
     }
-    if (show_stats)
-    {
-        fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
-    }
+    runtime_statistics();
     puts("PASS Dis application completed");
     return 0;
 }
@@ -1111,10 +1151,7 @@ void Sys_write(void *frame)
     {
         fflush(stdout);
         inspect_release(); /* [GC:] Explicit test halt also retires any captured scalar data before exit. */
-        if (show_stats)
-        {
-            fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
-        }
+        runtime_statistics();
         exit(0);
     }
     {

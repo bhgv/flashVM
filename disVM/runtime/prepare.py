@@ -129,9 +129,10 @@ def main():
     path = args.output / "xec.c"
     code = path.read_text()
     code = code.replace("if(!j->entry[op](&DVM_R))", "if(!dvm_runtime_leaf(j, op, &DVM_R))")
-    code = code.replace(
-        "\t\tdec[DVM_R.PC->add]();", "\t\tdvm_runtime_instructions++;\n\t\tdec[DVM_R.PC->add]();"
-    )
+    boundary = "\t\t/* A C-translated step consumes the same single scheduler instruction. */"
+    if code.count(boundary) != 1:
+        raise ValueError("instruction boundary changed; review runtime quota/count placement")
+    code = code.replace(boundary, "\t\tdvm_runtime_step();\n" + boundary, 1)
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()
     for operation in ("icase", "casel", "igoto"):

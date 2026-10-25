@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.8.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.9.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -31,7 +31,7 @@ file(WRITE "${view}/isa.h" "${isa}")
 file(READ "${u}/include/interp.h" native_interp)
 string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}")
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
-file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\n")
+file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\nextern void dvm_runtime_step(void);\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
 file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
 
@@ -359,5 +359,9 @@ if(DVM_RUNTIME_TESTS AND EXISTS "${DVM_FIR_COMPILER}" AND EXISTS "${DVM_FIR_SOUR
       "${CMAKE_CURRENT_SOURCE_DIR}/test_fir_dis.py" "${DVM_FIR_COMPILER}"
       "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_dis_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_fir_cfg_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_fir_cfg.py" "${DVM_FIR_COMPILER}"
+      "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_cfg_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

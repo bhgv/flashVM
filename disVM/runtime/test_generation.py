@@ -30,9 +30,16 @@ def main():
         second = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         if first != second:
             raise RuntimeError("native source generation compounded a prior adaptation")
-        if second["xec.c"].count(b"dvm_runtime_instructions++;") != 1:
-            raise RuntimeError("instruction statistics must count once per actual dispatch")
-    print("PASS byte-identical native source regeneration and one dispatch counter")
+        dispatch = second["xec.c"]
+        if dispatch.count(b"dvm_runtime_step();") != 1 or b"dvm_runtime_instructions++;" in dispatch:
+            raise RuntimeError("instruction quota/counter must share one dispatch boundary")
+        poll = dispatch.index(b"if(!dvm_native_context_poll()) abort();")
+        step = dispatch.index(b"dvm_runtime_step();")
+        translated = dispatch.index(b"if(DVM_R.M->m->cstep != nil")
+        decode = dispatch.index(b"dec[DVM_R.PC->add]();", translated)
+        if not poll < step < translated < decode:
+            raise RuntimeError("quota must follow the GC safepoint and precede both execution paths")
+    print("PASS byte-identical native source regeneration and one quota/count boundary")
 
 
 if __name__ == "__main__":
