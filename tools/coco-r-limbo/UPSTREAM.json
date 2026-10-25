@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/coco-r-limbo",
-  "branch": "master",
-  "revision": "a7364dcdfe8b7926b0e8473cdc1b81797d380a89",
+  "branch": "main",
+  "revision": "f76ae3d40cd00c4829ea1b36f34456898cec98db",
   "destination": "upstream",
   "include": [
     "sources/*.c",
@@ -11,7 +11,8 @@
     "frames/*.frm",
     "read.me",
     "limbo/cocor.b",
-    "limbo/runtime.*.frag"
+    "limbo/runtime.*.frag",
+    "tests/frame_paths.py"
   ],
   "exclude": [
     "frames/cplus2/*"
@@ -29,25 +30,26 @@
     "upstream/sources/collect.c": "2f4745b417684015e4919ed6b74c42c6e760cc676b1fb0805252bee804025321",
     "upstream/sources/collect.h": "f46a94bcfc6deaf696263614a646809d0bcc1b832298f1ddd1582334cd76c77f",
     "upstream/sources/cr.atg": "0d3f5bb4e0a74ba57f472fb2a709f6bae42b477106e8f0ec7e3216a8573d559b",
-    "upstream/sources/cr.c": "fc51a4b92285debcc4285e6635ba5156ae00019dc161b7261a562015db794a60",
+    "upstream/sources/cr.c": "907d5d8f2bda7f121602cccb6699c2112c73cfaa17236c6742255f683f9b7159",
     "upstream/sources/cr.frm": "a89644c5ed9ccd14c39107bdb1416f5318881eab636c9b196abba54fcc73a8df",
     "upstream/sources/cra.c": "7d43f563c4647bf500f48c454d544cc55a2aa11dfc9073c73a771add4206ab5c",
     "upstream/sources/cra.h": "e245930a617b7ebb2205ab40bfd9d664ff2293abf0f6fe46d5b97e9ceb71f682",
     "upstream/sources/crc.h": "534360603dd6fd276cdd1d80a9c91503425d61ac32419f636614971098ea435d",
     "upstream/sources/cre.h": "4ed61877a3b208216c5589da99c047dcd51e54a572f5468dce231f05d01e69f1",
-    "upstream/sources/crf.c": "b4ef2e835508e2fc9299214cc4f690be89d0f456209132990eb9660d94fc7dbc",
+    "upstream/sources/crf.c": "800949fa143698d0fc22ed81ca992385bf6cc3013446f166ed0a8f153516f55d",
     "upstream/sources/crf.h": "0099f8ffe176355cd1e27a5d4de7b8724c8918134b50a3a1b405843e985a4338",
     "upstream/sources/crp.c": "9be40d5d903facbb1d2f1d6c1a53e49ae9de5625dda333934f12b569249abe34",
     "upstream/sources/crp.h": "9e120c1c83c1edd2b4986122a4392381633d43f38b0903826365f5c7e3307f3c",
     "upstream/sources/crs.c": "8edb4f059db5d8e5581f19dadd39c2bb792c0d2bd81d48b88f9649e32135fdc4",
     "upstream/sources/crs.h": "1fe40234af00e5125047339af47dda4eea6fa7b0b7d1be71df59f1be4d2aa22b",
-    "upstream/sources/crt.c": "aeac01c7f5db6123f713a6df8876b659900ab86f622c917d7b8c3da10b2c1664",
-    "upstream/sources/crt.h": "08630bcb3d205399e7eaeccbecb9ceb56ca4116c12ccea4530b77f9483abb35c",
+    "upstream/sources/crt.c": "5f650cdf4b3cbb1ae2a958c372dfa647355c9f3376095959105c4e748f12a3e7",
+    "upstream/sources/crt.h": "1e7d82f2874a52e837f13e5bf765bfcee919987fcd1492e2a83820b3744cd2f3",
     "upstream/sources/crx.c": "8723088b02dd268b5217ae40dabfab781998952f6c3de986cc33b449119c2ae2",
     "upstream/sources/crx.h": "e179c1b11d61b79afeb35e2d5066f5b3fca799c149ccd680bec1481d1670634d",
     "upstream/sources/limbo.c": "cdbf273a9f8ff775546c612abcb55e523600984b1a296ba5a950306204d48b81",
     "upstream/sources/limbo_runtime.h": "e8401ce12704008a47f540ff6a5de9ad133eef5b5fb16618076cc6431f6b903d",
     "upstream/sources/set.c": "353256e4e2d080c6f35076a7524d0c763e9b8a0264dfc1262162983f8ab886fb",
-    "upstream/sources/set.h": "c9d50257aa2dad02501d6d8e4b9647ed0483081e026a2d3cee8dca66d9420d28"
+    "upstream/sources/set.h": "c9d50257aa2dad02501d6d8e4b9647ed0483081e026a2d3cee8dca66d9420d28",
+    "upstream/tests/frame_paths.py": "3f7b291555048c7b4173bae412280c26340dcab85b58a15227ae05cb35241e6e"
   }
 }

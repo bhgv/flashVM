@@ -67,7 +67,7 @@ int          A_option = FALSE;    /* TRUE => Automata */
 int          O_option = FALSE;    /* TRUE => Generate OR only Terminal Conditions */
 int          GenCplusplus = FALSE;
 
-char Frames_Path[100] = "";
+char Frames_Path[CR_FRAME_PATH_CAPACITY] = ""; /* Bounded frame search directory. */
 char c_ext[100] = "c";
 char h_ext[100] = "h";
 
@@ -1679,28 +1679,79 @@ void DoneTab(void)
 	Set_Done(&Set2);
 }
 
+/* Preserve the full frame directory or fail before touching adjacent generator options.
+ * path is a borrowed terminated string. Returns nothing; invalid/oversized input exits nonzero. */
+void SetFramePath(const char *path)
+{
+    size_t length;
+    if (path == NULL)
+    {
+        fprintf(stderr, "Coco/R: null frame path\n");
+        exit(EXIT_FAILURE);
+    }
+    length = strlen(path);
+    if (length >= sizeof(Frames_Path))
+    {
+        fprintf(stderr, "Coco/R: frame path exceeds %lu bytes\n", (unsigned long)(sizeof(Frames_Path) - 1));
+        exit(EXIT_FAILURE);
+    }
+    memcpy(Frames_Path, path, length + 1);
+}
+
+
+/* Read one -Dname=value option without overrunning either local field buffer.
+ * s is borrowed command text. Returns its terminating NUL position; malformed extents exit nonzero. */
 char *SetVar(char *s)
 {
-	char name[200], value[200];
-	char *n = name, *v = value;
-
-	/* Get the variable name */
-	while (*s && *s != '=') *n++ = *s++;
-	*n='\0';
-
-	if (*s == '=') s++;
-
-	/* Get the variable Value */
-	while (*s) *v++ = *s++;
-	*v = '\0';
-
-/*	printf("Variable %s = %s \n", name, value); */
-
-	if (stricmp(name, "CRHEXT") == 0) strcpy(h_ext, value);
-	if (stricmp(name, "CRCEXT") == 0) strcpy(c_ext, value);
-	if (stricmp(name, "CRFRAMES") == 0) strcpy(Frames_Path, value);
-
-	return s;
+    char name[200];
+    char value[CR_FRAME_PATH_CAPACITY];
+    size_t n = 0;
+    size_t v = 0;
+    while (*s && *s != '=')
+    {
+        if (n + 1 >= sizeof(name))
+        {
+            fprintf(stderr, "Coco/R: option name too long\n");
+            exit(EXIT_FAILURE);
+        }
+        name[n++] = *s++;
+    }
+    name[n] = '\0';
+    if (*s == '=')
+    {
+        s++;
+    }
+    while (*s)
+    {
+        if (v + 1 >= sizeof(value))
+        {
+            fprintf(stderr, "Coco/R: option value too long\n");
+            exit(EXIT_FAILURE);
+        }
+        value[v++] = *s++;
+    }
+    value[v] = '\0';
+    if (stricmp(name, "CRHEXT") == 0 || stricmp(name, "CRCEXT") == 0)
+    {
+        if (v > 5)
+        {
+            fprintf(stderr, "Coco/R: file extension exceeds five characters\n");
+            exit(EXIT_FAILURE);
+        }
+        if (stricmp(name, "CRHEXT") == 0)
+        {
+            memcpy(h_ext, value, v + 1);
+        }
+        else
+        {
+            memcpy(c_ext, value, v + 1);
+        }
+    }
+    if (stricmp(name, "CRFRAMES") == 0)
+    {
+        SetFramePath(value);
+    }
+    return s;
 }
 
 void SetOptions(char *s)

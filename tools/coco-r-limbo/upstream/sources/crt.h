@@ -280,7 +280,12 @@ extern int D_option;     /* TRUE => Debug #line */
 extern int Z_option;     /* TRUE => generate .hpp and .cpp files */
 extern int GenCplusplus;
 
-extern char Frames_Path[];
+#define CR_FRAME_PATH_CAPACITY 4096 /* Bounded storage for source/frame paths, including NUL. */
+extern char Frames_Path[CR_FRAME_PATH_CAPACITY]; /* Current frame directory plus platform suffix. */
+
+
+/* Copy a frame directory after validating its length. path is borrowed; failure exits nonzero. */
+void SetFramePath(const char *path);
 extern char c_ext[];
 extern char h_ext[];
 

@@ -7,7 +7,7 @@
 
 char compiler_name[MAX_ID_LEN];
 char module_prefix[MAX_ID_LEN];
-char source_name[100];
+char source_name[CR_FRAME_PATH_CAPACITY]; /* Bounded source pathname, independently from identifiers. */
 
 static char GEN_PREFIX[100];     /* prefix line string used in GenCode */
 static int CurrTab;
@@ -26,37 +26,52 @@ static char Parser_C_Format[NAMELEN];
 static char Parser_H_Format[NAMELEN];
 static char Compiler_Format[NAMELEN];
 
+/* Initialize frame settings from the process environment using bounded storage.
+ * No parameters. Returns nothing; invalid frame paths exit before generator options change. */
 void InitFrameVars(void)
 {
-	if (getenv("CRFRAMES"))
-		strcpy(Frames_Path, getenv("CRFRAMES"));
-
-	if (getenv("CRHEXT")) {
-		strncpy(h_ext, getenv("CRHEXT"), 5); h_ext[5] = '\0';
-	}
-
-	if (getenv("CRCEXT")) {
-		strncpy(c_ext, getenv("CRCEXT"), 5); c_ext[5] = '\0';
-	}
+    const char *path = getenv("CRFRAMES");
+    if (path != NULL)
+    {
+        SetFramePath(path);
+    }
+    if (getenv("CRHEXT") != NULL)
+    {
+        strncpy(h_ext, getenv("CRHEXT"), 5);
+        h_ext[5] = '\0';
+    }
+    if (getenv("CRCEXT") != NULL)
+    {
+        strncpy(c_ext, getenv("CRCEXT"), 5);
+        c_ext[5] = '\0';
+    }
 }
 
+
+/* Append the selected platform/backend suffix without exceeding the frame-directory buffer.
+ * No parameters. Returns nothing; an oversized combined path exits with a diagnostic. */
 void SetupFrameVars(void)
 {
-		if (strlen(Frames_Path) > 0) {
+    const char *suffix;
+    if (strlen(Frames_Path) > 0)
+    {
 #if __MSDOS__ || MSDOS || WIN32 || __WIN32__
-			if (GenCplusplus) strcat(Frames_Path, "\\cplus2\\");
-			else strcat(Frames_Path, "\\");
+        suffix = GenCplusplus ? "\\cplus2\\" : "\\";
 #else
-			if (GenCplusplus) strcat(Frames_Path, "/cplus2/");
-			else strcat(Frames_Path, "/");
+        suffix = GenCplusplus ? "/cplus2/" : "/";
 #endif
-		}
-
-	sprintf(Scan_C_Format, "%%ss.%s", c_ext);
-	sprintf(Scan_H_Format, "%%ss.%s", h_ext);
-	sprintf(Parser_C_Format, "%%sp.%s", c_ext);
-	sprintf(Parser_H_Format, "%%sp.%s", h_ext);
-	sprintf(Compiler_Format, "%%s.%s", c_ext);
+        if (strlen(suffix) >= CR_FRAME_PATH_CAPACITY - strlen(Frames_Path))
+        {
+            fprintf(stderr, "Coco/R: frame directory suffix exceeds path capacity\n");
+            exit(EXIT_FAILURE);
+        }
+        strcat(Frames_Path, suffix);
+    }
+    sprintf(Scan_C_Format, "%%ss.%s", c_ext);
+    sprintf(Scan_H_Format, "%%ss.%s", h_ext);
+    sprintf(Parser_C_Format, "%%sp.%s", c_ext);
+    sprintf(Parser_H_Format, "%%sp.%s", h_ext);
+    sprintf(Compiler_Format, "%%s.%s", c_ext);
 }
 
 /* get next character from a frame */
@@ -573,44 +588,60 @@ static void ProcessFrame(FILE *In, FILE *Out, char *Prefix)
 	}
 }
 
+/* Join the validated frame directory and a known frame basename with checked arithmetic.
+ * destination has CR_FRAME_PATH_CAPACITY bytes; name is borrowed. Returns nothing or exits on overflow. */
+static void FrameFileName(char *destination, const char *name)
+{
+    size_t directory = strlen(Frames_Path);
+    size_t basename = strlen(name);
+    if (directory >= CR_FRAME_PATH_CAPACITY || basename >= CR_FRAME_PATH_CAPACITY - directory)
+    {
+        fprintf(stderr, "Coco/R: complete frame filename exceeds path capacity\n");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(destination, Frames_Path, directory);
+    memcpy(destination + directory, name, basename + 1);
+}
+
+
+/* Generate one scanner/parser file using checked frame-directory storage.
+ * Prefix/InName/OutName are borrowed generated-name descriptors. Returns nothing; I/O failures exit. */
 static void GenFrame(char *Prefix, char *InName, char *OutName)
 {
-	FILE *InFile, *OutFile;
-	char FileName[100];
-
-	sprintf(FileName, "%s%s", Frames_Path, InName);
-	InFile = OpenFile(FileName, "r", 1);
-
-	sprintf(FileName, OutName, Prefix);
-	OutFile = OpenFile(FileName, "w", 1);
-
-	ProcessFrame(InFile, OutFile, Prefix);
-
-	fclose(InFile);
-	fclose(OutFile);
+    FILE *InFile;
+    FILE *OutFile;
+    char FileName[CR_FRAME_PATH_CAPACITY];
+    FrameFileName(FileName, InName);
+    InFile = OpenFile(FileName, "r", 1);
+    sprintf(FileName, OutName, Prefix);
+    OutFile = OpenFile(FileName, "w", 1);
+    ProcessFrame(InFile, OutFile, Prefix);
+    fclose(InFile);
+    fclose(OutFile);
 }
 
-/* generate compiler */
-void GenCompiler()
+
+/* Generate the compiler driver from its local override or checked default frame path.
+ * No parameters. Returns nothing; required frame/output failures exit through OpenFile. */
+void GenCompiler(void)
 {
-	FILE *InFile, *OutFile;
-	char FileName[100];
-
-	sprintf(FileName, Compiler_Format, module_prefix);
-	OutFile = OpenFile(FileName, "w", 1);
-
-	sprintf(FileName, "%s.frm", module_prefix);
-	InFile = OpenFile(FileName, "r", 0);
-	if (InFile == NULL) {
-		sprintf(FileName, "%scompiler.frm", Frames_Path);
-		InFile = OpenFile(FileName, "r", 1);
-	}
-
-	ProcessFrame(InFile, OutFile, module_prefix);
-
-	fclose(InFile);
-	fclose(OutFile);
+    FILE *InFile;
+    FILE *OutFile;
+    char FileName[CR_FRAME_PATH_CAPACITY];
+    sprintf(FileName, Compiler_Format, module_prefix);
+    OutFile = OpenFile(FileName, "w", 1);
+    sprintf(FileName, "%s.frm", module_prefix);
+    InFile = OpenFile(FileName, "r", 0);
+    if (InFile == NULL)
+    {
+        FrameFileName(FileName, "compiler.frm");
+        InFile = OpenFile(FileName, "r", 1);
+    }
+    ProcessFrame(InFile, OutFile, module_prefix);
+    fclose(InFile);
+    fclose(OutFile);
 }
+
 
 /* generate compiler */
 void GenHeaders()

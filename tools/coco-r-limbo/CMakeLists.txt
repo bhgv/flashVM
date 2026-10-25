@@ -41,4 +41,9 @@ if(LIMBO_EXECUTABLE)
     DEPENDS upstream/limbo/cocor.b "${LIMBO_EXECUTABLE}" "${LIMBO_MODULE_DIR}/sys.m"
       "${LIMBO_MODULE_DIR}/draw.m" VERBATIM)
   add_custom_target(cocor_dis ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/cocor.dis")
+  add_test(NAME cocor_frame_paths COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/tests/frame_paths.py" $<TARGET_FILE:cocor>
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/frames")
+  set_tests_properties(cocor_frame_paths PROPERTIES TIMEOUT 60
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()

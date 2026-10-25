@@ -26,4 +26,9 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/upstream/frames")
   set_tests_properties(cocor_generation PROPERTIES TIMEOUT 60
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME cocor_frame_paths COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/tests/frame_paths.py" $<TARGET_FILE:cocor>
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/frames")
+  set_tests_properties(cocor_frame_paths PROPERTIES TIMEOUT 60
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()

@@ -254,15 +254,32 @@ void SummarizeErrors(void)
   }
 }
 
-static void param_options(int argc,char *argv[])
-{ int i;
-  for (i = 1; i < argc; i++)
+/* Process explicit command arguments without truncating/overflowing source path storage.
+ * argc/argv are the process arguments. Returns nothing; oversized paths exit nonzero. */
+static void param_options(int argc, char *argv[])
+{
+    int i;
+    for (i = 1; i < argc; i++)
+    {
 #if __MSDOS__ || MSDOS || WIN32 || __WIN32__
-    if (*argv[i] == '-' || *argv[i] == '/') SetOptions(argv[i]);
+        if (*argv[i] == '-' || *argv[i] == '/')
 #else
-    if (*argv[i] == '-') SetOptions(argv[i]);
+        if (*argv[i] == '-')
 #endif
-    else strcpy(source_name, argv[i]);
+        {
+            SetOptions(argv[i]);
+        }
+        else
+        {
+            size_t length = strlen(argv[i]);
+            if (length >= CR_FRAME_PATH_CAPACITY - 5)
+            {
+                fprintf(stderr, "Coco/R: source path exceeds pathname capacity\n");
+                exit(EXIT_FAILURE);
+            }
+            memcpy(source_name, argv[i], length + 1);
+        }
+    }
 }
 
 static void FileGetName(char *name, char *filename)
@@ -275,7 +292,7 @@ static void FileGetName(char *name, char *filename)
 
 int main(int argc, char *argv[])
 {
-  char name[100];
+  char name[CR_FRAME_PATH_CAPACITY];
   lst = stderr;
   if (argc == 1) {
     Help();
