@@ -91,7 +91,7 @@ done:
     }
     if (!ok)
     {
-        fprintf(stderr, "%s\n", error);
+        fprintf(stderr, "%s\n", error[0] ? error : "Dis example compilation or I/O failed");
     }
     return ok ? 0 : 1;
 }

@@ -86,3 +86,7 @@ Include-файлы не раскрываются; cast по именованно
 [Owned tools / Инструменты](../../tools/UPSTREAMS.md).
 
 [Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.ru.md)
+
+[Наш числовой Limbo→FIR→Dis](../../fir/v1/doc/DIS_BACKEND.ru.md) уже исполняется
+на DisVM без bootstrap-emitter. Это отдельный узкий профиль; этот синтаксический
+фронтенд не стал полным семантическим компилятором.

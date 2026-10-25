@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1572**. [English](README.md).
+Версия разработки: **0.1573**. [English](README.md).
 
-Текущая серия: [v0.1566–v0.1569](docs/releases/v0.1569.md) — новые срезы строк и проверки дескрипторов Inferno, Unicode-поля на Dis с курсором, мышью и буфером, проверка переносимой поставки.
+Текущая серия: [v0.1570–v0.1573](docs/releases/v0.1573.md) — наш прямой C99 FIR→Dis i32-backend, скалярная инспекция DisVM, FRAME/MFRAME из Inferno и подтверждённое исправление тестового ABI, отправленное обратно.
 
 ## Просмотр документации
 

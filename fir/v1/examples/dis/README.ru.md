@@ -43,3 +43,10 @@ return. Нет импортов, экспортированного Limbo ABI `v
 каналов и Dis SBL. Возвращаемое значение учебного исходника становится trace
 FIR `@main`; без `--inspect-words` оно не печатается. Полная графическая IDE
 пока не компилируется этим подмножеством.
+
+В установленном FIR-пакете можно заново собрать C99-клиент только из его SDK:
+
+```sh
+cc -std=c99 -I include examples/dis/main.c lib/libfir1_ir.a lib/libfir1_source_api.a lib/libfir1_io.a -o dis-client
+./dis-client examples/dis/main.b answer.dis
+```

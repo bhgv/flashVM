@@ -75,6 +75,24 @@ def main():
                          "--inspect-words", "0", "1", binary], directory)
         if "DATA 0 -2147483648\n" not in result.stdout:
             raise RuntimeError("our Coco/R Limbo→FIR→Dis scope/wrap result differs")
+        # Produce a pointer-free entry that faults only after inspection has acquired its retain.
+        # This exact fixture has one MULW with FP source/middle/destination (40 89). Change only
+        # its opcode to the existing DIVW (43), preserving all operands, offsets and file lengths.
+        # Both operations share the same Dis addressing contract; the second operand is zero.
+        failing_fir = directory / "failure.fir"
+        failing_dis = directory / "failure.dis"
+        failing_fir.write_text("FIR 1.0\nmodule @Failure\nfunc @main() -> void {\n^entry:\n"
+                               "%a: i32 = const.i32 10\n%b: i32 = const.i32 0\n"
+                               "%x: i32 = i32.mul.wrap %a, %b\ntrace %x\nreturn\n}\n")
+        invoke([compiler, "dis", failing_fir, failing_dis], directory)
+        image = failing_dis.read_bytes()
+        if image.count(bytes.fromhex("4089")) != 1:
+            raise RuntimeError("fault fixture requires exactly one native FP MULW instruction")
+        failing_dis.write_bytes(image.replace(bytes.fromhex("4089"), bytes.fromhex("4389"), 1))
+        failed = invoke([runtime, "--" + ("jit" if mode == "jit" else "no-jit"),
+                         "--inspect-words", "0", "1", failing_dis], directory, success=False)
+        if "zero" not in failed.stderr.lower() or "DATA " in failed.stdout:
+            raise RuntimeError("failed entry execution published a successful inspection snapshot")
         for offset, count in (("1", "1"), ("-1", "1"), ("0", "0"), ("0", "4097"),
                               ("999999999999999999999999", "1"), ("2147483640", "1")):
             rejected = invoke([runtime, "--inspect-words", offset, count, binary], directory, success=False)

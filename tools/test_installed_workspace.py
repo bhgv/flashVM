@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import os
 import shutil
+import shlex
 import subprocess
 import tempfile
 
@@ -98,18 +99,59 @@ def module_packages(prefix, work, environment):
         raise RuntimeError("relocated public SDK client failed")
 
 
+# Compile our numeric Limbo source through relocated CLIs and the shipped C99 libraries.
+# prefix/work/environment are private test state. Require a matching DisVM package, compare
+# emitted bytes independently of tool messages and execute the value in both dispatch modes.
+def fir_dis_packages(prefix, work, environment):
+    component = prefix / "fir"
+    source = component / "examples/dis/main.b"
+    fir = work / "answer.fir"
+    binary = work / "answer.dis"
+    embedded = work / "embedded.dis"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", source, fir,
+         "--module", "dis_example"], work, environment)
+    run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+    run([program(prefix, "fir", "fir1_dis_example"), source, embedded], work, environment)
+    if binary.read_bytes() != embedded.read_bytes():
+        raise RuntimeError("installed CLI and embedded Dis generators disagree")
+    if os.name != "posix":
+        raise RuntimeError("native FIR SDK compilation acceptance currently requires a POSIX host")
+    executable = work / "fir-sdk-client"
+    libraries = [component / "lib" / ("lib" + name + ".a")
+                 for name in ("fir1_ir", "fir1_source_api", "fir1_io")]
+    run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-I" + str(component / "include"),
+         component / "examples/dis/main.c", *libraries, "-o", executable], work, environment)
+    run([executable, source, embedded], work, environment)
+    if binary.read_bytes() != embedded.read_bytes():
+        raise RuntimeError("relinked installed C99 libraries changed the generated Dis")
+    for name in ("disvm-editor", "disvm-runtime"):
+        if (prefix / name / "disvm").is_file():
+            runtime = program(prefix, name, "disvm")
+            break
+    else:
+        raise RuntimeError("FIR→Dis acceptance requires an installed NC64 DisVM runtime")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--inspect-words", "0", "1", binary], work, environment)
+        if "DATA 0 2147483647\n" not in output:
+            raise RuntimeError("relocated FIR/Dis execution produced the wrong i32 result")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
     parser.add_argument("--scratch", type=Path, required=True)
+    parser.add_argument("--fir-dis-only", action="store_true",
+                        help="Check relocated FIR CLIs, public C99 libraries and direct Dis execution")
     parser.add_argument(
         "--modules-only",
         action="store_true",
         help="Check relocated Dis host and IDE packages without requiring other packages",
     )
     args = parser.parse_args()
+    if args.modules_only and args.fir_dis_only:
+        parser.error("choose one relocated-package subset")
     args.scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix="relocated packages ", dir=args.scratch.resolve()
@@ -120,6 +162,10 @@ def main():
         work = base / "work"
         work.mkdir()
         environment = dict(os.environ, TMPDIR=str(work), TEMP=str(work), TMP=str(work))
+        if args.fir_dis_only:
+            fir_dis_packages(prefix, work, environment)
+            print("PASS relocated our Limbo/FIR→Dis, relinked C99 SDK, interpreter and native JIT")
+            return
         if args.modules_only:
             module_packages(prefix, work, environment)
             print("PASS relocated Dis/IDE modules, native tutorial and public SDK client")
@@ -169,6 +215,8 @@ def main():
         )
         if output.strip() != "42":
             raise RuntimeError("installed AS2-to-FIR-to-SWO-to-SWF pipeline failed")
+        if any((prefix / name / "disvm").is_file() for name in ("disvm-editor", "disvm-runtime")):
+            fir_dis_packages(prefix, work, environment)
         run(
             [program(prefix, "symbols", "sblmap"), prefix / "ide/modules/idecore.sbl"],
             work,

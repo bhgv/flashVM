@@ -43,3 +43,10 @@ trace/return. It has no imports, exported Limbo `value` ABI, strings, source
 channels or Dis SBL. The source tutorial return becomes FIR `@main` trace capture;
 ordinary execution without `--inspect-words` does not print it. It is not yet
 possible to compile the complete graphical IDE with this subset.
+
+Inside the installed FIR package, rebuild the C99 client using only its SDK:
+
+```sh
+cc -std=c99 -I include examples/dis/main.c lib/libfir1_ir.a lib/libfir1_source_api.a lib/libfir1_io.a -o dis-client
+./dis-client examples/dis/main.b answer.dis
+```

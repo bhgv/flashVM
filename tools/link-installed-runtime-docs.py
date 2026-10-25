@@ -24,7 +24,7 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for example in ("workspace", "editor-console"):
+    for example in ("workspace", "editor-console", "native-console"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():

@@ -78,10 +78,13 @@ notices() {
 # Install libraries without flattening their relative paths or mixing graphics variants.
 # Parameters: build directory and package directory. Returns: copy failure propagates.
 libraries() {
-    local base=$1 destination=$2 file relative
-    find "$base" -path "$OUT" -prune -o \( -type f -o -type l \) \( -name '*.a' -o -name '*.lib' -o -name '*.dll' -o -name '*.so' -o -name '*.so.*' -o -name '*.dylib' \) ! -path '*/CMakeFiles/*' -print0 |
+    local base=$1 destination=$2 file relative scan_base
+    # A build-root entry may be a symlink to an already tested build. Traverse its
+    # actual directory so SDK archives are included as well as directly located executables.
+    scan_base=$(cd "$base" && pwd -P) || fail "Missing library build directory: $base"
+    find "$scan_base" -path "$OUT" -prune -o \( -type f -o -type l \) \( -name '*.a' -o -name '*.lib' -o -name '*.dll' -o -name '*.so' -o -name '*.so.*' -o -name '*.dylib' \) ! -path '*/CMakeFiles/*' -print0 |
         while IFS= read -r -d '' file; do
-            relative=${file#"$base/"}
+            relative=${file#"$scan_base/"}
             copy_file "$file" "$destination/lib/$relative"
         done
 }
@@ -243,8 +246,18 @@ EOF
             for file in fir1 fir1_source fir1_opt; do
                 install_program "$base" "$file" "$destination"
             done
+            install_program "$base" fir1_dis_example "$destination"
             copy_tree "$ROOT/examples/firststeps" "$destination/examples/firststeps"
+            copy_tree "$source/examples/dis" "$destination/examples/dis"
             copy_tree "$source/include" "$destination/include"
+            copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
+            for file in DIS_BACKEND.md DIS_BACKEND.ru.md; do
+                copy_file "$source/doc/$file" "$destination/docs/$file"
+            done
+            for file in API.md API.ru.md; do
+                copy_file "$source/compiler/$file" "$destination/docs/$file"
+            done
+            "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination"
             cat >"$destination/README-FIRSTSTEPS.md" <<'EOF'
 # Numeric source -> FIR -> object
 
@@ -256,6 +269,17 @@ EOF
 Pass arithmetic.swo to the separately packaged swl linker. The included source,
 expected FIR and SWF illustrate the numeric subset, not a complete AS compiler.
 If your host restricts temporary files, set TMPDIR to an existing writable folder.
+
+# Our Limbo numeric subset -> direct NC64 Dis (no limbo-native/assembler)
+./fir1_source limbo --input examples/dis/main.b answer.fir
+./fir1 dis answer.fir answer.dis
+# Run with the separately installed NC64 DisVM:
+../disvm-editor/disvm --jit --inspect-words 0 1 answer.dis
+# Expected: DATA 0 2147483647
+
+Read examples/dis/README.md and README.ru.md, plus docs/DIS_BACKEND.md/.ru.md.
+The target captures i32 trace values after execution; it is not full Limbo module
+lowering. The C99 example and libfir1_ir/libfir1_source_api/libfir1_io are included.
 EOF
             ;;
         linker)

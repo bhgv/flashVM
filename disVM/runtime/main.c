@@ -136,6 +136,18 @@ static void inspect_retain(Prog *process)
 }
 
 
+/* Retire the optional native inspection retain on the sole VM owner; repeated cleanup is harmless.
+ * The active process may still own the same scalar data on an error path; its root is unaffected. */
+static void inspect_release(void)
+{
+    if (inspect_data)
+    {
+        destroy(inspect_data);
+        inspect_data = nil; /* [GC:] Retire exactly the extra native root, never a process-owned reference. */
+    }
+}
+
+
 /* Report copied signed native words after all processes have stopped, then release the retain.
  * No Dis stack/frame address is exposed. Returns zero on output failure; never changes module data. */
 static int inspect_report(void)
@@ -153,8 +165,7 @@ static int inspect_report(void)
             break;
         }
     }
-    destroy(inspect_data);
-    inspect_data = nil; /* [GC:] Reporting retires the exclusive native root even on output failure. */
+    inspect_release();
     return ok;
 }
 
@@ -821,11 +832,7 @@ int main(int argc, char **argv)
     environment.errstr = failure;
     if (waserror())
     {
-        if (inspect_data)
-        {
-            destroy(inspect_data);
-            inspect_data = nil; /* [GC:] Execution failure must retire the inspection retain too. */
-        }
+        inspect_release();
         fprintf(stderr, "disvm: %s\n", failure);
         return 1;
     }
@@ -900,6 +907,7 @@ int main(int argc, char **argv)
                         DVM_R.M->m->path,
                         (long)(DVM_R.PC - DVM_R.M->prog - 1),
                         failure);
+                inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
                 return 1;
             }
             delrun(Pexiting);
@@ -1102,6 +1110,7 @@ void Sys_write(void *frame)
         memcmp(call->buf->data, "halt", 4) == 0)
     {
         fflush(stdout);
+        inspect_release(); /* [GC:] Explicit test halt also retires any captured scalar data before exit. */
         if (show_stats)
         {
             fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);

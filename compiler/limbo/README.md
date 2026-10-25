@@ -85,3 +85,7 @@ This partial declaration pass does not resolve imports/types or emit native C.
 [Owned tools / Инструменты](../../tools/UPSTREAMS.md).
 
 [Structured function signatures / Структурированные сигнатуры](frontend/SIGNATURES.md)
+
+[Our numeric Limbo→FIR→Dis pipeline](../../fir/v1/doc/DIS_BACKEND.md) now executes
+on DisVM without a bootstrap emitter. It is a separate narrow profile; this
+syntax frontend has not become a full semantic compiler.
