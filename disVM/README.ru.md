@@ -82,3 +82,5 @@ host/GC и покрытие эмиттеров. Физическое испол�
 [Value/channel UI bridge](UI-BRIDGE.md) · [Канальный мост и ввод FlashVM](UI-BRIDGE.ru.md).
 
 [Owner pump / Прокачка и сохранение ввода](OWNER-PUMP.ru.md).
+
+[Versioned module namespace / Версии модулей](MODULE-STORE.md).

@@ -110,3 +110,5 @@ IDE должна поставляться в интерпретируемом/JI
 [Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.ru.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.ru.md)
 
 [Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).
+
+[Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../WORKSPACE.md).

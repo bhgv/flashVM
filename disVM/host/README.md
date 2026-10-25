@@ -185,3 +185,5 @@ fields. The generated-source test rejects an unrecognized dispatch boundary
 rather than silently placing a safepoint in the wrong location.
 
 [GC backend and native Fast/Cycles workers](GC.md).
+
+[Versioned module namespace / Версии модулей](../MODULE-STORE.md).

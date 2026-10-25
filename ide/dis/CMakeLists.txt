@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.10)
-project(flashvm_ide_dis VERSION 0.6.0 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.7.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -13,6 +13,27 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/idecore.dis" "${CMAKE_CUR
   DEPENDS idecore.b idecore.m compile_module.cmake "${LIMBO_EXECUTABLE}" VERBATIM)
 add_custom_target(ide_dis ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idecore.dis"
   "${CMAKE_CURRENT_BINARY_DIR}/idecore.sbl")
+
+# Workspace ownership requires only idecore, independent of the UI codec SDK.
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace.sbl"
+  COMMAND "${LIMBO_EXECUTABLE}" -g -I "${CMAKE_CURRENT_SOURCE_DIR}"
+    -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge" -o "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace.dis"
+    "${CMAKE_CURRENT_SOURCE_DIR}/bridge/ideworkspace.b"
+  DEPENDS bridge/ideworkspace.b bridge/ideworkspace.m idecore.m "${LIMBO_EXECUTABLE}" VERBATIM)
+add_custom_target(ide_workspace ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace.dis"
+  "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace.sbl")
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/workspace-example.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/workspace-example.sbl"
+  COMMAND "${LIMBO_EXECUTABLE}" -g -I "${CMAKE_CURRENT_SOURCE_DIR}"
+    -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge" -I "${CMAKE_CURRENT_SOURCE_DIR}/examples/workspace"
+    -o "${CMAKE_CURRENT_BINARY_DIR}/workspace-example.dis"
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/workspace/main.b"
+  DEPENDS examples/workspace/main.b examples/workspace/main.m bridge/ideworkspace.m idecore.m
+    "${LIMBO_EXECUTABLE}" VERBATIM)
+add_custom_target(ide_workspace_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/workspace-example.dis"
+  "${CMAKE_CURRENT_BINARY_DIR}/workspace-example.sbl")
 
 include(CTest)
 set(EMU_EXECUTABLE "" CACHE FILEPATH "Optional explicit reference Dis emulator for channel regression")
@@ -221,6 +242,26 @@ if(BUILD_TESTING AND EMU_EXECUTABLE AND FIR_SOURCE_EXECUTABLE)
     set_tests_properties(ide_source_diagnostic_navigation_mode_${mode}
       PROPERTIES RUN_SERIAL TRUE TIMEOUT 80)
   endforeach()
+endif()
+
+# Optional matching reference-runtime test for the independent workspace owner.
+if(BUILD_TESTING AND LIMBO_MODULE_DIR)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace_test.dis"
+    COMMAND "${LIMBO_EXECUTABLE}" -I "${CMAKE_CURRENT_SOURCE_DIR}"
+      -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge" -I "${CMAKE_CURRENT_SOURCE_DIR}/examples/workspace"
+      -I "${LIMBO_MODULE_DIR}" -o "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace_test.dis"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/ideworkspace_test.b"
+    DEPENDS tests/ideworkspace_test.b examples/workspace/main.m bridge/ideworkspace.m idecore.m
+      "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_workspace_test ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ideworkspace_test.dis")
+  if(EMU_EXECUTABLE)
+    foreach(mode 0 1)
+      add_test(NAME ideworkspace_test_mode_${mode} COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_bridge.py" --emu "${EMU_EXECUTABLE}"
+        --build "${CMAKE_CURRENT_BINARY_DIR}" --module ideworkspace_test --mode ${mode})
+      set_tests_properties(ideworkspace_test_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 30)
+    endforeach()
+  endif()
 endif()
 
 # Optional explicit shared transport source SDK; standalone document builds remain independent.

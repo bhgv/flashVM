@@ -173,3 +173,5 @@ Callback обхода держит мьютекс world: нельзя повто
 в неподходящее место.
 
 [GC и нативные исполнители Fast/Cycles](GC.ru.md).
+
+[Versioned module namespace / Версии модулей](../MODULE-STORE.md).

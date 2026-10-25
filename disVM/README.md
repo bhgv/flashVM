@@ -93,3 +93,5 @@ Native host checkpoint v0.1535 embeds active REG in extended up and adds coopera
 [Value/channel UI bridge](UI-BRIDGE.md) · [Канальный мост и ввод FlashVM](UI-BRIDGE.ru.md).
 
 [Owner pump / Прокачка и сохранение ввода](OWNER-PUMP.ru.md).
+
+[Versioned module namespace / Версии модулей](MODULE-STORE.md).

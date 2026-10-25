@@ -266,7 +266,17 @@ EOF
             source="$ROOT/disVM"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/include" "$destination/include"
+            # Export the public header closure required by flashvm_host.h.
+            copy_tree "$ROOT/flashVM/include" "$destination/include"
+            for file in thread_port.h channel_sync.h file_port.h network/socket.h; do
+                copy_file "$ROOT/flashVM/ports/$file" "$destination/include/$file"
+            done
             copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
+            copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
+            if [[ -n "$(find "$base" -type f \( -name disvm_module_store_example -o -name disvm_module_store_example.exe \) -print -quit)" ]]; then
+                install_program "$base" disvm_module_store_example "$destination"
+            fi
+            copy_file "$ROOT/disVM/MODULE-STORE.md" "$destination/MODULE-STORE.md"
             copy_tree "$ROOT/disVM/module" "$destination/module"
             copy_tree "$ROOT/disVM/limbo" "$destination/limbo"
             copy_tree "$ROOT/disVM/examples/ui-channel" "$destination/examples/ui-channel"
@@ -286,7 +296,8 @@ EOF
             copy_file "$ROOT/disVM/OWNER-PUMP.ru.md" "$destination/OWNER-PUMP.ru.md"
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/uibridge.m"
             copy_file "$ROOT/ide/EDITOR-CHANNELS.ru.md" "$destination/EDITOR-CHANNELS.ru.md"
-            for file in uibridge ideinput idebridge idecomplete idebuiltins navigation history replaceall; do
+            copy_file "$ROOT/ide/WORKSPACE.md" "$destination/WORKSPACE.md"
+            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace workspace-example navigation history replaceall; do
                 if [[ -f "$base/$file.dis" ]]; then
                     copy_file "$base/$file.dis" "$destination/modules/$file.dis"
                     if [[ -f "$base/$file.sbl" ]]; then

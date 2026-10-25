@@ -350,3 +350,19 @@ COCOR_SOURCE=bundled явно выбирает встроенный инстру
 При --tests проверки выбора SDK и написания Coco/R в документации запускаются
 автоматически вместе с тестами генератора. Технические имена `cocor`, пути,
 COCOR_ROOT и команды в примерах сохраняются для совместимости.
+
+## Module versions and workspace owners / Модули и рабочее пространство
+
+The Dis host package now contains a [versioned native module store](disVM/MODULE-STORE.md),
+its public SDK and a fully commented C example. The IDE package contains
+[ideworkspace](ide/WORKSPACE.md), debug symbols and a callable Limbo tutorial.
+Both are built/installed by the existing disvm-host,ide selection. Their tests
+exercise actual channels/native threads; full embedded Dis/IDE startup remains unfinished.
+
+```sh
+./build-workspace.sh --projects disvm-host,ide --tests
+```
+
+Документы, история и билеты компиляции принадлежат Limbo-сервисам. Хранилище
+байтов модулей удерживает прежние версии для читателей и не заменяет парсер,
+планировщик или GC. Устаревшие результаты сборки отвергаются по ревизии/билету.

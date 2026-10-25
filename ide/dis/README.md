@@ -114,3 +114,5 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 [Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.md)
 
 [Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).
+
+[Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../WORKSPACE.md).

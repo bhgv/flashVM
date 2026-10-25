@@ -23,12 +23,79 @@ def program(prefix, component, name):
 # Execute argv literally in a private writable directory, with explicit package/temporary roots.
 # input_text supplies optional stdin. Returns stdout; nonzero status includes captured diagnostics.
 def run(argv, work, environment, input_text=None):
-    result = subprocess.run([str(value) for value in argv], cwd=work, env=environment,
-                            input=input_text, text=True, capture_output=True, timeout=60)
+    result = subprocess.run(
+        [str(value) for value in argv],
+        cwd=work,
+        env=environment,
+        input=input_text,
+        text=True,
+        capture_output=True,
+        timeout=60,
+    )
     if result.returncode:
-        raise RuntimeError("installed command failed: " + repr(argv) + "\n"
-                           + result.stdout + "\n" + result.stderr)
+        raise RuntimeError(
+            "installed command failed: " + repr(argv) + "\n" + result.stdout + "\n" + result.stderr
+        )
     return result.stdout
+
+
+# Compile the shipped tutorial using only relocated SDK headers/libraries, then run it.
+# prefix/work/environment are private test paths/state; failures raise with diagnostics.
+def module_packages(prefix, work, environment):
+    """Detect missing transitive SDK headers and source-checkout dependencies."""
+    host = prefix / "disvm-host"
+    ide = prefix / "ide/modules"
+    for module in (
+        "idecore",
+        "uibridge",
+        "ideinput",
+        "idebridge",
+        "idecomplete",
+        "idebuiltins",
+        "ideworkspace",
+        "workspace-example",
+    ):
+        for suffix in (".dis", ".sbl"):
+            if not (ide / (module + suffix)).stat().st_size:
+                raise RuntimeError("empty installed service/example product")
+    image = ide / "ideworkspace.dis"
+    size = str(image.stat().st_size)
+    output = run(
+        [program(prefix, "disvm-host", "disvm_module_store_example"), image, size],
+        work,
+        environment,
+    )
+    if "PASS stored " not in output or "no VM execution" not in output:
+        raise RuntimeError("installed module example returned unexpected evidence")
+    if os.name != "posix":
+        raise RuntimeError("native SDK compilation acceptance currently requires a POSIX host")
+    executable = work / "module-sdk-client"
+    libraries = [
+        host / "lib" / ("lib" + name + ".a")
+        for name in (
+            "disvm_module_store",
+            "disvm_flashvm_host",
+            "disvm_module_image",
+            "disvm_shared_ports",
+        )
+    ]
+    run(
+        [
+            environment.get("CC", "cc"),
+            "-std=c99",
+            "-I" + str(host / "include"),
+            host / "examples/module-store/main.c",
+            *libraries,
+            "-pthread",
+            "-o",
+            executable,
+        ],
+        work,
+        environment,
+    )
+    output = run([executable, image, size], work, environment)
+    if "PASS stored " not in output:
+        raise RuntimeError("relocated public SDK client failed")
 
 
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
@@ -37,15 +104,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
     parser.add_argument("--scratch", type=Path, required=True)
+    parser.add_argument(
+        "--modules-only",
+        action="store_true",
+        help="Check relocated Dis host and IDE packages without requiring other packages",
+    )
     args = parser.parse_args()
     args.scratch.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="relocated packages ", dir=args.scratch.resolve()) as directory:
+    with tempfile.TemporaryDirectory(
+        prefix="relocated packages ", dir=args.scratch.resolve()
+    ) as directory:
         base = Path(directory)
         prefix = base / "installed products"
         shutil.copytree(args.prefix.resolve(), prefix)
         work = base / "work"
         work.mkdir()
         environment = dict(os.environ, TMPDIR=str(work), TEMP=str(work), TMP=str(work))
+        if args.modules_only:
+            module_packages(prefix, work, environment)
+            print("PASS relocated Dis/IDE modules, native tutorial and public SDK client")
+            return
+        if (prefix / "disvm-host/lib/libdisvm_module_store.a").is_file():
+            module_packages(prefix, work, environment)
         variants = sorted(path for path in (prefix / "flashvm").iterdir() if path.is_dir())
         if not variants:
             raise RuntimeError("no installed FlashVM variant")
@@ -63,34 +143,75 @@ def main():
                 data = (variant / "examples/video" / name).read_bytes()
                 if data[:4] != b"FWS\x06" or len(data) < 1000:
                     raise RuntimeError("missing/invalid installed video compatibility fixture")
-        for language, sample in (("as1", "Automatic.as"), ("as2", "Automatic.as"),
-                                 ("as3", "Counter.as"), ("limbo", "Syntax.b")):
-            run([program(prefix, language, language + "_parse"),
-                 prefix / language / "examples" / sample], work, environment)
+        for language, sample in (
+            ("as1", "Automatic.as"),
+            ("as2", "Automatic.as"),
+            ("as3", "Counter.as"),
+            ("limbo", "Syntax.b"),
+        ):
+            run(
+                [
+                    program(prefix, language, language + "_parse"),
+                    prefix / language / "examples" / sample,
+                ],
+                work,
+                environment,
+            )
         # The installed script discovers its sibling SDKs; it must not require the original checkout.
         run(["bash", prefix / "fir/examples/firststeps/build.sh"], work, environment)
-        output = run([program(prefix, "flashvm/" + variants[0].name, "flashvm"),
-                      work / "firststeps-build/arithmetic.swf"], work, environment)
+        output = run(
+            [
+                program(prefix, "flashvm/" + variants[0].name, "flashvm"),
+                work / "firststeps-build/arithmetic.swf",
+            ],
+            work,
+            environment,
+        )
         if output.strip() != "42":
             raise RuntimeError("installed AS2-to-FIR-to-SWO-to-SWF pipeline failed")
-        run([program(prefix, "symbols", "sblmap"), prefix / "ide/modules/idecore.sbl"], work, environment)
-        for module in ("idecore", "uibridge", "ideinput", "idebridge", "idecomplete", "idebuiltins"):
+        run(
+            [program(prefix, "symbols", "sblmap"), prefix / "ide/modules/idecore.sbl"],
+            work,
+            environment,
+        )
+        for module in (
+            "idecore",
+            "uibridge",
+            "ideinput",
+            "idebridge",
+            "idecomplete",
+            "idebuiltins",
+            "ideworkspace",
+            "workspace-example",
+        ):
             for suffix in (".dis", ".sbl"):
                 if not (prefix / "ide/modules" / (module + suffix)).stat().st_size:
                     raise RuntimeError("empty installed IDE module/debug product")
         mkwork = work / "mk"
         mkwork.mkdir()
-        run([program(prefix, "mk", "mk"), "-f", prefix / "mk/examples/hello.mkfile"], mkwork, environment)
+        run(
+            [program(prefix, "mk", "mk"), "-f", prefix / "mk/examples/hello.mkfile"],
+            mkwork,
+            environment,
+        )
         if "Hello from" not in (mkwork / "hello.txt").read_text():
             raise RuntimeError("installed mk did not execute its real recipe")
         (mkwork / "input.txt").write_text("copied by mk\n")
-        run([program(prefix, "mk", "mk"), "-f", prefix / "mk/examples/copy.mkfile"], mkwork, environment)
+        run(
+            [program(prefix, "mk", "mk"), "-f", prefix / "mk/examples/copy.mkfile"],
+            mkwork,
+            environment,
+        )
         if (mkwork / "input.copy").read_text() != "copied by mk\n":
             raise RuntimeError("installed mk pattern rule failed")
         yaccwork = work / "iyacc"
         yaccwork.mkdir()
         yaccenv = dict(environment, ROOT=str(prefix / "iyacc"))
-        run([program(prefix, "iyacc", "iyacc"), "-d", prefix / "iyacc/examples/sum.y"], yaccwork, yaccenv)
+        run(
+            [program(prefix, "iyacc", "iyacc"), "-d", prefix / "iyacc/examples/sum.y"],
+            yaccwork,
+            yaccenv,
+        )
         run([os.environ.get("CC", "cc"), "y.tab.c", "-o", "sum"], yaccwork, environment)
         if run([yaccwork / "sum"], yaccwork, environment, "19+23\n").strip() != "42":
             raise RuntimeError("installed iyacc/generated parser example failed")
@@ -99,19 +220,47 @@ def main():
                 generatorwork = work / (name + "-" + grammar)
                 generatorwork.mkdir()
                 generatorenv = dict(environment, CRFRAMES=str(prefix / name / "frames"))
-                shutil.copyfile(prefix / name / "examples" / (grammar + ".atg"), generatorwork / (grammar + ".atg"))
-                shutil.copyfile(prefix / name / "examples" / (grammar + ".atg"), generatorwork / (grammar + ".atg"))
-                generated = run([program(prefix, name, "cocor"), grammar + ".atg"], generatorwork, generatorenv)
+                shutil.copyfile(
+                    prefix / name / "examples" / (grammar + ".atg"),
+                    generatorwork / (grammar + ".atg"),
+                )
+                shutil.copyfile(
+                    prefix / name / "examples" / (grammar + ".atg"),
+                    generatorwork / (grammar + ".atg"),
+                )
+                generated = run(
+                    [program(prefix, name, "cocor"), grammar + ".atg"], generatorwork, generatorenv
+                )
                 if not list(generatorwork.glob("*p.c")) or not list(generatorwork.glob("*s.c")):
-                    raise RuntimeError("installed Coco/R files: " + repr([p.name for p in generatorwork.iterdir()])
-                                       + "\n" + generated)
+                    raise RuntimeError(
+                        "installed Coco/R files: "
+                        + repr([p.name for p in generatorwork.iterdir()])
+                        + "\n"
+                        + generated
+                    )
         bootstrap = prefix / "limbo-bootstrap"
-        run([program(prefix, "limbo-bootstrap", "limbo-bootstrap"), "-g", "-I", bootstrap / "module",
-             "-I", bootstrap / "examples", "-o", work / "arithmetic.dis", bootstrap / "examples/arithmetic.b"],
-            work, environment)
-        if (work / "arithmetic.dis").read_bytes()[:4] != b"\xc0\x0c\x80\x30" or not (work / "arithmetic.sbl").stat().st_size:
+        run(
+            [
+                program(prefix, "limbo-bootstrap", "limbo-bootstrap"),
+                "-g",
+                "-I",
+                bootstrap / "module",
+                "-I",
+                bootstrap / "examples",
+                "-o",
+                work / "arithmetic.dis",
+                bootstrap / "examples/arithmetic.b",
+            ],
+            work,
+            environment,
+        )
+        if (work / "arithmetic.dis").read_bytes()[:4] != b"\xc0\x0c\x80\x30" or not (
+            work / "arithmetic.sbl"
+        ).stat().st_size:
             raise RuntimeError("installed bootstrap did not emit real Dis/debug data")
-    print("PASS relocated packages: VM traces, numeric compiler/linker pipeline, IDE products and native tools")
+    print(
+        "PASS relocated packages: VM traces, numeric compiler/linker pipeline, IDE products and native tools"
+    )
 
 
 if __name__ == "__main__":

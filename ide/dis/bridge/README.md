@@ -108,3 +108,5 @@ merge-sort publication, binary-search prefixes and copied bounded results.
 Providers, popup insertion, pointer hit mapping, streaming file opening and the
 complete embedded host remain unfinished. Root builds compile modules/debug data;
 optional reference execution requires an explicitly matching compiler/header/VM.
+
+[Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../../WORKSPACE.md).
