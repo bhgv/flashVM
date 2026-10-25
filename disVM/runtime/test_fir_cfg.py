@@ -112,7 +112,7 @@ def main():
                        "%again: bool = const.bool true\n%n: i32 = const.i32 0\ntrace %n\njump ^loop\n"
                        "^loop:\nif %again, ^loop, ^done\n^done:\nreturn\n}\n")
         invoke([compiler, "dis", fir, binary], directory)
-        for limit in (1, 2, 17, 1003):
+        for limit in (1, 2, 4, 5, 17, 1003):
             failed = invoke([runtime, dispatch, "--stats", "--max-instructions", limit,
                              "--inspect-words", "0", "2", binary], directory, success=False)
             if counters(failed, mode) != limit or "instruction limit exceeded" not in failed.stderr or "DATA " in failed.stdout:

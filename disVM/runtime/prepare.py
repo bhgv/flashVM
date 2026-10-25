@@ -132,7 +132,16 @@ def main():
     boundary = "\t\t/* A C-translated step consumes the same single scheduler instruction. */"
     if code.count(boundary) != 1:
         raise ValueError("instruction boundary changed; review runtime quota/count placement")
-    code = code.replace(boundary, "\t\tdvm_runtime_step();\n" + boundary, 1)
+    # No configured quota needs no external call: keep the ordinary count inline.
+    # Both arms still admit exactly one instruction before either execution path.
+    dispatch = (
+        "\t\tif(dvm_runtime_instruction_limit) {\n"
+        "\t\t\tdvm_runtime_step();\n"
+        "\t\t} else {\n"
+        "\t\t\tdvm_runtime_instructions++;\n"
+        "\t\t}\n"
+    )
+    code = code.replace(boundary, dispatch + boundary, 1)
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()
     for operation in ("icase", "casel", "igoto"):

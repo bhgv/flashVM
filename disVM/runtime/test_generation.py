@@ -31,13 +31,17 @@ def main():
         if first != second:
             raise RuntimeError("native source generation compounded a prior adaptation")
         dispatch = second["xec.c"]
-        if dispatch.count(b"dvm_runtime_step();") != 1 or b"dvm_runtime_instructions++;" in dispatch:
+        if (dispatch.count(b"dvm_runtime_step();") != 1 or
+                dispatch.count(b"dvm_runtime_instructions++;") != 1 or
+                dispatch.count(b"if(dvm_runtime_instruction_limit)") != 1):
             raise RuntimeError("instruction quota/counter must share one dispatch boundary")
         poll = dispatch.index(b"if(!dvm_native_context_poll()) abort();")
+        guard = dispatch.index(b"if(dvm_runtime_instruction_limit)")
         step = dispatch.index(b"dvm_runtime_step();")
+        inline = dispatch.index(b"dvm_runtime_instructions++;")
         translated = dispatch.index(b"if(DVM_R.M->m->cstep != nil")
         decode = dispatch.index(b"dec[DVM_R.PC->add]();", translated)
-        if not poll < step < translated < decode:
+        if not poll < guard < step < inline < translated < decode:
             raise RuntimeError("quota must follow the GC safepoint and precede both execution paths")
     print("PASS byte-identical native source regeneration and one quota/count boundary")
 

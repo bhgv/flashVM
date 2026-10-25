@@ -31,7 +31,7 @@ file(WRITE "${view}/isa.h" "${isa}")
 file(READ "${u}/include/interp.h" native_interp)
 string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}")
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
-file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\nextern void dvm_runtime_step(void);\n")
+file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
 file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
 

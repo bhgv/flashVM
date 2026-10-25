@@ -71,7 +71,7 @@ Type *TFD;                                /* Descriptor owner for supported modu
 Type *TFileIO;                            /* Unavailable file-to-channel host type. */
 unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
-static unsigned long instruction_limit; /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
+unsigned long dvm_runtime_instruction_limit; /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
 static int instruction_boundary_error;  /* A budget rejection happens before fetching/advancing the current PC. */
 static int show_stats;                  /* Emit actual instruction counts on explicit request. */
 static int inspect_requested;           /* Explicit read-only post-execution module-data inspection. */
@@ -98,7 +98,7 @@ static void runtime_statistics(void)
  * A rejection leaves the current PC and registers unmodified and raises through the process guard. */
 void dvm_runtime_step(void)
 {
-    if (instruction_limit && dvm_runtime_instructions >= instruction_limit)
+    if (dvm_runtime_instruction_limit && dvm_runtime_instructions >= dvm_runtime_instruction_limit)
     {
         instruction_boundary_error = 1;
         error("instruction limit exceeded");
@@ -791,12 +791,12 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "--max-instructions") == 0)
         {
             size_t limit;
-            if (instruction_limit || argc < 3 || !runtime_extent(argv[2], &limit) || !limit)
+            if (dvm_runtime_instruction_limit || argc < 3 || !runtime_extent(argv[2], &limit) || !limit)
             {
                 fprintf(stderr, "--max-instructions requires one decimal value in 1..2147483647\n");
                 return 2;
             }
-            instruction_limit = (unsigned long)limit;
+            dvm_runtime_instruction_limit = (unsigned long)limit;
             argv += 2;
             argc -= 2;
             continue;
