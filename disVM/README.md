@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-24892373ee09a2a23dc39b9dedc01fb7af61d8c1; every imported file has a manifest hash.
+f948343b711c8300dbf76417254c18a7a8d2f5ff; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 

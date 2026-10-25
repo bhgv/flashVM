@@ -61,4 +61,4 @@ bootstrap-исходников, а не нашим новым компилято
 Dis/SWF backend и внешние C/AS/другие заготовки по `.m`.
 [Контракт собственного компилятора](../compiler/limbo/OWN_COMPILER.ru.md).
 
-[Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment 3e3536578b969cf1a460210d8ec667713869ccfc, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.
+[Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment f948343b711c8300dbf76417254c18a7a8d2f5ff, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.

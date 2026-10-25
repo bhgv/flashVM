@@ -48,6 +48,24 @@ x64store(X64Buf *b, int reg, int bytes)
 	x64byte(b, 2+reg*8);
 }
 
+/* Divide a captured signed value without taking the host MIN/-1 overflow trap. */
+static void
+x64signeddivide(X64Buf *b, int bytes)
+{
+	int ordinary, done;
+
+	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0xfb); x64byte(b, 0xff);
+	x64byte(b, 0x75); ordinary=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, 0xf7); x64byte(b, 0xd8);
+	x64byte(b, 0x31); x64byte(b, 0xd2);
+	x64byte(b, 0xeb); done=b->n; x64byte(b, 0);
+	b->bytes[ordinary]=b->n-ordinary-1;
+	if(bytes == 8)x64byte(b, 0x48);
+	x64byte(b, 0x99);
+	x64byte(b, bytes == 8 ? 0x49 : 0x41); x64byte(b, 0xf7); x64byte(b, 0xfb);
+	b->bytes[done]=b->n-done-1;
+}
+
 /* Return to the VM without writes unless the preceding condition permits execution. */
 static void
 x64guard(X64Buf *b, int condition)
@@ -65,6 +83,30 @@ x64field(X64Buf *b, int result, int owner, int offset, int bytes)
 	else x64byte(b, bytes == 8 ? 0x8b : 0x63);
 	x64byte(b, 0x80 | result<<3 | (owner&7));
 	x64word(b, offset);
+}
+
+/* Resolve either string representation, retaining a native character stride. */
+static void
+x64stringheader(X64Buf *b, int owner, int length, int stride, int lenoff, int dataoff)
+{
+	int empty, positive, done;
+
+	x64byte(b, 0x41); x64byte(b, 0xb8+stride); x64word(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0+owner*9); x64guard(b, 0x75);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8+owner); x64byte(b, 0xff);
+	x64byte(b, 0x74); empty=b->n; x64byte(b, 0);
+	x64field(b, length, owner, lenoff, 4);
+	x64byte(b, 0x81); x64byte(b, 0xf8+length); x64word(b, 0x80000000U); x64guard(b, 0x75);
+	x64byte(b, 0x85); x64byte(b, 0xc0+length*9);
+	x64byte(b, 0x79); positive=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, 0xf7); x64byte(b, 0xd8+length);
+	x64byte(b, 0x41); x64byte(b, 0xb8+stride); x64word(b, 4);
+	b->bytes[positive]=b->n-positive-1;
+	x64byte(b, 0x48); x64byte(b, 0x81); x64byte(b, 0xc0+owner); x64word(b, dataoff);
+	x64byte(b, 0xeb); done=b->n; x64byte(b, 0);
+	b->bytes[empty]=b->n-empty-1;
+	x64byte(b, 0x31); x64byte(b, 0xc0+length*9);
+	b->bytes[done]=b->n-done-1;
 }
 
 /* Turn rax/rcx bits into signed keys using rdx; defer NaNs and denormals. */
@@ -100,7 +142,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 {
 	X64Buf b;
 	LeafOp p;
-	int i, patch, n, empty, other, done, scale, loop;
+	int i, patch, n, empty, other, done, scale, loop, equal;
 	static uchar arithmetic[] = {0x01, 0x29, 0, 0x21, 0x09, 0x31};
 	static uchar inverse[] = {0x75, 0x74, 0x7d, 0x7f, 0x7e, 0x7c};
 
@@ -110,7 +152,42 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	b.n = 0;
 	/* ENDBR64 also permits entry when the host enables indirect-branch tracking. */
 	x64byte(&b, 0xf3); x64byte(&b, 0x0f); x64byte(&b, 0x1e); x64byte(&b, 0xfa);
-	if(p.kind == LeafTypeCheck){
+	if(p.kind == LeafStringBranch){
+		/* Compare captured characters without touching a false branch target. */
+		if(abi->stringlen < 0 || abi->stringlen > 2047 || abi->stringlen%4 ||
+		   abi->stringdata < 0 || abi->stringdata > 2047) return 0;
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
+		x64ptr(&b, 1, abi->m); x64load(&b, 1, 8);
+		x64stringheader(&b, 0, 2, 0, abi->stringlen, abi->stringdata);
+		x64stringheader(&b, 1, 6, 1, abi->stringlen, abi->stringdata);
+		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8);
+		x64byte(&b, 0x74); equal=b.n; x64byte(&b, 0);
+		loop=b.n;
+		x64byte(&b, 0x85); x64byte(&b, 0xd2); x64byte(&b, 0x74); empty=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x85); x64byte(&b, 0xf6); x64byte(&b, 0x74); other=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x44); x64byte(&b, 0x0f); x64byte(&b, 0xb6); x64byte(&b, 0x10);
+		x64byte(&b, 0x41); x64byte(&b, 0x80); x64byte(&b, 0xf8); x64byte(&b, 1);
+		x64byte(&b, 0x74); x64byte(&b, 3);
+		x64byte(&b, 0x44); x64byte(&b, 0x8b); x64byte(&b, 0x10);
+		x64byte(&b, 0x44); x64byte(&b, 0x0f); x64byte(&b, 0xb6); x64byte(&b, 0x19);
+		x64byte(&b, 0x41); x64byte(&b, 0x80); x64byte(&b, 0xf9); x64byte(&b, 1);
+		x64byte(&b, 0x74); x64byte(&b, 3);
+		x64byte(&b, 0x44); x64byte(&b, 0x8b); x64byte(&b, 0x19);
+		x64byte(&b, 0x45); x64byte(&b, 0x39); x64byte(&b, 0xda);
+		x64byte(&b, 0x75); done=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x4c); x64byte(&b, 0x01); x64byte(&b, 0xc0);
+		x64byte(&b, 0x4c); x64byte(&b, 0x01); x64byte(&b, 0xc9);
+		x64byte(&b, 0xff); x64byte(&b, 0xca); x64byte(&b, 0xff); x64byte(&b, 0xce);
+		x64byte(&b, 0xeb); x64byte(&b, loop-b.n-1);
+		b.bytes[empty]=b.n-empty-1; b.bytes[other]=b.n-other-1;
+		b.bytes[equal]=b.n-equal-1;
+		x64byte(&b, 0x39); x64byte(&b, 0xf2);
+		b.bytes[done]=b.n-done-1;
+		x64byte(&b, inverse[p.condition]); patch=b.n; x64byte(&b, 0);
+		x64ptr(&b, 2, abi->d); x64load(&b, 2, 8);
+		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x97); x64word(&b, abi->pc);
+		b.bytes[patch]=b.n-patch-1;
+	}else if(p.kind == LeafTypeCheck){
 		/* Capture both owners before inspecting their immutable heap types. */
 		if(abi->heaptype <= 0 || abi->heaptype > 255 || abi->heaptype%8) return 0;
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
@@ -158,15 +235,14 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64field(&b, 2, 9, abi->fixedcoef, abi->wordbytes);
 		if(p.alu != 1){
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
-			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
 			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xd3);
 		}
 		if(p.alu == 2){x64ptr(&b, 1, abi->m); x64load(&b, 1, abi->wordbytes);}
 		else x64field(&b, 1, 9, abi->fixedtmp, abi->wordbytes);
 		if(p.condition){
-			/* Nonzero rounding flags retain the complete C rounding path. */
-			x64byte(&b, 0x89); x64byte(&b, 0xc8); x64byte(&b, 0x83); x64byte(&b, 0xe0); x64byte(&b, 3);
-			x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x74);
+			/* Keep VN flags in C; capture WN before decoding the signed scale. */
+			x64byte(&b, 0x89); x64byte(&b, 0xce); x64byte(&b, 0x83); x64byte(&b, 0xe6); x64byte(&b, 3);
+			x64byte(&b, 0x83); x64byte(&b, 0xfe); x64byte(&b, 1); x64guard(&b, 0x76);
 			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xf9); x64byte(&b, 2);
 		}
 		x64byte(&b, 0x48); x64byte(&b, 0x8d); x64byte(&b, 0x41); x64byte(&b, 63);
@@ -174,14 +250,32 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
 		if(p.alu == 1){
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
-			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
 			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
 		}else if(p.alu == 0){x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc2);}
-		if(p.alu != 2){x64ptr(&b, 0, abi->m); x64load(&b, 0, abi->wordbytes); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0xaf); x64byte(&b, 0xc2);}
+		if(p.alu != 2){x64ptr(&b, 0, abi->m); x64load(&b, 0, abi->wordbytes);}
+		if(p.condition){
+			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc0);
+			if(p.alu == 0){x64byte(&b, 0x49); x64byte(&b, 0x31); x64byte(&b, 0xd0);}
+		}
+		if(p.alu != 2){x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0xaf); x64byte(&b, 0xc2);}
+		if(p.condition){
+			/* Mask selection precedes shifting and uses unmultiplied signs. */
+			x64byte(&b, 0x85); x64byte(&b, 0xf6); x64byte(&b, 0x74); done=b.n; x64byte(&b, 0);
+			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x78);
+			x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd9);
+			x64byte(&b, 0x48); x64byte(&b, 0xc7); x64byte(&b, 0xc2); x64word(&b, -1);
+			x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xe2);
+			x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd2);
+			x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd9);
+			x64byte(&b, 0x4d); x64byte(&b, 0x85); x64byte(&b, 0xc0);
+			x64byte(&b, p.alu == 1 ? 0x7f : 0x79); other=b.n; x64byte(&b, 0);
+			x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd0);
+			b.bytes[done]=b.n-done-1; b.bytes[other]=b.n-other-1;
+		}
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9);
 		x64byte(&b, 0x78); x64byte(&b, 5); x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xe0);
 		x64byte(&b, 0xeb); x64byte(&b, 6); x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd9); x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xf8);
-		x64byte(&b, 0x48); x64byte(&b, 0x99); x64byte(&b, 0x49); x64byte(&b, 0xf7); x64byte(&b, 0xfb);
+		x64signeddivide(&b, 8);
 		x64ptr(&b, 2, abi->d); x64store(&b, 0, abi->wordbytes);
 	}else if(p.kind == LeafCall){
 		/* Capture the target and old links before touching an aliased frame. */
@@ -244,9 +338,8 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
 		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc2);
 		if(p.alu){
-			/* Preserve divide errors and minimum/-1 behavior through the C fallback. */
+			/* Reject zero before loading the dividend; -1 uses modular native negation. */
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
-			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
 			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xd3);
 		}
 		x64ptr(&b, 0, abi->m); x64load(&b, 0, abi->wordbytes);
@@ -257,66 +350,21 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64byte(&b, 0xeb); x64byte(&b, 6);
 		x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd9);
 		x64byte(&b, 0x48); x64byte(&b, 0xd3); x64byte(&b, 0xf8);
-		if(p.alu){ x64byte(&b, 0x48); x64byte(&b, 0x99); x64byte(&b, 0x49); x64byte(&b, 0xf7); x64byte(&b, 0xfb); }
+		if(p.alu){ x64signeddivide(&b, 8); }
 		x64ptr(&b, 2, abi->d); x64store(&b, 0, abi->wordbytes);
 	}else if(p.kind == LeafRealResize){
-		/* Resize exact normal values and signed zeros without changing FP status. */
-		x64ptr(&b, 0, abi->s); x64load(&b, 0, p.input);
-		if(p.input == 4){ x64byte(&b, 0x89); x64byte(&b, 0xc0); }
-		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc2);
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xea); x64byte(&b, p.input == 4 ? 31 : 63);
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe2); x64byte(&b, p.input == 4 ? 63 : 31);
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, p.input == 4 ? 33 : 1);
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe8); x64byte(&b, p.input == 4 ? 33 : 1);
-		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0);
-		x64byte(&b, 0x74); empty=b.n; x64byte(&b, 0);
-		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc1);
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe9); x64byte(&b, p.input == 4 ? 23 : 52);
-		if(p.input == 4){
-			x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x75);
-			x64byte(&b, 0x81); x64byte(&b, 0xf9); x64word(&b, 255); x64guard(&b, 0x72);
-			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, 29);
-			x64byte(&b, 0x48); x64byte(&b, 0xb9); x64word(&b, 0); x64word(&b, 0x38000000);
-			x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xc8);
-		}else{
-			x64byte(&b, 0x48); x64byte(&b, 0x81); x64byte(&b, 0xe9); x64word(&b, 897);
-			x64byte(&b, 0x48); x64byte(&b, 0x81); x64byte(&b, 0xf9); x64word(&b, 254); x64guard(&b, 0x72);
-			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
-			x64byte(&b, 0x49); x64byte(&b, 0xc1); x64byte(&b, 0xe3); x64byte(&b, 35);
-			x64byte(&b, 0x4d); x64byte(&b, 0x85); x64byte(&b, 0xdb); x64guard(&b, 0x74);
-			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe8); x64byte(&b, 29);
-			x64byte(&b, 0x48); x64byte(&b, 0xb9); x64word(&b, 0xc0000000U); x64word(&b, 1);
-			x64byte(&b, 0x48); x64byte(&b, 0x29); x64byte(&b, 0xc8);
-		}
-		b.bytes[empty]=b.n-empty-1;
-		x64byte(&b, 0x48); x64byte(&b, 0x09); x64byte(&b, 0xd0);
-		x64ptr(&b, 2, abi->d); x64store(&b, 0, p.bytes);
+		/* Native conversion preserves the host C rounding and sticky FP flags. */
+		x64ptr(&b, 0, abi->s);
+		x64byte(&b, p.input == 4 ? 0xf3 : 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x10); x64byte(&b, 0x00);
+		x64byte(&b, p.input == 4 ? 0xf3 : 0xf2); x64byte(&b, 0x0f); x64byte(&b, 0x5a); x64byte(&b, 0xc0);
+		x64ptr(&b, 2, abi->d);
+		x64byte(&b, p.bytes == 4 ? 0xf3 : 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x11); x64byte(&b, 0x02);
 	}else if(p.kind == LeafIntegerReal){
-		/* Exact magnitudes below 2^53 need no FP rounding or exception changes. */
+		/* Convert the complete signed input, including rounded magnitudes above 2^53. */
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, p.input);
-		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc2); /* rdx=source */
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xfa); x64byte(&b, 63);
-		x64byte(&b, 0x48); x64byte(&b, 0x31); x64byte(&b, 0xd0);
-		x64byte(&b, 0x48); x64byte(&b, 0x29); x64byte(&b, 0xd0); /* unsigned magnitude */
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe2); x64byte(&b, 63);
-		x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
-		x64byte(&b, 0x49); x64byte(&b, 0xc1); x64byte(&b, 0xeb); x64byte(&b, 53);
-		x64byte(&b, 0x4d); x64byte(&b, 0x85); x64byte(&b, 0xdb); x64guard(&b, 0x74);
-		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0);
-		x64byte(&b, 0x74); empty=b.n; x64byte(&b, 0);
-		x64byte(&b, 0xb9); x64word(&b, 1074);
-		loop=b.n;
-		x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0xba); x64byte(&b, 0xe0); x64byte(&b, 52);
-		x64byte(&b, 0x72); done=b.n; x64byte(&b, 0);
-		x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe0);
-		x64byte(&b, 0xff); x64byte(&b, 0xc9);
-		x64byte(&b, 0xeb); x64byte(&b, loop-b.n-1);
-		b.bytes[done]=b.n-done-1;
-		x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe1); x64byte(&b, 52);
-		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xc8);
-		x64byte(&b, 0x48); x64byte(&b, 0x09); x64byte(&b, 0xd0);
-		b.bytes[empty]=b.n-empty-1;
-		x64ptr(&b, 2, abi->d); x64store(&b, 0, 8);
+		x64byte(&b, 0xf2); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x2a); x64byte(&b, 0xc0);
+		x64ptr(&b, 2, abi->d);
+		x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x11); x64byte(&b, 0x02);
 	}else if(p.kind == LeafFixedShift){
 		/* Translating the signed interval avoids overflowing when negating minimum. */
 		x64ptr(&b, 1, abi->m); x64load(&b, 1, abi->wordbytes);
@@ -494,6 +542,82 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xc8); x64guard(&b, 0x73);
 			x64ptr(&b, 2, abi->m); x64store(&b, 0, abi->wordbytes);
 		}
+	}else if(p.kind == LeafRealPower){
+		/* Match the C squaring order and reciprocal, including minimum WORD. */
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
+		x64ptr(&b, 1, abi->m);
+		x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x10); x64byte(&b, 0x09);
+		x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, 0); x64word(&b, 0x3ff00000);
+		x64byte(&b, 0x66); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x6e); x64byte(&b, 0xc2);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0);
+		x64byte(&b, 0x79); done=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x48); x64byte(&b, 0xf7); x64byte(&b, 0xd8);
+		x64byte(&b, 0x66); x64byte(&b, 0x0f); x64byte(&b, 0x28); x64byte(&b, 0xd0);
+		x64byte(&b, 0xf2); x64byte(&b, 0x0f); x64byte(&b, 0x5e); x64byte(&b, 0xd1);
+		x64byte(&b, 0x66); x64byte(&b, 0x0f); x64byte(&b, 0x28); x64byte(&b, 0xca);
+		b.bytes[done]=b.n-done-1;
+		loop=b.n;
+		x64byte(&b, 0xa8); x64byte(&b, 1);
+		x64byte(&b, 0x74); x64byte(&b, 4);
+		x64byte(&b, 0xf2); x64byte(&b, 0x0f); x64byte(&b, 0x59); x64byte(&b, 0xc1);
+		x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe8);
+		x64byte(&b, 0x74); done=b.n; x64byte(&b, 0);
+		x64byte(&b, 0xf2); x64byte(&b, 0x0f); x64byte(&b, 0x59); x64byte(&b, 0xc9);
+		x64byte(&b, 0xeb); x64byte(&b, loop-b.n-1);
+		b.bytes[done]=b.n-done-1;
+		x64ptr(&b, 2, abi->d);
+		x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x11); x64byte(&b, 0x02);
+	}else if(p.kind == LeafRealInteger){
+		/* Guard bits before any FP effects; rejected leaves must preserve FP status.
+		 * The conservative range leaves room for rounding in every host FP mode. */
+		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
+		if(p.alu){
+			x64ptr(&b, 1, abi->m); x64load(&b, 1, 8);
+			x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe1);
+			x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, 0); x64word(&b, 0x7fe00000);
+			x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd1); x64guard(&b, 0x74);
+		}
+		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc1);
+		x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe1);
+		x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, 0); x64word(&b, p.bytes == 4 ? 0x83a00000U : 0x87a00000U);
+		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd1); x64guard(&b, 0x72);
+		x64byte(&b, 0x66); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x6e); x64byte(&b, 0xc0);
+		if(p.alu){
+			x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x59); x64byte(&b, 0x01);
+			/* Choose rounding from the product, including its signed-zero result. */
+			x64byte(&b, 0x66); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x7e); x64byte(&b, 0xc0);
+			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc1);
+			x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe1);
+		}
+		/* Negative zero takes the positive half, matching the C less-than test. */
+		x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, 0); x64word(&b, 0x3fe00000);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0);
+		x64byte(&b, 0x79); done=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9);
+		x64byte(&b, 0x74); other=b.n; x64byte(&b, 0);
+		x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0xba); x64byte(&b, 0xfa); x64byte(&b, 63);
+		b.bytes[done]=b.n-done-1; b.bytes[other]=b.n-other-1;
+		x64byte(&b, 0x66); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x6e); x64byte(&b, 0xca);
+		x64byte(&b, 0xf2); x64byte(&b, 0x0f); x64byte(&b, 0x58); x64byte(&b, 0xc1);
+		x64byte(&b, 0xf2); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x2c); x64byte(&b, 0xc0);
+		x64ptr(&b, 2, abi->d); x64store(&b, 0, p.bytes);
+	}else if(p.kind == LeafRealArithmetic){
+		/* Snapshot both operands before an overlapping destination store.
+		 * Scalar SSE2 inherits the C host's rounding mode and sticky exceptions. */
+		x64ptr(&b, 0, abi->m);
+		x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x10); x64byte(&b, 0x00);
+		x64ptr(&b, 1, abi->s);
+		if(p.alu == 4){
+			/* CVTXF converts signed WORD before the separate real multiplication. */
+			x64byte(&b, 0x49); x64byte(&b, abi->wordbytes == 4 ? 0x63 : 0x8b); x64byte(&b, 0x01);
+			x64byte(&b, 0xf2); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x2a); x64byte(&b, 0xc8);
+		}else{
+			x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x10); x64byte(&b, 0x09);
+		}
+		x64byte(&b, 0xf2); x64byte(&b, 0x0f);
+		x64byte(&b, p.alu == 0 ? 0x58 : p.alu == 1 ? 0x5c : p.alu == 3 ? 0x5e : 0x59); x64byte(&b, 0xc1);
+		x64ptr(&b, 2, abi->d);
+		x64byte(&b, 0xf2); x64byte(&b, 0x41); x64byte(&b, 0x0f); x64byte(&b, 0x11); x64byte(&b, 0x02);
 	}else if(p.kind == LeafMove || p.kind == LeafAddress || p.kind == LeafNegReal){
 		x64ptr(&b, 0, abi->s);
 		if(p.kind != LeafAddress) x64load(&b, 0, p.input);
@@ -518,12 +642,6 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		}
 		/* Return zero without changing VM-visible storage on rejected inputs. */
 		x64byte(&b, 0x31); x64byte(&b, 0xc0); x64byte(&b, 0xc3);
-		if(p.kind == LeafDivide){
-			/* IDIV traps on minimum/-1; let the VM implement its wrap rule. */
-			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff);
-			x64byte(&b, 0x75); x64byte(&b, 3);
-			x64byte(&b, 0x31); x64byte(&b, 0xc0); x64byte(&b, 0xc3);
-		}
 		x64ptr(&b, 1, abi->m); x64load(&b, 1, p.bytes);
 		if(p.kind == LeafShift){
 			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xca); /* rdx=value */
@@ -534,9 +652,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		}else{
 			x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3); /* r11=divisor */
 			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc8); /* rax=dividend */
-			if(p.bytes == 8) x64byte(&b, 0x48);
-			x64byte(&b, 0x99); /* cqo/cdq */
-			x64byte(&b, p.bytes == 8 ? 0x49 : 0x41); x64byte(&b, 0xf7); x64byte(&b, 0xfb);
+			x64signeddivide(&b, p.bytes);
 			x64ptr(&b, 2, abi->d); x64store(&b, p.alu ? 2 : 0, p.bytes);
 		}
 	}else if(p.kind == LeafAlu || p.kind == LeafBranch || p.kind == LeafRealBranch){

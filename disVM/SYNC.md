@@ -1,62 +1,43 @@
-# Selected upstream synchronization, 0.1.1
+# Dis, JIT and Sys refresh — v0.1540
 
-[Русский](SYNC.ru.md) · [Manifest](UPSTREAM.json) · [Update workflow](../tools/UPSTREAMS.md)
+[Полный русский отчёт](SYNC.ru.md) · [Manifest](UPSTREAM.json)
 
-Authoritative repository: https://github.com/bhgv/Inferno-OS-bhgv, **experiment**.
-Previous revision: fa2366ca2acaee899da4a8b2e450d5d2629e279b.
-Selected revision: 3e3536578b969cf1a460210d8ec667713869ccfc.
-FlashVM patch base: 6c6f1c70ae9748372e0419ac5d2ca1a41153fc63 (published 0.1528).
+Source: https://github.com/bhgv/Inferno-OS-bhgv, **experiment**.
+Pinned commit: `f948343b711c8300dbf76417254c18a7a8d2f5ff`, eight commits after
+previous Dis snapshot `24892373ee09a2a23dc39b9dedc01fb7af61d8c1`.
 
-The new commit adds descriptor-index native leaf paths and fixes aggregate slot
-access, slice geometry and raw-channel reference ownership. Sources are imported
-byte-for-byte from that exact Git commit. No local edits are hidden in upstream/.
-No new upstream bug was demonstrated by the checks, so no upstream fix/patch or
-push is included in this synchronization.
+## Imported and adapted
 
-## Strict source selection
+AMD64/ARM64 real arithmetic, powers/conversions/rounding, signed fixed scales
+and minus-one division; emu/os Sys FD ownership/publication and unaligned
+connection/result slots; process/heap diagnostics. The native Limbo bootstrap
+also retains divisor evaluation and division-by-zero traps when fixed scaling
+would otherwise lower to a constant zero.
 
-The DisVM manifest owns **109 files** (previously 97). The 12 additions are only
-six C/Python regression pairs: array-indices, descriptor-index, heap-bounds,
-reference-slots, string-branches and channels. descriptor-index.c is also an input
-to the updated native JIT fixture. Existing interpreter/emitter/channel fixture
-files are refreshed in place. No whole OS or additional runtime subsystem is
-imported. Upstream checkout history stays outside the FlashVM repository.
+The selected snapshots contain 192 Dis/reference-test files and 174 temporary
+bootstrap files. Original blobs, notices and SHA-256 hashes are retained.
+The new devprog bodies and two compiler source files support extracted
+regressions only. No whole Inferno, GUI, Math or Geometry module was imported.
+The project's Coco/R compiler remains the priority.
 
-Draw/Tk/Prefab, applications, fonts/resources, window servers and Keyring service
-implementations remain excluded. Retained generated/interface declarations do not
-link their implementations. Future executable-host work must select only the
-required scheduling, allocation, module registration and I/O boundaries. The
-current archive is still not EMU_EXECUTABLE; the upstream 64-bit host/ABI port
-remains incomplete. A headless whole-Inferno build is not substituted for DisVM.
+CMake stays compatible with 3.10; the Dis component version is now 0.1.4.
+Eleven new production regressions and eight foreign-emitter build checks are
+registered. TLS register/safepoint generation and the FlashVM owner bridge retain
+their ABI. The Sys module header is unchanged; its implementation was refreshed.
 
-The separate temporary compiler under tools/limbo-bootstrap retains **174 files**.
-Its selected files are unchanged by the new upstream commit; only its pinned
-revision advances to keep provenance aligned. Our own Coco/R compiler remains
-the priority. A future incompatible compiler/VM ABI must be detected, not silently
-assumed compatible because both snapshots come from the same repository.
+## Executed validation, Linux AMD64
 
-## Executed checks, Linux AMD64
+- Core build and regressions: 42/42.
+- TLS/FlashVM bridge/GC tests plus foreign-emitter checks: 62/62.
+- Eight focused Sys/diagnostic drivers with UBSan: 8/8.
+- Source-built Limbo bootstrap product test: 1/1.
+- Six IDE service modules and their .sbl files rebuilt with that bootstrap.
+- Both provenance manifests verified.
 
-- Source-built native bootstrap: 1/1 test.
-- DisVM core archive compilation, AMD64 backend: passed.
-- Selected DisVM regressions: 15/15; native AMD64 execution in WORD32 and WORD64
-  fixture models included.
-- Six newly selected regression drivers: passed separately with
-  `-fsanitize=undefined -fno-sanitize-recover=all`.
-- Both imported manifests verify exact SHA-256 contents and reject extra files.
+Native AMD64 execution, WORD-width fixtures and ARM64/RV64 emitter construction
+are distinct evidence. No ARM64/RV64 execution or Windows/macOS/Android runtime
+acceptance is claimed. Sys tests inject OS/scheduler boundaries around actual
+production bodies. The complete executable Dis host, Sys/VFS registration and
+IDE startup remain unfinished. No newly confirmed upstream defect was found.
 
-Fixture models have injected host boundaries. These checks are not execution of
-a complete Limbo application in our DisVM, real ARM64/RISC-V execution, full
-scheduler/GC acceptance or native Dis/SWF interoperation. Existing compiler/IDE
-sources are unchanged by this patch; their previous suite is not rerun here.
-
-## Repeatable update and upstream fixes
-
-Use an explicit local checkout of the owner's experiment branch and the commands
-in [UPSTREAMS](../tools/UPSTREAMS.md). Refresh by exact committed revision, review
-changes/selection, then build and test. Builds never fetch a moving HEAD.
-Confirmed interpreter/JIT defects must first be fixed and tested on a local work
-branch of Inferno-OS-bhgv and exported as a separate patch for that repository;
-then refresh this manifest from that exact fix commit. Preserve licenses and
-upstream source formatting. FlashVM and upstream patches remain separate for
-manual application; do not mix cross-repository commits into one git-am series.
+See the Russian report for source selection, repeat commands and integration limits.

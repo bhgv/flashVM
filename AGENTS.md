@@ -24,5 +24,7 @@ generated parser outputs and deliberately raw oracle fixtures unchanged.
   pass must preserve literals, native token order and raw test/oracle contents.
 - Never claim automatic formatting verifies the semantic quality/completeness of
   comments. Review contracts against implementations and run affected checks.
-- Existing user instructions remain: local work branches and downloadable patches,
-  author/committer bhgv <bhgv@bhgv.bhgv>; the user applies and pushes manually.
+- Prepare and test on local work branches; keep downloadable backup patches.
+  The user has explicitly authorized publication to github.com/bhgv/flashVM.
+  Verify the destination, expected branch head, author bhgv and final tree; never
+  force-push. Local author/committer: bhgv <bhgv@bhgv.bhgv>.

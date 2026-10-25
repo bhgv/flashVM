@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "3e3536578b969cf1a460210d8ec667713869ccfc",
+  "revision": "f948343b711c8300dbf76417254c18a7a8d2f5ff",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -209,7 +209,7 @@
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
     "upstream/limbo/ecom.c": "3fb5b6ba972e21739b829227fdc955490482f016f029cd80dfaac5a719a34a7f",
     "upstream/limbo/fns.h": "7214964707d13e1eb70fd9156442a67768885c5ea2176fa2d3356b120b453537",
-    "upstream/limbo/gen.c": "30cd722cafbfd0675e58a7338d46e94fd9167bd8c0849d4a8c4baa338f790da0",
+    "upstream/limbo/gen.c": "8f07d4b370c3b56faec3a3dad1385ff10a44d3c0d01b22ce7ea00a3cb447a775",
     "upstream/limbo/lex.c": "345f3674dee8d888fe624cfc54ec7fe4da6a9f818b0532e5744d7611ab9eb491",
     "upstream/limbo/limbo.h": "4d4dbb3afc201962c47c470768052108fda12ac2b08670245b80aea62755a7f7",
     "upstream/limbo/limbo.y": "18f4955c38b2f6ee902f4c56e8ed0184883481e1a430d416e5f282c3d4c219a8",

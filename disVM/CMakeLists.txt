@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.10)
-project(disvm VERSION 0.1.3 LANGUAGES C)
+project(disvm VERSION 0.1.4 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()
@@ -100,18 +100,54 @@ if(BUILD_TESTING)
     fixed-coeff
     fixed-frame
     jit-coverage
+    heap-query
+    prog-diagnostics
+    sys-fd-owners
+    sys-io
+    sys-stream
+    sys-dirread
+    sys-file2chan
+    sys-tokenize-matrix
   )
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+  add_test(NAME disvm_fixed_zero_div COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/fixed-zero-div.py")
+  set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
+    foreach(driver real-power-native real-to-integer-native)
+      add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
+        "${u}/libinterp/tests/${driver}.py")
+      set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
+        ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+    endforeach()
     foreach(bits 32 64)
       add_test(NAME disvm_native_jit_word${bits} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-runtime.py")
       set_tests_properties(disvm_native_jit_word${bits} PROPERTIES TIMEOUT 120
         ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;LEAF_WORD_BITS=${bits}")
     endforeach()
   endif()
+  # Compile production foreign emitters on this host; these fixtures never execute
+  # ARM64/RV64 machine code and must not be reported as native platform acceptance.
+  foreach(arch arm64 riscv64)
+    foreach(bits 32 64)
+      if(arch STREQUAL "riscv64")
+        set(profiles i zmmul m)
+      else()
+        set(profiles native)
+      endif()
+      foreach(profile IN LISTS profiles)
+        set(check_name "disvm_emitter_${arch}_${profile}_word${bits}")
+        add_test(NAME "${check_name}" COMMAND "${Python3_EXECUTABLE}"
+          "${u}/libinterp/tests/leaf64-runtime.py")
+        set_tests_properties("${check_name}" PROPERTIES TIMEOUT 120
+          ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;LEAF_RUNTIME_BACKEND=${arch};LEAF_WORD_BITS=${bits};RV_FEATURE_PROFILE=${profile}")
+      endforeach()
+    endforeach()
+  endforeach()
 endif()
 
 # Experimental opt-in only: TLS registers do not by themselves synchronize the

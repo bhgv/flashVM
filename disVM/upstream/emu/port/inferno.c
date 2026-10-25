@@ -150,18 +150,29 @@ freefdresult(volatile FDResult *result)
 	memmove(up->env->errstr, saved, sizeof(saved));
 }
 
+/* Derive the connection offset from the generated tuple without aligning its VM slot. */
+static uchar*
+connectionresultslot(void *result)
+{
+	F_Sys_dial frame;
+	union { Sys_Connection align; uchar bytes[sizeof(*frame.ret)]; } layout;
+
+	frame.ret = (void*)layout.bytes;
+	return (uchar*)result + ((uchar*)&frame.ret->t1-layout.bytes);
+}
+
 /* Clear all connection fields together, including an earlier directory string. */
 static void
-clearconnection(Sys_Connection *connection)
+clearconnection(void *slot)
 {
-	Sys_Connection old;
+	Sys_Connection old, empty;
 	char saved[ERRMAX];
 
 	memmove(saved, up->env->errstr, sizeof(saved));
-	old = *connection;
-	connection->dfd = H;
-	connection->cfd = H;
-	connection->dir = H;
+	memmove(&old, slot, sizeof(old));
+	empty.dfd = empty.cfd = H;
+	empty.dir = H;
+	memmove(slot, &empty, sizeof(empty));
 	destroy(old.dfd);
 	destroy(old.cfd);
 	destroy(old.dir);
@@ -170,10 +181,10 @@ clearconnection(Sys_Connection *connection)
 
 /* Build a complete connection before replacing any of the previous managed owners. */
 static void
-makeconnection(int datafd, int controlfd, char *directory, Sys_Connection *connection)
+makeconnection(int datafd, int controlfd, char *directory, void *slot)
 {
 	volatile FDResult result;
-	Sys_Connection old;
+	Sys_Connection old, replacement;
 
 	result.raw[0] = datafd;
 	result.raw[1] = controlfd;
@@ -187,10 +198,11 @@ makeconnection(int datafd, int controlfd, char *directory, Sys_Connection *conne
 	result.handle[1] = takefd(&result.raw[1]);
 	result.directory = c2string(directory, strlen(directory));
 	poperror();
-	old = *connection;
-	connection->dfd = result.handle[0];
-	connection->cfd = result.handle[1];
-	connection->dir = result.directory;
+	memmove(&old, slot, sizeof(old));
+	replacement.dfd = result.handle[0];
+	replacement.cfd = result.handle[1];
+	replacement.dir = result.directory;
+	memmove(slot, &replacement, sizeof(replacement));
 	destroy(old.dfd);
 	destroy(old.cfd);
 	destroy(old.dir);
@@ -229,22 +241,27 @@ Sys_millisec(void *fp)
 	*f->ret = osmillisec();
 }
 
+/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
 void
 Sys_open(void *fp)
 {
 	int fd;
 	F_Sys_open *f;
+	Sys_FD *old, *result;
 
 	f = fp;
-	destroy(*f->ret);
-	*f->ret = H;
+	memmove(&old, f->ret, sizeof(old));
+	result = H;
+	memmove(f->ret, &result, sizeof(result));
+	destroy(old);
 	release();
 	fd = kopen(string2c(f->s), f->mode);
 	acquire();
 	if(fd == -1)
 		return;
 
-	*f->ret = mkfd(fd);
+	result = mkfd(fd);
+	memmove(f->ret, &result, sizeof(result));
 }
 
 /* Replace both pipe ends only after both descriptor owners have been constructed. */
@@ -253,14 +270,18 @@ Sys_pipe(void *fp)
 {
 	Array *a;
 	int fd[2], status;
-	Sys_FD **slots, *old[2];
+	WORD outcome;
+	uchar *slots;
+	Sys_FD *old[2], *next[2];
 	F_Sys_pipe *f;
 	volatile FDResult result;
 
 	f = fp;
-	*f->ret = -1;
+	outcome = -1;
+	memmove(f->ret, &outcome, sizeof(outcome));
 	a = f->fds;
-	if(a == H || a->len < 2)
+	if(a == H || a == nil || a->len < 2 || a->data == nil || a->data == H ||
+	   (uintptr)a->data > (uintptr)-1-2*sizeof(Sys_FD*))
 		return;
 	release();
 	status = kpipe(fd);
@@ -278,31 +299,37 @@ Sys_pipe(void *fp)
 	result.handle[0] = takefd(&result.raw[0]);
 	result.handle[1] = takefd(&result.raw[1]);
 	poperror();
-	slots = (Sys_FD**)a->data;
-	old[0] = slots[0];
-	old[1] = slots[1];
-	slots[0] = result.handle[0];
-	slots[1] = result.handle[1];
+	slots = a->data;
+	memmove(old, slots, sizeof(old));
+	next[0] = result.handle[0];
+	next[1] = result.handle[1];
+	memmove(slots, next, sizeof(next));
 	destroy(old[0]);
 	destroy(old[1]);
-	*f->ret = 0;
+	outcome = 0;
+	memmove(f->ret, &outcome, sizeof(outcome));
 }
 
+/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
 void
 Sys_fildes(void *fp)
 {
 	F_Sys_fildes *f;
+	Sys_FD *old, *result;
 	int fd;
 
 	f = fp;
-	destroy(*f->ret);
-	*f->ret = H;
+	memmove(&old, f->ret, sizeof(old));
+	result = H;
+	memmove(f->ret, &result, sizeof(result));
+	destroy(old);
 	release();
 	fd = kdup(f->fd, -1);
 	acquire();
 	if(fd == -1)
 		return;
-	*f->ret = mkfd(fd);
+	result = mkfd(fd);
+	memmove(f->ret, &result, sizeof(result));
 }
 
 void
@@ -316,22 +343,27 @@ Sys_dup(void *fp)
 	acquire();
 }
 
+/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
 void
 Sys_create(void *fp)
 {
 	int fd;
 	F_Sys_create *f;
+	Sys_FD *old, *result;
 
 	f = fp;
-	destroy(*f->ret);
-	*f->ret = H;
+	memmove(&old, f->ret, sizeof(old));
+	result = H;
+	memmove(f->ret, &result, sizeof(result));
+	destroy(old);
 	release();
 	fd = kcreate(string2c(f->s), f->mode, f->perm);
 	acquire();
 	if(fd == -1)
 		return;
 
-	*f->ret = mkfd(fd);
+	result = mkfd(fd);
+	memmove(f->ret, &result, sizeof(result));
 }
 
 void
@@ -381,44 +413,51 @@ sysiocount(Array *a, WORD count)
 	return (int)count;
 }
 
-/* Validate byte spans and counts before entering native I/O. */
+/* Validate native I/O spans and copy results without assuming VM slot alignment. */
 void
 Sys_read(void *fp)
 {
 	int n;
 	F_Sys_read *f;
+	WORD result;
 
 	f = fp;
 	if(f->buf == (Array*)H || f->n < 0) {
-		*f->ret = 0;
+		result = 0;
+		memmove(f->ret, &result, sizeof(result));
 		return;		
 	}
 	n = sysiocount(f->buf, f->n);
 	if(n < 0){
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	*f->ret = kread(fdchk(f->fd), f->buf->data, n);
+	result = kread(fdchk(f->fd), f->buf->data, n);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate byte spans and counts before entering native I/O. */
+/* Validate native I/O spans and copy results without assuming VM slot alignment. */
 void
 Sys_readn(void *fp)
 {
 	int fd, m, n, t;
 	F_Sys_readn *f;
+	WORD result;
 
 	f = fp;
 	if(f->buf == (Array*)H || f->n < 0) {
-		*f->ret = 0;
+		result = 0;
+		memmove(f->ret, &result, sizeof(result));
 		return;		
 	}
 	n = sysiocount(f->buf, f->n);
 	if(n < 0){
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 	fd = fdchk(f->fd);
@@ -432,30 +471,35 @@ Sys_readn(void *fp)
 			break;
 		}
 	}
-	*f->ret = t;
+	result = t;
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate byte spans and counts before entering native I/O. */
+/* Validate native I/O spans and copy results without assuming VM slot alignment. */
 void
 Sys_pread(void *fp)
 {
 	int n;
 	F_Sys_pread *f;
+	WORD result;
 
 	f = fp;
 	if(f->buf == (Array*)H || f->n < 0) {
-		*f->ret = 0;
+		result = 0;
+		memmove(f->ret, &result, sizeof(result));
 		return;		
 	}
 	n = sysiocount(f->buf, f->n);
 	if(n < 0){
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	*f->ret = kpread(fdchk(f->fd), f->buf->data, n, f->off);
+	result = kpread(fdchk(f->fd), f->buf->data, n, f->off);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -470,49 +514,57 @@ Sys_chdir(void *fp)
 	acquire();
 }
 
-/* Validate byte spans and counts before entering native I/O. */
+/* Validate native I/O spans and copy results without assuming VM slot alignment. */
 void
 Sys_write(void *fp)
 {
 	int n;
 	F_Sys_write *f;
+	WORD result;
 
 	f = fp;
 	if(f->buf == (Array*)H || f->n < 0) {
-		*f->ret = 0;
+		result = 0;
+		memmove(f->ret, &result, sizeof(result));
 		return;		
 	}
 	n = sysiocount(f->buf, f->n);
 	if(n < 0){
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	*f->ret = kwrite(fdchk(f->fd), f->buf->data, n);
+	result = kwrite(fdchk(f->fd), f->buf->data, n);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate byte spans and counts before entering native I/O. */
+/* Validate native I/O spans and copy results without assuming VM slot alignment. */
 void
 Sys_pwrite(void *fp)
 {
 	int n;
 	F_Sys_pwrite *f;
+	WORD result;
 
 	f = fp;
 	if(f->buf == (Array*)H || f->n < 0) {
-		*f->ret = 0;
+		result = 0;
+		memmove(f->ret, &result, sizeof(result));
 		return;		
 	}
 	n = sysiocount(f->buf, f->n);
 	if(n < 0){
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	*f->ret = kpwrite(fdchk(f->fd), f->buf->data, n, f->off);
+	result = kpwrite(fdchk(f->fd), f->buf->data, n, f->off);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -747,6 +799,7 @@ Sys_dial(void *fp)
 	int datafd, controlfd;
 	char dir[NETPATHLEN], *address, *local;
 	F_Sys_dial *f;
+	WORD status;
 
 	f = fp;
 	address = string2c(f->addr);
@@ -754,13 +807,15 @@ Sys_dial(void *fp)
 	release();
 	datafd = kdial(address, local, dir, &controlfd);
 	acquire();
-	f->ret->t0 = -1;
+	status = -1;
+	memmove(f->ret, &status, sizeof(status));
 	if(datafd < 0){
-		clearconnection(&f->ret->t1);
+		clearconnection(connectionresultslot(f->ret));
 		return;
 	}
-	makeconnection(datafd, controlfd, dir, &f->ret->t1);
-	f->ret->t0 = 0;
+	makeconnection(datafd, controlfd, dir, connectionresultslot(f->ret));
+	status = 0;
+	memmove(f->ret, &status, sizeof(status));
 }
 
 /* Adopt the announce control descriptor only after the complete result is ready. */
@@ -770,19 +825,22 @@ Sys_announce(void *fp)
 	char dir[NETPATHLEN], *address;
 	int fd;
 	F_Sys_announce *f;
+	WORD status;
 
 	f = fp;
 	address = string2c(f->addr);
 	release();
 	fd = kannounce(address, dir);
 	acquire();
-	f->ret->t0 = -1;
+	status = -1;
+	memmove(f->ret, &status, sizeof(status));
 	if(fd < 0){
-		clearconnection(&f->ret->t1);
+		clearconnection(connectionresultslot(f->ret));
 		return;
 	}
-	makeconnection(-1, fd, dir, &f->ret->t1);
-	f->ret->t0 = 0;
+	makeconnection(-1, fd, dir, connectionresultslot(f->ret));
+	status = 0;
+	memmove(f->ret, &status, sizeof(status));
 }
 
 /* Keep earlier connection owners valid until the new listening result is complete. */
@@ -790,6 +848,7 @@ void
 Sys_listen(void *fp)
 {
 	F_Sys_listen *f;
+	WORD status;
 	char dir[NETPATHLEN], *directory;
 	int fd;
 
@@ -798,13 +857,15 @@ Sys_listen(void *fp)
 	release();
 	fd = klisten(directory, dir);
 	acquire();
-	f->ret->t0 = -1;
+	status = -1;
+	memmove(f->ret, &status, sizeof(status));
 	if(fd < 0){
-		clearconnection(&f->ret->t1);
+		clearconnection(connectionresultslot(f->ret));
 		return;
 	}
-	makeconnection(-1, fd, dir, &f->ret->t1);
-	f->ret->t0 = 0;
+	makeconnection(-1, fd, dir, connectionresultslot(f->ret));
+	status = 0;
+	memmove(f->ret, &status, sizeof(status));
 }
 
 void
@@ -842,7 +903,7 @@ sysstreamwrite(int fd, uchar *buf, int n, UWORD *total)
 	return 0;
 }
 
-/* Validate the full VM buffer size and preserve short-write progress in both VM widths. */
+/* Preserve stream progress and copy the VM-width result into any slot alignment. */
 void
 Sys_stream(void *fp)
 {
@@ -851,18 +912,21 @@ Sys_stream(void *fp)
 	int src, dst, size, t, n;
 	UWORD nbytes;
 	F_Sys_stream *f;
+	WORD result;
 
 	f = fp;
 	if(f->bufsiz <= 0 || (uvlong)f->bufsiz > 0x7fffffff){
 		seterror(Ebadarg);
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 	size = (int)f->bufsiz;
 	buf = malloc(size);
 	if(buf == nil){
 		kwerrstr(Enomem);
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 	src = fdchk(f->src);
@@ -891,9 +955,10 @@ Sys_stream(void *fp)
 	free(buf);
 	/* Interpret the modular byte count at the VM's width without signed overflow. */
 	if(nbytes <= (~(UWORD)0 >> 1))
-		*f->ret = (WORD)nbytes;
+		result = (WORD)nbytes;
 	else
-		*f->ret = -1-(WORD)(~nbytes);
+		result = -1-(WORD)(~nbytes);
+	memmove(f->ret, &result, sizeof(result));
 }
 
 void

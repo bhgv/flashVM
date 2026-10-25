@@ -1,3 +1,12 @@
+# Текущее обновление / Current refresh — v0.1540
+
+[Актуальный отчёт](SYNC.ru.md) · [Current report](SYNC.md)
+
+Текущий снимок: `f948343b711c8300dbf76417254c18a7a8d2f5ff`. Проверки и ограничения
+описаны в отчёте выше. Следующий раздел сохранён как историческая запись v0.1538.
+
+---
+
 # Обновление Dis/JIT и запуск IDE
 
 [DisVM](README.ru.md) · [English summary](#english-summary) ·

@@ -16,5 +16,8 @@
   begin [GC:]. Keep public bridge formats scalar/value/capability based.
 - Build/test independently from this directory using explicit host inputs.
   Do not create implicit dependencies on sibling source trees or external SDK binaries.
-- Produce local work-branch format-patches only; no push or master commits.
-  Author/committer: bhgv <bhgv@bhgv.bhgv>.
+- Prepare/test local work branches and retain format-patches. The user has
+  authorized direct GitHub publication to bhgv/flashVM. Check the expected
+  master head and resulting tree; never force-push. Upstream fixes remain
+  separate changes in their owning repository. Local author/committer:
+  bhgv <bhgv@bhgv.bhgv>.

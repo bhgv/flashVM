@@ -64,6 +64,39 @@ a64wordfield(A64Buf *b, int result, int owner, int offset, int wordbytes)
 		a64field(b, result, owner, offset, 8);
 }
 
+/* Emit a short conditional transfer to the shared side-effect-free fallback. */
+static void
+a64defer(A64Buf *b, u32int condition, int fallback)
+{
+	a64put(b, condition | ((fallback-b->n)&0x7ffff)<<5);
+}
+
+/* Resolve signed representation lengths and one/four-byte character strides. */
+static void
+a64stringheader(A64Buf *b, int owner, int length, int stride, int lenoff, int dataoff, int fallback)
+{
+	int empty, positive, done;
+
+	a64put(b, 0x52800020U | stride);
+	a64defer(b, 0xb4000000U | owner, fallback);
+	a64put(b, 0xb100041fU | owner<<5);
+	empty=b->n; a64put(b, 0x54000000);
+	a64put(b, 0xb9800000U | (u32int)(lenoff/4)<<10 | owner<<5 | length);
+	a64put(b, 0x52b00009); /* w9 = INT_MIN */
+	a64put(b, 0x6b09001fU | length<<5);
+	a64defer(b, 0x54000000, fallback);
+	a64put(b, 0xf100001fU | length<<5);
+	positive=b->n; a64put(b, 0x5400000a);
+	a64put(b, 0xcb0003e0U | length<<16 | length);
+	a64put(b, 0x52800080U | stride);
+	b->code[positive] |= (b->n-positive)<<5;
+	a64put(b, 0x91000000U | (u32int)dataoff<<10 | owner<<5 | owner);
+	done=b->n; a64put(b, 0x14000000);
+	b->code[empty] |= (b->n-empty)<<5;
+	a64put(b, 0x52800000U | length);
+	b->code[done] |= b->n-done;
+}
+
 /* Turn x12/x13 bits into signed keys using x14, leaving FP state untouched. */
 static void
 a64realkey(A64Buf *b, int reg)
@@ -94,7 +127,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 {
 	A64Buf b;
 	LeafOp p;
-	int i, empty, other, done, scale, limit, loop;
+	int i, empty, other, done, scale, limit, loop, patch, equal, fallback;
 	u32int width;
 	static u32int arithmetic[] = {0x0b000000, 0x4b000000, 0x1b007c00,
 		0x0a000000, 0x2a000000, 0x4a000000};
@@ -107,7 +140,41 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	   !leafop(&p, op, abi->wordbytes)) return 0;
 	b.n = 0;
 	a64put(&b, 0xd503245f); /* BTI c; a compatible hint on earlier cores */
-	if(p.kind == LeafTypeCheck){
+	if(p.kind == LeafStringBranch){
+		/* Mixed character widths share one bounded loop and a common fallback. */
+		if(abi->stringlen < 0 || abi->stringlen > 2047 || abi->stringlen%4 ||
+		   abi->stringdata < 0 || abi->stringdata > 2047) return 0;
+		fallback=b.n+1;
+		a64put(&b, 0x14000003); a64put(&b, 0x52800000); a64put(&b, 0xd65f03c0);
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
+		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, 8);
+		a64stringheader(&b, 12, 14, 1, abi->stringlen, abi->stringdata, fallback);
+		a64stringheader(&b, 13, 15, 2, abi->stringlen, abi->stringdata, fallback);
+		a64put(&b, 0xeb0d019f);
+		equal=b.n; a64put(&b, 0x54000000);
+		loop=b.n;
+		empty=b.n; a64put(&b, 0xb400000e);
+		other=b.n; a64put(&b, 0xb400000f);
+		a64put(&b, 0x39400189);
+		a64put(&b, 0x36100041); /* tbz w1,#2,skip wide load */
+		a64put(&b, 0xb9800189);
+		a64put(&b, 0x394001aa);
+		a64put(&b, 0x36100042);
+		a64put(&b, 0xb98001aa);
+		a64put(&b, 0xeb0a013f);
+		done=b.n; a64put(&b, 0x54000001);
+		a64put(&b, 0x8b01018c); a64put(&b, 0x8b0201ad);
+		a64put(&b, 0xd10005ce); a64put(&b, 0xd10005ef);
+		a64put(&b, 0x14000000U | ((loop-b.n)&0x3ffffff));
+		b.code[empty] |= (b.n-empty)<<5; b.code[other] |= (b.n-other)<<5;
+		b.code[equal] |= (b.n-equal)<<5;
+		a64put(&b, 0xeb0f01df);
+		b.code[done] |= (b.n-done)<<5;
+		patch=b.n; a64put(&b, 0x54000000U | inverse[p.condition]);
+		a64ptr(&b, 11, abi->d); a64load(&b, 12, 11, 8);
+		a64put(&b, 0xf9000000U | (abi->pc/8)<<10 | 12);
+		b.code[patch] |= (b.n-patch)<<5;
+	}else if(p.kind == LeafTypeCheck){
 		/* The header displacement is private and independent of the Dis WORD. */
 		if(abi->heaptype <= 0 || abi->heaptype > 255 || abi->heaptype%8) return 0;
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
@@ -144,27 +211,44 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		/* Coefficient slots follow the VM frame layout, not native pointer alignment. */
 		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 ||
 		   abi->fixedcoef < 0 || abi->fixedcoef > 2047) return 0;
-		a64ptr(&b, 9, abi->fp); a64guard(&b, 0xb5000069);
-		a64put(&b, 0xb100053f); a64guard(&b, 0x54000061);
+		fallback=b.n+1;
+		a64put(&b, 0x14000003); a64put(&b, 0x52800000); a64put(&b, 0xd65f03c0);
+		a64ptr(&b, 9, abi->fp); a64defer(&b, 0xb4000009, fallback);
+		a64put(&b, 0xb100053f); a64defer(&b, 0x54000000, fallback);
 		/* Form byte offsets explicitly, including four-byte-aligned WORD64 slots. */
 		a64put(&b, 0x91000000U | abi->fixedcoef<<10 | 9<<5 | 10); a64load(&b, 14, 10, abi->wordbytes);
-		if(p.alu != 1){a64put(&b, 0xaa0e03ef); a64guard(&b, 0xb500006f); a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);}
+		if(abi->wordbytes == 4)a64put(&b, 0x93407dce);
+		if(p.alu != 1){a64put(&b, 0xaa0e03ef); a64defer(&b, 0xb400000f, fallback);}
 		if(p.alu == 2)a64ptr(&b, 10, abi->m);
 		else a64put(&b, 0x91000000U | abi->fixedtmp<<10 | 9<<5 | 10);
 		a64load(&b, 13, 10, abi->wordbytes); if(abi->wordbytes == 4)a64put(&b, 0x93407dad);
 		if(p.condition){
-			/* Preserve full rounding semantics by declining nonzero flag bits. */
-			a64put(&b, 0x924005aa); a64guard(&b, 0xb400006a); a64put(&b, 0x9342fdad);
+			/* VN rounding stays in C; WN rounding is supported for right shifts. */
+			a64put(&b, 0x924005a1); a64put(&b, 0xf100043f);
+			a64defer(&b, 0x54000008, fallback); a64put(&b, 0x9342fdad);
 		}
-		a64put(&b, 0x9100fdaa); a64put(&b, 0xf101fd5f); a64guard(&b, 0x54000063);
+		a64put(&b, 0x9100fdaa); a64put(&b, 0xf101fd5f); a64defer(&b, 0x54000002, fallback);
 		if(p.alu == 1){
 			a64ptr(&b, 10, abi->s); a64load(&b, 15, 10, abi->wordbytes);
 			if(abi->wordbytes == 4)a64put(&b, 0x93407def);
-			a64guard(&b, 0xb500006f); a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061);
+			a64defer(&b, 0xb400000f, fallback);
 		}else if(p.alu == 0){a64ptr(&b, 10, abi->s); a64load(&b, 14, 10, abi->wordbytes);if(abi->wordbytes == 4)a64put(&b, 0x93407dce);}
 		a64ptr(&b, 10, p.alu == 2 ? abi->s : abi->m); a64load(&b, 12, 10, abi->wordbytes);
 		if(abi->wordbytes == 4)a64put(&b, 0x93407d8c);
+		if(p.condition)
+			a64put(&b, p.alu == 0 ? 0xca0e0182 : 0xaa0c03e2);
 		if(p.alu != 2)a64put(&b, 0x9b0e7d8c);
+		if(p.condition){
+			/* Add the modular mask using the original operand signs. */
+			done=b.n; a64put(&b, 0xb4000001);
+			a64put(&b, 0xf10001bf); a64defer(&b, 0x5400000a, fallback);
+			a64put(&b, 0x92800003); a64put(&b, 0xcb0d03e4);
+			a64put(&b, 0x9ac42063); a64put(&b, 0xaa2303e3);
+			a64put(&b, 0xf100005f);
+			other=b.n; a64put(&b, p.alu == 1 ? 0x5400000c : 0x5400000a);
+			a64put(&b, 0x8b03018c);
+			b.code[done] |= (b.n-done)<<5; b.code[other] |= (b.n-other)<<5;
+		}
 		a64put(&b, 0xf10001bf); a64put(&b, 0x5400006b); a64put(&b, 0x9acd218c); a64put(&b, 0x14000003);
 		a64put(&b, 0xcb0d03ed); a64put(&b, 0x9acd298c); a64put(&b, 0x9acf0d8c);
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
@@ -219,7 +303,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		a64put(&b, 0x9100fdae); a64put(&b, 0xf101fddf); a64guard(&b, 0x54000063);
 		a64ptr(&b, 9, abi->s); a64load(&b, 15, 9, abi->wordbytes);
 		if(abi->wordbytes == 4) a64put(&b, 0x93407def);
-		if(p.alu){ a64guard(&b, 0xb500006f); a64put(&b, 0xb10005ff); a64guard(&b, 0x54000061); }
+		if(p.alu){ a64guard(&b, 0xb500006f); }
 		a64ptr(&b, 9, abi->m); a64load(&b, 12, 9, abi->wordbytes);
 		if(abi->wordbytes == 4) a64put(&b, 0x93407d8c);
 		if(!p.alu) a64put(&b, 0x9b0f7d8c);
@@ -229,56 +313,18 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(p.alu) a64put(&b, 0x9acf0d8c);
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
 	}else if(p.kind == LeafRealResize){
-		/* Keep signed zeros exact and reject all values that need FP handling. */
-		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, p.input);
-		a64put(&b, 0xd3400000U | (p.input == 4 ? 31 : 63)<<16 | 63<<10 | 12<<5 | 13);
-		a64put(&b, 0xd3400000U | (p.input == 4 ? 1 : 33)<<16 | (p.input == 4 ? 0 : 32)<<10 | 13<<5 | 13);
-		a64put(&b, 0xd3400000U | (p.input == 4 ? 31 : 63)<<16 | (p.input == 4 ? 30 : 62)<<10 | 12<<5 | 12);
-		a64put(&b, 0xd3400000U | (p.input == 4 ? 33 : 1)<<16 | 63<<10 | 12<<5 | 12);
-		empty=b.n; a64put(&b, 0xb400000c);
-		a64put(&b, 0xd3400000U | (p.input == 4 ? 23 : 52)<<16 | 63<<10 | 12<<5 | 14);
-		if(p.input == 4){
-			a64guard(&b, 0xb500006e);
-			a64put(&b, 0xf100001fU | 255<<10 | 14<<5); a64guard(&b, 0x54000063);
-			a64put(&b, 0xd3400000U | 35<<16 | 34<<10 | 12<<5 | 12); /* lsl payload,29 */
-			a64put(&b, 0xd280000eU | 896<<5);
-			a64put(&b, 0xd3400000U | 12<<16 | 11<<10 | 14<<5 | 14);
-			a64put(&b, 0x8b0e018c);
-		}else{
-			a64put(&b, 0xd1000000U | 897<<10 | 14<<5 | 14);
-			a64put(&b, 0xf100001fU | 254<<10 | 14<<5); a64guard(&b, 0x54000063);
-			a64put(&b, 0xd3400000U | 29<<16 | 28<<10 | 12<<5 | 15); /* low 29 bits */
-			a64guard(&b, 0xb400006f);
-			a64put(&b, 0x910005ce); /* float exponent = translated exponent + 1 */
-			a64put(&b, 0xd3400000U | 41<<16 | 40<<10 | 14<<5 | 14);
-			a64put(&b, 0xd3400000U | 52<<16 | 51<<10 | 12<<5 | 12);
-			a64put(&b, 0xd3400000U | 41<<16 | 63<<10 | 12<<5 | 12);
-			a64put(&b, 0xaa0e018c);
-		}
-		b.code[empty] |= (b.n-empty)<<5;
-		a64put(&b, 0xaa0d018c);
-		a64ptr(&b, 11, abi->d); a64store(&b, 12, p.bytes);
+		/* FPCR/FPSR supply the same conversion environment as native C. */
+		a64ptr(&b, 9, abi->s);
+		a64put(&b, p.input == 4 ? 0xbd400120 : 0xfd400120);
+		a64put(&b, p.input == 4 ? 0x1e22c000 : 0x1e624000);
+		a64ptr(&b, 11, abi->d);
+		a64put(&b, p.bytes == 4 ? 0xbd000160 : 0xfd000160);
 	}else if(p.kind == LeafIntegerReal){
-		/* Normalize exact integer bits without touching FP registers or status. */
+		/* SCVTF rounds every signed input with the active C FP environment. */
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, p.input);
-		if(p.input == 4) a64put(&b, 0x93407d8c);
-		a64put(&b, 0x937ffd8d); /* asr x13,x12,#63 */
-		a64put(&b, 0xca0d018c); a64put(&b, 0xcb0d018c); /* unsigned magnitude */
-		a64put(&b, 0xd34101ad); /* sign bit */
-		a64put(&b, 0xd375fd8f); a64guard(&b, 0xb400006f); /* magnitude < 2^53 */
-		empty=b.n; a64put(&b, 0xb400000c);
-		a64put(&b, 0xd280864e); /* mov x14,#1074 */
-		loop=b.n;
-		a64put(&b, 0xd374fd8f); /* lsr x15,x12,#52 */
-		done=b.n; a64put(&b, 0xb500000f);
-		a64put(&b, 0xd37ff98c); /* lsl x12,x12,#1 */
-		a64put(&b, 0xd10005ce); /* sub x14,x14,#1 */
-		a64put(&b, 0x14000000U | ((u32int)(loop-b.n)&0x3ffffff));
-		b.code[done] |= (b.n-done)<<5;
-		a64put(&b, 0xd34c2dce); /* lsl x14,x14,#52 */
-		a64put(&b, 0x8b0e018c); a64put(&b, 0xaa0d018c);
-		b.code[empty] |= (b.n-empty)<<5;
-		a64ptr(&b, 11, abi->d); a64store(&b, 12, 8);
+		if(p.input == 4)a64put(&b, 0x93407d8c);
+		a64put(&b, 0x9e620180); /* scvtf d0,x12 */
+		a64ptr(&b, 11, abi->d); a64put(&b, 0xfd000160);
 	}else if(p.kind == LeafFixedShift){
 		/* Validate the signed interval before fetching a possibly inaccessible source. */
 		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, abi->wordbytes);
@@ -444,6 +490,65 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			a64guard(&b, 0x54000063); /* no native address carry */
 			a64ptr(&b, 11, abi->m); a64store(&b, 14, abi->wordbytes);
 		}
+	}else if(p.kind == LeafRealPower){
+		/* Match each C multiplication and handle minimum WORD as unsigned bits. */
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, abi->wordbytes);
+		if(abi->wordbytes == 4)a64put(&b, 0x93407d8c);
+		a64ptr(&b, 10, abi->m); a64put(&b, 0xfd400141);
+		a64put(&b, 0xd2e0000dU | 0x3ff0<<5); a64put(&b, 0x9e6701a0);
+		done=b.n; a64put(&b, 0xb6f8000c); /* tbz exponent,#63,positive */
+		a64put(&b, 0xcb0c03ec); /* neg x12,x12 */
+		a64put(&b, 0x1e611801); /* fdiv d1,d0,d1 */
+		b.code[done] |= (b.n-done)<<5;
+		loop=b.n;
+		a64put(&b, 0x3600004c); /* tbz x12,#0,skip multiply */
+		a64put(&b, 0x1e610800); /* fmul d0,d0,d1 */
+		a64put(&b, 0xd341fd8c); /* lsr x12,x12,#1 */
+		done=b.n; a64put(&b, 0xb400000c);
+		a64put(&b, 0x1e610821); /* fmul d1,d1,d1 */
+		a64put(&b, 0x14000000U | ((u32int)(loop-b.n)&0x3ffffff));
+		b.code[done] |= (b.n-done)<<5;
+		a64ptr(&b, 11, abi->d); a64put(&b, 0xfd000160);
+	}else if(p.kind == LeafRealInteger){
+		/* Reject unsupported bits without FP exceptions or destination writes. */
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
+		if(p.alu){
+			a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, 8);
+			a64put(&b, 0xd37ff9ad); /* lsl x13,x13,#1 */
+			a64put(&b, 0xd2e0000eU | 0x7fe0<<5);
+			a64put(&b, 0xeb0e01bf); a64guard(&b, 0x54000060);
+		}
+		a64put(&b, 0xd37ff98d); /* lsl x13,x12,#1 */
+		a64put(&b, 0xd2e0000eU | (p.bytes == 4 ? 0x83a0 : 0x87a0)<<5);
+		a64put(&b, 0xeb0e01bf); a64guard(&b, 0x54000063);
+		a64put(&b, 0x9e670180); /* fmov d0,x12 */
+		if(p.alu){
+			a64put(&b, 0xfd400141); a64put(&b, 0x1e610800);
+			a64put(&b, 0x9e66000c); /* fmov x12,d0 */
+			a64put(&b, 0xd37ff98d); /* magnitude from the scaled result */
+		}
+		a64put(&b, 0xd2e0000eU | 0x3fe0<<5);
+		/* C selects +0.5 for both signs of zero. */
+		done=b.n; a64put(&b, 0xb6f8000c); /* tbz x12,#63,positive */
+		other=b.n; a64put(&b, 0xb400000d); /* cbz magnitude,positive */
+		a64put(&b, 0xd24101ce); /* eor x14,x14,#1<<63 */
+		b.code[done] |= (b.n-done)<<5; b.code[other] |= (b.n-other)<<5;
+		a64put(&b, 0x9e6701c1); a64put(&b, 0x1e612800); /* fmov d1,x14; fadd */
+		a64put(&b, 0x9e78000c); /* fcvtzs x12,d0 */
+		a64ptr(&b, 11, abi->d); a64store(&b, 12, p.bytes);
+	}else if(p.kind == LeafRealArithmetic){
+		/* Load both unaligned binary64 operands before storing an aliased result.
+		 * AAPCS64 d0/d1 are volatile; FPCR/FPSR remain the host C environment. */
+		a64ptr(&b, 9, abi->m); a64put(&b, 0xfd400120); /* ldr d0, [x9] */
+		a64ptr(&b, 10, abi->s);
+		if(p.alu == 4){
+			a64load(&b, 12, 10, abi->wordbytes);
+			if(abi->wordbytes == 4)a64put(&b, 0x93407d8c);
+			a64put(&b, 0x9e620181); /* scvtf d1, x12 */
+		}else a64put(&b, 0xfd400141); /* ldr d1, [x10] */
+		a64put(&b, p.alu == 0 ? 0x1e612800 : p.alu == 1 ? 0x1e613800 :
+			p.alu == 3 ? 0x1e611800 : 0x1e610800);
+		a64ptr(&b, 11, abi->d); a64put(&b, 0xfd000160); /* str d0, [x11] */
 	}else if(p.kind == LeafMove || p.kind == LeafAddress || p.kind == LeafNegReal){
 		a64ptr(&b, 9, abi->s);
 		if(p.kind != LeafAddress) a64load(&b, 12, 9, p.input);
