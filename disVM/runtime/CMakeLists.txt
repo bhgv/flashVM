@@ -367,5 +367,9 @@ if(DVM_RUNTIME_TESTS AND EXISTS "${DVM_FIR_COMPILER}" AND EXISTS "${DVM_FIR_SOUR
       "${CMAKE_CURRENT_SOURCE_DIR}/test_fir_reals.py" "${DVM_FIR_COMPILER}"
       "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_reals_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_limbo_reals_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_limbo_reals.py" "${DVM_FIR_COMPILER}"
+      "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${mode}")
+    set_tests_properties(disvm_limbo_reals_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

@@ -168,3 +168,14 @@ if(BUILD_TESTING)
   add_test(NAME fir1_source_decisions COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/decisions.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
 endif()
+
+if(BUILD_TESTING)
+  add_test(NAME fir1_limbo_reals COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/limbo_reals.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_real_api tests/real_api.c)
+  target_link_libraries(fir1_real_api PRIVATE fir1_ir fir1_source_api)
+  add_test(NAME fir1_real_api COMMAND fir1_real_api)
+endif()
