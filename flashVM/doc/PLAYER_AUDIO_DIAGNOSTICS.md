@@ -124,8 +124,8 @@ recalculated. Package/signature/16 KiB alignment were checked. Full native rebui
 and device execution were not performed for this manifest-only checkpoint.
 A new disposable test signing key is used because the old transient build key
 was lost. Uninstall the preceding test app before installing v0.585; export any
-remaining diagnostic files first. Retain the v0.585 test keystore for future
-builds (alias flashvm-test, test-only store/key password android).
+remaining diagnostic files first. Keep any test signing credentials outside
+the repository and outside published documentation.
 
 After installation, repeat 01 and 03 in both modes with diagnostics. The report
 should say driver=android and a 15-second foreground run should no longer fill
