@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1587**. [Русская версия](README.ru.md).
+Development version: **0.1588**. [Русская версия](README.ru.md).
 
-Current series: [v0.1574–v0.1580](docs/releases/v0.1580.md) adds scalar FIR→Dis control flow, Coco/R Limbo terminal decisions, precise DisVM instruction quotas and updated Inferno call/return/ownership support.
+Current series: [v0.1581–v0.1588](docs/releases/v0.1588.md) adds binary64 FIR→Dis and numeric AS execution, audits Sys/modules and returns Srv/Loader ownership fixes to Inferno.
 
 ## Browse documentation
 

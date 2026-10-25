@@ -44,7 +44,7 @@ success clears the result, positions use original UTF-8 bytes.
 ## Прямой Dis API 0.6.0
 
 `fir_dis(output, module, error, capacity)` генерирует NC64 Dis для проверенного
-скалярного i32/bool CFG-профиля. `fir_run(FIR_DIS, ...)` использует ту же реализацию,
+скалярного i32/bool/f64 CFG-профиля. `fir_run(FIR_DIS, ...)` использует ту же реализацию,
 с необязательной оптимизацией/снимками. Ошибка покрытия не изменяет поток;
 NULL-диагностика допустима, ошибка I/O может оставить префикс.
 [Точный контракт и пределы](../doc/DIS_BACKEND.ru.md),

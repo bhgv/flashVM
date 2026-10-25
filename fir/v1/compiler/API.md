@@ -44,7 +44,7 @@ success clears the result, positions use original UTF-8 bytes.
 ## Direct Dis API 0.6.0
 
 `fir_dis(output, module, error, capacity)` emits NC64 Dis for a verified
-scalar i32/bool CFG profile. `fir_run(FIR_DIS, ...)` uses the same implementation,
+scalar i32/bool/f64 CFG profile. `fir_run(FIR_DIS, ...)` uses the same implementation,
 including optional optimization/snapshots. Coverage rejection preserves the
 stream; NULL diagnostics are admitted; I/O failures can leave a prefix.
 [Exact target and limits](../doc/DIS_BACKEND.md),

@@ -17,7 +17,7 @@ build/linker/swl link movie.swf a.swo
 [покрытие](../doc/COVERAGE.ru.md). `fir1 swf`, `fir1 actions` и `fir_swf`
 удалены; скрытого обхода линкера больше нет. `fir1_source` поддерживает числовые
 учебные профили AS1/AS2/AS3/Limbo, не полные языки. Аннотации AS2/AS3 — Number;
-AS3 пока понижает в AVM1, не ABC. Имена модулей при связывании должны различаться.
+SWF-цель понижает числовой AS3 в AVM1, не ABC; прямая Dis-цель принимает явное f64-подмножество. Имена модулей при связывании должны различаться.
 
 Источники: [fir1.atg](fir1.atg), [src1.atg](src1.atg), [lower.c](lower.c),
 [source_api.c](source_api.c), [pipeline.c](../src/pipeline.c),
@@ -36,4 +36,4 @@ AS3 пока понижает в AVM1, не ABC. Имена модулей пр�
 
 [Рабочий source-синтаксис](../doc/SOURCE_SYNTAX.ru.md).
 
-[Backend Dis 0.7.0: скалярный CFG со значениями и флагами исполнения](../doc/DIS_BACKEND.ru.md).
+[Backend Dis 0.8.0: скалярный CFG со значениями и флагами исполнения](../doc/DIS_BACKEND.ru.md).

@@ -1,4 +1,4 @@
-# FIR 0.7.0 compiler and C API
+# FIR 0.8.0 compiler and C API
 
 The compiler produces `.swo` objects, never SWF containers. Linking belongs to
 independent [SWL](../../../linker/README.md). Optimization runs separately or
@@ -17,7 +17,7 @@ build/linker/swl link movie.swf a.swo
 [coverage](../doc/COVERAGE.md). `fir1 swf`, `fir1 actions` and `fir_swf` are removed;
 there is no hidden linker bypass. `fir1_source` supports numeric tutorial profiles
 of AS1/AS2/AS3/Limbo, not complete languages. AS2/AS3 annotations are Number;
-AS3 currently lowers to AVM1, not ABC. Linked module names must be distinct.
+The SWF target lowers AS3 numeric input to AVM1, not ABC; the direct Dis target now accepts the explicit f64 subset. Linked module names must be distinct.
 
 Sources: [fir1.atg](fir1.atg), [src1.atg](src1.atg), [lower.c](lower.c),
 [source_api.c](source_api.c), [pipeline.c](../src/pipeline.c),
@@ -36,4 +36,4 @@ write failures may leave a partial file.
 
 [Working source syntax](../doc/SOURCE_SYNTAX.md).
 
-[Dis backend 0.7.0: scalar CFG with value/executed captures](../doc/DIS_BACKEND.md).
+[Dis backend 0.8.0: scalar CFG with value/executed captures](../doc/DIS_BACKEND.md).
