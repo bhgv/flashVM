@@ -129,12 +129,15 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native string-append-native)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
         ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
     endforeach()
+    add_test(NAME disvm_decimal-vm-parser COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/decimal-native.py")
+    set_tests_properties(disvm_decimal-vm-parser PROPERTIES TIMEOUT 120
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;DECIMAL_VM_PARSER=1;DECIMAL_ACCEPTED_ONLY=1")
     add_test(NAME disvm_string-compare-native COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/string-branches.py")
     set_tests_properties(disvm_string-compare-native PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;STRING_BRANCH_NATIVE=1")
@@ -156,7 +159,7 @@ if(BUILD_TESTING)
       RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
   endif()
   if(have_instruction_emulators EQUAL 0)
-    foreach(driver decimal-jit string-store-jit)
+    foreach(driver decimal-jit string-store-jit string-append-jit)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")
