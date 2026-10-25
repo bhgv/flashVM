@@ -122,3 +122,34 @@ a build worker and transfer copied results through channels. This native C
 client is not claimed to run on DisVM. Installed SDK acceptance relinks main.c
 using only shipped headers/archives and byte-compares its output with the CLI
 after moving the whole package to a path with spaces.
+
+## Limbo real
+
+[real.b](real.b) is a fully commented `value(): real` profile. Coco/R checks
+that interface and definition agree; all local values remain real. Use decimal
+fraction/exponent literals (`2.0`, `1e2`): integer/radix/hex literals and mixed
+int/real bindings are rejected rather than implicitly converted.
+
+```sh
+build/fir/fir1_source limbo --input fir/v1/examples/dis/real.b build/real.fir --module dis_example
+build/fir/fir1 dis build/real.fir build/real.dis
+build/fir/fir1_dis_example fir/v1/examples/dis/real.b build/embedded-real.dis
+build/editor/disvm --jit --inspect-reals 0 1 build/real.dis
+build/editor/disvm --no-jit --inspect-reals 0 1 build/real.dis
+```
+
+```text
+REAL 0 42.5
+```
+
+FIR retains `source_language limbo` and the new `source_semantics limbo_real`.
+The first line remains FIR 1.0; the new profile needs an updated reader. Existing
+int programs retain `limbo_i32`. The executed flag is word offset 8; read it with
+`--inspect-words 8 1`. Separate views are separate executions, not one atomic
+combined snapshot.
+
+This example covers typed/inferred real locals, division and assignment to an
+outer lexical binding. Real comparisons/decisions, mixed types, casts, function
+arguments and imports are not implemented. Existing Limbo int retains wrapping
+arithmetic and terminal decisions. The C99 SDK client uses its original invocation
+without a third argument: type selection belongs to the grammar, not the filename.

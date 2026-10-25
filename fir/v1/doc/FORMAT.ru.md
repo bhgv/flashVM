@@ -155,3 +155,17 @@ limbo_i32. По отдельности, с неизвестным значени
 Через C API живые инструкции каждого блока должны быть непрерывны; первый
 живой блок — entry, определяемый тегом блока у instructions[0], даже если первый
 элемент tombstone. Нарушение layout отвергается до обоих emitter.
+
+## Limbo real provenance / Происхождение Limbo real
+
+`source_language limbo` now pairs with either `source_semantics limbo_i32` or
+`source_semantics limbo_real`. The latter records homogeneous source real
+lowering, with explicit f64 operations. AS profiles still require avm1_numeric;
+forged language/semantics pairs are rejected by the verifier. FIR remains 1.0;
+this new optional profile needs an updated reader. Existing profiles and opcode
+spellings are unchanged. FirSemantics appends FIR_LIMBO_REAL; existing enum values
+are preserved. This metadata records provenance, not a replacement for IR type
+checking or an implicit conversion instruction.
+
+Новый профиль сохраняет происхождение real-функции; старые i32/AS-профили и
+их числовые значения enum сохранены. Для нового варианта нужен новый reader.

@@ -36,8 +36,17 @@ FIR пишет объекты; [линкер](../../../linker/README.ru.md) об
 не является приёмкой встроенного Dis/JIT, полного отладчика, вызовов между
 модулями или целевых нативных backend.
 
-[Цель NC64 Dis 0.8.0](DIS_BACKEND.ru.md): скалярный CFG, i32/bool/f64, copy, сравнения/wrap i32 и арифметика binary64, значения и флаги trace/return.
+[Цель NC64 Dis 0.9.0](DIS_BACKEND.ru.md): скалярный CFG, i32/bool/f64, copy, сравнения/wrap i32 и арифметика binary64, значения и флаги trace/return.
 FIR→Dis выполняет наш C99-emitter; полный Limbo ABI, phi, каналы, SBL и Dis-линковка ещё не реализованы.
 
 Числовой Limbo теперь принимает шесть сравнений в терминальных if/else;
 все ветви возвращают значение, SSA joins и исходные циклы не реализованы.
+
+Our Coco/R Limbo adapter now additionally admits a homogeneous `value(): real`
+profile: decimal real constants, typed/inferred real locals, lexical scopes,
+assignments, + - * / and return. No mixed types/casts or real comparisons/CFG
+are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
+
+Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
+обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
+[Комментированный пример](../examples/dis/README.ru.md#вещественный-limbo).

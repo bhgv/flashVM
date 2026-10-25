@@ -1,3 +1,14 @@
+# Current synchronization / Текущая синхронизация — v0.1593
+
+Selected experiment: `74c193724a7352b8fda2724a5cf10029885be68c`.
+Includes unique array-view SLICEA leaves and self-load ownership from 4d9ce2e,
+plus our returned Loader construction/scalar result-slot fix.
+[Module audit](libraries/MODULE_AUDIT.md) · [Upstream Loader contract](upstream/libinterp/tests/README.loader-results.md).
+Vendored files remain byte-identical; native ARM64/RISC-V platform execution
+is not established by host/emulator fixtures. Earlier reports follow as history.
+
+---
+
 # Обновление Dis, JIT и Sys — v0.1540
 
 [English](SYNC.md) · [Состав снимка](UPSTREAM.json) · [Как обновлять](../tools/UPSTREAMS.ru.md)

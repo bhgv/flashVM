@@ -38,3 +38,14 @@ snapshot-API Loader. Sys/Math в проверенных путях не потр
 Наличие Readdir/Styx/Debug в поставке не означает готовности namespace, сервера
 Styx и полного /prog-отладчика. Границы остальных Loader API сохранены: нельзя
 распространять проверку snapshot-слотов на все методы модуля.
+
+## Follow-up v0.1593: remaining Loader result APIs
+
+The earlier snapshot-only boundary is now extended by published Inferno fix
+`74c193724a7352b8fda2724a5cf10029885be68c`: newmod/dnew clear old result owners
+before destruction and byte-copy completed pointers; tnew/ext/compile publish
+full WORD status without assuming alignment. Nil/H destinations fail before
+module mutations. [Upstream regression contract](../upstream/libinterp/tests/README.loader-results.md)
+adds 100 WORD32/64 alignment, replacement and nil cases under ASan/UBSan, while
+retaining the existing construction/failure/retry suite. This extends result-slot
+coverage, not arbitrary malformed-frame or sandbox guarantees.

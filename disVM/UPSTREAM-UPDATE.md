@@ -1,9 +1,10 @@
-# Текущее обновление / Current refresh — v0.1540
+# Текущее обновление / Current refresh — v0.1593
 
-[Актуальный отчёт](SYNC.ru.md) · [Current report](SYNC.md)
+[Актуальный отчёт](SYNC.ru.md) · [Current report](SYNC.md) · [Module audit](libraries/MODULE_AUDIT.md).
 
-Текущий снимок: `f948343b711c8300dbf76417254c18a7a8d2f5ff`. Проверки и ограничения
-описаны в отчёте выше. Следующий раздел сохранён как историческая запись v0.1538.
+Текущий снимок experiment: `74c193724a7352b8fda2724a5cf10029885be68c`.
+Перенесены SLICEA view-reuse и self-load guards; обратно отправлены исправления
+оставшихся результатов Loader. Ниже сохранена историческая запись.
 
 ---
 

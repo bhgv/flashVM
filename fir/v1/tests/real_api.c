@@ -34,8 +34,8 @@ static int check(const char *text, FirLanguage language, FirSemantics expected, 
     {
         ok = !accepted && diagnostic.kind == FIR_DIAG_SEMANTIC && ftell(output) == 7 && ftell(debug) == 9;
     }
-    else if (accepted && diagnostic.kind == FIR_DIAG_NONE && ftell(debug) > 0 &&
-             !fflush(output) && !fseek(output, 0, SEEK_SET) && fir_parse(output, module, message, sizeof(message)) &&
+    else if (accepted && diagnostic.kind == FIR_DIAG_NONE && ftell(debug) > 0 && !fflush(output) &&
+             !fseek(output, 0, SEEK_SET) && fir_parse(output, module, message, sizeof(message)) &&
              module->source_semantics == expected && fir_dis(dis, module, message, sizeof(message)))
     {
         ok = ftell(dis) > 0;
@@ -77,8 +77,7 @@ int main(void)
     int ok = module != NULL;
     for (cycle = 0; cycle < 8 && ok; cycle++)
     {
-        ok = check(real, FIR_LIMBO, FIR_LIMBO_REAL, module) &&
-             check(bad, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) &&
+        ok = check(real, FIR_LIMBO, FIR_LIMBO_REAL, module) && check(bad, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) &&
              check(integer, FIR_LIMBO, FIR_LIMBO_I32, module) &&
              check("trace(2.5);", FIR_AS3, FIR_AVM1_NUMERIC, module);
     }

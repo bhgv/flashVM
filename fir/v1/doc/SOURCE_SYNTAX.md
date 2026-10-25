@@ -51,3 +51,16 @@ no phi or merged environment is invented. Limits are shared depth 64 and at most
 127 decisions/255 blocks within the existing 1000 SSA values. Coco/R productions
 LimboResult/LimboCondition/Relation in [src1.atg](../compiler/src1.atg) call
 [lower.c](../compiler/lower.c). [Example and both backends](../examples/dis/README.md).
+
+## Homogeneous Limbo real, 0.9.0
+
+The `value: fn(): real;` interface and `value(): real` definition must agree.
+Coco/R ResultType/BindingType select the profile. All function values are real:
+explicit `x: real = 2.5`, inferred `x := 2.5`, assignments and lexical blocks.
+Supported operators are + - * /, unary signs and return; # remains a Limbo comment.
+Decimal literals need a fraction or exponent. Integer/radix/hex literals, int
+locals, casts and real comparisons/decisions are rejected. This is a bounded
+profile, not a general Limbo type system. int functions retain the old profile.
+`real` remains a valid AS1/2/3 variable name, but is a Limbo type keyword.
+The new `limbo_real` provenance survives print/opt and reaches SWO/SWF or Dis.
+[Commented example](../examples/dis/README.md#limbo-real).

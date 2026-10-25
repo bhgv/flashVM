@@ -72,3 +72,16 @@ The caller supplies type knowledge; no self-describing debug/type map is implied
 Те же C99 API принимают f64-константы, copy и четыре арифметические операции.
 Типы захватов известны клиенту из FIR; флаги исполнения остаются целыми.
 Правила владения, сериализации вызовов и отказа до записи сохранены.
+
+## Homogeneous Limbo real / Однородный Limbo real, 0.9.0
+
+`fir_source*` still selects FIR_LIMBO. Its Coco/R result-type productions choose
+i32 or real; there is no extra CLI/API switch. Source metadata is emitted only
+after successful staged parsing, so interface/type mismatch preserves caller
+FIR and debug streams. FirSemantics appends FIR_LIMBO_REAL without renumbering
+older values. The C99 regression alternates real/failure/int/AS eight times in
+one process and verifies metadata, borrowed streams and direct Dis emission.
+
+Профиль задаёт исходная грамматика, вызов остаётся FIR_LIMBO. Несовпадение типов
+интерфейса/определения не публикует ни FIR, ни debug. Вызовы по-прежнему должны
+сериализоваться хостом; добавление real не делает парсер реентерабельным.

@@ -249,3 +249,12 @@ and [commented source/SDK example](../../fir/v1/examples/dis/README.md#binary64-
 Добавлены явное чтение binary64 и прямой числовой путь AS1/2/3→FIR→Dis.
 Тип диапазона задаёт клиент; флаги trace читаются как words. Полного AS/Limbo,
 динамических преобразований и самодостаточного отладочного описания типов нет.
+
+## Our homogeneous Limbo real compiler
+
+FIR compiler 0.9.0 selects `value(): real` through Coco/R, emits explicit f64 and
+`limbo_real` provenance, and executes through our direct Dis backend. The new
+[commented example](../../fir/v1/examples/dis/README.md#limbo-real) also relinks
+from the installed C99 SDK. Seven supported function bodies are compared against
+independent binary64 bit oracles and the Inferno compiler in both dispatch modes.
+The reference path is only an oracle; our programs use our emitter.

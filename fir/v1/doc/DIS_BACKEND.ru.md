@@ -1,4 +1,4 @@
-# Прямой Dis-backend, реализация FIR 0.8.0
+# Прямой Dis-backend, реализация FIR 0.9.0
 
 [English](DIS_BACKEND.md) · [Реализация C99](../compiler/dis.c) ·
 [Библиотечный API](../compiler/API.ru.md) · [Подробный пример](../examples/dis/README.ru.md) ·
@@ -154,7 +154,7 @@ CTest компилятора проверяет детерминизм, C API/NU
 entry после удалённого префикса; это защищает оба emitter. Структурный Coco/R
 фронтенд отличает следующую метку блока после return от настоящего операнда.
 
-## Binary64: компилятор 0.8.0, runtime 0.10.0
+## Binary64: компилятор 0.9.0, runtime 0.10.0
 
 Поддержаны const.f64, copy и f64.add/sub/mul/div через существующие MOVF и
 real-инструкции Dis. Константы передаются точными IEEE-битами через uint64_t
@@ -171,3 +171,12 @@ real-инструкции Dis. Константы передаются точн�
 квоты частичный REAL-снимок не публикуется.
 
 [Пример AS3 и SDK](../examples/dis/README.ru.md#binary64-из-as).
+
+Our Coco/R Limbo adapter now additionally admits a homogeneous `value(): real`
+profile: decimal real constants, typed/inferred real locals, lexical scopes,
+assignments, + - * / and return. No mixed types/casts or real comparisons/CFG
+are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
+
+Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
+обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
+[Комментированный пример](../examples/dis/README.ru.md#вещественный-limbo).

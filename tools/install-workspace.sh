@@ -290,6 +290,11 @@ It supports verified CFG and terminal Limbo decisions, not full module lowering.
 ./fir1_source as3 --input examples/dis/reals.as reals.fir
 ./fir1 dis reals.fir reals.dis
 ../disvm-editor/disvm --jit --inspect-reals 0 3 reals.dis
+
+# Homogeneous Limbo real: explicit real return type, result 42.5.
+./fir1_source limbo --input examples/dis/real.b real.fir
+./fir1 dis real.fir real.dis
+../disvm-editor/disvm --jit --inspect-reals 0 1 real.dis
 EOF
             ;;
         linker)

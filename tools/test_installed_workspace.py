@@ -170,6 +170,20 @@ def fir_dis_packages(prefix, work, environment):
             raise RuntimeError("relocated AS3 binary64 execution produced wrong values")
 
 
+    # The same relocated Limbo client selects real from the declared return type, not an argv shortcut.
+    real_source = component / "examples/dis/real.b"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", real_source, fir,
+         "--module", "dis_example"], work, environment)
+    run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+    run([executable, real_source, embedded], work, environment)
+    if binary.read_bytes() != embedded.read_bytes():
+        raise RuntimeError("relocated Limbo real CLI and C99 client disagree")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--inspect-reals", "0", "1", binary], work, environment)
+        if "REAL 0 42.5\n" not in output:
+            raise RuntimeError("relocated Limbo real execution produced the wrong result")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():

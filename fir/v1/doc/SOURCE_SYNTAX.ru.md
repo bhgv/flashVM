@@ -49,3 +49,16 @@ else { result }`. Каждый result снова return или такое дер
 Coco/R-правила LimboResult/LimboCondition/Relation в [src1.atg](../compiler/src1.atg)
 вызывают типизированное lowering в [lower.c](../compiler/lower.c).
 [Пример и два backend](../examples/dis/README.ru.md).
+
+## Однородный Limbo real, 0.9.0
+
+Интерфейс `value: fn(): real;` и определение `value(): real` должны совпадать.
+Тип выбирается правилами Coco/R ResultType/BindingType. Все значения функции
+real: явные `x: real = 2.5`, inferred `x := 2.5`, присваивания и лексические
+блоки. Поддержаны + - * /, унарные знаки и return; # сохраняется как Limbo-comment.
+Нужны десятичные литералы с дробной частью или экспонентой. Целые, radix/hex,
+int-локальные, casts, real-сравнения/ветвления отклоняются. Это ограничение
+профиля, а не полная система типов Limbo. int-функции сохраняют прежний профиль.
+`real` остаётся допустимым именем переменной AS1/2/3, но является типовым словом
+Limbo. Новый `limbo_real` сохраняется при print/opt и достигает SWO/SWF либо Dis.
+[Полный пример](../examples/dis/README.ru.md#вещественный-limbo).
