@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.10)
-project(flashvm_ide_dis VERSION 0.5.0 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.6.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -221,4 +221,71 @@ if(BUILD_TESTING AND EMU_EXECUTABLE AND FIR_SOURCE_EXECUTABLE)
     set_tests_properties(ide_source_diagnostic_navigation_mode_${mode}
       PROPERTIES RUN_SERIAL TRUE TIMEOUT 80)
   endforeach()
+endif()
+
+# Optional explicit shared transport source SDK; standalone document builds remain independent.
+set(UIBRIDGE_SOURCE_ROOT "" CACHE PATH "DisVM source root containing module/uibridge.m and limbo/uibridge.b")
+if(UIBRIDGE_SOURCE_ROOT)
+  if(NOT EXISTS "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m"
+      OR NOT EXISTS "${UIBRIDGE_SOURCE_ROOT}/limbo/uibridge.b")
+    message(FATAL_ERROR "UIBRIDGE_SOURCE_ROOT must contain the shared Limbo codec sources")
+  endif()
+
+  # Compile a real Dis module plus debug symbols using only the explicit source-built compiler.
+  # module/source name the product and source; additional headers are declared dependencies.
+  function(ide_bridge_module module source)
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis"
+        "${CMAKE_CURRENT_BINARY_DIR}/${module}.sbl"
+      COMMAND "${LIMBO_EXECUTABLE}" -g -I "${UIBRIDGE_SOURCE_ROOT}/module"
+        -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
+        -o "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis" "${source}"
+      DEPENDS "${source}" "${LIMBO_EXECUTABLE}" idecore.m bridge/idebridge.m
+        bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" VERBATIM)
+    add_custom_target(ide_bridge_${module} ALL DEPENDS
+      "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis" "${CMAKE_CURRENT_BINARY_DIR}/${module}.sbl")
+  endfunction()
+
+  ide_bridge_module(uibridge "${UIBRIDGE_SOURCE_ROOT}/limbo/uibridge.b")
+  foreach(module ideinput idebridge idecomplete idebuiltins)
+    ide_bridge_module(${module} "${CMAKE_CURRENT_SOURCE_DIR}/bridge/${module}.b")
+  endforeach()
+
+  if(BUILD_TESTING AND LIMBO_MODULE_DIR)
+    foreach(module idebridge_test idecomplete_test idebuiltins_test)
+      add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis"
+        COMMAND "${LIMBO_EXECUTABLE}" -g -I "${UIBRIDGE_SOURCE_ROOT}/module"
+          -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
+          -I "${LIMBO_MODULE_DIR}" -o "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/${module}.b"
+        DEPENDS "tests/${module}.b" bridge/idebridge.m bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m
+          idecore.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+      add_custom_target(ide_bridge_${module} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis")
+      if(EMU_EXECUTABLE)
+        foreach(mode 0 1)
+          add_test(NAME ${module}_mode_${mode} COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_bridge.py" --emu "${EMU_EXECUTABLE}"
+            --build "${CMAKE_CURRENT_BINARY_DIR}" --module "${module}" --mode ${mode})
+          set_tests_properties(${module}_mode_${mode} PROPERTIES RUN_SERIAL TRUE TIMEOUT 30)
+        endforeach()
+      endif()
+    endforeach()
+  endif()
+endif()
+
+# Optional developer checks use explicit tools; neither Node nor Python runs the deployed IDE.
+set(IDE_AS_SOURCE_ROOT "" CACHE PATH "Explicit AS view/worker source directory")
+set(AS2_PARSE_EXECUTABLE "" CACHE FILEPATH "Optional own Coco/R AS2 parser")
+set(NODE_EXECUTABLE "" CACHE FILEPATH "Optional Node algorithm-test host")
+if(BUILD_TESTING AND IDE_AS_SOURCE_ROOT)
+  if(AS2_PARSE_EXECUTABLE)
+    foreach(source syntax-worker.as presentation.as)
+      add_test(NAME ide_as_${source} COMMAND "${AS2_PARSE_EXECUTABLE}"
+        "${IDE_AS_SOURCE_ROOT}/${source}")
+    endforeach()
+  endif()
+  if(NODE_EXECUTABLE)
+    add_test(NAME ide_as_algorithms COMMAND "${NODE_EXECUTABLE}" "${IDE_AS_SOURCE_ROOT}/tests.js"
+      "${UIBRIDGE_SOURCE_ROOT}/examples/ui-channel/bridge.as")
+    set_tests_properties(ide_as_algorithms PROPERTIES TIMEOUT 20)
+  endif()
 endif()

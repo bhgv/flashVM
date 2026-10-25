@@ -1,0 +1,210 @@
+implement Ideinput;
+include "uibridge.m";
+include "idecore.m";
+include "ideinput.m";
+
+
+# Allocate private editing policy state. No parameters; returns an owned State reference.
+create(): ref State
+{
+    return ref State(0, 0, 0, 0, -1);
+}
+
+
+# Make one synchronous typed document call; ID 1 is private to this sequential reply channel.
+# core/document are borrowed, operation/revision/range/text are values. Returns the owner reply.
+call(core: Idecore, document: chan of Idecore->Request, operation: int,
+     revision: int, first: int, last: int, text: string): Idecore->Reply
+{
+    response := chan of Idecore->Reply;
+    document <-= Idecore->Request(1, operation, revision, first, last, text, "", response);
+    return <-response;
+}
+
+
+# Copy a presentation value without exposing controller or document mutable storage to AS.
+# state/reply/event are borrowed values; handled is 0/1. Returns an owned View reference.
+view(state: ref State, reply: Idecore->Reply, handled: int,
+     event: ref Uibridge->Message): ref View
+{
+    return ref View(reply, state.caret, state.anchor, handled, event);
+}
+
+
+# Collapse or extend a character selection after a navigation command.
+# state is exclusive, position is already bounded by the caller. Returns nothing.
+move(state: ref State, position: int)
+{
+    state.caret = position;
+    if (!state.shift) {
+        state.anchor = position;
+    }
+}
+
+
+# Apply one input against a fresh document snapshot, preserving revision conflicts visibly.
+# Arguments/results follow ideinput.m; all edit/history policy stays in this Dis module.
+apply(core: Idecore, document: chan of Idecore->Request,
+      state: ref State, event: ref Uibridge->Message): (int, ref View)
+{
+    if (core == nil || document == nil || state == nil || event == nil
+        || event.kind < Uibridge->Pointer || event.kind > Uibridge->Focus) {
+        return (0, nil);
+    }
+    if (event.kind == Uibridge->Key && (event.code < 1 || event.code > 255
+        || event.flags < 0 || event.flags > 1)) {
+        return (0, nil);
+    }
+    if (event.kind == Uibridge->Focus) {
+        if (event.flags < 0 || event.flags > 1) {
+            return (0, nil);
+        }
+        if (!event.flags) {
+            state.control = 0;
+            state.shift = 0;
+        }
+    }
+    if (event.kind == Uibridge->Key && event.code == 17) {
+        state.control = event.flags;
+    }
+    if (event.kind == Uibridge->Key && event.code == 16) {
+        state.shift = event.flags;
+    }
+    reply := call(core, document, core->Snapshot, 0, 0, 0, "");
+    if (state.revision >= 0 && state.revision != reply.revision) {
+        state.revision = reply.revision;
+        state.caret = 0;
+        state.anchor = 0;
+        return (1, view(state, reply, 0, event));
+    }
+    state.revision = reply.revision;
+    if (state.caret < 0 || state.caret > len reply.text) {
+        state.caret = len reply.text;
+    }
+    if (state.anchor < 0 || state.anchor > len reply.text) {
+        state.anchor = state.caret;
+    }
+    if (event.kind == Uibridge->Focus) {
+        return (1, view(state, reply, 1, event));
+    }
+    if (!reply.opened) {
+        return (1, view(state, reply, 0, event));
+    }
+    if (event.kind == Uibridge->Key && (!event.flags || event.code == 16 || event.code == 17)) {
+        return (1, view(state, reply, 1, event));
+    }
+    first := state.caret;
+    last := state.anchor;
+    if (first > last) {
+        (first, last) = (last, first);
+    }
+    operation := -1;
+    insertion := "";
+    destination := state.caret;
+    if (event.kind == Uibridge->Text) {
+        operation = core->Replace;
+        insertion = event.text;
+        destination = first + len insertion;
+    } else if (event.kind == Uibridge->Key) {
+        key := event.code;
+        if (state.control && key == 65) {
+            state.anchor = 0;
+            state.caret = len reply.text;
+            return (1, view(state, reply, 1, event));
+        }
+        if (state.control && key == 90) {
+            operation = core->Undo;
+            if (state.shift) {
+                operation = core->Redo;
+            }
+        } else if (state.control && key == 89) {
+            operation = core->Redo;
+        } else if (!state.control && (key == 37 || key == 39)) {
+            position := state.caret;
+            if (!state.shift && first != last) {
+                position = first;
+                if (key == 39) {
+                    position = last;
+                }
+            } else if (key == 37 && position > 0) {
+                position--;
+            } else if (key == 39 && position < len reply.text) {
+                position++;
+            }
+            move(state, position);
+            return (1, view(state, reply, 1, event));
+        } else if (!state.control && (key == 36 || key == 35)) {
+            position := state.caret;
+            if (key == 36) {
+                while (position > 0 && reply.text[position - 1] != '\n') {
+                    position--;
+                }
+            } else {
+                while (position < len reply.text && reply.text[position] != '\n') {
+                    position++;
+                }
+            }
+            move(state, position);
+            return (1, view(state, reply, 1, event));
+        } else if (!state.control && (key == 8 || key == 46)) {
+            if (first == last && key == 8 && first > 0) {
+                first--;
+            } else if (first == last && key == 46 && last < len reply.text) {
+                last++;
+            }
+            if (first == last) {
+                return (1, view(state, reply, 1, event));
+            }
+            operation = core->Replace;
+            destination = first;
+        }
+    }
+    if (operation < 0) {
+        return (1, view(state, reply, 0, event));
+    }
+    reply = call(core, document, operation, state.revision, first, last, insertion);
+    if (reply.status == core->Ok) {
+        if (destination > len reply.text) {
+            destination = len reply.text;
+        }
+        state.caret = destination;
+        state.anchor = destination;
+    }
+    state.revision = reply.revision;
+    return (1, view(state, reply, 1, event));
+}
+
+
+# Synchronize private selection after an explicitly acknowledged external document command.
+# state is exclusive, reply is a value snapshot. Returns nothing and performs no I/O.
+observe(state: ref State, reply: Idecore->Reply)
+{
+    if (state.revision != reply.revision || !reply.opened) {
+        state.caret = 0;
+        state.anchor = 0;
+    }
+    state.revision = reply.revision;
+}
+
+
+# Own one controller event loop while borrowing the document's separate owner process.
+# Parameters/stop semantics follow ideinput.m; each admitted event publishes one View.
+serve(core: Idecore, document: chan of Idecore->Request,
+      input: chan of ref Uibridge->Message, views: chan of ref View): int
+{
+    if (core == nil || document == nil || input == nil || views == nil) {
+        return -1;
+    }
+    state := create();
+    for (;;) {
+        event := <-input;
+        if (event == nil) {
+            return 0;
+        }
+        (ok, result) := apply(core, document, state, event);
+        if (!ok) {
+            return -1;
+        }
+        views <-= result;
+    }
+}
