@@ -18,6 +18,9 @@ struct LeafLayout {
 	void *mutator, *nprop; // Addresses of GC mutator color and propagation counter.
 	int markcolor; // Collector color used when publishing a retained owner.
 	int moduletypes, modulenty, typenp; // Type table, table count and pointer-map length offsets.
+	int linknlinks, linklinks, modlbytes, modlframe; // Import count, inline table, entry stride and frame-Type offset.
+	int sp, ts; // Stack cursor and stack-end offsets within REG.
+	int frametype, framemr, framesize; // Frame Type/module-link offsets and minimum frame size.
 	int stringmax; // String capacity offset, measured in representation characters.
 };
 typedef struct LeafOp LeafOp;
@@ -32,6 +35,7 @@ struct LeafOp {
 };
 
 enum {
+	LeafFrame = 118, // Pointer-free frames within the current stack extent.
 	LeafStringSlice = 117, // Nonempty slices that reuse unique string storage.
 	LeafStringAppend = 116, // Concatenation that reuses unique ASCII or Rune storage.
 	LeafStringStore = 115,
@@ -143,6 +147,8 @@ leafop(LeafOp *p, int op, int wordbytes)
 	case IGOTO: p->kind = LeafTableJump; p->bytes = 8; break;
 	case ICASE: p->kind = LeafCaseJump; break;
 	case ICASEL: p->kind = LeafCaseJump; p->bytes = 8; p->alu = 1; break;
+	case IMFRAME: p->kind = LeafFrame; p->alu = 1; break;
+	case IFRAME: p->kind = LeafFrame; break;
 	case ICALL: p->kind = LeafCall; break;
 	case IJMP: p->kind = LeafJump; break;
 	case IADDB: p->bytes = 1; /* fall through */
