@@ -77,7 +77,7 @@ static int valid_text(const char *text, size_t size)
  * Operation-specific permission/schema checks remain with the receiving service. */
 static int valid_message(const DVM_UIMessage *m)
 {
-    if (m->kind < DVM_UI_REQUEST || m->kind > DVM_UI_FOCUS || m->id > 0xffffffffUL || m->code > 0xffffffffUL ||
+    if (m->kind < DVM_UI_REQUEST || m->kind > DVM_UI_VIEW || m->id > 0xffffffffUL || m->code > 0xffffffffUL ||
         m->flags > 0xffffffffUL || m->first < (-2147483647L - 1L) || m->first > 2147483647L ||
         m->second < (-2147483647L - 1L) || m->second > 2147483647L || m->size > DVM_UI_TEXT_MAX)
     {
@@ -373,15 +373,15 @@ FVM_Result dvm_ui_receive(DVM_UIBridge *bridge, unsigned int side, DVM_UIMessage
 
 /* Capture FlashVM pointer state after its normal dispatch, preserving the UI owner rule.
  * Parameters/return follow ui_bridge.h. Queue pressure never redispatches input. */
-FVM_Result dvm_ui_pointer(
-    DVM_UIBridge *bridge, FVM_Context *context, FVM_MouseButton button, FVM_InputPhase phase, DVM_UIMessage *captured)
+FVM_Result
+dvm_ui_capture_pointer(FVM_Context *context, FVM_MouseButton button, FVM_InputPhase phase, DVM_UIMessage *captured)
 {
     DVM_UIMessage message;
     double x;
     double y;
     FVM_Result result;
-    if (!bridge || !context || !captured || button < FVM_MOUSE_NONE || button > FVM_MOUSE_WHEEL_DOWN ||
-        phase < FVM_INPUT_BEGIN || phase > FVM_INPUT_END)
+    if (!context || !captured || button < FVM_MOUSE_NONE || button > FVM_MOUSE_WHEEL_DOWN || phase < FVM_INPUT_BEGIN ||
+        phase > FVM_INPUT_END)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -403,19 +403,18 @@ FVM_Result dvm_ui_pointer(
     message.first = (long)x;
     message.second = (long)y;
     *captured = message;
-    return dvm_ui_send(bridge, DVM_UI_UI, &message, 0);
+    return FVM_OK;
 }
 
 
 /* Capture an existing FlashVM keyboard snapshot, without installing a second input stack.
  * Parameters/return follow ui_bridge.h; Unicode composition is carried as DVM_UI_TEXT. */
-FVM_Result
-dvm_ui_keyboard(DVM_UIBridge *bridge, FVM_Context *context, unsigned int code, int pressed, DVM_UIMessage *captured)
+FVM_Result dvm_ui_capture_keyboard(FVM_Context *context, unsigned int code, int pressed, DVM_UIMessage *captured)
 {
     DVM_UIMessage message;
     FVM_KeyboardState keyboard;
     FVM_Result result;
-    if (!bridge || !context || !captured || code < FVM_KEYBOARD_FIRST_CODE || code >= FVM_KEYBOARD_CODE_COUNT ||
+    if (!context || !captured || code < FVM_KEYBOARD_FIRST_CODE || code >= FVM_KEYBOARD_CODE_COUNT ||
         (pressed != 0 && pressed != 1))
     {
         return FVM_INVALID_ARGUMENT;
@@ -440,5 +439,35 @@ dvm_ui_keyboard(DVM_UIBridge *bridge, FVM_Context *context, unsigned int code, i
         message.first = (long)keyboard.last_ascii;
     }
     *captured = message;
-    return dvm_ui_send(bridge, DVM_UI_UI, &message, 0);
+    return FVM_OK;
+}
+
+
+/* Capture the exact pointer sample, then attempt the original nonblocking direct send.
+ * bridge/context/button/phase/captured and return ownership follow ui_bridge.h. */
+FVM_Result dvm_ui_pointer(
+    DVM_UIBridge *bridge, FVM_Context *context, FVM_MouseButton button, FVM_InputPhase phase, DVM_UIMessage *captured)
+{
+    FVM_Result result;
+    if (!bridge)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    result = dvm_ui_capture_pointer(context, button, phase, captured);
+    return result == FVM_OK ? dvm_ui_send(bridge, DVM_UI_UI, captured, 0) : result;
+}
+
+
+/* Capture without redispatching, then attempt the original keyboard send.
+ * bridge/context/code/pressed/captured and return ownership follow ui_bridge.h. */
+FVM_Result
+dvm_ui_keyboard(DVM_UIBridge *bridge, FVM_Context *context, unsigned int code, int pressed, DVM_UIMessage *captured)
+{
+    FVM_Result result;
+    if (!bridge)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    result = dvm_ui_capture_keyboard(context, code, pressed, captured);
+    return result == FVM_OK ? dvm_ui_send(bridge, DVM_UI_UI, captured, 0) : result;
 }

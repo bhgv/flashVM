@@ -25,7 +25,8 @@ typedef enum DVM_UIKind
     DVM_UI_POINTER = 3, /* Pointer position in twips; code is button, flags is phase. */
     DVM_UI_KEY = 4,     /* code is virtual key, flags is pressed, first is ASCII. */
     DVM_UI_TEXT = 5,    /* Committed text from FlashVM's host input path, not key synthesis. */
-    DVM_UI_FOCUS = 6    /* flags is gained/lost focus; consumers reset held keys on loss. */
+    DVM_UI_FOCUS = 6,   /* flags is gained/lost focus; consumers reset held keys on loss. */
+    DVM_UI_VIEW = 7     /* Dis-owned presentation notification; id is zero. */
 } DVM_UIKind;
 
 
@@ -106,6 +107,18 @@ FVM_Result dvm_ui_pointer(
  * retain it and retry dvm_ui_send. Capture validation errors leave captured unchanged. */
 FVM_Result
 dvm_ui_keyboard(DVM_UIBridge *bridge, FVM_Context *context, unsigned int code, int pressed, DVM_UIMessage *captured);
+
+
+/* Capture the already-dispatched pointer without sending or allocating.
+ * context is owner-held; button/phase identify the transition; captured is required.
+ * Coordinates and validation match dvm_ui_pointer; failure leaves captured unchanged. */
+FVM_Result
+dvm_ui_capture_pointer(FVM_Context *context, FVM_MouseButton button, FVM_InputPhase phase, DVM_UIMessage *captured);
+
+
+/* Capture the published key transition without queue mutation or event delivery.
+ * context/code/pressed/captured follow dvm_ui_keyboard. Returns capture validation status. */
+FVM_Result dvm_ui_capture_keyboard(FVM_Context *context, unsigned int code, int pressed, DVM_UIMessage *captured);
 
 #ifdef __cplusplus
 }

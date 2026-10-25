@@ -9,7 +9,8 @@ word(value: int): string
     digits := "0123456789abcdef";
     result := "";
     for (i := 0; i < 8; i++) {
-        result = string digits[value & 15] + result;
+        digit := value & 15;
+        result = digits[digit:digit + 1] + result;
         value >>= 4;
     }
     return result;
@@ -40,7 +41,7 @@ readword(frame: array of byte, offset: int): (int, int)
 # message is borrowed and may be nil. Returns one for valid common fields, otherwise zero.
 valid(message: ref Message): int
 {
-    if (message == nil || message.kind < Request || message.kind > Focus) {
+    if (message == nil || message.kind < Request || message.kind > View) {
         return 0;
     }
     for (i := 0; i < len message.text; i++) {
@@ -110,4 +111,23 @@ decode(frame: array of byte): (int, ref Message)
         }
     }
     return (1, message);
+}
+
+
+# Export the shared fixed-width representation for application metadata.
+# value is an int bit pattern; returns eight canonical ASCII characters.
+hexword(value: int): string
+{
+    return word(value);
+}
+
+
+# Validate a public byte span before the private fixed-field reader touches it.
+# frame is borrowed and offset is a byte index; returns (ok, int bits).
+parseword(frame: array of byte, offset: int): (int, int)
+{
+    if (offset < 0 || offset > len frame || len frame - offset < 8) {
+        return (0, 0);
+    }
+    return readword(frame, offset);
 }

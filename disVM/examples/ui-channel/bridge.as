@@ -57,7 +57,7 @@ function makeUiBridge(tx, rx)
     // Validate common fields. m is borrowed; returns true only for a bounded wire record.
     function valid(m)
     {
-        if (m == null || typeof m.kind != "number" || m.kind < 1 || m.kind > 6 || m.kind != Math.floor(m.kind))
+        if (m == null || typeof m.kind != "number" || m.kind < 1 || m.kind > 7 || m.kind != Math.floor(m.kind))
         {
             return false; // Reject unknown/nonintegral message classes.
         } // Finish the kind check.
@@ -141,5 +141,6 @@ function makeUiBridge(tx, rx)
     {
         return api.decode(rx.tryReceive()); // The owner decides how to apply the returned record.
     }; // Finish the nonblocking receive method.
+    api.byteLength = byteLength; // Expose transport byte counts for bounded application fragments.
     return api; // The caller retains the helper and its channel wrappers.
 } // Finish the endpoint factory.

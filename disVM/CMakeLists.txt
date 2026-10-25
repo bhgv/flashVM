@@ -148,10 +148,14 @@ if(DVM_NATIVE_REGISTERS)
   target_link_libraries(disvm_ui_dis_channel PUBLIC disvm_core disvm_flashvm_host)
   if(BUILD_TESTING AND DVM_FLASHVM_LIBRARIES AND NOT CMAKE_CROSSCOMPILING
       AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID)
+    # The extraction fixture owns a legacy global REG; never link it to the TLS production object.
+    add_library(disvm_ui_dis_fixture STATIC host/dis_ui_channel.c)
+    target_include_directories(disvm_ui_dis_fixture PRIVATE ${sdk_include}
+      "${CMAKE_CURRENT_SOURCE_DIR}/include" "${DVM_FLASHVM_SOURCE_ROOT}/include")
     add_test(NAME disvm_ui_dis_channels COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/dis_ui_channel.py"
       --flashvm-root "${DVM_FLASHVM_SOURCE_ROOT}"
-      --adapter "$<TARGET_FILE:disvm_ui_dis_channel>"
+      --adapter "$<TARGET_FILE:disvm_ui_dis_fixture>"
       --host "$<TARGET_FILE:disvm_flashvm_host>"
       --libraries "${DVM_FLASHVM_LIBRARIES}")
     set_tests_properties(disvm_ui_dis_channels PROPERTIES TIMEOUT 120

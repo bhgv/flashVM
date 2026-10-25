@@ -28,6 +28,33 @@ FVM_Result dvm_ui_dis_offer(struct Channel *destination, const DVM_UIMessage *me
  * [GC:] No Dis allocation or managed pointer publication occurs in this function. */
 FVM_Result dvm_ui_dis_export(DVM_UIBridge *bridge, struct Array *frame);
 
+
+/* Borrowed, host-rooted ordinary Dis byte-array ports. Never pass this struct over a channel. */
+typedef struct DVM_UIDisEndpoint
+{
+    struct Channel *requests; /* Registered chan of array of byte, read by the service. */
+    struct Channel *replies;  /* Registered chan of array of byte, written by the service. */
+} DVM_UIDisEndpoint;
+
+
+/* Poll a real Dis channel without blocking its scheduler owner.
+ * source has registered byte-array static type; out changes only after a valid frame.
+ * Uses production irecv, restores active REG on success/error, and releases its received array.
+ * Returns NOT_FOUND if not ready; malformed frames are consumed and return INVALID_ARGUMENT.
+ * Caller retains Dis execution ownership and roots the source channel. */
+FVM_Result dvm_ui_dis_take(struct Channel *source, DVM_UIMessage *out);
+
+
+/* Pump-compatible protected ingress. opaque borrows DVM_UIDisEndpoint; message is copied on OK.
+ * Converts caught Dis errors to ERROR and restores REG. Owner/roots stay with the host.
+ * Returns NOT_FOUND for a busy service input, otherwise the adapter/validation status. */
+FVM_Result dvm_ui_dis_pump_offer(void *opaque, const DVM_UIMessage *message);
+
+
+/* Pump-compatible egress. opaque borrows DVM_UIDisEndpoint; out follows dvm_ui_dis_take.
+ * No waits or heap reference escapes; returns the protected receive/decode status. */
+FVM_Result dvm_ui_dis_pump_take(void *opaque, DVM_UIMessage *out);
+
 #ifdef __cplusplus
 }
 #endif
