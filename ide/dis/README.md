@@ -133,3 +133,5 @@ controller, actual Dis channels and FlashVM TextField presentation; build
 [Actions](ACTIONS.md) · [Noto/zoom](ZOOM.md).
 The current graphical package includes default Noto Sans Mono/11 without a font
 question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.
+
+[Source editing / редактирование](EDITING.md).

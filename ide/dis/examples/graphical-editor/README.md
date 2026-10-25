@@ -103,3 +103,5 @@ navigation. Full bidi/grapheme editing, resize, syntax colors, completion popups
 AS-worker execution, compiler commands and debugger UI remain open. Noto glyph
 coverage is finite; missing glyphs do not alter Unicode source/saved bytes.
 Synchronous I/O may block the sole native owner.
+
+[Source editing / редактирование](../../EDITING.md).

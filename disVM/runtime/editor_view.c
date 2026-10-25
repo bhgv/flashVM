@@ -758,7 +758,8 @@ static int render_panel(FVM_RasterSurface *surface)
                                    "Open [Enter/Esc]: ",
                                    "Save As [Enter/Esc]: ",
                                    "Replace needle: ",
-                                   "Replacement: "};
+                                   "Replacement: ",
+                                   "Go to line[:column]: "};
     char text[1100];
     size_t prefix = strlen(labels[panel_mode]);
     FVM_Value value;
@@ -947,7 +948,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_PANEL)
     {
-        if (assembling || message->first < 0 || message->first > 5 || message->second < 0 || message->second > 1 ||
+        if (assembling || message->first < 0 || message->first > 6 || message->second < 0 || message->second > 1 ||
             message->size > sizeof(panel_text))
         {
             return 0;
@@ -1207,6 +1208,8 @@ static unsigned int keycode(SDL_Keycode key)
     }
     switch (key)
     {
+    case SDLK_TAB:
+        return 9;
     case SDLK_RETURN:
         return FVM_KEY_ENTER;
     case SDLK_ESCAPE:

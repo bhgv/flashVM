@@ -35,9 +35,18 @@ Ideinput: module
     # core/document are borrowed; state is exclusively owned; event is borrowed and read-only.
     # Uses real document requests/replies. Returns (1, view), or (0, nil) for invalid arguments.
     # Text inserts; arrows/PageUp/PageDown/Home/End select; Backspace/Delete edit; Ctrl+A/Z/Y act in Dis.
+    # Ctrl+Left/Right select scalar word runs; Ctrl+Backspace/Delete remove them in one Undo entry.
+    # Tab inserts spaces to scalar columns divisible by four; selected lines indent as one edit.
+    # Shift+Tab removes one tab or up to four leading spaces; block selection expands to whole lines.
+    # CRLF is one horizontal movement/deletion step; this is not full grapheme segmentation.
     # Pointer/layout and other keys return handled=0 for composition with another Dis service.
     apply: fn(core: Idecore, document: chan of Idecore->Request,
               state: ref State, event: ref Uibridge->Message): (int, ref View);
+
+
+    # Resolve positive one-based line/column against LF/CRLF text without editing or I/O.
+    # Returns a Unicode insertion offset; a long column clamps to logical EOL, absent lines return -1.
+    locate: fn(text: string, line, column: int): int;
 
 
     # Apply an acknowledged bounded selection without editing text/history.

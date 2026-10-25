@@ -68,6 +68,58 @@ lineend(text: string, start: int): int
 }
 
 
+# Classify one Unicode scalar for deterministic editor word commands, without locale state.
+# Returns 0 for spacing, 1 for ASCII identifiers/non-ASCII text, 2 for ASCII punctuation.
+# This is a scalar policy, not Unicode UAX #29 segmentation or a grapheme algorithm.
+wordclass(character: int): int
+{
+    if (character == ' ' || character == '\t' || character == '\r' || character == '\n'
+        || character == 11 || character == 12 || character == 16r85 || character == 16ra0
+        || character == 16r1680 || (character >= 16r2000 && character <= 16r200a)
+        || character == 16r2028 || character == 16r2029 || character == 16r202f
+        || character == 16r205f || character == 16r3000) {
+        return 0;
+    }
+    if ((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')
+        || (character >= '0' && character <= '9') || character == '_' || character >= 128) {
+        return 1;
+    }
+    return 2;
+}
+
+
+# Find the next/previous scalar word boundary in an acknowledged source snapshot.
+# position is bounded; forward is 0/1. Returns an insertion coordinate, without I/O or mutation.
+wordboundary(text: string, position, forward: int): int
+{
+    if (forward) {
+        if (position < len text) {
+            category := wordclass(text[position]);
+            while (position < len text && wordclass(text[position]) == category) {
+                position++;
+            }
+            if (category == 0) {
+                return position;
+            }
+        }
+        while (position < len text && wordclass(text[position]) == 0) {
+            position++;
+        }
+    } else {
+        while (position > 0 && wordclass(text[position - 1]) == 0) {
+            position--;
+        }
+        if (position > 0) {
+            category := wordclass(text[position - 1]);
+            while (position > 0 && wordclass(text[position - 1]) == category) {
+                position--;
+            }
+        }
+    }
+    return position;
+}
+
+
 # Move through logical lines while retaining the requested Unicode column.
 # state is exclusive; text is the acknowledged snapshot, delta is bounded +/-128.
 # Returns nothing; short lines clamp only this movement, never the preferred column.
@@ -98,6 +150,146 @@ vertical(state: ref State, text: string, delta: int)
         position = last;
     }
     move(state, position);
+}
+
+
+# Resolve a source location using the same logical-line rules as keyboard navigation.
+# text is borrowed, line/column are positive one-based values. Returns -1 for invalid/absent lines.
+locate(text: string, line, column: int): int
+{
+    if (line < 1 || column < 1) {
+        return -1;
+    }
+    start := 0;
+    while (line > 1) {
+        while (start < len text && text[start] != '\n') {
+            start++;
+        }
+        if (start == len text) {
+            return -1;
+        }
+        start++;
+        line--;
+    }
+    last := lineend(text, start);
+    if (column - 1 > last - start) {
+        return last;
+    }
+    return start + column - 1;
+}
+
+
+# Join private line fragments in logarithmic recursion depth, avoiding quadratic append work.
+# pieces is borrowed; low/high bound its half-open interval. Returns a new immutable string.
+joinlines(pieces: array of string, low, high: int): string
+{
+    if (high - low == 1) {
+        return pieces[low];
+    }
+    middle := low + (high - low) / 2;
+    return joinlines(pieces, low, middle) + joinlines(pieces, middle, high);
+}
+
+
+# Indent selected logical lines or unindent the caret line through one owner Replace.
+# state is exclusive, reply is acknowledged, remove is 0/1. Returns the real owner result.
+# Selected ranges expand to whole affected lines while retaining selection direction.
+indent(core: Idecore, document: chan of Idecore->Request, state: ref State,
+       reply: Idecore->Reply, remove: int): Idecore->Reply
+{
+    first := state.caret;
+    last := state.anchor;
+    if (first > last) {
+        (first, last) = (last, first);
+    }
+    selected := first != last;
+    first = linebegin(reply.text, first);
+    if (selected && last > first && reply.text[last - 1] == '\n') {
+        last--; # An endpoint at the following line start excludes that line.
+    }
+    while (last < len reply.text && reply.text[last] != '\n') {
+        last++;
+    }
+    if (last < len reply.text) {
+        last++;
+    }
+    lines := 1;
+    for (position := first; position < last - 1; position++) {
+        if (reply.text[position] == '\n') {
+            lines++;
+        }
+    }
+    capacity := last - first;
+    if (!remove) {
+        capacity += lines * 4;
+    }
+    if (capacity > core->MaxCharacters || len reply.text - (last - first) + capacity > core->MaxCharacters) {
+        reply.status = core->TooLarge;
+        return reply;
+    }
+    pieces := array[lines] of string; # Bounded per-line fragments are joined as a balanced tree.
+    used := 0;
+    position = first;
+    removedfirst := 0;
+    for (;;) {
+        begin := position;
+        removed := 0;
+        if (remove) {
+            if (position < last && reply.text[position] == '\t') {
+                position++;
+                removed = 1;
+            } else {
+                while (position < last && removed < 4 && reply.text[position] == ' ') {
+                    position++;
+                    removed++;
+                }
+            }
+        }
+        if (begin == first) {
+            removedfirst = removed;
+        }
+        begin = position;
+        while (position < last) {
+            character := reply.text[position++];
+            if (character == '\n') {
+                break;
+            }
+        }
+        piece := reply.text[begin:position];
+        if (!remove) {
+            piece = "    " + piece;
+        }
+        pieces[used++] = piece;
+        if (position >= last) {
+            break;
+        }
+    }
+    insertion := joinlines(pieces, 0, used);
+    used = len insertion;
+    if (insertion == reply.text[first:last]) {
+        return reply; # A no-op unindent must not consume a revision or Undo entry.
+    }
+    result := call(core, document, core->Replace, state.revision, first, last, insertion);
+    if (result.status == core->Ok) {
+        if (selected) {
+            if (state.caret < state.anchor) {
+                state.caret = first;
+                state.anchor = first + used;
+            } else {
+                state.anchor = first;
+                state.caret = first + used;
+            }
+        } else {
+            state.caret -= removedfirst;
+            if (state.caret < first) {
+                state.caret = first;
+            }
+            state.anchor = state.caret;
+        }
+        state.preferred = -1;
+    }
+    state.revision = result.revision;
+    return result;
 }
 
 
@@ -173,7 +365,16 @@ apply(core: Idecore, document: chan of Idecore->Request,
             state.preferred = -1;
             return (1, view(state, reply, 1, event));
         }
-        if (!state.control && key == 13) {
+        if (!state.control && key == 9) {
+            if (first != last || state.shift) {
+                result := indent(core, document, state, reply, state.shift);
+                return (1, view(state, result, 1, event));
+            }
+            spaces := 4 - (first - linebegin(reply.text, first)) % 4;
+            insertion = "    "[:spaces];
+            operation = core->Replace;
+            destination = first + spaces;
+        } else if (!state.control && key == 13) {
             operation = core->Replace;
             insertion = "\n";
             destination = first + 1;
@@ -184,17 +385,25 @@ apply(core: Idecore, document: chan of Idecore->Request,
             }
         } else if (state.control && key == 89) {
             operation = core->Redo;
-        } else if (!state.control && (key == 37 || key == 39)) {
+        } else if (key == 37 || key == 39) {
             position := state.caret;
             if (!state.shift && first != last) {
                 position = first;
                 if (key == 39) {
                     position = last;
                 }
+            } else if (state.control) {
+                position = wordboundary(reply.text, position, key == 39);
             } else if (key == 37 && position > 0) {
                 position--;
+                if (position > 0 && reply.text[position] == '\n' && reply.text[position - 1] == '\r') {
+                    position--;
+                }
             } else if (key == 39 && position < len reply.text) {
                 position++;
+                if (position < len reply.text && reply.text[position - 1] == '\r' && reply.text[position] == '\n') {
+                    position++;
+                }
             }
             state.preferred = -1;
             move(state, position);
@@ -226,11 +435,25 @@ apply(core: Idecore, document: chan of Idecore->Request,
             state.preferred = -1;
             move(state, position);
             return (1, view(state, reply, 1, event));
-        } else if (!state.control && (key == 8 || key == 46)) {
+        } else if (key == 8 || key == 46) {
             if (first == last && key == 8 && first > 0) {
-                first--;
+                if (state.control) {
+                    first = wordboundary(reply.text, first, 0);
+                } else {
+                    first--;
+                    if (first > 0 && reply.text[first] == '\n' && reply.text[first - 1] == '\r') {
+                        first--;
+                    }
+                }
             } else if (first == last && key == 46 && last < len reply.text) {
-                last++;
+                if (state.control) {
+                    last = wordboundary(reply.text, last, 1);
+                } else {
+                    last++;
+                    if (last < len reply.text && reply.text[last - 1] == '\r' && reply.text[last] == '\n') {
+                        last++;
+                    }
+                }
             }
             if (first == last) {
                 return (1, view(state, reply, 1, event));

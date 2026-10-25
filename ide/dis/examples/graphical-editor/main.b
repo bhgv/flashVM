@@ -64,6 +64,66 @@ findnext(document: chan of Idecore->Request, state: ref Ideinput->State, policy:
 }
 
 
+# Parse a Go To field as positive decimal line or line:column, without integer overflow.
+# text is borrowed; returns (0, 0) for any invalid syntax/range. No source-language parsing occurs.
+locationfield(text: string): (int, int)
+{
+    line := 0;
+    column := 0;
+    separated := 0;
+    digits := 0;
+    for (index := 0; index < len text; index++) {
+        character := text[index];
+        if (character == ':' && !separated && digits > 0 && line > 0) {
+            separated = 1;
+            digits = 0;
+        } else if (character >= '0' && character <= '9') {
+            value := line;
+            if (separated) {
+                value = column;
+            }
+            digit := character - '0';
+            if (value > (2147483647 - digit) / 10) {
+                return (0, 0);
+            }
+            value = value * 10 + digit;
+            if (separated) {
+                column = value;
+            } else {
+                line = value;
+            }
+            digits++;
+        } else {
+            return (0, 0);
+        }
+    }
+    if (digits == 0 || line < 1 || (separated && column < 1)) {
+        return (0, 0);
+    }
+    if (!separated) {
+        column = 1;
+    }
+    return (line, column);
+}
+
+
+# Move only the Dis-owned selection to a checked one-based logical source location.
+# reply is the current acknowledgement; returns its copy with explicit status, without history/I/O.
+gotolocation(policy: Ideinput, state: ref Ideinput->State, reply: Idecore->Reply,
+             line, column: int): Idecore->Reply
+{
+    position := policy->locate(reply.text, line, column);
+    if (position < 0) {
+        reply.status = core->RangeError;
+    } else if (!policy->select(state, reply, position, position)) {
+        reply.status = core->Conflict;
+    } else {
+        reply.status = core->Ok;
+    }
+    return reply;
+}
+
+
 # Reject multiline/NUL prompt input and bound its Unicode size before publication.
 # text is borrowed; returns one for a valid single-line field, zero otherwise.
 promptvalid(text: string): int
@@ -120,7 +180,7 @@ init()
     state.page = window.rows; # Page navigation and visible logical lines use the same units.
     reveal := 1; # Initial presentation follows the acknowledged caret.
     ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
-    mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 Replace needle, 5 replacement.
+    mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 needle, 5 replacement, 6 Go To.
     prompt := ""; # Exclusive single-line field value; never a native document buffer.
     selected := 0; # Ctrl+A marks the complete prompt for replacement by the next text input.
     query := ""; # Last literal query, reused by F3 and replacement.
@@ -233,7 +293,14 @@ init()
                     }
                     selected = 0; # The remaining field is no longer selected.
                 } else if (event.code == 13) { # Enter executes an explicitly accepted field operation.
-                    if (mode == 1) { # Literal Find selects the real acknowledged match.
+                    if (mode == 6) { # Go To uses bounded one-based source coordinates.
+                        (line, column) := locationfield(prompt); # Reject syntax/overflow without touching selection.
+                        reply = gotolocation(policy, state, reply, line, column);
+                        if (reply.status == core->Ok) {
+                            mode = 0; # Invalid/absent locations keep the editable field open.
+                            reveal = 1; # Reveal the admitted scalar caret through the normal viewport.
+                        }
+                    } else if (mode == 1) { # Literal Find selects the real acknowledged match.
                         query = prompt; # Retain the user's query for F3.
                         reply = findnext(document, state, policy, query); # Search through the document channel.
                         mode = 0; # Errors/NotFound are visible in the normal status view.
@@ -285,9 +352,13 @@ init()
             continue; # A field event is never also applied to the source document.
         }
         if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
-            if (event.code == 70 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
+            if (event.code == 70 || event.code == 71 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
                 mode = 1; # Ctrl+F starts literal Find.
                 prompt = query; # Reuse the previous literal query as editable field text.
+                if (event.code == 71) { # Ctrl+G opens the source location field.
+                    mode = 6; # All input and validation remain on Dis.
+                    prompt = ""; # No native source position is inferred.
+                }
                 if (event.code == 72) { # Ctrl+H begins the needle stage of Replace All.
                     mode = 4; # Replacement text is accepted in a separate second field.
                 }
@@ -309,6 +380,18 @@ init()
             reply = findnext(document, state, policy, query); # At most one wrap, always revision checked.
             reveal = 1; # Reveal the acknowledged match when found.
             continue; # Never interpret F3 as text or a second document operation.
+        }
+        if (event.kind == codec->Request && event.code == host->GoTo) { # Embedding clients use the same policy.
+            if (event.flags != reply.revision) {
+                reply.status = core->Conflict;
+            } else if (event.text != "") {
+                reply.status = core->Invalid;
+            } else {
+                reply = gotolocation(policy, state, reply, event.first, event.second);
+                reveal = reply.status == core->Ok;
+                dragging = 0; # Old pointer gestures cannot resume after an external location change.
+            }
+            continue; # Source/history/saved state remain unchanged.
         }
         if (event.kind == codec->Request && (event.code == host->Find || event.code == host->SaveAs || event.code == host->Open)) { # Callable actions share the same sequential controller.
             if (event.flags != reply.revision) { # External callers must identify their source snapshot.

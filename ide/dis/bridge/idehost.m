@@ -19,6 +19,8 @@ Idehost: module
     Style: con 65548;     # View font size 6..48 and logical rows 1..128, both chosen/admitted by Dis.
     Pinch: con 65550;     # Raw input pointer-code extension: first is a normalized +/-1 pinch step.
 
+    GoTo: con 65551;      # Revision-bound one-based line/column in first/second, empty text.
+
     # Actual initial font geometry, returned as a bounded copied value without document access.
     rows: fn(): int;
 
