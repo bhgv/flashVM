@@ -28,6 +28,71 @@ def arm64_library(path):
                 raise ValueError(str(path) + ": PT_LOAD alignment is below 16 KiB")
 
 
+# Validate the test signing password before any SDK commands or output cleanup.
+# environment is borrowed and copied; return the validated child environment.
+# Missing/unsupported values raise ValueError without including their contents.
+def signing_environment(environment):
+    """Keep the password outside source and process argument lists."""
+    password = environment.get("FVM_ANDROID_SIGNING_PASSWORD", "")
+    if len(password) < 6 or any(character in password for character in "\r\n\0"):
+        raise ValueError(
+            "Set FVM_ANDROID_SIGNING_PASSWORD to at least six characters "
+            "without line breaks or NUL; reuse the password of an existing test keystore"
+        )
+    return dict(environment)
+
+
+# Create/reuse the local test identity and sign one aligned APK.
+# args supplies explicit SDK/output paths; aligned/work borrow local paths;
+# environment contains the validated password. Returns nothing; SDK failures propagate.
+def sign_apk(args, aligned, work, environment):
+    """Pass only an environment variable name to keytool and apksigner."""
+    key = work / "test.keystore"
+    if not key.exists():
+        run(
+            [
+                args.java_home / "bin/keytool",
+                "-genkeypair",
+                "-keystore",
+                key,
+                "-storepass:env",
+                "FVM_ANDROID_SIGNING_PASSWORD",
+                "-alias",
+                "flashvm-test",
+                "-keypass:env",
+                "FVM_ANDROID_SIGNING_PASSWORD",
+                "-dname",
+                "CN=bhgv FlashVM Test",
+                "-keyalg",
+                "RSA",
+                "-keysize",
+                "2048",
+                "-validity",
+                "3650",
+            ],
+            environment,
+        )
+    # This disposable test identity is deliberately not a production release signing key.
+    run(
+        [
+            args.build_tools / "apksigner",
+            "sign",
+            "--ks",
+            key,
+            "--ks-pass",
+            "env:FVM_ANDROID_SIGNING_PASSWORD",
+            "--key-pass",
+            "env:FVM_ANDROID_SIGNING_PASSWORD",
+            "--v4-signing-enabled",
+            "false",
+            "--out",
+            args.output,
+            aligned,
+        ],
+        environment,
+    )
+
+
 def main():
     """Use explicit local SDK paths; no Gradle, dependency downloads or private signing credentials."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -47,8 +112,9 @@ def main():
     root = Path(__file__).resolve().parent
     component = root.parent.parent
     work = args.work.resolve()
+    environment = signing_environment(os.environ)
     work.mkdir(parents=True, exist_ok=True)
-    environment = dict(os.environ, JAVA_HOME=str(args.java_home.resolve()))
+    environment["JAVA_HOME"] = str(args.java_home.resolve())
     # Rebuild classes/assets rather than accidentally including remnants of another application.
     for name in ("classes", "dex", "assets"):
         folder = work / name
@@ -144,50 +210,7 @@ def main():
             arm64_library(copied)
             archive.write(copied, "lib/arm64-v8a/" + name, compress_type=zipfile.ZIP_STORED)
     run([args.build_tools / "zipalign", "-P", "16", "-f", "4", unsigned, aligned], environment)
-    key = work / "test.keystore"
-    if not key.exists():
-        run(
-            [
-                args.java_home / "bin/keytool",
-                "-genkeypair",
-                "-keystore",
-                key,
-                "-storepass",
-                "android",
-                "-alias",
-                "flashvm-test",
-                "-keypass",
-                "android",
-                "-dname",
-                "CN=bhgv FlashVM Test",
-                "-keyalg",
-                "RSA",
-                "-keysize",
-                "2048",
-                "-validity",
-                "3650",
-            ],
-            environment,
-        )
-    # This disposable test identity is deliberately not a production release signing key.
-    run(
-        [
-            args.build_tools / "apksigner",
-            "sign",
-            "--ks",
-            key,
-            "--ks-pass",
-            "pass:android",
-            "--key-pass",
-            "pass:android",
-            "--v4-signing-enabled",
-            "false",
-            "--out",
-            args.output,
-            aligned,
-        ],
-        environment,
-    )
+    sign_apk(args, aligned, work, environment)
     run([args.build_tools / "apksigner", "verify", "--verbose", args.output], environment)
     run([args.build_tools / "zipalign", "-c", "-P", "16", "4", args.output], environment)
     print(args.output)

@@ -51,6 +51,11 @@ cmake --install /tmp/fvm-sdl-android
 cmake -S flashVM -B /tmp/fvm-android -DCMAKE_TOOLCHAIN_FILE="$FVM_NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-23 -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON -DANDROID_STL=c++_static -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_ENABLE_SDL_AUDIO=ON -DSDL2_DIR=/tmp/fvm-android-sdl/lib/cmake/SDL2 -DFVM_BUILD_TESTS=OFF -DFVM_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release
 cmake --build /tmp/fvm-android --target flashvm_player --parallel
 
+# Enter the existing test-keystore password, or choose one for a new test key.
+read -r -s -p "Test keystore password: " FVM_ANDROID_SIGNING_PASSWORD
+printf "\n"
+export FVM_ANDROID_SIGNING_PASSWORD
+
 python3 flashVM/frontend/android/build_apk.py --native /tmp/fvm-android/frontend/libflashvm_android.so --sdl-lib /tmp/fvm-android-sdl/lib/libSDL2.so --sdl-source "$FVM_SDL_SOURCE" --android-jar "$FVM_ANDROID_JAR" --build-tools "$FVM_BUILD_TOOLS" --java-home "$FVM_JAVA_HOME" --work /tmp/fvm-apk --output "$PWD/FlashVM-player-android-arm64-v0.583.apk" --strip "$FVM_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 ```
 
@@ -59,6 +64,17 @@ The [packager](build_apk.py) regenerates classes/dex/assets under the explicitly
 selected work folder, copies both movies and MIT/AGG/zlib/SDL notices, checks
 AArch64 ELF and PT_LOAD alignment, aligns native library ZIP entries and verifies
 the signed result. It owns no device/emulator and does not install the app.
+Before packaging, set `FVM_ANDROID_SIGNING_PASSWORD` in your environment.
+The value must have at least six characters, with no line breaks or NUL.
+For an existing keystore, enter its existing password. The script passes the
+environment variable name to keytool/apksigner, keeping the value out of command
+arguments and source. Clear the variable with `unset FVM_ANDROID_SIGNING_PASSWORD`
+after packaging. No signing password is supplied by default.
+
+Перед сборкой задайте `FVM_ANDROID_SIGNING_PASSWORD`: пароль существующего
+тестового хранилища либо выбранный пароль для нового. Он не записывается
+в репозиторий и не передаётся аргументом команды.
+
 The disposable RSA test key stays in work/test.keystore; reuse it for subsequent
 local test upgrades, never use it as a production release identity. Keep SDK/
 work/build output out of the source repository. Libraries are copied before strip.
