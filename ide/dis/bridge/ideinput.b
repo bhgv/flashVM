@@ -173,7 +173,11 @@ apply(core: Idecore, document: chan of Idecore->Request,
             state.preferred = -1;
             return (1, view(state, reply, 1, event));
         }
-        if (state.control && key == 90) {
+        if (!state.control && key == 13) {
+            operation = core->Replace;
+            insertion = "\n";
+            destination = first + 1;
+        } else if (state.control && key == 90) {
             operation = core->Undo;
             if (state.shift) {
                 operation = core->Redo;

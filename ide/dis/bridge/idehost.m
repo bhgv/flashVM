@@ -10,6 +10,11 @@ Idehost: module
     Scroll: con 65541;    # Request logical-line delta in first; flags=revision, payload=ticket hex.
     Place: con 65542;     # Request source scalar in first, phase 1/2/3 in second; same revision/ticket.
 
+    Panel: con 65543;     # View prompt mode in first, select-all flag in second, counted UTF-8 text.
+    Find: con 65544;      # Revision-bound literal FindNext request; text replaces the current query.
+    SaveAs: con 65545;    # Revision-bound explicit destination; adopted only after a successful write.
+    Open: con 65546;      # Revision-bound strict source load; dirty documents are never discarded.
+
     # Borrow ports while init's stack roots remain live; no cross-heap pointers escape.
     # Returns zero on registration, minus one for invalid/repeated registration.
     attach: fn(input: chan of array of byte, output: chan of array of byte): int;

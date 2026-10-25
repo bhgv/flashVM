@@ -19,6 +19,7 @@
 #define EDITOR_VIEW_BYTES 4096U        /* Bounded first-page TextField preview. */
 #define EDITOR_REPLY_META 56U          /* Seven canonical eight-character hexadecimal words. */
 #define EDITOR_SELECTION 65536UL       /* Dis selection notification code. */
+#define EDITOR_PANEL 65543UL           /* Dis-owned prompt mode, selection and counted field text. */
 #define EDITOR_VIEWPORT 65540UL        /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL          /* Ticket/revision-bound logical scroll request. */
 #define EDITOR_PLACE 65542UL           /* Ticket/revision-bound glyph hit proposal. */
@@ -35,6 +36,12 @@ static FVM_Context *context;           /* Owner-local context; no pointer enters
 static FVM_Font *layout_font;          /* Owned same-face layout for Dis selection geometry. */
 static long caret;                     /* Last Dis Unicode scalar caret, presentation only. */
 static long anchor;                    /* Last Dis Unicode scalar selection anchor. */
+static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
+static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement. */
+static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
+static int panel_selected;             /* Dis-owned field select-all presentation flag. */
+static char panel_text[1024];          /* Copied counted UTF-8 prompt/path label. */
+static size_t panel_size;              /* Active panel bytes, never implicitly strlen-decoded. */
 static FVM_Object *field;              /* [GC:] Pinned display object until destroy. */
 static unsigned char *pixels;          /* Owned RGBA8 raster storage. */
 static char *snapshot;                 /* Owned assembly storage, independent of both VM heaps. */
@@ -200,7 +207,9 @@ int dvm_editor_create(void)
     }
     free(bytes);
     if (result != FVM_OK || fvm_textfield_create(context, "Editor", EDITOR_WIDTH, EDITOR_HEIGHT, &field) != FVM_OK ||
-        fvm_gc_pin(context, field) != FVM_OK)
+        fvm_gc_pin(context, field) != FVM_OK ||
+        fvm_textfield_create(context, "Editor", EDITOR_WIDTH - 16, 44, &panel_field) != FVM_OK ||
+        fvm_gc_pin(context, panel_field) != FVM_OK)
     {
         fprintf(stderr, "editor FlashVM/font initialization failed\n");
         return 0;
@@ -221,6 +230,10 @@ int dvm_editor_create(void)
         if (result == FVM_OK)
         {
             result = fvm_object_call(context, field, "setNewTextFormat", 1, &argument, &ignored);
+            if (result == FVM_OK)
+            {
+                result = fvm_object_call(context, panel_field, "setNewTextFormat", 1, &argument, &ignored);
+            }
         }
         fvm_gc_unpin(context, format);
         if (result != FVM_OK)
@@ -579,6 +592,67 @@ static FVM_Result draw_visible(const FVM_Path *path, FVM_RasterSurface *surface,
 }
 
 
+/* Draw a channel-published prompt/status field over the document surface.
+ * surface is borrowed; mode/text/selection are copied Dis values. Returns one only on real rendering. */
+static int render_panel(FVM_RasterSurface *surface)
+{
+    static const char *labels[] = {"File: ",
+                                   "Find [Enter/Esc]: ",
+                                   "Open [Enter/Esc]: ",
+                                   "Save As [Enter/Esc]: ",
+                                   "Replace needle: ",
+                                   "Replacement: "};
+    char text[1100];
+    size_t prefix = strlen(labels[panel_mode]);
+    FVM_Value value;
+    FVM_Path *path = 0;
+    FVM_Affine placement;
+    FVM_TextFieldScrollInfo scrolling;
+    FVM_RasterColor background = {232, 237, 247, 255};
+    FVM_RasterColor active = {197, 217, 252, 255};
+    FVM_RasterColor ink = {24, 40, 72, 255};
+    FVM_Result result;
+    if (!rectangle(
+            surface, 0, EDITOR_HEIGHT - 48, EDITOR_WIDTH, 48, panel_mode && panel_selected ? active : background))
+    {
+        return 0;
+    }
+    memcpy(text, labels[panel_mode], prefix);
+    memcpy(text + prefix, panel_text, panel_size);
+    if (fvm_value_string_bytes(&value, text, prefix + panel_size) != FVM_OK ||
+        fvm_object_set(context, panel_field, "text", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    scrolling.struct_size = sizeof(scrolling);
+    if (fvm_textfield_scroll_info(context, panel_field, &scrolling) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, panel_mode && !panel_selected ? scrolling.maxhscroll : 0);
+    if (fvm_object_set(context, panel_field, "hscroll", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    memset(&placement, 0, sizeof(placement));
+    placement.xx = 1;
+    placement.yy = 1;
+    placement.x0 = 8;
+    placement.y0 = EDITOR_HEIGHT - 42;
+    result = fvm_textfield_path(context, panel_field, &path);
+    if (result == FVM_OK)
+    {
+        result = fvm_path_transform(path, &placement);
+    }
+    if (result == FVM_OK)
+    {
+        result = draw_visible(path, surface, ink);
+    }
+    fvm_path_destroy(path);
+    return result == FVM_OK;
+}
+
+
 /* Render only a complete document through actual FlashVM contours and rasterization.
  * No parameters; returns one on success, zero on backend/file/presentation failure. */
 static int render(void)
@@ -621,6 +695,10 @@ static int render(void)
     if (result != FVM_OK)
     {
         fprintf(stderr, "editor TextField raster failed: %d\n", result);
+        return 0;
+    }
+    if (!render_panel(&surface))
+    {
         return 0;
     }
 #ifdef DVM_EDITOR_SDL
@@ -687,6 +765,20 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code == EDITOR_PANEL)
+    {
+        if (assembling || message->first < 0 || message->first > 5 || message->second < 0 || message->second > 1 ||
+            message->size > sizeof(panel_text))
+        {
+            return 0;
+        }
+        panel_mode = (unsigned long)message->first;
+        panel_selected = (int)message->second;
+        panel_revision = message->flags;
+        panel_size = message->size;
+        memcpy(panel_text, message->text, panel_size);
+        return 1;
+    }
     if (message->code == EDITOR_VIEWPORT)
     {
         unsigned long top;
@@ -740,6 +832,12 @@ int dvm_editor_present(const DVM_UIMessage *message)
             }
             putchar('\n');
             printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
+            printf("PANEL %lu %d ", panel_mode, panel_selected);
+            for (index = 0; index < panel_size; index++)
+            {
+                printf("%02x", (unsigned char)panel_text[index]);
+            }
+            putchar('\n');
         }
         return 1;
     }
@@ -886,6 +984,12 @@ static unsigned int keycode(SDL_Keycode key)
     }
     switch (key)
     {
+    case SDLK_RETURN:
+        return FVM_KEY_ENTER;
+    case SDLK_ESCAPE:
+        return FVM_KEY_ESCAPE;
+    case SDLK_F3:
+        return FVM_KEY_F1 + 2;
     case SDLK_BACKSPACE:
         return FVM_KEY_BACKSPACE;
     case SDLK_DELETE:
@@ -1077,6 +1181,10 @@ void dvm_editor_destroy(void)
     if (events)
     {
         fclose(events);
+    }
+    if (panel_field && context)
+    {
+        fvm_gc_unpin(context, panel_field);
     }
     if (field && context)
     {

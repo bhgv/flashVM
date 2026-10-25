@@ -4,6 +4,8 @@ include "uibridge.m"; # Exchange copied, bounded envelopes with the renderer.
 include "idecore.m"; # Keep text and history in their separate channel owner.
 include "ideinput.m"; # Reuse Dis keyboard, selection and revision policy.
 include "idebridge.m"; # Reuse the bounded snapshot serializer.
+include "idefileops.m"; # Reuse bounded source I/O independently of any renderer.
+include "idesearch.m"; # Reuse literal document operations through typed channels.
 include "ideviewport.m"; # Keep viewport decisions and bounds in a separate Dis module.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
@@ -15,6 +17,8 @@ GraphicalEditor: module # Parameterless entry accepted by the experimental host.
 sys: Sys; # Loaded file services, exclusive to this controller's Dis process.
 core: Idecore; # Loaded document implementation; no native text authority.
 codec: Uibridge; # Shared value codec, never a native pointer transport.
+files: Idefileops; # Reusable checked source-file library, called only by Dis policy.
+search: Idesearch; # Reusable search/replacement library, using actual document channels.
 bridge: Idebridge; # Existing ordered Unicode-fragment serializer.
 
 
@@ -32,39 +36,8 @@ call(document: chan of Idecore->Request, operation: int, revision: int, text: st
 # Errors/oversize/invalid UTF-8 preserve the existing document; reads may block the host owner.
 readsource(path: string): (int, string)
 {
-    if (path == "" || len path != len string array of byte path) { # Reject absent or invalid names.
-        return (0, ""); # No file has been opened.
-    }
-    fd := sys->open(path, Sys->OREAD); # Obtain an actual read-only file reference.
-    if (fd == nil) { # Report native open failure without replacing text.
-        return (0, ""); # No descriptor is retained by the caller.
-    }
-    bytes := array[65537] of byte; # One extra byte detects the 64 KiB source limit.
-    count := 0; # Accumulate actual reads, including short reads.
-    while (count < len bytes) { # Read until EOF or the explicit bound.
-        n := sys->read(fd, bytes[count:], len bytes - count); # Block only at supported native I/O.
-        if (n < 0) { # An error must not look like an empty file.
-            return (0, ""); # The local FD reference is released by Dis ownership.
-        }
-        if (n == 0) { # EOF completes this bounded source read.
-            break; # Decode only received bytes.
-        }
-        count += n; # Preserve every short-read byte.
-    }
-    if (count > 65536) { # Never publish a silently truncated document.
-        return (0, ""); # The current document stays unchanged.
-    }
-    text := string bytes[:count]; # Decode using production Dis Unicode conversion.
-    encoded := array of byte text; # Detect replacement decoding by exact round trip.
-    if (len encoded != count) { # Invalid UTF-8 can change the byte count.
-        return (0, ""); # Reject before issuing a document command.
-    }
-    for (i := 0; i < count; i++) { # Check equally sized replacement sequences too.
-        if (encoded[i] != bytes[i]) { # Every original byte must survive decoding.
-            return (0, ""); # Report failure without editing the document.
-        }
-    }
-    return (1, text); # Return an owned immutable source value.
+    (status, text) := files->read(sys, path, 65536); # Validate bytes and close the local FD in the library.
+    return (status == files->Ok, text); # A failed read never becomes successful empty text.
 }
 
 
@@ -72,23 +45,38 @@ readsource(path: string): (int, string)
 # path/text are values; FD closes on return. This is checked overwrite, not atomic replacement.
 writesource(path: string, text: string): int
 {
-    if (path == "") { # Saving requires an explicit configured destination.
-        return 0; # Never guess a filename.
-    }
-    fd := sys->create(path, Sys->OWRITE, 8r666); # Use supported native overwrite semantics.
-    if (fd == nil) { # Permission/open failure leaves the revision dirty.
-        return 0; # No false saved acknowledgement is emitted.
-    }
-    bytes := array of byte text; # Preserve UTF-8, including non-BMP characters.
-    count := 0; # Track actual successful writes.
-    while (count < len bytes) { # Handle a short write without dropping its suffix.
-        n := sys->write(fd, bytes[count:], len bytes - count); # Write the remaining bytes.
-        if (n <= 0) { # Reject no-progress/error rather than spinning.
-            return 0; # A partial native file is possible; saved revision remains unchanged.
+    return files->write(sys, path, text) == files->Ok; # The library validates before creating or overwriting.
+}
+
+
+# Find the next literal match and apply only its acknowledged Unicode selection.
+# document/state are exclusively coordinated here; query is a value. Returns the real owner reply.
+findnext(document: chan of Idecore->Request, state: ref Ideinput->State, policy: Ideinput,
+         query: string): Idecore->Reply
+{
+    reply := search->next(core, document, state.revision, state.caret, query); # Search is read-only at the owner.
+    if (reply.status == core->Ok) { # Select only the matched range from this acknowledged revision.
+        if (!policy->select(state, reply, reply.offset, reply.offset + len query)) { # Refuse stale range publication.
+            reply.status = core->Conflict; # Source/history remain unchanged.
         }
-        count += n; # Advance only by actual successful output.
     }
-    return 1; # Native Sys write flushes before reporting success.
+    return reply; # Status NotFound and all errors stay visible to the caller.
+}
+
+
+# Reject multiline/NUL prompt input and bound its Unicode size before publication.
+# text is borrowed; returns one for a valid single-line field, zero otherwise.
+promptvalid(text: string): int
+{
+    if (len text > 256) { # Four-byte Unicode scalars still fit the 1024-byte envelope.
+        return 0; # Never truncate a path or search query silently.
+    }
+    for (i := 0; i < len text; i++) { # A file/search field is an explicit single-line UI value.
+        if (text[i] == 0 || text[i] == '\n' || text[i] == '\r') { # No accidental newline command or C-string truncation.
+            return 0; # The prior field and document remain unchanged.
+        }
+    }
+    return 1; # Unicode is preserved as scalars, not sliced UTF-8 bytes.
 }
 
 
@@ -99,11 +87,13 @@ init()
     sys = load Sys Sys->PATH; # Link the actual native file services.
     core = load Idecore Idecore->PATH; # Link the document/history module.
     codec = load Uibridge Uibridge->PATH; # Link the common channel codec.
+    files = load Idefileops Idefileops->PATH; # Link the shared checked file operations.
+    search = load Idesearch Idesearch->PATH; # Link renderer-independent document actions.
     bridge = load Idebridge Idebridge->PATH; # Link the existing snapshot encoder.
     policy := load Ideinput Ideinput->PATH; # Link Dis-owned input policy.
     viewport := load Ideviewport Ideviewport->PATH; # Link the bounded logical-line viewport.
     host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
-    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil) { # Require all real modules.
+    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
     }
     input := chan of array of byte; # The native owner offers copied events here.
@@ -127,11 +117,28 @@ init()
     window := viewport->create(); # The Dis controller exclusively owns its viewport.
     reveal := 1; # Initial presentation follows the acknowledged caret.
     ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
+    mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 Replace needle, 5 replacement.
+    prompt := ""; # Exclusive single-line field value; never a native document buffer.
+    selected := 0; # Ctrl+A marks the complete prompt for replacement by the next text input.
+    query := ""; # Last literal query, reused by F3 and replacement.
     dragging := 0; # Only an admitted pointer begin starts a Dis selection gesture.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
         if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
             raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
         }
+        paneltext := prompt; # Active input fields are Dis-owned values.
+        if (mode == 0) { # An inactive panel reports the selected document path.
+            paneltext = path; # Save As only changes this path after successful output.
+            if (len paneltext > 200) { # Bound the label without changing the actual file destination.
+                paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
+            }
+        }
+        panel := ref Uibridge->Message(codec->View, 0, host->Panel, reply.revision, mode, selected, paneltext); # Publish prompt state by channel.
+        (panelok, panelwire) := codec->encode(panel); # Validate the counted Unicode field.
+        if (!panelok) { # Invalid UI state must fail visibly, not mutate native widgets directly.
+            raise "fail: graphical editor panel"; # No successful dummy panel response is substituted.
+        }
+        output <-= panelwire; # Panel and viewport are committed together at the final selection record.
         ticket++; # Give every published view a distinct scalar identity.
         (first, last, top) := viewport->window(window, reply.text, state.caret, reveal); # Bound the display window.
         metadata := codec->hexword(top) + codec->hexword(len reply.text) + codec->hexword(ticket); # No heap addresses.
@@ -156,6 +163,154 @@ init()
             raise "fail: graphical editor input"; # The native host reports failure.
         }
         reveal = 0; # Wheel/modifier events must not snap the viewport back to the caret.
+        if (mode != 0) { # Modal field policy executes entirely on Dis.
+            if (event.kind == codec->Focus || (event.kind == codec->Key && (event.code == 16 || event.code == 17))) { # Keep modifier/focus state accurate.
+                (admitted, observed) := policy->apply(core, document, state, event); # Reuse the production modifier controller.
+                if (!admitted) { # Never use malformed input to alter field policy.
+                    raise "fail: graphical editor prompt modifier"; # Report a protocol failure.
+                }
+                reply = observed.document; # Preserve current document metadata.
+                if (event.kind == codec->Focus && event.flags == 0) { # Focus loss retires any gesture.
+                    dragging = 0; # Returning focus cannot resume a hidden drag.
+                }
+            } else if (event.kind == codec->Text) { # Committed text edits the field, not the source.
+                candidate := prompt + event.text; # Append unless the entire field was selected.
+                if (selected) { # Ctrl+A is field-local while a prompt is active.
+                    candidate = event.text; # Replace the selected field value as one UI action.
+                }
+                if (!promptvalid(candidate)) { # Validate before publishing a changed field.
+                    reply.status = core->TooLarge; # Preserve prompt, source, history and path.
+                } else { # The bounded field is now owned by this controller.
+                    prompt = candidate; # No direct TextField mutation occurs here.
+                    selected = 0; # Consume the field selection exactly once.
+                    reply.status = core->Ok; # Acknowledge accepted field input.
+                }
+            } else if (event.kind == codec->Key && event.flags != 0) { # Only key-down performs a field action.
+                if (event.code == 27) { # Escape cancels without touching document/path/history.
+                    mode = 0; # Return to document input policy.
+                    prompt = ""; # Release the private field text.
+                    selected = 0; # Release any field-local selection.
+                    reply.status = core->Ok; # Explicit successful cancellation.
+                } else if (event.code == 65 && state.control) { # Ctrl+A selects the complete field.
+                    selected = 1; # Document selection remains unchanged.
+                } else if (event.code == 8) { # Backspace uses Unicode field coordinates.
+                    if (selected) { # Deleting the selected field clears it.
+                        prompt = ""; # No source edit or Undo entry is made.
+                    } else if (len prompt > 0) { # An empty field cannot underflow.
+                        prompt = prompt[:len prompt - 1]; # Remove exactly one scalar.
+                    }
+                    selected = 0; # The remaining field is no longer selected.
+                } else if (event.code == 13) { # Enter executes an explicitly accepted field operation.
+                    if (mode == 1) { # Literal Find selects the real acknowledged match.
+                        query = prompt; # Retain the user's query for F3.
+                        reply = findnext(document, state, policy, query); # Search through the document channel.
+                        mode = 0; # Errors/NotFound are visible in the normal status view.
+                        reveal = 1; # Reveal a successful match's caret.
+                    } else if (mode == 4) { # Replacement is a two-field operation, without delimiter ambiguity.
+                        if (prompt == "") { # An empty needle is invalid before any replacement stage.
+                            reply.status = core->Invalid; # Keep this field open for correction.
+                        } else { # Preserve the exact literal needle.
+                            query = prompt; # Unicode/non-BMP text stays unchanged.
+                            prompt = ""; # Begin a separately counted replacement field.
+                            mode = 5; # The next Enter confirms replacement text, including empty text.
+                            selected = 0; # No accidental selection carries into the second field.
+                        }
+                    } else if (mode == 5) { # ReplaceAll remains one real document-owner operation.
+                        reply = search->replace(core, document, reply.revision, query, prompt); # Bounds/history are checked by Idecore.
+                        policy->observe(state, reply); # Synchronize selection after an acknowledged edit.
+                        mode = 0; # Publish actual match count/status with the resulting snapshot.
+                        reveal = 1; # Show the post-operation cursor.
+                    } else if (mode == 3) { # Save As adopts its destination only after a successful write.
+                        if (writesource(prompt, reply.text)) { # Preserve exact current snapshot bytes.
+                            path = prompt; # Subsequent Ctrl+S and reload now use this successful destination.
+                            reply = call(document, core->MarkSaved, reply.revision, ""); # Acknowledge that exact revision.
+                            mode = 0; # Close the field only after success.
+                        } else { # A failed candidate does not replace the current path.
+                            reply.status = core->Invalid; # Keep the field open and preserve dirty state.
+                        }
+                    } else if (mode == 2) { # Open never discards unsaved edits.
+                        if (reply.revision != reply.saved) { # Check before touching the candidate file.
+                            reply.status = core->Conflict; # Keep the original document and destination.
+                        } else { # Read and validate before retiring the current session.
+                            (loaded, source) := readsource(prompt); # I/O policy stays on Dis.
+                            if (loaded) { # Only validated bytes can replace the document.
+                                reply = call(document, core->Close, reply.revision, ""); # Retire old history.
+                                reply = call(document, core->Open, reply.revision, source); # Establish a fresh saved revision.
+                                path = prompt; # Adopt the successfully loaded path.
+                                policy->observe(state, reply); # Reset old source positions.
+                                window = viewport->create(); # Retire old scroll coordinates too.
+                                dragging = 0; # Retire old gesture state.
+                                mode = 0; # Return to the new document.
+                                reveal = 1; # Show its initial caret.
+                            } else { # Failed UTF-8/limit/open admission changes no document state.
+                                reply.status = core->Invalid; # Leave the field open for correction.
+                            }
+                        }
+                    }
+                }
+            }
+            continue; # A field event is never also applied to the source document.
+        }
+        if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
+            if (event.code == 70 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
+                mode = 1; # Ctrl+F starts literal Find.
+                prompt = query; # Reuse the previous literal query as editable field text.
+                if (event.code == 72) { # Ctrl+H begins the needle stage of Replace All.
+                    mode = 4; # Replacement text is accepted in a separate second field.
+                }
+                if (event.code == 79) { # Ctrl+O selects a source file.
+                    mode = 2; # Open retains the current document until successful admission.
+                    prompt = path; # Prefill only the editable field, not a native file dialog.
+                }
+                if (event.code == 83) { # Ctrl+Shift+S chooses a save destination.
+                    mode = 3; # Destination adoption is conditional on successful I/O.
+                    prompt = path; # Preserve the original path until that acknowledgement.
+                }
+                selected = 1; # The next committed text replaces the prefilled field.
+                dragging = 0; # A modal action retires any document drag gesture.
+                reply.status = core->Ok; # Opening a field does not edit source/history.
+                continue; # The shortcut must not reach document insertion/navigation.
+            }
+        }
+        if (event.kind == codec->Key && event.flags != 0 && event.code == 114) { # F3 repeats the current literal query.
+            reply = findnext(document, state, policy, query); # At most one wrap, always revision checked.
+            reveal = 1; # Reveal the acknowledged match when found.
+            continue; # Never interpret F3 as text or a second document operation.
+        }
+        if (event.kind == codec->Request && (event.code == host->Find || event.code == host->SaveAs || event.code == host->Open)) { # Callable actions share the same sequential controller.
+            if (event.flags != reply.revision) { # External callers must identify their source snapshot.
+                reply.status = core->Conflict; # A late command cannot search/save/open against another revision.
+                continue; # Publish the unchanged source and path with a new view identity.
+            }
+            if (event.code == host->Find) { # Embedding clients can issue the same literal FindNext action.
+                query = event.text; # Retain the exact counted query for F3.
+                reply = findnext(document, state, policy, query); # No direct selection mutation bypasses the policy.
+                reveal = 1; # Follow a successful match.
+            } else if (event.code == host->SaveAs) { # An explicit path remains a copied value.
+                if (writesource(event.text, reply.text)) { # Invalid/NUL paths fail before native create.
+                    path = event.text; # Adopt only the successfully written destination.
+                    reply = call(document, core->MarkSaved, reply.revision, ""); # Acknowledge the written snapshot.
+                } else { # File errors never mark the document saved.
+                    reply.status = core->Invalid; # Preserve old path and dirty state.
+                }
+            } else if (reply.revision != reply.saved) { # Open must not bypass the dirty guard.
+                reply.status = core->Conflict; # Neither source nor destination changes.
+            } else { # A clean document may be replaced only after strict source admission.
+                (loaded, source) := readsource(event.text); # Same callable file library as the UI field.
+                if (loaded) { # A rejected candidate never retires the current document/history.
+                    reply = call(document, core->Close, reply.revision, ""); # Stop the old session.
+                    reply = call(document, core->Open, reply.revision, source); # Establish the validated source.
+                    path = event.text; # Adopt the loaded source path.
+                    policy->observe(state, reply); # Retire stale selections and goals.
+                    window = viewport->create(); # Retire old source viewport coordinates.
+                    dragging = 0; # Retire old drag state.
+                    reveal = 1; # Display the new document start.
+                } else { # Read failure is visible and nondestructive.
+                    reply.status = core->Invalid; # Keep the original source and path.
+                }
+            }
+            continue; # Do not also dispatch this application action as raw input.
+        }
         if (event.kind == codec->Request && (event.code == host->Scroll || event.code == host->Place)) { # Admit native geometry only as a request.
             expected := array of byte event.text; # The ticket is an exact eight-byte hexadecimal word.
             (known, seen) := codec->parseword(expected, 0); # Decode without trusting a native pointer.
