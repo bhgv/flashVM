@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "4d9ce2effbbb75d300775100589df2b167dd7436",
+  "revision": "74c193724a7352b8fda2724a5cf10029885be68c",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -330,7 +330,9 @@
     "libinterp/tests/array-view-native.c",
     "libinterp/tests/array-view-native.py",
     "libinterp/tests/array-view-layouts.py",
-    "libinterp/tests/array-view-jit.py"
+    "libinterp/tests/array-view-jit.py",
+    "libinterp/tests/loader-results.c",
+    "libinterp/tests/README.loader-results.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -423,7 +425,7 @@
     "upstream/libinterp/leaf64-ops.h": "8bb4f94228cea2c92201f27ef71a9c2760164ff8fe54b7d2f96325ae9d7438c5",
     "upstream/libinterp/link.c": "2a26f8affcd58d045bd1deb6dd85f7c10b9b8df95bcbc10118e6bddd08cc43aa",
     "upstream/libinterp/load.c": "fa58699c824e6f01fa35a3d7405baa2917323daa2229b973f34a5b6bf760ce7d",
-    "upstream/libinterp/loader.c": "f402d4aca1e0a3335b3d69400794e54d8a92ce82b0625256bf15413ded655e05",
+    "upstream/libinterp/loader.c": "73c15fcd7da6699873eb54b7ad9549fef2bfc5f5d397909bd654a45422099038",
     "upstream/libinterp/loadermod.h": "6fd551d8cdc81bd25127bd0212b539f96a2426f223a81d3e6a68176999d66cd2",
     "upstream/libinterp/math.c": "12c4efa9da648ae8b4552448af0bc21e6d3563dd7daf5555e19386b7ebf98049",
     "upstream/libinterp/nativeptrmap.h": "2805ed37fdebd31735de89fce88433315f9aab1d4cc0c120670b5cfd9fbb2e10",
@@ -451,6 +453,7 @@
     "upstream/libinterp/tests/README.goto-case-tables.md": "b294c617f5ab4f9aed68a431d93778282c598635b2b1afe63d0ceca84d6e9c56",
     "upstream/libinterp/tests/README.jit-coverage.md": "e6c7cbfbd6a745383f1454df9397b519f6cda7823665c371003b898420aa5a50",
     "upstream/libinterp/tests/README.leaf-layout-fixture.md": "edc11f04231f9f0e888b7a8fbd0a6d8b66fbfb5cfae57d6b0f72b95693eb43d6",
+    "upstream/libinterp/tests/README.loader-results.md": "55a28dd14ac2611c97be1d868aa4808ea041c88dbab2ea78dc3ae2d0a7a9d06c",
     "upstream/libinterp/tests/README.loader-snapshots.md": "8cad55f982caca8d64c94c943bbe5dd61a5d5c3650cb7d2816ed32a6dc2fee57",
     "upstream/libinterp/tests/README.mapped-copy-native.md": "ab178f8e7f0db0cf241fd2053a0a47360d59eda178c3ad5a584d15b11eec967f",
     "upstream/libinterp/tests/README.mcall-native.md": "cf23ce5a1cd4d73ae4ccbaac3b340b6d856e29c0fe52666242d20e0e3d13801a",
@@ -540,7 +543,8 @@
     "upstream/libinterp/tests/list-retains.py": "66d6e7f03046b275956c4325f913933bbe866f14a12206d414dbc8cbb3b64100",
     "upstream/libinterp/tests/lists.c": "d4319cda82ceed1abb3806e38e11f834475f68ffed5c1219ecfd58a9a50866ef",
     "upstream/libinterp/tests/lists.py": "26e2f2ad1c38e139bb5f687333d00c0460f325c1e36c5de58535bbc8b9da27fe",
-    "upstream/libinterp/tests/loader-runtime.py": "aeb604dfa353dbc3ad748e01d25e3a0381f7c686e41270bdbcbf166be9f949d5",
+    "upstream/libinterp/tests/loader-results.c": "24faa39ec6fd608743e19a8bfd27f058ca2132a7fe5670344d12174aab57d5a1",
+    "upstream/libinterp/tests/loader-runtime.py": "56fa65886f3d8cef68c4f1f955f63cd64a1a8686b4c0ded942436ec7db045d3e",
     "upstream/libinterp/tests/loader-snapshots.c": "d653d1e8286f97638935a108737c10d370fca421c20705066cd8d9f966004334",
     "upstream/libinterp/tests/loader-snapshots.py": "90e317392aae04acf8f2e454743ba27bbc2a5561a05bc1d39a24d45ada5ac3c1",
     "upstream/libinterp/tests/mapped-copy-jit.py": "4aa0275b71c8aaf20702c452f2fefe7f6f2a26b93c7e952af1d9285737ba5307",
