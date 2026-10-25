@@ -63,4 +63,4 @@ Dis/SWF backend и внешние C/AS/другие заготовки по `.m`
 
 [Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment f948343b711c8300dbf76417254c18a7a8d2f5ff, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.
 
-Текущие выборки Dis и bootstrap: `d9ad662ae5e4071baf9bf15ada34c80389bd29ec`; проверяйте их manifest перед обновлением.
+Текущие выборки Dis и bootstrap: `7f6143d6af8be1a9a59669e7a1423a542c85cd88`; проверяйте их manifest перед обновлением.
