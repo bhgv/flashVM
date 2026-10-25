@@ -114,10 +114,8 @@ def main():
     for name in ("string.c", "runt.c"):
         path = args.output / name
         code = path.read_text()
-        code = code.replace(
-            "a->t != &Tbyte",
-            "(a->t != &Tbyte && (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0))",
-        )
+        if "a->t->size != 1 || a->t->np != 0" not in code:
+            raise ValueError("upstream byte descriptor validation is missing: " + name)
         if name == "runt.c":
             code = code.replace("\tint i;\n", "\tWORD i;\n", 1)
             code = code.replace(

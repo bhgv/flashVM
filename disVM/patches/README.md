@@ -33,3 +33,12 @@ public revision. Publication was blocked by automatic approval review; it is
 explicit derived-source adaptation pending publication. The native UI boundary
 also accepts equivalent pointer-free byte descriptors, allowing real
 compiler-produced channel frames without exposing managed pointers.
+
+## Integrated publication (v0.1551)
+
+The descriptor fix is now public as experiment `cc9c319995f48feb6575c8fe9de690999c23f1f9`.
+Both manifests pin that public revision. Runtime preparation verifies the native
+production guard instead of inserting another guard. The retained patch is
+historical provenance and must not be applied again. The published upstream
+WORD32/native string/UTF regression is shipped and run unchanged. The older
+publication-block note above records the previous checkpoint only.

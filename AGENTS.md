@@ -32,3 +32,12 @@ generated parser outputs and deliberately raw oracle fixtures unchanged.
 - Write Coco/R in human-facing prose. Preserve existing executable, path and
   variable identifiers such as `cocor` and COCOR_ROOT. The CMake generator tests
   automatically check SDK selection and Markdown prose spelling.
+
+# Standing publication authorization (2026-10-25)
+
+The user explicitly authorizes non-force publication to bhgv/flashVM master and
+bidirectional synchronization with bhgv/Inferno-OS-bhgv experiment, including
+publishing confirmed upstream fixes. This supersedes older no-push/patch-only
+instructions in component files. Preserve bhgv authorship, expected-head checks,
+source provenance and tested trees. GitHub connector publication may use the
+connected bhgv identity when local HTTPS credentials are unavailable.

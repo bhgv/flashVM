@@ -11,6 +11,8 @@ Ideinput: module
         anchor: int;    # Other selection endpoint; equal to caret for a collapsed selection.
         control: int;   # Published Control-key state, cleared on focus loss.
         shift: int;     # Published Shift-key state, cleared on focus loss.
+        preferred: int; # Desired logical column across repeated vertical moves; -1 resets it.
+        page: int;      # Logical lines per page, bounded 1..128 by the controller.
         revision: int;  # Last observed document revision, or -1 before initialization.
     };
 
@@ -32,7 +34,7 @@ Ideinput: module
 
     # core/document are borrowed; state is exclusively owned; event is borrowed and read-only.
     # Uses real document requests/replies. Returns (1, view), or (0, nil) for invalid arguments.
-    # Text inserts; arrows/Home/End select; Backspace/Delete edit; Ctrl+A/Z/Y act in Dis.
+    # Text inserts; arrows/PageUp/PageDown/Home/End select; Backspace/Delete edit; Ctrl+A/Z/Y act in Dis.
     # Pointer/layout and other keys return handled=0 for composition with another Dis service.
     apply: fn(core: Idecore, document: chan of Idecore->Request,
               state: ref State, event: ref Uibridge->Message): (int, ref View);

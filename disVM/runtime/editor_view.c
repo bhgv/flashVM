@@ -563,6 +563,14 @@ static unsigned int keycode(SDL_Keycode key)
         return FVM_KEY_LEFT;
     case SDLK_RIGHT:
         return FVM_KEY_RIGHT;
+    case SDLK_UP:
+        return FVM_KEY_UP;
+    case SDLK_DOWN:
+        return FVM_KEY_DOWN;
+    case SDLK_PAGEUP:
+        return FVM_KEY_PGUP;
+    case SDLK_PAGEDOWN:
+        return FVM_KEY_PGDN;
     case SDLK_HOME:
         return FVM_KEY_HOME;
     case SDLK_END:

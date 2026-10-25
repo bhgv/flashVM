@@ -35,8 +35,9 @@
   The architecture and acceptance documents are requirements, not runtime proof.
 - Remain independently buildable/testable with explicit external tools. No hidden
   dependency on sibling source directories or mandatory deployed Python runtime.
-- Produce local work-branch format-patches only. Do not commit on master or push
-  FlashVM. Both author and committer are bhgv <bhgv@bhgv.bhgv>.
+- Prepare/test work branches and retain backup patches. The user's 2026-10-25
+  instruction authorizes publication and bidirectional Inferno synchronization;
+  see repository AGENTS.md. Author and committer must be bhgv.
 
 - AS1/AS2 and Dis need bidirectional typed module adapters. Preserve separate
   heaps/owners, check signatures, retain pending-call roots and expose debugger

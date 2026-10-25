@@ -7,7 +7,7 @@ include "ideinput.m";
 # Allocate private editing policy state. No parameters; returns an owned State reference.
 create(): ref State
 {
-    return ref State(0, 0, 0, 0, -1);
+    return ref State(0, 0, 0, 0, -1, 24, -1);
 }
 
 
@@ -39,6 +39,65 @@ move(state: ref State, position: int)
     if (!state.shift) {
         state.anchor = position;
     }
+}
+
+
+# Find the logical LF line containing an admitted Unicode position.
+# text/position are values; returns a bounded scalar offset without I/O.
+linebegin(text: string, position: int): int
+{
+    while (position > 0 && text[position - 1] != '\n') {
+        position--;
+    }
+    return position;
+}
+
+
+# Find the logical line end, excluding a CR immediately before LF or EOF.
+# text/start are values; returns an insertion coordinate without changing text.
+lineend(text: string, start: int): int
+{
+    last := start;
+    while (last < len text && text[last] != '\n') {
+        last++;
+    }
+    if (last > start && text[last - 1] == '\r') {
+        last--;
+    }
+    return last;
+}
+
+
+# Move through logical lines while retaining the requested Unicode column.
+# state is exclusive; text is the acknowledged snapshot, delta is bounded +/-128.
+# Returns nothing; short lines clamp only this movement, never the preferred column.
+vertical(state: ref State, text: string, delta: int)
+{
+    start := linebegin(text, state.caret);
+    if (state.preferred < 0) {
+        state.preferred = state.caret - start;
+    }
+    while (delta > 0) {
+        next := start;
+        while (next < len text && text[next] != '\n') {
+            next++;
+        }
+        if (next == len text) {
+            break;
+        }
+        start = next + 1;
+        delta--;
+    }
+    while (delta < 0 && start > 0) {
+        start = linebegin(text, start - 1);
+        delta++;
+    }
+    last := lineend(text, start);
+    position := start + state.preferred;
+    if (position > last) {
+        position = last;
+    }
+    move(state, position);
 }
 
 
@@ -75,6 +134,7 @@ apply(core: Idecore, document: chan of Idecore->Request,
         state.revision = reply.revision;
         state.caret = 0;
         state.anchor = 0;
+        state.preferred = -1;
         return (1, view(state, reply, 0, event));
     }
     state.revision = reply.revision;
@@ -110,6 +170,7 @@ apply(core: Idecore, document: chan of Idecore->Request,
         if (state.control && key == 65) {
             state.anchor = 0;
             state.caret = len reply.text;
+            state.preferred = -1;
             return (1, view(state, reply, 1, event));
         }
         if (state.control && key == 90) {
@@ -131,19 +192,34 @@ apply(core: Idecore, document: chan of Idecore->Request,
             } else if (key == 39 && position < len reply.text) {
                 position++;
             }
+            state.preferred = -1;
             move(state, position);
             return (1, view(state, reply, 1, event));
-        } else if (!state.control && (key == 36 || key == 35)) {
-            position := state.caret;
-            if (key == 36) {
-                while (position > 0 && reply.text[position - 1] != '\n') {
-                    position--;
-                }
-            } else {
-                while (position < len reply.text && reply.text[position] != '\n') {
-                    position++;
+        } else if (!state.control && (key == 38 || key == 40 || key == 33 || key == 34)) {
+            delta := 1;
+            if (key == 33 || key == 34) {
+                delta = state.page;
+                if (delta < 1 || delta > 128) {
+                    delta = 24;
                 }
             }
+            if (key == 38 || key == 33) {
+                delta = -delta;
+            }
+            vertical(state, reply.text, delta);
+            return (1, view(state, reply, 1, event));
+        } else if (key == 36 || key == 35) {
+            position := 0;
+            if (state.control) {
+                if (key == 35) {
+                    position = len reply.text;
+                }
+            } else if (key == 36) {
+                position = linebegin(reply.text, state.caret);
+            } else {
+                position = lineend(reply.text, linebegin(reply.text, state.caret));
+            }
+            state.preferred = -1;
             move(state, position);
             return (1, view(state, reply, 1, event));
         } else if (!state.control && (key == 8 || key == 46)) {
@@ -169,6 +245,7 @@ apply(core: Idecore, document: chan of Idecore->Request,
         }
         state.caret = destination;
         state.anchor = destination;
+        state.preferred = -1;
     }
     state.revision = reply.revision;
     return (1, view(state, reply, 1, event));
@@ -182,6 +259,7 @@ observe(state: ref State, reply: Idecore->Reply)
     if (state.revision != reply.revision || !reply.opened) {
         state.caret = 0;
         state.anchor = 0;
+        state.preferred = -1;
     }
     state.revision = reply.revision;
 }

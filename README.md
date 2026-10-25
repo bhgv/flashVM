@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1550**. [Русская версия](README.ru.md).
+Development version: **0.1551**. [Русская версия](README.ru.md).
 
-Current series: [v0.1550](docs/releases/v0.1550.md) runs the Limbo/Dis graphical editor with FlashVM TextField rendering and synchronizes Inferno experiment through `3c6f5dc`.
+Current series: [v0.1551](docs/releases/v0.1551.md) runs the Limbo/Dis graphical editor with FlashVM TextField rendering and synchronizes Inferno experiment through `3c6f5dc`.
 
 ## Browse documentation
 

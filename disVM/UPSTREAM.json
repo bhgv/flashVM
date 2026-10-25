@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "3c6f5dca823927d8cec8c86159ccc35029b3bd51",
+  "revision": "cc9c319995f48feb6575c8fe9de690999c23f1f9",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -255,7 +255,9 @@
     "libinterp/tests/mapped-copy-native.py",
     "libinterp/tests/mapped-copy-layouts.py",
     "libinterp/tests/mapped-copy-jit.py",
-    "libinterp/tests/README.mapped-copy-native.md"
+    "libinterp/tests/README.mapped-copy-native.md",
+    "libinterp/tests/module-byte-descriptors.py",
+    "libinterp/tests/README.module-byte-descriptors.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -356,10 +358,10 @@
     "upstream/libinterp/raise.c": "0cacc61f95067d90dd661368b914b1ca8a2d416c968921c71494c0f0c3ffbde5",
     "upstream/libinterp/readmod.c": "ac816a8e618fdc15154ec0a3de90cd1aecfbc4bb3b2269aa201a11807835c907",
     "upstream/libinterp/riscv-emit.h": "7df8975b018891cb1f1b95c1067f89893fa61a4591151d853dd46f2804730c08",
-    "upstream/libinterp/runt.c": "eb58467c47ecfa1163963235b937de247ce9958757d579ca8c0ced0df5dd548b",
+    "upstream/libinterp/runt.c": "0c698a6234d62d1a456dcac8b216db7f82f217bc130b32883ea09db310ec8e81",
     "upstream/libinterp/runt.h": "15fcf550433dc77a4ccbc4767d8268d189b84e9c4fd8499358f47df7cf23f056",
     "upstream/libinterp/stack.c": "26b78eeee53d79bc1cbd7dc2333becc219c56a26df25404f91c858ce7cbd4f5a",
-    "upstream/libinterp/string.c": "f277bbe060049ddd651f214afd49ab052e661a62eacd9e93e7d753fb1255c4fa",
+    "upstream/libinterp/string.c": "c06d966d36cd63139e9c622d9de29ebd4b1b3ac3fd1dece0d9114540242ffae7",
     "upstream/libinterp/sysmod.h": "1735a5fd3ed92c71a4e0143465908f2988025849e0a858826f416136720bf044",
     "upstream/libinterp/tab.h": "2fae3d5b43ed61d560c09c96fa52d379c3e9fea8ff9ad0e5ebf953354c982f0e",
     "upstream/libinterp/tests/README.cast-ranges-stat-slots.md": "25ebb4045c36e1c6352da2768ea45d90f86bfbd6ef71210bc014d8fbf93a7df7",
@@ -370,6 +372,7 @@
     "upstream/libinterp/tests/README.jit-coverage.md": "6ac4ced40f785c8ebcfb394c3efb13b5a4778b63d086eacd608097e6ad8e4bdd",
     "upstream/libinterp/tests/README.mapped-copy-native.md": "8b23a5e3412bdfe25669627102912dbc1fbe98b5657d38cc29d6287b23843cfd",
     "upstream/libinterp/tests/README.minus-one-connections.md": "31e642fb475d4c083bef016c58acc522575f3199c3b4def2827e6957da491618",
+    "upstream/libinterp/tests/README.module-byte-descriptors.md": "dfb8cc343ef45ed248e5342922195d350bc579ba725289be9cacebfc43326d41",
     "upstream/libinterp/tests/README.narrow-branches-diagnostics.md": "5ed8f41e11437b975ff30a9532d0c003526e3cdb56301ee2a68f455fd0dfcdcc",
     "upstream/libinterp/tests/README.native-cases-pctl.md": "507220d9a248df82f7cc61593fd5defc47578755f2172b4ee7d7defd26f8115e",
     "upstream/libinterp/tests/README.native-owners.md": "b7a1f6eb24b02aa28e9975a438134c7b6c34be80e3593d4b27106a1f32414ace",
@@ -426,6 +429,7 @@
     "upstream/libinterp/tests/mapped-copy-layouts.py": "5bed4945a7b93c63d5078930b9c1df5070432588089453dacdbd42fea6eb5494",
     "upstream/libinterp/tests/mapped-copy-native.c": "48cd8fdc885534634c34d353852081126bd493e10b8a602eb910f4fdebcd6029",
     "upstream/libinterp/tests/mapped-copy-native.py": "e29cf29eb6469cb241edc698405b46dbcdf86704e1a7efbad689157984ff8d9e",
+    "upstream/libinterp/tests/module-byte-descriptors.py": "edf816308663f760fe5ebd64d8fc39ad498f71dde106504210802e204080a0d6",
     "upstream/libinterp/tests/owner-jit.py": "f5f53232a13b041d478d9430c74d8db0ae455e302a85737fc70029f6d5f2b475",
     "upstream/libinterp/tests/owner-native.c": "2034033cb610c5c6d54e6f6cd659c2907e152214da0f1dd4868152820990eb5d",
     "upstream/libinterp/tests/owner-native.py": "8a1a2be35a52729a37db8daeb6bca9fae539210e10b938281e45d83654985852",
