@@ -37,7 +37,7 @@ COMPONENTS = (
     ("mk", "Inferno mk: нативная сборка из выбранных исходников"),
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
     ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
-    ("disvm-runtime", "Dis: исполняемая VM и запуск сервисов IDE (Linux AMD64, эксперимент)"),
+    ("disvm-runtime", "Dis: исполняемая VM и терминальный редактор IDE (Linux AMD64, эксперимент)"),
 )
 
 
@@ -340,22 +340,26 @@ def show_products(args, bash, interactive):
         print("Проверки: " + str(checker))
     if window.is_file():
         print("Окно, ввод и звук: " + str(window))
-    native = prefix / "disvm-runtime/run-ide.sh"
+    native = prefix / "disvm-runtime/run-editor.sh"
     if native.is_file():
-        print("Сервисы IDE на собственном Dis: " + str(native))
+        print("Интерактивный редактор на Dis: " + str(native))
     if not interactive or not checker.is_file():
         return 0
     while True:
         print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
-        print("  4 — программа Dis с каналами, 5 — сервисы IDE на Dis")
+        print("  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE")
         value = input("Enter — закончить, либо номер запуска: ").strip()
         if not value:
             return 0
-        if value not in ("1", "2", "3", "4", "5"):
-            print("Введите 1, 2, 3, 4, 5 или Enter.")
+        if value not in ("1", "2", "3", "4", "5", "6"):
+            print("Введите 1, 2, 3, 4, 5, 6 или Enter.")
             continue
-        if value in ("4", "5"):
-            script = prefix / "disvm-runtime" / ("run-console.sh" if value == "4" else "run-ide.sh")
+        if value in ("4", "5", "6"):
+            script = (
+                prefix
+                / "disvm-runtime"
+                / ({"4": "run-console.sh", "5": "run-editor.sh", "6": "run-ide.sh"}[value])
+            )
             if not script.is_file():
                 print("Выберите disvm-runtime или all в меню сборки.")
                 continue

@@ -46,6 +46,14 @@ FVM_Result fvm_port_file_available(FVM_PortFile *, int *);
 
 /* Measure an open file without changing logical positions; output changes on success. */
 FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size);
+
+
+/* Borrow standard input (descriptor 0); report one bounded read without closing it. */
+FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, size_t *received);
+
+
+/* Borrow standard output/error (1/2); report actual bytes written without closing it. */
+FVM_Result fvm_port_stdio_write(int descriptor, const void *bytes, size_t size, size_t *written);
 #ifdef __cplusplus
 }
 #endif

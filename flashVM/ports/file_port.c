@@ -11,16 +11,26 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
 
+#else
+#include <unistd.h>
 #endif
 
 
-/* Define FVM_PortFile struct and its representation. */
+#define FVM_STDIO_TRANSFER_MAX 65536UL /* Maximum native standard-stream fragment accepted per call. */
+
+
+/* Owned file state keeps logical read/write positions independent. */
 struct FVM_PortFile
 {
-    FILE *stream;
-    long read_position, write_position;
-    int readable, writable, append, failed;
+    FILE *stream;        /* Owned binary stream; standard descriptors use separate borrowed APIs. */
+    long read_position;  /* Logical next read offset, independent of appending writes. */
+    long write_position; /* Logical next write offset checked against native long capacity. */
+    int readable;        /* Whether this handle admits ordinary file reads. */
+    int writable;        /* Whether this handle admits ordinary file writes. */
+    int append;          /* Whether each write is positioned at the current file end. */
+    int failed;          /* A partial/failed record prevents unsafe write retries. */
 };
 
 
@@ -259,5 +269,79 @@ FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size)
         return FVM_ERROR;
     }
     *size = (size_t)end;
+    return FVM_OK;
+}
+
+
+/* Read one bounded fragment from borrowed standard input.
+ * descriptor must be zero; output receives the actual extent, including EOF zero. */
+FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, size_t *received)
+{
+    long count;
+    if (descriptor != 0 || !received || (!bytes && capacity))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *received = 0;
+    if (!capacity)
+    {
+        return FVM_OK;
+    }
+    if (capacity > FVM_STDIO_TRANSFER_MAX)
+    {
+        capacity = FVM_STDIO_TRANSFER_MAX;
+    }
+    do
+    {
+#ifdef _WIN32
+        count = _read(descriptor, bytes, (unsigned int)capacity);
+#else
+        count = (long)read(descriptor, bytes, capacity);
+#endif
+    } while (count < 0 && errno == EINTR);
+    if (count < 0)
+    {
+        return FVM_ERROR;
+    }
+    *received = (size_t)count;
+    return FVM_OK;
+}
+
+
+/* Write one bounded fragment to borrowed standard output/error.
+ * descriptor is 1 or 2; written exposes partial writes so callers can retry the remainder. */
+FVM_Result fvm_port_stdio_write(int descriptor, const void *bytes, size_t size, size_t *written)
+{
+    long count;
+    if ((descriptor != 1 && descriptor != 2) || !written || (!bytes && size))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *written = 0;
+    if (!size)
+    {
+        return FVM_OK;
+    }
+    if (fflush(descriptor == 1 ? stdout : stderr))
+    {
+        return FVM_ERROR;
+    }
+    if (size > FVM_STDIO_TRANSFER_MAX)
+    {
+        size = FVM_STDIO_TRANSFER_MAX;
+    }
+    do
+    {
+#ifdef _WIN32
+        count = _write(descriptor, bytes, (unsigned int)size);
+#else
+        count = (long)write(descriptor, bytes, size);
+#endif
+    } while (count < 0 && errno == EINTR);
+    if (count < 0)
+    {
+        return FVM_ERROR;
+    }
+    *written = (size_t)count;
     return FVM_OK;
 }

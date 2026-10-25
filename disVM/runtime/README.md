@@ -16,10 +16,12 @@ named `R` subobject use the existing OS TLS context. Blocking Dis channels and
 spawned Limbo processes run above one native owner using a FIFO scheduler. This
 initial executable does not yet run multiple VM owners concurrently.
 
-The IDE example executes production idecore/ideworkspace modules and the callable
+The workspace example executes production idecore/ideworkspace modules and the callable
 workspace tutorial: it creates document owners, takes a revision-bound build
 snapshot and stops all services through channels. It does not fabricate compiler
-output. The graphical editor is not connected to this executable yet. The FlashVM
+output. The [interactive terminal editor](../../ide/dis/examples/editor-console/README.md)
+also provides editing, Undo/Redo, search, AS/Limbo declarations/call tips and actual
+UTF-8 file save/load. The graphical editor is not connected to this executable yet. The FlashVM
 windowed examples remain separately launchable from the same build menu.
 
 ## Explicit experimental ABI
@@ -49,10 +51,12 @@ are shipped beside native modules; a runtime debugger connection is still pendin
 
 Acceptance is native Linux AMD64. Normal Sys support includes production string
 formatting/tokenization/UTF helpers, stdout printing and read-only module/file
-opening plus read/readn through FlashVM's file port. Unavailable Sys functions throw explicit
-errors. One stdout message is bounded to a 4096-byte formatting buffer.
+opening plus read/readn through FlashVM's file port. Unavailable Sys calls report
+explicit failures. One stdout message is bounded to a 4096-byte formatting buffer.
 No successful empty Sys service, external emu, Inferno Draw or full
-Inferno filesystem is substituted. General writes, network namespaces, Styx,
+Inferno filesystem is substituted. Create/write supports actual files with OWRITE/0666 plus standard output/error.
+Standard descriptors 0/1/2 are borrowed through FlashVM's common standard-stream
+port. Other open/create flags and permissions are rejected. Network namespaces, Styx,
 process control and Dis exception-handler propagation remain to be connected.
 
 The standalone executable owns one bounded 64 MiB arena. Stable block headers
@@ -82,3 +86,10 @@ The normal and native-cell bootstrap builds reserve a real sentinel slot in the
 old generated yacc parser stack. This avoids forming `&yys[-1]`, which UBSan
 identified during Sys-interface compilation. The adaptation runs after either
 the pinned parser or a fresh iyacc generation; no grammar action is changed.
+
+
+Module resource names resolve relative to the entry module's directory. The
+runner and launch scripts preserve the caller's working directory for ordinary
+Sys file paths. Installed applications can therefore find their sibling modules
+while loading/saving relative user paths. This is resource lookup, not a filesystem
+sandbox. Embedded NUL paths are rejected before any native open or truncation.

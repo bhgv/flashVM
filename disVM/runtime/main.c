@@ -28,8 +28,10 @@ static Prog *ready;                       /* FIFO head for runnable Limbo proces
 static Prog *tail;                        /* FIFO tail. */
 static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
+static unsigned long execution_slices;    /* Busy-work budget since the last actual standard-input progress. */
 static int live;                          /* Process quota accounting. */
 static char failure[256];                 /* Current native error copied before unwinding. */
+static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
 static Osenv environment;                 /* Error string environment for this runtime owner. */
 extern int dontcompile;                   /* Production loader switch that prohibits forced JIT compilation. */
 int cflag;                                /* Native leaf compilation switch consumed by the loader. */
@@ -40,7 +42,7 @@ unsigned long dvm_runtime_instructions;   /* Decoded complete instructions acros
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
 static int show_stats;                    /* Emit actual instruction counts on explicit request. */
 static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
-static FVM_PortFile *files[32]; /* Bounded module-input handles over FlashVM's file port. */
+static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
 
 
 /* Report allocator corruption and terminate instead of continuing with invalid metadata. */
@@ -336,7 +338,7 @@ static void free_fd(Heap *heap, int swept)
 {
     Sys_FD *fd = H2D(Sys_FD *, heap);
     USED(swept);
-    if (fd->fd >= 0 && fd->fd < 32)
+    if (fd->fd >= 3 && fd->fd < 32)
     {
         kclose(fd->fd);
     }
@@ -385,28 +387,53 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
 
 
 /* Open module input through the shared FlashVM file implementation. */
-int kopen(char *path, int mode)
+static int open_file(const char *path, const char *mode)
 {
     int index;
+    for (index = 3; index < 32; index++)
+    {
+        if (!files[index])
+        {
+            if (fvm_port_file_open(path, mode, &files[index]) == FVM_OK)
+            {
+                return index;
+            }
+            kwerrstr("cannot open file: %s", path);
+            return -1;
+        }
+    }
+    kwerrstr("file handle quota exceeded");
+    return -1;
+}
+
+
+/* Open read-only module input; the full VM word is checked before this native call. */
+int kopen(char *path, int mode)
+{
     if (mode != OREAD)
     {
         kwerrstr("unsupported file open mode");
         return -1;
     }
-    for (index = 0; index < 32; index++)
     {
-        if (!files[index])
+        char resolved[4096];
+        size_t base;
+        size_t length = strlen(path);
+        if (path[0] == '/')
         {
-            if (fvm_port_file_open(path, "r", &files[index]) == FVM_OK)
-            {
-                return index;
-            }
-            kwerrstr("cannot open module file: %s", path);
+            return open_file(path, "r");
+        }
+        base = strlen(module_directory);
+        if (base + length + 2 > sizeof(resolved))
+        {
+            kwerrstr("module resource path is too long");
             return -1;
         }
+        memcpy(resolved, module_directory, base);
+        resolved[base] = '/';
+        memcpy(resolved + base + 1, path, length + 1);
+        return open_file(resolved, "r");
     }
-    kwerrstr("module file handle quota exceeded");
-    return -1;
 }
 
 
@@ -515,6 +542,41 @@ static Prog *start_module(Module *module)
 }
 
 
+/* Bind relative imports to the entry module's directory without changing caller cwd.
+ * path is borrowed argv storage. Returns its basename for the initial logical module load. */
+static char *entry_resource(char *path)
+{
+    char *separator = strrchr(path, '/');
+    size_t length;
+    if (strlen(path) >= 4096)
+    {
+        error("entry module path is too long");
+    }
+    if (!separator)
+    {
+        module_directory = strdup(".");
+        if (!module_directory)
+        {
+            error(exNomem);
+        }
+        return path;
+    }
+    length = separator - path;
+    if (!length)
+    {
+        length = 1;
+    }
+    module_directory = malloc(length + 1);
+    if (!module_directory)
+    {
+        error(exNomem);
+    }
+    memcpy(module_directory, path, length);
+    module_directory[length] = 0;
+    return separator + 1;
+}
+
+
 /* Execute a bounded experimental application using real decoding, JIT and channels.
  * argc/argv select the NC64 module and runtime options. Returns zero on completion,
  * one for execution/input failure, or two for an invalid command/ABI configuration. */
@@ -524,7 +586,6 @@ int main(int argc, char **argv)
     Module *module;
     Prog *process;
     Prog **slot;
-    unsigned long slices = 0;
     cflag = 1;
     while (argc > 1 && argv[1][0] == '-')
     {
@@ -546,7 +607,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.1.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.1.1: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
@@ -590,7 +651,7 @@ int main(int argc, char **argv)
     arena_init();
     opinit();
     sysmodinit();
-    module = load(argv[1]);
+    module = load(entry_resource(argv[1]));
     if (!module)
     {
         error(failure);
@@ -598,7 +659,7 @@ int main(int argc, char **argv)
     start_module(module);
     while (ready)
     {
-        if (++slices > 100000)
+        if (++execution_slices > 100000)
         {
             error("execution budget exceeded");
         }
@@ -717,6 +778,42 @@ ulong msize(void *value)
 }
 
 
+/* Validate language path contents before converting to a native NUL-terminated name.
+ * name is borrowed; returns the UTF-8 path or NULL with a visible error. */
+static char *file_path(String *name)
+{
+    int index;
+    if (name == H || name == nil)
+    {
+        error(exNilref);
+    }
+    if (name->len == (-0x7fffffff - 1))
+    {
+        error(exBounds);
+    }
+    if (name->len >= 0)
+    {
+        if (memchr(name->Sascii, 0, name->len))
+        {
+            kwerrstr("file paths cannot contain NUL");
+            return nil;
+        }
+    }
+    else
+    {
+        for (index = 0; index < -name->len; index++)
+        {
+            if (name->Srune[index] == 0)
+            {
+                kwerrstr("file paths cannot contain NUL");
+                return nil;
+            }
+        }
+    }
+    return string2c(name);
+}
+
+
 /* Open ordinary read-only input, or the explicitly enabled isolated-test control node. */
 void Sys_open(void *frame)
 {
@@ -724,11 +821,20 @@ void Sys_open(void *frame)
     Sys_FD *old;
     Sys_FD *result;
     int descriptor;
+    char *path = file_path(call->s);
+    if (!path)
+    {
+        Sys_FD *empty = H;
+        memmove(&old, call->ret, sizeof(old));
+        memmove(call->ret, &empty, sizeof(empty));
+        destroy(old);
+        return;
+    }
     if (call->s == H)
     {
         error(exNilref);
     }
-    if (test_control && strcmp(string2c(call->s), "/dev/sysctl") == 0 && call->mode == 1)
+    if (test_control && strcmp(path, "/dev/sysctl") == 0 && call->mode == 1)
     {
         descriptor = -2;
     }
@@ -737,7 +843,7 @@ void Sys_open(void *frame)
         descriptor = -1;
         if (call->mode == OREAD)
         {
-            descriptor = kopen(string2c(call->s), OREAD);
+            descriptor = open_file(path, "r");
         }
         else
         {
@@ -756,7 +862,11 @@ void Sys_open(void *frame)
 }
 
 
-/* Consume only the isolated test halt command; ordinary write services remain unavailable. */
+/* Validate one live native descriptor/byte-array request; input storage stays caller-owned. */
+static int io_span(Sys_FD *descriptor, Array *bytes, WORD count);
+
+
+/* Write to actual native files/standard output, or consume the explicit test halt capability. */
 void Sys_write(void *frame)
 {
     F_Sys_write *call = frame;
@@ -770,7 +880,34 @@ void Sys_write(void *frame)
         }
         exit(0);
     }
-    error("unsupported native host service: Sys_write");
+    {
+        WORD result = 0;
+        int count;
+        size_t written;
+        if (call->buf != H && call->n >= 0)
+        {
+            count = io_span(call->fd, call->buf, call->n);
+            if (count < 0)
+            {
+                result = -1;
+            }
+            else if (call->fd->fd == 1 || call->fd->fd == 2)
+            {
+                result = fvm_port_stdio_write((int)call->fd->fd, call->buf->data, count, &written) == FVM_OK
+                             ? (WORD)written
+                             : -1;
+            }
+            else if (call->fd->fd >= 3 && files[call->fd->fd])
+            {
+                result = fvm_port_file_write(files[call->fd->fd], call->buf->data, count) == FVM_OK ? count : -1;
+            }
+            else
+            {
+                result = -1;
+            }
+        }
+        memmove(call->ret, &result, sizeof(result));
+    }
 }
 
 
@@ -786,10 +923,10 @@ int dvm_runtime_leaf(Jit *jit, int operation, REG *registers)
 }
 
 
-/* Validate a typed byte-array read and keep its native count within the C port range.
+/* Validate a typed byte-array I/O and keep its native count within the C port range.
  * descriptor/bytes borrow a live FD and mutable array; count is clamped to its extent.
  * Returns the bounded byte count, or -1 for invalid array metadata. */
-static int read_span(Sys_FD *descriptor, Array *bytes, WORD count)
+static int io_span(Sys_FD *descriptor, Array *bytes, WORD count)
 {
     if (descriptor == H || descriptor == nil || D2H(descriptor)->t != TFD)
     {
@@ -820,11 +957,27 @@ void Sys_read(void *frame)
 {
     F_Sys_read *call = frame;
     int count;
+    size_t received;
     WORD result = 0;
     if (call->buf != H && call->n >= 0)
     {
-        count = read_span(call->fd, call->buf, call->n);
-        result = count < 0 ? -1 : count == 0 ? 0 : kread(call->fd->fd, call->buf->data, count);
+        count = io_span(call->fd, call->buf, call->n);
+        if (count < 0)
+        {
+            result = -1;
+        }
+        else if (call->fd->fd == 0)
+        {
+            result = fvm_port_stdio_read(0, call->buf->data, count, &received) == FVM_OK ? (WORD)received : -1;
+            if (result > 0)
+            {
+                execution_slices = 0;
+            }
+        }
+        else
+        {
+            result = count == 0 ? 0 : kread(call->fd->fd, call->buf->data, count);
+        }
     }
     memmove(call->ret, &result, sizeof(result));
 }
@@ -838,12 +991,13 @@ void Sys_readn(void *frame)
     int count;
     WORD result = 0;
     long fragment;
+    size_t received;
     if (call->buf == H || call->n < 0)
     {
         memmove(call->ret, &result, sizeof(result));
         return;
     }
-    count = read_span(call->fd, call->buf, call->n);
+    count = io_span(call->fd, call->buf, call->n);
     if (count < 0)
     {
         result = -1;
@@ -852,7 +1006,20 @@ void Sys_readn(void *frame)
     }
     while (result < count)
     {
-        fragment = kread(call->fd->fd, call->buf->data + result, count - result);
+        if (call->fd->fd == 0)
+        {
+            fragment = fvm_port_stdio_read(0, call->buf->data + result, count - result, &received) == FVM_OK
+                           ? (long)received
+                           : -1;
+            if (fragment > 0)
+            {
+                execution_slices = 0;
+            }
+        }
+        else
+        {
+            fragment = kread(call->fd->fd, call->buf->data + result, count - result);
+        }
         if (fragment <= 0)
         {
             if (!result)
@@ -864,4 +1031,72 @@ void Sys_readn(void *frame)
         result += fragment;
     }
     memmove(call->ret, &result, sizeof(result));
+}
+
+
+/* Publish a new descriptor while preserving the previous result owner until construction completes. */
+static void publish_descriptor(void *slot, Sys_FD *result)
+{
+    Sys_FD *old;
+    memmove(&old, slot, sizeof(old));
+    memmove(slot, &result, sizeof(result));
+    destroy(old);
+}
+
+
+/* Borrow standard descriptors 0/1/2 without taking ownership of their OS handles. */
+void Sys_fildes(void *frame)
+{
+    F_Sys_fildes *call = frame;
+    Sys_FD *result = H;
+    if (call->fd >= 0 && call->fd <= 2)
+    {
+        result = H2D(Sys_FD *, heapz(TFD));
+        result->fd = call->fd;
+    }
+    else
+    {
+        kwerrstr("only standard descriptors 0, 1 and 2 can be borrowed");
+    }
+    publish_descriptor(call->ret, result);
+}
+
+
+/* Create/truncate a file only after validating flags and allocating its result owner.
+ * The supported permission value is 0666 filtered by the platform umask. */
+void Sys_create(void *frame)
+{
+    F_Sys_create *call = frame;
+    Sys_FD *result = H;
+    int descriptor;
+    char *path = file_path(call->s);
+    if (!path)
+    {
+        publish_descriptor(call->ret, H);
+        return;
+    }
+    if (call->s == H || call->s == nil)
+    {
+        error(exNilref);
+    }
+    if (call->mode == 1 && call->perm == 0666)
+    {
+        result = H2D(Sys_FD *, heapz(TFD));
+        result->fd = -1;
+        descriptor = open_file(path, "w");
+        if (descriptor < 0)
+        {
+            destroy(result);
+            result = H;
+        }
+        else
+        {
+            result->fd = descriptor;
+        }
+    }
+    else
+    {
+        kwerrstr("create supports OWRITE and permission 0666 only");
+    }
+    publish_descriptor(call->ret, result);
 }

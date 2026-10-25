@@ -41,6 +41,11 @@ def main():
         for name, source, diagnostic in [
             ("read", read_source, None),
             (
+                "stdio",
+                'implement Probe; include "sys.m"; Probe: module { init: fn(); }; init() { s := load Sys Sys->PATH; f := s->fildes(1); if (f == nil || f.fd != 1) raise "fail: stdout descriptor"; b := array of byte "PASS native Sys standard output\\n"; if (s->write(f, b, len b) != len b) raise "fail: stdout write"; }',
+                None,
+            ),
+            (
                 "blocked",
                 "implement Probe; Probe: module { init: fn(); }; init() { c := chan of int; x := <-c; }",
                 "deadlock",

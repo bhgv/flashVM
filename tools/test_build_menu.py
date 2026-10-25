@@ -218,15 +218,22 @@ class MenuTests(unittest.TestCase):
             prefix = Path(temporary)
             (prefix / "disvm-runtime").mkdir()
             (prefix / "run-checks.sh").write_text("#!/bin/sh\nexit 0\n")
-            (prefix / "disvm-runtime/run-ide.sh").write_text("#!/bin/sh\nexit 0\n")
+            (prefix / "disvm-runtime/run-editor.sh").write_text("#!/bin/sh\nexit 0\n")
             args = menu.argparse.Namespace(out=temporary, no_install=False)
             with contextlib.redirect_stdout(io.StringIO()), patch(
                 "builtins.input", return_value="5"
             ), patch.object(menu.subprocess, "call", return_value=0) as run:
                 self.assertEqual(menu.show_products(args, "/bin/bash", True), 0)
             self.assertEqual(
-                run.call_args[0][0], ["/bin/bash", str(prefix / "disvm-runtime/run-ide.sh")]
+                run.call_args[0][0], ["/bin/bash", str(prefix / "disvm-runtime/run-editor.sh")]
             )
+
+    def test_backend_number_six_is_not_a_launch_menu_choice(self):
+        """The six post-build actions must not extend the separate five-engine selector."""
+        with contextlib.redirect_stdout(io.StringIO()), patch(
+            "builtins.input", side_effect=["6", ""]
+        ):
+            self.assertEqual(menu.choose_backend(), "auto")
 
     def test_missing_override_is_reported(self):
         """An invalid CMAKE override is not displayed as a detected system CMake."""

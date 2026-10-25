@@ -299,6 +299,8 @@ EOF
             done
             copy_file "$ROOT/disVM/runtime/run-console.sh" "$destination/run-console.sh" 755
             copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
+            copy_tree "$ROOT/ide/dis/examples/editor-console" "$destination/examples/editor-console"
             copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
@@ -465,6 +467,8 @@ cat >"$OUT/README-RUN.txt" <<'GUIDE'
 Run ./run-checks.sh for installed FlashVM/Dis native checks.
 Run ./run-checks.sh --window for the actual window, input and sound demo.
 The graphical player accepts --frames N, --mute, --stats and --no-jit.
+Interactive Dis editor: sh disvm-runtime/run-editor.sh (or menu item 5).
 Each selected component has its own README, examples and actual products.
-Dis/JIT checks are native diagnostics; a general Dis/IDE executable host is pending.
+Core Dis/JIT diagnostics are separate from the experimental NC64 application runtime.
+The terminal IDE runs in disvm-runtime; graphical-editor integration remains in progress.
 GUIDE
