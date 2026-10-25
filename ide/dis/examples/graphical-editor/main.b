@@ -175,6 +175,8 @@ init()
         raise "fail: graphical editor channel registration"; # Never continue without a receiver.
     }
     window := viewport->create(); # The Dis controller exclusively owns its viewport.
+    width := 960; # Initial canvas pixel width, subsequently admitted through Resize.
+    height := 640; # Initial canvas pixel height; source policy never owns native storage.
     fontsize := 11; # Default size belongs to Dis policy, not native document logic.
     window.rows = host->rows(); # Admit actual font geometry for the initial viewport.
     state.page = window.rows; # Page navigation and visible logical lines use the same units.
@@ -189,6 +191,12 @@ init()
         if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
             raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
         }
+        canvas := ref Uibridge->Message(codec->View, 0, host->Canvas, reply.revision, width, height, "");
+        (canvasok, canvaswire) := codec->encode(canvas); # Publish only copied pixel dimensions.
+        if (!canvasok) {
+            raise "fail: graphical editor canvas";
+        }
+        output <-= canvaswire; # Admit native allocation before its matching font/row geometry.
         style := ref Uibridge->Message(codec->View, 0, host->Style, reply.revision, fontsize, window.rows, ""); # Publish Dis-owned font/row policy.
         (styleok, stylewire) := codec->encode(style); # Style is a value, never a TextField pointer.
         if (!styleok) { # Invalid style must fail visibly before the following snapshot.
@@ -232,6 +240,26 @@ init()
             raise "fail: graphical editor input"; # The native host reports failure.
         }
         reveal = 0; # Wheel/modifier events must not snap the viewport back to the caret.
+        if (event.kind == codec->Request && event.code == host->Resize) {
+            metadata := array of byte event.text; # Exactly two canonical words, never a pointer/struct.
+            (known, seen) := codec->parseword(metadata, 0);
+            (measured, rows) := codec->parseword(metadata, 8);
+            if (!known || !measured || len metadata != 16 || seen != ticket || event.flags != reply.revision) {
+                reply.status = core->Conflict; # Retain canvas and source when geometry is stale/malformed.
+            } else if (event.first < 240 || event.first > 2048 || event.second < 160 || event.second > 2048
+                       || rows < 1 || rows > 128) {
+                reply.status = core->RangeError; # Never allocate an unbounded native surface.
+            } else {
+                width = event.first;
+                height = event.second;
+                window.rows = rows; # The native metric is a bounded proposal admitted on Dis.
+                state.page = rows;
+                dragging = 0; # The old pixel gesture cannot continue across a changed canvas.
+                reply.status = core->Ok; # Document/history/saved state do not change.
+                reveal = 1;
+            }
+            continue; # Resize works inside a prompt without becoming source input.
+        }
         if (event.kind == codec->Request && event.code == host->Zoom) { # Wheel/pinch changes are still requests to Dis.
             expected := array of byte event.text; # Bind geometry to the exact completed view.
             (known, seen) := codec->parseword(expected, 0); # Ticket changes even without a content edit.

@@ -13,26 +13,34 @@
 #include <SDL.h>
 #endif
 
-#define EDITOR_WIDTH 960U              /* Fixed initial viewport width in pixels. */
-#define EDITOR_HEIGHT 640U             /* Fixed initial viewport height in pixels. */
-#define EDITOR_SOURCE_MAX 4194304U     /* Maximum assembled UTF-8 document snapshot. */
-#define EDITOR_VIEW_BYTES 4096U        /* Bounded first-page TextField preview. */
-#define EDITOR_REPLY_META 56U          /* Seven canonical eight-character hexadecimal words. */
-#define EDITOR_SELECTION 65536UL       /* Dis selection notification code. */
-#define EDITOR_ZOOM 65547UL            /* Dis-admitted font-size step proposal. */
-#define EDITOR_STYLE 65548UL           /* Complete-view font-size and row geometry. */
-#define EDITOR_PINCH 65550UL           /* Normalized two-finger pinch input code. */
-#define EDITOR_LEADING 2.0             /* Explicit TextFormat leading shared by all editor geometry. */
-#define EDITOR_FONT_MIN 6              /* Bounded minimum editor pixel size. */
-#define EDITOR_FONT_MAX 48             /* Bounded maximum editor pixel size. */
-#define EDITOR_PINCH_THRESHOLD 0.015   /* Normalized SDL distance change per admitted zoom step. */
-#define EDITOR_PANEL 65543UL           /* Dis-owned prompt mode, selection and counted field text. */
-#define EDITOR_VIEWPORT 65540UL        /* Dis-owned Unicode window and monotonic view ticket. */
-#define EDITOR_SCROLL 65541UL          /* Ticket/revision-bound logical scroll request. */
-#define EDITOR_PLACE 65542UL           /* Ticket/revision-bound glyph hit proposal. */
-#define EDITOR_QUIT 65539UL            /* Dis controller's dirty-checked close operation. */
+#define EDITOR_WIDTH 960U                          /* Initial viewport width in pixels. */
+#define EDITOR_HEIGHT 640U                         /* Initial viewport height in pixels. */
+#define EDITOR_SOURCE_MAX 4194304U                 /* Maximum assembled UTF-8 document snapshot. */
+#define EDITOR_VIEW_BYTES 4096U                    /* Bounded first-page TextField preview. */
+#define EDITOR_REPLY_META 56U                      /* Seven canonical eight-character hexadecimal words. */
+#define EDITOR_SELECTION 65536UL                   /* Dis selection notification code. */
+#define EDITOR_ZOOM 65547UL                        /* Dis-admitted font-size step proposal. */
+#define EDITOR_STYLE 65548UL                       /* Complete-view font-size and row geometry. */
+#define EDITOR_PINCH 65550UL                       /* Normalized two-finger pinch input code. */
+#define EDITOR_LEADING 2.0                         /* Explicit TextFormat leading shared by all editor geometry. */
+#define EDITOR_FONT_MIN 6                          /* Bounded minimum editor pixel size. */
+#define EDITOR_FONT_MAX 48                         /* Bounded maximum editor pixel size. */
+#define EDITOR_PINCH_THRESHOLD 0.015               /* Normalized SDL distance change per admitted zoom step. */
+#define EDITOR_PANEL 65543UL                       /* Dis-owned prompt mode, selection and counted field text. */
+#define EDITOR_VIEWPORT 65540UL                    /* Dis-owned Unicode window and monotonic view ticket. */
+#define EDITOR_SCROLL 65541UL                      /* Ticket/revision-bound logical scroll request. */
+#define EDITOR_PLACE 65542UL                       /* Ticket/revision-bound glyph hit proposal. */
+#define EDITOR_RESIZE 65552UL                      /* Raw/checked width-height proposal, bound to the completed view. */
+#define EDITOR_CANVAS 65553UL                      /* Dis-admitted pixel extent before Style and snapshot frames. */
+#define EDITOR_WIDTH_MIN 240U                      /* Bounded minimum native surface width. */
+#define EDITOR_HEIGHT_MIN 160U                     /* Bounded minimum native surface height. */
+#define EDITOR_EXTENT_MAX 2048U                    /* Bound each dimension and the RGBA allocation to 16 MiB. */
+#define EDITOR_QUIT 65539UL                        /* Dis controller's dirty-checked close operation. */
 
-static const char *font_path;          /* Borrowed explicit TTF/OpenType command-line path. */
+static unsigned int canvas_width = EDITOR_WIDTH;   /* Last Dis-admitted raster/field width in pixels. */
+static unsigned int canvas_height = EDITOR_HEIGHT; /* Last Dis-admitted raster/field height in pixels. */
+static unsigned long canvas_revision;              /* Expected document revision for the pending canvas. */
+static const char *font_path;                      /* Borrowed explicit TTF/OpenType command-line path. */
 static char *default_font_path;        /* Owned relocatable sibling resource path, unless --font overrides. */
 static unsigned char *font_bytes;      /* Owned immutable face bytes for future actual size changes. */
 static size_t font_byte_count;         /* Active font byte extent, bounded during admission. */
@@ -220,7 +228,7 @@ int dvm_editor_rows(void)
     {
         return 1;
     }
-    rows = (int)floor((EDITOR_HEIGHT - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
+    rows = (int)floor((canvas_height - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
     if (rows < 1)
     {
         rows = 1;
@@ -234,13 +242,13 @@ int dvm_editor_rows(void)
 
 
 /* Measure a proposed face size without changing the current view or either VM state.
- * size is bounded 6..48; returns actual row capacity or zero on a font failure. */
-static int rows_for_size(int size)
+ * size is bounded 6..48; height is admitted 160..2048 pixels. Returns row capacity or zero on failure. */
+static int rows_for_canvas(int size, unsigned int height)
 {
     FVM_Font *font = 0;
     FVM_FontMetrics metrics;
     int rows;
-    if (size == font_size)
+    if (size == font_size && height == canvas_height)
     {
         return dvm_editor_rows();
     }
@@ -254,7 +262,7 @@ static int rows_for_size(int size)
         fvm_font_destroy(font);
         return 0;
     }
-    rows = (int)floor((EDITOR_HEIGHT - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
+    rows = (int)floor((height - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
     fvm_font_destroy(font);
     if (rows < 1)
     {
@@ -265,6 +273,84 @@ static int rows_for_size(int size)
         rows = 128;
     }
     return rows;
+}
+
+
+/* Admit a bounded Dis-selected surface with fresh storage before retiring the old one.
+ * width/height are copied pixels. Returns zero on allocation/field/SDL failure; no document access.
+ * A field failure is terminal to this view; successful allocation ownership changes only here. */
+static int apply_canvas(unsigned int width, unsigned int height)
+{
+    unsigned char *candidate;
+    FVM_Value value;
+    FVM_Result result;
+#ifdef DVM_EDITOR_SDL
+    SDL_Texture *replacement = 0;
+#endif
+    if (width < EDITOR_WIDTH_MIN || height < EDITOR_HEIGHT_MIN || width > EDITOR_EXTENT_MAX ||
+        height > EDITOR_EXTENT_MAX)
+    {
+        return 0;
+    }
+    if (width == canvas_width && height == canvas_height)
+    {
+        return 1;
+    }
+    candidate = malloc((size_t)width * height * 4U);
+    if (!candidate)
+    {
+        return 0;
+    }
+#ifdef DVM_EDITOR_SDL
+    if (renderer)
+    {
+        replacement = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, width, height);
+        if (!replacement)
+        {
+            free(candidate);
+            return 0;
+        }
+    }
+#endif
+    fvm_value_number(&value, width);
+    result = fvm_object_set(context, field, "_width", &value);
+    if (result == FVM_OK)
+    {
+        fvm_value_number(&value, height);
+        result = fvm_object_set(context, field, "_height", &value);
+    }
+    if (result == FVM_OK)
+    {
+        fvm_value_number(&value, width - 16);
+        result = fvm_object_set(context, panel_field, "_width", &value);
+    }
+    if (result != FVM_OK)
+    {
+#ifdef DVM_EDITOR_SDL
+        if (replacement)
+        {
+            SDL_DestroyTexture(replacement);
+        }
+#endif
+        free(candidate);
+        return 0;
+    }
+#ifdef DVM_EDITOR_SDL
+    if (texture)
+    {
+        SDL_DestroyTexture(texture);
+    }
+    texture = replacement;
+    if (window)
+    {
+        SDL_SetWindowSize(window, width, height);
+    }
+#endif
+    free(pixels);
+    pixels = candidate;
+    canvas_width = width;
+    canvas_height = height;
+    return 1;
 }
 
 
@@ -382,9 +468,9 @@ int dvm_editor_create(void)
     {
         result = fvm_font_read(bytes, (size_t)size, 0, font_size, &layout_font);
     }
-    if (result != FVM_OK || fvm_textfield_create(context, "Editor", EDITOR_WIDTH, EDITOR_HEIGHT, &field) != FVM_OK ||
+    if (result != FVM_OK || fvm_textfield_create(context, "Editor", canvas_width, canvas_height, &field) != FVM_OK ||
         fvm_gc_pin(context, field) != FVM_OK ||
-        fvm_textfield_create(context, "Editor", EDITOR_WIDTH - 16, 44, &panel_field) != FVM_OK ||
+        fvm_textfield_create(context, "Editor", canvas_width - 16, 44, &panel_field) != FVM_OK ||
         fvm_gc_pin(context, panel_field) != FVM_OK)
     {
         fprintf(stderr, "editor FlashVM/font initialization failed\n");
@@ -437,7 +523,7 @@ int dvm_editor_create(void)
     {
         return 0;
     }
-    pixels = malloc(EDITOR_WIDTH * EDITOR_HEIGHT * 4U);
+    pixels = malloc(canvas_width * canvas_height * 4U);
     snapshot = malloc(EDITOR_SOURCE_MAX + 1U);
     if (!pixels || !snapshot)
     {
@@ -459,12 +545,21 @@ int dvm_editor_create(void)
             fprintf(stderr, "SDL: %s\n", SDL_GetError());
             return 0;
         }
-        window = SDL_CreateWindow(
-            "FlashVM / Dis IDE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, EDITOR_WIDTH, EDITOR_HEIGHT, 0);
+        window = SDL_CreateWindow("FlashVM / Dis IDE",
+                                  SDL_WINDOWPOS_CENTERED,
+                                  SDL_WINDOWPOS_CENTERED,
+                                  canvas_width,
+                                  canvas_height,
+                                  SDL_WINDOW_RESIZABLE);
+        if (window)
+        {
+            SDL_SetWindowMinimumSize(window, EDITOR_WIDTH_MIN, EDITOR_HEIGHT_MIN);
+            SDL_SetWindowMaximumSize(window, EDITOR_EXTENT_MAX, EDITOR_EXTENT_MAX);
+        }
         renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE) : 0;
         texture = renderer
                       ? SDL_CreateTexture(
-                            renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, EDITOR_WIDTH, EDITOR_HEIGHT)
+                            renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, canvas_width, canvas_height)
                       : 0;
         if (!texture)
         {
@@ -677,9 +772,9 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
         {
             horizontal = floor(cursor_x);
         }
-        if (cursor_x - horizontal > EDITOR_WIDTH - 12)
+        if (cursor_x - horizontal > canvas_width - 12)
         {
-            horizontal = ceil(cursor_x - (EDITOR_WIDTH - 12));
+            horizontal = ceil(cursor_x - (canvas_width - 12));
         }
     }
     if (horizontal < 0)
@@ -847,8 +942,8 @@ static int render_panel(FVM_RasterSurface *surface)
     }
     if (!rectangle(surface,
                    0,
-                   EDITOR_HEIGHT - height,
-                   EDITOR_WIDTH,
+                   canvas_height - height,
+                   canvas_width,
                    height,
                    panel_mode && panel_selected ? active : background))
     {
@@ -875,7 +970,7 @@ static int render_panel(FVM_RasterSurface *surface)
     placement.xx = 1;
     placement.yy = 1;
     placement.x0 = 8;
-    placement.y0 = EDITOR_HEIGHT - height + 6;
+    placement.y0 = canvas_height - height + 6;
     result = fvm_textfield_path(context, panel_field, &path);
     if (result == FVM_OK)
     {
@@ -914,11 +1009,11 @@ static int render(void)
     {
         return 0;
     }
-    memset(pixels, 255, EDITOR_WIDTH * EDITOR_HEIGHT * 4U);
+    memset(pixels, 255, canvas_width * canvas_height * 4U);
     surface.pixels = pixels;
-    surface.width = EDITOR_WIDTH;
-    surface.height = EDITOR_HEIGHT;
-    surface.stride = EDITOR_WIDTH * 4U;
+    surface.width = canvas_width;
+    surface.height = canvas_height;
+    surface.stride = canvas_width * 4U;
     if (!selection_geometry(&surface, shown))
     {
         return 0;
@@ -951,7 +1046,7 @@ static int render(void)
                  view_top + 1,
                  view_first != 0 || view_last != (long)view_total ? " | bounded window" : "");
         SDL_SetWindowTitle(window, title);
-        if (SDL_UpdateTexture(texture, 0, pixels, EDITOR_WIDTH * 4U) || SDL_RenderClear(renderer) ||
+        if (SDL_UpdateTexture(texture, 0, pixels, canvas_width * 4U) || SDL_RenderClear(renderer) ||
             SDL_RenderCopy(renderer, texture, 0, 0))
         {
             return 0;
@@ -968,11 +1063,11 @@ static int render(void)
         {
             return 0;
         }
-        if (fprintf(capture, "P6\n%u %u\n255\n", EDITOR_WIDTH, EDITOR_HEIGHT) < 0)
+        if (fprintf(capture, "P6\n%u %u\n255\n", canvas_width, canvas_height) < 0)
         {
             failed = 1;
         }
-        for (index = 0; index < EDITOR_WIDTH * EDITOR_HEIGHT && !failed; index++)
+        for (index = 0; index < canvas_width * canvas_height && !failed; index++)
         {
             if (fwrite(pixels + index * 4, 1, 3, capture) != 3)
             {
@@ -1002,11 +1097,22 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code == EDITOR_CANVAS)
+    {
+        if (assembling || message->first < EDITOR_WIDTH_MIN || message->second < EDITOR_HEIGHT_MIN ||
+            message->first > EDITOR_EXTENT_MAX || message->second > EDITOR_EXTENT_MAX || message->size ||
+            !apply_canvas((unsigned int)message->first, (unsigned int)message->second))
+        {
+            return 0;
+        }
+        canvas_revision = message->flags;
+        return 1;
+    }
     if (message->code == EDITOR_STYLE)
     {
-        if (assembling || message->size || message->first < EDITOR_FONT_MIN || message->first > EDITOR_FONT_MAX ||
-            message->second < 1 || message->second > 128 || !apply_font_size((int)message->first) ||
-            message->second != dvm_editor_rows())
+        if (assembling || message->flags != canvas_revision || message->size || message->first < EDITOR_FONT_MIN ||
+            message->first > EDITOR_FONT_MAX || message->second < 1 || message->second > 128 ||
+            !apply_font_size((int)message->first) || message->second != dvm_editor_rows())
         {
             return 0;
         }
@@ -1058,7 +1164,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
         snapshot[extent] = 0;
         if (fvm_utf8_validate(snapshot, extent, &scalars) != FVM_UTF8_OK || (unsigned long)message->first > scalars ||
             (unsigned long)message->second > scalars || scalars != view_total || revision != view_revision ||
-            !view_ticket)
+            revision != canvas_revision || revision != style_revision || revision != panel_revision || !view_ticket)
         {
             return 0;
         }
@@ -1081,6 +1187,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
             putchar('\n');
             printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
             printf("STYLE %d %d\n", font_size, dvm_editor_rows());
+            printf("CANVAS %u %u\n", canvas_width, canvas_height);
             printf("PANEL %lu %d ", panel_mode, panel_selected);
             for (index = 0; index < panel_size; index++)
             {
@@ -1137,7 +1244,7 @@ static long hit_position(double x, double y)
     {
         return -1;
     }
-    if (x < 0 || y < 0 || y >= EDITOR_HEIGHT - panel_height(line_step(&font)))
+    if (x < 0 || y < 0 || y >= canvas_height - panel_height(line_step(&font)))
     {
         return -1;
     }
@@ -1199,6 +1306,23 @@ static void resolve_pointer(DVM_UIMessage *message)
     {
         return;
     }
+    if (message->code == EDITOR_RESIZE)
+    {
+        int rows = 0;
+        char metadata[17];
+        if (message->first >= EDITOR_WIDTH_MIN && message->first <= EDITOR_EXTENT_MAX &&
+            message->second >= EDITOR_HEIGHT_MIN && message->second <= EDITOR_EXTENT_MAX)
+        {
+            rows = rows_for_canvas(font_size, (unsigned int)message->second);
+        }
+        message->kind = DVM_UI_REQUEST;
+        message->id = 1;
+        message->flags = view_revision;
+        message->size = 16;
+        snprintf(metadata, sizeof(metadata), "%08lx%08x", view_ticket, (unsigned int)rows);
+        memcpy(message->text, metadata, 16);
+        return;
+    }
     {
         FVM_KeyboardState state;
         int wheel = message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN;
@@ -1223,7 +1347,7 @@ static void resolve_pointer(DVM_UIMessage *message)
             {
                 target = EDITOR_FONT_MAX;
             }
-            rows = rows_for_size(target);
+            rows = rows_for_canvas(target, canvas_height);
             if (!rows)
             {
                 message->first = 0;
@@ -1390,6 +1514,19 @@ int dvm_editor_event(DVM_UIMessage *message)
             message->id = 1;
             message->code = EDITOR_QUIT;
             message->flags = (SDL_GetModState() & KMOD_SHIFT) != 0;
+        }
+        else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+        {
+            if (event.window.data1 <= 0 || event.window.data2 <= 0 ||
+                (event.window.data1 == (int)canvas_width && event.window.data2 == (int)canvas_height))
+            {
+                return 0;
+            }
+            message->kind = DVM_UI_POINTER;
+            message->code = EDITOR_RESIZE;
+            message->first = event.window.data1;
+            message->second = event.window.data2;
+            pinch_distance = 0;
         }
         else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
         {

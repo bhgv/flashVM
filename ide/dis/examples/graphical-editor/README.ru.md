@@ -88,3 +88,5 @@ Noto и сравнивают настоящие растры.
 [Source editing / редактирование](../../EDITING.ru.md).
 
 [Caret geometry / геометрия каретки](../../CARET.ru.md).
+
+[Canvas resize / размер окна](../../RESIZE.ru.md).

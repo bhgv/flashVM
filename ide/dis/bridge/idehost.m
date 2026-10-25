@@ -21,6 +21,9 @@ Idehost: module
 
     GoTo: con 65551;      # Revision-bound one-based line/column in first/second, empty text.
 
+    Resize: con 65552;    # Request width/height in pixels; text is ticket+row-capacity hex, flags=revision.
+    Canvas: con 65553;    # View admitted width 240..2048 and height 160..2048 before Style.
+
     # Actual initial font geometry, returned as a bounded copied value without document access.
     rows: fn(): int;
 

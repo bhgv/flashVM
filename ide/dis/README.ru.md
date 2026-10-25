@@ -128,3 +128,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Source editing / редактирование](EDITING.ru.md).
 
 [Caret geometry / геометрия каретки](CARET.ru.md).
+
+[Canvas resize / размер окна](RESIZE.ru.md).

@@ -107,3 +107,5 @@ Synchronous I/O may block the sole native owner.
 [Source editing / редактирование](../../EDITING.md).
 
 [Caret geometry / геометрия каретки](../../CARET.md).
+
+[Canvas resize / размер окна](../../RESIZE.md).
