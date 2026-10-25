@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1579**. [Русская версия](README.ru.md).
+Development version: **0.1580**. [Русская версия](README.ru.md).
 
-Current series: [v0.1570–v0.1573](docs/releases/v0.1573.md) adds our direct C99 FIR→Dis i32 backend and DisVM scalar inspection, integrates Inferno FRAME/MFRAME, and returns a confirmed fixture ABI fix upstream.
+Current series: [v0.1574–v0.1580](docs/releases/v0.1580.md) adds scalar FIR→Dis control flow, Coco/R Limbo terminal decisions, precise DisVM instruction quotas and updated Inferno call/return/ownership support.
 
 ## Browse documentation
 
