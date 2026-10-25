@@ -71,15 +71,17 @@ Type *TFD;                                /* Descriptor owner for supported modu
 Type *TFileIO;                            /* Unavailable file-to-channel host type. */
 unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
-unsigned long dvm_runtime_instruction_limit; /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
-static int instruction_boundary_error;  /* A budget rejection happens before fetching/advancing the current PC. */
-static int show_stats;                  /* Emit actual instruction counts on explicit request. */
-static int inspect_requested;           /* Explicit read-only post-execution module-data inspection. */
-static size_t inspect_offset;           /* Requested byte offset, aligned to the NC64 word width. */
-static size_t inspect_count;            /* Requested native words, bounded to 4096 before execution. */
-static uchar *inspect_data;             /* [GC:] Retained scalar-only entry-instance MP until report/cleanup. */
-static int test_control;                /* Explicit isolated-test halt capability; disabled for normal applications. */
-static FVM_PortFile *files[32];         /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+unsigned long
+    dvm_runtime_instruction_limit;     /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
+static int instruction_boundary_error; /* A budget rejection happens before fetching/advancing the current PC. */
+static int show_stats;                 /* Emit actual instruction counts on explicit request. */
+static int inspect_reals;       /* Interpret the explicitly requested scalar range as binary64, not native words. */
+static int inspect_requested;   /* Explicit read-only post-execution module-data inspection. */
+static size_t inspect_offset;   /* Requested byte offset, aligned to the NC64 word width. */
+static size_t inspect_count;    /* Requested native words, bounded to 4096 before execution. */
+static uchar *inspect_data;     /* [GC:] Retained scalar-only entry-instance MP until report/cleanup. */
+static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
+static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
 
 
 /* Print copied instruction/native counters only for an explicit --stats request.
@@ -175,7 +177,7 @@ static void inspect_release(void)
 }
 
 
-/* Report copied signed native words after all processes have stopped, then release the retain.
+/* Report copied signed native words or binary64 after all processes have stopped, then release the retain.
  * No Dis stack/frame address is exposed. Returns zero on output failure; never changes module data. */
 static int inspect_report(void)
 {
@@ -183,10 +185,21 @@ static int inspect_report(void)
     int ok = 1;
     for (index = 0; index < inspect_count; index++)
     {
-        int64_t value;
+        int written; /* Host output status; either view copies bytes without aliasing typed storage. */
         size_t offset = inspect_offset + index * 8U;
-        memcpy(&value, inspect_data + offset, sizeof(value));
-        if (printf("DATA %zu %" PRId64 "\n", offset, value) < 0)
+        if (inspect_reals)
+        {
+            double value; /* NC64 REAL uses the host binary64 representation admitted by this runtime. */
+            memcpy(&value, inspect_data + offset, sizeof(value));
+            written = printf("REAL %zu %.17g\n", offset, value);
+        }
+        else
+        {
+            int64_t value;
+            memcpy(&value, inspect_data + offset, sizeof(value));
+            written = printf("DATA %zu %" PRId64 "\n", offset, value);
+        }
+        if (written < 0)
         {
             ok = 0;
             break;
@@ -801,15 +814,19 @@ int main(int argc, char **argv)
             argc -= 2;
             continue;
         }
-        else if (strcmp(argv[1], "--inspect-words") == 0)
+        else if (strcmp(argv[1], "--inspect-words") == 0 || strcmp(argv[1], "--inspect-reals") == 0)
         {
             if (inspect_requested || argc < 4 || !runtime_extent(argv[2], &inspect_offset) ||
                 !runtime_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
                 inspect_offset % 8U != 0)
             {
-                fprintf(stderr, "--inspect-words requires one aligned decimal byte offset and 1..4096 words\n");
+                fprintf(
+                    stderr,
+                    "%s requires one aligned decimal byte offset and 1..4096 cells; inspection options cannot be combined\n",
+                    argv[1]);
                 return 2;
             }
+            inspect_reals = strcmp(argv[1], "--inspect-reals") == 0;
             inspect_requested = 1;
             argv += 3;
             argc -= 3;
@@ -835,7 +852,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "--help") == 0)
         {
             puts(
-                "usage: disvm [--jit|--no-jit] [--stats] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT] native-cell.dis");
+                "usage: disvm [--jit|--no-jit] [--stats] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
             puts(
                 "editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
