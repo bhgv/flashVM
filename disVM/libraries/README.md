@@ -83,3 +83,5 @@ these fixes were still absent at the checked experiment revision.
 снимки не редактируются: изменения применяются в отдельных производных файлах
 при сборке, патчи для исходного Inferno хранятся отдельно. Сборщик проверяет
 ожидаемые места изменений и останавливается при неожиданном обновлении upstream.
+
+[Sys and selected module audit / Проверка модулей](MODULE_AUDIT.md).

@@ -79,6 +79,18 @@ def main():
                        '%infinity: f64 = f64.div %a, %b\n%nan: f64 = f64.div %b, %b\n'
                        'trace %infinity\ntrace %nan\nreturn\n}\n')
         execute([-math.inf, math.nan])
+        # Mix bool and real captures in a CFG. Single-instruction real arithmetic must not
+        # disturb branch relocation or the native-word executed flags after the value area.
+        fir.write_text('FIR 1.0\nmodule @Mixed\nfunc @main() -> void {\n^entry:\n'
+                       '%condition: bool = const.bool true\n%a: f64 = const.f64 40.0\n'
+                       '%b: f64 = const.f64 2.5\ntrace %condition\nif %condition, ^yes, ^no\n'
+                       '^no:\ntrace %a\nreturn\n^yes:\n%sum: f64 = f64.add %a, %b\ntrace %sum\nreturn\n}\n')
+        invoke([compiler, 'dis', fir, binary], directory)
+        real = invoke([runtime, dispatch, '--inspect-reals', 16, 1, binary], directory)
+        words = invoke([runtime, dispatch, '--inspect-words', 0, 6, binary], directory)
+        rows = [int(row.split()[2]) for row in words.stdout.splitlines() if row.startswith('DATA ')]
+        if real.stdout != 'REAL 16 42.5\n' or len(rows) != 6 or rows[0:2] != [1, 0] or rows[3:] != [1, 0, 1]:
+            raise RuntimeError('mixed scalar CFG relocation/capture type/flag mismatch')
         # Actual existing AS3 Coco/R grammar provides binary64 arithmetic, without an Inferno emitter.
         source.write_text('trace((2.5 + 3.25) * -2.0); trace(7.5 / 2.0); trace(1.0 - 2.25);')
         invoke([source_compiler, 'as3', '--input', source, fir], directory)
