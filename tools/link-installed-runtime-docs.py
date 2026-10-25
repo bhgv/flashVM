@@ -21,9 +21,17 @@ def main():
         root
         / "disVM/examples/standard-modules/main.b": package
         / "examples/standard-modules/main.b",
+        root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
+        root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
+    for example in ("workspace", "editor-console"):
+        installed = package / "examples" / example
+        if installed.is_dir():
+            for source in (root / "ide/dis/examples" / example).iterdir():
+                if source.is_file():
+                    pairs[source] = installed / source.name
     if (package / "examples/graphical-editor").is_dir():
-        for name in ("README.md", "README.ru.md", "main.b"):
+        for name in ("README.md", "README.ru.md", "main.b", "field-demo.b"):
             pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
     clipboard_tutorial = package / "examples/graphical-editor/clipboard-demo.b"
     if clipboard_tutorial.is_file():

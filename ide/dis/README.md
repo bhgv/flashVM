@@ -141,3 +141,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Canvas resize / размер окна](RESIZE.md).
 
 [Clipboard / буфер обмена](CLIPBOARD.md).
+
+[Graphical IDE fields](FIELDS.md) use the separate Idefield policy; the original document core 0.5.0 is described above.

@@ -62,3 +62,5 @@ Dis/SWF backend и внешние C/AS/другие заготовки по `.m`
 [Контракт собственного компилятора](../compiler/limbo/OWN_COMPILER.ru.md).
 
 [Inferno mk](mk/README.ru.md) · [Inferno iyacc](iyacc/README.ru.md): selected experiment f948343b711c8300dbf76417254c18a7a8d2f5ff, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.
+
+Текущие выборки Dis и bootstrap: `bf8d88283896abf8509fedc68197795292734e6b`; проверяйте их manifest перед обновлением.

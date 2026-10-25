@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1568**. [Русская версия](README.ru.md).
+Development version: **0.1569**. [Русская версия](README.ru.md).
 
-Current series: [v0.1562–v0.1565](docs/releases/v0.1565.md) integrates Inferno Rune/Type guards and wide decimals, removes repeated path-prefix copying, and adds channel-owned Unicode Copy/Cut/Paste with one Undo.
+Current series: [v0.1566–v0.1569](docs/releases/v0.1569.md) integrates fresh Inferno native string slices and descriptor guards, adds Dis-owned Unicode fields with caret/mouse/clipboard, and verifies relocated packages.
 
 ## Browse documentation
 

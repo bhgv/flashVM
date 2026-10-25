@@ -111,3 +111,5 @@ Synchronous I/O may block the sole native owner.
 [Canvas resize / размер окна](../../RESIZE.md).
 
 [Clipboard / буфер обмена](../../CLIPBOARD.md).
+
+[Field editing, mouse and clipboard](../../FIELDS.md) · [Fully commented example](field-demo.b).

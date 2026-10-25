@@ -195,3 +195,12 @@ is a no-op and failed Cut cannot delete source. [Bilingual protocol/tutorial](..
 Ship the host, controller and ideclipboard.dis together. Ordinary replay remains
 process-local; explicit --clipboard-events tests use SDL's clipboard API under
 the selected video driver. Native file saving is a separate action.
+
+## Dis input fields, component 0.7.0
+
+The [field contract and runnable example](../../ide/dis/FIELDS.md) cover reusable
+Idefield Unicode navigation/selection, glyph-based native caret/drag proposals
+and modal clipboard ownership. All field edits remain Dis policy and preserve
+source history; Enter alone submits a document/file command. Rebuild the matched
+host, controller, idefield.dis, ideinput.dis and interfaces together.
+[Русский](../../ide/dis/FIELDS.ru.md).

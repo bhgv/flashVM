@@ -47,9 +47,13 @@ keeps normal replay deterministic while testing the actual native adapter.
 Physical desktop clipboard services and other-platform runtime ports remain
 separate acceptance work.
 
-Document clipboard shortcuts are currently inactive inside Find/Open/SaveAs/
-GoTo fields; those fields retain their existing single-line input policy.
-This is a matched component 0.6.0 host/controller/library extension. Rebuild and
+Inside an active [input field](FIELDS.md), shortcuts address its own selection.
+Copy excludes the label; Cut waits for native acknowledgement; Paste rejects
+multiline or over-256-scalar values atomically. Captured mode and field generation
+protect the transaction in addition to its document revision and ticket.
+65561 ClipboardFieldWrite copies an ordered field scalar range with the same
+revision/ticket framing as source ClipboardWrite.
+This is a matched component 0.7.0 host/controller/library extension. Rebuild and
 ship all three together. Native file saving remains a separate explicit action.
 
 The tests execute Unicode/CRLF copy, acknowledged Cut, exact 64-KiB fragmented

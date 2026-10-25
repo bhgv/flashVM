@@ -322,7 +322,6 @@ EOF
             copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
-            "${PYTHON:-python3}" "$ROOT/tools/link-installed-runtime-docs.py" "$ROOT" "$destination"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
@@ -332,6 +331,7 @@ EOF
             for file in "$ROOT/ide/dis/bridge/"*.m; do
                 copy_file "$file" "$destination/include/limbo/$(basename "$file")"
             done
+            "${PYTHON:-python3}" "$ROOT/tools/link-installed-runtime-docs.py" "$ROOT" "$destination"
             ;;
         disvm | disvm-host)
             source="$ROOT/disVM"
