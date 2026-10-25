@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1586**. [English](README.md).
+Версия разработки: **0.1587**. [English](README.md).
 
 Текущая серия: [v0.1574–v0.1580](docs/releases/v0.1580.md) — скалярный CFG в FIR→Dis, терминальные ветвления Limbo через Coco/R, точная квота инструкций DisVM и обновления вызовов, возвратов и владения из Inferno.
 

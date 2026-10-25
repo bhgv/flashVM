@@ -89,8 +89,8 @@ def main():
         real = invoke([runtime, dispatch, '--inspect-reals', 16, 1, binary], directory)
         words = invoke([runtime, dispatch, '--inspect-words', 0, 6, binary], directory)
         rows = [int(row.split()[2]) for row in words.stdout.splitlines() if row.startswith('DATA ')]
-        if real.stdout != 'REAL 16 42.5\n' or len(rows) != 6 or rows[0:2] != [1, 0] or rows[3:] != [1, 0, 1]:
-            raise RuntimeError('mixed scalar CFG relocation/capture type/flag mismatch')
+        if [line for line in real.stdout.splitlines() if line.startswith('REAL ')] != ['REAL 16 42.5'] or len(rows) != 6 or rows[0:2] != [1, 0] or rows[3:] != [1, 0, 1]:
+            raise RuntimeError('mixed scalar CFG relocation/capture type/flag mismatch: ' + repr((real.stdout, rows)))
         # Actual existing AS3 Coco/R grammar provides binary64 arithmetic, without an Inferno emitter.
         source.write_text('trace((2.5 + 3.25) * -2.0); trace(7.5 / 2.0); trace(1.0 - 2.25);')
         invoke([source_compiler, 'as3', '--input', source, fir], directory)

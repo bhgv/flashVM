@@ -320,7 +320,11 @@
     "libinterp/tests/amd64-field-registers.py",
     "libinterp/tests/call-return-native.c",
     "libinterp/tests/call-return-native.py",
-    "libinterp/tests/return-layouts.py"
+    "libinterp/tests/return-layouts.py",
+    "libinterp/tests/loader-snapshots.c",
+    "libinterp/tests/loader-snapshots.py",
+    "libinterp/tests/loader-runtime.py",
+    "libinterp/tests/README.loader-snapshots.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -440,6 +444,7 @@
     "upstream/libinterp/tests/README.goto-case-tables.md": "b294c617f5ab4f9aed68a431d93778282c598635b2b1afe63d0ceca84d6e9c56",
     "upstream/libinterp/tests/README.jit-coverage.md": "118fbb5be7081e513e03c4089653e3f4fe35e76413cc728d64b15c6024b8556e",
     "upstream/libinterp/tests/README.leaf-layout-fixture.md": "edc11f04231f9f0e888b7a8fbd0a6d8b66fbfb5cfae57d6b0f72b95693eb43d6",
+    "upstream/libinterp/tests/README.loader-snapshots.md": "8cad55f982caca8d64c94c943bbe5dd61a5d5c3650cb7d2816ed32a6dc2fee57",
     "upstream/libinterp/tests/README.mapped-copy-native.md": "3ea211af1e8aa2fc342f8beb8fb4cdb5185b38d26c32364c9bda24ba813e5b2d",
     "upstream/libinterp/tests/README.mcall-native.md": "cf23ce5a1cd4d73ae4ccbaac3b340b6d856e29c0fe52666242d20e0e3d13801a",
     "upstream/libinterp/tests/README.mframe-native.md": "2397f7b31ba8647ea3bbc995f5f20d55aa5dd58a8f0988b13a713fd26cae9cb2",
@@ -523,6 +528,9 @@
     "upstream/libinterp/tests/list-retains.py": "66d6e7f03046b275956c4325f913933bbe866f14a12206d414dbc8cbb3b64100",
     "upstream/libinterp/tests/lists.c": "d4319cda82ceed1abb3806e38e11f834475f68ffed5c1219ecfd58a9a50866ef",
     "upstream/libinterp/tests/lists.py": "26e2f2ad1c38e139bb5f687333d00c0460f325c1e36c5de58535bbc8b9da27fe",
+    "upstream/libinterp/tests/loader-runtime.py": "aeb604dfa353dbc3ad748e01d25e3a0381f7c686e41270bdbcbf166be9f949d5",
+    "upstream/libinterp/tests/loader-snapshots.c": "d653d1e8286f97638935a108737c10d370fca421c20705066cd8d9f966004334",
+    "upstream/libinterp/tests/loader-snapshots.py": "90e317392aae04acf8f2e454743ba27bbc2a5561a05bc1d39a24d45ada5ac3c1",
     "upstream/libinterp/tests/mapped-copy-jit.py": "4aa0275b71c8aaf20702c452f2fefe7f6f2a26b93c7e952af1d9285737ba5307",
     "upstream/libinterp/tests/mapped-copy-layouts.py": "5bed4945a7b93c63d5078930b9c1df5070432588089453dacdbd42fea6eb5494",
     "upstream/libinterp/tests/mapped-copy-native.c": "20c2e7cf25063921f7333a512990c0a786b1d2d1f468da1cbd3c595663dbd560",
