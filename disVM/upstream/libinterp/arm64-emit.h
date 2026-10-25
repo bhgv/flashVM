@@ -71,6 +71,30 @@ a64defer(A64Buf *b, u32int condition, int fallback)
 	a64put(b, condition | ((fallback-b->n)&0x7ffff)<<5);
 }
 
+/* Stage WORD-width VN corrections before multiplication can change operand signs. */
+static void
+a64fixedround(A64Buf *b, int alu, int wordbytes)
+{
+	int skip[3], count, sign, i;
+
+	count=0;
+	a64put(b, 0xd2800005); /* x5=correction */
+	skip[count++]=b->n; a64put(b, 0x36080001); /* tbz flags,#1 */
+	skip[count++]=b->n; a64put(b, 0xb400000c);
+	if(alu == 0){skip[count++]=b->n; a64put(b, 0xb400000e);}
+	if(alu == 1){
+		a64put(b, 0xca0f0185); a64put(b, 0x937ffca5); a64put(b, 0xb24000a5);
+	}else{
+		a64put(b, wordbytes == 4 ? 0x510005e5 : 0xd10005e5);
+		sign=b->n; a64put(b, 0xb6f80002);
+		a64put(b, wordbytes == 4 ? 0x4b0503e5 : 0xcb0503e5);
+		b->code[sign] |= (b->n-sign)<<5;
+		if(wordbytes == 4)a64put(b, 0x93407ca5);
+		a64put(b, 0xd2410042); /* reverse WN sign selection when VN is set */
+	}
+	for(i=0;i<count;i++)b->code[skip[i]] |= (b->n-skip[i])<<5;
+}
+
 /* Resolve signed representation lengths and one/four-byte character strides. */
 static void
 a64stringheader(A64Buf *b, int owner, int length, int stride, int lenoff, int dataoff, int fallback)
@@ -97,28 +121,19 @@ a64stringheader(A64Buf *b, int owner, int length, int stride, int lenoff, int da
 	b->code[done] |= b->n-done;
 }
 
-/* Turn x12/x13 bits into signed keys using x14, leaving FP state untouched. */
+/* Reject NaNs before FP execution while allowing host-controlled subnormal inputs. */
 static void
-a64realkey(A64Buf *b, int reg)
+a64realguard(A64Buf *b, int reg)
 {
-	int zero, normal, done;
+	int ordinary;
 
 	a64put(b, 0xd3400000U | 63<<16 | 62<<10 | reg<<5 | 14);
-	zero = b->n; a64put(b, 0xb400000e);
 	a64put(b, 0xd3400000U | 53<<16 | 63<<10 | 14<<5 | 14);
-	a64guard(b, 0xb500006e);
 	a64put(b, 0xf100001fU | 2047<<10 | 14<<5);
-	normal = b->n; a64put(b, 0x54000001);
+	ordinary=b->n; a64put(b, 0x54000001);
 	a64put(b, 0xd3400000U | 52<<16 | 51<<10 | reg<<5 | 14);
 	a64guard(b, 0xb400006e);
-	b->code[normal] |= (b->n-normal)<<5;
-	a64put(b, 0x93400000U | 63<<16 | 63<<10 | reg<<5 | 14);
-	a64put(b, 0xd341fdce);
-	a64put(b, 0xca000000U | 14<<16 | reg<<5 | reg);
-	done = b->n; a64put(b, 0x14000000);
-	b->code[zero] |= (b->n-zero)<<5;
-	a64put(b, 0x52800000U | reg);
-	b->code[done] |= b->n-done;
+	b->code[ordinary] |= (b->n-ordinary)<<5;
 }
 
 /* Emit AAPCS64 leaves with x0 as REG*, no stack frame and no callee-saved clobbers. */
@@ -223,9 +238,8 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		else a64put(&b, 0x91000000U | abi->fixedtmp<<10 | 9<<5 | 10);
 		a64load(&b, 13, 10, abi->wordbytes); if(abi->wordbytes == 4)a64put(&b, 0x93407dad);
 		if(p.condition){
-			/* VN rounding stays in C; WN rounding is supported for right shifts. */
-			a64put(&b, 0x924005a1); a64put(&b, 0xf100043f);
-			a64defer(&b, 0x54000008, fallback); a64put(&b, 0x9342fdad);
+			/* Decode both rounding flags and the signed scale. */
+			a64put(&b, 0x924005a1); a64put(&b, 0x9342fdad);
 		}
 		a64put(&b, 0x9100fdaa); a64put(&b, 0xf101fd5f); a64defer(&b, 0x54000002, fallback);
 		if(p.alu == 1){
@@ -237,20 +251,25 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(abi->wordbytes == 4)a64put(&b, 0x93407d8c);
 		if(p.condition)
 			a64put(&b, p.alu == 0 ? 0xca0e0182 : 0xaa0c03e2);
+		if(p.condition)a64fixedround(&b, p.alu, abi->wordbytes);
 		if(p.alu != 2)a64put(&b, 0x9b0e7d8c);
 		if(p.condition){
 			/* Add the modular mask using the original operand signs. */
-			done=b.n; a64put(&b, 0xb4000001);
+			done=b.n; a64put(&b, 0x36000001);
+			/* Preserve invalid-mask errors, but allow left shifts needing no mask. */
+			a64put(&b, 0xf100005f);
+			other=b.n; a64put(&b, p.alu == 1 ? 0x5400000c : 0x5400000a);
 			a64put(&b, 0xf10001bf); a64defer(&b, 0x5400000a, fallback);
 			a64put(&b, 0x92800003); a64put(&b, 0xcb0d03e4);
 			a64put(&b, 0x9ac42063); a64put(&b, 0xaa2303e3);
-			a64put(&b, 0xf100005f);
-			other=b.n; a64put(&b, p.alu == 1 ? 0x5400000c : 0x5400000a);
 			a64put(&b, 0x8b03018c);
 			b.code[done] |= (b.n-done)<<5; b.code[other] |= (b.n-other)<<5;
 		}
 		a64put(&b, 0xf10001bf); a64put(&b, 0x5400006b); a64put(&b, 0x9acd218c); a64put(&b, 0x14000003);
-		a64put(&b, 0xcb0d03ed); a64put(&b, 0x9acd298c); a64put(&b, 0x9acf0d8c);
+		a64put(&b, 0xcb0d03ed); a64put(&b, 0x9acd298c);
+		if(p.condition && p.alu != 1)a64put(&b, 0x8b05018c);
+		a64put(&b, 0x9acf0d8c);
+		if(p.condition && p.alu == 1)a64put(&b, 0x8b05018c);
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
 	}else if(p.kind == LeafCall){
 		/* The target may reside in either frame link about to be replaced. */
@@ -519,7 +538,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			a64put(&b, 0xeb0e01bf); a64guard(&b, 0x54000060);
 		}
 		a64put(&b, 0xd37ff98d); /* lsl x13,x12,#1 */
-		a64put(&b, 0xd2e0000eU | (p.bytes == 4 ? 0x83a0 : 0x87a0)<<5);
+		/* Shifted binary64 bounds: 2^31-0.5 or the representable value below 2^63. */
+		a64put(&b, 0xd2e0000eU | (p.bytes == 4 ? 0x83bf : 0x87bf)<<5);
+		a64put(&b, 0xf2c0000eU | 0xffff<<5);
+		a64put(&b, 0xf2a0000eU | (p.bytes == 4 ? 0xffc0 : 0xffff)<<5);
+		a64put(&b, 0xf280000eU | (p.bytes == 4 ? 0 : 0xfffe)<<5);
 		a64put(&b, 0xeb0e01bf); a64guard(&b, 0x54000063);
 		a64put(&b, 0x9e670180); /* fmov d0,x12 */
 		if(p.alu){
@@ -580,12 +603,18 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			if(p.alu) a64put(&b, 0x1b008000U | width | 12<<16 | 13<<10 | 14<<5 | 14);
 			a64ptr(&b, 11, abi->d); a64store(&b, 14, p.bytes);
 		}
-	}else if(p.kind == LeafAlu || p.kind == LeafBranch || p.kind == LeafRealBranch){
+	}else if(p.kind == LeafRealBranch){
+		/* FCMP observes FPCR flushing and reads the target only for a true predicate. */
+		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8); a64realguard(&b, 12);
+		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, 8); a64realguard(&b, 13);
+		a64put(&b, 0x9e670180); a64put(&b, 0x9e6701a1); a64put(&b, 0x1e612000);
+		a64put(&b, 0x54000080U | inverse[p.condition]);
+		a64ptr(&b, 11, abi->d); a64load(&b, 12, 11, 8);
+		a64put(&b, 0xf9000000U | (u32int)(abi->pc/8)<<10 | 12);
+	}else if(p.kind == LeafAlu || p.kind == LeafBranch){
 		a64ptr(&b, 9, abi->s); a64ptr(&b, 10, abi->m);
 		a64load(&b, 12, 9, p.bytes);
-		if(p.kind == LeafRealBranch) a64realkey(&b, 12);
 		a64load(&b, 13, 10, p.bytes);
-		if(p.kind == LeafRealBranch) a64realkey(&b, 13);
 		width = p.bytes == 8 ? 0x80000000U : 0;
 		if(p.kind == LeafAlu){
 			a64put(&b, arithmetic[p.alu] | width | 12<<16 | 13<<5 | 13);

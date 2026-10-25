@@ -18,7 +18,11 @@ The latest addition is IEXPF on AMD64/ARM64, using the same repeated-squaring
 sequence as C, including negative and minimum-width exponents. Earlier additions
 include guarded ICVTFW, ICVTFL and ICVTFX paths.
 The real-to-integer paths retain C for non-finite and large inputs; ICVTFX
-currently accepts exact +1.0 and -1.0 scales. Earlier additions include IADDF, ISUBF,
+currently accepts exact +1.0 and -1.0 scales. CVTFW/CVTFL/CVTFX now accept
+absolute source values below 2147483647.5 for a 32-bit result, or below the
+binary64 value 2^63-1024 for a 64-bit result. These symmetric bounds leave room
+for the half-unit correction in every rounding mode; remaining boundary and
+error cases retain C. Earlier additions include IADDF, ISUBF,
 IMULF, IDIVF and ICVTXF.
 They preserve host floating rounding and sticky exception state; numerical C
 helpers remain in use for complex operations.
@@ -37,10 +41,19 @@ opcode IDs; RV64 fixed guards are unchanged.
 
 These figures count opcode availability, not complete semantic or performance
 coverage. Some native paths accept a bounded subset and return to C for other
-operands. For example, rounded fixed operations retain C for VN flags; WN right shifts run
-natively on AMD64/ARM64, while other WN cases retain C, and some floating operations retain C when the exact FP contract cannot
-be preserved. Instructions may therefore contribute to both native execution
+operands. Rounded fixed operations now support VN-only scales from -63 through
+63 and WN/VN+WN right shifts from -63 through -1 on AMD64/ARM64. WN/VN+WN
+scales from 0 through 63 also stay native when the captured operand signs do
+not require a rounding mask. Invalid-mask cases retain C error handling; the
+scale guard now follows sign selection, without growing the emitter buffers. RV64 still declines nonzero rounding flags.
+Some floating conversions also retain C for their range/error contract. Instructions may therefore contribute to both native execution
 and fallback execution at runtime. No fully-native opcode count is asserted.
+
+All six AMD64/ARM64 real branch predicates now use hardware floating comparison
+for non-NaN operands, including subnormals. This follows MXCSR DAZ/FTZ and ARM64
+FPCR FZ settings and preserves floating status. Raw NaN guards remain before any
+floating operation and retain C comparison/error behavior. RV64 keeps its earlier
+normal/zero/infinity guards. This expands operand coverage without new opcode IDs.
 
 The remaining commands are a list of current interpreter dispatch paths,
 not a requirement to hand-emit an additional implementation for every opcode. Complex C

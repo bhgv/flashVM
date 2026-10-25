@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.10)
-project(disvm VERSION 0.1.5 LANGUAGES C)
+project(disvm VERSION 0.1.6 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()
@@ -108,17 +108,22 @@ if(BUILD_TESTING)
     sys-dirread
     sys-file2chan
     sys-tokenize-matrix
+    sys-status-slots
+    sys-stat-slots
   )
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+  # Guard new byte-addressed Sys tuples and native argument bounds under UBSan.
+  set_tests_properties(disvm_sys-status-slots disvm_sys-stat-slots PROPERTIES
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   add_test(NAME disvm_fixed_zero_div COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/fixed-zero-div.py")
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120

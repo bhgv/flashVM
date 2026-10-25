@@ -235,13 +235,16 @@ syserr(char *s, char *es, Prog *p)
 	return s + strlen(s);
 }
 
+/* Publish a complete scalar result without assuming VM return-slot alignment. */
 void
 Sys_millisec(void *fp)
 {
 	F_Sys_millisec *f;
+	WORD result;
 
 	f = fp;
-	*f->ret = TK2MS(MACHP(0)->ticks);
+	result = TK2MS(MACHP(0)->ticks);
+	memmove(f->ret, &result, sizeof(result));
 }
 
 /* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
@@ -313,21 +316,34 @@ Sys_pipe(void *fp)
 	memmove(f->ret, &outcome, sizeof(outcome));
 }
 
+/* Reject high VM argument bits before a native int parameter can silently wrap. */
+static int
+sysnativeint(WORD value)
+{
+	return value >= -0x7fffffff-1 && value <= 0x7fffffff;
+}
+
 /* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
 void
 Sys_fildes(void *fp)
 {
 	F_Sys_fildes *f;
 	Sys_FD *old, *result;
+	WORD source;
 	int fd;
 
 	f = fp;
+	source = f->fd;
 	memmove(&old, f->ret, sizeof(old));
 	result = H;
 	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
+	if(!sysnativeint(source)){
+		seterror(Ebadarg);
+		return;
+	}
 	release();
-	fd = kdup(f->fd, -1);
+	fd = kdup(source, -1);
 	acquire();
 	if(fd == -1)
 		return;
@@ -335,14 +351,23 @@ Sys_fildes(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_dup(void *fp)
 {
 	F_Sys_dup *f;
+	WORD result;
 
 	f = fp;
+	if(!sysnativeint(f->old) || !sysnativeint(f->new)){
+		seterror(Ebadarg);
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	*f->ret = kdup(f->old, f->new);	
+	result = kdup(f->old, f->new);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -369,36 +394,51 @@ Sys_create(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_remove(void *fp)
 {
 	F_Sys_remove *f;
+	WORD result;
 
 	f = fp;
 	release();
-	*f->ret = kremove(string2c(f->s));
+	result = kremove(string2c(f->s));
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_seek(void *fp)
 {
 	F_Sys_seek *f;
+	LONG result;
 
 	f = fp;
+	if(!sysnativeint(f->start)){
+		seterror(Ebadarg);
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	*f->ret = kseek(fdchk(f->fd), f->off, f->start);
+	result = kseek(fdchk(f->fd), f->off, f->start);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_unmount(void *fp)
 {
 	F_Sys_unmount *f;
+	WORD result;
 
 	f = fp;
 	release();
-	*f->ret = kunmount(string2c(f->s1), string2c(f->s2));
+	result = kunmount(string2c(f->s1), string2c(f->s2));
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -506,14 +546,17 @@ Sys_pread(void *fp)
 	acquire();
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_chdir(void *fp)
 {
 	F_Sys_chdir *f;
+	WORD result;
 
 	f = fp;
 	release();
-	*f->ret = kchdir(string2c(f->path));
+	result = kchdir(string2c(f->path));
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -571,23 +614,30 @@ Sys_pwrite(void *fp)
 	acquire();
 }
 
-/* Convert one directory record into an initialized, owned VM record. */
+/* Update owned strings in place, then copy scalar metadata without alignment assumptions. */
 static void
-unpackdir(Dir *d, Sys_Dir *sd)
+unpackdir(Dir *d, void *slot)
 {
-	retstr(d->name, &sd->name);
-	retstr(d->uid, &sd->uid);
-	retstr(d->gid, &sd->gid);
-	retstr(d->muid, &sd->muid);
-	sd->qid.path = d->qid.path;
-	sd->qid.vers = d->qid.vers;
-	sd->qid.qtype = d->qid.type;
-	sd->mode = d->mode;
-	sd->atime = d->atime;
-	sd->mtime = d->mtime;
-	sd->length = d->length;
-	sd->dtype = d->type;
-	sd->dev = d->dev;
+	Sys_Dir result;
+	uchar *bytes;
+
+	bytes = slot;
+	retstr(d->name, bytes+offsetof(Sys_Dir, name));
+	retstr(d->uid, bytes+offsetof(Sys_Dir, uid));
+	retstr(d->gid, bytes+offsetof(Sys_Dir, gid));
+	retstr(d->muid, bytes+offsetof(Sys_Dir, muid));
+	/* String publication remains visible to GC during subsequent allocations. */
+	memmove(&result, slot, sizeof(result));
+	result.qid.path = d->qid.path;
+	result.qid.vers = d->qid.vers;
+	result.qid.qtype = d->qid.type;
+	result.mode = d->mode;
+	result.atime = d->atime;
+	result.mtime = d->mtime;
+	result.length = d->length;
+	result.dtype = d->type;
+	result.dev = d->dev;
+	memmove(slot, &result, sizeof(result));
 }
 
 static Dir*
@@ -628,61 +678,89 @@ packdir(Sys_Dir *sd)
 	return d;
 }
 
+/* Keep partial directory ownership valid while publishing unaligned status and fields. */
 void
 Sys_fstat(void *fp)
 {
 	Dir *d;
 	F_Sys_fstat *f;
+	F_Sys_fstat layout;
+	union { uvlong align; uchar bytes[sizeof(*f->ret)]; } scratch;
+	uchar *recordslot;
+	WORD status;
+	int fd;
 
 	f = fp;
-	f->ret->t0 = -1;
+	fd = fdchk(f->fd);
+	/* Generated return tuples can contain explicit padding beyond native alignment. */
+	layout.ret = (void*)scratch.bytes;
+	recordslot = (uchar*)f->ret+((uchar*)&layout.ret->t1-scratch.bytes);
+	status = -1;
+	memmove(f->ret, &status, sizeof(status));
 	release();
-	d = kdirfstat(fdchk(f->fd));
+	d = kdirfstat(fd);
 	acquire();
 	if(d == nil)
 		return;
 	if(waserror() == 0){
-		unpackdir(d, &f->ret->t1);
-		f->ret->t0 = 0;
+		unpackdir(d, recordslot);
+		status = 0;
+		memmove(f->ret, &status, sizeof(status));
 		poperror();
 	}
 	free(d);
 }
 
+/* Keep partial directory ownership valid while publishing unaligned status and fields. */
 void
 Sys_stat(void *fp)
 {
 	Dir *d;
 	F_Sys_stat *f;
+	F_Sys_stat layout;
+	union { uvlong align; uchar bytes[sizeof(*f->ret)]; } scratch;
+	uchar *recordslot;
+	WORD status;
+	String *path;
 
 	f = fp;
-	f->ret->t0 = -1;
+	path = f->s;
+	/* Generated return tuples can contain explicit padding beyond native alignment. */
+	layout.ret = (void*)scratch.bytes;
+	recordslot = (uchar*)f->ret+((uchar*)&layout.ret->t1-scratch.bytes);
+	status = -1;
+	memmove(f->ret, &status, sizeof(status));
 	release();
-	d = kdirstat(string2c(f->s));
+	d = kdirstat(string2c(path));
 	acquire();
 	if(d == nil)
 		return;
 	if(waserror() == 0){
-		unpackdir(d, &f->ret->t1);
-		f->ret->t0 = 0;
+		unpackdir(d, recordslot);
+		status = 0;
+		memmove(f->ret, &status, sizeof(status));
 		poperror();
 	}
 	free(d);
 }
 
+/* Clear the string owner before finalization and retain the native path until conversion ends. */
 void
 Sys_fd2path(void *fp)
 {
 	F_Sys_fd2path *f;
 	char *s;
-	void *r;
+	String *old, *empty;
+	int fd;
 
 	f = fp;
-	r = *f->ret;
-	*f->ret = H;
-	destroy(r);
+	fd = fdchk(f->fd);
+	memmove(&old, f->ret, sizeof(old));
+	empty = H;
+	memmove(f->ret, &empty, sizeof(empty));
+	destroy(old);
 	release();
-	s = kfd2path(fdchk(f->fd));
+	s = kfd2path(fd);
 	acquire();
 	if(waserror() == 0){
 		retstr(s, f->ret);
@@ -691,56 +769,81 @@ Sys_fd2path(void *fp)
 	free(s);
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_mount(void *fp)
 {
 	F_Sys_mount *f;
+	WORD result;
 
 	f = fp;
+	if(!sysnativeint(f->flags)){
+		seterror(Ebadarg);
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	*f->ret = kmount(fdchk(f->fd), fdchk(f->afd), string2c(f->on), f->flags, string2c(f->spec));
+	result = kmount(fdchk(f->fd), fdchk(f->afd), string2c(f->on), f->flags, string2c(f->spec));
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_bind(void *fp)
 {
 	F_Sys_bind *f;
+	WORD result;
 
 	f = fp;
+	if(!sysnativeint(f->flags)){
+		seterror(Ebadarg);
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	*f->ret = kbind(string2c(f->s), string2c(f->on), f->flags);
+	result = kbind(string2c(f->s), string2c(f->on), f->flags);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
+/* Publish a complete scalar result without assuming VM return-slot alignment. */
 void
 Sys_wstat(void *fp)
 {
 	Dir *d;
 	F_Sys_wstat *f;
+	WORD result;
 
 	f = fp;
 	d = packdir(&f->d);
 	release();
-	*f->ret = kdirwstat(string2c(f->s), d);
+	result = kdirwstat(string2c(f->s), d);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 	free(d);
 }
 
+/* Publish a complete scalar result without assuming VM return-slot alignment. */
 void
 Sys_fwstat(void *fp)
 {
 	Dir *d;
 	F_Sys_fwstat *f;
+	WORD result;
 
 	f = fp;
 	d = packdir(&f->d);
 	release();
-	*f->ret = kdirfwstat(fdchk(f->fd), d);
+	result = kdirfwstat(fdchk(f->fd), d);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 	free(d);
 }
 
+/* Stage the scalar status before publishing to an unaligned VM result slot. */
 void
 Sys_print(void *fp)
 {
@@ -749,22 +852,29 @@ Sys_print(void *fp)
 	Chan *c;
 	char buf[1024], *b = buf;
 	F_Sys_print *f;
+	WORD result;
+
 	f = fp;
 	c = up->env->fgrp->fd[1];
-	if(c == nil)
+	if(c == nil){
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
+	}
 	p = currun();
 
 	release();
 	n = xprint(p, f, &f->vargs, f->s, buf, sizeof(buf));
 	if (n >= sizeof(buf)-UTFmax-2)
 		n = bigxprint(p, f, &f->vargs, f->s, &b, sizeof(buf));
-	*f->ret = kwrite(1, b, n);
+	result = kwrite(1, b, n);
+	memmove(f->ret, &result, sizeof(result));
 	if (b != buf)
 		free(b);
 	acquire();
 }
 
+/* Stage the scalar status before publishing to an unaligned VM result slot. */
 void
 Sys_fprint(void *fp)
 {
@@ -772,6 +882,7 @@ Sys_fprint(void *fp)
 	Prog *p;
 	char buf[1024], *b = buf;
 	F_Sys_fprint *f;
+	WORD result;
 
 	f = fp;
 	p = currun();
@@ -779,20 +890,24 @@ Sys_fprint(void *fp)
 	n = xprint(p, f, &f->vargs, f->s, buf, sizeof(buf));
 	if (n >= sizeof(buf)-UTFmax-2)
 		n = bigxprint(p, f, &f->vargs, f->s, &b, sizeof(buf));
-	*f->ret = kwrite(fdchk(f->fd), b, n);
+	result = kwrite(fdchk(f->fd), b, n);
+	memmove(f->ret, &result, sizeof(result));
 	if (b != buf)
 		free(b);
 	acquire();
 }
 
+/* Stage the scalar status before publishing to an unaligned VM result slot. */
 void
 Sys_werrstr(void *fp)
 {
 	F_Sys_werrstr *f;
+	WORD result;
 
 	f = fp;
-	*f->ret = 0;
 	kstrcpy(up->env->errstr, string2c(f->s), ERRMAX);
+	result = 0;
+	memmove(f->ret, &result, sizeof(result));
 }
 
 /* Adopt both dial descriptors as one result, closing them on conversion failure. */
@@ -871,12 +986,20 @@ Sys_listen(void *fp)
 	memmove(f->ret, &status, sizeof(status));
 }
 
+/* Define the no-sleep result and copy it only after regaining the interpreter lock. */
 void
 Sys_sleep(void *fp)
 {
 	F_Sys_sleep *f;
+	WORD result = 0;
 
 	f = fp;
+	if(!sysnativeint(f->period)){
+		seterror(Ebadarg);
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
 	if(f->period > 0){
 		if(waserror()){
@@ -887,7 +1010,7 @@ Sys_sleep(void *fp)
 		poperror();
 	}
 	acquire();
-	*f->ret = 0;
+	memmove(f->ret, &result, sizeof(result));
 }
 
 /* Complete short stream writes and count only bytes acknowledged by the destination. */
@@ -963,14 +1086,17 @@ Sys_stream(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
+/* Capture the native export status before publishing an unaligned VM result. */
 void
 Sys_export(void *fp)
 {
 	F_Sys_export *f;
+	WORD result;
 
 	f = fp;
 	release();
-	*f->ret = export(fdchk(f->c), string2c(f->dir), f->flag&Sys_EXPASYNC);
+	result = export(fdchk(f->c), string2c(f->dir), f->flag&Sys_EXPASYNC);
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
@@ -980,7 +1106,7 @@ Sys_file2chan(void *fp)
 {
 	F_Sys_file2chan *f;
 	volatile struct { Sys_FileIO *file; int released; } result;
-	Sys_FileIO *old;
+	Sys_FileIO *old, *published;
 	char *directory, *name, saved[ERRMAX];
 	int status;
 
@@ -1012,8 +1138,9 @@ Sys_file2chan(void *fp)
 		destroy(result.file);
 		result.file = H;
 	}
-	old = *f->ret;
-	*f->ret = result.file;
+	memmove(&old, f->ret, sizeof(old));
+	published = result.file;
+	memmove(f->ret, &published, sizeof(published));
 	destroy(old);
 	if(status < 0)
 		memmove(up->env->errstr, saved, sizeof(saved));
@@ -1143,7 +1270,7 @@ Sys_pctl(void *fp)
 	*f->ret = p->pid;
 }
 
-/* Retain ownership of native entries and partial VM records until conversion completes. */
+/* Retain ownership of native entries and publish tuple fields without alignment assumptions. */
 void
 Sys_dirread(void *fp)
 {
@@ -1151,19 +1278,27 @@ Sys_dirread(void *fp)
 	Sys_Dir *record;
 	F_Sys_dirread *f;
 	volatile struct { Heap *array; } result;
-	void *old;
-	int i, count;
+	struct { WORD status; Array *array; } layout;
+	Array *old, *published;
+	uchar *arrayslot;
+	WORD status;
+	int i, count, fd;
 
 	f = fp;
-	f->ret->t0 = -1;
-	old = f->ret->t1;
-	f->ret->t1 = H;
+	fd = fdchk(f->fd);
+	arrayslot = (uchar*)f->ret+((uchar*)&layout.array-(uchar*)&layout);
+	status = -1;
+	memmove(&old, arrayslot, sizeof(old));
+	published = H;
+	memmove(f->ret, &status, sizeof(status));
+	memmove(arrayslot, &published, sizeof(published));
 	destroy(old);
 	release();
-	count = kdirread(fdchk(f->fd), &entries);
+	count = kdirread(fd, &entries);
 	acquire();
 	if(count <= 0){
-		f->ret->t0 = count;
+		status = count;
+		memmove(f->ret, &status, sizeof(status));
 		free(entries);
 		return;
 	}
@@ -1179,8 +1314,10 @@ Sys_dirread(void *fp)
 	for(i = 0; i < count; i++)
 		unpackdir(&entries[i], &record[i]);
 	poperror();
-	f->ret->t0 = count;
-	f->ret->t1 = H2D(Array*, result.array);
+	status = count;
+	published = H2D(Array*, result.array);
+	memmove(f->ret, &status, sizeof(status));
+	memmove(arrayslot, &published, sizeof(published));
 	free(entries);
 }
 
@@ -1231,14 +1368,17 @@ Sys_fversion(void *fp)
 	}
 }
 
+/* Capture the native status before copying into a possibly unaligned VM return slot. */
 void
 Sys_iounit(void *fp)
 {
 	F_Sys_iounit *f;
+	WORD result;
 
 	f = fp;
 	release();
-	*f->ret = kiounit(fdchk(f->fd));
+	result = kiounit(fdchk(f->fd));
+	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
