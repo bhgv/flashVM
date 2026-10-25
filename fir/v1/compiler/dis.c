@@ -6,6 +6,11 @@
 enum
 {
     DIS_MAGIC = 819264,  /* Explicit experimental eight-byte native-cell target. */
+    DIS_MOVF = 46,       /* Existing binary64 move preserves signed zero and payload bits. */
+    DIS_ADDF = 59,       /* Binary64 addition. */
+    DIS_SUBF = 62,       /* Binary64 middle minus source. */
+    DIS_MULF = 65,       /* Binary64 multiplication. */
+    DIS_DIVF = 68,       /* Binary64 middle divided by source; runtime exception policy applies. */
     DIS_MOVW = 45,       /* Existing Dis instruction numbers, not new opcodes. */
     DIS_ADDW = 58,       /* Native-word addition; followed by explicit i32 normalization. */
     DIS_SUBW = 61,       /* Native-word subtraction with middle minus source ordering. */
@@ -97,11 +102,10 @@ static unsigned slot(int value)
 }
 
 
-/* Write a signed/native integer as portable big-endian DEFL bytes.
- * Conversion to uint64_t preserves the defined two's-complement file representation. */
-static void integer(FILE *output, int64_t value)
+/* Write eight caller-supplied payload bits as portable big-endian DEFL bytes.
+ * Both native integers and IEEE binary64 use the existing eight-byte initializer. */
+static void bits64(FILE *output, uint64_t bits)
 {
-    uint64_t bits = (uint64_t)value;
     int shift;
     for (shift = 56; shift >= 0; shift -= 8)
     {
@@ -120,11 +124,11 @@ static int supported(
     *count = 1; /* Entry prologue initializes a dedicated scalar zero scratch slot. */
     *traces = 0;
     memset(blocks, 0, FIR_BLOCKS * sizeof(*blocks));
-    if (module->source_semantics == FIR_AVM1_NUMERIC || module->channels)
+    if (module->channels)
     {
         if (error && capacity)
         {
-            snprintf(error, capacity, "Dis scalar backend does not implement AVM1 semantics or channel requirements");
+            snprintf(error, capacity, "Dis scalar backend does not implement channel requirements");
         }
         return 0;
     }
@@ -144,11 +148,18 @@ static int supported(
         {
         case O_I32:
         case O_BOOL:
+        case O_F64:
         case O_COPY:
-            if (current->type != T_I32 && current->type != T_BOOL)
+            if (current->type != T_I32 && current->type != T_BOOL && current->type != T_F64)
             {
                 goto unsupported;
             }
+            (*count)++;
+            break;
+        case O_FADD:
+        case O_FSUB:
+        case O_FMUL:
+        case O_FDIV:
             (*count)++;
             break;
         case O_ADD:
@@ -159,7 +170,8 @@ static int supported(
             *count += 4U;
             break;
         case O_TRACE:
-            if (module->values[current->a].type != T_I32 && module->values[current->a].type != T_BOOL)
+            if (module->values[current->a].type != T_I32 && module->values[current->a].type != T_BOOL &&
+                module->values[current->a].type != T_F64)
             {
                 goto unsupported;
             }
@@ -256,11 +268,23 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         {
         case O_I32:
         case O_BOOL:
-            instruction(
-                output, DIS_MOVW, DIS_MP, constants + (unsigned)current->result * DIS_CELL, DIS_FP, destination, -1);
+        case O_F64:
+            instruction(output,
+                        current->type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        DIS_MP,
+                        constants + (unsigned)current->result * DIS_CELL,
+                        DIS_FP,
+                        destination,
+                        -1);
             break;
         case O_COPY:
-            instruction(output, DIS_MOVW, DIS_FP, slot(current->a), DIS_FP, destination, -1);
+            instruction(output,
+                        current->type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        DIS_FP,
+                        slot(current->a),
+                        DIS_FP,
+                        destination,
+                        -1);
             break;
         case O_ADD:
         case O_SUB:
@@ -272,6 +296,16 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)destination);
             instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            break;
+        case O_FADD:
+        case O_FSUB:
+        case O_FMUL:
+        case O_FDIV:
+            opcode = current->op == O_FADD   ? DIS_ADDF
+                     : current->op == O_FSUB ? DIS_SUBF
+                     : current->op == O_FMUL ? DIS_MULF
+                                             : DIS_DIVF;
+            instruction(output, opcode, DIS_FP, slot(current->b), DIS_FP, destination, (int)slot(current->a));
             break;
         case O_LT:
         case O_EQ:
@@ -294,7 +328,13 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_JMP, DIS_NONE, 0, DIS_IMMEDIATE, blocks[current->yes], -1);
             break;
         case O_TRACE:
-            instruction(output, DIS_MOVW, DIS_FP, slot(current->a), DIS_MP, trace * DIS_CELL, -1);
+            instruction(output,
+                        module->values[current->a].type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        DIS_FP,
+                        slot(current->a),
+                        DIS_MP,
+                        trace * DIS_CELL,
+                        -1);
             instruction(output, DIS_MOVW, DIS_IMMEDIATE, 1, DIS_MP, (traces + trace) * DIS_CELL, -1);
             trace++;
             break;
@@ -314,14 +354,23 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     operand(output, 0);
     for (index = 0; index < (int)(2U * traces); index++)
     {
-        integer(output, 0);
+        bits64(output, 0);
     }
-    integer(output, INT64_C(4294967295));
-    integer(output, INT64_C(2147483648));
+    bits64(output, INT64_C(4294967295));
+    bits64(output, INT64_C(2147483648));
     for (index = 0; index < module->value_count; index++)
     {
         FirInstruction *definition = &module->instructions[module->values[index].definition];
-        integer(output, definition->op == O_I32 || definition->op == O_BOOL ? definition->integer : 0);
+        uint64_t payload = 0; /* Exact binary64 bits or defined modulo conversion of signed integer. */
+        if (definition->op == O_F64)
+        {
+            memcpy(&payload, &definition->real, sizeof(payload));
+        }
+        else if (definition->op == O_I32 || definition->op == O_BOOL)
+        {
+            payload = (uint64_t)(int64_t)definition->integer;
+        }
+        bits64(output, payload);
     }
     octet(output, 0); /* End initializers. */
     fwrite(module->module, 1, strlen(module->module) + 1, output);

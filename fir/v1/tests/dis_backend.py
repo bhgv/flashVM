@@ -38,8 +38,7 @@ def main():
         invoke(compiler, ["dis", fir, binary], environment)
         if binary.read_bytes() != accepted:
             raise RuntimeError("direct Dis emission is not deterministic")
-        for body in ("%v: f64 = const.f64 1.5\ntrace %v\nreturn",
-                     "%v: string = const.string \"x\"\ntrace %v\nreturn",
+        for body in ("%v: string = const.string \"x\"\ntrace %v\nreturn",
                      "%c: channel = limbo.chan_create\nlimbo.chan_close %c\nreturn"):
             requirement = "requires flashvm.channels\n" if "limbo.chan" in body else ""
             fir.write_text("FIR 1.0\nmodule @Reject\n" + requirement + "func @main() -> void {\n^entry:\n" + body + "\n}\n")

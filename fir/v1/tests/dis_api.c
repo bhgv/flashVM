@@ -33,7 +33,7 @@ int main(void)
     const char *valid = "FIR 1.0\nmodule @M\nfunc @main() -> void {\n^entry:\n"
                         "%x: i32 = const.i32 -2147483648\ntrace %x\nreturn\n}\n";
     const char *unsupported = "FIR 1.0\nmodule @M\nfunc @main() -> void {\n^entry:\n"
-                              "%x: f64 = const.f64 2.5\ntrace %x\nreturn\n}\n";
+                              "%x: string = const.string \"bad\"\ntrace %x\nreturn\n}\n";
     FirModule *module = malloc(sizeof(*module));
     FILE *output = fir_temporary();
     char error[256] = "";
