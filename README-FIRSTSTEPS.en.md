@@ -235,3 +235,15 @@ SDL2 SDK при необходимости собирается автомати
 консольную проверку. См. [запуск плеера](flashVM/frontend/RUNNING.md) и
 [проверочные программы Dis](disVM/RUNNABLE-CHECKS.md). Проверки Dis/JIT исполнимы
 нативно; полноценный хост исполнения произвольных Dis-модулей и IDE ещё не завершён.
+
+
+## Interactive build and launch
+
+Run `python3 build_menu.py`, enter `all`, then accept the defaults with Enter.
+The menu explicitly selects the real window/input/audio AGG/JIT player and
+installs binaries and examples. It also offers the windowed interpreter, both
+variants, and console-only builds. Advanced menu settings cover jobs,
+configuration, build/install paths, profiles and installation without CLI flags.
+After success, choose checks, the graphical demo, both, or Enter to finish.
+JIT and interpreter packages use separate directories and do not overwrite each
+other. The full embedded Dis/IDE host remains in development.

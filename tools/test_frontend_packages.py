@@ -111,7 +111,7 @@ class FrontendTests(unittest.TestCase):
                     text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
-                package = out / "flashvm" / ("agg-sdl2" if graphical else "agg-headless")
+                package = out / "flashvm" / ("agg-sdl2-jit" if graphical else "agg-headless-jit")
                 actual = subprocess.check_output([str(package / "flashvm")], text=True).strip()
                 console = subprocess.check_output(
                     [str(package / "flashvm-console")], text=True

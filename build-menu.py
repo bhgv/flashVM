@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 
 # Stable display order also determines the component numbers in the menu.
 COMPONENTS = (
-    ("vm", "FlashVM: виртуальная машина и консольный SWF runner"),
+    ("vm", "FlashVM: окно, графика, ввод, звук, JIT и консольный runner"),
     ("compilers", "Синтаксические фронтенды AS1, AS2, AS3, Limbo"),
     ("fir", "FIR: компилятор, проверка и оптимизатор"),
     ("linker", "SWL: линкер SWO/SWA в SWF"),
@@ -40,9 +40,20 @@ COMPONENTS = (
 )
 
 
-NATIVE_COMPONENTS = frozenset((
-    "mk", "iyacc", "limbo-bootstrap", "cocor", "as1", "as2", "as3", "limbo", "compilers", "linker",
-))
+NATIVE_COMPONENTS = frozenset(
+    (
+        "mk",
+        "iyacc",
+        "limbo-bootstrap",
+        "cocor",
+        "as1",
+        "as2",
+        "as3",
+        "limbo",
+        "compilers",
+        "linker",
+    )
+)
 NATIVE_TEST_COMPONENTS = frozenset(("mk", "iyacc", "limbo-bootstrap"))
 NATIVE_BACKENDS = ("meson", "make", "mk")
 
@@ -58,11 +69,17 @@ def validate_backend(backend, projects, tests=False, demo=None):
     if demo:
         problems.append("не поддерживает --demo")
     if tests and not set(projects).issubset(NATIVE_TEST_COMPONENTS):
-        problems.append("--tests поддерживает только mk,iyacc,limbo-bootstrap; --tests/--demo для workspace требуют CMake")
+        problems.append(
+            "--tests поддерживает только mk,iyacc,limbo-bootstrap; --tests/--demo для workspace требуют CMake"
+        )
     if problems:
-        raise ValueError(backend + ": " + "; ".join(problems) +
-                         ". Для полного выбора используйте cmake или auto. "
-                         "Для нативной сборки выберите compilers,linker,mk,iyacc,limbo-bootstrap.")
+        raise ValueError(
+            backend
+            + ": "
+            + "; ".join(problems)
+            + ". Для полного выбора используйте cmake или auto. "
+            "Для нативной сборки выберите compilers,linker,mk,iyacc,limbo-bootstrap."
+        )
 
 
 def choose_compatible_backend(projects, backend=None):
@@ -76,8 +93,11 @@ def choose_compatible_backend(projects, backend=None):
             print(error)
         value = input("1 — изменить двигатель, 2 — выбрать компоненты заново [1]: ").strip()
         if value == "2":
-            print("Для {} доступны: {}".format(backend, ", ".join(
-                name for name, _ in COMPONENTS if name in NATIVE_COMPONENTS)))
+            print(
+                "Для {} доступны: {}".format(
+                    backend, ", ".join(name for name, _ in COMPONENTS if name in NATIVE_COMPONENTS)
+                )
+            )
             projects = choose_components()
             if projects is None:
                 return None, backend
@@ -96,7 +116,11 @@ def selection(value):
         raise ValueError("Выберите хотя бы один компонент")
     result = []
     for token in tokens:
-        if token.isdigit() and all("0" <= ch <= "9" for ch in token) and 1 <= int(token) <= len(names):
+        if (
+            token.isdigit()
+            and all("0" <= ch <= "9" for ch in token)
+            and 1 <= int(token) <= len(names)
+        ):
             token = names[int(token) - 1]
         if token not in names:
             raise ValueError("Неизвестный компонент: " + token)
@@ -109,9 +133,11 @@ def selection(value):
 def backend_status():
     """Describe executable discovery and the native subset for each engine."""
     entries = []
-    for name, variable, executable in (("cmake", "CMAKE", "cmake"),
-                                        ("meson", "MESON", "meson"),
-                                        ("make", "MAKE", "make")):
+    for name, variable, executable in (
+        ("cmake", "CMAKE", "cmake"),
+        ("meson", "MESON", "meson"),
+        ("make", "MAKE", "make"),
+    ):
         path = shutil.which(os.environ.get(variable, executable))
         detail = path if path else "не найден"
         if name == "meson":
@@ -119,8 +145,19 @@ def backend_status():
             detail += "; Ninja: " + (ninja if ninja else "не найден")
         entries.append((name, detail))
     bootstrap = ROOT / "tools/mk/bootstrap.sh"
-    entries.append(("mk", "исходники есть, будет собран локально" if bootstrap.is_file() else "исходники отсутствуют"))
-    entries.append(("auto", "CMake 3.10+, затем Meson/Ninja, Make, локальный mk; с учётом выбора компонентов"))
+    entries.append(
+        (
+            "mk",
+            (
+                "исходники есть, будет собран локально"
+                if bootstrap.is_file()
+                else "исходники отсутствуют"
+            ),
+        )
+    )
+    entries.append(
+        ("auto", "CMake 3.10+, затем Meson/Ninja, Make, локальный mk; с учётом выбора компонентов")
+    )
     return entries
 
 
@@ -131,7 +168,9 @@ def show_backends():
     for number, (name, detail) in enumerate(backend_status(), 1):
         print("  {}. {:7s} {}".format(number, name, detail))
     print("CMake: весь workspace. Meson/Make/mk: фронтенды, линкер, mk, iyacc, limbo-bootstrap.")
-    print("Нативные --tests: mk, iyacc, limbo-bootstrap; запуск IDE пока требует отдельного Dis-хоста.")
+    print(
+        "Нативные --tests: mk, iyacc, limbo-bootstrap; запуск IDE пока требует отдельного Dis-хоста."
+    )
 
 
 # Give explicit engine choice while retaining auto as the empty-input default.
@@ -193,12 +232,148 @@ def choose_example():
         print("Введите 1/navigation, 2/history или 3/replaceall.")
 
 
+# Select a visible player configuration; Enter builds the real AGG/JIT desktop host.
+# args receives explicit profile/player settings. Returns nothing; invalid input retries.
+def choose_presentation(args):
+    print("\nFlashVM: что собрать?")
+    print("  1. Окно, графика, мышь/клавиатура, звук + JIT (по умолчанию)")
+    print("  2. Окно, графика, ввод и звук: интерпретатор")
+    print("  3. Обе оконные сборки: интерпретатор и JIT")
+    print("  4. Только консоль, без графического SDK")
+    while True:
+        value = input("Вариант FlashVM [1]: ").strip()
+        if value in ("", "1", "2", "3", "4"):
+            args.vm_profiles = {
+                "": "player",
+                "1": "player",
+                "2": "agg",
+                "3": "agg,player",
+                "4": "minimal",
+            }[value]
+            args.no_player = value == "4"
+            args.player = not args.no_player
+            if args.player:
+                print("SDL2 SDK при необходимости соберётся автоматически; примеры будут в out/.")
+            return
+        print("Введите 1, 2, 3 или 4.")
+
+
+# Edit all remaining build settings without requiring command-line switches.
+# args is the parsed settings object. Returns after the user accepts the settings.
+def choose_settings(args):
+    if not ask_yes("Изменить дополнительные настройки сборки?"):
+        return
+    while True:
+        print(
+            "\nНастройки: 1 — параллельные задания ({}), 2 — конфигурация ({})".format(
+                args.jobs, args.config
+            )
+        )
+        print(
+            "  3 — каталог сборки ({}), 4 — каталог установки ({})".format(
+                args.build_root or "build/workspace", args.out or "out"
+            )
+        )
+        print(
+            "  5 — установка результатов ({}), 6 — профили FlashVM ({})".format(
+                "выключена" if args.no_install else "включена", args.vm_profiles or "авто"
+            )
+        )
+        print(
+            "  7 — только показать команду ({}), Enter — начать сборку".format(
+                "да" if args.dry_run else "нет"
+            )
+        )
+        value = input("Настройка: ").strip()
+        if not value:
+            return
+        if value == "1":
+            count = input("Число параллельных заданий [{}]: ".format(args.jobs)).strip()
+            if count.isdigit() and int(count) > 0:
+                args.jobs = int(count)
+            elif count:
+                print("Нужно положительное целое число.")
+        elif value == "2":
+            config = input("Release, Debug, RelWithDebInfo [{}]: ".format(args.config)).strip()
+            if config in ("Release", "Debug", "RelWithDebInfo", "MinSizeRel"):
+                args.config = config
+            elif config:
+                print("Неизвестная конфигурация.")
+        elif value in ("3", "4"):
+            path = input("Каталог (Enter — оставить текущий): ").strip()
+            if path:
+                if value == "3":
+                    args.build_root = path
+                else:
+                    args.out = path
+        elif value == "5":
+            args.no_install = not ask_yes(
+                "Устанавливать бинарные файлы, примеры и команды запуска?"
+            )
+        elif value == "6":
+            profiles = input("Профили через запятую: default,minimal,agg,cairo,player: ").strip()
+            if profiles and all(
+                item in ("default", "minimal", "agg", "cairo", "player")
+                for item in profiles.split(",")
+            ):
+                args.vm_profiles = profiles
+            elif profiles:
+                print("Неизвестный профиль.")
+        elif value == "7":
+            args.dry_run = ask_yes("Только показать команду, не собирать?")
+        else:
+            print("Введите номер настройки или Enter.")
+
+
+# Show actual installed entry points and optionally run them from the menu.
+# args supplies the installation prefix; bash is resolved. Returns launched command status.
+def show_products(args, bash, interactive):
+    if args.no_install:
+        print("Установка отключена; команды в out/ не создавались.")
+        return 0
+    prefix = Path(args.out).expanduser().resolve() if args.out else ROOT / "out"
+    checker = prefix / "run-checks.sh"
+    window = prefix / "flashvm/run-demo.sh"
+    print("\nРезультаты сборки: " + str(prefix))
+    if checker.is_file():
+        print("Проверки: " + str(checker))
+    if window.is_file():
+        print("Окно, ввод и звук: " + str(window))
+    if not interactive or not checker.is_file():
+        return 0
+    while True:
+        print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
+        value = input("Enter — закончить, либо номер запуска: ").strip()
+        if not value:
+            return 0
+        if value not in ("1", "2", "3"):
+            print("Введите 1, 2, 3 или Enter.")
+            continue
+        if value in ("2", "3") and not window.is_file():
+            print("Оконный пакет не установлен. Выберите оконную сборку FlashVM в меню.")
+            continue
+        if value in ("1", "3"):
+            status = subprocess.call([bash, str(checker)])
+            if status:
+                return status
+        if value in ("2", "3"):
+            return subprocess.call([bash, str(checker), "--window"])
+        return 0
+
+
 # Build an argv list, never a shell expression; SDK preflight belongs to Bash.
 def build_command(args, projects, bash):
     """Construct the shared builder command with literal paths and arguments."""
-    command = [bash, str(Path(__file__).resolve().with_name("build-workspace.sh")),
-               "--projects", ",".join(projects), "--jobs", str(args.jobs),
-               "--config", args.config]
+    command = [
+        bash,
+        str(Path(__file__).resolve().with_name("build-workspace.sh")),
+        "--projects",
+        ",".join(projects),
+        "--jobs",
+        str(args.jobs),
+        "--config",
+        args.config,
+    ]
     if args.build_root is not None:
         command.extend(["--build-root", args.build_root])
     if getattr(args, "out", None):
@@ -223,21 +398,40 @@ def build_command(args, projects, bash):
 def main(argv=None):
     """Parse CLI options or open a menu, then execute the common Bash builder."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--projects", help="Names/numbers separated by commas; all for every component")
+    parser.add_argument(
+        "--projects", help="Names/numbers separated by commas; all for every component"
+    )
     parser.add_argument("--jobs", type=int, default=2, help="Parallel jobs (default 2)")
     parser.add_argument("--config", default="Release")
     parser.add_argument("--backend", choices=("cmake", "meson", "make", "mk", "auto"), default=None)
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--out", help="Local installation directory; default out/")
-    parser.add_argument("--no-install", action="store_true", help="Explicitly skip local product installation")
-    parser.add_argument("--vm-profiles", help="Comma-separated VM profiles: default,minimal,agg,cairo,player")
+    parser.add_argument(
+        "--no-install", action="store_true", help="Explicitly skip local product installation"
+    )
+    parser.add_argument(
+        "--vm-profiles", help="Comma-separated VM profiles: default,minimal,agg,cairo,player"
+    )
     presentation = parser.add_mutually_exclusive_group()
-    presentation.add_argument("--no-player", action="store_true", help="Explicit console-only/offline VM build")
-    presentation.add_argument("--player", action="store_true", help="Require the native window/audio/input player; SDK is bootstrapped automatically")
+    presentation.add_argument(
+        "--no-player", action="store_true", help="Explicit console-only/offline VM build"
+    )
+    presentation.add_argument(
+        "--player",
+        action="store_true",
+        help="Require the native window/audio/input player; SDK is bootstrapped automatically",
+    )
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
-    parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history", "replaceall"),
-                        help="Run a Limbo IDE example (default navigation; requires ide)")
-    parser.add_argument("--list-backends", action="store_true", help="Show locally available build engines")
+    parser.add_argument(
+        "--demo",
+        nargs="?",
+        const="navigation",
+        choices=("navigation", "history", "replaceall"),
+        help="Run a Limbo IDE example (default navigation; requires ide)",
+    )
+    parser.add_argument(
+        "--list-backends", action="store_true", help="Show locally available build engines"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)
     if args.list_backends:
@@ -247,7 +441,8 @@ def main(argv=None):
         parser.error("--jobs must be positive")
     if not args.config or args.build_root == "":
         parser.error("Configuration and build root must not be empty")
-    if args.projects is None:
+    interactive = args.projects is None
+    if interactive:
         if not sys.stdin.isatty():
             parser.error("Use --projects when stdin is not a terminal")
         projects = choose_components()
@@ -256,15 +451,21 @@ def main(argv=None):
         projects, args.backend = choose_compatible_backend(projects, args.backend)
         if projects is None:
             return 0
-        if (args.backend not in NATIVE_BACKENDS or
-                set(projects).issubset(NATIVE_TEST_COMPONENTS)) and not args.tests:
+        if "vm" in projects and not args.vm_profiles and not args.no_player:
+            choose_presentation(args)
+        choose_settings(args)
+        if (
+            args.backend not in NATIVE_BACKENDS or set(projects).issubset(NATIVE_TEST_COMPONENTS)
+        ) and not args.tests:
             args.tests = ask_yes("Запустить тесты выбранных компонентов?")
         if args.backend not in NATIVE_BACKENDS and "ide" in projects and not args.demo:
             if shutil.which(os.environ.get("EMU_EXECUTABLE", "")):
                 if ask_yes("Запустить консольный пример IDE?"):
                     args.demo = choose_example()
             else:
-                print("IDE будет скомпилирована в Dis/.sbl. Запуск пока недоступен: встроенный Dis-хост не завершён.")
+                print(
+                    "IDE будет скомпилирована в Dis/.sbl. Запуск пока недоступен: встроенный Dis-хост не завершён."
+                )
     else:
         try:
             projects = selection(args.projects)
@@ -287,7 +488,10 @@ def main(argv=None):
         return 0
     # Inherit terminal streams and environment, including explicit native SDK paths.
     try:
-        return subprocess.call(command)
+        status = subprocess.call(command)
+        if status:
+            return status
+        return show_products(args, bash, interactive)
     except OSError as error:
         print("Не удалось запустить сборку: " + str(error), file=sys.stderr)
         return 1

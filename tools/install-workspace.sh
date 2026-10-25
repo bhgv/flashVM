@@ -159,6 +159,9 @@ install_component() {
                 display=SDL2
                 variant=$(printf '%s-sdl2' "${graphics#GRAPHICS_}" | tr '[:upper:]_' '[:lower:]-')
             fi
+            if grep -q '^JIT[[:space:]]*$' "$profile"; then
+                variant="$variant-jit"
+            fi
             destination="$OUT/flashvm/$variant"
             source="$ROOT/flashVM"
             mkdir -p "$destination"
