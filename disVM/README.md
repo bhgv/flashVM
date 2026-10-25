@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-61a2942bbe51dd3af507862d7c7081ff5ed8e6cf; every imported file has a manifest hash.
+ddbc9f5d6412fe1d4630d7cba00f13502c9b041d; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -126,7 +126,7 @@ physical backend execution and full host/runtime ABI acceptance remain separate.
 
 ## String-read refresh v0.1558
 
-Current public pin: `61a2942bbe51dd3af507862d7c7081ff5ed8e6cf`, including e6c056c
+Current public pin: `ddbc9f5d6412fe1d4630d7cba00f13502c9b041d`, including e6c056c
 read/slice/duplicate/concatenation/UTF capacity guards and the upstream native
 C/JIT dispatch fixture correction. The selected core now registers 66 ordinary
 checks plus three optional instruction-emulation checks; all pass. The added

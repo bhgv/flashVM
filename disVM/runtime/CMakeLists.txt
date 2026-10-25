@@ -107,7 +107,7 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   set(binary "${CMAKE_CURRENT_BINARY_DIR}/${test}-test.dis")
   add_custom_command(OUTPUT "${binary}"

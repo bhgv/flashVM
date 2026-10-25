@@ -135,6 +135,9 @@ if(BUILD_TESTING)
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
         ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
     endforeach()
+    add_test(NAME disvm_string-compare-native COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/string-branches.py")
+    set_tests_properties(disvm_string-compare-native PROPERTIES TIMEOUT 120
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;STRING_BRANCH_NATIVE=1")
     foreach(bits 32 64)
       add_test(NAME disvm_native_jit_word${bits} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-runtime.py")
       set_tests_properties(disvm_native_jit_word${bits} PROPERTIES TIMEOUT 120
@@ -157,6 +160,11 @@ if(BUILD_TESTING)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")
+    endforeach()
+    foreach(arch amd64 arm64)
+      add_test(NAME disvm_string-compare-jit_${arch} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
+      set_tests_properties(disvm_string-compare-jit_${arch} PROPERTIES TIMEOUT 120
+        ENVIRONMENT "${emulator_environment};LEAF64_CASE=bytebranch;LEAF64_ARCH=${arch}")
     endforeach()
     add_test(NAME disvm_string-read-jit COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
     set_tests_properties(disvm_string-read-jit PROPERTIES TIMEOUT 120
