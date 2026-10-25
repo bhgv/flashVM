@@ -40,7 +40,8 @@ Default generator: tools/coco-r-C, compiled locally when needed.
 Default IDE bootstrap: tools/limbo-bootstrap, from bhgv/Inferno-OS-bhgv experiment.
 DisVM builds the interpreter/JIT core archive; its full host runner is still pending.
 Optional explicit SDK overrides:
-  COCOR_ROOT + COCOR_EXECUTABLE     Supply BOTH or neither
+  COCOR_ROOT + COCOR_EXECUTABLE     Optional complete external Coco/R SDK pair
+  COCOR_SOURCE                    auto (default), bundled, or strict external
   LIMBO_EXECUTABLE                 Native compiler override (bootstrap, not our FIR compiler)
   LIMBO_MODULE_DIR                 Default: bundled bootstrap module headers
   EMU_EXECUTABLE                   Optional reference runtime; no emu needed for building or compiler tests
@@ -278,16 +279,9 @@ fi
 need_cocor=0
 need_limbo=0
 if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo; then
-    if [[ -n "${COCOR_ROOT:-}" || -n "${COCOR_EXECUTABLE:-}" ]]; then
-        [[ -f "${COCOR_ROOT:-}/frames/scan_c.frm" ]] || fail 'COCOR_ROOT must contain frames/scan_c.frm'
-        [[ -f "${COCOR_EXECUTABLE:-}" && -x "$COCOR_EXECUTABLE" ]] || fail 'Provide COCOR_ROOT and native COCOR_EXECUTABLE together'
-        COCOR_ROOT=$(absolute "$COCOR_ROOT")
-        COCOR_EXECUTABLE=$(absolute "$COCOR_EXECUTABLE")
-    else
-        need_cocor=1
-        COCOR_ROOT="$ROOT/tools/coco-r-C/upstream"
-        COCOR_EXECUTABLE="$build_root/cocor/cocor"
-    fi
+    # The selector verifies the complete frame set before touching build products.
+    source "$ROOT/tools/coco-r-C/select-sdk.sh"
+    select_cocor_sdk "$ROOT" "$build_root" || exit 2
 fi
 if has ide || has cocor-limbo || has limbo-bootstrap; then
     if [[ -n "${LIMBO_EXECUTABLE:-}" ]]; then

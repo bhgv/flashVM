@@ -28,3 +28,7 @@ generated parser outputs and deliberately raw oracle fixtures unchanged.
   The user has explicitly authorized publication to github.com/bhgv/flashVM.
   Verify the destination, expected branch head, author bhgv and final tree; never
   force-push. Local author/committer: bhgv <bhgv@bhgv.bhgv>.
+
+- Write Coco/R in human-facing prose. Preserve existing executable, path and
+  variable identifiers such as `cocor` and COCOR_ROOT. The CMake generator tests
+  automatically check SDK selection and Markdown prose spelling.

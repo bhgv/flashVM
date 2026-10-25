@@ -35,7 +35,7 @@ build/mk/mk -f mkfile compilers linker
 ```
 
 These targets compile directly using CC/ar, without CMake delegation. Supported:
-mk, iyacc, limbo-bootstrap, cocor, as1/as2/as3, limbo (parse/tree/interface/bindings) and compilers,
+mk, iyacc, limbo-bootstrap, `cocor`, as1/as2/as3, limbo (parse/tree/interface/bindings) and compilers,
 plus the SWO/SWA/SWF linker. Owned frontend parsers use bundled source-built Coco/R; the temporary
 legacy Limbo bootstrap uses local iyacc. Native --tests is supported when every
 selected component is mk, iyacc or limbo-bootstrap. VM/FIR/SBL/IDE/DisVM and

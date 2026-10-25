@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1540**. [Русская версия](README.ru.md).
+Development version: **0.1541**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 

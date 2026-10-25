@@ -36,7 +36,7 @@ build/mk/mk -f mkfile compilers linker
 ```
 
 Рецепты компилируют напрямую через CC/ar без делегирования CMake. Поддерживаются
-mk, iyacc, limbo-bootstrap, cocor, as1/as2/as3, limbo (parse/tree/interface/bindings), compilers и
+mk, iyacc, limbo-bootstrap, `cocor`, as1/as2/as3, limbo (parse/tree/interface/bindings), compilers и
 линкер SWO/SWA/SWF. Собственные парсеры генерирует локальный Coco/R, временный
 Limbo bootstrap использует локальный iyacc. Нативные --tests доступны, если вся
 выборка состоит из mk, iyacc и limbo-bootstrap. VM/FIR/SBL/IDE/DisVM и --demo

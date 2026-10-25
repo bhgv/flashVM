@@ -31,4 +31,13 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/upstream/frames")
   set_tests_properties(cocor_frame_paths PROPERTIES TIMEOUT 60
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  # Workspace-only regressions are optional for detached generator snapshots.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../build-workspace.sh"
+      AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../test_cocor_sdk.py")
+    add_test(NAME cocor_workspace_sdk COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../test_cocor_sdk.py")
+    add_test(NAME cocor_prose_spelling COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../check_cocor_spelling.py")
+    set_tests_properties(cocor_workspace_sdk cocor_prose_spelling PROPERTIES TIMEOUT 60)
+  endif()
 endif()
