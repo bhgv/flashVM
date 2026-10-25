@@ -1764,24 +1764,34 @@ OP(mspawn)
 		error("invalid mspawn");
 	spawnmodule(ml, entry.u.pc);
 }
-/* Capture frame links before release, without requiring host pointer alignment. */
+
+
+/* Validate captured return metadata before changing registers or releasing owners. */
 OP(ret)
 {
 	Frame *f, links;
 	Modlink *m;
+	Type *type;
 
 	if(R.FP == nil || R.FP == H)
 		error(exNilref);
 	f = (Frame*)R.FP;
 	memmove(&links, f, sizeof(links));
-	R.FP = links.fp;
-	if(R.FP == nil) {
-		R.FP = (uchar*)f;
+	if(links.fp == nil)
 		error("");
-	}
+	if(links.fp == H || links.lr == nil || links.lr == H)
+		error(exHeap);
+	m = links.mr;
+	if(m == H || (m != nil && (R.M == nil || R.M == H)))
+		error(exModule);
+	type = links.t;
+	if(type == nil)
+		memmove(&type, (uchar*)SEXTYPE(f)+O(Stkext, reg.TR), sizeof(type));
+	if(type == nil || type == H || type->np < 0)
+		error(exHeap);
+	R.FP = links.fp;
 	R.SP = (uchar*)f;
 	R.PC = links.lr;
-	m = links.mr;
 
 	if(links.t == nil)
 		unextend(f);
@@ -1859,7 +1869,9 @@ OP(iload)
 	memmove(R.d, &ml, sizeof(ml));
 	destroy(t);
 }
-/* Resolve the complete link index before publishing a frame or changing modules. */
+
+
+/* Validate module references and the complete entry before publishing a callee frame. */
 OP(mcall)
 {
 	WORD index;
@@ -1871,11 +1883,18 @@ OP(mcall)
 	Modlink *ml;
 
 	memmove(&ml, R.d, sizeof(ml));
-	if(ml == H)
+	if(ml == nil || ml == H || R.M == nil || R.M == H)
 		error(exModule);
 	memmove(&index, R.m, sizeof(index));
 	if(!moduleentry(ml, index, &entry))
 		error("invalid mcall");
+	h = D2H(ml);
+	if(h->ref == 0 || h->ref == (ulong)-1)
+		error(exHeap);
+	if(ml->prog == H ||
+	   (ml->prog != nil && (entry.u.pc == nil || entry.u.pc == H)) ||
+	   (ml->prog == nil && (entry.u.runt == nil || entry.u.runt == (void(*)(void*))H)))
+		error(exModule);
 	memmove(&f, R.s, sizeof(f));
 	if(f == nil || f == H)
 		error(exNilref);
@@ -1886,7 +1905,6 @@ OP(mcall)
 	caller = R.M;
 	R.FP = (uchar*)f;
 	R.M = ml;
-	h = D2H(ml);
 	h->ref++;
 
 	if(ml->prog == nil) {

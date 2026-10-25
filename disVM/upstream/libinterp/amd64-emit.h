@@ -951,6 +951,95 @@ x64frame(X64Buf *b, LeafLayout *a, int imported)
 }
 
 
+/* Return within a module only when no mapped owner or extent cleanup is required. */
+static int
+x64return(X64Buf *b, LeafLayout *a)
+{
+	int offsets[7], i, j;
+
+	offsets[0]=a->fp; offsets[1]=a->sp; offsets[2]=a->pc;
+	offsets[3]=a->frametype; offsets[4]=a->framemr;
+	offsets[5]=a->framefp; offsets[6]=a->framelr;
+	for(i=0; i<7; i++)
+		if(offsets[i]<0 || offsets[i]>2047 || offsets[i]%8)return 0;
+	for(i=3; i<7; i++)for(j=i+1; j<7; j++)
+		if(offsets[i]==offsets[j])return 0;
+	if(a->typenp<0 || a->typenp>2047 || a->typenp%4)return 0;
+	x64ptr(b, 0, a->fp);
+	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x40); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 1); x64guard(b, 0x77);
+	x64field(b, 0, 8, a->frametype, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64guard(b, 0x77);
+	x64field(b, 1, 0, a->typenp, 4);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9); x64guard(b, 0x74);
+	x64field(b, 1, 8, a->framemr, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9); x64guard(b, 0x74);
+	x64field(b, 1, 8, a->framefp, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x51); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64guard(b, 0x77);
+	x64field(b, 0, 8, a->framelr, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64guard(b, 0x77);
+	/* All frame metadata is captured before the first REG store. */
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x8f); x64word(b, a->fp);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, a->sp);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, a->pc);
+	return 1;
+}
+
+
+/* Retain a bytecode self-call only after validating every input before frame writes. */
+static int
+x64modulecall(X64Buf *b, LeafLayout *a)
+{
+	int offsets[11], i;
+
+	offsets[0]=a->module; offsets[1]=a->fp; offsets[2]=a->regmp; offsets[3]=a->linkprog;
+	offsets[4]=a->linkmp; offsets[5]=a->linklinks; offsets[6]=a->framelr;
+	offsets[7]=a->framefp; offsets[8]=a->framemr; offsets[9]=a->regtemp; offsets[10]=a->linknlinks;
+	for(i=0;i<11;i++)
+		if(offsets[i]<0 || offsets[i]>2047 || offsets[i]%(i<9 ? 8 : i==9 ? a->wordbytes : 4))return 0;
+	if(a->modlbytes!=16 || a->modlpc<0 || a->modlpc>8 || a->modlpc%8 || a->heapref<=0 || a->heapref>128 || a->heapref%8 || a->refbytes!=8 ||
+	   a->framelr==a->framefp || a->framelr==a->framemr || a->framefp==a->framemr)return 0;
+	x64ptr(b, 0, a->d); x64load(b, 0, 8);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc0); // r8 is the module owner.
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64guard(b, 0x77);
+	x64byte(b, 0x48); x64byte(b, 0x3b); x64byte(b, 0x87); x64word(b, a->module); x64guard(b, 0x74);
+	x64field(b, 1, 0, a->linkprog, 8);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 1); x64guard(b, 0x77);
+	x64ptr(b, 1, a->m); x64field(b, 6, 9, 0, a->wordbytes);
+	x64field(b, 1, 0, a->linknlinks, 4);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9); x64guard(b, 0x79);
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xce); x64guard(b, 0x72);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe6); x64byte(b, 4);
+	x64byte(b, 0x4c); x64byte(b, 0x8b); x64byte(b, 0x94); x64byte(b, 0x30); x64word(b, a->linklinks+a->modlpc);
+	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x52); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64guard(b, 0x77);
+	x64ptr(b, 1, a->s); x64load(b, 1, 8);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc9); // r9 is the captured frame.
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 1); x64guard(b, 0x77);
+	x64field(b, 1, 0, -a->heapref, 8);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 1); x64guard(b, 0x77);
+	x64field(b, 2, 7, a->pc, 8); x64field(b, 6, 7, a->fp, 8);
+	x64field(b, 0, 8, a->linkmp, 8);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0x91); x64word(b, a->framelr);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xb1); x64word(b, a->framefp);
+	x64byte(b, 0x4d); x64byte(b, 0x89); x64byte(b, 0x81); x64word(b, a->framemr);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x8f); x64word(b, a->fp);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0x88); x64word(b, -a->heapref);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, a->regmp);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x97); x64word(b, a->pc);
+	if(a->wordbytes==8)x64byte(b, 0x48);
+	x64byte(b, 0xc7); x64byte(b, 0x87); x64word(b, a->regtemp); x64word(b, 1);
+	return 1;
+}
+
+
 /* Emit a SysV AMD64 leaf, returning its bounded count of four-byte code units. */
 static int
 leafemit(u32int *out, int cap, LeafLayout *abi, int op)
@@ -968,7 +1057,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	b.n = 0;
 	/* ENDBR64 also permits entry when the host enables indirect-branch tracking. */
 	x64byte(&b, 0xf3); x64byte(&b, 0x0f); x64byte(&b, 0x1e); x64byte(&b, 0xfa);
-	if(p.kind == LeafFrame){
+	if(p.kind == LeafModuleCall){
+		if(!x64modulecall(&b, abi))return 0;
+	}else if(p.kind == LeafReturn){
+		if(!x64return(&b, abi))return 0;
+	}else if(p.kind == LeafFrame){
 		if(!x64frame(&b, abi, p.alu))return 0;
 	}else if(p.kind == LeafStringSlice){
 		if(!x64stringslice(&b, abi)) return 0;

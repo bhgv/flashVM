@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1573**. [Русская версия](README.ru.md).
+Development version: **0.1574**. [Русская версия](README.ru.md).
 
 Current series: [v0.1570–v0.1573](docs/releases/v0.1573.md) adds our direct C99 FIR→Dis i32 backend and DisVM scalar inspection, integrates Inferno FRAME/MFRAME, and returns a confirmed fixture ABI fix upstream.
 
