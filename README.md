@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1558**. [Русская версия](README.ru.md).
+Development version: **0.1561**. [Русская версия](README.ru.md).
 
-Current series: [v0.1556–v0.1558](docs/releases/v0.1558.md) adds Dis word/block/location commands, fixes caret/mouse drift against real text ink, and integrates Inferno string-read guards through `61a2942b`.
+Current series: [v0.1559–v0.1561](docs/releases/v0.1561.md) integrates Inferno real-decimal/append/comparison paths, adds Dis-admitted editor window resizing, and ships a commented executable numeric/Unicode tutorial.
 
 ## Browse documentation
 

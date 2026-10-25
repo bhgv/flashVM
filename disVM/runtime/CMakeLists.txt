@@ -76,7 +76,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch)
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -89,7 +89,8 @@ set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworksp
   "${view}/libraries/styx.b" "${view}/libraries/styxservers.b"
   "${root}/disVM/examples/standard-modules/main.b"
   "${root}/ide/dis/bridge/ideviewport.b"
-  "${root}/ide/dis/bridge/idefileops.b" "${root}/ide/dis/bridge/idesearch.b")
+  "${root}/ide/dis/bridge/idefileops.b" "${root}/ide/dis/bridge/idesearch.b"
+  "${root}/disVM/examples/decimal-append/main.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
@@ -124,6 +125,15 @@ if(DVM_RUNTIME_TESTS)
    endif()
   endforeach()
  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_decimal_append_example_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/decimal-append.dis" "${mode}")
+    set_tests_properties(disvm_decimal_append_example_${mode} PROPERTIES TIMEOUT 60)
+  endforeach()
 endif()
 
 if(DVM_RUNTIME_TESTS)

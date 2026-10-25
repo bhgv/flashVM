@@ -25,6 +25,9 @@ def main():
     if (package / "examples/graphical-editor").is_dir():
         for name in ("README.md", "README.ru.md", "main.b"):
             pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
+    if (package / "examples/decimal-append").is_dir():
+        for name in ("README.md", "README.ru.md", "main.b"):
+            pairs[root / "disVM/examples/decimal-append" / name] = package / "examples/decimal-append" / name
     if (package / "docs/dis").is_dir():
         for source in (root / "ide/dis").glob("*.md"):
             pairs[source] = package / "docs/dis" / source.name

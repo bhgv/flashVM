@@ -176,3 +176,12 @@ Default size is 11. Ctrl+wheel and SDL two-finger pinch propose bounded Dis-owne
 zoom with actual row geometry, including desktop touch-capable adapters.
 [English contract](../../ide/dis/ZOOM.md) · [Русский](../../ide/dis/ZOOM.ru.md).
 The signed-int32 envelope fix is exercised by real NC64 codec tests.
+
+
+## Current real numeric/string and graphical examples
+
+[Decimal/Unicode append](../examples/decimal-append/README.md) ships runnable
+`decimal-append.dis`, its fully commented source and bilingual instructions.
+The [editor resize contract](../../ide/dis/RESIZE.md) describes component 0.5.0
+Canvas/Style matching, allocation bounds and retained Dis-owned prompt/source
+state. Keep the host/controller pair together when updating packages.

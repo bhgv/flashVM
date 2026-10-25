@@ -98,8 +98,8 @@ start with bundled Noto and compare actual raster size changes/equivalence.
 Acceptance is experimental Linux AMD64 NC64, one native owner. The SDL pinch
 path is not Android-specific and can serve Windows/macOS/Linux touch-capable
 frontends, but physical devices and complete other-platform runtime ports remain
-separate work. The viewport is fixed 960×640, with logical rather than soft-wrap
-navigation. Full bidi/grapheme editing, resize, syntax colors, completion popups,
+separate work. The initial viewport is 960×640 and resizes within 240..2048 by 160..2048 pixels,
+with logical rather than soft-wrap navigation. Full bidi/grapheme editing, syntax colors, completion popups,
 AS-worker execution, compiler commands and debugger UI remain open. Noto glyph
 coverage is finite; missing glyphs do not alter Unicode source/saved bytes.
 Synchronous I/O may block the sole native owner.

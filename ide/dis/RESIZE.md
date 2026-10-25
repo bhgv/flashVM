@@ -36,7 +36,7 @@ source hit testing at every size.
 Real tests shrink/grow through the minimum and maximum extents, inspect actual
 PPM allocation dimensions, compare caret with independently scanned ink, derive
 mouse hits from that ink, check page/reveal behavior and preserve a Find field
-through resize/zoom. Stale/malformed/negative/oversize proposals do not allocate.
+through resize/zoom. Stale/malformed/negative/oversize proposals do not reallocate the canvas.
 Both Dis dispatch modes and optional real SDL texture uploads with the dummy
 video driver pass. Dummy/replay acceptance does not certify physical window
 managers, high-DPI mapping or Windows/macOS native runtime ports.

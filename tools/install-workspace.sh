@@ -313,6 +313,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
+            copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
             copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
             for file in "$base/native/libraries/"*.b; do
                 copy_file "$file" "$destination/source/libraries/$(basename "$file")"

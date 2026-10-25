@@ -69,6 +69,15 @@ def main():
         views, canvases, _, _, _ = session(runtime, module, mode, directory, source, events, (512, 400))
         if [view[1] for view in views[2:5]] != [1, 1, 2] or canvases[-1] != (512, 400):
             raise RuntimeError("stale/malformed/unbounded-row resize altered the canvas")
+        # Maximum font and full prompt budget remain usable in the smallest real canvas.
+        events = [envelope(3, 65552, first=240, second=160)]
+        events += [envelope(3, 65550, first=1)] * 37 + shortcut("F")
+        events += [envelope(5, text="q" * 256), envelope(4, 27, 1), envelope(1, 65539)]
+        views, _, styles, _, panels = session(runtime, module, mode, directory, source, events, (240, 160))
+        if styles[-1][0] != 48 or not any(panel[0] == 1 and panel[2] == "q" * 256 for panel in panels):
+            raise RuntimeError("smallest canvas lost the maximum-size prompt or font")
+        if any(view[-1] != text or view[0] != 1 for view in views):
+            raise RuntimeError("small-canvas prompt/zoom altered the source")
         # Page navigation uses the new admitted logical rows; caret reveal retires the old scroll.
         text = "\n".join(["MMMM"] * 200)
         source.write_text(text, encoding="utf-8")
