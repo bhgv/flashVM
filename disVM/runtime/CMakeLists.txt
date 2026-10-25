@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.1.2 LANGUAGES C)
+project(disvm_runtime VERSION 0.2.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -32,22 +32,22 @@ string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}"
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
-file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
+file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h")
 
-add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c"
+add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${u}/module/sys.m" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
-set(core alt conv dec disc gc heap link load raise readmod runt stack string validstk xec comp-amd64)
+set(core alt conv dec disc gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
 set(sources)
 foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
-add_executable(disvm main.c "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c srv_adapter.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1)
 target_compile_options(disvm PRIVATE -fno-strict-aliasing)
@@ -57,19 +57,32 @@ target_link_libraries(disvm PRIVATE disvm_flashvm_host limbo_bootstrap_lib9 limb
 
 
 
+execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${root}/disVM/libraries/prepare.py"
+  --source "${u}" --output "${view}/libraries" --cells 8 RESULT_VARIABLE library_prepared)
+if(NOT library_prepared EQUAL 0)
+  message(FATAL_ERROR "Native library source preparation failed")
+endif()
+file(GLOB library_sources "${u}/appl/lib/*.b")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources}
+  "${root}/disVM/libraries/prepare.py")
+
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles)
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
   "${root}/ide/dis/bridge/ideinput.b" "${root}/ide/dis/bridge/idebridge.b"
   "${root}/ide/dis/bridge/idecomplete.b" "${root}/ide/dis/bridge/idebuiltins.b"
   "${root}/ide/dis/examples/editor-console/main.b"
-  "${root}/ide/dis/bridge/idefiles.b")
+  "${root}/ide/dis/bridge/idefiles.b"
+  "${view}/libraries/bufio.b" "${view}/libraries/string.b" "${view}/libraries/arg.b"
+  "${view}/libraries/readdir.b" "${view}/libraries/debug.b" "${view}/libraries/dis.b"
+  "${view}/libraries/styx.b" "${view}/libraries/styxservers.b"
+  "${root}/disVM/examples/standard-modules/main.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
-  "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m")
+  "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
 math(EXPR module_last "${module_count}-1")
 set(products)
@@ -168,4 +181,24 @@ if(DVM_RUNTIME_TESTS)
     "${root}/tools/limbo-bootstrap/tests/big_constants.py" "$<TARGET_FILE:limbo-bootstrap>")
   set_tests_properties(disvm_compiler_big_constant_pool PROPERTIES TIMEOUT 30
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  add_executable(disvm_resolver_test test_resolver.c)
+  target_link_libraries(disvm_resolver_test PRIVATE disvm_shared_ports)
+  add_test(NAME disvm_shared_resolver COMMAND disvm_resolver_test)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_standard_modules_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/libraries-check.dis" "${mode}")
+    add_test(NAME disvm_compiler_binary64_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_float_compiler.py" "$<TARGET_FILE:limbo-bootstrap>"
+      "$<TARGET_FILE:disvm>" "${u}/module" "${mode}")
+    set_tests_properties(disvm_standard_modules_${mode} disvm_compiler_binary64_${mode} PROPERTIES TIMEOUT 60)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  add_executable(disvm_nc64_tables_test test_native_tables.c)
+  add_test(NAME disvm_nc64_table_layout_and_errors COMMAND disvm_nc64_tables_test)
 endif()

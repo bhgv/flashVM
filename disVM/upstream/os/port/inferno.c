@@ -640,41 +640,49 @@ unpackdir(Dir *d, void *slot)
 	memmove(slot, &result, sizeof(result));
 }
 
+/* Capture unaligned VM metadata and check every native string/allocation size before copying. */
 static Dir*
-packdir(Sys_Dir *sd)
+packdir(void *slot)
 {
 	char *nm[4], *p;
-	int i, n;
+	Sys_Dir source;
+	ulong lengths[4], size, length;
+	int i;
 	Dir *d;
 
-	nm[0] = string2c(sd->name);
-	nm[1] = string2c(sd->uid);
-	nm[2] = string2c(sd->gid);
-	nm[3] = string2c(sd->muid);
-	n = 0;
-	for(i=0; i<4; i++)
-		n += strlen(nm[i])+1;
-	d = smalloc(sizeof(*d)+n);
+	memmove(&source, slot, sizeof(source));
+	nm[0] = string2c(source.name);
+	nm[1] = string2c(source.uid);
+	nm[2] = string2c(source.gid);
+	nm[3] = string2c(source.muid);
+	size = sizeof(*d);
+	for(i = 0; i < 4; i++){
+		length = strlen(nm[i]);
+		if(length >= (ulong)-1-size)
+			error(exHeap);
+		lengths[i] = length+1;
+		size += lengths[i];
+	}
+	d = smalloc(size);
 	p = (char*)d+sizeof(*d);
-	for(i=0; i<4; i++){
-		n = strlen(nm[i])+1;
-		memmove(p, nm[i], n);
+	for(i = 0; i < 4; i++){
+		memmove(p, nm[i], lengths[i]);
 		nm[i] = p;
-		p += n;
+		p += lengths[i];
 	}
 	d->name = nm[0];
 	d->uid = nm[1];
 	d->gid = nm[2];
 	d->muid = nm[3];
-	d->qid.path = sd->qid.path;
-	d->qid.vers = sd->qid.vers;
-	d->qid.type = sd->qid.qtype;
-	d->mode = sd->mode;
-	d->atime = sd->atime;
-	d->mtime = sd->mtime;
-	d->length = sd->length;
-	d->type = sd->dtype;
-	d->dev = sd->dev;
+	d->qid.path = source.qid.path;
+	d->qid.vers = source.qid.vers;
+	d->qid.type = source.qid.qtype;
+	d->mode = source.mode;
+	d->atime = source.atime;
+	d->mtime = source.mtime;
+	d->length = source.length;
+	d->type = source.dtype;
+	d->dev = source.dev;
 	return d;
 }
 
@@ -1146,12 +1154,26 @@ Sys_file2chan(void *fp)
 		memmove(up->env->errstr, saved, sizeof(saved));
 }
 
+/* Decode a VM list integer without narrowing an unrelated high-bit descriptor into native int. */
+static int
+sysfdword(void *slot, int *fd)
+{
+	WORD value;
+
+	memmove(&value, slot, sizeof(value));
+	if(!sysnativeint(value))
+		return 0;
+	*fd = value;
+	return 1;
+}
+
 enum
 {
 	/* the following pctl calls can block and must release the virtual machine */
 	BlockingPctl=	Sys_NEWFD|Sys_FORKFD|Sys_NEWNS|Sys_FORKNS|Sys_NEWENV|Sys_FORKENV
 };
 
+/* Publish complete pctl status and preserve descriptor-group ownership during list operations. */
 void
 Sys_pctl(void *fp)
 {
@@ -1167,6 +1189,7 @@ Sys_pctl(void *fp)
 	Fgrp *fg, *ofg, *nfg;
 	volatile struct {Egrp *ne;} ne;
 	Egrp *oe;
+	WORD result;
 
 	f = fp;
 
@@ -1181,7 +1204,8 @@ Sys_pctl(void *fp)
 		closeegrp(ne.ne);
 		if(f->flags & BlockingPctl)
 			acquire();
-		*f->ret = -1;
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
@@ -1192,8 +1216,7 @@ Sys_pctl(void *fp)
 		lock(ofg);
 		/* file descriptors to preserve */
 		for(l = f->movefd; l != H; l = l->tail) {
-			fd = *(int*)l->data;
-			if(fd >= 0 && fd <= ofg->maxfd) {
+			if(sysfdword(l->data, &fd) && fd >= 0 && fd <= ofg->maxfd) {
 				c = ofg->fd[fd];
 				if(c != nil && fd < nfg->nfd && nfg->fd[fd] == nil) {
 					incref(c);
@@ -1211,9 +1234,13 @@ Sys_pctl(void *fp)
 	if(f->flags & Sys_FORKFD) {
 		ofg = o->fgrp;
 		fg = dupfgrp(ofg);
-		/* file descriptors to close */
-		for(l = f->movefd; l != H; l = l->tail)
-			kclose(*(int*)l->data);
+		/* Close only in the unpublished copy; the old group may belong to other programs. */
+		for(l = f->movefd; l != H; l = l->tail){
+			if(sysfdword(l->data, &fd))
+				kfgrpclose(fg, fd);
+			else
+				seterror(Ebadarg);
+		}
 		o->fgrp = fg;
 		closefgrp(ofg);
 	}
@@ -1267,7 +1294,8 @@ Sys_pctl(void *fp)
 	if(f->flags & BlockingPctl)
 		acquire();
 
-	*f->ret = p->pid;
+	result = p->pid;
+	memmove(f->ret, &result, sizeof(result));
 }
 
 /* Retain ownership of native entries and publish tuple fields without alignment assumptions. */

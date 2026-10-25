@@ -143,6 +143,38 @@ x64stringheader(X64Buf *b, int owner, int length, int stride, int lenoff, int da
 	b->bytes[done]=b->n-done-1;
 }
 
+/* Validate a power scale without FP effects: rax is source, rcx is scale/product magnitude. */
+static void
+x64realproduct(X64Buf *b)
+{
+	int unit;
+
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xca);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe2); x64byte(b, 12);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xd2); x64guard(b, 0x74);
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe1);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe9); x64byte(b, 53);
+	x64byte(b, 0x81); x64byte(b, 0xe9); x64word(b, 1023);
+	x64byte(b, 0x8d); x64byte(b, 0x51); x64byte(b, 16);
+	x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 32); x64guard(b, 0x76);
+	x64byte(b, 0x85); x64byte(b, 0xc9);
+	x64byte(b, 0x74); unit=b->n; x64byte(b, 0);
+	/* Non-unit scales require normal input and normal exact product exponents. */
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc2);
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe2);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xea); x64byte(b, 53);
+	x64byte(b, 0x8d); x64byte(b, 0x72); x64byte(b, 0xff);
+	x64byte(b, 0x81); x64byte(b, 0xfe); x64word(b, 2045); x64guard(b, 0x76);
+	x64byte(b, 0x01); x64byte(b, 0xca);
+	x64byte(b, 0x83); x64byte(b, 0xea); x64byte(b, 1);
+	x64byte(b, 0x81); x64byte(b, 0xfa); x64word(b, 2045); x64guard(b, 0x76);
+	b->bytes[unit]=b->n-unit-1;
+	x64byte(b, 0x48); x64byte(b, 0x63); x64byte(b, 0xc9);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe1); x64byte(b, 52);
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe1);
+}
+
 /* Reject NaNs without FP effects; finite/subnormal comparisons use host FP controls. */
 static void
 x64realguard(X64Buf *b, int reg)
@@ -158,6 +190,310 @@ x64realguard(X64Buf *b, int reg)
 	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe2); x64byte(b, 12);
 	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xd2); x64guard(b, 0x74);
 	b->bytes[ordinary]=b->n-ordinary-1;
+}
+
+/* Prefer short private-layout displacements without restricting future native field offsets. */
+static void
+x64caseptr(X64Buf *b, int reg, int offset)
+{
+	if(offset > 127){
+		x64ptr(b, reg, offset);
+		return;
+	}
+	x64byte(b, 0x4c); x64byte(b, 0x8b); x64byte(b, 0x47+reg*8); x64byte(b, offset);
+}
+
+/* Read signed table words or native metadata with the shortest available displacement. */
+static void
+x64casefield(X64Buf *b, int result, int owner, int offset, int bytes)
+{
+	if(offset < -128 || offset > 127){
+		x64field(b, result, owner, offset, bytes);
+		return;
+	}
+	x64byte(b, owner >= 8 ? 0x49 : 0x48); x64byte(b, bytes == 8 ? 0x8b : 0x63);
+	x64byte(b, 0x40 | result<<3 | (owner&7)); x64byte(b, offset);
+}
+
+/* Defer rejection to one of two nearby returns, preserving short conditional transfers. */
+static void
+x64caseguard(X64Buf *b, int success, int *patch, int *count)
+{
+	x64byte(b, success^1);
+	patch[(*count)++]=b->n;
+	x64byte(b, 0);
+}
+
+/* Search fixed-width numeric tables without helper calls or VM writes before target validation. */
+static int
+x64case(X64Buf *b, LeafLayout *abi, LeafOp *op)
+{
+	int reject[32], count, first, last, i, displacement;
+	int loop, empty, left, right, found, leftlabel, rightlabel, done;
+	int header, stride;
+
+	if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
+	   abi->linkmodule < 0 || abi->linkmodule > 2047 || abi->linkmodule%8 ||
+	   abi->linkcompiled < 0 || abi->linkcompiled > 2047 || abi->linkcompiled%4 ||
+	   abi->moduleprog < 0 || abi->moduleprog > 2047 || abi->moduleprog%8 ||
+	   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
+	   abi->instbytes < 1 || abi->instbytes > 2047)
+		return 0;
+	header=op->alu ? 8 : 4; stride=op->alu ? 24 : 12; count=0;
+	/* Rejection islands cover both ends without near branches or a larger code buffer. */
+	x64byte(b, 0xeb); x64byte(b, 3); first=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	x64caseptr(b, 0, abi->module);
+	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x40); x64byte(b, 0xff);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
+	x64casefield(b, 2, 8, abi->linkcompiled, 4);
+	x64byte(b, 0x85); x64byte(b, 0xd2); x64caseguard(b, 0x74, reject, &count);
+	x64casefield(b, 0, 8, abi->linkmodule, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 0xff);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc3); /* r11=module */
+	x64caseptr(b, 0, abi->s); x64load(b, 0, op->bytes);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc6); /* rsi=value */
+	x64caseptr(b, 2, abi->d);
+	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x52); x64byte(b, 0xff);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfb); x64caseguard(b, 0x76, reject, &count);
+	x64casefield(b, 1, 10, 0, 4);
+	x64byte(b, 0x81); x64byte(b, 0xf9); x64word(b, 4095); x64caseguard(b, 0x76, reject, &count);
+	x64byte(b, 0x48); x64byte(b, 0x6b); x64byte(b, 0xc1); x64byte(b, stride);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xc0); x64byte(b, header);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xd2);
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc2); x64caseguard(b, 0x73, reject, &count);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfc); x64caseguard(b, 0x76, reject, &count);
+	x64byte(b, 0x4c); x64byte(b, 0x63); x64byte(b, 0x0a); /* r9=default */
+	x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x42); x64byte(b, header); /* r8=rows */
+	loop=b->n;
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	x64byte(b, 0x74); empty=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc8);
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe8);
+	x64byte(b, 0x48); x64byte(b, 0x6b); x64byte(b, 0xc0); x64byte(b, stride);
+	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x14); x64byte(b, 0x00);
+	x64byte(b, 0x48); x64byte(b, op->alu ? 0x8b : 0x63); x64byte(b, 0x02);
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xc6);
+	x64byte(b, 0x7c); left=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, op->alu ? 0x8b : 0x63); x64byte(b, 0x42); x64byte(b, op->alu ? 8 : 4);
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xc6);
+	x64byte(b, 0x7d); right=b->n; x64byte(b, 0);
+	x64byte(b, 0x4c); x64byte(b, 0x63); x64byte(b, 0x4a); x64byte(b, op->alu ? 16 : 8);
+	x64byte(b, 0xeb); found=b->n; x64byte(b, 0);
+	leftlabel=b->n;
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe9);
+	x64byte(b, 0xeb); x64byte(b, loop-b->n-1);
+	rightlabel=b->n;
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc8);
+	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe8);
+	x64byte(b, 0x48); x64byte(b, 0x29); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc9);
+	x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x42); x64byte(b, stride);
+	x64byte(b, 0xeb); x64byte(b, loop-b->n-1);
+	done=b->n;
+	if(b->n > sizeof(b->bytes)) return 0;
+	b->bytes[empty]=done-empty-1; b->bytes[found]=done-found-1;
+	b->bytes[left]=leftlabel-left-1; b->bytes[right]=rightlabel-right-1;
+	x64casefield(b, 2, 11, abi->modulenprog, 4);
+	x64byte(b, 0x85); x64byte(b, 0xd2); x64caseguard(b, 0x7f, reject, &count);
+	x64byte(b, 0x49); x64byte(b, 0x39); x64byte(b, 0xd1); x64caseguard(b, 0x72, reject, &count);
+	x64casefield(b, 0, 11, abi->moduleprog, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 0xff);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
+	x64byte(b, 0x4d); x64byte(b, 0x69); x64byte(b, 0xc9); x64word(b, abi->instbytes);
+	x64byte(b, 0x4c); x64byte(b, 0x01); x64byte(b, 0xc8); x64caseguard(b, 0x73, reject, &count);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, abi->pc);
+	x64byte(b, 0xeb); x64byte(b, 3); last=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	if(b->n > sizeof(b->bytes)) return 0;
+	for(i=0;i<count;i++){
+		displacement=first-reject[i]-1;
+		if(displacement < -128 || displacement > 127) displacement=last-reject[i]-1;
+		if(displacement < -128 || displacement > 127) return 0;
+		b->bytes[reject[i]]=displacement;
+	}
+	return 1;
+}
+
+/* Copy and mark live owners into empty or identical slots without helper calls. */
+static int
+x64owner(X64Buf *b, LeafLayout *abi, LeafOp *p)
+{
+	unsigned long long color;
+	int offset, empty, same, marked;
+
+	if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
+	   abi->heapref <= 0 || abi->heapref > 255 || abi->heapref%8 ||
+	   abi->heapcolor <= 0 || abi->heapcolor > 255 || abi->heapcolor%4 ||
+	   abi->refbytes != 8 || abi->mutator == nil || abi->nprop == nil ||
+	   abi->markcolor < 0 || abi->markcolor > 255)
+		return 0;
+	offset=p->alu == 2 ? abi->listdata : abi->listtail;
+	if(p->alu >= 2 && (offset < 0 || offset > 2047))
+		return 0;
+	if(p->alu == 1){
+		x64ptr(b, 0, abi->module);
+		x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc0);
+	}else{
+		x64ptr(b, 0, abi->s); x64load(b, 0, 8);
+	}
+	if(p->alu >= 2){
+		x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0); x64guard(b, 0x75);
+		x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff); x64guard(b, 0x75);
+		x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x80); x64word(b, offset);
+		x64load(b, 0, 8);
+	}
+	x64ptr(b, 2, abi->d);
+	x64byte(b, 0x4d); x64byte(b, 0x8b); x64byte(b, 0x0a); /* r9=previous owner */
+	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+	x64byte(b, 0x74); same=b->n; x64byte(b, 0);
+	x64byte(b, 0x49); x64byte(b, 0x39); x64byte(b, 0xc1); x64guard(b, 0x74);
+	b->bytes[same]=b->n-same-1;
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0); x64guard(b, 0x75);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff);
+	empty=-1;
+	if(p->alu == 1)
+		x64guard(b, 0x75);
+	else{
+		x64byte(b, 0x74); empty=b->n; x64byte(b, 0);
+	}
+	x64field(b, 1, 0, -abi->heapref, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9); x64guard(b, 0x75);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff); x64guard(b, 0x75);
+	/* An identical owner needs no retain/release pair, but must pass the same guards. */
+	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+	x64byte(b, 0x75); same=b->n; x64byte(b, 0);
+	/* No fallible checks remain after the first owner mutation. */
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc1);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x88); x64word(b, -abi->heapref);
+	b->bytes[same]=b->n-same-1;
+	x64field(b, 2, 0, -abi->heapcolor, 4);
+	color=(unsigned long long)abi->mutator;
+	x64byte(b, 0x49); x64byte(b, 0xbb); x64word(b, color); x64word(b, color>>32);
+	x64byte(b, 0x41); x64byte(b, 0x3b); x64byte(b, 0x13); x64byte(b, 0x74); marked=b->n; x64byte(b, 0);
+	/* Match Setmark's two native int stores, retaining existing nprop on no-mark paths. */
+	x64byte(b, 0xc7); x64byte(b, 0x80); x64word(b, -abi->heapcolor); x64word(b, abi->markcolor);
+	color=(unsigned long long)abi->nprop;
+	x64byte(b, 0x49); x64byte(b, 0xbb); x64word(b, color); x64word(b, color>>32);
+	x64byte(b, 0x41); x64byte(b, 0xc7); x64byte(b, 0x03); x64word(b, 1);
+	b->bytes[marked]=b->n-marked-1;
+	if(empty >= 0)
+		b->bytes[empty]=b->n-empty-1;
+	if(p->alu >= 2){
+		x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, abi->s);
+	}
+	x64store(b, 0, 8);
+	return 1;
+}
+
+/* Share a nearby rejection return while keeping every guard before copy publication. */
+static int
+x64mappedguard(X64Buf *b, int success, int fallback)
+{
+	int distance=fallback-b->n-2;
+	if(distance < -128 || distance > 127)
+		return 0;
+	x64byte(b, success^1); x64byte(b, distance);
+	return 1;
+}
+
+/* Copy small pointer-free records through the live Module.type table, never its cache. */
+static int
+x64mapped(X64Buf *b, LeafLayout *a, LeafOp *p)
+{
+	int fallback, empty, forward, loop;
+
+	if(a->module < 0 || a->module > 2047 || a->module%8 ||
+	   a->linkmodule < 0 || a->linkmodule > 2047 || a->linkmodule%8 ||
+	   a->moduletypes < 0 || a->moduletypes > 2047 || a->moduletypes%8 ||
+	   a->modulenty < 0 || a->modulenty > 2047 || a->modulenty%4 ||
+	   a->typesize < 0 || a->typesize > 2047 || a->typesize%4 ||
+	   a->typenp < 0 || a->typenp > 2047 || a->typenp%4 ||
+	   (p->alu && (a->listdata < 0 || a->listdata > 2047 ||
+	   a->heapref <= 0 || a->heapref > 255 || a->heapref%8 || a->refbytes != 8)))
+		return 0;
+	x64byte(b, 0xeb); x64byte(b, 3); fallback=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	if(p->alu){
+		x64caseptr(b, 0, a->s); x64load(b, 0, 8);
+		x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0);
+		if(!x64mappedguard(b, 0x75, fallback)) return 0;
+		x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff);
+		if(!x64mappedguard(b, 0x75, fallback)) return 0;
+		x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc3);
+	}
+	x64caseptr(b, 0, a->module);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc0);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64casefield(b, 0, 0, a->linkmodule, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64casefield(b, 1, 0, a->moduletypes, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64casefield(b, 2, 0, a->modulenty, 4);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xd2);
+	if(!x64mappedguard(b, 0x7f, fallback)) return 0;
+	/* A second return bounds backward displacements even for larger native layouts. */
+	x64byte(b, 0xeb); x64byte(b, 3); fallback=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	x64caseptr(b, 0, a->m); x64load(b, 0, a->wordbytes);
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xd0);
+	if(!x64mappedguard(b, 0x72, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xe0); x64byte(b, 3);
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc1);
+	if(!x64mappedguard(b, 0x73, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0x09);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64casefield(b, 0, 1, a->typesize, 4);
+	x64byte(b, 0x48); x64byte(b, 0x3d); x64word(b, 128);
+	if(!x64mappedguard(b, 0x76, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0);
+	x64byte(b, 0x74); empty=b->n; x64byte(b, 0);
+	x64casefield(b, 2, 1, a->typenp, 4);
+	x64byte(b, 0x85); x64byte(b, 0xd2);
+	if(!x64mappedguard(b, 0x74, fallback)) return 0;
+	if(p->alu){
+		x64casefield(b, 1, 11, -a->heapref, 8);
+		x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+		if(!x64mappedguard(b, 0x75, fallback)) return 0;
+		x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+		if(!x64mappedguard(b, 0x75, fallback)) return 0;
+		x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x83); x64word(b, a->listdata);
+		x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, a->s);
+	}else
+		x64caseptr(b, 0, a->s);
+	x64caseptr(b, 2, a->d);
+	/* Select a byte stride so overlap uses memmove order without changing DF. */
+	x64byte(b, 0xbe); x64word(b, 1);
+	x64byte(b, 0x4d); x64byte(b, 0x39); x64byte(b, 0xc2);
+	x64byte(b, 0x76); forward=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, 0xc7); x64byte(b, 0xc6); x64word(b, -1);
+	x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x44); x64byte(b, 0x00); x64byte(b, 0xff);
+	x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x54); x64byte(b, 0x02); x64byte(b, 0xff);
+	if(b->n > sizeof(b->bytes)) return 0;
+	b->bytes[forward]=b->n-forward-1;
+	loop=b->n;
+	x64byte(b, 0x41); x64byte(b, 0x8a); x64byte(b, 0x08);
+	x64byte(b, 0x41); x64byte(b, 0x88); x64byte(b, 0x0a);
+	x64byte(b, 0x49); x64byte(b, 0x01); x64byte(b, 0xf0);
+	x64byte(b, 0x49); x64byte(b, 0x01); x64byte(b, 0xf2);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc8);
+	x64byte(b, 0x75); x64byte(b, loop-b->n-1);
+	if(b->n > sizeof(b->bytes)) return 0;
+	b->bytes[empty]=b->n-empty-1;
+	return 1;
 }
 
 /* Emit a SysV AMD64 leaf, returning its bounded count of four-byte code units. */
@@ -177,7 +513,13 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	b.n = 0;
 	/* ENDBR64 also permits entry when the host enables indirect-branch tracking. */
 	x64byte(&b, 0xf3); x64byte(&b, 0x0f); x64byte(&b, 0x1e); x64byte(&b, 0xfa);
-	if(p.kind == LeafStringBranch){
+	if(p.kind == LeafMappedCopy){
+		if(!x64mapped(&b, abi, &p)) return 0;
+	}else if(p.kind == LeafOwner){
+		if(!x64owner(&b, abi, &p)) return 0;
+	}else if(p.kind == LeafCaseJump){
+		if(!x64case(&b, abi, &p)) return 0;
+	}else if(p.kind == LeafStringBranch){
 		/* Compare captured characters without touching a false branch target. */
 		if(abi->stringlen < 0 || abi->stringlen > 2047 || abi->stringlen%4 ||
 		   abi->stringdata < 0 || abi->stringdata > 2047) return 0;
@@ -226,7 +568,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64field(&b, 0, 1, -abi->heaptype, 8);
 		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd0); x64guard(&b, 0x74);
 		b.bytes[done]=b.n-done-1;
-	}else if(p.kind == LeafProgramAddress){
+	}else if(p.kind == LeafProgramAddress || p.kind == LeafTableJump){
 		/* Materialize a Dis PC only after validating the module, index and native span. */
 		if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
 		   abi->linkmodule < 0 || abi->linkmodule > 2047 || abi->linkmodule%8 ||
@@ -236,6 +578,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64ptr(&b, 0, abi->module); x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0xc0);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		if(p.kind == LeafTableJump){
+			if(abi->linkcompiled < 0 || abi->linkcompiled > 2047 || abi->linkcompiled%4) return 0;
+			x64field(&b, 2, 0, abi->linkcompiled, 4);
+			x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x74);
+		}
 		x64field(&b, 0, 0, abi->linkmodule, 8);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
@@ -243,13 +590,29 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64field(&b, 1, 0, abi->modulenprog, 4);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x79);
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
+		if(p.kind == LeafTableJump){
+			/* The compiler's table count and destinations are signed 32-bit Dis words. */
+			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x79);
+			x64ptr(&b, 2, abi->d);
+			x64byte(&b, 0x49); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 4); x64guard(&b, 0x73);
+			x64byte(&b, 0x49); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
+			x64field(&b, 2, 10, -4, 4);
+			x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x7f);
+			x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd0); x64guard(&b, 0x72);
+			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, 2);
+			x64byte(&b, 0x4c); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
+			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xfc); x64guard(&b, 0x76);
+			x64byte(&b, 0x48); x64byte(&b, 0x63); x64byte(&b, 0x00);
+		}
 		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8); x64guard(&b, 0x72);
 		x64byte(&b, 0x48); x64byte(&b, 0x69); x64byte(&b, 0xc0); x64word(&b, abi->instbytes);
 		x64field(&b, 2, 11, abi->moduleprog, 8);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
-		x64ptr(&b, 2, abi->d); x64store(&b, 0, 8);
+		if(p.kind == LeafTableJump){
+			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->pc);
+		}else{x64ptr(&b, 2, abi->d); x64store(&b, 0, 8);}
 	}else if(p.kind == LeafFixedCoefficient){
 		/* Capture frame parameters and both operands before any aliased result write. */
 		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 ||
@@ -601,12 +964,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64ptr(&b, 0, abi->s); x64load(&b, 0, 8);
 		if(p.alu){
 			x64ptr(&b, 1, abi->m); x64load(&b, 1, 8);
+			x64realproduct(&b);
+		}else{
+			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc1);
 			x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe1);
-			x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, 0); x64word(&b, 0x7fe00000);
-			x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd1); x64guard(&b, 0x74);
 		}
-		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0xc1);
-		x64byte(&b, 0x48); x64byte(&b, 0xd1); x64byte(&b, 0xe1);
 		x64byte(&b, 0x48); x64byte(&b, 0xba); x64word(&b, p.bytes == 4 ? 0xffc00000U : 0xfffffffeU); x64word(&b, p.bytes == 4 ? 0x83bfffffU : 0x87bfffffU);
 		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd1); x64guard(&b, 0x72);
 		x64byte(&b, 0x66); x64byte(&b, 0x48); x64byte(&b, 0x0f); x64byte(&b, 0x6e); x64byte(&b, 0xc0);
@@ -716,7 +1078,8 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64ptr(&b, 2, abi->d);
 		x64byte(&b, 0x49); x64byte(&b, 0x8b); x64byte(&b, 0x02);
 		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->pc);
-	}
+	}else if(p.kind != LeafNop)
+		return 0; /* A new classifier kind must never silently become a native no-op. */
 	x64byte(&b, 0xb8); x64word(&b, 1); x64byte(&b, 0xc3);
 	while(b.n%4 != 0) x64byte(&b, 0x90);
 	n = b.n/4;

@@ -28,6 +28,8 @@ cp "$root/upstream/limbo/lex.c" "$output/generated/lex.c"
 rm -f "$output/generated/y.tab.c" "$output/generated/y.tab.h"
 (cd "$output/generated" && ROOT="$iyacc_root" "$iyacc" -d limbo.y)
 [[ -s "$output/generated/y.tab.c" && -s "$output/generated/y.tab.h" ]]
+"${PYTHON:-python3}" "$root/prepare_parser.py" --source "$output/generated/y.tab.c" \
+    --output "$output/generated/safe-parser.c"
 
 # Compile one source without flattening directory names or exposing shell evaluation.
 compile_source() {
@@ -44,13 +46,19 @@ compile_archive() {
     while IFS= read -r source; do
         case "$source" in ''|'#'*) continue ;; esac
         object="$output/objects/${source//\//_}.o"
-        compile_source "$root/$source" "$object"
+        if [[ "$source" == upstream/libmath/dtoa.c ]]; then
+            compile_source "$output/generated/dtoa.c" "$object"
+        else
+            compile_source "$root/$source" "$object"
+        fi
         objects+=("$object")
     done < "$root/$group.sources"
     rm -f "$output/$group.a"
     "$ar" rcs "$output/$group.a" "${objects[@]}"
 }
 
+"${PYTHON:-python3}" "$root/prepare_dtoa.py" --source "$root/upstream/libmath/dtoa.c" \
+    --output "$output/generated/dtoa.c"
 for group in lib9 bio support; do compile_archive "$group"; done
 # Use the same checked constant-pool adaptation as the CMake build.
 "${PYTHON:-python3}" "$root/prepare_ecom.py" --source "$root/upstream/limbo/ecom.c" \
@@ -66,7 +74,7 @@ while IFS= read -r source; do
     fi
     objects+=("$object")
 done < "$root/compiler.sources"
-for source in lex.c y.tab.c; do
+for source in lex.c safe-parser.c; do
     object="$output/objects/generated_$source.o"
     compile_source "$output/generated/$source" "$object"
     objects+=("$object")

@@ -32,6 +32,9 @@ done
 if [ -x "$root/disvm-runtime/disvm" ]; then
     sh "$root/disvm-runtime/run-console.sh"
     sh "$root/disvm-runtime/run-ide.sh"
+    if [ -f "$root/disvm-runtime/run-modules.sh" ]; then
+        sh "$root/disvm-runtime/run-modules.sh"
+    fi
     checks=$((checks + 1))
 fi
 if [ "$checks" -eq 0 ]; then

@@ -38,7 +38,7 @@ if(DVM_FLASHVM_TARGET)
 else()
   add_library(disvm_shared_ports STATIC "${fvm}/ports/file_port.c"
     "${fvm}/ports/${port}/thread.c" "${fvm}/ports/${port}/channel_sync.c"
-    "${fvm}/ports/network/socket.c")
+    "${fvm}/ports/network/socket.c" "${fvm}/ports/network/resolver.c")
   target_include_directories(disvm_shared_ports PUBLIC "${fvm}/include" "${fvm}/ports")
   if(WIN32)
     target_link_libraries(disvm_shared_ports PUBLIC ws2_32)

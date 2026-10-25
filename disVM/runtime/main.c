@@ -23,6 +23,22 @@ struct Pool
     Bhdr *arena; /* Owned bounded arena, including collector block headers. */
 };
 
+
+/* Initialize the resolver's owned native lock. No arguments/result; raises on failure. */
+extern void dvm_srv_initialize(void);
+
+
+/* Register retained Srv exports for this exclusive owner. No arguments or result. */
+extern void srvmodinit(void);
+
+
+/* Register retained Loader exports/types. No arguments/result; requires initialized heap. */
+extern void loadermodinit(void);
+
+
+/* Register hosted Math exports. No arguments/result; requires initialized heap and Sys. */
+extern void mathmodinit(void);
+
 static Pool memory;                       /* Sole pool owned by the bound runtime thread. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static Prog *ready;                       /* FIFO head for runnable Limbo processes. */
@@ -349,6 +365,10 @@ static void free_fd(Heap *heap, int swept)
 /* Initialize the actual descriptor-owner finalizer used by the supported input path. */
 void sysinit(void)
 {
+    if (TFD)
+    {
+        return;
+    }
     TFD = dtype(free_fd, sizeof(Sys_FD), nil, 0);
     if (!TFD)
     {
@@ -408,9 +428,39 @@ static int open_file(const char *path, const char *mode)
 }
 
 
+/* Map only the bundled library names from Inferno resource paths to package siblings.
+ * path is borrowed. Returns the relative library name or the unchanged native path;
+ * ordinary Sys file paths never pass through this module-resource mapping. */
+static const char *bundled_module_path(const char *path)
+{
+    static const char *names[] = {"bufio.dis",
+                                  "string.dis",
+                                  "arg.dis",
+                                  "readdir.dis",
+                                  "debug.dis",
+                                  "dis.dis",
+                                  "styx.dis",
+                                  "styxservers.dis"}; /* Bundled module allowlist. */
+    size_t index;
+    if (strncmp(path, "/dis/lib/", 9) != 0)
+    {
+        return path;
+    }
+    for (index = 0; index < sizeof(names) / sizeof(names[0]); index++)
+    {
+        if (strcmp(path + 9, names[index]) == 0)
+        {
+            return path + 9;
+        }
+    }
+    return path;
+}
+
+
 /* Open read-only module input; the full VM word is checked before this native call. */
 int kopen(char *path, int mode)
 {
+    const char *resource = bundled_module_path(path);
     if (mode != OREAD)
     {
         kwerrstr("unsupported file open mode");
@@ -419,10 +469,10 @@ int kopen(char *path, int mode)
     {
         char resolved[4096];
         size_t base;
-        size_t length = strlen(path);
-        if (path[0] == '/')
+        size_t length = strlen(resource);
+        if (resource[0] == '/')
         {
-            return open_file(path, "r");
+            return open_file(resource, "r");
         }
         base = strlen(module_directory);
         if (base + length + 2 > sizeof(resolved))
@@ -432,7 +482,7 @@ int kopen(char *path, int mode)
         }
         memcpy(resolved, module_directory, base);
         resolved[base] = '/';
-        memcpy(resolved + base + 1, path, length + 1);
+        memcpy(resolved + base + 1, resource, length + 1);
         return open_file(resolved, "r");
     }
 }
@@ -608,7 +658,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.1.2: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.2.0: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
@@ -652,6 +702,10 @@ int main(int argc, char **argv)
     arena_init();
     opinit();
     sysmodinit();
+    loadermodinit();
+    mathmodinit();
+    dvm_srv_initialize();
+    srvmodinit();
     module = load(entry_resource(argv[1]));
     if (!module)
     {
@@ -915,7 +969,13 @@ void Sys_write(void *frame)
 /* Count only a successfully accepted native leaf; guarded rejection retains the C handler. */
 int dvm_runtime_leaf(Jit *jit, int operation, REG *registers)
 {
-    int accepted = jit->entry[operation](registers);
+    int accepted;
+    /* Classic native table leaves read four-byte fields; NC64 uses its checked C adapters. */
+    if (operation == ICASE || operation == ICASEL || operation == IGOTO)
+    {
+        return 0;
+    }
+    accepted = jit->entry[operation](registers);
     if (accepted)
     {
         native_instructions++;
@@ -1131,6 +1191,47 @@ void Sys_seek(void *frame)
     else
     {
         result = position;
+    }
+    memmove(call->ret, &result, sizeof(result));
+}
+
+
+/* Format and write an actual FD message through the shared file/stdio port.
+ * frame borrows a typed descriptor and variadic VM slots. Returns actual bytes
+ * written, or -1 on an I/O failure; formatting shares the bounded print contract. */
+void Sys_fprint(void *frame)
+{
+    F_Sys_fprint *call = frame;
+    char bytes[4096];
+    size_t written;
+    WORD result = -1;
+    int count;
+    if (call->fd == H || call->fd == nil || D2H(call->fd)->t != TFD)
+    {
+        error(exNilref);
+    }
+    count = xprint(currun(), frame, &call->vargs, call->s, bytes, sizeof(bytes));
+    if (count < 0 || count >= sizeof(bytes) - UTFmax - 2)
+    {
+        error("experimental formatted FD message limit");
+    }
+    if (call->fd->fd == 1 || call->fd->fd == 2)
+    {
+        if (fvm_port_stdio_write((int)call->fd->fd, bytes, count, &written) == FVM_OK)
+        {
+            result = written;
+        }
+    }
+    else if (call->fd->fd >= 3 && call->fd->fd < 32 && files[call->fd->fd])
+    {
+        if (fvm_port_file_write(files[call->fd->fd], bytes, count) == FVM_OK)
+        {
+            result = count;
+        }
+    }
+    if (result < 0)
+    {
+        kwerrstr("formatted descriptor write failed");
     }
     memmove(call->ret, &result, sizeof(result));
 }

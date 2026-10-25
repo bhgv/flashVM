@@ -85,3 +85,17 @@ Python 3 is a build-time source preparation dependency, not a deployed runtime.
 The patch applies to the owner repository's `limbo/ecom.c`; its Limbo implementation
 already uses `bhex(value,16)`. Native execution tests additionally distinguish
 negative seek offsets and offsets above 2 GiB in both JIT/interpreter modes.
+
+
+## Native dtoa and parser preparation
+
+The Math interface's Infinity/NaN constants exposed LP64 out-of-bounds access in
+retained dtoa: its arithmetic limbs and double halves assumed 32-bit long. Both
+CMake and direct builds now prepare 32-bit int limbs, validate that width at
+compile time and pack signed subtraction halves through unsigned shifts.
+[Preparation](prepare_dtoa.py) · [upstream patch](patches/0002-use-32-bit-dtoa-limbs.patch).
+The retained source/notice stays unchanged. Actual compiled Dis tests compare 134
+binary64 constants with independent bit patterns, including overflow, subnormal,
+maximum finite and signed zero, under UBSan as well as the normal runtime.
+The shared Python [parser preparation](prepare_parser.py) also gives freshly
+regenerated iyacc parsers their real sentinel slot in direct builds.

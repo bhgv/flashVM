@@ -300,10 +300,17 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-console.sh" "$destination/run-console.sh" 755
             copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
             copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
+            copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
+            copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
+            for file in "$base/native/libraries/"*.b; do
+                copy_file "$file" "$destination/source/libraries/$(basename "$file")"
+            done
             copy_tree "$ROOT/ide/dis/examples/editor-console" "$destination/examples/editor-console"
             copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
+            "${PYTHON:-python3}" "$ROOT/tools/link-installed-runtime-docs.py" "$ROOT" "$destination"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
@@ -319,7 +326,7 @@ EOF
             copy_tree "$ROOT/disVM/include" "$destination/include"
             # Export the public header closure required by flashvm_host.h.
             copy_tree "$ROOT/flashVM/include" "$destination/include"
-            for file in thread_port.h channel_sync.h file_port.h network/socket.h; do
+            for file in thread_port.h channel_sync.h file_port.h network/socket.h network/resolver.h; do
                 copy_file "$ROOT/flashVM/ports/$file" "$destination/include/$file"
             done
             copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"

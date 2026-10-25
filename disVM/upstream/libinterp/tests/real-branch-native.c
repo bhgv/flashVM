@@ -4,6 +4,8 @@
 #include <stdio.h>
 
 REG R;
+/* Supply the live collector color used by guarded owner leaves. */
+int mutator, nprop;
 
 /* Allocate ordinary module metadata without starting a VM process. */
 void*

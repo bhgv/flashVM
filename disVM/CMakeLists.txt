@@ -110,6 +110,12 @@ if(BUILD_TESTING)
     sys-tokenize-matrix
     sys-status-slots
     sys-stat-slots
+    lists
+    sys-pctl
+    sys-packdir
+    srv-results
+    jit-unknown-kind
+    mapped-copy-layouts
   )
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
@@ -123,7 +129,7 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native real-branch-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120

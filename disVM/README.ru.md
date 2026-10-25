@@ -4,9 +4,14 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 96935b070dfb28c18ce9ce35c0bcf7b2b96a63bc. Каждый файл имеет
+Текущий снимок фиксирует dad4b09d0631db4d7189b5ffc382e412d1467421. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
+
+Серия v0.1549: [исполняемые выбранные модули](libraries/README.md),
+[подробно комментированный пример](examples/standard-modules/README.md),
+[рантайм](runtime/README.md). Пункт 7 меню запускает реальные модули;
+готовность функций и ещё не подключённые службы /prog/VFS указаны отдельно.
 
 ```sh
 ./build-workspace.sh --projects disvm --tests

@@ -347,18 +347,27 @@ def show_products(args, bash, interactive):
         return 0
     while True:
         print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
-        print("  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE")
+        print(
+            "  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE, 7 — библиотеки Inferno"
+        )
         value = input("Enter — закончить, либо номер запуска: ").strip()
         if not value:
             return 0
-        if value not in ("1", "2", "3", "4", "5", "6"):
-            print("Введите 1, 2, 3, 4, 5, 6 или Enter.")
+        if value not in ("1", "2", "3", "4", "5", "6", "7"):
+            print("Введите 1, 2, 3, 4, 5, 6, 7 или Enter.")
             continue
-        if value in ("4", "5", "6"):
+        if value in ("4", "5", "6", "7"):
             script = (
                 prefix
                 / "disvm-runtime"
-                / ({"4": "run-console.sh", "5": "run-editor.sh", "6": "run-ide.sh"}[value])
+                / (
+                    {
+                        "4": "run-console.sh",
+                        "5": "run-editor.sh",
+                        "6": "run-ide.sh",
+                        "7": "run-modules.sh",
+                    }[value]
+                )
             )
             if not script.is_file():
                 print("Выберите disvm-runtime или all в меню сборки.")

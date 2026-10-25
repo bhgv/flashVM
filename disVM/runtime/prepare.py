@@ -31,11 +31,57 @@ def main():
     text = subprocess.check_output([args.compiler, "-a", "-t", "Sys", args.sys], text=True)
     marker = "typedef struct{char *name;"
     at = text.index(marker)
-    (args.output / "runt.h").write_text(text[:at])
+    srv = subprocess.check_output(
+        [args.compiler, "-a", "-t", "Srv", str(Path(args.sys).with_name("srv.m"))], text=True
+    )
+    srv_at = srv.index(marker)
+    loader = subprocess.check_output(
+        [args.compiler, "-a", "-t", "Loader", str(Path(args.sys).with_name("loader.m"))], text=True
+    )
+    loader_at = loader.index(marker)
+    (args.output / "runt.h").write_text(text[:at] + srv[:srv_at] + loader[:loader_at])
+    (args.output / "loadermod.h").write_text(loader[loader_at:])
+    math = subprocess.check_output(
+        [args.compiler, "-a", "-t", "Math", str(Path(args.sys).with_name("math.m"))], text=True
+    )
+    math_at = math.index(marker)
+    with (args.output / "runt.h").open("a") as declarations:
+        declarations.write(math[:math_at])
+    (args.output / "mathmod.h").write_text(math[math_at:])
+    math_code = (args.source / "math.c").read_text()
+    # This hosted build deliberately uses native libm for scalar IEEE operations.
+    math_code = math_code.replace('#include "lib9.h"', '#include "lib9.h"\n#include <math.h>')
+    math_code = math_code.replace("__ieee754_", "")
+    helper = Path(__file__).with_name("native_math_types.c").read_text()
+
+    math_code = math_code.replace(
+        "/* Check full VM lengths", helper + "\n/* Check full VM lengths", 1
+    )
+    math_code = math_code.replace(
+        "bytes->t != &Tbyte || numbers->t != type",
+        "!dvm_math_type(bytes->t, &Tbyte) || !dvm_math_type(numbers->t, type)",
+    )
+    math_code = math_code.replace("array->t != type", "!dvm_math_type(array->t, type)")
+    (args.output / "math.c").write_text(math_code)
+    (args.output / "srvmod.h").write_text(srv[srv_at:])
+    srv_code = (args.source.parent / "emu/port/srv.c").read_text()
+    srv_code = srv_code.replace('#include\t"ip.h"', '#include "runt.h"')
+    srv_code = srv_code.replace('#include\t"srv.h"', '#include "kernel.h"')
+    srv_code = srv_code.replace(
+        '#include\t"srvm.h"',
+        '#include "srvmod.h"\nextern void dvm_srv_lock(void);\nextern void dvm_srv_unlock(void);\nextern char *dvm_srv_string(String *);\nextern int so_gethostbyname(char *, char **, int);\nextern int so_gethostbyaddr(char *, char **, int);\nextern int so_getservbyname(char *, char *, char *);',
+    )
+    srv_code = srv_code.replace("static\tQLock\tdbq;", "")
+    srv_code = srv_code.replace("qlock(&dbq)", "dvm_srv_lock()").replace(
+        "qunlock(&dbq)", "dvm_srv_unlock()"
+    )
+    srv_code = srv_code.replace("string2c(f->", "dvm_srv_string(f->")
+    (args.output / "srv.c").write_text(srv_code)
     (args.output / "sysmod.h").write_text(text[at:])
     functions = set(re.findall(r"void (Sys_\w+)\(void\*\);", text))
     implemented = {
         "Sys_print",
+        "Sys_fprint",
         "Sys_sprint",
         "Sys_aprint",
         "Sys_tokenize",
@@ -79,6 +125,19 @@ def main():
     code = code.replace(
         "\t\tdec[DVM_R.PC->add]();", "\t\tdvm_runtime_instructions++;\n\t\tdec[DVM_R.PC->add]();"
     )
+    # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
+    adapters = Path(__file__).with_name("native_tables.c").read_text()
+    for operation in ("icase", "casel", "igoto"):
+        pattern = r"OP\(" + operation + r"\)\n\{[\s\S]*?\n\}"
+        if len(re.findall(pattern, code)) != 1:
+            raise ValueError("numeric table boundary changed: " + operation)
+        code = re.sub(
+            pattern,
+            lambda match: "/* NC64_TABLE_ADAPTERS */" if operation == "icase" else "",
+            code,
+            count=1,
+        )
+    code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
     path.write_text(code)
     path = args.output / "alt.c"
     code = path.read_text()

@@ -36,6 +36,24 @@ int realcastoracle(uint64_t bits,int fixed,int mode,int seed,int64_t *out){
     if(flags&FE_INEXACT)result|=16;
     fesetenv(&saved);return result;
 }
+/* Evaluate the separately rounded fixed product for supported arbitrary power scales. */
+int realscaleoracle(uint64_t bits,uint64_t scalebits,int mode,int seed,int64_t *out){
+    fenv_t saved;
+    int flags,result=0,modes[]={FE_TONEAREST,FE_DOWNWARD,FE_UPWARD,FE_TOWARDZERO};
+    double value,rawscale;
+    volatile double scale;
+    memcpy(&value,&bits,8);memcpy(&rawscale,&scalebits,8);scale=rawscale;
+    fegetenv(&saved);fesetround(modes[mode]);feclearexcept(FE_ALL_EXCEPT);
+    if(seed)feraiseexcept(FE_DIVBYZERO);
+    value=value*scale;value=value<0 ? value-0.5 : value+0.5;*out=(int64_t)value;
+    flags=fetestexcept(FE_ALL_EXCEPT);
+    if(flags&FE_INVALID)result|=1;
+    if(flags&FE_DIVBYZERO)result|=2;
+    if(flags&FE_OVERFLOW)result|=4;
+    if(flags&FE_UNDERFLOW)result|=8;
+    if(flags&FE_INEXACT)result|=16;
+    fesetenv(&saved);return result;
+}
 /* Compute the C repeated-squaring sequence without libm pow substitution. */
 int realpoweroracle(uint64_t bits,int64_t n,int mode,int seed,uint64_t *out){
     fenv_t saved;
@@ -91,12 +109,12 @@ int realresizeoracle(uint64_t input,int width,int mode,uint64_t *out){
 '''
 
 root = Path(__file__).resolve().parents[2]
-ops = '''IBEQC IBNEC IBLTC IBLEC IBGTC IBGEC ITCMP IMOVPC IMULX1 IDIVX1 ICVTXX1 IMULX0 IDIVX0 ICVTXX0 IINDX IMULX IDIVX ICVTRF ICVTFR ICVTWF ICVTLF ICVTXX IBEQF IBNEF IBLTF IBLEF IBGTF IBGEF IHEADM IEXPW IEXPL IINDC ILENL IHEADB IHEADW IHEADL IHEADF ILENC IMOVM INEGF ILENA IINDB IINDW IINDL IINDF IRUNT IMOVB IMOVW IMOVL IMOVF ICVTBW ICVTWB ICVTWS ICVTSW ILEA IJMP
+ops = '''IMOVMP ISELF ICASE ICASEL IGOTO IBEQC IBNEC IBLTC IBLEC IBGTC IBGEC ITCMP IMOVPC IMULX1 IDIVX1 ICVTXX1 IMULX0 IDIVX0 ICVTXX0 IINDX IMULX IDIVX ICVTRF ICVTFR ICVTWF ICVTLF ICVTXX IBEQF IBNEF IBLTF IBLEF IBGTF IBGEF IHEADM IEXPW IEXPL IINDC ILENL IHEADB IHEADW IHEADL IHEADF ILENC IMOVM INEGF ILENA IINDB IINDW IINDL IINDF IRUNT IMOVB IMOVW IMOVL IMOVF ICVTBW ICVTWB ICVTWS ICVTSW ILEA IJMP
 IADDB IADDW ISUBB ISUBW IMULB IMULW IANDB IANDW IORB IORW IXORB IXORW
 IADDL ISUBL IMULL IANDL IORL IXORL IBEQB IBEQW IBNEB IBNEW IBLTB IBLTW
 IBLEB IBLEW IBGTB IBGTW IBGEB IBGEW ICVTWL ICVTLW ISHLB ISHLW ISHLL ISHRB ISHRW ISHRL ILSRW ILSRL IDIVB IDIVW IDIVL IMODB IMODW IMODL IBEQL IBNEL IBLTL IBLEL IBGTL IBGEL IHEADP IHEADMP ITAIL IMOVP IFRAME ICALL IRET IADDF ISUBF IMULF IDIVF ICVTXF ICVTFW ICVTFL ICVTFX IEXPF'''.split()
 class Layout(C.Structure):
-    _fields_ = [(x, C.c_int) for x in ('wordbytes', 'pc', 's', 'd', 'm', 'arraylen', 'arraydata', 'stringlen', 'stringdata', 'listdata', 'listtail', 'fp', 'fixedtmp', 'arraytype', 'typesize','framelr','framefp','fixedcoef','module','linkmodule','moduleprog','modulenprog','instbytes','heaptype')]
+    _fields_ = [(x, C.c_int) for x in ('wordbytes', 'pc', 's', 'd', 'm', 'arraylen', 'arraydata', 'stringlen', 'stringdata', 'listdata', 'listtail', 'fp', 'fixedtmp', 'arraytype', 'typesize','framelr','framefp','fixedcoef','module','linkmodule','moduleprog','modulenprog','instbytes','heaptype','linkcompiled','heapref','heapcolor','refbytes')]+[('mutator',C.c_void_p),('nprop',C.c_void_p),('markcolor',C.c_int)]+[(x,C.c_int) for x in ('moduletypes','modulenty','typenp')]
 class RvLayout(C.Structure):
     _fields_ = [(x, C.c_int) for x in ('xlen', 'wordbytes', 'hasm', 'pc', 's', 'd', 'm', 'arraylen', 'arraydata', 'stringlen', 'stringdata', 'listdata', 'listtail', 'fp', 'fixedtmp', 'arraytype', 'typesize','hasdiv','framelr','framefp','fixedcoef','module','linkmodule','moduleprog','modulenprog','instbytes','heaptype')]
 
@@ -109,7 +127,7 @@ def signed(value, bits):
 
 case=os.environ.get('LEAF64_CASE','')
 selected_arch=os.environ.get('LEAF64_ARCH','')
-if case not in ('','guard','array','control','copy','string','head','listlen','character','power','headcopy','realbranch','scalar','fixed','integerreal','resize','framefixed','frameabi','descriptor','call','coefficient','roundedcoefficient','movpc','address','typecheck','multiply','bytebranch','realarithmetic','realinteger','realpower','divide','vncoefficient','realbranchfp'):raise ValueError(case)
+if case not in ('','guard','array','control','copy','string','head','listlen','character','power','headcopy','realbranch','scalar','fixed','integerreal','resize','framefixed','frameabi','descriptor','call','coefficient','roundedcoefficient','movpc','address','typecheck','multiply','bytebranch','realarithmetic','realinteger','realpower','divide','vncoefficient','realbranchfp','goto','case'):raise ValueError(case)
 if selected_arch not in ('','amd64','arm64','riscv64'):raise ValueError(selected_arch)
 checks = 0
 rng = random.Random(0x6c696d626f)
@@ -139,6 +157,8 @@ with tempfile.TemporaryDirectory(prefix='leaf64-jit-') as directory:
                 profile=os.environ.get('RV_FEATURE_PROFILE','m')
                 if profile not in ('i','zmmul','m'):raise ValueError(profile)
                 layout.hasm=int(profile!='i');layout.hasdiv=int(profile=='m')
+            if not rv:
+                layout.linkcompiled=16;layout.heapref=24;layout.heapcolor=32;layout.refbytes=8;layout.mutator=0x100002000;layout.nprop=0x100002008;layout.markcolor=3;layout.moduletypes=32;layout.modulenty=40;layout.typenp=28
             layout.heaptype=24;layout.framelr=0;layout.framefp=8
             layout.arraylen=8;layout.arraydata=32;layout.stringlen=12;layout.stringdata=32;layout.listdata=24;layout.listtail=8;layout.fp=32;layout.fixedtmp=28;layout.fixedcoef=20;layout.module=40;layout.linkmodule=8;layout.moduleprog=16;layout.modulenprog=24;layout.instbytes=24;layout.arraytype=16;layout.typesize=24
             dis = Cs(CS_ARCH_X86,CS_MODE_64) if arch == 'amd64' else Cs(CS_ARCH_ARM64,0) if arch == 'arm64' else Cs(CS_ARCH_RISCV,CS_MODE_RISCV64)
@@ -196,11 +216,175 @@ with tempfile.TemporaryDirectory(prefix='leaf64-jit-') as directory:
                     assert lib.emit(guard,64,C.byref(malformed),ids['IMOVPC'])==0
                     assert list(guard)==[0xa5a5a5a5]*64;checks+=1
             if case=='frameabi':continue
-            for name in ('IHEADP','IHEADMP','ITAIL','IMOVP','IFRAME','IRET'):
+            for name in (('ISELF','IHEADP','ITAIL','IMOVP') if rv else ())+(('IMOVMP','IHEADMP') if rv else ())+('IFRAME','IRET'):
                 assert not blobs[name]
             code, registers, data, stack = 0x10000, 0x100020000, 0x100030000, 0x40000
             oldpc, target = 0x123456789, 0x987654321
 
+            if case in ('','case'):
+                if rv:
+                    assert not blobs['ICASE'] and not blobs['ICASEL']
+                else:
+                    for name in ('ICASE','ICASEL'):
+                        assert blobs[name],(arch,wb,name,'missing numeric case leaf')
+                        for field,value in [('linkcompiled',-1),('linkcompiled',1),('moduleprog',1),('modulenprog',1),('instbytes',0)]:
+                            malformed=type(layout).from_buffer_copy(layout);setattr(malformed,field,value)
+                            guard=(C.c_uint32*64)(*[0xa5a5a5a5]*64)
+                            assert lib.emit(guard,64,C.byref(malformed),ids[name])==0 and list(guard)==[0xa5a5a5a5]*64
+                            checks+=1
+
+                    def casecheck(name,n,value,pattern=0,seed=0,sa=0,ta=0,alias=0,bad=None):
+                        """Compare hardware search with a linear oracle over fixed-width rows."""
+                        if arch=='amd64':u=Uc(UC_ARCH_X86,UC_MODE_64);arg,result=UC_X86_REG_RDI,UC_X86_REG_RAX
+                        else:u=Uc(UC_ARCH_ARM64,0);arg=result=UC_ARM64_REG_X0
+                        for address in (code,registers,stack):u.mem_map(address,0x1000)
+                        u.mem_map(data,0x20000);u.mem_write(code,blobs[name])
+                        image=bytearray(b'\xa5'*0x20000)
+                        wide=name=='ICASEL';width=8 if wide else wb;header=8 if wide else 4;stride=24 if wide else 12
+                        table=data+0x2000+ta;source=data+0x100+sa
+                        base=-128 if pattern==0 else 0 if pattern==1 else 1<<40 if wide else -(1<<31)
+                        defaults=(-1,0,31,32);destination=defaults[seed]
+                        struct.pack_into('<i',image,table-data,n)
+                        rows=[]
+                        for row in range(max(n,0)):
+                            low=base+row*16;high=low+8;entry=(row*7+seed)%35-1
+                            at=table-data+header+row*stride
+                            struct.pack_into('<qqi' if wide else '<iii',image,at,low,high,entry)
+                            rows.append((low,high,entry))
+                        struct.pack_into('<i',image,table-data+header+max(n,0)*stride,destination)
+                        if alias:source=table if alias==1 else table+header
+                        else:image[source-data:source-data+width]=(value&((1<<(width*8))-1)).to_bytes(width,'little')
+                        actual=signed(int.from_bytes(image[source-data:source-data+width],'little'),width*8)
+                        for low,high,entry in rows:
+                            if low<=actual<high:destination=entry;break
+                        valid=0<=n<=4095 and 0<=destination<32
+                        link=data+0x700;owner=data+0x900;program=data+0xc00;length=32;compiled=0
+                        if bad==0:link=0
+                        if bad==1:link=(1<<64)-1
+                        if bad==2:owner=0
+                        if bad==3:owner=(1<<64)-1
+                        if bad==4:compiled=1;owner=1
+                        if bad==5:length=-1
+                        if bad==6:length=0
+                        if bad==7:program=0
+                        if bad==8:program=(1<<64)-1
+                        if bad==9:program=(1<<64)-9
+                        if bad==10:table=0
+                        if bad==11:table=(1<<64)-1
+                        if bad==12:table=(1<<64)-2
+                        if bad is not None:
+                            valid=False
+                            if bad<=4:source=data+0x30000
+                        struct.pack_into('<Q',image,0x700+layout.linkmodule,owner)
+                        struct.pack_into('<i',image,0x700+layout.linkcompiled,compiled)
+                        struct.pack_into('<Q',image,0x900+layout.moduleprog,program)
+                        struct.pack_into('<i',image,0x900+layout.modulenprog,length)
+                        u.mem_write(data,bytes(image))
+                        regs=bytearray(b'\xa5'*0x1000);regs[:40]=struct.pack('<QQQQQ',oldpc,source,table,data+0x30000,data+0x40000)
+                        struct.pack_into('<Q',regs,layout.module,link)
+                        expected=bytearray(regs)
+                        if valid:struct.pack_into('<Q',expected,0,program+destination*layout.instbytes)
+                        u.mem_write(registers,bytes(regs));u.reg_write(arg,registers)
+                        end=code+0x800
+                        if arch=='amd64':u.reg_write(UC_X86_REG_RSP,stack+0x800);u.mem_write(stack+0x800,struct.pack('<Q',end))
+                        else:u.reg_write(UC_ARM64_REG_LR,end)
+                        if n<0 or n>4095:
+                            def only_header(uc,access,address,size,value,user):
+                                assert not data+0x2000+ta+4<=address<data+0x1f000,(arch,name,n,'unexpected table payload read')
+                            u.hook_add(UC_HOOK_MEM_READ,only_header)
+                        u.emu_start(code,end,count=2000)
+                        assert u.reg_read(result)==int(valid),(arch,wb,name,n,value,pattern,seed,bad)
+                        assert bytes(u.mem_read(registers,0x1000))==bytes(expected),(arch,wb,name,'PC/REG',n,value,pattern,seed,bad)
+                        assert bytes(u.mem_read(data,0x20000))==bytes(image)
+
+                    for name in ('ICASE','ICASEL'):
+                        for n in (-1,0,1,2,7,8):
+                            for value in (-129,-128,-121,-120,-1,0,1,7,8,15,16,127,1<<40,-(1<<63),(1<<63)-1):
+                                for seed in range(4):
+                                    for sa,ta in ((0,0),(1,7),(4,1),(7,4)):
+                                        casecheck(name,n,value,seed=seed,sa=sa,ta=ta);checks+=1
+                        for pattern in (1,2):
+                            for value in (0,1,7,8,15,16,-(1<<31),(1<<31)-1,1<<40,(1<<40)+7,(1<<40)+8):
+                                for alias in range(3):
+                                    casecheck(name,7,value,pattern=pattern,seed=1,sa=1,ta=3,alias=alias);checks+=1
+                        for n in (33,4095,4096):
+                            for value in (-1,0,7,8,16,(n-1)*16,(n-1)*16+7,(n-1)*16+8):
+                                casecheck(name,n,value,pattern=1,seed=2,sa=1,ta=1);checks+=1
+                        for bad in range(13):casecheck(name,0,0,seed=2,bad=bad);checks+=1
+                if case=='case':continue
+            if case in ('','goto'):
+                if rv:
+                    assert not blobs['IGOTO']
+                else:
+                    assert blobs['IGOTO'],(arch,wb,'missing native goto')
+                    for field,value in [('linkcompiled',-1),('linkcompiled',1),('linkcompiled',2048)]:
+                        malformed=type(layout).from_buffer_copy(layout);setattr(malformed,field,value)
+                        guard=(C.c_uint32*64)(*[0xa5a5a5a5]*64)
+                        assert lib.emit(guard,64,C.byref(malformed),ids['IGOTO'])==0 and list(guard)==[0xa5a5a5a5]*64
+                        checks+=1
+
+                    def gotocheck(index,count,destination,sa=0,ta=0,alias=0,bad=None):
+                        """Check exact REG/table images using an independent packed-table decoder."""
+                        if arch=='amd64':u=Uc(UC_ARCH_X86,UC_MODE_64);arg,result=UC_X86_REG_RDI,UC_X86_REG_RAX
+                        else:u=Uc(UC_ARCH_ARM64,0);arg=result=UC_ARM64_REG_X0
+                        for address in (code,registers,data,stack):u.mem_map(address,0x1000)
+                        u.mem_write(code,blobs['IGOTO'])
+                        image=bytearray(b'\xa5'*0x1000)
+                        table=data+0x300+ta;source=data+0x100+sa
+                        if alias:source=table-(4 if alias==1 else 0)
+                        image[table-data-4:table-data]=struct.pack('<i',count)
+                        for row in range(16):image[table-data+row*4:table-data+row*4+4]=struct.pack('<I',(destination+row%3)&0xffffffff)
+                        if not alias:image[source-data:source-data+wb]=(index&((1<<(8*wb))-1)).to_bytes(wb,'little')
+                        actualindex=signed(int.from_bytes(image[source-data:source-data+wb],'little'),wb*8)
+                        valid=count>0 and 0<=actualindex<count
+                        if valid:
+                            entry=struct.unpack_from('<i',image,table-data+actualindex*4)[0]
+                            valid=0<=entry<32
+                        link=data+0x700;owner=data+0x900;program=data+0xc00;length=32;compiled=0
+                        if bad==0:link=0
+                        if bad==1:link=(1<<64)-1
+                        if bad==2:owner=0
+                        if bad==3:owner=(1<<64)-1
+                        if bad==4:compiled=1;owner=1
+                        if bad==5:length=-1
+                        if bad==6:length=0
+                        if bad==7:program=0
+                        if bad==8:program=(1<<64)-1
+                        if bad==9:program=(1<<64)-9
+                        if bad==10:table=0
+                        if bad==11:table=(1<<64)-1
+                        if bad is not None:
+                            valid=False
+                            if bad<=4:source=data+0x2000
+                        image[0x700+layout.linkmodule:0x700+layout.linkmodule+8]=struct.pack('<Q',owner)
+                        image[0x700+layout.linkcompiled:0x700+layout.linkcompiled+4]=struct.pack('<i',compiled)
+                        image[0x900+layout.moduleprog:0x900+layout.moduleprog+8]=struct.pack('<Q',program)
+                        image[0x900+layout.modulenprog:0x900+layout.modulenprog+4]=struct.pack('<i',length)
+                        u.mem_write(data,bytes(image))
+                        regs=bytearray(b'\xa5'*0x1000)
+                        regs[:40]=struct.pack('<QQQQQ',oldpc,source,table,data+0x2000,data+0x3000)
+                        regs[layout.module:layout.module+8]=struct.pack('<Q',link)
+                        expected=bytearray(regs)
+                        if valid:expected[:8]=struct.pack('<Q',program+entry*layout.instbytes)
+                        u.mem_write(registers,bytes(regs));u.reg_write(arg,registers)
+                        end=code+0x800
+                        if arch=='amd64':
+                            u.reg_write(UC_X86_REG_RSP,stack+0x800);u.mem_write(stack+0x800,struct.pack('<Q',end))
+                        else:u.reg_write(UC_ARM64_REG_LR,end)
+                        u.emu_start(code,end,count=1000)
+                        assert u.reg_read(result)==int(valid),(arch,wb,'IGOTO',index,count,destination,bad)
+                        assert bytes(u.mem_read(registers,0x1000))==bytes(expected),(arch,wb,'goto PC/REG',index,count,destination,bad)
+                        assert bytes(u.mem_read(data,0x1000))==bytes(image)
+
+                    for index in (-1,0,1,7,15,16,-(1<<(8*wb-1)),(1<<(8*wb-1))-1,1<<32):
+                        for count in (-1,0,1,2,8,16):
+                            for destination in (-1,0,1,31,32,-(1<<31),(1<<31)-1):
+                                for sa in (0,1,4,7):
+                                    for ta in (0,1,4,7):
+                                        for alias in range(3):
+                                            gotocheck(index,count,destination,sa,ta,alias);checks+=1
+                    for bad in range(12):gotocheck(0,2,1,bad=bad);checks+=1
+                if case=='goto':continue
             if case in ('','call'):
                 # Check complete REG/data images, including source/target/frame aliases.
                 for sa in ((0,4) if rv else range(8)):
@@ -510,17 +694,31 @@ with tempfile.TemporaryDirectory(prefix='leaf64-jit-') as directory:
                     patterns += [bound+delta | sign for bound in (0x41dfffffffe00000,0x43dfffffffffffff)
                                  for delta in (-2,-1,0,1,2) for sign in (0,1<<63)]
                     patterns += [rng.getrandbits(64) for _ in range(200)]
+                    def fixedvalid(bits,scale,width):
+                        """Classify supported exact products by exponent ranges and an independent bit value."""
+                        magnitude=scale&0x7fffffffffffffff
+                        exponent=(magnitude>>52)-1023
+                        if magnitude&((1<<52)-1) or not -16<=exponent<=16:return False
+                        source=(bits>>52)&2047
+                        if exponent and (not 1<=source<=2046 or not 1<=source+exponent<=2046):return False
+                        product=(bits&0x7fffffffffffffff)+exponent*(1<<52)
+                        return product<(0x41dfffffffe00000 if width==4 else 0x43dfffffffffffff)
+
+                    scales=(0x3ff0000000000000,0xbff0000000000000,0,0x4000000000000000,0x7ff0000000000042,
+                            0xc000000000000000,0x3fe0000000000000,0xbfe0000000000000,
+                            0x40f0000000000000,0xc0f0000000000000,0x3ef0000000000000,0xbef0000000000000,
+                            0x4100000000000000,0x3ff8000000000000)
                     for name in names:
                         width=8 if name=='ICVTFL' else wb
                         for bits in patterns:
                             value=struct.unpack('<d',struct.pack('<Q',bits))[0]
                             valid=(bits&0x7fffffffffffffff)<(0x41dfffffffe00000 if width==4 else 0x43dfffffffffffff)
-                            for scale in ((0x3ff0000000000000,0xbff0000000000000,0,0x4000000000000000,0x7ff0000000000042) if name=='ICVTFX' else (0,)):
-                                take=valid and (name!='ICVTFX' or scale in (0x3ff0000000000000,0xbff0000000000000))
+                            for scale in (scales if name=='ICVTFX' else (0,)):
+                                take=fixedvalid(bits,scale,width) if name=='ICVTFX' else valid
                                 for alias in range(6):
                                     out,pc,before,after,_=run(name,a=bits,b=scale,alias=alias,expect=int(take))
                                     if take:
-                                        scaled=-value if name=='ICVTFX' and scale==0xbff0000000000000 else value
+                                        scaled=value*struct.unpack('<d',struct.pack('<Q',scale))[0] if name=='ICVTFX' else value
                                         wanted=int(scaled-0.5 if scaled<0 else scaled+0.5)
                                         assert signed(int.from_bytes(out[:width],'little'),width*8)==wanted,(arch,name,bits)
                                         assert after[:8]==before[:8] and after[8+width:]==before[8+width:]
@@ -543,6 +741,21 @@ with tempfile.TemporaryDirectory(prefix='leaf64-jit-') as directory:
                                             if valid:assert signed(int.from_bytes(out[:width],'little'),width*8)==wanted.value
                                             else:assert before==after
                                             checks+=1
+                    lib.realscaleoracle.argtypes=[C.c_uint64,C.c_uint64,C.c_int,C.c_int,C.POINTER(C.c_int64)]
+                    boundary=patterns[:36]+[0x0010000000000000,0x001fffffffffffff,0x7fefffffffffffff,0x800fffffffffffff]
+                    for bits in boundary:
+                        for scale in (0x4000000000000000,0xc000000000000000,0x40f0000000000000,0xc0f0000000000000,0x3ef0000000000000,0xbef0000000000000):
+                            take=fixedvalid(bits,scale,wb)
+                            for mode in range(4):
+                                for seed in range(2):
+                                    wanted=C.c_int64()
+                                    flags=lib.realscaleoracle(bits,scale,mode,seed,C.byref(wanted)) if take else (2 if seed else 0)
+                                    for alias in (0,4):
+                                        out,before,after,status=run('ICVTFX',a=bits,b=scale,alias=alias,expect=int(take),fpstate=(mode,seed))
+                                        if not take or arch=='arm64':assert status==flags,(arch,wb,'scaled flags',hex(bits),hex(scale),mode,status,flags)
+                                        if take:assert signed(int.from_bytes(out[:wb],'little'),wb*8)==wanted.value
+                                        else:assert before==after
+                                        checks+=1
                 if case=='realinteger':continue
 
             if case in ('','realarithmetic'):

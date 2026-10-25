@@ -228,6 +228,24 @@ class MenuTests(unittest.TestCase):
                 run.call_args[0][0], ["/bin/bash", str(prefix / "disvm-runtime/run-editor.sh")]
             )
 
+    def test_menu_launches_standard_modules_without_switches(self):
+        """The retained-library tutorial is available from the post-build menu."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            (prefix / "disvm-runtime").mkdir()
+            (prefix / "run-checks.sh").write_text("#!/bin/sh\nexit 0\n")
+            (prefix / "disvm-runtime/run-modules.sh").write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            with contextlib.redirect_stdout(io.StringIO()), patch(
+                "builtins.input", return_value="7"
+            ), patch.object(menu.subprocess, "call", return_value=0) as run:
+                status = menu.show_products(args, "/bin/bash", True)
+            if status != 0 or run.call_args[0][0] != [
+                "/bin/bash",
+                str(prefix / "disvm-runtime/run-modules.sh"),
+            ]:
+                raise RuntimeError("menu did not launch the retained-library tutorial")
+
     def test_backend_number_six_is_not_a_launch_menu_choice(self):
         """The six post-build actions must not extend the separate five-engine selector."""
         with contextlib.redirect_stdout(io.StringIO()), patch(

@@ -441,3 +441,17 @@ SDL2 SDK при необходимости собирается автомати
 на собственном Dis с настоящими каналами и реальной файловой записью.
 Пункт **6** сохраняет прежнюю автоматическую демонстрацию сервисов.
 [Подробное руководство и ограничения](ide/dis/examples/editor-console/README.md).
+
+
+## Retained modules / Перенесённые модули
+
+В меню после сборки появился пункт **7 — библиотеки Inferno**. Он запускает
+настоящую программу Dis с Srv, Math, Loader, Bufio, String, Arg и Styx,
+проверяет числовые переходы и обработку повреждённых пакетов. Пример и исходники
+устанавливаются рядом с бинарным файлом; run-checks.sh также запускает эту проверку.
+[Пример](disVM/examples/standard-modules/README.md) ·
+[Готовность каждого модуля](disVM/libraries/README.md).
+
+Post-build item **7** runs the actual standard-module tutorial. Full /prog,
+namespace and live Styx-server services remain incomplete; compiled library
+availability is distinguished from executed function coverage in the status guide.

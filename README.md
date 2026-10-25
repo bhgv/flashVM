@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1548**. [Русская версия](README.ru.md).
+Development version: **0.1549**. [Русская версия](README.ru.md).
 
-Current series: [v0.1548](docs/releases/v0.1548.md) adds actual Sys file positioning, channel-owned binary resource windows and IDE `inspect PATH`; it fixes LP64 big-constant collisions in the source-built bootstrap.
+Current series: [v0.1549](docs/releases/v0.1549.md) integrates updated Inferno Dis/JIT, executable Srv/Math/Loader and selected Limbo libraries, with menu-driven module checks and corrected floating conversion/Styx decoding.
 
 ## Browse documentation
 

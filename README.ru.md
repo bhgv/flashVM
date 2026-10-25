@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1548**. [English](README.md).
+Версия разработки: **0.1549**. [English](README.md).
 
-Текущая серия: [v0.1548](docs/releases/v0.1548.md) — настоящий Sys->seek, бинарные окна по каналам и команда IDE `inspect ПУТЬ`; исправлена коллизия big-констант временного компилятора на LP64.
+Текущая серия: [v0.1549](docs/releases/v0.1549.md) — обновлённый Dis/JIT, исполняемые Srv/Math/Loader и выбранные Limbo-библиотеки; проверки из меню, исправления dtoa и декодеров Styx.
 
 ## Просмотр документации
 

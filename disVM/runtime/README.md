@@ -125,3 +125,34 @@ file access, not complete Inferno namespaces, Styx, or a sandbox.
 с каналом запросов/ответов. Смещения проверяются до сужения типа, ошибки не
 меняют логическую позицию, стандартные потоки не перематываются. Для существующих
 каналов FlashVM `rw` сохранён прежний режим независимого чтения и дописывания.
+
+
+### Selected standard modules (runtime 0.2.0)
+
+The package now registers actual $Srv, $Math and $Loader. Eight selected Limbo
+libraries are compiled/installed with debug symbols: Bufio, String, Arg, Readdir,
+Debug, Dis, Styx and Styxservers. Canonical /dis/lib paths for exactly those names
+resolve to package siblings; ordinary Sys file paths keep their original native
+meaning. `run-modules.sh` or post-build menu **7** executes the fully commented
+[module tutorial](../examples/standard-modules/README.md). It is included in
+installed checks. [Per-module executed coverage and open services](../libraries/README.md)
+is authoritative: /prog, complete Sys/namespace/directory services and live Styx
+serving have not been supplied by copying a library.
+
+$Srv retains upstream error cleanup/GC roots and uses the shared native resolver
+with a real lock. $Math retains checked wrappers/vector operations; scalar IEEE
+functions use native libm. $Loader returns actual module instruction/type/link
+snapshots. Unsupported services still fail explicitly. The default single-owner
+scheduler/GC restrictions remain; synchronous DNS is not an asynchronous worker.
+
+The NC64 runtime keeps private eight-byte numeric tables. New upstream classic
+native ICASE/ICASEL/IGOTO leaves are deliberately declined for NC64; checked C
+adapters execute those forms. The core retains and separately tests upstream
+classic native table leaves. Tests verify all three opcodes are actually emitted,
+selected destinations are correct and malformed full-width/unaligned table data
+cannot silently truncate a destination PC.
+
+Модули доступны без внешнего emu. Наличие debug.dis не означает готовый /prog,
+а наличие Styx-кодека — готовую VFS. Проверочный пункт 7 исполняет реальные
+поддержанные функции и проверяет ошибочные входы; подробные ограничения указаны
+в таблице готовности модулей.

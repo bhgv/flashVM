@@ -12,12 +12,21 @@ struct LeafLayout {
 	int fixedcoef;
 	int module, linkmodule, moduleprog, modulenprog, instbytes;
 	int heaptype;
+	int linkcompiled;
+	int heapref, heapcolor, refbytes;
+	void *mutator, *nprop;
+	int markcolor;
+	int moduletypes, modulenty, typenp;
 };
 typedef struct LeafOp LeafOp;
 struct LeafOp {
 	int kind, bytes, input, alu, condition;
 };
 enum {
+	LeafMappedCopy = 112,
+	LeafOwner = 111,
+	LeafCaseJump = 110,
+	LeafTableJump = 109,
 	LeafRealPower = 108,
 	LeafRealInteger = 107,
 	LeafRealArithmetic = 106,
@@ -53,6 +62,12 @@ leafop(LeafOp *p, int op, int wordbytes)
 		p->kind = LeafRealArithmetic; p->bytes = 8;
 		p->alu = op == IADDF ? 0 : op == ISUBF ? 1 : op == IMULF ? 2 : 3;
 		break;
+	case IMOVMP: p->kind = LeafMappedCopy; break;
+	case IHEADMP: p->kind = LeafMappedCopy; p->alu = 1; break;
+	case IMOVP: p->kind = LeafOwner; break;
+	case ISELF: p->kind = LeafOwner; p->alu = 1; break;
+	case IHEADP: p->kind = LeafOwner; p->alu = 2; break;
+	case ITAIL: p->kind = LeafOwner; p->alu = 3; break;
 	case ITCMP: p->kind = LeafTypeCheck; break;
 	case IBEQF: case IBNEF: case IBLTF: case IBLEF: case IBGTF: case IBGEF:
 		p->kind = LeafRealBranch; p->bytes = 8;
@@ -103,6 +118,9 @@ leafop(LeafOp *p, int op, int wordbytes)
 		p->kind = LeafAddress;
 		break;
 	case IMOVPC: p->kind = LeafProgramAddress; p->bytes = 8; break;
+	case IGOTO: p->kind = LeafTableJump; p->bytes = 8; break;
+	case ICASE: p->kind = LeafCaseJump; break;
+	case ICASEL: p->kind = LeafCaseJump; p->bytes = 8; p->alu = 1; break;
 	case ICALL: p->kind = LeafCall; break;
 	case IJMP: p->kind = LeafJump; break;
 	case IADDB: p->bytes = 1; /* fall through */

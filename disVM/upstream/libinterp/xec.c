@@ -1067,7 +1067,7 @@ OP(indb)
 {
 	arrayindex(sizeof(BYTE));
 }
-/* Acquire a captured reference before replacing a potentially unaligned pointer slot. */
+/* Validate and retain a live reference before replacing an unaligned owner slot. */
 OP(movp)
 {
 	Heap *h;
@@ -1078,6 +1078,8 @@ OP(movp)
 		error(exNilref);
 	if(sv != H) {
 		h = D2H(sv);
+		if(h->ref == 0 || h->ref == (ulong)-1)
+			error(exHeap);
 		h->ref++;
 		Setmark(h);
 	}
@@ -1095,7 +1097,7 @@ moduletype(Modlink *ml, WORD index)
 	if(ml == H || ml == nil || ml->m == nil || ml->m == H)
 		error(exModule);
 	m = ml->m;
-	if(m->type == nil || index < 0 || index >= m->ntype)
+	if(m->type == nil || m->type == H || index < 0 || index >= m->ntype)
 		error("invalid type");
 	t = m->type[index];
 	if(t == nil || t == H || t->size < 0)
@@ -1437,66 +1439,105 @@ OP(newcmp)
 	memmove(&index, R.s, sizeof(index));
 	newc(moduletype(R.M, index), movtmp);
 }
+/* Resolve a table target without forming an out-of-range Dis instruction pointer. */
+static Inst*
+casepc(Modlink *ml, int destination)
+{
+	uintptr offset, program;
+
+	if(ml->compiled)
+		return (Inst*)(uintptr)(u32int)destination;
+	if(destination < 0 || destination >= ml->m->nprog || ml->m->prog == nil || ml->m->prog == H)
+		error(exBounds);
+	if((uvlong)destination > (uintptr)-1/sizeof(Inst))
+		error(exBounds);
+	offset = (uintptr)destination*sizeof(Inst);
+	program = (uintptr)ml->m->prog;
+	if(program > (uintptr)-1-offset)
+		error(exBounds);
+	return (Inst*)(program+offset);
+}
+
+/* Search compiler-emitted 12-byte integer rows using fixed-width, unaligned reads. */
 OP(icase)
 {
-	WORD v, *t, *l, d, n, n2;
+	Modlink *ml;
+	WORD value;
+	uintptr table, rows, span, row;
+	int count, n, half, low, high, destination;
 
-	v = W(s);
-	t = (WORD*)((WORD)R.d + IBY2WD);
-	n = t[-1];
-	d = t[n*3];
-
-	while(n > 0) {
-		n2 = n >> 1;
-		l = t + n2*3;
-		if(v < l[0]) {
-			n = n2;
-			continue;
+	ml = R.M;
+	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+		error(exModule);
+	memmove(&value, R.s, sizeof(value));
+	table = (uintptr)R.d;
+	if(table == 0 || R.d == H || table > (uintptr)-1-3)
+		error(exBounds);
+	memmove(&count, R.d, sizeof(count));
+	if(count < 0 || count > (0x7fffffff-4)/12)
+		error(exBounds);
+	span = 4+(uintptr)count*12;
+	if(table > (uintptr)-1-span-3)
+		error(exBounds);
+	memmove(&destination, (void*)(table+span), sizeof(destination));
+	rows = table+4;
+	for(n = count; n > 0;){
+		half = n>>1;
+		row = rows+(uintptr)half*12;
+		memmove(&low, (void*)row, sizeof(low));
+		memmove(&high, (void*)(row+4), sizeof(high));
+		if(value < low)
+			n = half;
+		else if(value >= high){
+			rows = row+12;
+			n -= half+1;
+		}else{
+			memmove(&destination, (void*)(row+8), sizeof(destination));
+			break;
 		}
-		if(v >= l[1]) {
-			t = l+3;
-			n -= n2 + 1;
-			continue;
-		}
-		d = l[2];
-		break;
 	}
-	if(R.M->compiled) {
-		R.PC = (Inst*)d;
-		return;
-	}
-	R.PC = R.M->prog + d;
+	R.PC = casepc(ml, destination);
 }
+
+/* Search padded 24-byte big rows without treating their word fields as native pointers. */
 OP(casel)
 {
-	WORD *t, *l, d, n, n2;
-	LONG v;
+	Modlink *ml;
+	LONG value, low, high;
+	uintptr table, rows, span, row;
+	int count, n, half, destination;
 
-	v = V(s);
-	t = (WORD*)((WORD)R.d + 2*IBY2WD);
-	n = t[-2];
-	d = t[n*6];
-
-	while(n > 0) {
-		n2 = n >> 1;
-		l = t + n2*6;
-		if(v < ((LONG*)l)[0]) {
-			n = n2;
-			continue;
+	ml = R.M;
+	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+		error(exModule);
+	memmove(&value, R.s, sizeof(value));
+	table = (uintptr)R.d;
+	if(table == 0 || R.d == H || table > (uintptr)-1-3)
+		error(exBounds);
+	memmove(&count, R.d, sizeof(count));
+	if(count < 0 || count > (0x7fffffff-8)/24)
+		error(exBounds);
+	span = 8+(uintptr)count*24;
+	if(table > (uintptr)-1-span-3)
+		error(exBounds);
+	memmove(&destination, (void*)(table+span), sizeof(destination));
+	rows = table+8;
+	for(n = count; n > 0;){
+		half = n>>1;
+		row = rows+(uintptr)half*24;
+		memmove(&low, (void*)row, sizeof(low));
+		memmove(&high, (void*)(row+8), sizeof(high));
+		if(value < low)
+			n = half;
+		else if(value >= high){
+			rows = row+24;
+			n -= half+1;
+		}else{
+			memmove(&destination, (void*)(row+16), sizeof(destination));
+			break;
 		}
-		if(v >= ((LONG*)l)[1]) {
-			t = l+6;
-			n -= n2 + 1;
-			continue;
-		}
-		d = l[4];
-		break;
 	}
-	if(R.M->compiled) {
-		R.PC = (Inst*)d;
-		return;
-	}
-	R.PC = R.M->prog + d;
+	R.PC = casepc(ml, destination);
 }
 OP(casec)
 {
@@ -1557,16 +1598,44 @@ found:
 	}
 	R.PC = R.M->prog + t[0];
 }
+/* Read fixed-width Dis table entries and commit a validated PC without alignment assumptions. */
 OP(igoto)
 {
-	WORD *t;
+	Modlink *ml;
+	WORD index;
+	int count, destination;
+	uintptr table, offset, program;
 
-	t = (WORD*)((WORD)R.d + (W(s) * IBY2WD));
-	if(R.M->compiled) {
-		R.PC = (Inst*)t[0];
+	ml = R.M;
+	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+		error(exModule);
+	memmove(&index, R.s, sizeof(index));
+	table = (uintptr)R.d;
+	if(index < 0 || table < IBY2WD || R.d == H || (uvlong)index > (uintptr)-1/IBY2WD)
+		error(exBounds);
+	offset = (uintptr)index*IBY2WD;
+	if(table > (uintptr)-1-offset || table+offset > (uintptr)-1-(IBY2WD-1))
+		error(exBounds);
+	/* Legacy native-PC compilers replace the count with zero while relocating entries. */
+	if(!ml->compiled){
+		memmove(&count, (void*)(table-IBY2WD), sizeof(count));
+		if(count <= 0 || index >= count)
+			error(exBounds);
+	}
+	memmove(&destination, (void*)(table+offset), sizeof(destination));
+	if(ml->compiled){
+		R.PC = (Inst*)(uintptr)(u32int)destination;
 		return;
 	}
-	R.PC = R.M->prog + t[0];
+	if(destination < 0 || destination >= ml->m->nprog || ml->m->prog == nil || ml->m->prog == H)
+		error(exBounds);
+	if((uvlong)destination > (uintptr)-1/sizeof(Inst))
+		error(exBounds);
+	offset = (uintptr)destination*sizeof(Inst);
+	program = (uintptr)ml->m->prog;
+	if(program > (uintptr)-1-offset)
+		error(exBounds);
+	R.PC = (Inst*)(program+offset);
 }
 /* Capture both operands before frame-link stores can overwrite an aliased target. */
 OP(call)
@@ -2122,7 +2191,7 @@ OP(consl)
 	memmove(l->data, &value, sizeof(value));
 }
 
-/* Allocate native pointer storage and acquire the original source owner. */
+/* Reject dead or saturated source owners before allocating or publishing a node. */
 OP(consp)
 {
 	List *l;
@@ -2132,6 +2201,11 @@ OP(consp)
 	memmove(&sv, R.s, sizeof(sv));
 	if(sv == nil)
 		error(exNilref);
+	if(sv != H){
+		h = D2H(sv);
+		if(h->ref == 0 || h->ref == (ulong)-1)
+			error(exHeap);
+	}
 	l = cons(sizeof(sv), R.d);
 	if(sv != H){
 		h = D2H(sv);
@@ -2255,11 +2329,12 @@ OP(headm)
 	if(n != 0)
 		memmove(R.d, l->data, n);
 }
-/* Keep the head storage alive when replacing the destination releases its list. */
+/* Validate and retain head storage before the destination can release its list. */
 OP(headmp)
 {
 	List *l;
 	Type *t;
+	Heap *h;
 	WORD index;
 
 	l = listhead();
@@ -2269,7 +2344,10 @@ OP(headmp)
 		return;
 
 	/* Resolve fallible metadata before acquiring the temporary source owner. */
-	D2H(l)->ref++;
+	h = D2H(l);
+	if(h->ref == 0 || h->ref == (ulong)-1)
+		error(exHeap);
+	h->ref++;
 	R.s = l->data;
 	incmem(R.s, t);
 	if(t->np)
@@ -2801,7 +2879,7 @@ OP(cvtxf)
 	memmove(R.d, &result, sizeof(result));
 }
 
-/* Retain the current module before publishing into an unaligned owner slot. */
+/* Reject dead or saturated module owners before retaining and publishing self. */
 OP(self)
 {
 	Modlink *ml, *t;
@@ -2811,6 +2889,8 @@ OP(self)
 	if(ml == nil || ml == H)
 		error(exModule);
 	h = D2H(ml);
+	if(h->ref == 0 || h->ref == (ulong)-1)
+		error(exHeap);
 	h->ref++;
 	Setmark(h);
 	memmove(&t, R.d, sizeof(t));

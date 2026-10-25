@@ -30,8 +30,15 @@ execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prep
 if(NOT ecom_prepared EQUAL 0)
   message(FATAL_ERROR "Limbo constant/source preparation failed")
 endif()
+set(limbo_dtoa "${CMAKE_CURRENT_BINARY_DIR}/prepared-dtoa.c")
+execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_dtoa.py"
+  --source "${u}/libmath/dtoa.c" --output "${limbo_dtoa}" RESULT_VARIABLE dtoa_prepared)
+if(NOT dtoa_prepared EQUAL 0)
+  message(FATAL_ERROR "Limbo dtoa source preparation failed")
+endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_ecom.py" "${u}/limbo/ecom.c")
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_ecom.py" "${u}/limbo/ecom.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_dtoa.py" "${u}/libmath/dtoa.c")
 if(LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "8")
   file(READ "${u}/include/isa.h" target_isa)
   string(REPLACE "IBY2WD\t= 4" "IBY2WD\t= 8" target_isa "${target_isa}")
@@ -143,7 +150,7 @@ add_library(limbo_bootstrap_bio STATIC
 )
 target_link_libraries(limbo_bootstrap_bio PUBLIC limbo_bootstrap_lib9)
 add_library(limbo_bootstrap_support STATIC host/bootstrap_support.c
-  upstream/libmath/FPcontrol-Linux.c upstream/libmath/dtoa.c upstream/libmath/g_fmt.c upstream/libmath/gfltconv.c
+  upstream/libmath/FPcontrol-Linux.c "${limbo_dtoa}" upstream/libmath/g_fmt.c upstream/libmath/gfltconv.c
   upstream/libsec/port/md5.c upstream/libsec/port/md5block.c)
 target_link_libraries(limbo_bootstrap_support PUBLIC limbo_bootstrap_lib9 m)
 # Optional owner-supplied yacc regeneration; default standalone builds can still
@@ -173,9 +180,9 @@ endif()
 set(raw_limbo_parser "${limbo_parser}")
 set(limbo_parser "${CMAKE_CURRENT_BINARY_DIR}/safe-parser.c")
 add_custom_command(OUTPUT "${limbo_parser}"
-  COMMAND "${CMAKE_COMMAND}" "-DINPUT=${raw_limbo_parser}" "-DOUTPUT=${limbo_parser}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/prepare_parser.cmake"
-  DEPENDS "${raw_limbo_parser}" prepare_parser.cmake VERBATIM)
+  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_parser.py"
+    --source "${raw_limbo_parser}" --output "${limbo_parser}"
+  DEPENDS "${raw_limbo_parser}" prepare_parser.py VERBATIM)
 add_executable(limbo-bootstrap
   upstream/limbo/asm.c
   upstream/limbo/com.c
