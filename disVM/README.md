@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-cc9c319995f48feb6575c8fe9de690999c23f1f9; every imported file has a manifest hash.
+fa3b7abfc56980907d05d266516acef68954557d; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -112,3 +112,13 @@ classic SDK. Full GUI, Sys/VFS coverage and parallel shared VM owners remain ope
 
 [Graphical editor v0.1550](../ide/dis/examples/graphical-editor/README.md) adds
 an opt-in real NC64 executable, separate from the classic core SDK archive.
+
+## Experiment refresh v0.1555
+
+The selected snapshot is fa3b7abf: guarded short decimal conversions and unique
+string stores on AMD64/ARM64, plus backing-span/logical-capacity validation.
+The current selection has 66 ordinary core checks and two optional instruction
+emulation checks. To enable the latter, supply capstone/unicorn to the selected
+Python or set `DVM_EMULATOR_PYTHONPATH` explicitly. This is test tooling only;
+physical backend execution and full host/runtime ABI acceptance remain separate.
+[Series evidence](../docs/releases/v0.1555.md).

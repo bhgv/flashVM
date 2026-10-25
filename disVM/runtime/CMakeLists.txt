@@ -118,6 +118,10 @@ if(DVM_RUNTIME_TESTS)
    add_test(NAME disvm_application_${test}_${mode} COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${binary}" "${mode}")
    set_tests_properties(disvm_application_${test}_${mode} PROPERTIES TIMEOUT 60)
+   if(test STREQUAL "replaceall")
+     # This million-character matrix is CPU-heavy; serialize it without weakening its timeout.
+     set_tests_properties(disvm_application_${test}_${mode} PROPERTIES RUN_SERIAL TRUE)
+   endif()
   endforeach()
  endforeach()
 endif()

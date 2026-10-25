@@ -203,3 +203,20 @@ AMD64 SLICELA now returns without stores for identical validated physical
 ranges. The ARM64 loop and existing 64-unit emission limit are retained.
 No opcode count changed: AMD64/ARM64 128/45, RV64+M 103/70,
 RV64+Zmmul 90/83, RV64I 87/86 (native-path/interpreter-only).
+
+## Short decimal conversion checkpoint
+
+[Decimal native paths](README.decimal-native.md) add CVTCW and CVTCL to AMD64
+and ARM64 for optional-sign ASCII values with at most nine digits. Larger,
+Rune and general prefix parsing retain C fallback. Counts are now 130 native
+paths / 43 interpreter-only instructions on each of AMD64 and ARM64;
+RV64+M 103/70, RV64+Zmmul 90/83 and RV64I 87/86 are unchanged.
+
+## Existing-character store checkpoint
+
+[String stores and capacity validation](README.string-store-native.md) add
+INSC for unique ASCII/Rune owners with an existing character index. Appending,
+shared-string copies and representation promotion retain C fallback. The
+private capacity offset also keeps decimal conversion guards consistent with
+C string2c. AMD64 and ARM64 now each have 131 native paths / 42 interpreter-only
+active instructions. RISC-V profile counts remain unchanged.

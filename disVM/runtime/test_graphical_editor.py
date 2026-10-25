@@ -135,10 +135,12 @@ def main():
         styles = []
         events = [envelope(3, 5, 1), envelope(1, 65542, 1, "00000001", first=1, second=1),
                   envelope(3, 1, 1, first=40, second=40), envelope(3, 1, 3, first=40, second=40),
-                  envelope(4, 34, 1), envelope(1, 65539)]
+                  envelope(3, 4, 1), envelope(4, 34, 1), envelope(1, 65539)]
         views = run(runtime, module, font, mode, directory, events, source, windows=windows, styles=styles)
         if windows[1][1] != 21 or views[1][3] != 0 or views[2][1] != 1 or views[2][3] != 0:
             raise RuntimeError("wheel/stale view request changed document selection")
+        if windows[5][1] != 0 or views[5][3] != 21:
+            raise RuntimeError("upward wheel lost its signed delta or changed the caret")
         expected_page = min(3 + styles[0][1], 49) * 7
         if views[3][3] != 21 or views[-1][3] != expected_page or not (windows[-1][1] <= expected_page <= windows[-1][2]):
             raise RuntimeError("scrolled hit/page movement did not reveal the acknowledged caret")

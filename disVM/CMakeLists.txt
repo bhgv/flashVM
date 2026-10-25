@@ -129,7 +129,7 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
@@ -140,6 +140,26 @@ if(BUILD_TESTING)
       set_tests_properties(disvm_native_jit_word${bits} PROPERTIES TIMEOUT 120
         ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;LEAF_WORD_BITS=${bits}")
     endforeach()
+  endif()
+  set(DVM_EMULATOR_PYTHONPATH "" CACHE PATH "Optional explicit capstone/unicorn test dependency directory")
+  set(emulator_environment "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  if(DVM_EMULATOR_PYTHONPATH)
+    list(APPEND emulator_environment "PYTHONPATH=${DVM_EMULATOR_PYTHONPATH}")
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E env "PYTHONPATH=${DVM_EMULATOR_PYTHONPATH}"
+      "${Python3_EXECUTABLE}" -c "import capstone, unicorn"
+      RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
+  else()
+    execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import capstone, unicorn"
+      RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
+  endif()
+  if(have_instruction_emulators EQUAL 0)
+    foreach(driver decimal-jit string-store-jit)
+      add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
+      set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
+        ENVIRONMENT "${emulator_environment}")
+    endforeach()
+  else()
+    message(STATUS "Optional decimal/string-store ARM64 instruction emulation needs capstone and unicorn")
   endif()
   # Compile production foreign emitters on this host; these fixtures never execute
   # ARM64/RV64 machine code and must not be reported as native platform acceptance.

@@ -66,6 +66,8 @@ OP(insc)
 		error(exHeap);
 	if(length < 0)
 		length = -length;
+	if(old != H && (old->max < length || D2H(old)->ref == 0))
+		error(exHeap);
 	if(index < 0 || index > length)
 		error(exBounds);
 
@@ -318,9 +320,9 @@ OP(cvtac)
 		if(a == nil)
 			error(exNilref);
 		/* A compiler may emit its own pointer-free byte descriptor. */
-        if(D2H(a)->t != &Tarray ||
-            (a->t != &Tbyte &&
-             (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
+		if(D2H(a)->t != &Tarray ||
+		   (a->t != &Tbyte &&
+		    (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
 			error(exType);
 		if(a->len < 0 || (uvlong)a->len > 0x7fffffff)
 			error(exHeap);
@@ -424,6 +426,7 @@ OP(cvtfc)
 
 /*
  * Return a NUL-terminated UTF-8 view, caching rune conversion in the string.
+ * Validate logical capacity before terminating ASCII or scanning Rune storage.
  * Bound the temporary byte count before multiplying the rune count.
  */
 char*
@@ -439,6 +442,8 @@ string2c(String *s)
 		return "";
 
 	if(s->len >= 0) {
+		if(s->max < s->len)
+			error(exHeap);
 		s->Sascii[s->len] = '\0';
 		return s->Sascii;
 	}
@@ -446,6 +451,8 @@ string2c(String *s)
 	if(s->len < -(0x7fffffff-UTFmax)/UTFmax)
 		error(exNomem);
 	nc = -s->len;
+	if(s->max < nc)
+		error(exHeap);
 	l = (nc * UTFmax) + UTFmax;
 	if(s->tmp == nil || msize(s->tmp) < l) {
 		/* Retain the old cache until its replacement allocation succeeds. */
@@ -488,7 +495,7 @@ c2string(char *cs, int len)
 		error(exHeap);
 	if(len == 0)
 		return newstring(0);
-	if(cs == nil)
+	if(cs == nil || cs == H)
 		error(exNilref);
 	isrune = 0;
 	ecs = cs+len;
