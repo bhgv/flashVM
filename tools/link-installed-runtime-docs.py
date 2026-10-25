@@ -25,6 +25,15 @@ def main():
     if (package / "examples/graphical-editor").is_dir():
         for name in ("README.md", "README.ru.md", "main.b"):
             pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
+    if (package / "docs/dis").is_dir():
+        for source in (root / "ide/dis").glob("*.md"):
+            pairs[source] = package / "docs/dis" / source.name
+        for directory in (root / "ide/dis", root / "ide/dis/bridge", root / "disVM/module"):
+            for source in directory.glob("*.m"):
+                pairs[source] = package / "include/limbo" / source.name
+        for source in (root / "ide/assets/fonts").iterdir():
+            if source.is_file():
+                pairs[source] = package / "fonts" / source.name
     for source, destination in pairs.items():
         if source.suffix != ".md":
             continue
@@ -42,9 +51,10 @@ def main():
                     relative = resolved.relative_to(root)
                 except ValueError:
                     return match[0]
-                if not resolved.is_file():
+                if not resolved.exists():
                     return match[0]
-                link = "https://github.com/bhgv/flashVM/blob/master/" + quote(relative.as_posix())
+                kind = "tree" if resolved.is_dir() else "blob"
+                link = "https://github.com/bhgv/flashVM/" + kind + "/master/" + quote(relative.as_posix())
             return "](" + link + (separator + fragment if separator else "") + ")"
 
         output = []

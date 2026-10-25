@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-fa3b7abfc56980907d05d266516acef68954557d; every imported file has a manifest hash.
+61a2942bbe51dd3af507862d7c7081ff5ed8e6cf; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -122,3 +122,13 @@ emulation checks. To enable the latter, supply capstone/unicorn to the selected
 Python or set `DVM_EMULATOR_PYTHONPATH` explicitly. This is test tooling only;
 physical backend execution and full host/runtime ABI acceptance remain separate.
 [Series evidence](../docs/releases/v0.1555.md).
+
+
+## String-read refresh v0.1558
+
+Current public pin: `61a2942bbe51dd3af507862d7c7081ff5ed8e6cf`, including e6c056c
+read/slice/duplicate/concatenation/UTF capacity guards and the upstream native
+C/JIT dispatch fixture correction. The selected core now registers 66 ordinary
+checks plus three optional instruction-emulation checks; all pass. The added
+string-read matrix executes real AMD64/ARM64 instructions rather than treating
+foreign emitter compilation as physical execution. [Evidence](../docs/releases/v0.1558.md).

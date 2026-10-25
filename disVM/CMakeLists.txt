@@ -158,8 +158,11 @@ if(BUILD_TESTING)
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")
     endforeach()
+    add_test(NAME disvm_string-read-jit COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
+    set_tests_properties(disvm_string-read-jit PROPERTIES TIMEOUT 120
+      ENVIRONMENT "${emulator_environment};LEAF64_CASE=character")
   else()
-    message(STATUS "Optional decimal/string-store ARM64 instruction emulation needs capstone and unicorn")
+    message(STATUS "Optional string-read/decimal/string-store instruction emulation needs capstone and unicorn")
   endif()
   # Compile production foreign emitters on this host; these fixtures never execute
   # ARM64/RV64 machine code and must not be reported as native platform acceptance.

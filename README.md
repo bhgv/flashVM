@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1555**. [Русская версия](README.ru.md).
+Development version: **0.1558**. [Русская версия](README.ru.md).
 
-Current series: [v0.1555](docs/releases/v0.1555.md) completes the Dis editor series with navigation, scrolling/mouse, Find/Replace/Open/SaveAs, bundled Noto at size 11 and Ctrl-wheel/pinch zoom; Inferno is pinned through `fa3b7abf`.
+Current series: [v0.1556–v0.1558](docs/releases/v0.1558.md) adds Dis word/block/location commands, fixes caret/mouse drift against real text ink, and integrates Inferno string-read guards through `61a2942b`.
 
 ## Browse documentation
 

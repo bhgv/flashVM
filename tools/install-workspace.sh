@@ -292,6 +292,9 @@ EOF
             if [[ "$component" == disvm-editor ]]; then
                 install_program "$base" disvm-editor "$destination"
                 copy_tree "$ROOT/ide/assets/fonts" "$destination/fonts"
+                for file in "$ROOT/ide/dis/"*.md; do
+                    copy_file "$file" "$destination/docs/dis/$(basename "$file")"
+                done
                 copy_file "$ROOT/ide/assets/fonts/OFL.txt" "$destination/LICENSES/Noto-OFL.txt"
                 copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
                 copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"

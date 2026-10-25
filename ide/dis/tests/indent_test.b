@@ -38,7 +38,7 @@ key(code, pressed, caret, anchor: int, text: string)
 }
 
 
-# Validate independent word boundaries, reversed selections, one-step Undo and CRLF pairs.
+# Validate scalar Tab stops, block indentation, reversed selections, Undo and no-op history.
 # No parameters; modules and owner remain rooted until acknowledged shutdown.
 init()
 {
