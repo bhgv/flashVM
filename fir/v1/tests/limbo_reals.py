@@ -32,9 +32,9 @@ def main():
                 raise RuntimeError(result.stdout + result.stderr)
             return result
 
-        for body in ['return -0.0;', 'x: real = 2.5; x /= 2.0; return x;',
-                     'x := 4.0; {x := 9.0; x += 1.0;} return x * 2.0;',
-                     '# Я😀\nx := 1.25e2; {x /= 2.0;} return x - 20.0;']:
+        for body, expected in [('return -0.0;', -0.0), ('x: real = 2.5; x /= 2.0; return x;', 1.25),
+                               ('x := 4.0; {x := 9.0; x += 1.0;} return x * 2.0;', 8.0),
+                               ('# Я😀\nx := 1.25e2; {x /= 2.0;} return x - 20.0;', 42.5)]:
             text = program(body)
             source.write_text(text)
             call([source_compiler, 'limbo', '--input', source, fir, '-g', debug])
@@ -48,6 +48,17 @@ def main():
                 call(arguments)
             if 'source_semantics limbo_real' not in (directory / 'printed.fir').read_text():
                 raise RuntimeError('round trip dropped Limbo real provenance')
+            if environment.get('FIR_FLASHVM_RUNNER'):
+                if not environment.get('FIR_SWL'):
+                    raise RuntimeError('real SWF execution requires explicit FIR_SWL')
+                for selected in (fir, directory / 'optimized.fir'):
+                    obj, movie = directory / 'real.swo', directory / 'real.swf'
+                    call([compiler, 'object', selected, obj])
+                    call([environment['FIR_SWL'], 'link', movie, obj])
+                    result = call([environment['FIR_FLASHVM_RUNNER'], movie])
+                    # SWF trace formatting is numeric observation, not an IEEE payload/sign-zero oracle.
+                    if float(result.stdout.strip()) != expected:
+                        raise RuntimeError('our Limbo real result differs on the actual SWF target')
             record = json.loads(debug.read_text())
             definitions = set(re.findall(r'%v([0-9]+):', fir.read_text()))
             origins = {str(event['value']) for event in record['events']

@@ -50,3 +50,5 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
 обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
 [Комментированный пример](../examples/dis/README.ru.md#вещественный-limbo).
+
+[Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).

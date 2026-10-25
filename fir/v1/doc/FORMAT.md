@@ -169,3 +169,5 @@ checking or an implicit conversion instruction.
 
 Новый профиль сохраняет происхождение real-функции; старые i32/AS-профили и
 их числовые значения enum сохранены. Для нового варианта нужен новый reader.
+
+[Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).

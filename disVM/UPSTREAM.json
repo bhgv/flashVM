@@ -332,7 +332,9 @@
     "libinterp/tests/array-view-layouts.py",
     "libinterp/tests/array-view-jit.py",
     "libinterp/tests/loader-results.c",
-    "libinterp/tests/README.loader-results.md"
+    "libinterp/tests/README.loader-results.md",
+    "libinterp/tests/module-imports.c",
+    "libinterp/tests/module-imports.py"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -560,6 +562,8 @@
     "upstream/libinterp/tests/module-byte-descriptors.py": "edf816308663f760fe5ebd64d8fc39ad498f71dde106504210802e204080a0d6",
     "upstream/libinterp/tests/module-data-retains.c": "21c954cb72759d65b346c06a035fd493842e4071de018242fdd8ce66b5e4daae",
     "upstream/libinterp/tests/module-data-retains.py": "d77b59ef423056c2253beefa8fd818384406f67b0bde89529d90ca2511740526",
+    "upstream/libinterp/tests/module-imports.c": "e3bba790b563ee743d4bf6c81a31281d58722ebd140f8aae7f336c007a0b945b",
+    "upstream/libinterp/tests/module-imports.py": "8ecdbf1c920de9226dda1a87e2ce724d57bd967f80a51aeff8c92f8c8d9a685a",
     "upstream/libinterp/tests/owner-jit.py": "f5f53232a13b041d478d9430c74d8db0ae455e302a85737fc70029f6d5f2b475",
     "upstream/libinterp/tests/owner-native.c": "2034033cb610c5c6d54e6f6cd659c2907e152214da0f1dd4868152820990eb5d",
     "upstream/libinterp/tests/owner-native.py": "8a1a2be35a52729a37db8daeb6bca9fae539210e10b938281e45d83654985852",

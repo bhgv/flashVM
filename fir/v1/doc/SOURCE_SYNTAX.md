@@ -1,4 +1,4 @@
-# Working numeric source profile 0.7.0
+# Working numeric source profile 0.9.0
 
 This profile actually lowers into FIR, separately from the broader syntax
 frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
@@ -64,3 +64,6 @@ profile, not a general Limbo type system. int functions retain the old profile.
 `real` remains a valid AS1/2/3 variable name, but is a Limbo type keyword.
 The new `limbo_real` provenance survives print/opt and reaches SWO/SWF or Dis.
 [Commented example](../examples/dis/README.md#limbo-real).
+
+Literal range errors are rejected too, including underflow when host strtod sets
+errno. This is a limitation of the current bounded numeric profile.

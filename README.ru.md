@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1594**. [English](README.md).
+Версия разработки: **0.1595**. [English](README.md).
 
-Текущая серия: [v0.1581–v0.1588](docs/releases/v0.1588.md) — binary64 в FIR→Dis, исполнение числового AS, проверка Sys/модулей и обратные исправления владения Srv/Loader в Inferno.
+Текущая серия: [v0.1589–v0.1595](docs/releases/v0.1595.md) — наш Limbo real через Coco/R, обновления SLICEA/self-load из Inferno и обратные исправления остальных result-слотов Loader.
 
 ## Просмотр документации
 
