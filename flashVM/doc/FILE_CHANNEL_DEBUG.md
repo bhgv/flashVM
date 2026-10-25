@@ -1,9 +1,9 @@
 # Файловые каналы в отладчике / File channel debugger
 
-В v0.63 [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L114) поддерживает локальные файловые каналы.
+В v0.63 [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L144) поддерживает локальные файловые каналы.
 Замораживается чтение: неблокирующий receive и raw read возвращают
-[`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47); блокирующий receive ждёт resume или close. Запись разрешена.
-Close пробуждает читателей с [`FVM_ERROR`](../include/flashvm/flashvm.h#L43); закрытый файл просмотреть нельзя.
+[`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49); блокирующий receive ждёт resume или close. Запись разрешена.
+Close пробуждает читателей с [`FVM_ERROR`](../include/flashvm/flashvm.h#L45); закрытый файл просмотреть нельзя.
 Это состояние конкретного handle, а не блокировка файла в других процессах.
 
 `fvm_debug_channel_message(context, channel, index, out)` читает копию
@@ -18,13 +18,13 @@ Close пробуждает читателей с [`FVM_ERROR`](../include/flashv
 Ограничения: raw bytes без framing FVMG не являются сообщениями; индексация
 проходит предыдущие записи последовательно и использует ограничение 64 MiB
 на запись. Изменение файла внешним процессом не замораживается. В v0.67 remote endpoints поддерживают freeze/state через совместимый broker,
-а v0.70 добавляет remote indexed peek (REMOTE_CHANNEL_DEBUG.md). В v0.65 [`fvm_debug_channel_state`](../include/flashvm/debug.h#L118) сканирует framed записи локального файла
+а v0.70 добавляет remote indexed peek (REMOTE_CHANNEL_DEBUG.md). В v0.65 [`fvm_debug_channel_state`](../include/flashvm/debug.h#L150) сканирует framed записи локального файла
 под lock и возвращает pending/frozen/closed без изменения read cursor. Pending
 считает complete framed records, а не проверенные decoded payloads; capacity=0.
 Закрытый file handle имеет pending=0 (дальнейшее чтение через него невозможно).
 Read/framing/OOM ошибки не изменяют переданный output. С v0.67 scan ограничен
 65536 records/64 MiB; превышение возвращает UNSUPPORTED и сохраняет cursor/output. Write-only file даёт
-[FVM_ERROR](../include/flashvm/flashvm.h#L43) при сканировании. Внешние изменения не защищены этим lock.
+[FVM_ERROR](../include/flashvm/flashvm.h#L45) при сканировании. Внешние изменения не защищены этим lock.
 Эта возможность не закрывает стадии 6 и 7 или полную приёмку отладчика.
 
 Проверки: `tests/file_channel_debug.c` — frozen raw/primitive/graph reads,
@@ -89,9 +89,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../include/flashvm/debug.h#L114) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../include/flashvm/debug.h#L125) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../include/flashvm/debug.h#L118) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../include/flashvm/debug.h#L144) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../include/flashvm/debug.h#L159) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../include/flashvm/debug.h#L150) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
 <!-- source-links:end -->

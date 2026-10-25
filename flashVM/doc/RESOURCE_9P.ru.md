@@ -39,7 +39,7 @@ Device повторно проверяет native права даже у отк�
 Хост последовательно вызывает API. Сервер заимствует один исключительный FS;
 пока его дескрипторы принадлежат адаптеру, FS нельзя независимо использовать
 или удалять. Управляемых указателей/GC roots, потоков, часов и callbacks нет.
-Исполнение остаётся в [fvm_rdispatch_pump](../include/flashvm/rdispatch.h#L119) или owner service отладчика.
+Исполнение остаётся в [fvm_rdispatch_pump](../include/flashvm/rdispatch.h#L145) или owner service отладчика.
 Выходной буфер всегда [FVM_R9P_MSIZE](../include/flashvm/r9p.h#L5), даже при меньшем negotiated msize.
 Вход/выход/счётчики не перекрываются. Все произведённые ответы хост удерживает
 и отправляет по порядку, включая ответ перед последующим Rflush; API не
@@ -47,10 +47,10 @@ Device повторно проверяет native права даже у отк�
 
 | Функция | Контракт |
 | --- | --- |
-| [`fvm_r9p_create`](../include/flashvm/r9p.h#L20) | Заимствует FS, выделяет один fixed native server. Выход меняется только на OK; NOMEM сохраняет его. FS уже содержит доверенную сессию и права. Один FS на соединение; сокетов/mount/auth не запускает. |
-| [`fvm_r9p_request`](../include/flashvm/r9p.h#L28) | Сервер, input/count, output/capacity, used/consumed. Обрабатывает ровно один кадр, оставляя следующий склеенный кадр непрочитанным. Малая ёмкость до MSIZE даёт LIMIT до изменений. Неполный ввод PENDING, неверный frame INVALID/LIMIT, повтор outstanding tag CONFLICT — хост прекращает нарушившее протокол соединение. Эти native ошибки сохраняют выходы. Валидный запрос даёт OK и consumed=длина кадра, used=ответ либо ноль для удержанного Tread. Ошибки сервиса/протокола — полные Rerror. VM не исполняет. |
-| [`fvm_r9p_poll`](../include/flashvm/r9p.h#L34) | Сервер, MSIZE буфер, used. Round-robin проверяет reads, производит один ответ и освобождает tag. PENDING сохраняет выход/used. Также повторяет retired close после завершения callback. Ответы могут быть не в порядке запросов: сопоставлять по tag. Произведённые байты хост удерживает для partial-send retry. |
-| [`fvm_r9p_destroy`](../include/flashvm/r9p.h#L39) | Указатель на сервер после остановки транспорта/owner callbacks. Закрывает fids и отбрасывает reads. BUSY сохраняет сервер, но часть fids уже может быть закрыта: повторить после callback. OK освобождает сервер и обнуляет указатель. Затем удалить FS, при необходимости отключить сессию на owner, а диспетчер — после окончания всех заимствований. |
+| [`fvm_r9p_create`](../include/flashvm/r9p.h#L22) | Заимствует FS, выделяет один fixed native server. Выход меняется только на OK; NOMEM сохраняет его. FS уже содержит доверенную сессию и права. Один FS на соединение; сокетов/mount/auth не запускает. |
+| [`fvm_r9p_request`](../include/flashvm/r9p.h#L32) | Сервер, input/count, output/capacity, used/consumed. Обрабатывает ровно один кадр, оставляя следующий склеенный кадр непрочитанным. Малая ёмкость до MSIZE даёт LIMIT до изменений. Неполный ввод PENDING, неверный frame INVALID/LIMIT, повтор outstanding tag CONFLICT — хост прекращает нарушившее протокол соединение. Эти native ошибки сохраняют выходы. Валидный запрос даёт OK и consumed=длина кадра, used=ответ либо ноль для удержанного Tread. Ошибки сервиса/протокола — полные Rerror. VM не исполняет. |
+| [`fvm_r9p_poll`](../include/flashvm/r9p.h#L40) | Сервер, MSIZE буфер, used. Round-robin проверяет reads, производит один ответ и освобождает tag. PENDING сохраняет выход/used. Также повторяет retired close после завершения callback. Ответы могут быть не в порядке запросов: сопоставлять по tag. Произведённые байты хост удерживает для partial-send retry. |
+| [`fvm_r9p_destroy`](../include/flashvm/r9p.h#L47) | Указатель на сервер после остановки транспорта/owner callbacks. Закрывает fids и отбрасывает reads. BUSY сохраняет сервер, но часть fids уже может быть закрыта: повторить после callback. OK освобождает сервер и обнуляет указатель. Затем удалить FS, при необходимости отключить сессию на owner, а диспетчер — после окончания всех заимствований. |
 
 Лимиты: [FVM_R9P_FIDS](../include/flashvm/r9p.h#L7) fids и pending reads, [FVM_R9P_WELEM](../include/flashvm/r9p.h#L8) компонентов walk,
 [FVM_R9P_MSIZE](../include/flashvm/r9p.h#L5) на кадр. Retired running-close slot занят до очистки. Дополнительно
@@ -125,14 +125,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_r9p_create` | function | [include/flashvm/r9p.h:20](../include/flashvm/r9p.h#L20) |
-| `fvm_r9p_destroy` | function | [include/flashvm/r9p.h:39](../include/flashvm/r9p.h#L39) |
+| `fvm_r9p_create` | function | [include/flashvm/r9p.h:22](../include/flashvm/r9p.h#L22) |
+| `fvm_r9p_destroy` | function | [include/flashvm/r9p.h:47](../include/flashvm/r9p.h#L47) |
 | `FVM_R9P_FIDS` | macro / define | [include/flashvm/r9p.h:7](../include/flashvm/r9p.h#L7) |
 | `FVM_R9P_MIN_MSIZE` | macro / define | [include/flashvm/r9p.h:6](../include/flashvm/r9p.h#L6) |
 | `FVM_R9P_MSIZE` | macro / define | [include/flashvm/r9p.h:5](../include/flashvm/r9p.h#L5) |
-| `fvm_r9p_poll` | function | [include/flashvm/r9p.h:34](../include/flashvm/r9p.h#L34) |
-| `fvm_r9p_request` | function | [include/flashvm/r9p.h:28](../include/flashvm/r9p.h#L28) |
+| `fvm_r9p_poll` | function | [include/flashvm/r9p.h:40](../include/flashvm/r9p.h#L40) |
+| `fvm_r9p_request` | function | [include/flashvm/r9p.h:32](../include/flashvm/r9p.h#L32) |
 | `FVM_R9P_WELEM` | macro / define | [include/flashvm/r9p.h:8](../include/flashvm/r9p.h#L8) |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
-| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../include/flashvm/rdispatch.h#L119) |
+| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:145](../include/flashvm/rdispatch.h#L145) |
 <!-- source-links:end -->

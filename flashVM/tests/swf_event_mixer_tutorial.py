@@ -1,4 +1,5 @@
 """Exercise the real C89 tutorial, including exact native PCM bytes and rejected arguments."""
+
 import os
 import struct
 import subprocess
@@ -7,15 +8,21 @@ import tempfile
 
 
 def run(exe, *args):
-    return subprocess.run([exe] + list(args), stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=15)
+    return subprocess.run(
+        [exe] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15
+    )
 
 
 def main():
     exe = sys.argv[1]
     with tempfile.TemporaryDirectory(prefix="flashvm-mixer-") as root:
         target = os.path.join(root, "mixed pcm.pcm")
-        for args in [("--demo",), ("--demo", target), ("--timeline-demo",), ("--timeline-demo", target)]:
+        for args in [
+            ("--demo",),
+            ("--demo", target),
+            ("--timeline-demo",),
+            ("--timeline-demo", target),
+        ]:
             result = run(exe, *args)
             if result.returncode or b"first=-32768 tail=32512 active=0" not in result.stdout:
                 raise RuntimeError((args, result.returncode, result.stdout, result.stderr))
@@ -28,7 +35,9 @@ def main():
             if result.returncode or b"first=-32768 tail=27208 active=0" not in result.stdout:
                 raise RuntimeError((args, result.returncode, result.stdout, result.stderr))
         with open(converted, "rb") as stream:
-            if stream.read() != struct.pack("=8h", -32768, -32768, 27208, 27208, 32512, 32512, 0, 0):
+            if stream.read() != struct.pack(
+                "=8h", -32768, -32768, 27208, 27208, 32512, 32512, 0, 0
+            ):
                 raise RuntimeError("converted stereo bytes differ from the independent PCM oracle")
         if run(exe, "--convert-demo", os.path.join(root, "missing", "out")).returncode != 1:
             raise RuntimeError("converted file-open failure was lost")

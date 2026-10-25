@@ -1,2 +1,23 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "adaptive_curve_fixture.hpp"
-int main() { for(unsigned c=0;c<3;++c) for(unsigned j=0;j<2;++j) { FVM_Path *p=dc_path(3); assert(hit_add(p,FVM_PATH_MOVE,100,100)==FVM_OK); dc_expected(stroke_bounds(p,c,j,4.0/256),c); fvm_path_destroy(p); } return 0; }
+
+
+int main()
+{
+    for (unsigned c = 0; c < 3; ++c)
+    {
+        for (unsigned j = 0; j < 2; ++j)
+        {
+            FVM_Path *p = dc_path(3);
+            if (!(hit_add(p, FVM_PATH_MOVE, 100, 100) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            dc_expected(stroke_bounds(p, c, j, 4.0 / 256), c);
+            fvm_path_destroy(p);
+        }
+    }
+    return 0;
+}

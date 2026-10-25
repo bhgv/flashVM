@@ -1,6 +1,6 @@
 # Player collection between frames
 
-Since v0.667 each foreground main-loop turn calls [`fvm_gc_step`](../include/flashvm/gc.h#L90) after input
+Since v0.667 each foreground main-loop turn calls [`fvm_gc_step`](../include/flashvm/gc.h#L116) after input
 delivery, HostInput publication and timer polling. Previously this safe point
 required a fired timer, leaving temporary input-handler objects until the next
 slow timeline frame.
@@ -50,5 +50,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
+| `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
 <!-- source-links:end -->

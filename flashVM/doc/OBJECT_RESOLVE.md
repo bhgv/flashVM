@@ -99,7 +99,7 @@ ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
 ## v0.453 — resolver status and original native interfaces
 
 Resolver discovery now reports presence separately from callback status. An
-actual [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) from a resolver, returned method or revoked RPC interface
+actual [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L49) from a resolver, returned method or revoked RPC interface
 propagates unchanged; it cannot masquerade as an absent hook or trigger fallback.
 Existing interpreter/JIT tests cover resolver and callee NOT_FOUND, including
 super dispatch and callback counts. object_resolve_rpc checks SWF6/8 with two
@@ -160,5 +160,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
 <!-- source-links:end -->

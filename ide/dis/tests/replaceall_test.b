@@ -1,8 +1,9 @@
 implement ReplaceAllTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Host bootstrap only; the service itself uses no Sys or host UI access.
 ReplaceAllTest: module
@@ -11,35 +12,42 @@ ReplaceAllTest: module
 };
 checks := 0;
 
+
 # End this isolated reference-emulator process without a shell or window server.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: halt returned";
 }
 
+
 # Fail loudly in release builds as well as development configurations.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
 
+
 # Retain a reply rendezvous until this serialized operation completes.
 exchange(commands: chan of core->Request, operation, revision, first, last: int,
-         needle, replacement: string): core->Reply
+needle, replacement: string): core->Reply
 {
     reply := chan of core->Reply;
     commands <-= core->Request(31, operation, revision, first, last, needle, replacement, reply);
     return <-reply;
 }
+
 
 # Match count is meaningful only on successful ReplaceAll; errors preserve every field.
 state(result: core->Reply, status, revision, saved, matches: int, text: string)
@@ -49,6 +57,7 @@ state(result: core->Reply, status, revision, saved, matches: int, text: string)
     require(result.matches == matches && result.text == text, "match count and text");
     require(result.offset == -1 && result.line == -1 && result.column == -1, "no invented navigation position");
 }
+
 
 # Test scoped Unicode replacement, original-text matching and history as one transaction.
 init()
@@ -97,12 +106,14 @@ init()
     commands = core->start();
     data := array[32768] of byte;
     for(index := 0; index < len data; index++)
+    {
         data[index] = byte 'a';
+    }
     longtext := string data;
     r = exchange(commands, core->Open, 0, 0, 0, longtext, "");
     r = exchange(commands, core->ReplaceAll, 1, 0, len longtext, "a", "bb");
     require(r.status == core->Ok && r.matches == 32768 && len r.text == 65536 &&
-            r.text[0] == 'b' && r.text[65535] == 'b', "many matches render without quadratic append");
+    r.text[0] == 'b' && r.text[65535] == 'b', "many matches render without quadratic append");
     r = exchange(commands, core->Undo, r.revision, 0, 0, "", "");
     require(r.status == core->Ok && r.text == longtext && r.revision == 3, "all matches undo together");
     r = exchange(commands, core->Shutdown, r.revision, 0, 0, "", "");
@@ -113,11 +124,13 @@ init()
     # older reference runtime after the high-allocation rendering workload.
     data = array[core->MaxCharacters] of byte;
     for(index = 0; index < len data; index++)
+    {
         data[index] = byte 'x';
+    }
     huge := string data;
     r = exchange(commands, core->Open, 0, 0, 0, huge, "");
     state(exchange(commands, core->ReplaceAll, 1, 0, len huge, "x", "xx"),
-          core->TooLarge, 1, 1, -1, huge);
+    core->TooLarge, 1, 1, -1, huge);
     r = exchange(commands, core->Undo, 1, 0, 0, "", "");
     require(r.status == core->NotFound && r.text == huge, "failed bulk edit creates no history");
     r = exchange(commands, core->ReplaceAll, 1, 0, len huge, "xx", "x");

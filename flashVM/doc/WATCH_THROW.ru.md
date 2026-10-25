@@ -13,7 +13,7 @@ Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd; ссылки в WATCH_THROW.md.
 Первый продолжает присваивание и отдельно обрабатывает наследуемый setter;
 второй заменяет присваиваемое значение на undefined при script-исключении.
 
-[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) сохраняет граф исключения до очистки pending-состояния.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L9) сохраняет граф исключения до очистки pending-состояния.
 Явный корень защищает строки, объекты и циклы во время setter/GC. Деструктор
 восстанавливает владение pending-значением до снятия корня и выполняется раньше
 окружающего корня владельца поиска. Отказ выделения до приостановки сохраняет
@@ -24,7 +24,7 @@ object_watch_throw воспроизвёл ошибку v0.431. Проверен�
 успех/исключение setter и приоритет ошибок. Самоцикличный объект исключения
 переживает настоящий GC внутри setter, где pending-состояние приостановлено.
 Прежние тесты строк с NUL и JIT теперь ожидают запись undefined при loaded throw.
-[FVM_ERROR](../include/flashvm/flashvm.h#L43) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
+[FVM_ERROR](../include/flashvm/flashvm.h#L45) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
 эталона не заявляется. Нативная длина/ресурсы, метатаблицы, пределы рекурсии и
 полная совместимость требуют проверок. Все девять стадий остаются открытыми.
 
@@ -85,6 +85,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:9](../src/core/watch_write_scope.hpp#L9) |
 <!-- source-links:end -->

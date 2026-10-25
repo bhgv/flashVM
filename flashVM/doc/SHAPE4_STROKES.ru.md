@@ -4,7 +4,7 @@
 
 Текущее расширение v0.1239+: [bitmap-обводки LINESTYLE2](BITMAP_STROKES.ru.md). Прежний общий запрет bitmap-обводок ниже исторический; остальные ограничения обводок сохраняются.
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L469) принимает LINESTYLE2 в DefineShape4 с круглыми концами и
+[fvm_swf_read_shape](../src/swf/shape.cpp#L600) принимает LINESTYLE2 в DefineShape4 с круглыми концами и
 соединениями, обычным масштабированием ширины и необязательным NoClose. Ширина
 задана беззнаковым числом твипов; ноль включает однопиксельную hairline-обводку.
 Принимаются прямой RGBA-цвет и FillType со сплошной, линейной, радиальной или
@@ -12,9 +12,9 @@
 pad/reflect/repeat, RGB/linearRGB и знаковый внутренний FIXED8-фокус.
 
 Пять резервных битов и резервный код концов/соединений 3 возвращают
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Другие концы/соединения, NoHScale, NoVScale, PixelHinting
-и bitmap-заливки обводок возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Границы фокуса пока не
-поддержаны. Усечённые поддержанные записи возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Другие концы/соединения, NoHScale, NoVScale, PixelHinting
+и bitmap-заливки обводок возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Границы фокуса пока не
+поддержаны. Усечённые поддержанные записи возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47).
 При неподдержанном заголовке остаток записи может не проверяться.
 
 NoClose подавляет автоматическую команду CLOSE при возвращении обводки в
@@ -22,7 +22,7 @@ NoClose подавляет автоматическую команду CLOSE п�
 Флаг преобразуется в собственные команды пути и не требует нового поля
 управляемого графа. Контуры заливки он не изменяет.
 
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) связывает градиент обводки с lineGradient вместо gradient.
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137) связывает градиент обводки с lineGradient вместо gradient.
 Описания заливки и обводки независимы; граф владеет точками и командами. Байты
 файла и указатели бэкенда не сохраняются. Нативные барьеры защищают построение;
 сериализация, каналы и GC используют обычные рёбра графа. Ошибка декодирования
@@ -55,8 +55,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -1,13 +1,16 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm/avm1.h"
 #include "flashvm/function.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
 #include "../src/details/vector.hpp"
-#include <cassert>
 #include <cstring>
 #include <limits>
 
 typedef fvm_detail::vector<unsigned char> Bytes;
+
+
 static void text(Bytes &b, const char *s)
 {
     size_t n = std::strlen(s) + 2;
@@ -20,6 +23,8 @@ static void text(Bytes &b, const char *s)
         b.push_back((unsigned char)*s);
     } while (*s++);
 }
+
+
 static void integer(Bytes &b, unsigned long n)
 {
     b.push_back(0x96);
@@ -32,34 +37,56 @@ static void integer(Bytes &b, unsigned long n)
         n >>= 8;
     }
 }
+
+
 static void global(Bytes &b, const char *name)
 {
     text(b, name);
     b.push_back(0x1c);
 }
+
+
 static FVM_Value run(FVM_Context *c, Bytes body)
 {
     Bytes code;
     text(code, "result");
     for (size_t i = 0; i < body.size(); ++i)
+    {
         code.push_back(body[i]);
+    }
     code.push_back(0x1d);
     code.push_back(0);
-    assert(fvm_avm1_execute(c, code.begin(), code.size()) == FVM_OK);
+    if (!(fvm_avm1_execute(c, code.begin(), code.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_Value result;
-    assert(fvm_get_global(c, "result", &result) == FVM_OK);
+    if (!(fvm_get_global(c, "result", &result) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return result;
 }
+
+
 static void object(FVM_Context *c, const char *name, FVM_Object *o)
 {
     FVM_Value v;
     fvm_value_undefined(&v);
     v.type = FVM_VALUE_OBJECT;
     v.object = o;
-    assert(fvm_set_global(c, name, &v) == FVM_OK);
+    if (!(fvm_set_global(c, name, &v) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
 
 #ifndef FVM_AVM1_STANDARD_FIXTURE_ONLY
+
+
 int main()
 {
     FVM_Config cfg;
@@ -67,14 +94,38 @@ int main()
     FVM_Context *c = 0;
     FVM_Object *o = 0, *clip = 0, *ctor = 0;
     FVM_Value v;
-    assert(fvm_config_init(&cfg) == FVM_OK);
-    assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
-    assert(fvm_context_create(rt, &c) == FVM_OK);
-    assert(fvm_standard_install(c) == FVM_OK);
+    if (!(fvm_config_init(&cfg) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_runtime_create(&cfg, &rt) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(rt, &c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_standard_install(c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_number(&v, 7);
-    assert(fvm_construct(c, "Number", 1, &v, &o) == FVM_OK);
+    if (!(fvm_construct(c, "Number", 1, &v, &o) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     object(c, "boxed", o);
-    assert(fvm_movieclip_create(c, "root", 1, &clip) == FVM_OK);
+    if (!(fvm_movieclip_create(c, "root", 1, &clip) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     object(c, "clip", clip);
     const char *names[] = {"boxed", "clip", "Function", "String", "Math"};
     const char *types[] = {"object", "movieclip", "function", "function", "object"};
@@ -84,7 +135,11 @@ int main()
         global(b, names[i]);
         b.push_back(0x44);
         v = run(c, b);
-        assert(v.type == FVM_VALUE_STRING && !std::strcmp(v.string, types[i]));
+        if (!(v.type == FVM_VALUE_STRING && !std::strcmp(v.string, types[i])))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
@@ -92,10 +147,18 @@ int main()
         integer(b, 7);
         b.push_back(0x49);
         v = run(c, b);
-        assert(v.type == FVM_VALUE_BOOLEAN && v.boolean);
+        if (!(v.type == FVM_VALUE_BOOLEAN && v.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         b[b.size() - 1] = 0x66;
         v = run(c, b);
-        assert(!v.boolean);
+        if (!(!v.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
@@ -103,7 +166,11 @@ int main()
         global(b, "clip");
         b.push_back(0x66);
         v = run(c, b);
-        assert(v.boolean);
+        if (!(v.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
@@ -111,16 +178,23 @@ int main()
         global(b, "boxed");
         b.push_back(0x47);
         v = run(c, b);
-        assert(!std::strcmp(v.string, "value=7"));
+        if (!(!std::strcmp(v.string, "value=7")))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
-    {
-        /* U+10000 sorts before U+E000 in UTF-16, opposite UTF-8 byte order. */
+    { /* U+10000 sorts before U+E000 in UTF-16, opposite UTF-8 byte order. */
         Bytes b;
         text(b, "\360\220\200\200");
         text(b, "\356\200\200");
         b.push_back(0x48);
         v = run(c, b);
-        assert(v.boolean);
+        if (!(v.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
@@ -130,7 +204,11 @@ int main()
         text(b, "charAt");
         b.push_back(0x52);
         v = run(c, b);
-        assert(!std::strcmp(v.string, "b"));
+        if (!(!std::strcmp(v.string, "b")))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
@@ -138,22 +216,33 @@ int main()
         text(b, "length");
         b.push_back(0x4e);
         v = run(c, b);
-        assert(v.type == FVM_VALUE_NUMBER && v.number == 4);
+        if (!(v.type == FVM_VALUE_NUMBER && v.number == 4))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         Bytes b;
         text(b, "12.5");
         b.push_back(0x4a);
         v = run(c, b);
-        assert(v.number == 12.5);
+        if (!(v.number == 12.5))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         Bytes text_code;
         integer(text_code, 15);
         text_code.push_back(0x4b);
         v = run(c, text_code);
-        assert(!std::strcmp(v.string, "15"));
+        if (!(!std::strcmp(v.string, "15")))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
-    {
-        /* NewMethod must execute a first-class constructor with the new receiver. */
+    { /* NewMethod must execute a first-class constructor with the new receiver. */
         Bytes body;
         global(body, "this");
         text(body, "n");
@@ -161,13 +250,24 @@ int main()
         body.push_back(0x4f);
         body.push_back(0);
         const char *parameters[] = {"n"};
-        assert(fvm_function_create_avm1(c, body.begin(), body.size(), 1, parameters, 0, &ctor) ==
-               FVM_OK);
-        assert(fvm_construct(c, "Object", 0, 0, &o) == FVM_OK);
+        if (!(fvm_function_create_avm1(c, body.begin(), body.size(), 1, parameters, 0, &ctor) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_construct(c, "Object", 0, 0, &o) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         fvm_value_undefined(&v);
         v.type = FVM_VALUE_OBJECT;
         v.object = ctor;
-        assert(fvm_object_set(c, o, "C", &v) == FVM_OK);
+        if (!(fvm_object_set(c, o, "C", &v) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         object(c, "holder", o);
         Bytes b;
         integer(b, 19);
@@ -176,11 +276,18 @@ int main()
         text(b, "C");
         b.push_back(0x53);
         v = run(c, b);
-        assert(v.type == FVM_VALUE_OBJECT);
-        assert(fvm_object_get(c, v.object, "n", &v) == FVM_OK && v.number == 19);
+        if (!(v.type == FVM_VALUE_OBJECT))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_object_get(c, v.object, "n", &v) == FVM_OK && v.number == 19))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
-    {
-        /* Negative numeric members are names, not unsigned table indices. */
+    { /* Negative numeric members are names, not unsigned table indices. */
         Bytes write;
         global(write, "holder");
         integer(write, 0xffffffffUL);
@@ -190,7 +297,11 @@ int main()
         integer(write, 0xffffffffUL);
         write.push_back(0x4e);
         v = run(c, write);
-        assert(v.type == FVM_VALUE_NUMBER && v.number == 55);
+        if (!(v.type == FVM_VALUE_NUMBER && v.number == 55))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         object(c, "direct", ctor);
         Bytes call;
         integer(call, 23);
@@ -202,17 +313,29 @@ int main()
         call.push_back(3); /* Undefined method invokes the function itself. */
         call.push_back(0x52);
         v = run(c, call);
-        assert(v.type == FVM_VALUE_UNDEFINED);
+        if (!(v.type == FVM_VALUE_UNDEFINED))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     {
         fvm_value_number(&v, std::numeric_limits<double>::quiet_NaN());
-        assert(fvm_set_global(c, "nan", &v) == FVM_OK);
+        if (!(fvm_set_global(c, "nan", &v) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         Bytes b;
         global(b, "nan");
         global(b, "nan");
         b.push_back(0x66);
         v = run(c, b);
-        assert(!v.boolean);
+        if (!(!v.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);

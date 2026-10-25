@@ -11,7 +11,7 @@ S16. Event-only и stream-only пути сохраняются. Это огра�
 ## Владение и публикация кадра
 
 `fvm_desktop_audio_open_paused` готовит bounded root-snapshots на VM-потоке,
-создаёт микшер и optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L13), начинает пустую общую эпоху,
+создаёт микшер и optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L14), начинает пустую общую эпоху,
 включает ID и подключает stream-producer к адаптеру. Worker читает только native
 копии и не хранит VM/GC-указателей. Операции микшера, producer и controls используют
 общий SDL mutex.
@@ -40,7 +40,7 @@ Worker переходит к event-only хвостам только после �
 stream pause-policy. Эталонная Flash pause/seek-семантика и точность момента старта
 не заявлены: новый голос начинает после уже принятого/pending PCM.
 
-[`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) согласует финальный EOF-tail с обеими эпохами,
+[`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) согласует финальный EOF-tail с обеими эпохами,
 не добавляя полей в публичные структуры. Нужны наблюдённый EOF, отсутствие base retry,
 точная adapted-таблица (callbacks/userdata/геометрия) данного mix queue и равные
 accepted-счётчики активной общей эпохи. Используются block/target producer. Успех
@@ -50,16 +50,16 @@ EOF источника, converter и последний source chunk не мен
 
 | API | Статусы, владение и исполнение |
 | --- | --- |
-| [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) | Живые stream/mix обязательны; optional accepted обнуляется сразу. Null/reentry, ненаблюдённый EOF, base retry, иной backend или разные эпохи: INVALID_ARGUMENT. Общий clock выключен: NOT_FOUND. Нет голосов/headroom: NOT_FOUND. Прочие backend/mixer статусы передаются; исключения callbacks: ERROR. Без выделений/VM/GC, передачи владения и неявных pause/clear. Нужна внешняя сериализация всех зависимостей. |
+| [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) | Живые stream/mix обязательны; optional accepted обнуляется сразу. Null/reentry, ненаблюдённый EOF, base retry, иной backend или разные эпохи: INVALID_ARGUMENT. Общий clock выключен: NOT_FOUND. Нет голосов/headroom: NOT_FOUND. Прочие backend/mixer статусы передаются; исключения callbacks: ERROR. Без выделений/VM/GC, передачи владения и неявных pause/clear. Нужна внешняя сериализация всех зависимостей. |
 | `fvm_desktop_audio_stream_pending` | Учитывает разрешённый source, FIFO, mixed voices и сохранённый mix retry. Host suspension и авторский stop возвращают ноль; после StopSounds новые события могут продлить completion, не включая отменённый base. Без pump/decode/VM; mutex, выход сохраняется при ошибке. |
 
 При failed tail write микшер продвигается один раз, точный TAIL retry хранит mix queue.
 Base-буфер producer не используется под хвост; `FVM_SWFStreamOutputInfo.pending_frames`
 по-прежнему описывает только base retry. Для хвоста нужен
-[`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31). Допустимый FIFO poll может обновить played при
+[`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L38). Допустимый FIFO poll может обновить played при
 ошибке операции; failed write не увеличивает accepted. Нельзя чередовать paired
 хвосты с прямым mix-tail или посторонним producer. Перед
-[`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L156) нужно завершить tail retry; подтверждённый seek/clear
+[`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L186) нужно завершить tail retry; подтверждённый seek/clear
 его отменяет. Разные эпохи отвергаются до следующего смешивания.
 
 Context StopSounds выполняет staged stream seek/clear через адаптер. Успех отменяет
@@ -84,7 +84,7 @@ latency/seek, автоматический A/V drift, все JIT backends, пр�
 Исторические записи ниже не расширяют этот объём.
 
 
-v0.975: Добавлен [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L92) после EOF: точный retry и согласованные счётчики без изменения публичных структур.
+v0.975: Добавлен [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L106) после EOF: точный retry и согласованные счётчики без изменения публичных структур.
 
 
 v0.976: Проверены pairing backend, failed/throwing retry, stream-reentry и запрет рассогласованных эпох.
@@ -136,9 +136,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:156](../include/flashvm/swf_stream_output.h#L156) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
-| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |
+| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:186](../include/flashvm/swf_stream_output.h#L186) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:14](../src/swf/sound_mix_queue.cpp#L14) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->

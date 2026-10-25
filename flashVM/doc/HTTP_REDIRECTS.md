@@ -6,11 +6,11 @@
 [fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) initializes [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L21): no redirects,
 10s connect/30s total budget, default trust. Explicit native callbacks
 [fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L72) and [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L76) take this
-policy as required userdata. The worker adapter additionally borrows [FVM_NetControl](../ports/network/socket.h#L21).
+policy as required userdata. The worker adapter additionally borrows [FVM_NetControl](../ports/network/socket.h#L23).
 Existing socket options, controlled requests and callbacks keep their ABI/behavior.
 
 Choose max_redirects=0..[FVM_HTTP_REDIRECT_MAX](../frontend/common/http_policy.h#L6) (8), connect_ms>0 and <=total_ms,
-total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L8) (120s), optional ca_file. Invalid policy starts no I/O.
+total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L9) (120s), optional ca_file. Invalid policy starts no I/O.
 The total budget spans every connection/header/body, including elapsed DNS, with
 monotonic rollover-safe samples. DNS/CA/user callbacks remain non-preemptible.
 Job deadlines/cancellation from the host still apply around the complete chain.
@@ -125,6 +125,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_NET_MAX_MS` | macro / define | [ports/network/socket.h:8](../ports/network/socket.h#L8) |
-| `FVM_NetControl` | struct | [ports/network/socket.h:21](../ports/network/socket.h#L21) |
+| `FVM_NET_MAX_MS` | macro / define | [ports/network/socket.h:9](../ports/network/socket.h#L9) |
+| `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # embedding/jit
 
-Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../../../src/jit/internal.hpp#L59) и interpreter fallback.
+Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../../../src/jit/internal.hpp#L84) и interpreter fallback.
 
 ## Реализация и запуск
 
@@ -49,23 +49,23 @@ These names are not native Windows/macOS acceptance evidence from this workspace
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64) | [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md) — MANUAL interprets before binding and honors the explicit native attachment. |
-| [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71) | [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md) — Verify zero native entries before binding and a real native entry after it. |
-| [`fvm_jit_available`](../../../include/flashvm/jit.h#L13) | [JIT_ARCHITECTURES.md](../../../doc/JIT_ARCHITECTURES.md) — Compiled ABI support, not per-mapping permission / наличие ABI в сборке. |
-| [`fvm_jit_backend_name`](../../../include/flashvm/jit.h#L15) | [JIT_ARCHITECTURES.md](../../../doc/JIT_ARCHITECTURES.md) — Static selected ABI name / статическое имя ABI. |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
-| [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
-| [`fvm_function_set_body`](../../../include/flashvm/function.h#L43) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
-| [`fvm_jit_code_size`](../../../include/flashvm/jit.h#L35) | [DEBUG_API.md#fvm_jit_code_size](../../../doc/DEBUG_API.md#fvm_jit_code_size) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_jit_compile`](../../../include/flashvm/jit.h#L21) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
-| [`fvm_jit_destroy`](../../../include/flashvm/jit.h#L28) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md) — Стандартные классы и объектная модель. |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L79) | [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md) — MANUAL interprets before binding and honors the explicit native attachment. |
+| [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L92) | [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md) — Verify zero native entries before binding and a real native entry after it. |
+| [`fvm_jit_available`](../../../include/flashvm/jit.h#L15) | [JIT_ARCHITECTURES.md](../../../doc/JIT_ARCHITECTURES.md) — Compiled ABI support, not per-mapping permission / наличие ABI в сборке. |
+| [`fvm_jit_backend_name`](../../../include/flashvm/jit.h#L19) | [JIT_ARCHITECTURES.md](../../../doc/JIT_ARCHITECTURES.md) — Static selected ABI name / статическое имя ABI. |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L62) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_invoke`](../../../include/flashvm/function.h#L79) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_set_body`](../../../include/flashvm/function.h#L49) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_jit_code_size`](../../../include/flashvm/jit.h#L51) | [DEBUG_API.md#fvm_jit_code_size](../../../doc/DEBUG_API.md#fvm_jit_code_size) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_jit_compile`](../../../include/flashvm/jit.h#L27) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
+| [`fvm_jit_destroy`](../../../include/flashvm/jit.h#L38) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md) — Стандартные классы и объектная модель. |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-jit).
 <!-- example-catalog-api:end -->
@@ -117,22 +117,22 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../../../include/flashvm/execution_mode.h#L71) |
-| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
-| `fvm_function_create_avm1` | function | [include/flashvm/function.h:52](../../../include/flashvm/function.h#L52) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../../../include/flashvm/function.h#L65) |
-| `fvm_function_set_body` | function | [include/flashvm/function.h:43](../../../include/flashvm/function.h#L43) |
-| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../../../include/flashvm/jit.h#L13) |
-| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../../../include/flashvm/jit.h#L15) |
-| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../../../include/flashvm/jit.h#L35) |
-| `fvm_jit_compile` | function | [include/flashvm/jit.h:21](../../../include/flashvm/jit.h#L21) |
-| `fvm_jit_destroy` | function | [include/flashvm/jit.h:28](../../../include/flashvm/jit.h#L28) |
-| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../../../src/jit/internal.hpp#L59) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:92](../../../include/flashvm/execution_mode.h#L92) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:79](../../../include/flashvm/execution_mode.h#L79) |
+| `fvm_function_create_avm1` | function | [include/flashvm/function.h:62](../../../include/flashvm/function.h#L62) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../../../include/flashvm/function.h#L79) |
+| `fvm_function_set_body` | function | [include/flashvm/function.h:49](../../../include/flashvm/function.h#L49) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:15](../../../include/flashvm/jit.h#L15) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:19](../../../include/flashvm/jit.h#L19) |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:51](../../../include/flashvm/jit.h#L51) |
+| `fvm_jit_compile` | function | [include/flashvm/jit.h:27](../../../include/flashvm/jit.h#L27) |
+| `fvm_jit_destroy` | function | [include/flashvm/jit.h:38](../../../include/flashvm/jit.h#L38) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:84](../../../src/jit/internal.hpp#L84) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 <!-- source-links:end -->

@@ -1,9 +1,9 @@
 # Объектные оболочки Boolean и нативные методы прототипов
 
-[fvm_standard_install](../include/flashvm/standard.h#L20) теперь устанавливает метаданные глобального класса Boolean
+[fvm_standard_install](../include/flashvm/standard.h#L22) теперь устанавливает метаданные глобального класса Boolean
 и отдельный конструктор вместе с прежними числовыми функциями. Boolean(value)
-через [fvm_call](../include/flashvm/value.h#L138)/AVM1 CallFunction возвращает примитив; new Boolean(value) через
-[fvm_construct](../include/flashvm/value.h#L158)/AVM1 NewObject — объект под управлением GC. Лишние корректные
+через [fvm_call](../include/flashvm/value.h#L204)/AVM1 CallFunction возвращает примитив; new Boolean(value) через
+[fvm_construct](../include/flashvm/value.h#L232)/AVM1 NewObject — объект под управлением GC. Лишние корректные
 аргументы игнорируются. Установка остаётся явной, отклоняет конфликты и публикует
 глобальные значения, функции и конструкторы вместе. Повторная установка проверяет
 класс, методы прототипа и захват конструктора; замена проверяемой привязки даёт
@@ -29,13 +29,13 @@ ToPrimitive ещё не готово. Boolean(оболочкаFalse) даёт tr
 
 ## Поиск методов и API расширений
 
-[fvm_object_define_method_rooted](../include/flashvm/value.h#L115)(context,object,name,callback,userdata,root)
+[fvm_object_define_method_rooted](../include/flashvm/value.h#L171)(context,object,name,callback,userdata,root)
 создаёт либо заменяет собственный нативный метод. root — null либо объект того же
 контекста; произвольная память userdata не сканируется. Собственные данные/accessor
 с тем же именем мешают регистрации. Замена callback освобождает прежний корень
-захвата. [fvm_object_has_own](../include/flashvm/value.h#L70) учитывает собственные методы, но не унаследованные.
+захвата. [fvm_object_has_own](../include/flashvm/value.h#L98) учитывает собственные методы, но не унаследованные.
 
-[fvm_object_call](../include/flashvm/value.h#L126) и AVM1 CallMethod ищут метод по цепочке максимум из 1024 объектов.
+[fvm_object_call](../include/flashvm/value.h#L184) и AVM1 CallMethod ищут метод по цепочке максимум из 1024 объектов.
 Receiver остаётся исходным объектом, а не прототипом, хранящим callback.
 Собственный метод перекрывает унаследованный. Первое свойство-данные/accessor
 блокирует вызов нативного метода и даёт UNSUPPORTED: вызов function-valued свойств
@@ -48,7 +48,7 @@ Receiver остаётся исходным объектом, а не прото�
 receiver/прототипов. Прежний мост именованных функций применяется только при
 отсутствии метода. Нативный метод прототипа в AVM1 имеет приоритет перед
 одноимённой скриптовой функцией. Превышение бюджета цепочки даёт ERROR без fallback.
-Это ограниченный нативный мост, а не полный Function. [fvm_object_get](../include/flashvm/value.h#L72) пока не
+Это ограниченный нативный мост, а не полный Function. [fvm_object_get](../include/flashvm/value.h#L102) пока не
 выдаёт нативный метод как значение-функцию.
 
 ## GC, потоки и примеры
@@ -85,11 +85,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../include/flashvm/value.h#L115) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
-| `fvm_object_has_own` | function | [include/flashvm/value.h:70](../include/flashvm/value.h#L70) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../include/flashvm/value.h#L204) |
+| `fvm_construct` | function | [include/flashvm/value.h:232](../include/flashvm/value.h#L232) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:171](../include/flashvm/value.h#L171) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../include/flashvm/value.h#L102) |
+| `fvm_object_has_own` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
 <!-- source-links:end -->

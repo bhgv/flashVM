@@ -1,26 +1,71 @@
 /* Number and ToNumber share AVM1 decimal accumulation with versioned strictness. */
 #define FVM_PARSE_INT_LOADED_FIXTURE_ONLY
+#include <stdio.h>
+#include <stdlib.h>
 #include "global_parse_int_loaded.cpp"
 #include "../src/avm1/coercion.hpp"
+
+
 static void decimal_check(FVM_Context *c, const char *bytes, size_t size, double expected)
 {
-    FVM_Value input, out; double number = 0;
-    assert(fvm_value_string_bytes(&input, bytes, size) == FVM_OK);
-    assert(fvm_avm1_number(c, &input, &number) == FVM_OK);
-    assert(expected != expected ? number != number : number == expected);
-    assert(fvm_call(c, "Number", 1, &input, &out) == FVM_OK && out.type == FVM_VALUE_NUMBER);
-    assert(expected != expected ? out.number != out.number : out.number == expected);
-    if (expected == 0) assert((1.0/out.number < 0) == (1.0/expected < 0));
+    FVM_Value input, out;
+    double number = 0;
+    if (!(fvm_value_string_bytes(&input, bytes, size) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_avm1_number(c, &input, &number) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(expected != expected ? number != number : number == expected))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_call(c, "Number", 1, &input, &out) == FVM_OK && out.type == FVM_VALUE_NUMBER))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(expected != expected ? out.number != out.number : out.number == expected))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (expected == 0)
+    {
+        if (!((1.0 / out.number < 0) == (1.0 / expected < 0)))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 #ifndef FVM_DECIMAL_NUMBERS_FIXTURE_ONLY
+
+
 int main()
 {
-    FVM_Config cfg; FVM_Runtime *rt = 0;
-    assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
+    FVM_Config cfg;
+    FVM_Runtime *rt = 0;
+    if (!(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     double nan = std::numeric_limits<double>::quiet_NaN();
-    for (unsigned version = 4; version <= 8; ++version) {
+    for (unsigned version = 4; version <= 8; ++version)
+    {
         FVM_Context *c = 0;
-        assert(fvm_context_create(rt, &c) == FVM_OK); parsing_load(c, version);
+        if (!(fvm_context_create(rt, &c) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        parsing_load(c, version);
         decimal_check(c, ".1499999", 8, 0.14999990000000005);
         decimal_check(c, "-.1499999", 9, -0.14999990000000005);
         decimal_check(c, "1e4294967297", 12, 10);
@@ -34,7 +79,11 @@ int main()
         decimal_check(c, "1.2.5", 5, version == 4 ? 1.25 : nan);
         decimal_check(c, "077", 3, version < 6 ? 77 : 63);
         decimal_check(c, "0x10", 4, version == 4 ? 0 : version == 5 ? nan : 16);
-        assert(!c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth);
+        if (!(!c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

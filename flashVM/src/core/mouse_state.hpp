@@ -4,22 +4,26 @@
 #include "runtime.hpp"
 #include "flashvm/mouse.h"
 #include <cfloat>
+
+
 /* Reject collector/teardown entry before native registrations or script delivery change state. */
 inline bool fvm_mouse_context_usable(FVM_Context *context)
 {
     return context && !context->destroying && !context->gc_collecting && !context->gc_releasing;
 }
+
+
 /* Validate all event inputs before allocating, updating drag state or publishing coordinates. */
 inline bool fvm_mouse_event_valid(FVM_MouseEventType type, double x, double y)
 {
-    return (type == FVM_MOUSE_EVENT_MOVE || type == FVM_MOUSE_EVENT_DOWN ||
-            type == FVM_MOUSE_EVENT_UP) &&
+    return (type == FVM_MOUSE_EVENT_MOVE || type == FVM_MOUSE_EVENT_DOWN || type == FVM_MOUSE_EVENT_UP) &&
            x >= -DBL_MAX && x <= DBL_MAX && y >= -DBL_MAX && y <= DBL_MAX;
 }
+
+
 /* A wheel is an explicit finite Number and pointer position, with no implicit device policy. */
 inline bool fvm_mouse_wheel_valid(double delta, double x, double y)
 {
-    return delta >= -DBL_MAX && delta <= DBL_MAX &&
-           fvm_mouse_event_valid(FVM_MOUSE_EVENT_MOVE, x, y);
+    return delta >= -DBL_MAX && delta <= DBL_MAX && fvm_mouse_event_valid(FVM_MOUSE_EVENT_MOVE, x, y);
 }
 #endif

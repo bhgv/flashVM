@@ -7,14 +7,16 @@ import tempfile
 
 with tempfile.TemporaryDirectory(prefix="flashvm-network-") as directory:
     state = str(pathlib.Path(directory) / "capabilities.bin")
-    owner = subprocess.Popen([sys.argv[1], "owner", state], stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, text=True)
+    owner = subprocess.Popen(
+        [sys.argv[1], "owner", state], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     try:
         uri = owner.stdout.readline().strip()
         if not uri.startswith("fvm://"):
             raise RuntimeError("Owner did not publish a resource URI: " + owner.stderr.read())
-        client = subprocess.run([sys.argv[1], "client", uri, state], timeout=20,
-                                capture_output=True, text=True)
+        client = subprocess.run(
+            [sys.argv[1], "client", uri, state], timeout=20, capture_output=True, text=True
+        )
         if client.returncode:
             raise RuntimeError("Client failed: " + client.stderr)
         _, stderr = owner.communicate(timeout=10)

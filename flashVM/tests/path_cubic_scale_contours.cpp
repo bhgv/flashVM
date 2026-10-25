@@ -1,2 +1,24 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "cubic_scale_fixture.hpp"
-int main(){for(unsigned k=0;k<3;++k){FVM_Path *p=cb_path(k,-600),*source=cb_path(k,-600);double s=std::ldexp(1.0,-600);FVM_Affine m={1,0,0,1,20*s,30*s};assert(fvm_path_append(p,source,&m)==FVM_OK);FVM_PathBounds b=cb_normalized(p,-600),expected=cb_expected(k);bounds_equal(b,expected.x_min,expected.y_min,expected.x_max+20,expected.y_max+30);fvm_path_destroy(p);fvm_path_destroy(source);}return 0;}
+
+
+int main()
+{
+    for (unsigned k = 0; k < 3; ++k)
+    {
+        FVM_Path *p = cb_path(k, -600), *source = cb_path(k, -600);
+        double s = std::ldexp(1.0, -600);
+        FVM_Affine m = {1, 0, 0, 1, 20 * s, 30 * s};
+        if (!(fvm_path_append(p, source, &m) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        FVM_PathBounds b = cb_normalized(p, -600), expected = cb_expected(k);
+        bounds_equal(b, expected.x_min, expected.y_min, expected.x_max + 20, expected.y_max + 30);
+        fvm_path_destroy(p);
+        fvm_path_destroy(source);
+    }
+    return 0;
+}

@@ -1,4 +1,4 @@
-Development version: **0.1538** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1539** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
@@ -1859,8 +1859,8 @@ This is an early prototype, **not yet a SWF interpreter**. No AVM1 bytecode,
 SWF parsing, JIT, renderer or media support is implemented. Object and string
 storage currently lasts until context destruction; there is no garbage
 collector. API object/string references must not outlive their context, and
-contexts are not thread-safe. [`fvm_load_memory`](include/flashvm/flashvm.h#L72) and [`fvm_advance`](include/flashvm/flashvm.h#L74) return
-[`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L46). Avoid untrusted native extensions; no sandbox is provided.
+contexts are not thread-safe. [`fvm_load_memory`](include/flashvm/flashvm.h#L90) and [`fvm_advance`](include/flashvm/flashvm.h#L94) return
+[`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L48). Avoid untrusted native extensions; no sandbox is provided.
 
 Build and test:
 
@@ -1887,7 +1887,7 @@ Register native callbacks with `fvm_register_function()` before executing.
 The implementation supports `End`, `Push` (string, integer, boolean, null,
 undefined), `Pop`, `GetVariable`, `SetVariable`, `Add`, `Subtract`,
 `Multiply`, `Divide`, `Jump`, `If`, and `CallFunction` to registered native
-functions. Unsupported instructions return [`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L46); malformed
+functions. Unsupported instructions return [`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L48); malformed
 input or stack operations return errors. There is no JIT, AS-defined
 functions, display list, or general Flash Player compatibility yet.
 
@@ -2036,7 +2036,7 @@ invoked through the C API. AVM1 script closures and `__call` are not yet impleme
 
 ## Native `__call` bridge (step 26)
 
-`include/flashvm/meta_call.h` provides [`fvm_meta_call`](include/flashvm/meta_call.h#L20): native metatable callbacks receive the owner, defining metatable, and a new indexed argument table. See `tests/meta_call.c`. The proposed thread/channel language extensions are **not implemented**; design notes: `doc/THREADS_CHANNELS.md` and `doc/THREADS_CHANNELS.ru.md`.
+`include/flashvm/meta_call.h` provides [`fvm_meta_call`](include/flashvm/meta_call.h#L22): native metatable callbacks receive the owner, defining metatable, and a new indexed argument table. See `tests/meta_call.c`. The proposed thread/channel language extensions are **not implemented**; design notes: `doc/THREADS_CHANNELS.md` and `doc/THREADS_CHANNELS.ru.md`.
 
 ### In-process channels (stage 27)
 
@@ -2068,7 +2068,7 @@ Shared channel ownership is documented in [doc/CHANNEL_OWNERSHIP.md](doc/CHANNEL
 See [English API and limitations](doc/CHANNEL_VALUES.md),
 [Russian API and limitations](doc/CHANNEL_VALUES.ru.md), and the C89/C++98
 examples in `examples/embedding/channel_values`, `channel_cpp98`, and
-`examples/extending/channel_worker`. GC-managed ActionScript wrappers are available through [`fvm_extensions_install`](include/flashvm/extensions.h#L17) and [`fvm_extensions_wrap_channel`](include/flashvm/extensions.h#L21).
+`examples/extending/channel_worker`. GC-managed ActionScript wrappers are available through [`fvm_extensions_install`](include/flashvm/extensions.h#L19) and [`fvm_extensions_wrap_channel`](include/flashvm/extensions.h#L25).
 
 ## Garbage collection (experimental)
 
@@ -2078,7 +2078,7 @@ object graphs. It is not yet integrated with AVM1 execution stack roots, so
 collection must be invoked only at explicit safe points. See
 [`doc/GARBAGE_COLLECTION.md`](doc/GARBAGE_COLLECTION.md) and
 [`examples/embedding/gc/`](examples/embedding/gc/).
-The script-level `gc.mode()` / `gc.state()` API is installed by [`fvm_extensions_install`](include/flashvm/extensions.h#L17).
+The script-level `gc.mode()` / `gc.state()` API is installed by [`fvm_extensions_install`](include/flashvm/extensions.h#L19).
 
 ## GC API references (stages 49–68)
 
@@ -2308,14 +2308,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_advance` | function | [include/flashvm/flashvm.h:74](include/flashvm/flashvm.h#L74) |
-| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](include/flashvm/avm1.h#L38) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](include/flashvm/extensions.h#L17) |
-| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:21](include/flashvm/extensions.h#L21) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](include/flashvm/flashvm.h#L72) |
-| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](include/flashvm/meta_call.h#L20) |
-| `fvm_register_function` | function | [include/flashvm/value.h:101](include/flashvm/value.h#L101) |
-| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](include/flashvm/avm1.h#L73) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](include/flashvm/swf_stream_output.h#L92) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](include/flashvm/flashvm.h#L46) |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:94](include/flashvm/flashvm.h#L94) |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:46](include/flashvm/avm1.h#L46) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](include/flashvm/extensions.h#L19) |
+| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:25](include/flashvm/extensions.h#L25) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](include/flashvm/flashvm.h#L90) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](include/flashvm/meta_call.h#L22) |
+| `fvm_register_function` | function | [include/flashvm/value.h:153](include/flashvm/value.h#L153) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:93](include/flashvm/avm1.h#L93) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](include/flashvm/swf_stream_output.h#L106) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -15,9 +15,7 @@ def main():
     """Exercise all four numeric profiles through the public IDE CLI protocol."""
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ["compiler", "ir", "linker", "runner"]:
-        parser.add_argument(
-            "--" + name, required=True, type=lambda p: str(Path(p).resolve())
-        )
+        parser.add_argument("--" + name, required=True, type=lambda p: str(Path(p).resolve()))
     parser.add_argument("--structured-diagnostics", action="store_true")
     args = parser.parse_args()
     driver = Path(__file__).resolve().parents[1] / "build.py"
@@ -58,38 +56,51 @@ def main():
             for optimise in (True, False):
                 source.write_text(text, encoding="utf-8")
                 request = (
-                    command
-                    + ["--expect-trace", expected]
-                    + ([] if optimise else ["--no-optimise"])
+                    command + ["--expect-trace", expected] + ([] if optimise else ["--no-optimise"])
                 )
                 result = subprocess.run(request, capture_output=True, timeout=60)
                 report = json.loads(result.stdout)
-                assert (
-                    result.returncode == 0 and report["ok"] and report["published"]
-                ), report
-                assert output.read_bytes()[:4] == b"FWS\x08"
+                if not (result.returncode == 0 and report["ok"] and report["published"]):
+                    raise AssertionError(report)
+                if not (output.read_bytes()[:4] == b"FWS\x08"):
+                    raise AssertionError("condition check failed: ide/tests/integration.py:64")
                 checks += 1
             previous = output.read_bytes()
             source.write_text("@@@\n", encoding="utf-8")
             result = subprocess.run(command, capture_output=True, timeout=60)
             report = json.loads(result.stdout)
-            assert result.returncode == 1 and not report["published"], report
-            assert report["diagnostics"][0]["stage"] == "source", report
-            assert output.read_bytes() == previous
+            if not (result.returncode == 1 and (not report["published"])):
+                raise AssertionError(report)
+            if not (report["diagnostics"][0]["stage"] == "source"):
+                raise AssertionError(report)
+            if not (output.read_bytes() == previous):
+                raise AssertionError("condition check failed: ide/tests/integration.py:72")
             checks += 1
             if args.structured_diagnostics:
                 broken = "/*中*/\ttrace(missing);"
                 if language == "limbo":
-                    broken = ("implement Bad; Bad: module { value: fn(): int; }; "
-                              "value(): int { #中\n\treturn missing; }")
+                    broken = (
+                        "implement Bad; Bad: module { value: fn(): int; }; "
+                        "value(): int { #中\n\treturn missing; }"
+                    )
                 source.write_text(broken, encoding="utf-8")
                 result = subprocess.run(command, capture_output=True, timeout=60)
                 report = json.loads(result.stdout)
                 item = report["diagnostics"][0]
-                assert result.returncode == 1 and item["kind"] == "semantic", report
-                assert broken[item["character_offset"]:item["character_offset"] + item["character_length"]] == "missing"
-                assert item["source_sha256"] == hashlib.sha256(broken.encode()).hexdigest()
-                assert output.read_bytes() == previous
+                if not (result.returncode == 1 and item["kind"] == "semantic"):
+                    raise AssertionError(report)
+                if not (
+                    broken[
+                        item["character_offset"] : item["character_offset"]
+                        + item["character_length"]
+                    ]
+                    == "missing"
+                ):
+                    raise AssertionError("condition check failed: ide/tests/integration.py:86")
+                if not (item["source_sha256"] == hashlib.sha256(broken.encode()).hexdigest()):
+                    raise AssertionError("condition check failed: ide/tests/integration.py:93")
+                if not (output.read_bytes() == previous):
+                    raise AssertionError("condition check failed: ide/tests/integration.py:94")
                 checks += 1
             source.write_text(text, encoding="utf-8")
             result = subprocess.run(
@@ -98,11 +109,12 @@ def main():
                 timeout=60,
             )
             report = json.loads(result.stdout)
-            assert (
-                result.returncode == 1 and report["diagnostics"][0]["stage"] == "run"
-            ), report
-            assert output.read_bytes() == previous
-            assert not list(root.glob(".ide-build-*"))
+            if not (result.returncode == 1 and report["diagnostics"][0]["stage"] == "run"):
+                raise AssertionError(report)
+            if not (output.read_bytes() == previous):
+                raise AssertionError("condition check failed: ide/tests/integration.py:104")
+            if not (not list(root.glob(".ide-build-*"))):
+                raise AssertionError("condition check failed: ide/tests/integration.py:105")
             checks += 1
     print(json.dumps({"passed": checks, "profiles": list(cases)}))
     return 0

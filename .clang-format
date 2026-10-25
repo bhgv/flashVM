@@ -1,0 +1,30 @@
+BasedOnStyle: LLVM
+Standard: Cpp03
+IndentWidth: 4
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+InsertBraces: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+BinPackArguments: false
+BinPackParameters: false
+SortIncludes: Never
+IncludeBlocks: Preserve
+SeparateDefinitionBlocks: Always
+MaxEmptyLinesToKeep: 2
+EmptyLineBeforeAccessModifier: Always
+EmptyLineAfterAccessModifier: Always
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+BreakStringLiterals: false
+FixNamespaceComments: false
+SortUsingDeclarations: Never
+IndentExternBlock: NoIndent
+ReflowComments: false
+StatementMacros: [GET, SET]

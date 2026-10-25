@@ -279,7 +279,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/file_channels.md](actionscript/file_channels.md).
 
-Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../include/flashvm/extensions.h#L17).
+Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../include/flashvm/extensions.h#L19).
 
 **Файлы:** [file_channels.as](actionscript/file_channels.as).
 
@@ -676,7 +676,7 @@ owner и читает ответ по одному байту с проверк�
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L122) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L133) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -830,7 +830,7 @@ AS2-эскиз Sound/Video и заметка о подключении меди�
 
 **Тип:** исполняемый C89 и отдельный AS2-эскиз. **README:** [EN](embedding/movieclip/README.md) / [RU](embedding/movieclip/README.ru.md).
 
-C89 host останавливает однокадровый MovieClip, регистрирует onEnterFrame и запрашивает три ticks с общим бюджетом пяти единиц. Два callback сохраняются после [FVM_ERROR](../include/flashvm/flashvm.h#L43); следующий внешний вызов получает свежий бюджет. Отдельный runtime затем создаёт high/low/middle не по глубине и проверяет low/middle/high с конечным бюджетом. Затем рисует пустую сцену в память host и проверяет отсутствие новых timeline callbacks. Третий независимый runtime исполняет действия кадра два дважды с отдельными бюджетами по пять единиц, сохраняя playhead один и ноль tick callbacks. Связанный [контракт снимков сцены](../doc/SCENE_CONTROLS.ru.md) объясняет private mutation fixtures, не выполняемые этим примером. Четвёртый загружает End-only DoInitAction: первый tick требует пять единиц, следующие два вместе укладываются в четыре. Пятый проверяет [атомарную очистку содержимого](../doc/MOVIE_UNLOAD.ru.md): экземпляр и его собственное свойство сохраняются; физическая принадлежность проверяется без скриптовых getters. Это пример частичного выполнения и сортировки без автоматического replay, без графического устройства. Отдельный AS2-файл остаётся эскизом для внешнего компилятора.
+C89 host останавливает однокадровый MovieClip, регистрирует onEnterFrame и запрашивает три ticks с общим бюджетом пяти единиц. Два callback сохраняются после [FVM_ERROR](../include/flashvm/flashvm.h#L45); следующий внешний вызов получает свежий бюджет. Отдельный runtime затем создаёт high/low/middle не по глубине и проверяет low/middle/high с конечным бюджетом. Затем рисует пустую сцену в память host и проверяет отсутствие новых timeline callbacks. Третий независимый runtime исполняет действия кадра два дважды с отдельными бюджетами по пять единиц, сохраняя playhead один и ноль tick callbacks. Связанный [контракт снимков сцены](../doc/SCENE_CONTROLS.ru.md) объясняет private mutation fixtures, не выполняемые этим примером. Четвёртый загружает End-only DoInitAction: первый tick требует пять единиц, следующие два вместе укладываются в четыре. Пятый проверяет [атомарную очистку содержимого](../doc/MOVIE_UNLOAD.ru.md): экземпляр и его собственное свойство сохраняются; физическая принадлежность проверяется без скриптовых getters. Это пример частичного выполнения и сортировки без автоматического replay, без графического устройства. Отдельный AS2-файл остаётся эскизом для внешнего компилятора.
 
 **Файлы:** [main.c](embedding/movieclip/main.c), [tutorial_limits.h](embedding/movieclip/tutorial_limits.h), [example_as2.as](embedding/movieclip/example_as2.as).
 
@@ -1062,7 +1062,7 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 Руководство также описывает macOS Intel backend, RW→RX, цепочку RBP и необязательную подготовку подписи через entitlement plist.
 Руководство описывает Windows x64 backend, W^X/unwind и Linux ms_abi evidence, отдельно отмечая ещё не выполненную нативную Windows приёмку.
 
-Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../src/jit/internal.hpp#L59) и interpreter fallback.
+Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../src/jit/internal.hpp#L84) и interpreter fallback.
 
 **Файлы:** [main.c](embedding/jit/main.c), [ARM64 entitlements](embedding/jit/macos-arm64.entitlements), [Intel entitlements](embedding/jit/macos-intel.entitlements).
 
@@ -1138,7 +1138,7 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/objects/README.md](embedding/objects/README.md).
 
-Создаёт объект, записывает и считывает свойства и публикует ссылку глобально. Полезен для изучения [FVM_Value](../include/flashvm/value.h#L24) и контекстного владения; сопровождающий AS2-файл показывает использование объекта со стороны скрипта.
+Создаёт объект, записывает и считывает свойства и публикует ссылку глобально. Полезен для изучения [FVM_Value](../include/flashvm/value.h#L26) и контекстного владения; сопровождающий AS2-файл показывает использование объекта со стороны скрипта.
 
 **Файлы:** [example_as2.as](embedding/objects/example_as2.as), [main.c](embedding/objects/main.c).
 
@@ -1387,7 +1387,7 @@ AS2-эскиз обращения к host-функции и заметка о п
 
 **Тип:** C/C++ — собираемый пример. **README:** [extending/stack_c/README.md](extending/stack_c/README.md).
 
-Регистрирует callback со стеком [FVM_Stack](../src/capi/stack_c.cpp#L16), читает аргументы, очищает стек и возвращает сумму. Показывает индексацию, размер стека и правило единственного результата.
+Регистрирует callback со стеком [FVM_Stack](../src/capi/stack_c.cpp#L18), читает аргументы, очищает стек и возвращает сумму. Показывает индексацию, размер стека и правило единственного результата.
 
 **Файлы:** [main.c](extending/stack_c/main.c).
 
@@ -1615,8 +1615,8 @@ FILE и освобождает malloc. В session копируется табл�
 
 Свой вывод RGBA в реальный PPM файл. Исполняемый C89 учебник: [README](multimedia/custom_video_output/README.md), [main.c](multimedia/custom_video_output/main.c).
 
-Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L68).write поверх реальных fprintf/fwrite.
-Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L137)
+Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L80).write поверх реальных fprintf/fwrite.
+Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L189)
 проверяет размер/stride; callback пишет PPM P6 и отбрасывает alpha. Файл создаётся
 только по явному аргументу; существующий файл по этому пути заменяется. Временный
 буфер не сохраняется после возврата callback. FILE принадлежит main и закрывается
@@ -1754,7 +1754,7 @@ clock. [Контракт EN](../doc/STREAM_ADPCM_COUNTED.md) /
 
 Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
 
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L102).poll. Main явно
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L132).poll. Main явно
 открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
 его адрес через userdata. Callback не владеет fd и делегирует read нативному
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
@@ -2174,15 +2174,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:102](../include/flashvm/multimedia.h#L102) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
-| `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_video_present` | function | [include/flashvm/multimedia.h:137](../include/flashvm/multimedia.h#L137) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:132](../include/flashvm/multimedia.h#L132) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:84](../src/jit/internal.hpp#L84) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:80](../include/flashvm/multimedia.h#L80) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:133](../src/core/runtime.hpp#L133) |
+| `FVM_Stack` | struct | [src/capi/stack_c.cpp:18](../src/capi/stack_c.cpp#L18) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:189](../include/flashvm/multimedia.h#L189) |
 <!-- source-links:end -->
 
 <a id="glossary"></a>

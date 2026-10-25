@@ -9,9 +9,9 @@ or confirmed click-free physical playback. Original immediate APIs stay intact.
 
 ## Stop-by-resource voices
 
-[`FVM_SWF_SOUND_MIXER_DECLICK`](../include/flashvm/swf_sound_mixer.h#L23) has value 2 (0x2) in `FVM_SWFSoundMixerConfig.flags`,
-combinable with [`FVM_SWF_SOUND_MIXER_CONVERT`](../include/flashvm/swf_sound_mixer.h#L21). Zero/CONVERT alone retain the
-old stop behavior. Unknown bits still return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) on create;
+[`FVM_SWF_SOUND_MIXER_DECLICK`](../include/flashvm/swf_sound_mixer.h#L26) has value 2 (0x2) in `FVM_SWFSoundMixerConfig.flags`,
+combinable with [`FVM_SWF_SOUND_MIXER_CONVERT`](../include/flashvm/swf_sound_mixer.h#L24). Zero/CONVERT alone retain the
+old stop behavior. Unknown bits still return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) on create;
 the public config and geometry structs have not changed size.
 
 With DECLICK, a successful stop-by-ID submission marks matching voices for
@@ -25,8 +25,8 @@ An exhausted source can finish earlier; no artificial source extension is promis
 
 Releasing voices count toward active_voices and capacity. They do not suppress
 a later SyncNoMultiple start, but a full slot table still returns
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), without stealing a voice. The original
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L141) remains immediate, including with DECLICK enabled.
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), without stealing a voice. The original
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L180) remains immediate, including with DECLICK enabled.
 Strict geometry/rate validation is unchanged without CONVERT. All operations
 still require host serialization; submission uses the source context's owning
 thread. The player selects both flags; applications must opt in explicitly.
@@ -37,12 +37,12 @@ thread. The player selects both flags; applications must opt in explicitly.
 accepted-PCM history before first submission in the current output epoch.
 frames=0 disables and frees the ring; nonzero must be 2..the configured pump block.
 Null/busy output, a submitted epoch or an invalid frame count returns
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). The function enters no backend callback and changes no
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). The function enters no backend callback and changes no
 mixer or device state. The caller must preserve exclusive producer ownership.
 
-Success [`FVM_OK`](../include/flashvm/flashvm.h#L42) copies the count and owns a ring of (target+block)*channels
-shorts. Failure [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) preserves the previous setting/history;
-unexpected native exceptions become [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Replacement is transactional.
+Success [`FVM_OK`](../include/flashvm/flashvm.h#L44) copies the count and owns a ring of (target+block)*channels
+shorts. Failure [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) preserves the previous setting/history;
+unexpected native exceptions become [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Replacement is transactional.
 Maximum geometry is bounded by existing block/queue/channel limits. Only
 successful queue writes enter history, so retry does not duplicate samples.
 Normal output with frames=0 retains the old allocation and copying behavior.
@@ -51,7 +51,7 @@ The player configures 240 frames at 48000 Hz, before starting its worker.
 ## fvm_swf_sound_output_stop_release
 
 `fvm_swf_sound_output_stop_release(output)` requires successful nonzero release
-configuration. Null/busy/unconfigured output returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+configuration. Null/busy/unconfigured output returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 All backend callbacks share the ordinary reentry guard. It allocates nothing,
 retains no VM pointers and must be serialized with mixer/output operations.
 It can run after source VM destruction because the native snapshots/history are
@@ -63,16 +63,16 @@ then resets the software clock epoch. If running with an observed nonzero
 boundary, it submits a linear release from that level to exactly zero. The
 backend is not paused/resumed by this operation, avoiding an inserted paused
 silent block. A paused output remains paused and synthesizes no tail. No consumed
-sample or a zero boundary also requires no tail. Success returns [`FVM_OK`](../include/flashvm/flashvm.h#L42).
+sample or a zero boundary also requires no tail. Success returns [`FVM_OK`](../include/flashvm/flashvm.h#L44).
 The source voices disappear immediately; only the bounded release PCM may remain.
 
 Observe/clear errors preserve pending source/PCM ownership and return the callback
-status (exceptions map to [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) or [`FVM_ERROR`](../include/flashvm/flashvm.h#L43)). After a successful
+status (exceptions map to [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) or [`FVM_ERROR`](../include/flashvm/flashvm.h#L45)). After a successful
 clear the old sound is gone even if the subsequent release write fails. That
 exact release remains pending for pump retry; counts advance only on acceptance.
 Some backends, including the fault-latching SDL adapter, require the original
 hard stop/reset before recovering from a write failure. That discards the tail.
-The original [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L152) still pauses, clears and resets immediately,
+The original [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L184) still pauses, clears and resets immediately,
 never synthesizing a release; it remains the recovery/terminal cleanup operation.
 
 ## Queue boundary and hardware limits
@@ -112,15 +112,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
-| `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:141](../include/flashvm/swf_sound_mixer.h#L141) |
-| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:154](../include/flashvm/swf_sound_output.h#L154) |
-| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:152](../include/flashvm/swf_sound_output.h#L152) |
-| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:160](../include/flashvm/swf_sound_output.h#L160) |
-| `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../include/flashvm/swf_sound_mixer.h#L28) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:24](../include/flashvm/swf_sound_mixer.h#L24) |
+| `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:26](../include/flashvm/swf_sound_mixer.h#L26) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:180](../include/flashvm/swf_sound_mixer.h#L180) |
+| `fvm_swf_sound_output_set_release` | function | [include/flashvm/swf_sound_output.h:188](../include/flashvm/swf_sound_output.h#L188) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:184](../include/flashvm/swf_sound_output.h#L184) |
+| `fvm_swf_sound_output_stop_release` | function | [include/flashvm/swf_sound_output.h:196](../include/flashvm/swf_sound_output.h#L196) |
+| `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:33](../include/flashvm/swf_sound_mixer.h#L33) |
 <!-- source-links:end -->

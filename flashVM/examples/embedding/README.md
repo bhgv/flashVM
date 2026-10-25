@@ -40,21 +40,21 @@ Function interfaces across processes, independent VM threads and LAN:
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_call`](../../include/flashvm/value.h#L138) | [API_INDEX.md#native-calls-and-metatables](../../doc/API_INDEX.md#native-calls-and-metatables) — Вызов именованной функции. |
-| [`fvm_config_init`](../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_create`](../../include/flashvm/flashvm.h#L68) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_destroy`](../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_get_global`](../../include/flashvm/value.h#L85) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_object_create`](../../include/flashvm/value.h#L62) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_object_get`](../../include/flashvm/value.h#L72) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_object_set`](../../include/flashvm/value.h#L74) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_register_function`](../../include/flashvm/value.h#L101) | [API_INDEX.md#native-calls-and-metatables](../../doc/API_INDEX.md#native-calls-and-metatables) — Регистрация именованного native callback. |
-| [`fvm_runtime_create`](../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_runtime_destroy`](../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_set_global`](../../include/flashvm/value.h#L87) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_value_number`](../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_value_string`](../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_value_undefined`](../../include/flashvm/value.h#L40) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_call`](../../include/flashvm/value.h#L204) | [API_INDEX.md#native-calls-and-metatables](../../doc/API_INDEX.md#native-calls-and-metatables) — Вызов именованной функции. |
+| [`fvm_config_init`](../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_create`](../../include/flashvm/flashvm.h#L82) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_destroy`](../../include/flashvm/flashvm.h#L86) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_get_global`](../../include/flashvm/value.h#L125) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_object_create`](../../include/flashvm/value.h#L84) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_object_get`](../../include/flashvm/value.h#L102) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_object_set`](../../include/flashvm/value.h#L106) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_register_function`](../../include/flashvm/value.h#L153) | [API_INDEX.md#native-calls-and-metatables](../../doc/API_INDEX.md#native-calls-and-metatables) — Регистрация именованного native callback. |
+| [`fvm_runtime_create`](../../include/flashvm/flashvm.h#L74) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_runtime_destroy`](../../include/flashvm/flashvm.h#L78) | [API_INDEX.md#runtime-and-context](../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_set_global`](../../include/flashvm/value.h#L129) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_value_number`](../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_value_string`](../../include/flashvm/value.h#L58) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_value_undefined`](../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../README.md#example-embedding-main).
 <!-- example-catalog-api:end -->
@@ -68,19 +68,19 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../../include/flashvm/value.h#L138) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../include/flashvm/flashvm.h#L70) |
-| `fvm_get_global` | function | [include/flashvm/value.h:85](../../include/flashvm/value.h#L85) |
-| `fvm_object_create` | function | [include/flashvm/value.h:62](../../include/flashvm/value.h#L62) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../../include/flashvm/value.h#L72) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../../include/flashvm/value.h#L74) |
-| `fvm_register_function` | function | [include/flashvm/value.h:101](../../include/flashvm/value.h#L101) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../include/flashvm/flashvm.h#L66) |
-| `fvm_set_global` | function | [include/flashvm/value.h:87](../../include/flashvm/value.h#L87) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../include/flashvm/value.h#L42) |
-| `fvm_value_string` | function | [include/flashvm/value.h:46](../../include/flashvm/value.h#L46) |
-| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../include/flashvm/value.h#L40) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../../include/flashvm/value.h#L204) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../include/flashvm/flashvm.h#L86) |
+| `fvm_get_global` | function | [include/flashvm/value.h:125](../../include/flashvm/value.h#L125) |
+| `fvm_object_create` | function | [include/flashvm/value.h:84](../../include/flashvm/value.h#L84) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../../include/flashvm/value.h#L102) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../../include/flashvm/value.h#L106) |
+| `fvm_register_function` | function | [include/flashvm/value.h:153](../../include/flashvm/value.h#L153) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../include/flashvm/flashvm.h#L78) |
+| `fvm_set_global` | function | [include/flashvm/value.h:129](../../include/flashvm/value.h#L129) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../include/flashvm/value.h#L50) |
+| `fvm_value_string` | function | [include/flashvm/value.h:58](../../include/flashvm/value.h#L58) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

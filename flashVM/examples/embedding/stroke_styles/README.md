@@ -6,7 +6,7 @@ Diagonal extension: none/bevel, width=10, start (2,2), control (8,6.5), end (14,
 
 Axis-curve extension: after the round example it selects none/bevel, control (8,8), end (14,8), and isolated moveTo(100,100). It verifies bounds x=2..14, y=6..10. The additional line is `axis curve bounds: 2..14, 6..10`. Each replaced getBounds result is separately rooted and released. C APIs and synchronous ownership are unchanged; no new C entry point is needed. [Contract](../../../doc/AXIS_CURVE_BOUNDS.md).
 
-Round-curve extension: after the first render, the example clears the old line, selects round/round, calls curveTo with control (8,0), end (14,8), and adds isolated moveTo(100,100). It verifies getBounds x=0..16, y=2..10. The previous bounds root is released before replacing geometry; the new result is separately rooted and cleaned up. clear, curveTo and moveTo synchronously mutate context-owned geometry through the existing [fvm_object_call](../../../include/flashvm/value.h#L126). An additional output line is `round curve bounds: 0..16, 2..10`. This extension does not test the curve raster. [Contract](../../../doc/ROUND_CURVE_BOUNDS.md).
+Round-curve extension: after the first render, the example clears the old line, selects round/round, calls curveTo with control (8,0), end (14,8), and adds isolated moveTo(100,100). It verifies getBounds x=0..16, y=2..10. The previous bounds root is released before replacing geometry; the new result is separately rooted and cleaned up. clear, curveTo and moveTo synchronously mutate context-owned geometry through the existing [fvm_object_call](../../../include/flashvm/value.h#L184). An additional output line is `round curve bounds: 0..16, 2..10`. This extension does not test the curve raster. [Contract](../../../doc/ROUND_CURVE_BOUNDS.md).
 
 [Русский](README.ru.md). This executable calls script lineStyle with square/bevel,
 draws (2,8)..(14,8), verifies bounds 0..16 and a corner hit at (0.1,6.1).
@@ -52,22 +52,22 @@ Cairo, nonuniform transforms or full Flash reference compatibility.
 
 | Function | Purpose, ownership and execution |
 | --- | --- |
-| [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration; no retained pointers. |
-| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Create the owned runtime synchronously; destroy it after all contexts. |
-| [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Create an isolated owned context whose objects remain context-owned. |
-| [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Synchronously install built-in script methods in this context. |
-| [fvm_movieclip_create](../../../include/flashvm/movieclip.h#L95) | Create a context-owned clip; root it before later VM work. |
-| [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Acquire one host GC root for a borrowed clip or bounds object. |
-| [fvm_value_undefined](../../../include/flashvm/value.h#L40) | Initialize or reset a caller-owned value; no owned allocation. |
-| [fvm_value_number](../../../include/flashvm/value.h#L42) | Copy a scalar operand into caller-owned storage. |
-| [fvm_value_boolean](../../../include/flashvm/value.h#L44) | Copy a Boolean operand without retaining any object. |
-| [fvm_value_string](../../../include/flashvm/value.h#L46) | Borrow a static literal for the synchronous method call; keep it alive. |
-| [fvm_object_call](../../../include/flashvm/value.h#L126) | Synchronously coerce/copy lineStyle, append geometry, query hitTest or allocate getBounds; arguments are borrowed and returned objects are context-owned. |
-| [fvm_object_get](../../../include/flashvm/value.h#L72) | Read a copied numeric bounds property while its owner is pinned; getters may execute. |
-| [fvm_movieclip_render](../../../include/flashvm/movieclip.h#L135) | Synchronously borrow the host surface; report UNSUPPORTED without a renderer. |
-| [fvm_gc_unpin](../../../include/flashvm/gc.h#L54) | Release exactly one acquired root; never access the object after context teardown. |
-| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Finalize all context-owned clips and temporary results after dropping roots. |
-| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Release the runtime only after destroying its context. |
+| [fvm_config_init](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned configuration; no retained pointers. |
+| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L74) | Create the owned runtime synchronously; destroy it after all contexts. |
+| [fvm_context_create](../../../include/flashvm/flashvm.h#L82) | Create an isolated owned context whose objects remain context-owned. |
+| [fvm_standard_install](../../../include/flashvm/standard.h#L22) | Synchronously install built-in script methods in this context. |
+| [fvm_movieclip_create](../../../include/flashvm/movieclip.h#L120) | Create a context-owned clip; root it before later VM work. |
+| [fvm_gc_pin](../../../include/flashvm/gc.h#L60) | Acquire one host GC root for a borrowed clip or bounds object. |
+| [fvm_value_undefined](../../../include/flashvm/value.h#L46) | Initialize or reset a caller-owned value; no owned allocation. |
+| [fvm_value_number](../../../include/flashvm/value.h#L50) | Copy a scalar operand into caller-owned storage. |
+| [fvm_value_boolean](../../../include/flashvm/value.h#L54) | Copy a Boolean operand without retaining any object. |
+| [fvm_value_string](../../../include/flashvm/value.h#L58) | Borrow a static literal for the synchronous method call; keep it alive. |
+| [fvm_object_call](../../../include/flashvm/value.h#L184) | Synchronously coerce/copy lineStyle, append geometry, query hitTest or allocate getBounds; arguments are borrowed and returned objects are context-owned. |
+| [fvm_object_get](../../../include/flashvm/value.h#L102) | Read a copied numeric bounds property while its owner is pinned; getters may execute. |
+| [fvm_movieclip_render](../../../include/flashvm/movieclip.h#L174) | Synchronously borrow the host surface; report UNSUPPORTED without a renderer. |
+| [fvm_gc_unpin](../../../include/flashvm/gc.h#L70) | Release exactly one acquired root; never access the object after context teardown. |
+| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L86) | Finalize all context-owned clips and temporary results after dropping roots. |
+| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L78) | Release the runtime only after destroying its context. |
 
 [main.c](main.c) · [Catalog](../../README.md#example-embedding-stroke_styles).
 
@@ -80,20 +80,20 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
-| `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:95](../../../include/flashvm/movieclip.h#L95) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:135](../../../include/flashvm/movieclip.h#L135) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
-| `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
-| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../../../include/flashvm/gc.h#L60) |
+| `fvm_gc_unpin` | function | [include/flashvm/gc.h:70](../../../include/flashvm/gc.h#L70) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:120](../../../include/flashvm/movieclip.h#L120) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:174](../../../include/flashvm/movieclip.h#L174) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../../../include/flashvm/value.h#L184) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../../../include/flashvm/value.h#L102) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_value_boolean` | function | [include/flashvm/value.h:54](../../../include/flashvm/value.h#L54) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
+| `fvm_value_string` | function | [include/flashvm/value.h:58](../../../include/flashvm/value.h#L58) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

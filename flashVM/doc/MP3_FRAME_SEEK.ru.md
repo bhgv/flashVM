@@ -17,15 +17,15 @@ PCM это R+S. Первый блок начинает с нормализова
 
 ## Запрос неизменяемой позиции
 
-Установите точный struct_size структуры [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L143) и вызовите
-[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) с положительным номером кадра от единицы.
+Установите точный struct_size структуры [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L175) и вызовите
+[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L196) с положительным номером кадра от единицы.
 Первый авторский блок не раньше запроса определяет source_frame. block_index и
 first выбирают нормализованный PCM, возможно из другого блока. PCM/ADPCM
 выбирают нулевое смещение. Отсутствие блока даёт EOF с
-[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L141); точный конец PCM сохраняет авторский кадр.
+[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L171); точный конец PCM сохраняет авторский кадр.
 Отрицательная/выходящая за конец позиция, неверные указатели/размер и нулевой
-кадр дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); закодированный сжатый источник — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
-переполнение — [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). При ошибке выход не меняется. Нет выделения,
+кадр дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); закодированный сжатый источник — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48);
+переполнение — [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46). При ошибке выход не меняется. Нет выделения,
 декодирования, callback, скрипта или доступа к GC. Параллельные const-запросы
 после уничтожения VM допустимы; закрытие синхронизирует владелец. Разрешение
 кадров, сброс фазы ресемплера и транзакция очереди остаются обязанностью хоста.
@@ -33,12 +33,12 @@ first выбирают нормализованный PCM, возможно из
 
 ## Транзакция вывода
 
-[fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) проверяет геометрию и позицию до callback;
-[fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) использует текущий конвертер. Оба
+[fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L210) проверяет геометрию и позицию до callback;
+[fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L215) использует текущий конвертер. Оба
 используют pause → clear → публикация. Только успешный clear публикует курсор/
 источник и сбрасывает ожидающий PCM, счётчики и фазу ресемплера. Ошибка clear
 сохраняет прежние PCM/курсоры, но подтверждённая пауза остаётся видимой.
-Статусы callback передаются, исключения дают [FVM_ERROR](../include/flashvm/flashvm.h#L43), повторный вход отклонён.
+Статусы callback передаются, исключения дают [FVM_ERROR](../include/flashvm/flashvm.h#L45), повторный вход отклонён.
 Нет выделения/декодирования/VM/GC. Владелец сохраняет snapshot, converter,
 backend и output и сериализует изменения. Успех оставляет паузу. Прежние
 bind_frame/seek_frame продолжают выбирать начало авторского блока.
@@ -60,11 +60,11 @@ SeekSamples повторно. Эталонное чтение вперёд, sour
 
 | Операция | Результат и владение |
 | --- | --- |
-| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) | Копирует позицию, не меняет snapshot и выход при ошибке; точный размер и срок жизни задаёт владелец. |
-| [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) | Проверяет другой converter, вызывает pause/clear, затем публикует привязку; оба converter принадлежат хосту. |
-| [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) | Та же транзакция для текущего converter. |
-| [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L54) | Применяет block_index/first к offline reader без воздействия на очередь. |
-| [fvm_swf_stream_converter_seek](../include/flashvm/swf_stream_convert.h#L73) | Устанавливает source-позицию и нулевую рациональную фазу; синхронизация у хоста. |
+| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L196) | Копирует позицию, не меняет snapshot и выход при ошибке; точный размер и срок жизни задаёт владелец. |
+| [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L210) | Проверяет другой converter, вызывает pause/clear, затем публикует привязку; оба converter принадлежат хосту. |
+| [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L215) | Та же транзакция для текущего converter. |
+| [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L62) | Применяет block_index/first к offline reader без воздействия на очередь. |
+| [fvm_swf_stream_converter_seek](../include/flashvm/swf_stream_convert.h#L83) | Устанавливает source-позицию и нулевую рациональную фазу; синхронизация у хоста. |
 
 Смещения считаются в sample frames/парах, не channel values и не выходных кадрах.
 Поиск логарифмический по индексированным блокам. Весь PCM и metadata находятся
@@ -105,15 +105,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
-| `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
-| `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
-| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
-| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:141](../include/flashvm/swf_stream_sound.h#L141) |
-| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:162](../include/flashvm/swf_stream_sound.h#L162) |
-| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:143](../include/flashvm/swf_stream_sound.h#L143) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:83](../include/flashvm/swf_stream_convert.h#L83) |
+| `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:210](../include/flashvm/swf_stream_output.h#L210) |
+| `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:215](../include/flashvm/swf_stream_output.h#L215) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:62](../include/flashvm/swf_stream_pcm.h#L62) |
+| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:171](../include/flashvm/swf_stream_sound.h#L171) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:196](../include/flashvm/swf_stream_sound.h#L196) |
+| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:175](../include/flashvm/swf_stream_sound.h#L175) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

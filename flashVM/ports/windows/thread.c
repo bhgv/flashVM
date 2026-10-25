@@ -5,6 +5,8 @@
 #include "../thread_port.h"
 #include <windows.h>
 #include <stdlib.h>
+
+
 /* Define FVM_PortThread struct and its representation. */
 struct FVM_PortThread
 {
@@ -14,6 +16,7 @@ struct FVM_PortThread
     void *arg;
 };
 
+
 /* Compute and return thread entry. */
 static DWORD WINAPI thread_entry(LPVOID arg)
 {
@@ -22,15 +25,20 @@ static DWORD WINAPI thread_entry(LPVOID arg)
     return 0;
 }
 
+
 /* Compute and return port thread start. */
 FVM_PortThread *fvm_port_thread_start(FVM_PortThreadFn fn, void *arg)
 {
     FVM_PortThread *t;
     if (!fn)
+    {
         return 0;
+    }
     t = (FVM_PortThread *)malloc(sizeof(*t));
     if (!t)
+    {
         return 0;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     t->fn = fn;
@@ -44,6 +52,7 @@ FVM_PortThread *fvm_port_thread_start(FVM_PortThreadFn fn, void *arg)
     return t;
 }
 
+
 /* Join port thread. */
 void fvm_port_thread_join(FVM_PortThread *t)
 {
@@ -55,11 +64,13 @@ void fvm_port_thread_join(FVM_PortThread *t)
     }
 }
 
+
 /* Test whether port thread current. */
 int fvm_port_thread_is_current(FVM_PortThread *t)
 {
     return t && GetCurrentThreadId() == t->id;
 }
+
 
 /* Sleep for port thread us. */
 void fvm_port_thread_sleep_us(unsigned long us)

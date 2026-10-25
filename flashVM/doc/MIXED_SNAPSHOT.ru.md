@@ -1,13 +1,13 @@
 # Согласованный снимок смешанного потока
 
-[`fvm_swf_stream_output_mix_info`](../include/flashvm/swf_stream_output.h#L138) одним реальным queued-callback получает состояние
+[`fvm_swf_stream_output_mix_info`](../include/flashvm/swf_stream_output.h#L162) одним реальным queued-callback получает состояние
 stream и ledger принятых BASE/TAIL. Раздельные запросы могут видеть разные моменты
 расходования FIFO; единый результат сохраняет равенство общих и частных часов.
 
 ## Контракт
 
 Передайте живой stream, его точный adapted mix queue и отдельный writable
-[`FVM_SWFStreamMixInfo`](../include/flashvm/swf_stream_output.h#L26); достаточно задать внешний struct_size=sizeof. Размеры
+[`FVM_SWFStreamMixInfo`](../include/flashvm/swf_stream_output.h#L28); достаточно задать внешний struct_size=sizeof. Размеры
 вложенных структур заполняются при OK. Submitted-эпохи должны совпадать, origin
 tracking должен быть включён. Конвертер, immutable snapshot, микшер, userdata
 backend и retry PCM остаются живыми. Внешне сериализуйте обоих владельцев и
@@ -105,6 +105,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:138](../include/flashvm/swf_stream_output.h#L138) |
-| `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:26](../include/flashvm/swf_stream_output.h#L26) |
+| `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:162](../include/flashvm/swf_stream_output.h#L162) |
+| `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:28](../include/flashvm/swf_stream_output.h#L28) |
 <!-- source-links:end -->

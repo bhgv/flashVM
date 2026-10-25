@@ -19,7 +19,7 @@ its frame actions once while its children and onEnterFrame continue to advance.
 Replacing its current frame with the host API schedules that frame once again.
 
 Matrices retain skew, reflection and zero scale. The new C89 functions
-[`fvm_movieclip_get_matrix`](../include/flashvm/movieclip.h#L105) and [`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L107) access the local transform
+[`fvm_movieclip_get_matrix`](../include/flashvm/movieclip.h#L134) and [`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L138) access the local transform
 in pixels. Setting a finite representable transform publishes all components
 atomically, including under allocation failure. SWF translations convert twips
 to pixels; rotation/skew fields use signed 16.16 values. Color transforms compose
@@ -108,6 +108,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_get_matrix` | function | [include/flashvm/movieclip.h:105](../include/flashvm/movieclip.h#L105) |
-| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:107](../include/flashvm/movieclip.h#L107) |
+| `fvm_movieclip_get_matrix` | function | [include/flashvm/movieclip.h:134](../include/flashvm/movieclip.h#L134) |
+| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
 <!-- source-links:end -->

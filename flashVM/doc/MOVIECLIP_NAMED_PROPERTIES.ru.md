@@ -26,10 +26,10 @@ picture._height = 90; // Чтение и рендер используют од�
 запись. Аксессоры прототипа неперечисляемые и неудаляемые; пользовательские
 дескрипторы могут их затенять. Числовые инструкции обходят именованное затенение.
 
-C-приложение использует [`fvm_object_get`](../include/flashvm/value.h#L72) / [`fvm_object_set`](../include/flashvm/value.h#L74) без консоли и плеера.
+C-приложение использует [`fvm_object_get`](../include/flashvm/value.h#L102) / [`fvm_object_set`](../include/flashvm/value.h#L106) без консоли и плеера.
 Действуют обычные проверки контекста, ошибки и правила заимствования результата.
 Контекст и экземпляр должны оставаться живы; для хранения указателя через
-последующий собирающий вызов используйте [`fvm_gc_pin`](../include/flashvm/gc.h#L48). Вызов аксессора удерживает
+последующий собирающий вызов используйте [`fvm_gc_pin`](../include/flashvm/gc.h#L60). Вызов аксессора удерживает
 операнды во время преобразования. Нативные снимки геометрии защищены от сборки
 при обращении к преобразованиям потомков; явная повторная сборка ограничена
 обычными правилами нативного вызова.
@@ -69,7 +69,7 @@ SDL, сеть и кодеки для этого теста не требуютс
 источника возвращает пустую строку; прототип класса — undefined. Чтение не
 создаёт сетевой запрос; `_lockroot` не становится границей поиска источника.
 
-[`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L162) копирует строку. Геттер возвращает заимствованное
+[`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L207) копирует строку. Геттер возвращает заимствованное
 управляемое хранилище по обычным правилам object API. Выгрузка сохраняет адрес,
 отсоединённые потомки удерживают прежний адрес, успешная замена содержимого
 атомарно публикует новый. Ошибка замены сохраняет прежний источник. Сериализация
@@ -110,8 +110,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:162](../include/flashvm/movieclip.h#L162) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../include/flashvm/gc.h#L60) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:207](../include/flashvm/movieclip.h#L207) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../include/flashvm/value.h#L102) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../include/flashvm/value.h#L106) |
 <!-- source-links:end -->

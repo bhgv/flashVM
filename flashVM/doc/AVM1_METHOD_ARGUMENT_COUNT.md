@@ -1,13 +1,13 @@
 # Method argument counts / Число аргументов метода
 
-v0.243 adds [`fvm_exec_argument_count`](../include/flashvm/execution.h#L482), a C89 value service used by CallMethod and
+v0.243 adds [`fvm_exec_argument_count`](../include/flashvm/execution.h#L640), a C89 value service used by CallMethod and
 NewMethod. Loaded counts follow existing version-aware number conversion, then
 unsigned 32-bit truncation/modulo. NaN and either infinity become zero. Calls
 consume the minimum of that count and the available operand values. The supplied
 argument vector, rather than the requested count, determines the callee's argc.
 
-The actual argument count remains bounded by [FVM_EXEC_MAX_METHOD_ARGUMENTS](../include/flashvm/execution.h#L12);
-exceeding that resource bound reports [FVM_ERROR](../include/flashvm/flashvm.h#L43). A huge requested count with
+The actual argument count remains bounded by [FVM_EXEC_MAX_METHOD_ARGUMENTS](../include/flashvm/execution.h#L13);
+exceeding that resource bound reports [FVM_ERROR](../include/flashvm/flashvm.h#L45). A huge requested count with
 few available values does not allocate a huge vector. Unloaded host execution
 retains its strict integral-number/sufficient-operands contract. The available
 count is a value-vector length supplied by a caller, not a VM-stack pointer.
@@ -46,7 +46,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:482](../include/flashvm/execution.h#L482) |
-| `FVM_EXEC_MAX_METHOD_ARGUMENTS` | macro / define | [include/flashvm/execution.h:12](../include/flashvm/execution.h#L12) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:640](../include/flashvm/execution.h#L640) |
+| `FVM_EXEC_MAX_METHOD_ARGUMENTS` | macro / define | [include/flashvm/execution.h:13](../include/flashvm/execution.h#L13) |
 <!-- source-links:end -->

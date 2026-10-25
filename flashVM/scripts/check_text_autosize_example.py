@@ -6,39 +6,94 @@ import sys
 
 def main():
     """Require real owner-context edits, fitted wrapping, and early bad-option rejection."""
-    run = subprocess.run([sys.argv[1], '--auto-size'], text=True, capture_output=True, check=True)
-    if 'requires FONTS' in run.stdout:
+    run = subprocess.run([sys.argv[1], "--auto-size"], text=True, capture_output=True, check=True)
+    if "requires FONTS" in run.stdout:
         return 77
-    assert run.stdout.splitlines()[-3:] == [
-        'autoSize left: width=52.00 height=48.00',
-        'autoSize edit: width=76.00',
-        'autoSize wrap: width=30.00 height=140.00']
-    anchored = subprocess.run([sys.argv[1], '--anchors'], text=True, capture_output=True, check=True)
-    assert anchored.stdout.splitlines()[-3:] == [
-        'anchor left: x=10.00 width=52.00',
-        'anchor center: x=34.00 width=52.00',
-        'anchor right: x=58.00 width=52.00']
-    faces = subprocess.run([sys.argv[1], '--font-variants'], text=True, capture_output=True, check=True)
-    assert faces.stdout.splitlines()[-4:] == [
-        'face regular: advance=48.00', 'face bold: advance=56.00',
-        'face italic: advance=52.00', 'face bold-italic: advance=60.00']
-    insets = subprocess.run([sys.argv[1], '--insets'], text=True, capture_output=True, check=True)
-    assert insets.stdout.splitlines()[-2:] == [
-        'insets wrap: advance=72.00 height=94.00', 'insets fit: width=166.00']
-    indented = subprocess.run([sys.argv[1], '--indent'], text=True, capture_output=True, check=True)
-    assert indented.stdout.splitlines()[-2:] == [
-        'indent wrap: advance=90.00 height=94.00', 'indent fit: width=184.00']
-    tabbed = subprocess.run([sys.argv[1], '--tabs'], text=True, capture_output=True, check=True)
-    assert tabbed.stdout.splitlines()[-2:] == [
-        'tabs fit: advance=104.00 width=108.00', 'tabs wrap: width=54.00 height=140.00']
-    default_tabs = subprocess.run([sys.argv[1], '--default-tabs'], text=True, capture_output=True, check=True)
-    assert default_tabs.stdout.splitlines()[-2:] == [
-        'default-tabs fit: advance=199.00 width=203.00', 'default-tabs wrap: width=54.00 height=232.00']
-    bad = subprocess.run([sys.argv[1], '--unknown'], text=True, capture_output=True)
-    assert bad.returncode and not bad.stdout and 'usage:' in bad.stderr
-    print('PASS C89 autoSize activation, text edit, constrained height and owned path export')
+    if not (
+        run.stdout.splitlines()[-3:]
+        == [
+            "autoSize left: width=52.00 height=48.00",
+            "autoSize edit: width=76.00",
+            "autoSize wrap: width=30.00 height=140.00",
+        ]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:12"
+        )
+    anchored = subprocess.run(
+        [sys.argv[1], "--anchors"], text=True, capture_output=True, check=True
+    )
+    if not (
+        anchored.stdout.splitlines()[-3:]
+        == [
+            "anchor left: x=10.00 width=52.00",
+            "anchor center: x=34.00 width=52.00",
+            "anchor right: x=58.00 width=52.00",
+        ]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:20"
+        )
+    faces = subprocess.run(
+        [sys.argv[1], "--font-variants"], text=True, capture_output=True, check=True
+    )
+    if not (
+        faces.stdout.splitlines()[-4:]
+        == [
+            "face regular: advance=48.00",
+            "face bold: advance=56.00",
+            "face italic: advance=52.00",
+            "face bold-italic: advance=60.00",
+        ]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:28"
+        )
+    insets = subprocess.run([sys.argv[1], "--insets"], text=True, capture_output=True, check=True)
+    if not (
+        insets.stdout.splitlines()[-2:]
+        == ["insets wrap: advance=72.00 height=94.00", "insets fit: width=166.00"]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:35"
+        )
+    indented = subprocess.run([sys.argv[1], "--indent"], text=True, capture_output=True, check=True)
+    if not (
+        indented.stdout.splitlines()[-2:]
+        == ["indent wrap: advance=90.00 height=94.00", "indent fit: width=184.00"]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:40"
+        )
+    tabbed = subprocess.run([sys.argv[1], "--tabs"], text=True, capture_output=True, check=True)
+    if not (
+        tabbed.stdout.splitlines()[-2:]
+        == ["tabs fit: advance=104.00 width=108.00", "tabs wrap: width=54.00 height=140.00"]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:45"
+        )
+    default_tabs = subprocess.run(
+        [sys.argv[1], "--default-tabs"], text=True, capture_output=True, check=True
+    )
+    if not (
+        default_tabs.stdout.splitlines()[-2:]
+        == [
+            "default-tabs fit: advance=199.00 width=203.00",
+            "default-tabs wrap: width=54.00 height=232.00",
+        ]
+    ):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:52"
+        )
+    bad = subprocess.run([sys.argv[1], "--unknown"], text=True, capture_output=True)
+    if not (bad.returncode and (not bad.stdout) and ("usage:" in bad.stderr)):
+        raise AssertionError(
+            "condition check failed: flashVM/scripts/check_text_autosize_example.py:57"
+        )
+    print("PASS C89 autoSize activation, text edit, constrained height and owned path export")
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

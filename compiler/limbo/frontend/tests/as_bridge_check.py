@@ -3,6 +3,7 @@
 The Dis endpoint below is a process double. This is neither SWF execution nor
 acceptance of a native Dis/SWF module loader or marshaler.
 """
+
 from pathlib import Path
 import subprocess
 import sys
@@ -12,17 +13,19 @@ import tempfile
 # Generate both directions from exactly one .m snapshot, then run the actual output.
 def main():
     generator, node = sys.argv[1:]
-    with tempfile.TemporaryDirectory(prefix='limbo-as-bridge-') as directory:
+    with tempfile.TemporaryDirectory(prefix="limbo-as-bridge-") as directory:
         root = Path(directory)
-        header = root / 'native.m'
-        header.write_text('Native:module{add:fn(a,b:int):int; echo:fn(s:string):string;};')
+        header = root / "native.m"
+        header.write_text("Native:module{add:fn(a,b:int):int; echo:fn(s:string):string;};")
         source = []
-        for direction, prefix in [('as-module', 'server'), ('as-proxy', 'client')]:
-            output = root / (prefix + '.as')
-            subprocess.run([generator, '--format', direction, str(header), str(output),
-                            '--prefix', prefix], check=True)
+        for direction, prefix in [("as-module", "server"), ("as-proxy", "client")]:
+            output = root / (prefix + ".as")
+            subprocess.run(
+                [generator, "--format", direction, str(header), str(output), "--prefix", prefix],
+                check=True,
+            )
             source.append(output.read_text())
-        harness = r'''
+        harness = r"""
 const assert = require('assert');
 assert.strictEqual(server_contract.interface_id, client_contract.interface_id);
 const add = server_contract.exports.filter(x => x.name === 'add')[0];
@@ -107,11 +110,11 @@ let errors = [];
 failed.call('Native','add',[1,2],(v,e) => errors.push(e));
 assert.deepStrictEqual(errors, ['transport failed']);
 console.log('PASS .m AS external implementation and Dis proxy transport contracts');
-'''
-        script = root / 'check.js'
-        script.write_text('\n'.join(source) + '\n' + harness)
+"""
+        script = root / "check.js"
+        script.write_text("\n".join(source) + "\n" + harness)
         subprocess.run([node, str(script)], check=True, timeout=20)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

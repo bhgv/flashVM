@@ -1,31 +1,151 @@
 /* Callback/getter failures stop delivery after commit; malformed registries fail before commit. */
+#include <stdio.h>
+#include <stdlib.h>
 #include "textfield_scroll_events_fixture.hpp"
 #include "flashvm/exception.h"
 #include "flashvm/property.h"
+
 #ifdef FVM_HAS_FONTS
-struct ScrollFailure {FVM_Object *field;unsigned calls;int kind;};
-static FVM_Result fail_scroll(FVM_Context *c,FVM_Object *,unsigned,const FVM_Value *,FVM_Value *out,void *raw)
+struct ScrollFailure
 {
-    ScrollFailure *failure=(ScrollFailure*)raw;++failure->calls;FVM_Value marker;fvm_value_number(&marker,77);assert(fvm_object_set(c,failure->field,"notificationMarker",&marker)==FVM_OK);
-    if(failure->kind==1){fvm_value_number(out,91);return fvm_exception_raise(c,out);}if(failure->kind==2)throw 1;
-    fvm_value_undefined(out);return failure->kind==3?FVM_ERROR:FVM_OK;
+    FVM_Object *field;
+    unsigned calls;
+    int kind;
+};
+
+
+static FVM_Result fail_scroll(FVM_Context *c, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *raw)
+{
+    ScrollFailure *failure = (ScrollFailure *)raw;
+    ++failure->calls;
+    FVM_Value marker;
+    fvm_value_number(&marker, 77);
+    if (!(fvm_object_set(c, failure->field, "notificationMarker", &marker) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (failure->kind == 1)
+    {
+        fvm_value_number(out, 91);
+        return fvm_exception_raise(c, out);
+    }
+    if (failure->kind == 2)
+    {
+        throw 1;
+    }
+    fvm_value_undefined(out);
+    return failure->kind == 3 ? FVM_ERROR : FVM_OK;
 }
 #endif
-int main(int argc,char **)
+
+
+int main(int argc, char **)
 {
 #ifdef FVM_HAS_FONTS
-    FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
-    FVM_Object *field=scroll_field(c),*first=0,*last=0;assert(fvm_object_create(c,&first)==FVM_OK && fvm_object_create(c,&last)==FVM_OK);
-    ScrollFailure own={field,0,1},failure={field,0,0},tail={field,0,0};
-    assert(fvm_object_define_method_rooted(c,field,"onScroller",fail_scroll,&own,field)==FVM_OK && fvm_object_define_method_rooted(c,first,"onScroller",fail_scroll,&failure,field)==FVM_OK && fvm_object_define_method_rooted(c,last,"onScroller",fail_scroll,&tail,field)==FVM_OK && scroll_listen(c,field,first) && scroll_listen(c,field,last));
-    FVM_Value value;assert(fvm_value_string(&value,"A")==FVM_OK);assert(fvm_object_set(c,field,"text",&value)==FVM_EXCEPTION && own.calls==1 && !failure.calls && !tail.calls);assert(fvm_exception_clear(c)==FVM_OK && counted_metric(c,field,"textWidth")==24 && counted_metric(c,field,"notificationMarker")==77);
-    own.kind=0;failure.kind=argc>1?3:2;assert(fvm_value_string(&value,"AV\nAV\nAV")==FVM_OK);assert(fvm_object_set(c,field,"text",&value)==FVM_ERROR && own.calls==2 && failure.calls==1 && !tail.calls && counted_metric(c,field,"textWidth")==48);
-    int deleted=0;assert(fvm_object_delete(c,first,"onScroller",&deleted)==FVM_OK && deleted);failure.kind=1;
-    assert(fvm_object_define_accessor_rooted(c,first,"onScroller",fail_scroll,0,&failure,field)==FVM_OK);
-    assert(fvm_value_string(&value,"A")==FVM_OK);assert(fvm_object_set(c,field,"text",&value)==FVM_EXCEPTION && own.calls==3 && failure.calls==2 && !tail.calls);assert(fvm_exception_clear(c)==FVM_OK && counted_metric(c,field,"textWidth")==24);
-    FVM_Value registry=field->properties[FVM_TEXT_LISTENER_KEY];fvm_value_number(&field->properties[FVM_TEXT_LISTENER_KEY],3);assert(fvm_value_string(&value,"AV\nAV\nAV")==FVM_OK);
-    assert(fvm_object_set(c,field,"text",&value)==FVM_INVALID_ARGUMENT && counted_metric(c,field,"textWidth")==24 && own.calls==3);field->properties[FVM_TEXT_LISTENER_KEY]=registry;
-    assert(fvm_gc_collect(c,0)==FVM_OK && !c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth);fvm_context_destroy(c);fvm_runtime_destroy(rt);
+    FVM_Config cfg;
+    FVM_Runtime *rt = 0;
+    FVM_Context *c = 0;
+    if (!(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK &&
+          fvm_context_create(rt, &c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *field = scroll_field(c), *first = 0, *last = 0;
+    if (!(fvm_object_create(c, &first) == FVM_OK && fvm_object_create(c, &last) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    ScrollFailure own = {field, 0, 1}, failure = {field, 0, 0}, tail = {field, 0, 0};
+    if (!(fvm_object_define_method_rooted(c, field, "onScroller", fail_scroll, &own, field) == FVM_OK &&
+          fvm_object_define_method_rooted(c, first, "onScroller", fail_scroll, &failure, field) == FVM_OK &&
+          fvm_object_define_method_rooted(c, last, "onScroller", fail_scroll, &tail, field) == FVM_OK &&
+          scroll_listen(c, field, first) && scroll_listen(c, field, last)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Value value;
+    if (!(fvm_value_string(&value, "A") == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_set(c, field, "text", &value) == FVM_EXCEPTION && own.calls == 1 && !failure.calls && !tail.calls))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_exception_clear(c) == FVM_OK && counted_metric(c, field, "textWidth") == 24 &&
+          counted_metric(c, field, "notificationMarker") == 77))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    own.kind = 0;
+    failure.kind = argc > 1 ? 3 : 2;
+    if (!(fvm_value_string(&value, "AV\nAV\nAV") == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_set(c, field, "text", &value) == FVM_ERROR && own.calls == 2 && failure.calls == 1 &&
+          !tail.calls && counted_metric(c, field, "textWidth") == 48))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    int deleted = 0;
+    if (!(fvm_object_delete(c, first, "onScroller", &deleted) == FVM_OK && deleted))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    failure.kind = 1;
+    if (!(fvm_object_define_accessor_rooted(c, first, "onScroller", fail_scroll, 0, &failure, field) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_string(&value, "A") == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_set(c, field, "text", &value) == FVM_EXCEPTION && own.calls == 3 && failure.calls == 2 &&
+          !tail.calls))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_exception_clear(c) == FVM_OK && counted_metric(c, field, "textWidth") == 24))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Value registry = field->properties[FVM_TEXT_LISTENER_KEY];
+    fvm_value_number(&field->properties[FVM_TEXT_LISTENER_KEY], 3);
+    if (!(fvm_value_string(&value, "AV\nAV\nAV") == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_set(c, field, "text", &value) == FVM_INVALID_ARGUMENT &&
+          counted_metric(c, field, "textWidth") == 24 && own.calls == 3))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    field->properties[FVM_TEXT_LISTENER_KEY] = registry;
+    if (!(fvm_gc_collect(c, 0) == FVM_OK && !c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_context_destroy(c);
+    fvm_runtime_destroy(rt);
 #else
     (void)argc;
 #endif

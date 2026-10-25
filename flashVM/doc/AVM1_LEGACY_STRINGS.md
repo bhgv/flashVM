@@ -6,7 +6,7 @@ MBStringExtract (0x35) and StringGreater (0x68). String actions use counted
 coercion; equality/order compare UTF-16 units, so equivalent scalar/surrogate
 representations compare alike. Addition preserves NUL. Length/extract use UTF-16
 units in SWF 6+, including split surrogate pairs. Before SWF 6, ASCII inputs
-are supported; non-ASCII length/extract return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) until historical
+are supported; non-ASCII length/extract return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) until historical
 locale-dependent decoding is implemented. This is an explicit remaining gate.
 
 StringEquals/Add/Less convert right first; StringGreater converts left first.
@@ -36,7 +36,7 @@ MBAsciiToChar (0x37) support SWF 6–8 UTF-16 behavior. Character-to-code uses
 the first unit (empty/NUL gives zero) and replaces surrogate units with U+FFFD.
 Code-to-character wraps numeric coercion to Uint16, returns an empty string for
 zero and replaces surrogate units. Before SWF 6, ASCII is supported; non-ASCII
-returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) pending byte/locale codec implementation. This limit is
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) pending byte/locale codec implementation. This limit is
 intentional and does not certify the older character encodings.
 
 Четыре операции проверены тестом avm1_character_actions: версии SWF 5–8,
@@ -56,5 +56,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

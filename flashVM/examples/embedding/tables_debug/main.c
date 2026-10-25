@@ -5,13 +5,17 @@
 /* C89 embedding example: named and numeric table slots + inspection. */
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/debug.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -30,12 +34,16 @@ int main(void)
     if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &rt) != FVM_OK ||
         /* Создаём отдельный контекст интерпретатора в среде выполнения. */
         fvm_context_create(rt, &vm) != FVM_OK)
+    { /* Begin scope: fvm_context_create(rt, &vm) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End scope: fvm_context_create(rt, &vm) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_object_create(vm, &table) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_object_create(vm, &table) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 2;
+    } /* End conditional branch: if (fvm_object_create(vm, &table) != FVM_OK). */
     /* Записываем числовое значение и соответствующий тег типа. */
     fvm_value_number(&v, 42);
     /* Проверяем условие перед выполнением следующей ветки. */
@@ -46,20 +54,27 @@ int main(void)
          * 0 — имя или индекс свойства.
          * &v — передаваемое значение. */
         fvm_table_set_index(vm, table, 0, &v) != FVM_OK)
+    { /* Begin scope: fvm_table_set_index(vm, table, 0, &v) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 3;
+    } /* End scope: fvm_table_set_index(vm, table, 0, &v) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_table_named_count(vm, table, &count) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_table_named_count(vm, table, &count) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 4;
+    } /* End conditional branch: if (fvm_table_named_count(vm, table, &count) != FVM_OK). */
+
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
     printf("Named variables: %lu\n", (unsigned long)count);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_debug_object_count(vm, &count) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_debug_object_count(vm, &count) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 5;
+    } /* End conditional branch: if (fvm_debug_object_count(vm, &count) != FVM_OK). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -73,4 +88,4 @@ int main(void)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

@@ -52,5 +52,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:21](../include/flashvm/render_jobs.h#L21) |
+| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../include/flashvm/render_jobs.h#L25) |
 <!-- source-links:end -->

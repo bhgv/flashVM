@@ -4,13 +4,13 @@
 
 ## Ввод
 
-[`fvm_port_mouse_poll`](../ports/android/input.c#L11) читает реальное состояние кнопок мыши и, где возможно, координаты. Маска кнопок: 1 — левая, 2 — правая, 4 — средняя. Windows: `GetCursorPos` и `GetAsyncKeyState`; macOS: CoreGraphics; Linux: evdev (`FVM_INPUT_DEVICE=/dev/input/eventN`, требуются права чтения). В Linux координаты пока равны нулю: это **не** позиция курсора. На Android глобального курсора нет, поэтому функция возвращает 0. Для NativeActivity предусмотрена [`fvm_port_android_touch_poll`](../ports/android/input.c#L18) с `AInputQueue *`: извлекаются число пальцев, координаты первого касания и код действия. Очередь принадлежит приложению.
+[`fvm_port_mouse_poll`](../ports/android/input.c#L14) читает реальное состояние кнопок мыши и, где возможно, координаты. Маска кнопок: 1 — левая, 2 — правая, 4 — средняя. Windows: `GetCursorPos` и `GetAsyncKeyState`; macOS: CoreGraphics; Linux: evdev (`FVM_INPUT_DEVICE=/dev/input/eventN`, требуются права чтения). В Linux координаты пока равны нулю: это **не** позиция курсора. На Android глобального курсора нет, поэтому функция возвращает 0. Для NativeActivity предусмотрена [`fvm_port_android_touch_poll`](../ports/android/input.c#L22) с `AInputQueue *`: извлекаются число пальцев, координаты первого касания и код действия. Очередь принадлежит приложению.
 
-Распознавание тапов, мультитапов и свайпов выполняет хост; затем события передаются через [`fvm_input_dispatch`](../include/flashvm/input.h#L82) и существующие правила соответствия кнопкам мыши. Автоматический вызов обработчиков ActionScript ещё не реализован.
+Распознавание тапов, мультитапов и свайпов выполняет хост; затем события передаются через [`fvm_input_dispatch`](../include/flashvm/input.h#L104) и существующие правила соответствия кнопкам мыши. Автоматический вызов обработчиков ActionScript ещё не реализован.
 
 ## Сеть
 
-[`fvm_port_tcp_connect`](../ports/android/network.c#L69) создаёт TCP-соединение через системные сокеты и DNS: Winsock на Windows, POSIX/BSD на других системах. [`fvm_port_socket_send`](../ports/android/network.c#L111) и [`fvm_port_socket_recv`](../ports/android/network.c#L128) возвращают число байтов либо -1 при ошибке; 0 у `recv` означает закрытие соединения. [`fvm_port_socket_close`](../ports/android/network.c#L141) освобождает ресурсы. **Операции блокирующие**: вызывайте их из отдельного потока хоста. Пока нет TLS, таймаутов, HTTP, `XMLSocket`, `LoadVars` и проверки Flash sandbox. Не открывайте эти функции недоверенному SWF без политики доступа к сети. Для Android необходимо разрешение `INTERNET` в манифесте.
+[`fvm_port_tcp_connect`](../ports/android/network.c#L85) создаёт TCP-соединение через системные сокеты и DNS: Winsock на Windows, POSIX/BSD на других системах. [`fvm_port_socket_send`](../ports/android/network.c#L140) и [`fvm_port_socket_recv`](../ports/android/network.c#L160) возвращают число байтов либо -1 при ошибке; 0 у `recv` означает закрытие соединения. [`fvm_port_socket_close`](../ports/android/network.c#L176) освобождает ресурсы. **Операции блокирующие**: вызывайте их из отдельного потока хоста. Пока нет TLS, таймаутов, HTTP, `XMLSocket`, `LoadVars` и проверки Flash sandbox. Не открывайте эти функции недоверенному SWF без политики доступа к сети. Для Android необходимо разрешение `INTERNET` в манифесте.
 
 ## Примеры
 
@@ -25,11 +25,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
-| `fvm_port_android_touch_poll` | function | [ports/android/input.c:18](../ports/android/input.c#L18) |
-| `fvm_port_mouse_poll` | function | [ports/android/input.c:11](../ports/android/input.c#L11) |
-| `fvm_port_socket_close` | function | [ports/android/network.c:141](../ports/android/network.c#L141) |
-| `fvm_port_socket_recv` | function | [ports/android/network.c:128](../ports/android/network.c#L128) |
-| `fvm_port_socket_send` | function | [ports/android/network.c:111](../ports/android/network.c#L111) |
-| `fvm_port_tcp_connect` | function | [ports/android/network.c:69](../ports/android/network.c#L69) |
+| `fvm_input_dispatch` | function | [include/flashvm/input.h:104](../include/flashvm/input.h#L104) |
+| `fvm_port_android_touch_poll` | function | [ports/android/input.c:22](../ports/android/input.c#L22) |
+| `fvm_port_mouse_poll` | function | [ports/android/input.c:14](../ports/android/input.c#L14) |
+| `fvm_port_socket_close` | function | [ports/android/network.c:176](../ports/android/network.c#L176) |
+| `fvm_port_socket_recv` | function | [ports/android/network.c:160](../ports/android/network.c#L160) |
+| `fvm_port_socket_send` | function | [ports/android/network.c:140](../ports/android/network.c#L140) |
+| `fvm_port_tcp_connect` | function | [ports/android/network.c:85](../ports/android/network.c#L85) |
 <!-- source-links:end -->

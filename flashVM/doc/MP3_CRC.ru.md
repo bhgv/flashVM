@@ -4,7 +4,7 @@
 
 ## Нативная проверка CRC (v0.813)
 
-Приватная [fvm_swf_mp3_verify_crc](../src/swf/sound_mp3.cpp#L58) проверяет один точный MPEG-пакет без выделений,
+Приватная [fvm_swf_mp3_verify_crc](../src/swf/sound_mp3.cpp#L75) проверяет один точный MPEG-пакет без выделений,
 VM, изменения декодера и callbacks. Бит protection включает CRC последних
 шестнадцати бит заголовка и side information, размер которой зависит от версии
 и каналов. Переданная CRC имеет порядок big-endian. Размер side information:
@@ -102,5 +102,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_verify_crc` | function | [src/swf/sound_mp3.cpp:58](../src/swf/sound_mp3.cpp#L58) |
+| `fvm_swf_mp3_verify_crc` | function | [src/swf/sound_mp3.cpp:75](../src/swf/sound_mp3.cpp#L75) |
 <!-- source-links:end -->

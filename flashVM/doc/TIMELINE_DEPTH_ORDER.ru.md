@@ -1,6 +1,6 @@
 # Снимки глубин native timeline — v0.629
 
-[English](TIMELINE_DEPTH_ORDER.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) теперь действительно
+[English](TIMELINE_DEPTH_ORDER.md). [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) теперь действительно
 обходит детей по возрастанию native depth. Прежняя документация tick обещала это,
 но копия hash-таблицы обходилась в порядке вставки. Исправлен порядок и проверка
 эффективного удаления ещё не посещённых потомков.
@@ -135,6 +135,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 <!-- source-links:end -->

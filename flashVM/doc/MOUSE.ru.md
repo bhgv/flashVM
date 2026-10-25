@@ -15,11 +15,11 @@ SDL-мост плеера v0.596 передаёт первичный палец 
 уничтожения. Атомарно готовятся Mouse.hide/show, addListener/removeListener и _listeners.
 Key/Selection не устанавливаются, координаты не меняются, скрипт не выполняется.
 
-[FVM_OK](../include/flashvm/flashvm.h#L42) означает успешную публикацию или целую прежнюю установку.
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) — неверный контекст/состояние, отсутствие стандартных
+[FVM_OK](../include/flashvm/flashvm.h#L44) означает успешную публикацию или целую прежнюю установку.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) — неверный контекст/состояние, отсутствие стандартных
 объектов или конфликт глобального descriptor/callable/идентичности методов.
-Загруженный SWF ниже [FVM_MOUSE_CURSOR_MIN_SWF_VERSION](../include/flashvm/mouse.h#L5) (5) даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
-хост-контекст поддерживается. [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) и пойманный неожиданный [FVM_ERROR](../include/flashvm/flashvm.h#L43)
+Загруженный SWF ниже [FVM_MOUSE_CURSOR_MIN_SWF_VERSION](../include/flashvm/mouse.h#L5) (5) даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48);
+хост-контекст поддерживается. [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) и пойманный неожиданный [FVM_ERROR](../include/flashvm/flashvm.h#L45)
 сохраняют прежний global. Промежуточные объекты остаются мусором контекста.
 В SWF5–6 имена глобалов нечувствительны к регистру, в SWF7–8/host чувствительны.
 Обычная установка стандартных объектов не включает Mouse автоматически.
@@ -28,22 +28,22 @@ Key/Selection не устанавливаются, координаты не м�
 ## Нативный контракт
 
 - `fvm_input_add_mouse_listener(context, listener)` удерживает ненулевой объект
-  того же контекста один раз. Дубликат даёт [FVM_OK](../include/flashvm/flashvm.h#L42) без изменения порядка.
-  Предел [FVM_MOUSE_MAX_LISTENERS](../include/flashvm/mouse.h#L7) (1024) даёт [FVM_ERROR](../include/flashvm/flashvm.h#L43), отказ памяти —
-  [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) без регистрации. Обработчики не вызываются.
+  того же контекста один раз. Дубликат даёт [FVM_OK](../include/flashvm/flashvm.h#L44) без изменения порядка.
+  Предел [FVM_MOUSE_MAX_LISTENERS](../include/flashvm/mouse.h#L7) (1024) даёт [FVM_ERROR](../include/flashvm/flashvm.h#L45), отказ памяти —
+  [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) без регистрации. Обработчики не вызываются.
 - `fvm_input_remove_mouse_listener(context, listener, removed)` требует объект
-  того же контекста и ненулевой int output. [FVM_OK](../include/flashvm/flashvm.h#L42) записывает 1 при удалении,
-  0 при отсутствии. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) сохраняет output. Само удаление
+  того же контекста и ненулевой int output. [FVM_OK](../include/flashvm/flashvm.h#L44) записывает 1 при удалении,
+  0 при отсутствии. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) сохраняет output. Само удаление
   не выделяет память и не запускает скрипт.
 - `fvm_input_dispatch_mouse(context, type, world_x, world_y)` синхронно доставляет
-  [FVM_MOUSE_EVENT_DOWN](../include/flashvm/mouse.h#L15), [FVM_MOUSE_EVENT_MOVE](../include/flashvm/mouse.h#L14) или [FVM_MOUSE_EVENT_UP](../include/flashvm/mouse.h#L16). Координаты —
+  [FVM_MOUSE_EVENT_DOWN](../include/flashvm/mouse.h#L16), [FVM_MOUSE_EVENT_MOVE](../include/flashvm/mouse.h#L15) или [FVM_MOUSE_EVENT_UP](../include/flashvm/mouse.h#L17). Координаты —
   конечные stage/world пиксели до обратного преобразования MovieClip. Неверный
   тип, NaN/infinity, неверное состояние и вложенная доставка Mouse дают
-  [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без изменения позиции/уведомлений. Хост выбирает первичный
+  [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) без изменения позиции/уведомлений. Хост выбирает первичный
   контакт; VM не выводит удержание, не подавляет дубликаты и не распознаёт жесты.
 - `fvm_input_get_pointer(context, x, y)` копирует позицию без выделения памяти
   или обращения к устройству; outputs по прежнему контракту ненулевые и разные.
-  MovieClip._xmouse/_ymouse и AVM1 читают это состояние. [`fvm_input_set_pointer`](../include/flashvm/input.h#L72)
+  MovieClip._xmouse/_ymouse и AVM1 читают это состояние. [`fvm_input_set_pointer`](../include/flashvm/input.h#L91)
   остаётся операцией публикации без уведомлений.
 
 Все вызовы — в потоке VM, вне сборки/освобождения GC и уничтожения.
@@ -71,12 +71,12 @@ onMouseDown/onMouseMove/onMouseUp без аргументов. Обработч�
 
 Настоящая ошибка drag/getter/обработчика прерывает дальнейшую доставку и
 передаётся исходным статусом/исключением VM. После публикации OOM и настоящие
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46)/FVM_INVALID_ARGUMENT сохраняют новые координаты; побочные эффекты
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48)/FVM_INVALID_ARGUMENT сохраняют новые координаты; побочные эффекты
 не откатываются. Если callback сменил координаты, они остаются текущими: внешний
 вызов не перепубликует старый снимок. Временные корни и guard восстанавливаются
 при успехе, ошибке и C++ unwind.
 
-Старый gesture [`fvm_input_dispatch`](../include/flashvm/input.h#L82) и его C callback независимы: они не вызывают
+Старый gesture [`fvm_input_dispatch`](../include/flashvm/input.h#L104) и его C callback независимы: они не вызывают
 Mouse автоматически; Mouse не создаёт gesture callback. Хост выбирает нужный
 маршрут, избегая двойной доставки.
 
@@ -118,7 +118,7 @@ Flash-совместимость. Ни один этап не закрывает
 
 ## Колесо прокрутки
 
-С v0.605 [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36)(context, delta, world_x, world_y) принимает
+С v0.605 [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L46)(context, delta, world_x, world_y) принимает
 явное событие колеса. `context` — живой контекст вызывающего потока вне GC,
 освобождения и разрушения. `delta` — конечный Number в **строках прокрутки,
 нормализованных хостом**: плюс вверх, минус вниз. Дробная часть и явно переданный
@@ -134,13 +134,13 @@ Flash-совместимость. Ни один этап не закрывает
 метод игнорируется без обращения к глобальной функции. Для прямой C-доставки
 установка пространства Mouse не обязательна; SWF6–8 использует тот же список.
 
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) означает неверный контекст/состояние, NaN/бесконечность в
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) означает неверный контекст/состояние, NaN/бесконечность в
 дельте/координатах или вложенную доставку Mouse. У колеса и down/move/up общая
 защита: нельзя рекурсивно вызвать ни свой, ни другой вид события. Ошибочный ввод
 и OOM снимка сохраняют координаты/drag, обработчиков не вызывают. После публикации
 ошибка drag/getter/метода или исключение VM прекращает дальнейшее уведомление и
 сохраняет совершённые изменения. OOM поиска метода тоже может случиться после
-публикации. Неожиданное нативное исключение ограничивается [FVM_ERROR](../include/flashvm/flashvm.h#L43). Временные
+публикации. Неожиданное нативное исключение ограничивается [FVM_ERROR](../include/flashvm/flashvm.h#L45). Временные
 корни и защита снимаются на любом выходе. Удаление регистрации и GC из раннего
 обработчика не уничтожают ожидающих получателей снимка. Изменения подписок
 влияют на следующие события; метод ожидающего получателя ищется при его вызове.
@@ -164,15 +164,15 @@ Flash-совместимость. Ни один этап не закрывает
 мышь или курсор. Положение указателя, кнопка/фокус, очередь событий, подписки
 и исполнение скрипта не зависят от видимости.
 
-[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L41)(context, visible_output) требует живой контекст
+[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L53)(context, visible_output) требует живой контекст
 потока владельца вне GC/освобождения/разрушения и непустой выходной int-указатель.
-[FVM_OK](../include/flashvm/flashvm.h#L42) записывает 0/1; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) сохраняет выход. Это запрос VM,
+[FVM_OK](../include/flashvm/flashvm.h#L44) записывает 0/1; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) сохраняет выход. Это запрос VM,
 не проверка существования курсора ОС или успешного применения к экрану.
 
-[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L46)(context, visible, previous_output) принимает только
-visible=0 или 1, previous_output обязателен. [FVM_OK](../include/flashvm/flashvm.h#L42) меняет запрос и записывает
+[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L60)(context, visible, previous_output) принимает только
+visible=0 или 1, previous_output обязателен. [FVM_OK](../include/flashvm/flashvm.h#L44) меняет запрос и записывает
 прежнее 0/1, в том числе при повторном hide/show. Неверные контекст, состояние,
-значение или выход дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без изменения запроса и выхода.
+значение или выход дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) без изменения запроса и выхода.
 Обе функции не выделяют память, не вызывают скрипт/хост/ОС, не дают OOM или
 ошибку устройства. Их можно вызвать из обработчика Mouse на том же потоке;
 рекурсивной доставки событий нет. Скаляр не требует корня GC. Значение живёт
@@ -253,24 +253,24 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:22](../include/flashvm/mouse.h#L22) |
-| `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../include/flashvm/mouse.h#L41) |
-| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
-| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:24](../include/flashvm/mouse.h#L24) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../include/flashvm/mouse.h#L46) |
-| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
+| `fvm_input_dispatch` | function | [include/flashvm/input.h:104](../include/flashvm/input.h#L104) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:46](../include/flashvm/mouse.h#L46) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../include/flashvm/mouse.h#L53) |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:96](../include/flashvm/input.h#L96) |
+| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:30](../include/flashvm/mouse.h#L30) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:60](../include/flashvm/mouse.h#L60) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:91](../include/flashvm/input.h#L91) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_MOUSE_CURSOR_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
-| `FVM_MOUSE_EVENT_DOWN` | enum constant | [include/flashvm/mouse.h:15](../include/flashvm/mouse.h#L15) |
-| `FVM_MOUSE_EVENT_MOVE` | enum constant | [include/flashvm/mouse.h:14](../include/flashvm/mouse.h#L14) |
-| `FVM_MOUSE_EVENT_UP` | enum constant | [include/flashvm/mouse.h:16](../include/flashvm/mouse.h#L16) |
+| `FVM_MOUSE_EVENT_DOWN` | enum constant | [include/flashvm/mouse.h:16](../include/flashvm/mouse.h#L16) |
+| `FVM_MOUSE_EVENT_MOVE` | enum constant | [include/flashvm/mouse.h:15](../include/flashvm/mouse.h#L15) |
+| `FVM_MOUSE_EVENT_UP` | enum constant | [include/flashvm/mouse.h:17](../include/flashvm/mouse.h#L17) |
 | `FVM_MOUSE_MAX_LISTENERS` | macro / define | [include/flashvm/mouse.h:7](../include/flashvm/mouse.h#L7) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:66](../include/flashvm/mouse.h#L66) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

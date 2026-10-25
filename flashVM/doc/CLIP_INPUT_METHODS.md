@@ -1,10 +1,10 @@
 # MovieClip global input methods — v0.627
 
-[Русский](CLIP_INPUT_METHODS.ru.md). [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L86) extends the
+[Русский](CLIP_INPUT_METHODS.ru.md). [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L93) extends the
 [retained scene route](CLIP_INPUT.md) with `onMouseMove`, `onMouseDown`, `onMouseUp`,
 `onKeyDown` and `onKeyUp`. The SDL player now uses this combined route. Existing
-[`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L71) remains retained-bytecode-only with unchanged
-work accounting. Selected [`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L55) is also unchanged.
+[`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L76) remains retained-bytecode-only with unchanged
+work accounting. Selected [`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L58) is also unchanged.
 
 ## Host contract and source policy
 
@@ -61,7 +61,7 @@ Native callbacks are synchronous and are not preempted by worker cancellation.
 ## Work, GC, errors and redraw
 
 Capture/sort, retained records, repeated ancestry validation, method bridge and
-AVM1 callbacks share one [`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9). The bridge charges even if a
+AVM1 callbacks share one [`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11). The bridge charges even if a
 member is absent; full-route work therefore differs from the retained-only API.
 The traversal bounds in `clip_input_constants.h` still apply. Cancellation remains
 cooperative; one unit is not a wall-clock guarantee or a count of every property
@@ -88,7 +88,7 @@ errors skip the remaining batch. Calling again starts a new event, not a resume.
 
 For each copied FIFO transition: publish native event-time state, dispatch namespace
 callbacks, then combined scene delivery if successful and the reset epoch is unchanged.
-With a scene root, keyboard publication uses [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L97):
+With a scene root, keyboard publication uses [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L117):
 rooted Key observers only, without a separate implicit focused-clip call. The scene
 then delivers each clip method once independently of focus. This prevents a duplicate
 notification when the focused clip is also in the scene. Explicit Key.addListener
@@ -96,7 +96,7 @@ registration remains an independent notification source, even for a scene clip.
 The new observer-only API shares the original keyboard dispatch preparation,
 state-publication, error, reentry and GC contract; it does not query/change focus or
 grant observer-only redraw eligibility. Hosts composing these APIs choose the same
-order explicitly. The old [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) and rootless SDL wrapper
+order explicitly. The old [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108) and rootless SDL wrapper
 retain their focus-first behavior. Primary touch uses the existing single-pointer mapping.
 Recursive pumping remains invalid; callback appends wait for the next entry batch.
 A failed method consumes its transition and leaves later queued transitions for a
@@ -149,10 +149,10 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_CLIP_EVENT_MOUSE_DOWN` | macro / define | [include/flashvm/clip_actions.h:9](../include/flashvm/clip_actions.h#L9) |
 | `FVM_CLIP_EVENT_MOUSE_MOVE` | macro / define | [include/flashvm/clip_actions.h:8](../include/flashvm/clip_actions.h#L8) |
 | `FVM_CLIP_EVENT_MOUSE_UP` | macro / define | [include/flashvm/clip_actions.h:10](../include/flashvm/clip_actions.h#L10) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:97](../include/flashvm/keyboard.h#L97) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:117](../include/flashvm/keyboard.h#L117) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:58](../include/flashvm/clip_actions.h#L58) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:76](../include/flashvm/clip_actions.h#L76) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:93](../include/flashvm/clip_actions.h#L93) |
 <!-- source-links:end -->

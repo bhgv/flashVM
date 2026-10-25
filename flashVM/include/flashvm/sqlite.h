@@ -10,16 +10,24 @@
 extern "C"
 {
 #endif
-    typedef struct FVM_SQLite FVM_SQLite;
-    /* Optional SQLite adapter; read/write requires host-granted database path. */
-    /* Open sqlite. */
-    FVM_API FVM_Result fvm_sqlite_open(const char *path, FVM_SQLite **out);
-    /* Implement sqlite exec for this subsystem. */
-    FVM_API FVM_Result fvm_sqlite_exec(FVM_SQLite *, const char *sql);
-    /* Implement sqlite query int for this subsystem. */
-    FVM_API FVM_Result fvm_sqlite_query_int(FVM_SQLite *, const char *sql, long *out);
-    /* Close sqlite. */
-    FVM_API void fvm_sqlite_close(FVM_SQLite *);
+typedef struct FVM_SQLite FVM_SQLite;
+/* Optional SQLite adapter; read/write requires host-granted database path. */
+
+
+/* Open sqlite. */
+FVM_API FVM_Result fvm_sqlite_open(const char *path, FVM_SQLite **out);
+
+
+/* Implement sqlite exec for this subsystem. */
+FVM_API FVM_Result fvm_sqlite_exec(FVM_SQLite *, const char *sql);
+
+
+/* Implement sqlite query int for this subsystem. */
+FVM_API FVM_Result fvm_sqlite_query_int(FVM_SQLite *, const char *sql, long *out);
+
+
+/* Close sqlite. */
+FVM_API void fvm_sqlite_close(FVM_SQLite *);
 #ifdef __cplusplus
 }
 #endif

@@ -1,12 +1,12 @@
 # Экстремумы малых кубических Bezier
 
-При достаточно малых координатах квадрат коэффициента производной и произведение других коэффициентов округлялись до нуля. Дискриминант тогда терял два внутренних корня; [`fvm_path_bounds`](../include/flashvm/path.h#L71) и round/round stroke bounds могли занизить границы. Регрессия native cubic с controls 0,12,-12,0, масштабированными на 2^-600, падает на v0.1464. Независимые аналитические экстремумы нормализованной кривой равны ±2√3.
+При достаточно малых координатах квадрат коэффициента производной и произведение других коэффициентов округлялись до нуля. Дискриминант тогда терял два внутренних корня; [`fvm_path_bounds`](../include/flashvm/path.h#L97) и round/round stroke bounds могли занизить границы. Регрессия native cubic с controls 0,12,-12,0, масштабированными на 2^-600, падает на v0.1464. Независимые аналитические экстремумы нормализованной кривой равны ±2√3.
 
 В кубической ветке выбирается максимальный модуль трёх коэффициентов производной. Если его квадрат ниже минимального нормального double, frexp задаёт общий показатель, а ldexp увеличивает все коэффициенты одной двоичной степенью до вычисления дискриминанта. На обычной двоичной арифметике это точное масштабирование коэффициентов и не меняет математические корни. Прежняя устойчивая q-формула сохранена. Нормальные коэффициенты и линейная/quadratic ветка не меняют порядок вычислений. Epsilon не добавляется.
 
 ## Контракт и ограничения
 
-[`fvm_path_bounds`](../include/flashvm/path.h#L71) заимствует неизменяемый native path и публикует четыре scalar-координаты в принадлежащий вызывающему [`FVM_PathBounds`](../include/flashvm/path.h#L42) при [FVM_OK](../include/flashvm/flashvm.h#L42). Неверные path/out дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без публикации. Нет выделений, callbacks, VM, GC или устройств. Native path принадлежит вызывающему до [`fvm_path_destroy`](../include/flashvm/path.h#L52); время жизни и отсутствие совместной мутации обеспечиваются владельцем. [`fvm_path_transform`](../include/flashvm/path.h#L65) и [`fvm_path_append`](../include/flashvm/path.h#L67) сохраняют прежние транзакционные проверки и пределы координат/матриц ±1 000 000. Round/round внутренняя геометрия использует тот же helper, затем расширяет границы на половину положительной ширины; её прежние статусы и требования к двум output сохраняются.
+[`fvm_path_bounds`](../include/flashvm/path.h#L97) заимствует неизменяемый native path и публикует четыре scalar-координаты в принадлежащий вызывающему [`FVM_PathBounds`](../include/flashvm/path.h#L50) при [FVM_OK](../include/flashvm/flashvm.h#L44). Неверные path/out дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) без публикации. Нет выделений, callbacks, VM, GC или устройств. Native path принадлежит вызывающему до [`fvm_path_destroy`](../include/flashvm/path.h#L64); время жизни и отсутствие совместной мутации обеспечиваются владельцем. [`fvm_path_transform`](../include/flashvm/path.h#L87) и [`fvm_path_append`](../include/flashvm/path.h#L91) сохраняют прежние транзакционные проверки и пределы координат/матриц ±1 000 000. Round/round внутренняя геометрия использует тот же helper, затем расширяет границы на половину положительной ширины; её прежние статусы и требования к двум output сохраняются.
 
 Cubic остаётся native path-командой: managed MovieClip по-прежнему принимает quadratic. Pixel raster и native JIT не получают нового алгоритма. Общая почти кратная/почти коллинеарная double-геометрия и потеря младших разрядов при построении коэффициентов из больших близких координат не получают arbitrary-precision решения. Требуется обычная двоичная арифметика; FTZ/fast-math и физические платформы не проверены. Все девять этапов плана остаются открытыми; кодеки, дочерние потоки и полная Flash-reference приёмка этой серией не закрываются.
 
@@ -55,11 +55,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `fvm_path_transform` | function | [include/flashvm/path.h:65](../include/flashvm/path.h#L65) |
-| `FVM_PathBounds` | struct | [include/flashvm/path.h:42](../include/flashvm/path.h#L42) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_append` | function | [include/flashvm/path.h:91](../include/flashvm/path.h#L91) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../include/flashvm/path.h#L97) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:64](../include/flashvm/path.h#L64) |
+| `fvm_path_transform` | function | [include/flashvm/path.h:87](../include/flashvm/path.h#L87) |
+| `FVM_PathBounds` | struct | [include/flashvm/path.h:50](../include/flashvm/path.h#L50) |
 <!-- source-links:end -->

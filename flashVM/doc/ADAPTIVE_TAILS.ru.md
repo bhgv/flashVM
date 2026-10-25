@@ -1,6 +1,6 @@
 # Заполнение неполного остатка звуковой очереди
 
-[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262) принимает живую нативную очередь,
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L315) принимает живую нативную очередь,
 максимальное число кадров блока, положительную целевую глубину FIFO и необязательный
 счётчик принятых кадров. Максимум ограничен ёмкостью адаптера; целевая глубина может
 быть меньше максимума. При активных голосах создаётся min(максимум, свободный остаток)
@@ -9,7 +9,7 @@
 Отклонённый TAIL неделим: меньший максимум или недостаточный остаток дают NOT_FOUND,
 сохраняя размер и байты retry. При достаточном месте повторяется исходный блок,
 даже если максимум изменился. Удерживаемый BASE даёт INVALID_ARGUMENT. Старый
-[`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L246) сохраняет точный размер блока и прежний контракт.
+[`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L297) сохраняет точный размер блока и прежний контракт.
 accepted сначала обнуляется, затем получает фактически принятые кадры только при OK.
 Неверные параметры/рекурсия дают INVALID_ARGUMENT; статусы backend передаются,
 исключения дают ERROR, переполнение точных общих часов — UNSUPPORTED до смешивания.
@@ -54,7 +54,7 @@ v0.1008: Независимый PCM-оракул проверяет восемь
 
 ## Парный планировщик и desktop
 
-[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) и [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92)
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L127) и [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106)
 используют адаптивный TAIL с прежними условиями gate/наблюдаемого EOF. Короткий
 retry предшествует новому BASE. Stream pending остаётся только базовым; event retry
 наблюдается через mix pending. Cursor, phase, chunk и EOF источника не меняются.
@@ -91,8 +91,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:297](../include/flashvm/swf_sound_mix_queue.h#L297) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:127](../include/flashvm/swf_stream_output.h#L127) |
 <!-- source-links:end -->

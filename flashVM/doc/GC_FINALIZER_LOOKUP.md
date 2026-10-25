@@ -2,7 +2,7 @@
 
 Ранее temporary fvm_detail::string("__gc") выделял память после установки
 finalized flag. OOM оставлял финализатор непозванным, но retry его пропускал.
-Та же ошибка могла выйти C++ exception через C [fvm_context_destroy](../include/flashvm/flashvm.h#L70) и прервать
+Та же ошибка могла выйти C++ exception через C [fvm_context_destroy](../include/flashvm/flashvm.h#L86) и прервать
 cleanup. Regression сначала воспроизводит потерянный native callback.
 
 Lookup теперь перебирает уже существующие native/property entries и сравнивает
@@ -61,5 +61,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../include/flashvm/flashvm.h#L86) |
 <!-- source-links:end -->

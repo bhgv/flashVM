@@ -19,7 +19,7 @@ another host tick. Presentation counts start at one; movie_ticks/presentations
 belong to the current root and total_* belong to the complete run.
 
 [FVM_DesktopFrameNotify](../frontend/common/frame.h#L44)(frame, userdata)` runs on the owner after successful raster
-and native presentation, outside VM rendering. [FVM_OK](../include/flashvm/flashvm.h#L42) continues; any other result
+and native presentation, outside VM rendering. [FVM_OK](../include/flashvm/flashvm.h#L44) continues; any other result
 fails playback after drawing/VM effects have already committed. Borrowed frame/
 pixels/source are valid only until return. Do not modify pixels, retain pointers,
 reenter VM/player, shut down SDK, steal SDL events or throw across C. Copy pixels
@@ -33,9 +33,9 @@ no allocation/SDK startup. An observed runner requires notify. The descriptor an
 userdata stay live until synchronous runner return.
 
 [fvm_desktop_frame_copy](../frontend/common/frame.h#L65)(frame, destination, capacity, destination_stride)` copies
-visible RGBA row bytes only, without allocation, VM or SDL startup. On [FVM_OK](../include/flashvm/flashvm.h#L42) the
+visible RGBA row bytes only, without allocation, VM or SDL startup. On [FVM_OK](../include/flashvm/flashvm.h#L44) the
 source is unchanged and destination padding stays untouched. Errors return
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) without modifying any destination bytes. Validation covers
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) without modifying any destination bytes. Validation covers
 pointers, exact struct_size, format, nonzero bounded dimensions, both strides and
 both accessible extents, including overflow in (height-1)*stride+row_bytes.
 Source final-row padding is not required: the complete visible last row suffices.
@@ -110,6 +110,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

@@ -36,8 +36,9 @@
 #include <cstdio>
 
 namespace
-{
-/* Define anonymous enum and its representation. */
+{ /* Define anonymous enum and its representation. */
+
+
 enum
 {
     SCRIPT_FUNCTION = FVM_RESOURCE_SCRIPT_FUNCTION,
@@ -45,19 +46,22 @@ enum
     NATIVE_FUNCTION = FVM_RESOURCE_NATIVE_FUNCTION
 };
 
+
 /* Compute and return function prototype. */
+
+
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Object *function_prototype(FVM_Context *c)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+{ /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->constructors.find("Function");
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (ctor == c->constructors.end() || !ctor->second.root)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return 0;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p =
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -71,36 +75,40 @@ FVM_Object *function_prototype(FVM_Context *c)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Create the current value. */
 FVM_Result create(FVM_Context *c, FVM_Object **out)
 {
     FVM_Result r = fvm_object_create(c, out);
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     (*out)->resource_kind = NATIVE_FUNCTION;
     (*out)->prototype = function_prototype(c);
     return FVM_OK;
 }
+
+
 /* Report whether the container has no elements. */
-FVM_Result empty(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out,
-                 void *)
+FVM_Result empty(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
     return FVM_OK;
 }
 
+
 /* Compute and return function text. */
-FVM_Result function_text(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *,
-                         FVM_Value *out, void *)
+FVM_Result function_text(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     return fvm_value_string(out, "[type Function]");
 }
 
+
 /* Compute and return box receiver. */
-FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bundle,
-                        FVM_Object **out)
+FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bundle, FVM_Object **out)
 {
     if (c->swf_loaded)
     {
@@ -109,7 +117,9 @@ FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bund
         FVM_Value boxed;
         FVM_Result result = fvm_exec_to_object(c, value, &boxed);
         if (result == FVM_OK)
+        {
             *out = boxed.type == FVM_VALUE_OBJECT ? boxed.object : c->global;
+        }
         return result;
     }
     const char *type = value->type == FVM_VALUE_STRING    ? "String"
@@ -120,172 +130,222 @@ FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bund
         FVM_Value constructor;
         FVM_Result r = fvm_object_get(c, bundle, type, &constructor);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (constructor.type != FVM_VALUE_OBJECT)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         return fvm_function_construct(c, constructor.object, 1, value, out);
     }
     /* Older wire prototypes did not capture the boxing constructors. */
     return fvm_construct(c, type, 1, value, out);
 }
 
+
 /* Loaded borrowed adapters return undefined for non-callable targets only after
  * receiver boxing and argument preparation have completed successfully. */
-FVM_Result invoke_adapter(FVM_Context *c, FVM_Object *fn, FVM_Object *receiver,
-                           unsigned int n, const FVM_Value *args, FVM_Value *out)
-{
-    /* A superclass facade is callable only through direct super dispatch. */
-    if (c->swf_loaded && fn &&
-        (!fn->invocable.callback || fn->resource_kind == FVM_RESOURCE_SUPER))
+FVM_Result invoke_adapter(
+    FVM_Context *c, FVM_Object *fn, FVM_Object *receiver, unsigned int n, const FVM_Value *args, FVM_Value *out)
+{ /* A superclass facade is callable only through direct super dispatch. */
+    if (c->swf_loaded && fn && (!fn->invocable.callback || fn->resource_kind == FVM_RESOURCE_SUPER))
     {
         fvm_value_undefined(out);
         return FVM_OK;
     }
     if (c->swf_loaded)
     {
+
+
         /* [GC:] Retain adapter target/owner while publishing a fixed superclass depth.
          * The depth remains meaningful even when the receiver has no prototype. */
-        FVM_CallScope scope(c, 0, fn, receiver ? receiver->prototype : 0,
-                            FVM_FUNCTION_ADAPTER_SUPER_DEPTH);
+        FVM_CallScope scope(c, 0, fn, receiver ? receiver->prototype : 0, FVM_FUNCTION_ADAPTER_SUPER_DEPTH);
         return fvm_function_invoke(c, fn, receiver, n, args, out);
     }
     return fvm_function_invoke(c, fn, receiver, n, args, out);
 }
 
+
 /* Call the current value. */
-FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                void *userdata)
+FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out, void *userdata)
 {
     FVM_Object *receiver = n && a[0].type == FVM_VALUE_OBJECT ? a[0].object : c->global;
-    if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED &&
-        a[0].type != FVM_VALUE_NULL)
+    if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED && a[0].type != FVM_VALUE_NULL)
     {
         FVM_Result r = box_receiver(c, a, (FVM_Object *)userdata, &receiver);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
     return invoke_adapter(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
 }
 
+
 /* Find own length with loaded casing, charging each legacy fallback candidate. */
 template <class Entries>
-FVM_Result apply_length_slot(FVM_Context *c, Entries &entries, FVM_ExecutionWorkScope &work,
-                              typename Entries::iterator &found)
+FVM_Result
+apply_length_slot(FVM_Context *c, Entries &entries, FVM_ExecutionWorkScope &work, typename Entries::iterator &found)
 {
     found = entries.find(FVM_FUNCTION_APPLY_LENGTH_NAME);
     if (found != entries.end() || c->swf_info.version >= FVM_SWF_VERSION_7)
+    {
         return FVM_OK;
+    }
     for (found = entries.begin(); found != entries.end(); ++found)
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
+        {
             return status;
-        if (fvm_avm1_keyword_name(found->first, FVM_FUNCTION_APPLY_LENGTH_NAME,
-                                  FVM_FUNCTION_APPLY_LENGTH_UNITS, false))
+        }
+        if (fvm_avm1_keyword_name(found->first, FVM_FUNCTION_APPLY_LENGTH_NAME, FVM_FUNCTION_APPLY_LENGTH_UNITS, false))
+        {
             return FVM_OK;
+        }
     }
     return FVM_OK;
 }
 
+
 /* Capture raw length once under the caller's budget. Positive Int32 lengths can be
  * gathered incrementally; negative lengths retain an explicit runtime rejection. */
-FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count,
-                               FVM_ExecutionWorkScope &work)
+FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count, FVM_ExecutionWorkScope &work)
 {
     FVM_Value value;
     fvm_value_undefined(&value);
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property;
     FVM_Result status = apply_length_slot(c, source->properties, work, property);
     if (status != FVM_OK)
+    {
         return status;
+    }
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = source->accessors.end();
     if (property == source->properties.end())
     {
         status = apply_length_slot(c, source->accessors, work, accessor);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     if (property != source->properties.end())
+    {
         value = property->second;
+    }
     else if (accessor != source->accessors.end())
     {
-        if (!fvm_base_accessor_data(accessor->second, value) &&
-            fvm_base_array_length_accessor(accessor->second) && source->resource_result_valid)
+        if (!fvm_base_accessor_data(accessor->second, value) && fvm_base_array_length_accessor(accessor->second) &&
+            source->resource_result_valid)
+        {
             value = source->resource_result;
+        }
     }
     else
     {
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method;
         status = apply_length_slot(c, source->methods, work, method);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (method != source->methods.end())
         {
             status = fvm_function_wrap_entry(c, source, method->first, method->second, &value);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         /* A deleted Array length has no own data; stale native storage cannot replace it. */
     }
+
+
     /* [GC:] Length conversion may remove its own source slot and invoke collecting accessors. */
     FVM_ObjectRootScope length_roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);
     double number = 0;
     status = fvm_avm1_number(c, &value, &number);
     if (status != FVM_OK)
+    {
         return status;
+    }
     count = 0;
     if (number != number || std::fabs(number) == std::numeric_limits<double>::infinity())
+    {
         return FVM_OK;
+    }
     number = std::fmod(number < 0 ? std::ceil(number) : std::floor(number), FVM_UINT32_MODULUS);
     if (number < 0)
+    {
         number += FVM_UINT32_MODULUS;
+    }
     if (number >= FVM_UINT32_SIGN_BIT)
+    {
         return FVM_UNSUPPORTED;
+    }
     count = number;
     return FVM_OK;
 }
 
+
 /* Compute and return apply. */
-FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                 void *userdata)
+FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out, void *userdata)
 {
+
+
     /* Loaded boxing, conversion and element callbacks inherit one execution quota. */
     FVM_ExecutionWorkScope work(c, c->swf_loaded);
     FVM_Object *receiver = n && a[0].type == FVM_VALUE_OBJECT ? a[0].object : c->global;
     /* apply and call use the same primitive receiver boxing rules. */
-    if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED &&
-        a[0].type != FVM_VALUE_NULL)
+    if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED && a[0].type != FVM_VALUE_NULL)
     {
         FVM_Result r = box_receiver(c, a, (FVM_Object *)userdata, &receiver);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
+
+
     /* [GC:] Boxing may create a receiver absent from the original call arguments. */
     FVM_ObjectRootScope receiver_roots(c, receiver);
     if (n > 1 && a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED)
     {
         if (a[1].type != FVM_VALUE_OBJECT)
-            return c->swf_loaded ? invoke_adapter(c, fn, receiver, 0, 0, out)
-                                  : FVM_INVALID_ARGUMENT;
+        {
+            return c->swf_loaded ? invoke_adapter(c, fn, receiver, 0, 0, out) : FVM_INVALID_ARGUMENT;
+        }
         double count = 0;
         FVM_Result r = FVM_OK;
         if (c->swf_loaded)
+        {
             r = apply_loaded_count(c, a[1].object, count, work);
+        }
         else
         {
             FVM_Value length;
             r = fvm_object_get(c, a[1].object, FVM_FUNCTION_APPLY_LENGTH_NAME, &length);
             if (r == FVM_OK)
+            {
                 r = fvm_value_to_number(c, &length, &count);
-            if (r == FVM_OK && (!(count >= 0 && count <= FVM_FUNCTION_APPLY_HOST_LIMIT) ||
-                                 count != std::floor(count)))
+            }
+            if (r == FVM_OK && (!(count >= 0 && count <= FVM_FUNCTION_APPLY_HOST_LIMIT) || count != std::floor(count)))
+            {
                 r = FVM_INVALID_ARGUMENT;
+            }
         }
         if (r != FVM_OK)
+        {
             return r;
+        }
         fvm_detail::vector<FVM_Value> args(c->swf_loaded ? 0 : (size_t)count);
         for (size_t i = 0; i < args.size(); ++i)
+        {
             fvm_value_undefined(&args[i]);
+        }
+
+
         /* [GC:] Later script getters may collect values returned by earlier getters. */
         FVM_ValueVectorRootScope argument_roots(c, args);
         for (unsigned int i = 0; i < (unsigned int)count; ++i)
@@ -294,7 +354,9 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
             {
                 r = work.step();
                 if (r != FVM_OK)
+                {
                     return r;
+                }
                 FVM_Value absent;
                 fvm_value_undefined(&absent);
                 /* [GC:] Publish an initialized slot before its getter can collect. */
@@ -305,33 +367,39 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
                 r = fvm_object_get(c, a[1].object, name, &args[i]);
             }
             else
+            {
                 r = fvm_table_get_index(c, a[1].object, i, &args[i]);
+            }
             if (r != FVM_OK)
+            {
                 return r;
+            }
         }
         return invoke_adapter(c, fn, receiver, (unsigned int)count, args.begin(), out);
     }
     return invoke_adapter(c, fn, receiver, 0, 0, out);
 }
 
+
 /* Compute and return constructor. */
-FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
-                       FVM_Value *out, void *ud)
+FVM_Result
+constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *ud)
 {
 
     /* Initialization / Инициализация локального состояния. */
     if (c->swf_loaded)
     {
         FVM_Object *instance = 0;
-        FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)ud,
-                                                          FVM_RESOURCE_PLAIN_OBJECT, &instance);
+        FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)ud, FVM_RESOURCE_PLAIN_OBJECT, &instance);
         if (result == FVM_OK)
         {
             fvm_value_undefined(out);
             out->type = FVM_VALUE_OBJECT;
             out->object = instance;
             if (count)
+            {
                 *out = args[0];
+            }
         }
         return result;
     }
@@ -340,13 +408,19 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     body.body.push_back(0);
     FVM_Result r = fvm_function_make_script(c, body, 0, &fn);
     if (r != FVM_OK)
+    {
         return r;
+    }
     FVM_Value proto;
     r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (proto.type != FVM_VALUE_OBJECT)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     fn->prototype = proto.object;
@@ -359,12 +433,15 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     return FVM_OK;
 }
 
+
 /* Loaded Function() returns its first argument or a fresh bare object. */
-FVM_Result function_call(FVM_Context *c, FVM_Object *self, unsigned int count,
-                         const FVM_Value *args, FVM_Value *out, void *userdata)
+FVM_Result function_call(
+    FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
+    {
         return constructor(c, self, count, args, out, userdata);
+    }
     if (count)
     {
         *out = args[0];
@@ -381,185 +458,280 @@ FVM_Result function_call(FVM_Context *c, FVM_Object *self, unsigned int count,
     return result;
 }
 
+
 /* Read the parameter bound to this arguments index through its retained descriptor. */
-FVM_Result argument_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
-                        FVM_Value *out, void *ud)
+FVM_Result argument_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *ud)
 {
     FVM_Value scope, name;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "scope", &scope);
     if (r == FVM_OK)
+    {
         r = fvm_object_get(c, (FVM_Object *)ud, "name", &name);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     return fvm_object_get_bytes(c, scope.object, name.string, fvm_string_size(name), out);
 }
+
+
 /* Update the named parameter bound to this arguments entry. */
-FVM_Result argument_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                        FVM_Value *out, void *ud)
+FVM_Result argument_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *ud)
 {
     if (!n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Value scope, name;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "scope", &scope);
     if (r == FVM_OK)
+    {
         r = fvm_object_get(c, (FVM_Object *)ud, "name", &name);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     r = fvm_object_set_bytes(c, scope.object, name.string, fvm_string_size(name), a);
     fvm_value_undefined(out);
     return r;
 }
+
+
 /* Decode a hexadecimal bytecode digit, or return an invalid-digit sentinel. */
 int hex(unsigned char c)
 {
     return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
 }
 
+
 /* Compute and return script. */
-FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Value *a,
-                  FVM_Value *out, void *ud)
+FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Value *a, FVM_Value *out, void *ud)
 {
     FVM_Object *fn = (FVM_Object *)ud;
     if (!fn || fn->resource_kind != SCRIPT_FUNCTION || !fn->resource_result_valid ||
         fn->resource_result.type != FVM_VALUE_OBJECT)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = fn->resource_result.object;
     FVM_Value code, params, constants, closure, base_clip;
     FVM_Result r = fvm_object_get(c, data, "code", &code);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_object_get(c, data, "parameters", &params);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_object_get(c, data, "constants", &constants);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_object_get(c, data, "closure", &closure);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_object_get(c, data, "base_clip", &base_clip);
-    if (r != FVM_OK) return r;
+    if (r != FVM_OK)
+    {
+        return r;
+    }
     if (base_clip.type != FVM_VALUE_UNDEFINED && base_clip.type != FVM_VALUE_NULL &&
-        (base_clip.type != FVM_VALUE_OBJECT || !base_clip.object ||
-         base_clip.object->owner != c || base_clip.object->resource_kind != FVM_RESOURCE_MOVIECLIP))
+        (base_clip.type != FVM_VALUE_OBJECT || !base_clip.object || base_clip.object->owner != c ||
+         base_clip.object->resource_kind != FVM_RESOURCE_MOVIECLIP))
+    {
         return FVM_INVALID_ARGUMENT;
-    if (code.type != FVM_VALUE_STRING || params.type != FVM_VALUE_OBJECT ||
-        constants.type != FVM_VALUE_OBJECT)
+    }
+    if (code.type != FVM_VALUE_STRING || params.type != FVM_VALUE_OBJECT || constants.type != FVM_VALUE_OBJECT)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     size_t bytes = fvm_string_size(code);
     if (bytes % FVM_AVM1_HEX_DIGITS_PER_BYTE || bytes > FVM_AVM1_MAX_HEX_BODY_BYTES)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_ScriptFunction body;
     for (size_t i = 0; i < bytes; i += FVM_AVM1_HEX_DIGITS_PER_BYTE)
     {
         int high = hex((unsigned char)code.string[i]), low = hex((unsigned char)code.string[i + 1]);
         if (high < 0 || low < 0)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         body.body.push_back((unsigned char)(high * 16 + low));
     }
     FVM_Value length;
     r = fvm_object_get(c, params.object, "length", &length);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= FVM_AVM1_MAX_CALL_ARGUMENTS) ||
         length.number != std::floor(length.number))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (unsigned int i = 0; i < (unsigned int)length.number; ++i)
     {
         FVM_Value v;
         r = fvm_table_get_index(c, params.object, i, &v);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (v.type != FVM_VALUE_STRING)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
 
         fvm_detail::string key;
         r = fvm_property_key(v.string, fvm_string_size(v), key);
         if (r != FVM_OK)
+        {
             return r;
+        }
         body.parameters.push_back(key);
     }
     r = fvm_object_get(c, constants.object, "length", &length);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= FVM_AVM1_MAX_CALL_ARGUMENTS) ||
         length.number != std::floor(length.number))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (unsigned int i = 0; i < (unsigned int)length.number; ++i)
     {
         FVM_Value v;
         r = fvm_table_get_index(c, constants.object, i, &v);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (v.type != FVM_VALUE_STRING)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         body.constants.push_back(fvm_detail::string(v.string, fvm_string_size(v)));
     }
     FVM_Value kind;
     r = fvm_object_get(c, data, "function2", &kind);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (kind.type == FVM_VALUE_BOOLEAN && kind.boolean)
     {
         FVM_Value count, flags, registers, register_length;
         r = fvm_object_get(c, data, "register_count", &count);
         if (r == FVM_OK)
+        {
             r = fvm_object_get(c, data, "flags", &flags);
+        }
         if (r == FVM_OK)
+        {
             r = fvm_object_get(c, data, "parameter_registers", &registers);
+        }
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (count.type != FVM_VALUE_NUMBER || count.number < 0 || count.number > FVM_AVM1_MAX_REGISTER_INDEX ||
-            count.number != std::floor(count.number) || flags.type != FVM_VALUE_NUMBER ||
-            flags.number < 0 || flags.number > FVM_AVM1_F2_VALID_FLAGS || flags.number != std::floor(flags.number) ||
+            count.number != std::floor(count.number) || flags.type != FVM_VALUE_NUMBER || flags.number < 0 ||
+            flags.number > FVM_AVM1_F2_VALID_FLAGS || flags.number != std::floor(flags.number) ||
             registers.type != FVM_VALUE_OBJECT)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_object_get(c, registers.object, "length", &register_length);
         if (r != FVM_OK)
+        {
             return r;
-        if (register_length.type != FVM_VALUE_NUMBER ||
-            register_length.number != body.parameters.size())
+        }
+        if (register_length.type != FVM_VALUE_NUMBER || register_length.number != body.parameters.size())
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         body.function2 = true;
         body.register_count = (unsigned int)count.number;
         body.flags = (unsigned int)flags.number;
         unsigned int preload = 0;
-        const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS, FVM_AVM1_F2_PRELOAD_ARGUMENTS, FVM_AVM1_F2_PRELOAD_SUPER, FVM_AVM1_F2_PRELOAD_ROOT, FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
+        const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS,
+                                     FVM_AVM1_F2_PRELOAD_ARGUMENTS,
+                                     FVM_AVM1_F2_PRELOAD_SUPER,
+                                     FVM_AVM1_F2_PRELOAD_ROOT,
+                                     FVM_AVM1_F2_PRELOAD_PARENT,
+                                     FVM_AVM1_F2_PRELOAD_GLOBAL};
         for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
+        {
             if (body.flags & bits[i])
+            {
                 ++preload;
+            }
+        }
         if (!fvm_function2_flags_valid(body.flags) || (!c->swf_loaded && preload > body.register_count))
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         for (size_t i = 0; i < body.parameters.size(); ++i)
         {
             FVM_Value reg;
             r = fvm_table_get_index(c, registers.object, (unsigned long)i, &reg);
             if (r != FVM_OK)
+            {
                 return r;
+            }
             if (reg.type != FVM_VALUE_NUMBER || reg.number < 0 ||
-                reg.number > (c->swf_loaded ? FVM_AVM1_MAX_REGISTER_INDEX : body.register_count) || reg.number != std::floor(reg.number))
+                reg.number > (c->swf_loaded ? FVM_AVM1_MAX_REGISTER_INDEX : body.register_count) ||
+                reg.number != std::floor(reg.number))
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
             body.parameter_registers.push_back((unsigned int)reg.number);
         }
     }
     FVM_Value name;
     r = fvm_object_get(c, data, "name", &name);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (name.type == FVM_VALUE_STRING)
     {
         r = fvm_property_key(name.string, fvm_string_size(name), body.name);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
-    return fvm_avm1_invoke_script(c, body, closure.type == FVM_VALUE_OBJECT ? closure.object : 0,
-                                  receiver, n, a, out, fn, base_clip.type == FVM_VALUE_OBJECT ? base_clip.object : 0);
+    return fvm_avm1_invoke_script(c,
+                                  body,
+                                  closure.type == FVM_VALUE_OBJECT ? closure.object : 0,
+                                  receiver,
+                                  n,
+                                  a,
+                                  out,
+                                  fn,
+                                  base_clip.type == FVM_VALUE_OBJECT ? base_clip.object : 0);
 }
 } // namespace
 /* Build constructor and prototype for function. */
@@ -582,14 +754,16 @@ fvm_function_stage(FVM_Context *c,
     FVM_Result r = fvm_object_create(c, &klass);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &proto);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -658,24 +832,32 @@ fvm_function_stage(FVM_Context *c,
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Stage only unchanged canonical adapter slots; replacements and user flags survive. */
 void fvm_function_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Function");
     if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+    {
         return;
+    }
     FVM_Object *klass = ctor->second.root;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+    {
         return;
+    }
     FVM_Object *proto = stored->second.object;
     if (proto->resource_kind != NATIVE_FUNCTION || proto->invocable.callback != empty)
+    {
         return;
+    }
     out.attributes = proto->attributes;
     fvm_stage_default_method_flags(proto, "call", call, FVM_PROPERTY_BUILTIN_FLAGS, out.attributes);
     fvm_stage_default_method_flags(proto, "apply", apply, FVM_PROPERTY_BUILTIN_FLAGS, out.attributes);
     out.prototype = proto;
 }
+
 
 /* Validate function. */
 FVM_Result fvm_function_validate(FVM_Context *c)
@@ -687,13 +869,19 @@ FVM_Result fvm_function_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
+
 /* Compute and return function wrap entry. */
+
+
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_function_wrap_entry(
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Context *c, FVM_Object *owner, const fvm_detail::string &name,
+    FVM_Context *c,
+    FVM_Object *owner,
+    const fvm_detail::string &name,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    const FVM_NativeEntry &entry, FVM_Value *out)
+    const FVM_NativeEntry &entry,
+    FVM_Value *out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -709,17 +897,16 @@ FVM_Result fvm_function_wrap_entry(
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     /* [GC:] New reads must reflect the current callback's collection policy; saved
        Function objects retain the policy copied at their own creation. */
-    if (!fn || fn->invocable.callback != entry.callback ||
-        fn->invocable.userdata != entry.userdata || fn->invocable.root != entry.root ||
-        fn->invocable.collector_entry != entry.collector_entry)
+    if (!fn || fn->invocable.callback != entry.callback || fn->invocable.userdata != entry.userdata ||
+        fn->invocable.root != entry.root || fn->invocable.collector_entry != entry.collector_entry)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r = create(c, &fn);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fn->invocable = entry;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -739,9 +926,10 @@ FVM_Result fvm_function_wrap_entry(
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Compute and return function make script. */
-FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &body,
-                                    FVM_Object *closure, FVM_Object **out)
+FVM_Result
+fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &body, FVM_Object *closure, FVM_Object **out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -752,55 +940,60 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     FVM_Result r = create(c, &fn);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &data);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     /* Internal function metadata must not execute public Array.prototype accessors. */
     r = fvm_array_create_like(c, 0, (unsigned long)body.parameters.size(), &params, true);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_array_create_like(c, 0, (unsigned long)body.constants.size(), &constants, true);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
 
     params->prototype = 0;
     constants->prototype = 0;
     for (size_t i = 0; i < body.parameters.size(); ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value v;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::string key;
         FVM_Result normalized = fvm_property_key(body.parameters[i].data(), body.parameters[i].size(), key);
         if (normalized != FVM_OK)
+        {
             return normalized;
+        }
         fvm_value_string_bytes(&v, key.data(), key.size());
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_table_set_index(c, params, (unsigned long)i, &v);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < body.constants.size(); ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value v;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_string(&v, body.constants[i].c_str());
@@ -808,8 +1001,9 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
         r = fvm_table_set_index(c, constants, (unsigned long)i, &v);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 
@@ -821,8 +1015,7 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < body.body.size(); ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         code.push_back(digits[body.body[i] >> 4]);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         code.push_back(digits[body.body[i] & 15]);
@@ -840,8 +1033,9 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     r = fvm_object_set(c, data, "code", &v);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&v);
 
@@ -872,8 +1066,9 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     r = fvm_object_set(c, data, "name", &v);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -881,18 +1076,24 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     if (body.function2)
     {
         if (body.parameter_registers.size() != body.parameters.size())
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         FVM_Object *registers = 0;
         r = fvm_array_create_like(c, 0, (unsigned long)body.parameter_registers.size(), &registers, true);
         if (r != FVM_OK)
+        {
             return r;
+        }
         registers->prototype = 0;
         for (size_t i = 0; i < body.parameter_registers.size(); ++i)
         {
             fvm_value_number(&v, body.parameter_registers[i]);
             r = fvm_table_set_index(c, registers, (unsigned long)i, &v);
             if (r != FVM_OK)
+            {
                 return r;
+            }
         }
         fvm_value_undefined(&v);
         v.type = FVM_VALUE_OBJECT;
@@ -939,15 +1140,18 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     r = fvm_object_create(c, &instance_proto);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     /* [GC:] Loaded constructor prototypes inherit the original builtin Object
      * prototype even when script has replaced Object.prototype. Host layout stays unchanged. */
     if (c->swf_loaded)
+    {
         instance_proto->prototype = c->object_builtin_prototype;
+    }
     v.type = FVM_VALUE_OBJECT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = instance_proto;
@@ -955,7 +1159,9 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     fn->properties["prototype"] = v;
     /* Loaded function prototype is writable, nonenumerable and nondeletable. */
     if (c->swf_loaded)
+    {
         fn->attributes["prototype"] = 3;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = fn;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -969,35 +1175,40 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Create function native. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result fvm_function_create_native(
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Context *c, FVM_NativeFunction cb, void *ud,
+    FVM_Context *c,
+    FVM_NativeFunction cb,
+    void *ud,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Object *capture, FVM_Object **out)
+    FVM_Object *capture,
+    FVM_Object **out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = 0;
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !cb || (capture && capture->owner != c))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r = create(c, out);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         (*out)->invocable.callback = cb;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1011,8 +1222,7 @@ extern "C" FVM_Result fvm_function_create_native(
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         *out = 0;
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
@@ -1021,24 +1231,37 @@ extern "C" FVM_Result fvm_function_create_native(
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Create function avm1. */
 /* Create a legacy terminated-parameter function through the counted factory. */
-extern "C" FVM_Result fvm_function_create_avm1(FVM_Context *c, const void *actions, size_t size,
-                                               unsigned int count, const char *const *parameters,
-                                               FVM_Object *environment, FVM_Object **out)
+extern "C" FVM_Result fvm_function_create_avm1(FVM_Context *c,
+                                               const void *actions,
+                                               size_t size,
+                                               unsigned int count,
+                                               const char *const *parameters,
+                                               FVM_Object *environment,
+                                               FVM_Object **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
-    if (!c || (!actions && size) || (count && !parameters) || count > FVM_AVM1_MAX_CALL_ARGUMENTS || size > FVM_AVM1_MAX_BODY_BYTES ||
-        (environment && environment->owner != c))
+    if (!c || (!actions && size) || (count && !parameters) || count > FVM_AVM1_MAX_CALL_ARGUMENTS ||
+        size > FVM_AVM1_MAX_BODY_BYTES || (environment && environment->owner != c))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         fvm_detail::vector<FVM_Value> names(count);
         for (unsigned int i = 0; i < count; ++i)
+        {
             if (fvm_value_string(&names[i], parameters[i]) != FVM_OK)
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
+        }
         return fvm_function_create_avm1_bytes(c, actions, size, count, names.begin(), environment, out);
     }
     catch (const std::bad_alloc &)
@@ -1046,35 +1269,53 @@ extern "C" FVM_Result fvm_function_create_avm1(FVM_Context *c, const void *actio
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+
 /* Copy complete UTF-16 parameter identities into a traced script-function snapshot. */
-extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c, const void *actions, size_t size,
-                                                     unsigned int count, const FVM_Value *parameters,
-                                                     FVM_Object *environment, FVM_Object **out)
+extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c,
+                                                     const void *actions,
+                                                     size_t size,
+                                                     unsigned int count,
+                                                     const FVM_Value *parameters,
+                                                     FVM_Object *environment,
+                                                     FVM_Object **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
-    if (!c || (!actions && size) || (count && !parameters) ||
-        (environment && environment->owner != c) || size > FVM_AVM1_MAX_BODY_BYTES || count > FVM_AVM1_MAX_CALL_ARGUMENTS)
+    if (!c || (!actions && size) || (count && !parameters) || (environment && environment->owner != c) ||
+        size > FVM_AVM1_MAX_BODY_BYTES || count > FVM_AVM1_MAX_CALL_ARGUMENTS)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
     FVM_Result result = (c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(actions, size, &info);
     if (result != FVM_OK)
+    {
         return result;
+    }
     try
     {
         FVM_ScriptFunction body;
         if (size)
+        {
             body.body.assign((const unsigned char *)actions, (const unsigned char *)actions + size);
+        }
         for (unsigned int i = 0; i < count; ++i)
         {
-            if (fvm_validate_value(c, parameters+i) != FVM_OK || parameters[i].type != FVM_VALUE_STRING)
+            if (fvm_validate_value(c, parameters + i) != FVM_OK || parameters[i].type != FVM_VALUE_STRING)
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
             fvm_detail::string key;
             result = fvm_property_key(parameters[i].string, fvm_string_size(parameters[i]), key);
             if (result != FVM_OK)
+            {
                 return result;
+            }
             body.parameters.push_back(key);
         }
         return fvm_function_make_script(c, body, environment, out);
@@ -1089,35 +1330,40 @@ extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c, const void 
 /* Invoke function. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result
-fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
+fvm_function_invoke(FVM_Context *c,
+                    FVM_Object *fn,
+                    FVM_Object *self,
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    unsigned int n, const FVM_Value *args, FVM_Value *out)
+                    unsigned int n,
+                    const FVM_Value *args,
+                    FVM_Value *out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !fn || fn->owner != c || (self && self->owner != c) || (n && !args) || c->destroying)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     {
         fvm_value_undefined(out);
         return FVM_INVALID_ARGUMENT;
     }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < n; ++i)
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_validate_value(c, args + i) != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         {
             fvm_value_undefined(out);
             return FVM_INVALID_ARGUMENT;
         }
+    }
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!fn->invocable.callback)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     {
         fvm_value_undefined(out);
         return FVM_UNSUPPORTED;
@@ -1125,8 +1371,7 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::vector<FVM_Value> roots;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value function;
@@ -1140,8 +1385,9 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
         roots.push_back(function);
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (unsigned int i = 0; i < n; ++i)
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             roots.push_back(args[i]);
+        }
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         /* Pass the snapshot, then clear a possibly aliased result only after copying.
            The frame below retains the same values when callbacks mutate caller storage. */
@@ -1162,8 +1408,7 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
         /* [GC:] Объявляем представление состояния сборщика или корней. */
         struct Pop
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Context *c;
             /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
             FVM_GCRootFrame *old;
@@ -1191,7 +1436,7 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
         fvm_resource_fault_begin(c);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (entry.collector_entry)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return fvm_exception_complete(
                 /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
                    вызова. */
@@ -1204,24 +1449,28 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
                  */
                 fvm_native_result(
                     /* [GC:] Validate and retain the callback result before root-frame teardown. */
-                    c, entry.callback(c, frame.receiver, n, args, out, entry.userdata), out));
+                    c,
+                    entry.callback(c, frame.receiver, n, args, out, entry.userdata),
+                    out));
+        }
+
+
         /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return fvm_exception_complete(
             /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
-            c, frame.receiver,
+            c,
+            frame.receiver,
             /* [GC:] Copy foreign string views before the native barrier and capture roots unwind.
              */
-            fvm_native_result(c, entry.callback(c, frame.receiver, n, args, out, entry.userdata),
-                              out));
+            fvm_native_result(c, entry.callback(c, frame.receiver, n, args, out, entry.userdata), out));
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_undefined(out);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
@@ -1230,8 +1479,7 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_undefined(out);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_ERROR;
@@ -1240,53 +1488,67 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Compute and return function construct. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-extern "C" FVM_Result fvm_function_construct(
-    FVM_Context *c, FVM_Object *fn, unsigned int n,
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    const FVM_Value *a, FVM_Object **out)
+extern "C" FVM_Result
+fvm_function_construct(FVM_Context *c,
+                       FVM_Object *fn,
+                       unsigned int n,
+                       /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                       const FVM_Value *a,
+                       FVM_Object **out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = 0;
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !fn || fn->owner != c || (n && !a))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < n; ++i)
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_validate_value(c, a + i) != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        }
+    }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+
         /* [GC:] Direct C callers may supply an unpinned Function and arguments. Keep
            them live and stable before prototype access can mutate caller storage or collect. */
         FVM_ObjectRootScope function_root(c, fn);
         fvm_detail::vector<FVM_Value> arguments;
+
+
         FVM_ValueVectorRootScope argument_roots(c, arguments);
         arguments.reserve(n);
         for (unsigned int i = 0; i < n; ++i)
+        {
             arguments.push_back(a[i]);
+        }
         a = n ? arguments.begin() : 0;
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fn->constructable.callback)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value v;
             /* A factory that leaves its output untouched has not constructed an Object. */
             fvm_value_undefined(&v);
             /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
              */
+
+
             /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
              */
             FVM_NativeCallGuard guard(c);
@@ -1295,18 +1557,21 @@ extern "C" FVM_Result fvm_function_construct(
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result r = fvm_exception_complete(
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                c, c->global,
+                c,
+                c->global,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 e.callback(c, c->global, n, a, &v, e.userdata));
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return r;
+            }
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             /* Never publish null or foreign-context factory results to the caller. */
             if (v.type != FVM_VALUE_OBJECT || !v.object || v.object->owner != c)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_ERROR;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             *out = v.object;
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1315,16 +1580,20 @@ extern "C" FVM_Result fvm_function_construct(
         }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!fn->invocable.callback || fn->resource_kind != SCRIPT_FUNCTION)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_UNSUPPORTED;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *instance = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r = fvm_object_create(c, &instance);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
+
+
         /* [GC:] An unloaded host prototype getter can collect before invocation
          * publishes this new instance as its receiver. Retain it across that gap. */
         FVM_ObjectRootScope instance_root(c, instance);
@@ -1334,35 +1603,43 @@ extern "C" FVM_Result fvm_function_construct(
         FVM_Value proto;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         if (c->swf_loaded)
-        {
-            /* AVM1 construction uses own stored data, not an ordinary property get. */
+        { /* AVM1 construction uses own stored data, not an ordinary property get. */
             fvm_value_undefined(&proto);
             r = fvm_avm1_stored_prototype(c, fn, proto);
         }
         else
+        {
             r = fvm_object_get(c, fn, "prototype", &proto);
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (proto.type == FVM_VALUE_OBJECT)
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             instance->prototype = proto.object;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         /* Define the loaded receiver's own identities before user constructor code runs. */
         r = fvm_function_define_constructor(c, instance, fn);
         if (r != FVM_OK)
+        {
             return r;
+        }
         FVM_Value result;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+
+
         /* [GC:] Retain constructor identity and restore the caller mode on every exit. */
         FVM_CallScope constructor_scope(c, fn, fn, instance->prototype);
         r = fvm_function_invoke(c, fn, instance, n, a, &result);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         /* Loaded AVM1 script constructors ignore every returned value. The unloaded
            embedding namespace retains its existing object-return substitution. */
@@ -1374,13 +1651,13 @@ extern "C" FVM_Result fvm_function_construct(
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
 
 /* Map a native function callback to its stable serialization identifier. */
 unsigned long fvm_function_callback_id(FVM_NativeFunction cb)
@@ -1398,21 +1675,23 @@ unsigned long fvm_function_callback_id(FVM_NativeFunction cb)
                                       : 0;
 }
 
+
 /* Restore a native function callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
 {
-    return id == FVM_FUNCTION_CALLBACK_SUPER   ? fvm_super_callback()
-           : id == FVM_FUNCTION_CALLBACK_SCRIPT ? script
-           : id == FVM_FUNCTION_CALLBACK_CALL_ADAPTER ? call
+    return id == FVM_FUNCTION_CALLBACK_SUPER           ? fvm_super_callback()
+           : id == FVM_FUNCTION_CALLBACK_SCRIPT        ? script
+           : id == FVM_FUNCTION_CALLBACK_CALL_ADAPTER  ? call
            : id == FVM_FUNCTION_CALLBACK_APPLY_ADAPTER ? apply
-           : id == FVM_FUNCTION_CALLBACK_TEXT ? function_text
-           : id == FVM_FUNCTION_CALLBACK_EMPTY ? empty
-           : id == FVM_FUNCTION_CALLBACK_CLASS_CALL ? function_call
-           : id == FVM_FUNCTION_CALLBACK_CONSTRUCTOR ? constructor
-           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_GET ? argument_get
-           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_SET ? argument_set
-                       : 0;
+           : id == FVM_FUNCTION_CALLBACK_TEXT          ? function_text
+           : id == FVM_FUNCTION_CALLBACK_EMPTY         ? empty
+           : id == FVM_FUNCTION_CALLBACK_CLASS_CALL    ? function_call
+           : id == FVM_FUNCTION_CALLBACK_CONSTRUCTOR   ? constructor
+           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_GET  ? argument_get
+           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_SET  ? argument_set
+                                                       : 0;
 }
+
 
 /* Compute and return function collector callback. */
 bool fvm_function_collector_callback(FVM_NativeFunction cb)
@@ -1420,28 +1699,34 @@ bool fvm_function_collector_callback(FVM_NativeFunction cb)
     return cb == script || cb == call || cb == apply || cb == fvm_super_callback();
 }
 
+
 /* [GC:] Link an arguments index to an activation using a traced accessor descriptor. */
-FVM_Result fvm_function_map_argument(FVM_Context *c, FVM_Object *arguments, unsigned long index,
-                                     FVM_Object *activation, const fvm_detail::string &name)
+FVM_Result fvm_function_map_argument(
+    FVM_Context *c, FVM_Object *arguments, unsigned long index, FVM_Object *activation, const fvm_detail::string &name)
 {
     FVM_Object *descriptor = 0;
     FVM_Result r = fvm_object_create(c, &descriptor);
     if (r != FVM_OK)
+    {
         return r;
+    }
     FVM_Value value;
     fvm_value_undefined(&value);
     value.type = FVM_VALUE_OBJECT;
     value.object = activation;
     r = fvm_object_set(c, descriptor, "scope", &value);
     if (r != FVM_OK)
+    {
         return r;
+    }
     fvm_value_string_bytes(&value, name.data(), name.size());
     r = fvm_object_set(c, descriptor, "name", &value);
     if (r != FVM_OK)
+    {
         return r;
+    }
     char key[32];
     std::sprintf(key, "%lu", index);
     arguments->indexed.erase(index);
-    return fvm_object_define_accessor_rooted(c, arguments, key, argument_get, argument_set,
-                                             descriptor, descriptor);
+    return fvm_object_define_accessor_rooted(c, arguments, key, argument_get, argument_set, descriptor, descriptor);
 }

@@ -47,10 +47,17 @@ def main():
         timeout=30,
     )
     output = result.stdout.decode("utf-8", errors="replace")
-    assert result.returncode == 0, (result.returncode, output, result.stderr)
-    assert "FAIL" not in output and re.search(
-        r"^PASS idecore (?:(?:limits|revision|coordinates|find|navigation|history|historylimits|historyexample|replaceall|replaceallexample|utf8span) )?\d+ checks$", output, re.MULTILINE
-    ), (output, result.stderr)
+    if not (result.returncode == 0):
+        raise AssertionError((result.returncode, output, result.stderr))
+    if not (
+        "FAIL" not in output
+        and re.search(
+            "^PASS idecore (?:(?:limits|revision|coordinates|find|navigation|history|historylimits|historyexample|replaceall|replaceallexample|utf8span) )?\\d+ checks$",
+            output,
+            re.MULTILINE,
+        )
+    ):
+        raise AssertionError((output, result.stderr))
     print(output.strip())
 
 

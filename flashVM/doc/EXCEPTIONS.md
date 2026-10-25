@@ -21,7 +21,7 @@ This is not a certification of complete Flash 8 execution.
 
 ## ResourceException
 
-Failing AS mutex/channel methods and getters return [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L48) to the host
+Failing AS mutex/channel methods and getters return [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L50) to the host
 and throw a plain object with `name`, numeric `code`, stable English `message`
 and an object named `context`. Match the code rather than localized text.
 
@@ -57,22 +57,22 @@ its outcome is uncertain. Leases, lost-ACK reconciliation and TLS remain absent.
 ## C embedding and debugger
 
 `include/flashvm/exception.h` exposes `get`, `info`, `clear`, `raise`.
-After [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L48), obtain the pending value with [`fvm_exception_get`](../include/flashvm/exception.h#L61) and
-inspect it before [`fvm_exception_clear`](../include/flashvm/exception.h#L65). Borrowed object values lose their
+After [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L50), obtain the pending value with [`fvm_exception_get`](../include/flashvm/exception.h#L66) and
+inspect it before [`fvm_exception_clear`](../include/flashvm/exception.h#L74). Borrowed object values lose their
 exception root on clear; publish or pin a value if retaining it. `raise` accepts
-any context-owned AS value and returns [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L48). Strings are copied.
+any context-owned AS value and returns [`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L50). Strings are copied.
 `info` returns NOT_FOUND for ordinary script throws. Low-level native resource
-APIs preserve their existing [FVM_ERROR](../include/flashvm/flashvm.h#L43) contract; contextual faults can be read
+APIs preserve their existing [FVM_ERROR](../include/flashvm/flashvm.h#L45) contract; contextual faults can be read
 with `info`/`get`. The AS method/getter bridge materializes and throws them.
-A native worker callback returning [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) reports that status through
+A native worker callback returning [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50) reports that status through
 join; its context-owned exception object is not automatically transferred to the
 joining context. Handle/send the exception inside the worker when data is needed.
 
-[`fvm_debug_exception_events`](../include/flashvm/exception.h#L70) provides a process-wide ring of 64 copied resource
+[`fvm_debug_exception_events`](../include/flashvm/exception.h#L83) provides a process-wide ring of 64 copied resource
 exception snapshots. Overflow drops the oldest event. Insufficient capacity
 returns NOT_FOUND and the required count without clearing. Events remain after
 AS catch/clear. Ordinary script throws do not enter this resource event ring.
-Legacy [`fvm_debug_resource_errors`](../include/flashvm/debug.h#L156) remains available. These APIs supply diagnostic
+Legacy [`fvm_debug_resource_errors`](../include/flashvm/debug.h#L199) remains available. These APIs supply diagnostic
 interception, not an interactive debugger UI, execution suspension or a remote
 queue-freeze protocol.
 
@@ -110,10 +110,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ABI_VERSION` | macro / define | [include/flashvm/flashvm.h:25](../include/flashvm/flashvm.h#L25) |
-| `fvm_debug_exception_events` | function | [include/flashvm/exception.h:70](../include/flashvm/exception.h#L70) |
-| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:156](../include/flashvm/debug.h#L156) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../include/flashvm/exception.h#L65) |
-| `fvm_exception_get` | function | [include/flashvm/exception.h:61](../include/flashvm/exception.h#L61) |
+| `fvm_debug_exception_events` | function | [include/flashvm/exception.h:83](../include/flashvm/exception.h#L83) |
+| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:199](../include/flashvm/debug.h#L199) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `fvm_exception_clear` | function | [include/flashvm/exception.h:74](../include/flashvm/exception.h#L74) |
+| `fvm_exception_get` | function | [include/flashvm/exception.h:66](../include/flashvm/exception.h#L66) |
 <!-- source-links:end -->

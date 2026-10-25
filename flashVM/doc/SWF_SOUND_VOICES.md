@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-[`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L11) is an explicitly host-owned native snapshot of one root
+[`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L12) is an explicitly host-owned native snapshot of one root
 StartSound's decoded source interval and ordered envelope. It renders the same
 PCM/ADPCM ranges, repetitions, gains and fixed clocks as
 [fvm_swf_sound_event_submit](SWF_SOUND_PLAYBACK.md), but retains the source only
@@ -15,7 +15,7 @@ clocking and synchronous output through their bridge.
 [GC:] A successful snapshot contains no context/runtime pointer, managed value,
 root, borrowed SWF bytes or output userdata. It remains valid after GC, successful
 or failed reload, context/runtime destruction. Closing the originating VM does
-not close a snapshot: the host must call [fvm_swf_sound_voice_close](../include/flashvm/swf_sound.h#L128) exactly once.
+not close a snapshot: the host must call [fvm_swf_sound_voice_close](../include/flashvm/swf_sound.h#L162) exactly once.
 A null close succeeds; double close, stale pointers and concurrent access are
 invalid usage. Closing enters no VM, collector or host output callback.
 
@@ -30,7 +30,7 @@ SWF bytes or the written-count output.
 
 ## FVM_SWFSoundVoiceInfo
 
-Set `struct_size` to sizeof([FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L67)). The getter copies every field:
+Set `struct_size` to sizeof([FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L83)). The getter copies every field:
 
 | Field | Meaning |
 | --- | --- |
@@ -52,7 +52,7 @@ total-frame product, so long durations do not require a non-C89 integer type.
 ## fvm_swf_sound_voice_open
 
 Arguments: required owning context, zero-based root StartSound ordinal, required
-[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11)** destination. The destination is cleared before all other
+[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L12)** destination. The destination is cleared before all other
 validation. Do not pass storage containing a live handle without first closing
 it. On success ownership of one native snapshot passes to the caller.
 
@@ -65,7 +65,7 @@ must strictly increase. Unsupported codecs stay UNSUPPORTED even for zero plays
 or empty intervals. ADPCM preflight validates the full declared compressed stream.
 Zero plays retain geometry but allocate no source PCM and finish immediately.
 
-The combined source PCM and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L49) payload must fit the
+The combined source PCM and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L56) payload must fit the
 runtime's memory_limit_bytes, or [FVM_SWF_DEFAULT_LIMIT](../include/flashvm/swf.h#L15) when unset. Repeated output
 is not reserved. The fixed handle allocation, allocator bookkeeping, canonical
 input and caller output buffers are separate. The source interval itself still
@@ -111,7 +111,7 @@ that chunk to retry explicitly or abandon the voice.
 
 ## fvm_swf_sound_voice_info
 
-Arguments: live snapshot and required [FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L67)* with exact
+Arguments: live snapshot and required [FVM_SWFSoundVoiceInfo](../include/flashvm/swf_sound.h#L83)* with exact
 struct_size. OK copies geometry/progress without allocation, callbacks, GC or
 advancement. INVALID_ARGUMENT rejects null handle/output or incorrect size;
 output remains unchanged. Info remains available after the originating VM dies.
@@ -125,7 +125,7 @@ or host devices. The handle is invalid immediately after a non-null close.
 
 ## Русский контракт
 
-[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) — явная host-owned native-копия диапазона PCM и огибающей одного
+[FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L12) — явная host-owned native-копия диапазона PCM и огибающей одного
 корневого StartSound. Источник декодируется один раз, повторы не копируются целиком.
 Чтение выдаёт caller-sized native S16; StreamSoundBlock, автоматический clock,
 смешивание и управление stop/no-multiple в этот API не входят. SyncStop не имеет
@@ -177,12 +177,12 @@ The [swf_audio tutorial](../examples/multimedia/swf_audio/README.md) adds
 chunks, submit them through actual host stdio and stop the output explicitly.
 A SyncStop control is rejected by this mode; use --event to apply synchronization.
 
-[`fvm_swf_sound_gain`](../src/swf/sound_style.hpp#L25) and [`fvm_swf_sound_position`](../src/swf/sound_style.hpp#L8) share arithmetic between the
+[`fvm_swf_sound_gain`](../src/swf/sound_style.hpp#L31) and [`fvm_swf_sound_position`](../src/swf/sound_style.hpp#L10) share arithmetic between the
 full renderer and snapshots. Tests compare five chunk partitions over SWF1–8
 PCM and all four ADPCM code widths, including block transitions. Native allocation
 failure tests drain 65535 plays after VM destruction with allocations disabled.
 
-Prepared chunks can be summed through [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L131) without allocating:
+Prepared chunks can be summed through [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L179) without allocating:
 [block mixer contract](AUDIO_MIXING.md), [swf_mix tutorial](../examples/multimedia/swf_mix/README.md).
 This does not apply automatic event scheduling or synchronization to snapshots.
 ## Independent mixer integration
@@ -202,16 +202,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:179](../include/flashvm/multimedia.h#L179) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
-| `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:25](../src/swf/sound_style.hpp#L25) |
-| `fvm_swf_sound_position` | function | [src/swf/sound_style.hpp:8](../src/swf/sound_style.hpp#L8) |
-| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../include/flashvm/swf_sound.h#L128) |
-| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../include/flashvm/swf_sound.h#L114) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:126](../include/flashvm/swf_sound.h#L126) |
-| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
-| `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:67](../include/flashvm/swf_sound.h#L67) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:196](../include/flashvm/swf_sound.h#L196) |
+| `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:31](../src/swf/sound_style.hpp#L31) |
+| `fvm_swf_sound_position` | function | [src/swf/sound_style.hpp:10](../src/swf/sound_style.hpp#L10) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:162](../include/flashvm/swf_sound.h#L162) |
+| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:142](../include/flashvm/swf_sound.h#L142) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:158](../include/flashvm/swf_sound.h#L158) |
+| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:56](../include/flashvm/swf_sound.h#L56) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:12](../src/swf/sound_voice.cpp#L12) |
+| `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:83](../include/flashvm/swf_sound.h#L83) |
 <!-- source-links:end -->

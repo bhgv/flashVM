@@ -1,6 +1,6 @@
 # Named construction / Имена конструкторов — v0.264
 
-[`fvm_exec_new_object`](../include/flashvm/execution.h#L454) accepts managed scope, target and this inputs, an already
+[`fvm_exec_new_object`](../include/flashvm/execution.h#L598) accepts managed scope, target and this inputs, an already
 coerced counted name and ordered argument values. It does not inspect bytecode,
 operand stacks or interpreter-local maps. The interpreter still converts the
 name before the argument count and preserves its unloaded count-validation rule.
@@ -34,7 +34,7 @@ compatibility inventory.
 входом в тело конструктора, включая сборку мусора внутри getter `prototype`.
 Имена и аргументы удерживаются при callback, исключении и отказе памяти.
 Число корней снимка вызова вынесено в документированный макрос
-[`FVM_CALL_SCOPE_SNAPSHOT_COUNT`](../src/core/call_scope_constants.h#L6); проверка глубины `super` использует
+[`FVM_CALL_SCOPE_SNAPSHOT_COUNT`](../src/core/call_scope_constants.h#L7); проверка глубины `super` использует
 [`FVM_PROTOTYPE_MAX_DEPTH`](../src/core/numeric_constants.h#L51). Все девять стадий остаются открытыми.
 
 Primary reference: pinned Ruffle
@@ -53,13 +53,13 @@ or generated-machine-code execution is claimed.
 
 ## v0.345: constructor count preparation / Подготовка числа аргументов
 
-[`fvm_exec_constructor_count`](../include/flashvm/execution.h#L488) now supplies NewObject count preparation as an
+[`fvm_exec_constructor_count`](../include/flashvm/execution.h#L648) now supplies NewObject count preparation as an
 explicit C89 service. It accepts a count value, number of available arguments
 and output count, without reading bytecode or a stack. Name conversion remains
 before count conversion in the interpreter. In an unloaded host, the count must
 be an integral Number, fit available arguments and not exceed
-[`FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS`](../include/flashvm/execution.h#L16) (65536). Invalid host counts return
-[`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Loaded SWFs delegate to [`fvm_exec_argument_count`](../include/flashvm/execution.h#L482): AVM1 conversion,
+[`FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS`](../include/flashvm/execution.h#L17) (65536). Invalid host counts return
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Loaded SWFs delegate to [`fvm_exec_argument_count`](../include/flashvm/execution.h#L640): AVM1 conversion,
 UInt32 wrapping and capping to available values precede the 65535 method bound.
 This preserves the deliberately distinct host and loaded policies.
 
@@ -93,11 +93,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_CALL_SCOPE_SNAPSHOT_COUNT` | macro / define | [src/core/call_scope_constants.h:6](../src/core/call_scope_constants.h#L6) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:482](../include/flashvm/execution.h#L482) |
-| `fvm_exec_constructor_count` | function | [include/flashvm/execution.h:488](../include/flashvm/execution.h#L488) |
-| `FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS` | macro / define | [include/flashvm/execution.h:16](../include/flashvm/execution.h#L16) |
-| `fvm_exec_new_object` | function | [include/flashvm/execution.h:454](../include/flashvm/execution.h#L454) |
+| `FVM_CALL_SCOPE_SNAPSHOT_COUNT` | macro / define | [src/core/call_scope_constants.h:7](../src/core/call_scope_constants.h#L7) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:640](../include/flashvm/execution.h#L640) |
+| `fvm_exec_constructor_count` | function | [include/flashvm/execution.h:648](../include/flashvm/execution.h#L648) |
+| `FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS` | macro / define | [include/flashvm/execution.h:17](../include/flashvm/execution.h#L17) |
+| `fvm_exec_new_object` | function | [include/flashvm/execution.h:598](../include/flashvm/execution.h#L598) |
 | `FVM_PROTOTYPE_MAX_DEPTH` | macro / define | [src/core/numeric_constants.h:51](../src/core/numeric_constants.h#L51) |
 <!-- source-links:end -->

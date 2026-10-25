@@ -58,7 +58,7 @@ source field. Handler разрешается перед каждым вызов�
 ## Владение, GC и передача
 
 Публичный C ABI layout и native callback selectors не расширяются. Нативный
-[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L68), path/capture остаются no-script и не синтезируют события.
+[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L80), path/capture остаются no-script и не синтезируют события.
 Layouts независимо принадлежат владельцам и освобождаются при ошибке. Без
 observers cache может оставаться lazy; измеренный candidate cache сохраняется
 после успешной публикации геометрии.
@@ -94,5 +94,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../include/flashvm/standard_text.h#L68) |
+| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:80](../include/flashvm/standard_text.h#L80) |
 <!-- source-links:end -->

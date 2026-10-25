@@ -71,10 +71,10 @@ safe to allocate without bounds.
 
 | API | Contract |
 | --- | --- |
-| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L56) | Borrows integer and caller output; validates 32-bit limbs/sign and full capacity before writing. OK publishes used; errors preserve bytes/used. |
-| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L58) | Borrows prefix; requires output value/used, publishes only on OK. MORE retains neither input nor partial result; caller retains and retries prefix. |
-| [`fvm_srecord_write`](../include/flashvm/srecord.h#L66) | Borrows tag/payload, writes caller buffer only after complete validation. Payload and outputs must not overlap. No allocation, VM or transport. |
-| [`fvm_srecord_read`](../include/flashvm/srecord.h#L80) | Borrows input and returns one verified borrowed view/consumed extent. limit counts body bytes. Outputs unchanged on MORE/error; trailing records remain for another call. |
+| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L62) | Borrows integer and caller output; validates 32-bit limbs/sign and full capacity before writing. OK publishes used; errors preserve bytes/used. |
+| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L66) | Borrows prefix; requires output value/used, publishes only on OK. MORE retains neither input nor partial result; caller retains and retries prefix. |
+| [`fvm_srecord_write`](../include/flashvm/srecord.h#L76) | Borrows tag/payload, writes caller buffer only after complete validation. Payload and outputs must not overlap. No allocation, VM or transport. |
+| [`fvm_srecord_read`](../include/flashvm/srecord.h#L94) | Borrows input and returns one verified borrowed view/consumed extent. limit counts body bytes. Outputs unchanged on MORE/error; trailing records remain for another call. |
 
 All calls are reentrant with independent storage, contain no global mutable
 state and do not enter VM, GC, SDL or devices. Caller serializes shared buffers.
@@ -138,10 +138,10 @@ queued records. It is not an in-band reinterpretation of already queued tags.
 
 | API | Contract |
 | --- | --- |
-| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L33) | Initialize caller descriptor/slot capacity without touching slots. No allocation/VM/GC; reinit starts an empty direction-local table. |
-| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L37) | Copy immutable metadata to host output; UNKNOWN for zero/unbound tags. Output unchanged on failure; no object reference or authority is granted. |
-| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L43) | Validate all bindings/capacity then write only binary declaration payload; wrap with record_write tag 0. Caller provides separate payload and framed-output buffers. |
-| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L49) | Verify a complete tag-zero record, preflight all entries and append atomically. Copies identities; input is borrowed only during call. used publishes one consumed record only on OK. |
+| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L37) | Initialize caller descriptor/slot capacity without touching slots. No allocation/VM/GC; reinit starts an empty direction-local table. |
+| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L43) | Copy immutable metadata to host output; UNKNOWN for zero/unbound tags. Output unchanged on failure; no object reference or authority is granted. |
+| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L51) | Validate all bindings/capacity then write only binary declaration payload; wrap with record_write tag 0. Caller provides separate payload and framed-output buffers. |
+| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L59) | Verify a complete tag-zero record, preflight all entries and append atomically. Copies identities; input is borrowed only during call. used publishes one consumed record only on OK. |
 
 Registry descriptor/slots/input/output must not overlap. No hidden allocation or
 locks; synchronize a shared table externally, including lookup versus apply/reset.
@@ -160,9 +160,9 @@ second record, reporting exactly how much input was consumed.
 
 | API | Contract |
 | --- | --- |
-| [`fvm_sstream_init`](../include/flashvm/sstream.h#L24) | Initialize caller state and receive storage without touching storage bytes. Capacity >=3; body limit 1..BODY_MAX. A smaller buffer enforces an additional frame bound. |
-| [`fvm_sstream_push`](../include/flashvm/sstream.h#L33) | Consume input into caller storage. used reports consumed input on MORE/OK/data error; view changes only on OK. A completed view stays valid until reset/disposal. Push after completion is INVALID/used=0; data errors latch until reset. |
-| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L38) | Explicitly discard prefix/error/completed borrow without wiping bytes. Quiesce view users first; reset neither resynchronizes transport bytes nor cancels remote commands. |
+| [`fvm_sstream_init`](../include/flashvm/sstream.h#L26) | Initialize caller state and receive storage without touching storage bytes. Capacity >=3; body limit 1..BODY_MAX. A smaller buffer enforces an additional frame bound. |
+| [`fvm_sstream_push`](../include/flashvm/sstream.h#L37) | Consume input into caller storage. used reports consumed input on MORE/OK/data error; view changes only on OK. A completed view stays valid until reset/disposal. Push after completion is INVALID/used=0; data errors latch until reset. |
+| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L44) | Explicitly discard prefix/error/completed borrow without wiping bytes. Quiesce view users first; reset neither resynchronizes transport bytes nor cancels remote commands. |
 
 These consumption semantics intentionally differ from complete-record read:
 MORE bytes have already been retained by the stream. Resubmit only unconsumed
@@ -183,15 +183,15 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:30](../include/flashvm/srecord.h#L30) |
-| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../include/flashvm/sbindings.h#L49) |
-| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../include/flashvm/sbindings.h#L33) |
-| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
-| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
-| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:58](../include/flashvm/srecord.h#L58) |
-| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:56](../include/flashvm/srecord.h#L56) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../include/flashvm/srecord.h#L80) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
-| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
-| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
-| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../include/flashvm/sstream.h#L38) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:59](../include/flashvm/sbindings.h#L59) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:51](../include/flashvm/sbindings.h#L51) |
+| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
+| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:62](../include/flashvm/srecord.h#L62) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:94](../include/flashvm/srecord.h#L94) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:76](../include/flashvm/srecord.h#L76) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:26](../include/flashvm/sstream.h#L26) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:37](../include/flashvm/sstream.h#L37) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:44](../include/flashvm/sstream.h#L44) |
 <!-- source-links:end -->

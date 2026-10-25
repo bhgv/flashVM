@@ -14,7 +14,7 @@ GC roots through lookup, snapshot creation and operand-vector reservation.
 After success, the input is replaced by the host null or loaded undefined
 sentinel, then snapshot keys are pushed in reverse order. Storage is reserved
 before publication; the total must fit [FVM_JIT_MAX_STACK](../src/jit/constants.h#L8). A stack-bound failure
-returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without replacing the input. Allocation exceptions leave
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) without replacing the input. Allocation exceptions leave
 root chains and active native code restored by the existing execution guards.
 
 | Test | Coverage |
@@ -47,5 +47,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_JIT_MAX_STACK` | macro / define | [src/jit/constants.h:8](../src/jit/constants.h#L8) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

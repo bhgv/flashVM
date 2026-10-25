@@ -1,7 +1,7 @@
 # Сборка мусора между кадрами проигрывателя
 
 Начиная с v0.667, каждый активный проход главного цикла вызывает
-[`fvm_gc_step`](../include/flashvm/gc.h#L90) после доставки ввода, публикации HostInput и опроса таймеров.
+[`fvm_gc_step`](../include/flashvm/gc.h#L116) после доставки ввода, публикации HostInput и опроса таймеров.
 Раньше эта точка работала только при сработавшем таймере: временные объекты
 обработчиков ввода могли оставаться до следующего кадра при медленном FPS.
 
@@ -49,5 +49,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
+| `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
 <!-- source-links:end -->

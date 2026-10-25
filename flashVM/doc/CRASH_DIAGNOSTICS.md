@@ -11,7 +11,7 @@ independent context policies, configured outside execution:
 | [FVM_CRASH_ZIP_CODE](../include/flashvm/crash.h#L15) | The same plus bytes of the active native mappings |
 | [FVM_CRASH_DEBUGGER](../include/flashvm/crash.h#L16) | Synchronous host debugger callback before activation unwinding |
 
-[`fvm_crash_set_detail`](../include/flashvm/crash.h#L60) independently selects NATURAL (default) or FORCE.
+[`fvm_crash_set_detail`](../include/flashvm/crash.h#L72) independently selects NATURAL (default) or FORCE.
 NATURAL borrows existing rooted arguments/activations without copying values at
 entry or adding per-instruction local-variable spills. FORCE makes rooted entry
 copies of supplied arguments, copies their string bytes and exposes Function2
@@ -28,8 +28,8 @@ by index; names are not invented. Available locals are copied only at failure.
 There is no per-instruction local history in either mode.
 
 Frames form an allocation-free borrowed native-stack chain in NATURAL mode.
-JIT code already owns its original AVM1 source; [fvm_jit_source](../include/flashvm/jit.h#L31) and
-[fvm_jit_machine_code](../include/flashvm/jit.h#L33) expose immutable source and native mapping views. Retained
+JIT code already owns its original AVM1 source; [fvm_jit_source](../include/flashvm/jit.h#L43) and
+[fvm_jit_machine_code](../include/flashvm/jit.h#L47) expose immutable source and native mapping views. Retained
 reports own source copies, so they remain readable after function/code deletion
 and collection. ZIP_CODE records the currently failing structured child mapping,
 not only the outer function mapping. Original RX load addresses are opaque
@@ -138,14 +138,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_crash_argument` | function | [include/flashvm/crash.h:77](../include/flashvm/crash.h#L77) |
+| `fvm_crash_argument` | function | [include/flashvm/crash.h:103](../include/flashvm/crash.h#L103) |
 | `FVM_CRASH_BACKTRACE` | enum constant | [include/flashvm/crash.h:13](../include/flashvm/crash.h#L13) |
 | `FVM_CRASH_DEBUGGER` | enum constant | [include/flashvm/crash.h:16](../include/flashvm/crash.h#L16) |
 | `FVM_CRASH_NONE` | enum constant | [include/flashvm/crash.h:12](../include/flashvm/crash.h#L12) |
-| `fvm_crash_set_detail` | function | [include/flashvm/crash.h:60](../include/flashvm/crash.h#L60) |
+| `fvm_crash_set_detail` | function | [include/flashvm/crash.h:72](../include/flashvm/crash.h#L72) |
 | `FVM_CRASH_ZIP` | enum constant | [include/flashvm/crash.h:14](../include/flashvm/crash.h#L14) |
 | `FVM_CRASH_ZIP_CODE` | enum constant | [include/flashvm/crash.h:15](../include/flashvm/crash.h#L15) |
-| `fvm_debug_frame_count` | function | [include/flashvm/debug.h:32](../include/flashvm/debug.h#L32) |
-| `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
-| `fvm_jit_source` | function | [include/flashvm/jit.h:31](../include/flashvm/jit.h#L31) |
+| `fvm_debug_frame_count` | function | [include/flashvm/debug.h:34](../include/flashvm/debug.h#L34) |
+| `fvm_jit_machine_code` | function | [include/flashvm/jit.h:47](../include/flashvm/jit.h#L47) |
+| `fvm_jit_source` | function | [include/flashvm/jit.h:43](../include/flashvm/jit.h#L43) |
 <!-- source-links:end -->

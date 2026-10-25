@@ -34,17 +34,17 @@ C89 API `rfs.h` представляет ресурсы диспетчера к�
 
 | Функция | Контракт |
 | --- | --- |
-| [`fvm_rfs_create`](../include/flashvm/rfs.h#L49) | Диспетчер, аутентифицированная ненулевая Uint32 сессия, выходной указатель. Одно фиксированное native выделение; NOMEM сохраняет выход. Диспетчер заимствуется до destroy. Пространство request ID этой сессии исключительно принадлежит этому FS, включая прямые вызовы диспетчера. Права и аутентификация не создаются. |
-| [`fvm_rfs_stat`](../include/flashvm/rfs.h#L51) | FS, канонический node, выходная копия entry. Повторно проверяет поколение/права. UNKNOWN для отсутствующего/невидимого ресурса, DENIED для запрещённого дочернего узла, INVALID для некорректного node. Заимствованных объектов в выходе нет. |
-| [`fvm_rfs_walk`](../include/flashvm/rfs.h#L54) | FS, node родительского каталога, один NUL-terminated компонент, выход. Сначала проверяет родителя; поддерживает `..`, имена ресурсов и разрешённых детей. Проход через файл INVALID. Нет выделения, I/O и VM вызовов. |
-| [`fvm_rfs_open`](../include/flashvm/rfs.h#L58) | FS, node, точный mode, выходной дескриптор. Каталоги/PATH/EVENTS требуют READ, CALL — READ|WRITE. Один из [FVM_RFS_FILES](../include/flashvm/rfs.h#L5) слотов; EVENTS дополнительно занимает независимую подписку. Неверный mode DENIED, исчерпание LIMIT. При ошибке дескриптор не опубликован. |
-| [`fvm_rfs_readdir`](../include/flashvm/rfs.h#L62) | FS, открытый каталог, индекс от нуля, выход entry. OK даёт одну копию; PENDING означает конец. Изменение любого видимого ресурса/прав/фильтра операций даёт CONFLICT до переоткрытия, включая посторонние видимые ресурсы; отозванная запись не утекает из старого снимка. |
-| [`fvm_rfs_read`](../include/flashvm/rfs.h#L67) | FS, дескриптор, Uint32 offset, непустой выходной буфер и счётчик. PATH допускает произвольное смещение и EOF. CALL/EVENTS требуют точное следующее смещение. PENDING — ответа/события ещё нет. Частичная запись хранится в дескрипторе, ошибки сохраняют буфер/счётчик. Нулевая ёмкость INVALID; каталоги читаются readdir. |
-| [`fvm_rfs_write`](../include/flashvm/rfs.h#L73) | FS, CALL дескриптор, offset ноль, counted payload, выходной счётчик. Ровно один запрос на open, включая пустой; не больше [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9). Копирует и ставит в очередь с возрастающим Uint32 ID. OK не означает исполнение. Повтор CONFLICT, исчерпание ID LIMIT. Ошибка post сохраняет состояние файла/счётчик. |
-| [`fvm_rfs_close`](../include/flashvm/rfs.h#L79) | FS и дескриптор. Отменяет ещё не начатый запрос, забирает удержанный ответ, закрывает только свою подписку. Исполненные эффекты остаются. Исполняемый callback даёт BUSY, файл остаётся открытым для повтора. Старый дескриптор UNKNOWN. Уже удалённые watch/request допустимы при очистке. Сессию/VM не уничтожает. |
-| [`fvm_rfs_destroy`](../include/flashvm/rfs.h#L82) | Указатель на FS после остановки пользователей. Открытый файл BUSY. Успех освобождает только FS и обнуляет указатель; диспетчер, права и регистрации принадлежат хосту. |
-| [`fvm_rdispatch_operation_index`](../include/flashvm/revents.h#L48) | Диспетчер, сессия, поколение ресурса, ID операции, выходной индекс. Под mutex проверяет право и возвращает неизменяемую позицию серверной таблицы от нуля. UNKNOWN ресурс/операция, DENIED право. Очередь не меняет; индекс не является правом и не индексирует фильтрованный discovery. |
-| [`fvm_rdispatch_watch_check`](../include/flashvm/revents.h#L69) | Диспетчер, сессия, watch. Проверяет поколение/владельца, не забирая событие. Отозванная/пересозданная подписка UNKNOWN, другая сессия DENIED. Защищает остаток частично прочитанного события. |
+| [`fvm_rfs_create`](../include/flashvm/rfs.h#L55) | Диспетчер, аутентифицированная ненулевая Uint32 сессия, выходной указатель. Одно фиксированное native выделение; NOMEM сохраняет выход. Диспетчер заимствуется до destroy. Пространство request ID этой сессии исключительно принадлежит этому FS, включая прямые вызовы диспетчера. Права и аутентификация не создаются. |
+| [`fvm_rfs_stat`](../include/flashvm/rfs.h#L59) | FS, канонический node, выходная копия entry. Повторно проверяет поколение/права. UNKNOWN для отсутствующего/невидимого ресурса, DENIED для запрещённого дочернего узла, INVALID для некорректного node. Заимствованных объектов в выходе нет. |
+| [`fvm_rfs_walk`](../include/flashvm/rfs.h#L64) | FS, node родительского каталога, один NUL-terminated компонент, выход. Сначала проверяет родителя; поддерживает `..`, имена ресурсов и разрешённых детей. Проход через файл INVALID. Нет выделения, I/O и VM вызовов. |
+| [`fvm_rfs_open`](../include/flashvm/rfs.h#L70) | FS, node, точный mode, выходной дескриптор. Каталоги/PATH/EVENTS требуют READ, CALL — READ|WRITE. Один из [FVM_RFS_FILES](../include/flashvm/rfs.h#L5) слотов; EVENTS дополнительно занимает независимую подписку. Неверный mode DENIED, исчерпание LIMIT. При ошибке дескриптор не опубликован. |
+| [`fvm_rfs_readdir`](../include/flashvm/rfs.h#L76) | FS, открытый каталог, индекс от нуля, выход entry. OK даёт одну копию; PENDING означает конец. Изменение любого видимого ресурса/прав/фильтра операций даёт CONFLICT до переоткрытия, включая посторонние видимые ресурсы; отозванная запись не утекает из старого снимка. |
+| [`fvm_rfs_read`](../include/flashvm/rfs.h#L83) | FS, дескриптор, Uint32 offset, непустой выходной буфер и счётчик. PATH допускает произвольное смещение и EOF. CALL/EVENTS требуют точное следующее смещение. PENDING — ответа/события ещё нет. Частичная запись хранится в дескрипторе, ошибки сохраняют буфер/счётчик. Нулевая ёмкость INVALID; каталоги читаются readdir. |
+| [`fvm_rfs_write`](../include/flashvm/rfs.h#L91) | FS, CALL дескриптор, offset ноль, counted payload, выходной счётчик. Ровно один запрос на open, включая пустой; не больше [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9). Копирует и ставит в очередь с возрастающим Uint32 ID. OK не означает исполнение. Повтор CONFLICT, исчерпание ID LIMIT. Ошибка post сохраняет состояние файла/счётчик. |
+| [`fvm_rfs_close`](../include/flashvm/rfs.h#L99) | FS и дескриптор. Отменяет ещё не начатый запрос, забирает удержанный ответ, закрывает только свою подписку. Исполненные эффекты остаются. Исполняемый callback даёт BUSY, файл остаётся открытым для повтора. Старый дескриптор UNKNOWN. Уже удалённые watch/request допустимы при очистке. Сессию/VM не уничтожает. |
+| [`fvm_rfs_destroy`](../include/flashvm/rfs.h#L104) | Указатель на FS после остановки пользователей. Открытый файл BUSY. Успех освобождает только FS и обнуляет указатель; диспетчер, права и регистрации принадлежат хосту. |
+| [`fvm_rdispatch_operation_index`](../include/flashvm/revents.h#L56) | Диспетчер, сессия, поколение ресурса, ID операции, выходной индекс. Под mutex проверяет право и возвращает неизменяемую позицию серверной таблицы от нуля. UNKNOWN ресурс/операция, DENIED право. Очередь не меняет; индекс не является правом и не индексирует фильтрованный discovery. |
+| [`fvm_rdispatch_watch_check`](../include/flashvm/revents.h#L85) | Диспетчер, сессия, watch. Проверяет поколение/владельца, не забирая событие. Отозванная/пересозданная подписка UNKNOWN, другая сессия DENIED. Защищает остаток частично прочитанного события. |
 
 ## Вызовы, события и очистка
 
@@ -97,18 +97,18 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 | `FVM_R_WATCHES` | macro / define | [include/flashvm/revents.h:5](../include/flashvm/revents.h#L5) |
-| `fvm_rdispatch_operation_index` | function | [include/flashvm/revents.h:48](../include/flashvm/revents.h#L48) |
-| `fvm_rdispatch_watch_check` | function | [include/flashvm/revents.h:69](../include/flashvm/revents.h#L69) |
+| `fvm_rdispatch_operation_index` | function | [include/flashvm/revents.h:56](../include/flashvm/revents.h#L56) |
+| `fvm_rdispatch_watch_check` | function | [include/flashvm/revents.h:85](../include/flashvm/revents.h#L85) |
 | `FVM_RFS_BUFFER` | macro / define | [include/flashvm/rfs.h:7](../include/flashvm/rfs.h#L7) |
-| `fvm_rfs_close` | function | [include/flashvm/rfs.h:79](../include/flashvm/rfs.h#L79) |
-| `fvm_rfs_create` | function | [include/flashvm/rfs.h:49](../include/flashvm/rfs.h#L49) |
-| `fvm_rfs_destroy` | function | [include/flashvm/rfs.h:82](../include/flashvm/rfs.h#L82) |
+| `fvm_rfs_close` | function | [include/flashvm/rfs.h:99](../include/flashvm/rfs.h#L99) |
+| `fvm_rfs_create` | function | [include/flashvm/rfs.h:55](../include/flashvm/rfs.h#L55) |
+| `fvm_rfs_destroy` | function | [include/flashvm/rfs.h:104](../include/flashvm/rfs.h#L104) |
 | `FVM_RFS_FILES` | macro / define | [include/flashvm/rfs.h:5](../include/flashvm/rfs.h#L5) |
-| `fvm_rfs_open` | function | [include/flashvm/rfs.h:58](../include/flashvm/rfs.h#L58) |
-| `fvm_rfs_read` | function | [include/flashvm/rfs.h:67](../include/flashvm/rfs.h#L67) |
-| `fvm_rfs_readdir` | function | [include/flashvm/rfs.h:62](../include/flashvm/rfs.h#L62) |
-| `fvm_rfs_stat` | function | [include/flashvm/rfs.h:51](../include/flashvm/rfs.h#L51) |
+| `fvm_rfs_open` | function | [include/flashvm/rfs.h:70](../include/flashvm/rfs.h#L70) |
+| `fvm_rfs_read` | function | [include/flashvm/rfs.h:83](../include/flashvm/rfs.h#L83) |
+| `fvm_rfs_readdir` | function | [include/flashvm/rfs.h:76](../include/flashvm/rfs.h#L76) |
+| `fvm_rfs_stat` | function | [include/flashvm/rfs.h:59](../include/flashvm/rfs.h#L59) |
 | `FVM_RFS_TAG` | macro / define | [include/flashvm/rfs.h:17](../include/flashvm/rfs.h#L17) |
-| `fvm_rfs_walk` | function | [include/flashvm/rfs.h:54](../include/flashvm/rfs.h#L54) |
-| `fvm_rfs_write` | function | [include/flashvm/rfs.h:73](../include/flashvm/rfs.h#L73) |
+| `fvm_rfs_walk` | function | [include/flashvm/rfs.h:64](../include/flashvm/rfs.h#L64) |
+| `fvm_rfs_write` | function | [include/flashvm/rfs.h:91](../include/flashvm/rfs.h#L91) |
 <!-- source-links:end -->

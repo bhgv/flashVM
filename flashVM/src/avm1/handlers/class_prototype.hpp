@@ -5,26 +5,34 @@
 #include "class_prototype_constants.h"
 #include "../../standard/base_state.hpp"
 #include "../../standard/function_state.hpp"
+
+
 /* Select the prototype field under an explicit source-movie policy or the ambient context. */
 template <class T>
-inline typename fvm_detail::map<fvm_detail::string, T>::iterator fvm_avm1_prototype_slot(
-    FVM_Context *c, fvm_detail::map<fvm_detail::string, T> &entries, unsigned int movie_version)
+inline typename fvm_detail::map<fvm_detail::string, T>::iterator
+fvm_avm1_prototype_slot(FVM_Context *c, fvm_detail::map<fvm_detail::string, T> &entries, unsigned int movie_version)
 {
-    typename fvm_detail::map<fvm_detail::string, T>::iterator found =
-        entries.find(FVM_CLASS_PROTOTYPE_NAME);
-    bool folded = movie_version ? movie_version < FVM_SWF_VERSION_7
-                                 : c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7;
+    typename fvm_detail::map<fvm_detail::string, T>::iterator found = entries.find(FVM_CLASS_PROTOTYPE_NAME);
+    bool folded =
+        movie_version ? movie_version < FVM_SWF_VERSION_7 : c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7;
     if (found != entries.end() || !folded)
+    {
         return found;
+    }
     for (found = entries.begin(); found != entries.end(); ++found)
-        if (fvm_avm1_keyword_name(found->first, FVM_CLASS_PROTOTYPE_NAME,
-                                   FVM_CLASS_PROTOTYPE_UNITS, false))
+    {
+        if (fvm_avm1_keyword_name(found->first, FVM_CLASS_PROTOTYPE_NAME, FVM_CLASS_PROTOTYPE_UNITS, false))
+        {
             return found;
+        }
+    }
     return found;
 }
+
+
 /* Read stored own data; an explicit source version also works in an unloaded receiving context. */
-inline FVM_Result fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out,
-                                       unsigned int movie_version = 0)
+inline FVM_Result
+fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out, unsigned int movie_version = 0)
 {
     fvm_value_undefined(&out);
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data =
@@ -41,7 +49,9 @@ inline FVM_Result fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, 
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
             fvm_avm1_prototype_slot(c, object->methods, movie_version);
         if (method != object->methods.end())
+        {
             return fvm_function_wrap_entry(c, object, method->first, method->second, &out);
+        }
         return FVM_OK;
     }
     /* Script virtual properties retain the data overwritten by addProperty. Native

@@ -4,7 +4,7 @@
 
 Устанавливаемая стандартная библиотека теперь содержит метаданные нативного класса
 Number и его прототипа. Глобальная функция Number(value) сохраняет прежнее поведение
-и возвращает примитивное число. [`fvm_construct`](../include/flashvm/value.h#L158) с именем Number и AVM1 NewObject
+и возвращает примитивное число. [`fvm_construct`](../include/flashvm/value.h#L232) с именем Number и AVM1 NewObject
 создают объект-обёртку. Без аргумента получается ноль; аргумент преобразуется
 существующим ToNumber, включая undefined → NaN и распаковку Boolean/Number.
 
@@ -22,7 +22,7 @@ IEEE-754 double. [Справочник AS2](https://open-flash.github.io/mirrors
 Десятичная запись использует нативный преобразователь. Основания 2/4/8/16/32
 поддерживают дроби и полный диапазон binary64. В остальных недесятичных
 основаниях поддержаны точные целые до 2^53−1; дроби и большие числа возвращают
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Цифры выше девяти строчные; ноль и nonfinite обработаны отдельно.
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Цифры выше девяти строчные; ноль и nonfinite обработаны отдельно.
 Неверный получатель/основание пока возвращают коды C API: стандартные TypeError
 и RangeError ещё не реализованы. Полное соответствие форматированию всех версий
 Flash не заявляется.
@@ -65,6 +65,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_construct` | function | [include/flashvm/value.h:232](../include/flashvm/value.h#L232) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

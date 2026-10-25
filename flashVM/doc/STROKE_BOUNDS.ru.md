@@ -18,17 +18,17 @@ shape используют обновлённые границы. getRect по-�
 
 ## Контракт внутренней геометрии
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L564) заимствует неизменяемый путь, положительную конечную
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L733) заимствует неизменяемый путь, положительную конечную
 ширину до 1 000 000 единиц назначения, поддержанные selectors и два обязательных
 указателя на результат вызывающей стороны. Сохраняются ограничения координат
 пути. Временная геометрия не выделяется, контекст и графический backend не нужны;
 конкурентное изменение пути недопустимо. Bounds и has_segments записываются
-вместе только после успешного обхода. Неверные аргументы дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45);
-квадратичная/кубическая команда — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) без изменения обоих результатов.
+вместе только после успешного обхода. Неверные аргументы дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47);
+квадратичная/кубическая команда — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) без изменения обоих результатов.
 Пустой путь или только нулевые рёбра успешно дают нулевые bounds и отсутствие
 отрезков.
 
-Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L482). Объединяются
+Обработка контуров и касательных общая с [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L633). Объединяются
 конечные прямоугольники отрезков, экстремумы открытых торцов и внешние round-сектора.
 Только направления осей внутри сектора могут добавить экстремум помимо его концов.
 Вершины bevel уже принадлежат телам соседних отрезков. Замкнутый контур соединяет
@@ -37,7 +37,7 @@ NoClose сохраняет открытость при совпадающих к
 границы штриха.
 
 Для поддержанных прямых это геометрические границы с точностью арифметики double,
-а не прямоугольник пикселей AA. Публичный C89 ABI, [fvm_path_bounds](../include/flashvm/path.h#L71), отрисовка
+а не прямоугольник пикселей AA. Публичный C89 ABI, [fvm_path_bounds](../include/flashvm/path.h#L97), отрисовка
 путей и point-hit не меняются. Новые поля сериализации, callback и resource ID
 не требуются.
 
@@ -109,9 +109,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:482](../src/capi/path_hit_c.cpp#L482) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:564](../src/capi/path_hit_c.cpp#L564) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../include/flashvm/path.h#L97) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:633](../src/capi/path_hit_c.cpp#L633) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:733](../src/capi/path_hit_c.cpp#L733) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

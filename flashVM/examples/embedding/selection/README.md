@@ -65,28 +65,28 @@ keeps the ordinary native collector barrier. [Observer contract](../../../doc/SE
 
 | Function / API | Purpose and contract / Назначение и руководство |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned defaults; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime before its context; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent globals and focus; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Prepare MovieClip constructors/prototypes; [SELECTION.md](../../../doc/SELECTION.md#installation). |
-| [`fvm_standard_selection_install`](../../../include/flashvm/keyboard.h#L101) | Atomically publish only the supported Selection methods; [SELECTION.md](../../../doc/SELECTION.md#installation), [RU](../../../doc/SELECTION.ru.md#установка). |
-| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L95) | Create a borrowed native scene; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
-| [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain the clip before eligibility is configured; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
-| [`fvm_get_global`](../../../include/flashvm/value.h#L85) | Borrow the installed namespace; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize values and request clearing without manufacturing a null pointer; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
-| [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Invoke real script-visible methods with receiver/argument roots; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
-| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Register synchronous native focus handlers with borrowed static userdata; callbacks retain the ordinary GC barrier; [SELECTION.md](../../../doc/SELECTION.md#focus-notifications). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned defaults; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Acquire the runtime before its context; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Acquire independent globals and focus; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Prepare MovieClip constructors/prototypes; [SELECTION.md](../../../doc/SELECTION.md#installation). |
+| [`fvm_standard_selection_install`](../../../include/flashvm/keyboard.h#L123) | Atomically publish only the supported Selection methods; [SELECTION.md](../../../doc/SELECTION.md#installation), [RU](../../../doc/SELECTION.ru.md#установка). |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L120) | Create a borrowed native scene; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
+| [`fvm_gc_pin`](../../../include/flashvm/gc.h#L60) | Retain the clip before eligibility is configured; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
+| [`fvm_get_global`](../../../include/flashvm/value.h#L125) | Borrow the installed namespace; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_value_undefined`](../../../include/flashvm/value.h#L46) | Initialize values and request clearing without manufacturing a null pointer; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
+| [`fvm_object_call`](../../../include/flashvm/value.h#L184) | Invoke real script-visible methods with receiver/argument roots; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
+| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L171) | Register synchronous native focus handlers with borrowed static userdata; callbacks retain the ordinary GC barrier; [SELECTION.md](../../../doc/SELECTION.md#focus-notifications). |
 | `Selection.addListener` | Retain an observer by identity once; synchronous, no OS input; [SELECTION.md](../../../doc/SELECTION.md#selection-listeners). |
 | `Selection.removeListener` | Drop a registration and return a Boolean; an active recipient snapshot remains rooted; [SELECTION.md](../../../doc/SELECTION.md#selection-listeners). |
-| [`fvm_object_create`](../../../include/flashvm/value.h#L62) | Create the context-owned observer before acquiring its construction pin; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_object_create`](../../../include/flashvm/value.h#L84) | Create the context-owned observer before acquiring its construction pin; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | `Selection.setFocus` | Apply MovieClip eligibility or clear; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
 | `Selection.getFocus` | Obtain a borrowed counted target path or null; [SELECTION.md](../../../doc/SELECTION.md#getfocus). |
-| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Build the explicit focusEnabled flag; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
-| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Publish the script eligibility property; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
-| [`fvm_value_string_size`](../../../include/flashvm/value.h#L51) | Print counted path bytes without relying on a terminating NUL; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
-| [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | Release the construction root before context cleanup; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Drop selection and remaining managed objects on every path; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the final native owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_value_boolean`](../../../include/flashvm/value.h#L54) | Build the explicit focusEnabled flag; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
+| [`fvm_object_set`](../../../include/flashvm/value.h#L106) | Publish the script eligibility property; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
+| [`fvm_value_string_size`](../../../include/flashvm/value.h#L67) | Print counted path bytes without relying on a terminating NUL; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
+| [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L70) | Release the construction root before context cleanup; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Drop selection and remaining managed objects on every path; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release the final native owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 
 ## Limits / Ограничения
 
@@ -106,22 +106,22 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
-| `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `fvm_get_global` | function | [include/flashvm/value.h:85](../../../include/flashvm/value.h#L85) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:95](../../../include/flashvm/movieclip.h#L95) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
-| `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
-| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../../../include/flashvm/keyboard.h#L101) |
-| `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
-| `fvm_value_string_size` | function | [include/flashvm/value.h:51](../../../include/flashvm/value.h#L51) |
-| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../../../include/flashvm/gc.h#L60) |
+| `fvm_gc_unpin` | function | [include/flashvm/gc.h:70](../../../include/flashvm/gc.h#L70) |
+| `fvm_get_global` | function | [include/flashvm/value.h:125](../../../include/flashvm/value.h#L125) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:120](../../../include/flashvm/movieclip.h#L120) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../../../include/flashvm/value.h#L184) |
+| `fvm_object_create` | function | [include/flashvm/value.h:84](../../../include/flashvm/value.h#L84) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:171](../../../include/flashvm/value.h#L171) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../../../include/flashvm/value.h#L106) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:123](../../../include/flashvm/keyboard.h#L123) |
+| `fvm_value_boolean` | function | [include/flashvm/value.h:54](../../../include/flashvm/value.h#L54) |
+| `fvm_value_string_size` | function | [include/flashvm/value.h:67](../../../include/flashvm/value.h#L67) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

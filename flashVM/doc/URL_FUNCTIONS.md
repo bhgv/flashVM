@@ -1,8 +1,8 @@
 # AS1/AS2 URL functions
 
-v0.619 adds `escape(value)` and `unescape(value)` to [`fvm_standard_install`](../include/flashvm/standard.h#L20).
+v0.619 adds `escape(value)` and `unescape(value)` to [`fvm_standard_install`](../include/flashvm/standard.h#L22).
 They are available in host contexts and loaded SWF5–8. A SWF4 invocation returns
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), including when installation preceded loading. Existing own namespace bindings, including native methods and SWF5/6 case aliases,
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48), including when installation preceded loading. Existing own namespace bindings, including native methods and SWF5/6 case aliases,
 reject initial installation without replacement. No network request or OS encoding service is used. [Русский](URL_FUNCTIONS.ru.md).
 
 The spelling rules follow the original
@@ -13,7 +13,7 @@ from ECMAScript/AS3 escape. Unicode byte encoding was also compared with the
 that implementation is supporting comparison, not an original-player oracle.
 No dependency or upstream source is imported.
 
-Implementation: [`fvm_builtin_escape`](../src/standard/url_encoding.cpp#L137) / [`fvm_builtin_unescape`](../src/standard/url_encoding.cpp#L143); public invocation uses [`fvm_call`](../include/flashvm/value.h#L138) or [`fvm_function_invoke`](../include/flashvm/function.h#L65).
+Implementation: [`fvm_builtin_escape`](../src/standard/url_encoding.cpp#L178) / [`fvm_builtin_unescape`](../src/standard/url_encoding.cpp#L186); public invocation uses [`fvm_call`](../include/flashvm/value.h#L204) or [`fvm_function_invoke`](../include/flashvm/function.h#L79).
 
 ## Accepted profile
 
@@ -25,7 +25,7 @@ Implementation: [`fvm_builtin_escape`](../src/standard/url_encoding.cpp#L137) / 
 | No argument | undefined, without invoking coercion |
 | Explicit undefined | Empty string in loaded SWF5–6; `undefined` spelling in SWF7–8 and host contexts |
 | Extra arguments | Ignored |
-| Unsupported malformed escape / invalid decoded bytes | [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), no partial string |
+| Unsupported malformed escape / invalid decoded bytes | [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48), no partial string |
 
 Escape retains only ASCII letters/digits and emits uppercase `%HH` for every
 other byte. Source strings are counted UTF-8/WTF-8; NUL is encoded as `%00`.
@@ -54,12 +54,12 @@ Results belong to the context. In traced-string GC mode, retain them in reachabl
 VM storage across later collection; local C values alone are not persistent roots.
 No partially encoded/decoded output is published on failure. Completed coercion
 allocations/side effects may remain; buffer adoption failures release their
-unpublished payload. Allocation errors return [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44); invalid lifecycle
-returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); normal script exceptions propagate unchanged.
+unpublished payload. Allocation errors return [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46); invalid lifecycle
+returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47); normal script exceptions propagate unchanged.
 
 Coercion and conversion share one work budget. Escape charges each input byte;
 decode charges each input byte plus each decoded scalar/lone surrogate validation.
-[`FVM_ERROR`](../include/flashvm/flashvm.h#L43) reports exhaustion or an observed cooperative worker stop. The work
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L45) reports exhaustion or an observed cooperative worker stop. The work
 bound is not a time or byte-allocation deadline. Zero disables the numeric limit,
 not periodic cancellation polling. Use the VM owning thread outside GC/teardown.
 
@@ -88,13 +88,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_builtin_escape` | function | [src/standard/url_encoding.cpp:137](../src/standard/url_encoding.cpp#L137) |
-| `fvm_builtin_unescape` | function | [src/standard/url_encoding.cpp:143](../src/standard/url_encoding.cpp#L143) |
-| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_builtin_escape` | function | [src/standard/url_encoding.cpp:178](../src/standard/url_encoding.cpp#L178) |
+| `fvm_builtin_unescape` | function | [src/standard/url_encoding.cpp:186](../src/standard/url_encoding.cpp#L186) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../include/flashvm/value.h#L204) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

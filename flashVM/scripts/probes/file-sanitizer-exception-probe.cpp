@@ -3,29 +3,43 @@
 struct Failure
 {
     int result;
+
+
     Failure(int r) : result(r)
     {
     }
 };
+
+
 struct Local
 {
     int a[4];
+
+
     ~Local()
     {
         a[0] = 0;
     }
 };
+
+
 void reject(bool ok)
 {
     if (!ok)
+    {
         throw Failure(-4);
+    }
 }
+
+
 void inner()
 {
     Local local;
     local.a[0] = 1;
     reject(false);
 }
+
+
 void middle()
 {
     try
@@ -37,6 +51,8 @@ void middle()
         throw;
     }
 }
+
+
 int main()
 {
     try
@@ -49,6 +65,7 @@ int main()
     }
     return 2;
 }
+
 
 extern "C" const char *__asan_default_options()
 {

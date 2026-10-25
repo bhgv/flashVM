@@ -5,13 +5,17 @@
 /* C89: configure multitap and swipe mappings. Host must recognize gestures. */
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/input.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -30,8 +34,10 @@ int main(void)
     if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &r) != FVM_OK ||
         /* Создаём отдельный контекст интерпретатора в среде выполнения. */
         fvm_context_create(r, &c) != FVM_OK)
+    { /* Begin scope: fvm_context_create(r, &c) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End scope: fvm_context_create(r, &c) != FVM_OK). */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Определяем или используем sizeof; назначение и владение пояснены у функции. */
@@ -46,8 +52,10 @@ int main(void)
     rule.button = FVM_MOUSE_RIGHT;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_input_set_rule(c, &rule) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_input_set_rule(c, &rule) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 2;
+    } /* End conditional branch: if (fvm_input_set_rule(c, &rule) != FVM_OK). */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Сохраняем вычисленное значение: rule.gesture. */
@@ -60,8 +68,10 @@ int main(void)
     rule.button = FVM_MOUSE_WHEEL_UP;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_input_set_rule(c, &rule) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_input_set_rule(c, &rule) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 3;
+    } /* End conditional branch: if (fvm_input_set_rule(c, &rule) != FVM_OK). */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Сохраняем вычисленное значение: e.gesture. */
@@ -76,8 +86,10 @@ int main(void)
     e.y = 20;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_input_map(c, &e, &b) != FVM_OK || b != FVM_MOUSE_WHEEL_UP)
+    { /* Begin conditional branch: if (fvm_input_map(c, &e, &b) != FVM_OK || b != FVM_MOUSE_WHEEL_UP). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 4;
+    } /* End conditional branch: if (fvm_input_map(c, &e, &b) != FVM_OK || b != FVM_MOUSE_WHEEL_UP). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -91,4 +103,4 @@ int main(void)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

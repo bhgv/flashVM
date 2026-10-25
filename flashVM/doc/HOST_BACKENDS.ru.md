@@ -12,21 +12,21 @@ Clutter, Cogl, GLES и оконной системы. VM рисует в при�
 и доступный объём до вызова адаптера. Хозяин буфера передаёт реальное число
 доступных байтов от pixels: произвольный указатель функция проверить не может.
 Межстрочный padding допустим; padding после последней строки необязателен.
-[`FVM_HOST_RGBA_BYTES`](../include/flashvm/host.h#L8) равен четырём. Порядок каналов RGBA, alpha прямая,
+[`FVM_HOST_RGBA_BYTES`](../include/flashvm/host.h#L9) равен четырём. Порядок каналов RGBA, alpha прямая,
 начало сверху слева, stride в байтах. BGRA, premultiplied alpha и переворот
 строк при необходимости преобразует адаптер.
 
-[`FVM_HostPresentCallback`](../include/flashvm/host.h#L11) получает копию описателя и заимствованные пиксели
+[`FVM_HostPresentCallback`](../include/flashvm/host.h#L14) получает копию описателя и заимствованные пиксели
 синхронно в вызывающем потоке. До возврата нужно загрузить/скопировать кадр;
 для асинхронной отправки нужна собственная копия. Вызывающий сохраняет буфер
 и описатель живыми и неизменными до возврата. Владение не передаётся, API
 ничего не удерживает; userdata, включая NULL, передаётся без изменений.
 Текстура, графический контекст и окно принадлежат хосту.
 
-Ошибка проверки: [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), callback не вызывается. При успехе
+Ошибка проверки: [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), callback не вызывается. При успехе
 проверки callback вызывается ровно один раз, его статус возвращается как есть,
-включая [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Исключение C++ std::bad_alloc превращается в
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), остальные — в [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Аппаратные ошибки, longjmp и
+включая [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). Исключение C++ std::bad_alloc превращается в
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), остальные — в [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Аппаратные ошибки, longjmp и
 висячие указатели контрактом не покрываются. Контекст VM и GC не используются;
 ограничения потока/графического контекста адаптера сохраняются. SDL дополнительно
 проверяет совпадение размеров с текстурой и допустимый signed pitch.
@@ -34,7 +34,7 @@ Clutter, Cogl, GLES и оконной системы. VM рисует в при�
 ## Координаты событий
 
 `fvm_host_pointer_to_world(world_to_host, host_x, host_y, world_x, world_y)`
-обращает [`FVM_Affine`](../include/flashvm/path.h#L33), переводя событие в мировые пиксели. Передавайте матрицу
+обращает [`FVM_Affine`](../include/flashvm/path.h#L39), переводя событие в мировые пиксели. Передавайте матрицу
 из мира SWF в пространство реального события, учитывая начало сцены,
 преобразование actor, letterbox и масштаб устройства ровно один раз.
 При масштабе 2 и переносе (100,50) событие (120,90) даёт мир (10,20).
@@ -43,15 +43,15 @@ Clutter, Cogl, GLES и оконной системы. VM рисует в при�
 
 Аргументы и коэффициенты должны быть конечными, матрица невырожденной.
 NULL, совпадающие выходные указатели, непредставимая арифметика и неконечный
-результат дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), сохраняя оба выхода. Нормализация
+результат дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), сохраняя оба выхода. Нормализация
 коэффициентов позволяет обрабатывать большие равномерные масштабы;
 численно схлопнувшийся определитель отклоняется. Это host double, а не
 эмуляция SWF binary32. Нет выделений, VM, callback, dispatch или GC;
 независимые данные можно обрабатывать независимо в разных потоках.
 Совместно изменять одни аргументы одновременно нельзя.
 
-Результат передавайте в [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L29) на потоке владельца VM,
-полные снимки клавиатуры — в [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90). Выбор первого
+Результат передавайте в [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L37) на потоке владельца VM,
+полные снимки клавиатуры — в [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108). Выбор первого
 контакта, отмена, подавление синтетических событий, потеря фокуса и порядок
 остаются обязанностью хоста. Из рабочего потока ввода копируйте события,
 затем доставляйте их владельцем VM. SDL уже переводит события в логическую
@@ -89,7 +89,7 @@ flashvm_tests_host проверяет padding/последнюю строку, �
 [Хост C89 без SDL](../examples/frontends/headless/README.md) реально рисует
 квадрат, проверяет/передаёт RGBA-кадр, обращает масштаб и перенос события,
 доставляет down/up в context. Смешанная SDL-очередь теперь тоже применяет
-[fvm_host_pointer_to_world](../include/flashvm/host.h#L26) к каждому сохранённому событию; после уже выполненной
+[fvm_host_pointer_to_world](../include/flashvm/host.h#L33) к каждому сохранённому событию; после уже выполненной
 SDL-нормализации остаётся только восстановить начало сцены. Порядок, ошибки
 и сброс фокуса сохраняются. При отсутствии графики пример явно пропускается.
 
@@ -102,16 +102,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../include/flashvm/host.h#L26) |
-| `fvm_host_present` | function | [include/flashvm/host.h:18](../include/flashvm/host.h#L18) |
-| `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:8](../include/flashvm/host.h#L8) |
-| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:33](../include/flashvm/host.h#L33) |
+| `fvm_host_present` | function | [include/flashvm/host.h:23](../include/flashvm/host.h#L23) |
+| `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:9](../include/flashvm/host.h#L9) |
+| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:14](../include/flashvm/host.h#L14) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

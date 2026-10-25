@@ -1,7 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm/avm1.h"
 #include "flashvm/extensions.h"
 #include "../src/details/vector.hpp"
-#include <cassert>
 #include <cstring>
 #include <cmath>
 #include <limits>
@@ -9,6 +10,8 @@
 namespace
 {
 typedef fvm_detail::vector<unsigned char> Bytes;
+
+
 void text(Bytes &bytes, const char *s)
 {
     do
@@ -16,14 +19,20 @@ void text(Bytes &bytes, const char *s)
         bytes.push_back((unsigned char)*s);
     } while (*s++);
 }
+
+
 void action(Bytes &bytes, unsigned char opcode, const Bytes &payload)
 {
     bytes.push_back(opcode);
     bytes.push_back((unsigned char)payload.size());
     bytes.push_back((unsigned char)(payload.size() >> 8));
     for (size_t i = 0; i < payload.size(); ++i)
+    {
         bytes.push_back(payload[i]);
+    }
 }
+
+
 void push_text(Bytes &bytes, const char *s)
 {
     Bytes payload;
@@ -31,25 +40,47 @@ void push_text(Bytes &bytes, const char *s)
     text(payload, s);
     action(bytes, 0x96, payload);
 }
+
+
 void push_integer(Bytes &bytes, unsigned int n)
 {
     Bytes payload;
     payload.push_back(7);
     for (unsigned int i = 0; i < 4; ++i)
+    {
         payload.push_back((unsigned char)(n >> (i * 8)));
+    }
     action(bytes, 0x96, payload);
 }
 } // namespace
+
+
 int main()
 {
     FVM_Config config;
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
     FVM_Value out;
-    assert(fvm_config_init(&config) == FVM_OK);
-    assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
-    assert(fvm_context_create(runtime, &context) == FVM_OK);
-    assert(fvm_extensions_install(context) == FVM_OK);
+    if (!(fvm_config_init(&config) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_runtime_create(&config, &runtime) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(runtime, &context) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_extensions_install(context) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
     Bytes bytes, payload;
     payload.push_back(2);
@@ -77,13 +108,28 @@ int main()
     payload.push_back(4);
     payload.push_back(0xc0);
     for (unsigned int i = 0; i < 4; ++i)
+    {
         payload.push_back(0);
+    }
     action(bytes, 0x96, payload);
     bytes.push_back(0x1d);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
-    assert(fvm_get_global(context, "float", &out) == FVM_OK && out.number == 1.5);
-    assert(fvm_get_global(context, "double", &out) == FVM_OK && out.number == -2.5);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_get_global(context, "float", &out) == FVM_OK && out.number == 1.5))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_get_global(context, "double", &out) == FVM_OK && out.number == -2.5))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
 
     /* Exercise IEEE special values, word order and denormal reconstruction. */
     struct DoubleCase
@@ -92,6 +138,7 @@ int main()
         double expected;
         int nan;
     };
+
     const DoubleCase cases[] = {{0x7ff00000UL, 0, std::numeric_limits<double>::infinity(), 0},
                                 {0xfff00000UL, 0, -std::numeric_limits<double>::infinity(), 0},
                                 {0x7ff80000UL, 1, 0, 1},
@@ -104,20 +151,50 @@ int main()
         push_text(bytes, "edge");
         payload.push_back(6);
         for (unsigned int i = 0; i < 4; ++i)
+        {
             payload.push_back((unsigned char)(cases[c].high >> (i * 8)));
+        }
         for (unsigned int i = 0; i < 4; ++i)
+        {
             payload.push_back((unsigned char)(cases[c].low >> (i * 8)));
+        }
         action(bytes, 0x96, payload);
         bytes.push_back(0x1d);
         bytes.push_back(0);
-        assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
-        assert(fvm_get_global(context, "edge", &out) == FVM_OK);
+        if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_get_global(context, "edge", &out) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         if (cases[c].nan)
-            assert(out.number != out.number);
+        {
+            if (!(out.number != out.number))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+        }
         else
-            assert(out.number == cases[c].expected);
+        {
+            if (!(out.number == cases[c].expected))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+        }
         if (c == 4)
-            assert(1.0 / out.number == -std::numeric_limits<double>::infinity());
+        {
+            if (!(1.0 / out.number == -std::numeric_limits<double>::infinity()))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+        }
     }
     /* NaN is false for both Not and conditional branches. */
     bytes.clear();
@@ -126,12 +203,24 @@ int main()
     bytes.push_back(0x1c); /* Replace edge with NaN first. */
     FVM_Value nanValue;
     fvm_value_number(&nanValue, std::numeric_limits<double>::quiet_NaN());
-    assert(fvm_set_global(context, "edge", &nanValue) == FVM_OK);
+    if (!(fvm_set_global(context, "edge", &nanValue) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     bytes.push_back(0x12);
     bytes.push_back(0x1d);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
-    assert(fvm_get_global(context, "nanFalse", &out) == FVM_OK && out.boolean);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_get_global(context, "nanFalse", &out) == FVM_OK && out.boolean))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     bytes.clear();
     push_text(bytes, "edge");
     bytes.push_back(0x1c);
@@ -142,7 +231,12 @@ int main()
     bytes.push_back(0x17);
     bytes.push_back(0);
     /* Taking the branch would skip the underflowing Pop; NaN must not take it. */
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_ERROR);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_ERROR))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
 
     /* The function retains its defining pool after the original buffer dies. */
     bytes.clear();
@@ -165,23 +259,51 @@ int main()
     payload.push_back((unsigned char)body.size());
     payload.push_back(0);
     for (size_t i = 0; i < body.size(); ++i)
+    {
         payload.push_back(body[i]);
+    }
     action(bytes, 0x9b, payload);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     bytes.clear();
-    assert(fvm_avm1_call(context, "poolFunction", 0, 0, 0, &out) == FVM_OK);
-    assert(out.type == FVM_VALUE_STRING && std::strcmp(out.string, "captured") == 0);
+    if (!(fvm_avm1_call(context, "poolFunction", 0, 0, 0, &out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(out.type == FVM_VALUE_STRING && std::strcmp(out.string, "captured") == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
 
     /* A bytecode literal stored globally survives buffer reuse. */
     push_text(bytes, "text");
     push_text(bytes, "persistent");
     bytes.push_back(0x1d);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     std::memset(&bytes[0], 0xff, bytes.size());
-    assert(fvm_get_global(context, "text", &out) == FVM_OK);
-    assert(std::strcmp(out.string, "persistent") == 0);
+    if (!(fvm_get_global(context, "text", &out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(std::strcmp(out.string, "persistent") == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
 
     /* Store an object in register 1, clear operands, collect, and recover it. */
     bytes.clear();
@@ -205,12 +327,29 @@ int main()
     action(bytes, 0x96, payload);
     bytes.push_back(0x1d);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK);
-    assert(fvm_get_global(context, "registered", &out) == FVM_OK);
-    assert(out.type == FVM_VALUE_OBJECT);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_get_global(context, "registered", &out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(out.type == FVM_VALUE_OBJECT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_Value value;
     fvm_value_number(&value, 7);
-    assert(fvm_object_set(context, out.object, "alive", &value) == FVM_OK);
+    if (!(fvm_object_set(context, out.object, "alive", &value) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
 
     bytes.clear();
     payload.clear();
@@ -218,21 +357,33 @@ int main()
     payload.push_back(255);
     action(bytes, 0x96, payload);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     bytes.clear();
     payload.clear();
     payload.push_back(4);
     payload.push_back(4);
     action(bytes, 0x96, payload);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     bytes.clear();
     payload.clear();
     payload.push_back(6);
     payload.push_back(0);
     action(bytes, 0x96, payload);
     bytes.push_back(0);
-    assert(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_avm1_execute(context, &bytes[0], bytes.size()) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);
     return 0;

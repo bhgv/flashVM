@@ -4,6 +4,8 @@
 #include "../../standard/string_order.hpp"
 #include "../../standard/primitive_state.hpp"
 #include <cstring>
+
+
 /* Compute and return truth. */
 static bool truth(const FVM_Value &value)
 {
@@ -22,15 +24,20 @@ static bool truth(const FVM_Value &value)
     }
 }
 
+
 /* Compute and return own string. */
-static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
-                             size_t length = (size_t)-1)
+static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value, size_t length = (size_t)-1)
 {
     if (length == (size_t)-1)
+    {
         length = std::strlen(text);
+    }
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
+    {
         return FVM_OUT_OF_MEMORY;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memcpy(copy, text, length);
@@ -49,17 +56,21 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     return fvm_value_string_bytes(value, copy, length);
 }
 
+
 /* Compute and return date hint. */
 static bool date_hint(const FVM_Value &value)
 {
     return value.type == FVM_VALUE_OBJECT && value.object->resource_kind == FVM_RESOURCE_DATE;
 }
 
+
 /* Compute and return strict equal. */
 static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
 {
     if (a.type != b.type)
+    {
         return false;
+    }
     switch (a.type)
     {
     case FVM_VALUE_UNDEFINED:
@@ -80,19 +91,24 @@ static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
     return false;
 }
 
+
 /* [GC:] Retain both loose-equality values while recursive/scripted conversion replaces them. */
 struct EqualityRoots
 {
     FVM_Context *context;                 /* Context owning this temporary root frame. */
     FVM_GCRootFrame frame;                /* [GC:] Frame linked above the caller's operand roots. */
     fvm_detail::vector<FVM_Value> values; /* [GC:] Mutable operands including converted strings. */
+
   private:
+
     /* [GC:] Copying a linked frame would break the collector's LIFO chain. */
     EqualityRoots(const EqualityRoots &);
     /* [GC:] Root-frame assignment is unavailable. */
     EqualityRoots &operator=(const EqualityRoots &);
 
   public:
+
+
     /* [GC:] Publish initialized values only after the vector allocation succeeds. */
     EqualityRoots(FVM_Context *owner, const FVM_Value &left, const FVM_Value &right)
         : context(owner), values(FVM_EQUALITY_ROOT_COUNT)
@@ -105,6 +121,8 @@ struct EqualityRoots
         frame.receiver = 0;
         context->gc_frames = &frame;
     }
+
+
     /* [GC:] Restore the caller frame on every return and exception path. */
     ~EqualityRoots()
     {
@@ -112,27 +130,34 @@ struct EqualityRoots
     }
 };
 
+
 /* Compute and return equal. */
-static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bool &result,
-                        unsigned int depth = 0)
+static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bool &result, unsigned int depth = 0)
 {
     if (depth > FVM_EQUALITY_MAX_COERCION_DEPTH)
+    {
         return FVM_ERROR;
+    }
+
+
     EqualityRoots roots(c, input_a, input_b);
     FVM_Value &a = roots.values[FVM_EQUALITY_LEFT_ROOT], &b = roots.values[FVM_EQUALITY_RIGHT_ROOT];
     if (c->swf_loaded && c->swf_info.version <= FVM_SWF_VERSION_5)
     {
         FVM_Result status = fvm_avm1_primitive(c, &b, false, &b);
         if (status == FVM_OK)
+        {
             status = fvm_avm1_primitive(c, &a, false, &a);
+        }
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     if (a.type == b.type)
-    {
-        /* Loaded AVM1 targets the Flash Player 7/8 NaN rule; StrictEquals remains distinct. */
-        result = strict_equal(a, b) || (c->swf_loaded && a.type == FVM_VALUE_NUMBER &&
-                                        a.number != a.number && b.number != b.number);
+    { /* Loaded AVM1 targets the Flash Player 7/8 NaN rule; StrictEquals remains distinct. */
+        result = strict_equal(a, b) ||
+                 (c->swf_loaded && a.type == FVM_VALUE_NUMBER && a.number != a.number && b.number != b.number);
         return FVM_OK;
     }
     if ((a.type == FVM_VALUE_NULL && b.type == FVM_VALUE_UNDEFINED) ||
@@ -157,14 +182,15 @@ static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bo
         double x = 0, y = 0;
         FVM_Result r = fvm_avm1_number(c, &a, &x);
         if (r == FVM_OK)
+        {
             r = fvm_avm1_number(c, &b, &y);
+        }
         result = x == y;
         return r;
     }
     if (a.type == FVM_VALUE_OBJECT && b.type != FVM_VALUE_OBJECT)
     {
-        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &a, false, &a)
-                                     : fvm_to_primitive(c, &a, date_hint(a), &a);
+        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &a, false, &a) : fvm_to_primitive(c, &a, date_hint(a), &a);
         if (r == FVM_OK && a.type == FVM_VALUE_OBJECT)
         {
             result = false;
@@ -174,8 +200,7 @@ static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bo
     }
     if (b.type == FVM_VALUE_OBJECT && a.type != FVM_VALUE_OBJECT)
     {
-        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &b, false, &b)
-                                     : fvm_to_primitive(c, &b, date_hint(b), &b);
+        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &b, false, &b) : fvm_to_primitive(c, &b, date_hint(b), &b);
         if (r == FVM_OK && b.type == FVM_VALUE_OBJECT)
         {
             result = false;
@@ -187,27 +212,35 @@ static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bo
     return FVM_OK;
 }
 
+
 /* Execute dynamic addition/comparison without instruction or operand-stack dependencies. */
-extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare operation,
-                                       const FVM_Value *left_value, const FVM_Value *right_value,
+extern "C" FVM_Result fvm_exec_compare(FVM_Context *c,
+                                       FVM_ExecutionCompare operation,
+                                       const FVM_Value *left_value,
+                                       const FVM_Value *right_value,
                                        FVM_Value *out)
 {
     if (!c || !out || operation < FVM_EXEC_ADD_DYNAMIC || operation > FVM_EXEC_GREATER ||
         fvm_validate_value(c, left_value) != FVM_OK || fvm_validate_value(c, right_value) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         if (operation == FVM_EXEC_STRICT_EQUAL)
         {
             bool matches = strict_equal(*left_value, *right_value);
             /* Loaded AVM1 strict equality uses the player's same-type NaN pair rule. */
-            if (c->swf_loaded && left_value->type == FVM_VALUE_NUMBER &&
-                right_value->type == FVM_VALUE_NUMBER && left_value->number != left_value->number &&
-                right_value->number != right_value->number)
+            if (c->swf_loaded && left_value->type == FVM_VALUE_NUMBER && right_value->type == FVM_VALUE_NUMBER &&
+                left_value->number != left_value->number && right_value->number != right_value->number)
+            {
                 matches = true;
+            }
             fvm_value_boolean(out, matches);
             return FVM_OK;
         }
+
+
         /* [GC:] Retain transformed primitives and derived strings across subsequent callbacks. */
         FVM_ExecutionRoots roots(c, FVM_COMPARE_ROOT_COUNT);
         fvm_detail::vector<FVM_Value> &converted = roots.values;
@@ -215,8 +248,7 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
         converted[FVM_COMPARE_RIGHT_ROOT] = *right_value;
         fvm_value_undefined(&converted[FVM_COMPARE_LEFT_TEXT_ROOT]);
         fvm_value_undefined(&converted[FVM_COMPARE_RIGHT_TEXT_ROOT]);
-        FVM_Value &left = converted[FVM_COMPARE_LEFT_ROOT],
-                  &right = converted[FVM_COMPARE_RIGHT_ROOT];
+        FVM_Value &left = converted[FVM_COMPARE_LEFT_ROOT], &right = converted[FVM_COMPARE_RIGHT_ROOT];
         FVM_Value output;
         FVM_Result r = FVM_OK;
         if (operation != FVM_EXEC_STRICT_EQUAL)
@@ -226,20 +258,24 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                                : operation == FVM_EXEC_GREATER   ? "__gt"
                                                                  : "__eq";
             FVM_Value operands[FVM_COMPARE_META_ARGUMENT_COUNT] = {left, right};
-            r = fvm_value_meta_invoke(c, operands, hook, FVM_COMPARE_META_ARGUMENT_COUNT, operands,
-                                      &output);
+            r = fvm_value_meta_invoke(c, operands, hook, FVM_COMPARE_META_ARGUMENT_COUNT, operands, &output);
             if (r == FVM_NOT_FOUND)
-                r = fvm_value_meta_invoke(c, operands + 1, hook, FVM_COMPARE_META_ARGUMENT_COUNT,
-                                          operands, &output);
+            {
+                r = fvm_value_meta_invoke(c, operands + 1, hook, FVM_COMPARE_META_ARGUMENT_COUNT, operands, &output);
+            }
             if (r == FVM_OK)
             {
                 if (operation != FVM_EXEC_ADD_DYNAMIC)
+                {
                     fvm_value_boolean(&output, truth(output));
+                }
                 *out = output;
                 return FVM_OK;
             }
             if (r != FVM_NOT_FOUND)
+            {
                 return r;
+            }
             r = FVM_OK;
         }
         if (operation == FVM_EXEC_EQUAL)
@@ -254,7 +290,9 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
             {
                 r = fvm_avm1_primitive(c, &right, true, &right);
                 if (r == FVM_OK)
+                {
                     r = fvm_avm1_primitive(c, &left, true, &left);
+                }
             }
             else
             {
@@ -268,7 +306,9 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                     return FVM_OK;
                 }
                 if (r == FVM_OK)
+                {
                     r = fvm_avm1_primitive(c, &second, false, &second);
+                }
                 if (r == FVM_OK && c->swf_loaded && second.type == FVM_VALUE_OBJECT &&
                     second.object->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 {
@@ -279,16 +319,19 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
             if (r == FVM_OK && operation == FVM_EXEC_ADD_DYNAMIC &&
                 (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
             {
-                FVM_Value &x = converted[FVM_COMPARE_LEFT_TEXT_ROOT],
-                          &y = converted[FVM_COMPARE_RIGHT_TEXT_ROOT];
+                FVM_Value &x = converted[FVM_COMPARE_LEFT_TEXT_ROOT], &y = converted[FVM_COMPARE_RIGHT_TEXT_ROOT];
                 r = fvm_avm1_string(c, left, &x);
                 if (r == FVM_OK)
+                {
                     r = fvm_avm1_string(c, right, &y);
+                }
                 if (r == FVM_OK)
                 {
                     size_t first = fvm_string_size(x), last = fvm_string_size(y);
                     if (first > (size_t)-1 - last - 1)
+                    {
                         return FVM_OUT_OF_MEMORY;
+                    }
                     fvm_detail::vector<char> text(first + last + 1);
                     std::memcpy(text.begin(), x.string, first);
                     std::memcpy(text.begin() + first, y.string, last);
@@ -308,17 +351,27 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                 double x = 0, y = 0;
                 r = fvm_avm1_number(c, &left, &x);
                 if (r == FVM_OK)
+                {
                     r = fvm_avm1_number(c, &right, &y);
+                }
                 if (operation == FVM_EXEC_ADD_DYNAMIC)
+                {
                     fvm_value_number(&output, x + y);
+                }
                 else if (x != x || y != y)
+                {
                     fvm_value_undefined(&output);
+                }
                 else
+                {
                     fvm_value_boolean(&output, operation == FVM_EXEC_GREATER ? x > y : x < y);
+                }
             }
         }
         if (r != FVM_OK)
+        {
             return r;
+        }
         *out = output;
         return FVM_OK;
     }

@@ -5,9 +5,12 @@
 #include "machine_constants.h"
 #include "macos_arm64_constants.h"
 
+
 /* Preserve Darwin's frame chain; reuse only the shared two-integer-argument lowering. */
-void fvm_jit_machine_macos_arm64(fvm_detail::vector<unsigned char> &bytes, FVM_JitMachineOp op,
-                                const unsigned char *address, unsigned int operand)
+void fvm_jit_machine_macos_arm64(fvm_detail::vector<unsigned char> &bytes,
+                                 FVM_JitMachineOp op,
+                                 const unsigned char *address,
+                                 unsigned int operand)
 {
     if (op == FVM_JIT_MACHINE_ENTER)
     {
@@ -24,5 +27,7 @@ void fvm_jit_machine_macos_arm64(fvm_detail::vector<unsigned char> &bytes, FVM_J
         fvm_jit_word(bytes, FVM_JIT_ARM64_RET);
     }
     else
+    {
         fvm_jit_machine_arm64(bytes, op, address, operand);
+    }
 }

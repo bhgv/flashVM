@@ -7,7 +7,7 @@ Execution runs all selected DoAction blocks in order with the clip as receiver,
 without moving the playhead, changing play state, applying scene controls,
 running onEnterFrame or advancing children. A non-clip receiver uses `_root`.
 Without an available MovieClip root execution remains unsupported. Paths to
-another clip (colon/slash syntax) return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) until target resolution
+another clip (colon/slash syntax) return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) until target resolution
 is implemented; old-version case-insensitive labels remain unverified.
 
 [GC:] A scoped snapshot roots every selected action string and receiver across
@@ -54,5 +54,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

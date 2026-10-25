@@ -1,6 +1,6 @@
 # Resolved calls / Вызовы найденных значений
 
-v0.246 moves named call/constructor dispatch into [`fvm_exec_resolved_call`](../include/flashvm/execution.h#L494) in a
+v0.246 moves named call/constructor dispatch into [`fvm_exec_resolved_call`](../include/flashvm/execution.h#L656) in a
 separate handler file. Its C89 interface receives a counted name, resolved value,
 found/missing flag, explicit receiver and ordered argument values. Scope lookup,
 name/count operand decoding and stack movement remain in the interpreter adapter.
@@ -43,5 +43,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_resolved_call` | function | [include/flashvm/execution.h:494](../include/flashvm/execution.h#L494) |
+| `fvm_exec_resolved_call` | function | [include/flashvm/execution.h:656](../include/flashvm/execution.h#L656) |
 <!-- source-links:end -->

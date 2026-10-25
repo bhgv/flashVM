@@ -1,6 +1,6 @@
 # Selecting removed targets / Выбор удалённой цели — v0.316
 
-Loaded [fvm_exec_select_target](../include/flashvm/execution.h#L198) now checks effective native detachment before
+Loaded [fvm_exec_select_target](../include/flashvm/execution.h#L264) now checks effective native detachment before
 publishing a selected clip. An empty path or pre-SWF7 undefined reset cannot
 reselect a detached base clip. A path resolving through an ordinary alias to a
 still-parented descendant of a detached clip also becomes an invalid/null target.
@@ -50,5 +50,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_select_target` | function | [include/flashvm/execution.h:198](../include/flashvm/execution.h#L198) |
+| `fvm_exec_select_target` | function | [include/flashvm/execution.h:264](../include/flashvm/execution.h#L264) |
 <!-- source-links:end -->

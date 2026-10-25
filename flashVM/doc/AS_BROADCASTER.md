@@ -9,13 +9,13 @@ their own documented contracts. [Русский](AS_BROADCASTER.ru.md).
 ## Installation and ownership
 
 Include `flashvm/broadcaster.h`. On the VM owner thread, after
-[`fvm_standard_install`](../include/flashvm/standard.h#L20), call `fvm_standard_broadcaster_install(context)` to publish
+[`fvm_standard_install`](../include/flashvm/standard.h#L22), call `fvm_standard_broadcaster_install(context)` to publish
 the ordinary namespace object `AsBroadcaster`, with native `initialize(object)`.
 The namespace is opt-in in the embedding ABI. Since v0.616 the shipped player
 explicitly installs it for SWF6–8 before scene execution; standard installation
-alone does not enable it. No constructor is supplied. Installation returns [`FVM_OK`](../include/flashvm/flashvm.h#L42) for an
+alone does not enable it. No constructor is supplied. Installation returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) for an
 intact prior installation; conflicting global properties, methods, accessors or
-function registries return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) without replacement.
+function registries return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) without replacement.
 
 `fvm_broadcaster_initialize(context, object)` initializes a non-null, same-context
 ordinary application object directly; namespace installation is unnecessary for
@@ -23,20 +23,20 @@ this C entry. It adds three non-enumerable, non-deletable native methods and the
 read-only, non-enumerable, non-deletable `_listeners` accessor. The accessor retains
 a live native Array. Reinitializing an intact object replaces the Array with a
 new empty one and preserves unrelated own properties, prototype and resource
-state. An existing conflicting own reserved slot causes [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+state. An existing conflicting own reserved slot causes [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 Inherited slots can be shadowed. Prefer ordinary user objects.
 
 Both APIs require valid installed Object/Array bindings. Their validation can
 execute user getters on those globals; such errors propagate, and getter side
 effects remain committed. The receiver is rooted before validation. Subsequent
 preparation allocates without callbacks, then publishes by non-allocating swaps.
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) during preparation preserves published receiver/global slots;
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) during preparation preserves published receiver/global slots;
 temporary unreachable staging objects are reclaimed by later collection.
 
-Both APIs reject null/unusable lifecycle state with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), and
-loaded SWF versions below 6 with [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), even when installation
-preceded loading. Allocation errors propagate as [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44); other native
-exceptions are contained as [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Call outside collection, release and
+Both APIs reject null/unusable lifecycle state with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), and
+loaded SWF versions below 6 with [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48), even when installation
+preceded loading. Allocation errors propagate as [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46); other native
+exceptions are contained as [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Call outside collection, release and
 teardown. No cross-thread access, automatic event pumping or ownership transfer
 is provided. Keep a native object pinned or otherwise reachable while constructing
 or retaining it. Initialization does not pin its receiver permanently.
@@ -62,8 +62,8 @@ does not rewrite an active snapshot. Recursive calls share execution-work budget
 The native traversal charges list scanning and recipient dispatch to that budget.
 
 [`FVM_BROADCASTER_MAX_LISTENERS`](../include/flashvm/broadcaster.h#L6) is 4096. A larger/invalid native list length or
-an insertion at the bound returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43); malformed non-Array storage returns
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). Registration and removal stage changed index maps before
+an insertion at the bound returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45); malformed non-Array storage returns
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Registration and removal stage changed index maps before
 publication. Dispatch allocation failure before the first handler runs delivers
 nothing; later handler allocation failure preserves already completed calls.
 
@@ -101,7 +101,7 @@ physical devices, other operating systems or complete Flash compatibility.
 ## Transport and player v0.616
 
 The C89 tutorial now clones a broadcaster between two owner-thread contexts using
-[`fvm_channel_send_value`](../include/flashvm/transfer.h#L22) and [`fvm_channel_receive_value`](../include/flashvm/transfer.h#L25), with explicit native callback
+[`fvm_channel_send_value`](../include/flashvm/transfer.h#L24) and [`fvm_channel_receive_value`](../include/flashvm/transfer.h#L29), with explicit native callback
 registration in each heap. Payload 42 reaches the original, 84 reaches the copied
 listener after destination collection. See the tutorial's ownership/API table.
 
@@ -136,7 +136,7 @@ consume work. Zero disables the numeric limit; worker cancellation is still poll
 These are abstract work units, not a wall-clock deadline or byte allocation limit.
 
 Add/remove prepare a new index map before publication. Exhaustion or cancellation
-returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) with the live Array identity, length, order and entries intact.
+returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) with the live Array identity, length, order and entries intact.
 No partial registration is published, including failure midway through copying.
 Nested calls cannot obtain a fresh budget. A later independent host call starts
 its own budget. Dispatch snapshot semantics and existing handler side effects
@@ -156,16 +156,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../include/flashvm/broadcaster.h#L19) |
+| `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:24](../include/flashvm/broadcaster.h#L24) |
 | `FVM_BROADCASTER_MAX_LISTENERS` | macro / define | [include/flashvm/broadcaster.h:6](../include/flashvm/broadcaster.h#L6) |
-| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
-| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../include/flashvm/broadcaster.h#L13) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:29](../include/flashvm/transfer.h#L29) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:24](../include/flashvm/transfer.h#L24) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:16](../include/flashvm/broadcaster.h#L16) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -2,13 +2,13 @@
 
 ## Corrected behavior
 
-The public [`fvm_path_hit_test`](../include/flashvm/path.h#L75) round-distance calculation squared tiny tangent lengths and radii. For a line from (0,0) to (10s,0), width 2s, s=2^-600, the point (5s,2s) incorrectly hit: both squared distance and squared radius rounded to zero. A separate executable linked against v0.1504 reproduces the assertion failure before the fix.
+The public [`fvm_path_hit_test`](../include/flashvm/path.h#L103) round-distance calculation squared tiny tangent lengths and radii. For a line from (0,0) to (10s,0), width 2s, s=2^-600, the point (5s,2s) incorrectly hit: both squared distance and squared radius rounded to zero. A separate executable linked against v0.1504 reproduces the assertion failure before the fix.
 
 Only public positive-radius round queries whose squared tangent norm or squared radius is below DBL_MIN now use a scaled path. The tangent is normalized by its maximum component, the signed along-distance is clamped to the finite segment, and the residual distance is compared using bounded residual/radius ratios. Component rejection precedes division. Constant stroked segments retain their existing disk interpretation. Ordinary normal-square queries, fills, adaptive curve subdivision and selected private cap/join queries retain their existing paths.
 
 ## Public API contract
 
-[`fvm_path_hit_test`](../include/flashvm/path.h#L75) borrows a native immutable path and writes an integer boolean to caller storage. The query coordinates must be finite within +/-2000000, width finite in 0..1000000, even_odd either 0 or 1, and path/output non-null. Invalid arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); accepted queries return [FVM_OK](../include/flashvm/flashvm.h#L42). Width zero selects implicitly closed fills with the documented boundary tolerance; positive widths select round strokes. Curves retain adaptive chord tolerance 0.0001 and maximum depth 20. No allocation, callbacks, VM execution, GC or ownership transfer occurs. Independent paths can be queried concurrently; mutation of a queried path requires caller synchronization. Other traversal errors propagate without publishing a successful hit.
+[`fvm_path_hit_test`](../include/flashvm/path.h#L103) borrows a native immutable path and writes an integer boolean to caller storage. The query coordinates must be finite within +/-2000000, width finite in 0..1000000, even_odd either 0 or 1, and path/output non-null. Invalid arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); accepted queries return [FVM_OK](../include/flashvm/flashvm.h#L44). Width zero selects implicitly closed fills with the documented boundary tolerance; positive widths select round strokes. Curves retain adaptive chord tolerance 0.0001 and maximum depth 20. No allocation, callbacks, VM execution, GC or ownership transfer occurs. Independent paths can be queried concurrently; mutation of a queried path requires caller synchronization. Other traversal errors propagate without publishing a successful hit.
 
 The existing [C89 cubic example](../examples/embedding/cubic_extrema/README.md) demonstrates native path ownership and bounds. It does not demonstrate this hit query; the dedicated fixtures below provide its numerical regression coverage.
 
@@ -56,7 +56,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_hit_test` | function | [include/flashvm/path.h:103](../include/flashvm/path.h#L103) |
 <!-- source-links:end -->

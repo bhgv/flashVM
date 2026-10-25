@@ -16,15 +16,21 @@
 
 namespace
 {
+
+
 /* Compute and return owned string. */
-FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
-                        size_t length = (size_t)-1)
+FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out, size_t length = (size_t)-1)
 {
     if (length == (size_t)-1)
+    {
         length = std::strlen(text);
+    }
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
+    {
         return FVM_OUT_OF_MEMORY;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memcpy(copy, text, length);
@@ -43,24 +49,34 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
     return fvm_value_string_bytes(out, copy, length);
 }
 
+
 /* Compute and return number string. */
 FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
 {
     if (c->swf_loaded)
+    {
         return fvm_avm1_number_text(c, number, out);
+    }
     if (number != number)
+    {
         return fvm_value_string(out, "NaN");
+    }
     if (number == 0)
+    {
         return fvm_value_string(out, "0");
-    if (number == std::numeric_limits<double>::infinity() ||
-        number == -std::numeric_limits<double>::infinity())
+    }
+    if (number == std::numeric_limits<double>::infinity() || number == -std::numeric_limits<double>::infinity())
+    {
         return fvm_value_string(out, number < 0 ? "-Infinity" : "Infinity");
+    }
 
     /* Initialization / Инициализация локального состояния. */
     char candidate[128];
     const char *point = std::localeconv()->decimal_point;
     if (!point || std::strlen(point) > 16)
+    {
         return FVM_UNSUPPORTED;
+    }
     /* Probe increasing significant precision until libc parses the same double.
      * This is a bounded decimal conversion, not a complete Flash dtoa oracle.
      * Neither conversion changes the process locale. Hosts must not race
@@ -78,13 +94,17 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         }
     }
     if (!roundtrip)
+    {
         return FVM_UNSUPPORTED;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     const char *p = candidate;
     bool negative = *p == '-';
     if (negative)
+    {
         ++p;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     char digits[32];
@@ -96,13 +116,19 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         if (*p >= '0' && *p <= '9')
         {
             if (count >= sizeof(digits) - 1)
+            {
                 return FVM_ERROR;
+            }
             digits[count++] = *p;
             if (!fraction)
+            {
                 ++position;
+            }
         }
         else
+        {
             fraction = true; /* Single- or multibyte locale decimal separator. */
+        }
         ++p;
     }
     if (*p)
@@ -110,23 +136,33 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         ++p;
         bool minus = *p == '-';
         if (*p == '+' || *p == '-')
+        {
             ++p;
+        }
         int exponent = 0;
         while (*p >= '0' && *p <= '9')
+        {
             exponent = exponent * 10 + (*p++ - '0');
+        }
         if (*p || exponent > 400)
+        {
             return FVM_ERROR;
+        }
         position += minus ? -exponent : exponent;
     }
     if (!count)
+    {
         return FVM_ERROR;
+    }
     while (count > 1 && digits[0] == '0')
     {
         std::memmove(digits, digits + 1, --count);
         --position;
     }
     while (count > 1 && digits[count - 1] == '0')
+    {
         --count;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     /* AS decimal notation uses fixed form from 1e-6 through values below 1e21.
@@ -134,16 +170,22 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
     char text[128];
     size_t used = 0;
     if (negative)
+    {
         text[used++] = '-';
+    }
     if (position > 0 && position <= 21)
     {
         for (int i = 0; i < position; ++i)
+        {
             text[used++] = (size_t)i < count ? digits[i] : '0';
+        }
         if ((size_t)position < count)
         {
             text[used++] = '.';
             for (size_t i = (size_t)position; i < count; ++i)
+            {
                 text[used++] = digits[i];
+            }
         }
     }
     else if (position <= 0 && position > -6)
@@ -151,9 +193,13 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         text[used++] = '0';
         text[used++] = '.';
         for (int i = 0; i < -position; ++i)
+        {
             text[used++] = '0';
+        }
         for (size_t i = 0; i < count; ++i)
+        {
             text[used++] = digits[i];
+        }
     }
     else
     {
@@ -162,19 +208,24 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         {
             text[used++] = '.';
             for (size_t i = 1; i < count; ++i)
+            {
                 text[used++] = digits[i];
+            }
         }
         text[used++] = 'e';
         int exponent = position - 1;
         text[used++] = exponent < 0 ? '-' : '+';
         if (exponent < 0)
+        {
             exponent = -exponent;
+        }
         std::sprintf(text + used, "%d", exponent);
         return owned_string(c, text, out);
     }
     text[used] = 0;
     return owned_string(c, text, out);
 }
+
 
 /* Compute and return primitive string. */
 FVM_Result primitive_string(FVM_Context *c, const FVM_Value &value, FVM_Value *out)
@@ -196,12 +247,12 @@ FVM_Result primitive_string(FVM_Context *c, const FVM_Value &value, FVM_Value *o
     }
 }
 
+
 /* Define ConversionScope struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
 struct ConversionScope
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+{ /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Context *context;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::vector<FVM_Value> values;
@@ -212,6 +263,7 @@ struct ConversionScope
     ConversionScope(FVM_Context *c, const FVM_Value &value) : context(c)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
 
         /* Computation / Вычисление и обновление состояния. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -247,15 +299,16 @@ struct ConversionScope
 };
 } // namespace
 
+
 /* Compute and return value to string. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result fvm_value_to_string(FVM_Context *c, const FVM_Value *input, FVM_Value *out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     /* Permit in-place conversion without erasing the input before validation. */
@@ -265,26 +318,31 @@ extern "C" FVM_Result fvm_value_to_string(FVM_Context *c, const FVM_Value *input
     fvm_value_undefined(&value);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (input)
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         value = *input;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(out);
     /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
     if (!c || !input || c->destroying || c->gc_releasing || fvm_validate_value(c, &value) != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (c->string_depth >= 64)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_UNSUPPORTED;
+    }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (value.type != FVM_VALUE_OBJECT)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return primitive_string(c, value, out);
+        }
+
+
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ConversionScope scope(c, value);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -298,8 +356,7 @@ extern "C" FVM_Result fvm_value_to_string(FVM_Context *c, const FVM_Value *input
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }

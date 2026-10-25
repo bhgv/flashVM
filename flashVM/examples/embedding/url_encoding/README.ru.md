@@ -19,7 +19,7 @@ encoded: %E4%B8%AD%E6%96%87%20%2B%20%40%00Z
 roundtrip units: 8 (including NUL)
 ```
 
-[main.c](main.c) объясняет каждую непустую строку. [`fvm_call`](../../../include/flashvm/value.h#L138) работает синхронно,
+[main.c](main.c) объясняет каждую непустую строку. [`fvm_call`](../../../include/flashvm/value.h#L204) работает синхронно,
 может выделять память или вызывать пользовательский ToString, но не открывает
 сеть. Строки принадлежат контексту; копия UTF-16 — вызывающему коду. Между
 операциями примера нет сборки; при последующем traced-string GC длительно
@@ -41,5 +41,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../../../include/flashvm/value.h#L138) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../../../include/flashvm/value.h#L204) |
 <!-- source-links:end -->

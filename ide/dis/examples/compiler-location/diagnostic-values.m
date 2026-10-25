@@ -1,5 +1,4 @@
-# Checked-in developer fixture; the optional integration test regenerates these
-# constants from the actual fir1_source JSON diagnostic and exact source snapshot.
-Source: con "/*中😀*/ trace(missing);\n";
-ByteFirst: con 18;
-ByteLast: con 25;
+# Developer fixture: the integration test regenerates values from real diagnostics.
+Source: con "/*中😀*/ trace(missing);\n"; # Exact UTF-8 source snapshot; the identifier is intentionally unresolved.
+ByteFirst: con 18;                        # Inclusive byte offset of missing in that original source.
+ByteLast: con 25;                         # Exclusive byte offset; convert the span before indexing Limbo characters.

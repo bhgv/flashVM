@@ -9,7 +9,6 @@
 #define FVM_VARIABLE_SET_PREFIX_ROOT 5U /* [GC:] Qualified owner-path slice. */
 #define FVM_VARIABLE_SET_MEMBER_ROOT 6U /* [GC:] Counted final property name. */
 #define FVM_VARIABLE_SET_OWNER_ROOT 7U  /* [GC:] Resolved destination after path getters. */
-#define FVM_VARIABLE_SET_TEXT_ROOT                                                                 \
-    8U /* [GC:] Converted counted name, separate from caller input. */
-#define FVM_VARIABLE_SET_ROOT_COUNT 9U /* [GC:] Number of retained inputs and intermediates. */
+#define FVM_VARIABLE_SET_TEXT_ROOT 8U   /* [GC:] Converted counted name, separate from caller input. */
+#define FVM_VARIABLE_SET_ROOT_COUNT 9U  /* [GC:] Number of retained inputs and intermediates. */
 #endif

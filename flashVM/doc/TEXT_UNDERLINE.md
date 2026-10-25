@@ -1,12 +1,12 @@
 # Font-defined underline geometry
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) copies the scalable font's underline center and full
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L90) copies the scalable font's underline center and full
 thickness in unhinted pixels, with positive y downward relative to the baseline.
 FreeType normalizes source-format metrics; [its tutorial](https://freetype.org/freetype2/docs/tutorial/step2.html)
 explains underline centers and font-unit scaling. No guessed thickness is used.
 
-Arguments are a borrowed font and required [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L34) output.
-[FVM_OK](../include/flashvm/flashvm.h#L42) publishes copied scalars that outlive the font. Output is cleared before
+Arguments are a borrowed font and required [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L40) output.
+[FVM_OK](../include/flashvm/flashvm.h#L44) publishes copied scalars that outlive the font. Output is cleared before
 failure: missing output/font is INVALID_ARGUMENT with fonts enabled; absent or
 nonpositive scaled metrics are UNSUPPORTED. NO_FONTS rejects a missing output,
 otherwise clears it and returns UNSUPPORTED. This query allocates nothing and
@@ -22,7 +22,7 @@ evidence, not complete Flash text or platform/device acceptance.
 
 ## Owned per-line paths (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L180) borrows an immutable layout and line index,
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L213) borrows an immutable layout and line index,
 font-derived center/thickness and required output pointer. It returns one owned
 closed rectangle spanning line.x through line.x+advance at baseline+center.
 Whitespace and signed tracking are included. A zero-advance line returns an
@@ -45,7 +45,7 @@ field snapshots expose actual Boolean values. setTextFormat toggles current
 geometry and invalidates its cache; setNewTextFormat affects later text only.
 The current font must supply usable underline metrics before format admission.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L77) appends one bar per positive-advance line after glyph paths,
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L91) appends one bar per positive-advance line after glyph paths,
 using the same field gutter and wrapped/unwrapped alignment. Bars include spaces
 and signed letter spacing. textWidth/textHeight/getTextExtent advances and
 baseline spacing remain unchanged; glyph-only paths remain undecorated. The
@@ -61,7 +61,7 @@ v0.841: `textfield_underline_missing.cpp` edits the fixture post thickness to ze
 
 v0.842: `jit_textfield_underline.cpp` drives AVM1 SetMember/CallMethod through interpreter, attached native code and automatic JIT. It checks the exported five-command bar and unchanged metrics, native entry counts and GC scope balance. `text_underline_os_ports.cpp` shares one immutable layout across four actual OS workers after font destruction; 128 iterations per worker export independently parameterized owned bars.
 
-v0.843: the [C89 tutorial](../examples/embedding/text_layout/README.md) adds --underline, copied font metrics, independent bars and an actual RGBA pixel oracle at (1,40), alpha 255. Original glyph/bidi metadata and metrics stay identical; three bars add 15 commands. New demonstrated APIs include [`fvm_path_append`](../include/flashvm/path.h#L67) (copy temporary bars with an identity transform, release source after return) and [`fvm_path_count`](../include/flashvm/path.h#L56) (allocation-free command inspection). Paths outlive font/layout; no VM, window or device is required.
+v0.843: the [C89 tutorial](../examples/embedding/text_layout/README.md) adds --underline, copied font metrics, independent bars and an actual RGBA pixel oracle at (1,40), alpha 255. Original glyph/bidi metadata and metrics stay identical; three bars add 15 commands. New demonstrated APIs include [`fvm_path_append`](../include/flashvm/path.h#L91) (copy temporary bars with an identity transform, release source after return) and [`fvm_path_count`](../include/flashvm/path.h#L72) (allocation-free command inspection). Paths outlive font/layout; no VM, window or device is required.
 
 ## Overlapping ink and fill rules (v0.844)
 
@@ -101,11 +101,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
-| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:34](../include/flashvm/font.h#L34) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
-| `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../include/flashvm/standard_text.h#L77) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
+| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:40](../include/flashvm/font.h#L40) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_append` | function | [include/flashvm/path.h:91](../include/flashvm/path.h#L91) |
+| `fvm_path_count` | function | [include/flashvm/path.h:72](../include/flashvm/path.h#L72) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:213](../include/flashvm/text_layout.h#L213) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:91](../include/flashvm/standard_text.h#L91) |
 <!-- source-links:end -->

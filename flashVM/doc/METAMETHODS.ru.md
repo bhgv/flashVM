@@ -2,7 +2,7 @@
 
 Заголовок `flashvm/metamethod.h` добавляет регистрацию нативных обработчиков
 `__index`, `__newindex`, `__iterate` и `__gc` в обычной общей метатаблице.
-[`fvm_table_set_metatable`](../include/flashvm/table.h#L24) присоединяет метатаблицу; [`fvm_table_get_metatable`](../include/flashvm/table.h#L26)
+[`fvm_table_set_metatable`](../include/flashvm/table.h#L30) присоединяет метатаблицу; [`fvm_table_get_metatable`](../include/flashvm/table.h#L34)
 возвращает ссылку на ту же таблицу, без копирования.
 
 Все обработчики получают контекст, объект `self`, массив аргументов, результат
@@ -13,7 +13,7 @@
 Пока пользовательский итератор возвращает только значение, без отдельного ключа.
 
 `__gc` получает третьим аргументом ссылку на ещё существующий объект.
-Вызывается не более одного раза при [`fvm_meta_finalize`](../include/flashvm/metamethod.h#L60) или уничтожении
+Вызывается не более одного раза при [`fvm_meta_finalize`](../include/flashvm/metamethod.h#L82) или уничтожении
 контекста. **Это ещё не сборщик мусора:** недостижимые объекты автоматически
 не выявляются. Финализация примитивов и данных, доступных только из C,
 пока отсутствует. Нет ещё функций ActionScript как значений, `pairs()` в
@@ -34,7 +34,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:60](../include/flashvm/metamethod.h#L60) |
-| `fvm_table_get_metatable` | function | [include/flashvm/table.h:26](../include/flashvm/table.h#L26) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
+| `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:82](../include/flashvm/metamethod.h#L82) |
+| `fvm_table_get_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../include/flashvm/table.h#L30) |
 <!-- source-links:end -->

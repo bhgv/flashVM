@@ -11,15 +11,23 @@
 #include "flashvm/rfs.h"
 #include "flashvm/r9p.h"
 #include <string.h>
+
+
 /* Link framing, incremental input and directional metadata without a VM runtime. */
 int main()
 {
     FVM_SMeasureMedia measured;
     if (fvm_smeasure_media_init(&measured, 0, 1, 100) != FVM_S_INVALID ||
         fvm_smeasure_media_accept(0, 0, 0, 0, 0) != FVM_S_INVALID ||
-        fvm_smeasure_media_finish(0, 0, 0, 0, 0) != FVM_S_INVALID) return 1;
+        fvm_smeasure_media_finish(0, 0, 0, 0, 0) != FVM_S_INVALID)
+    {
+        return 1;
+    }
     FVM_SMeasure measurement;
-    if (fvm_smeasure_init(&measurement, 7, 1, 1, 1, 100) != FVM_S_OK) return 1;
+    if (fvm_smeasure_init(&measurement, 7, 1, 1, 1, 100) != FVM_S_OK)
+    {
+        return 1;
+    }
 
     unsigned char output[64], input[64];
     FVM_SStream stream;
@@ -28,15 +36,16 @@ int main()
     FVM_SBinding found;
     FVM_SInteger integer = {0, 63, 0};
     size_t size, used;
-    if (fvm_sinteger_write(&integer, output, sizeof(output), &size) != FVM_S_OK || size != 1 ||
-        output[0] != 0xbf || fvm_sinteger_read(output, size, &integer, &used) != FVM_S_OK ||
-        fvm_sbindings_init(&table, 0, 0) != FVM_S_OK ||
+    if (fvm_sinteger_write(&integer, output, sizeof(output), &size) != FVM_S_OK || size != 1 || output[0] != 0xbf ||
+        fvm_sinteger_read(output, size, &integer, &used) != FVM_S_OK || fvm_sbindings_init(&table, 0, 0) != FVM_S_OK ||
         fvm_sbindings_lookup(&table, 3, &found) != FVM_S_UNKNOWN ||
         fvm_srecord_write(3, output, 1, input, sizeof(input), &size) != FVM_S_OK ||
         fvm_sstream_init(&stream, output, sizeof(output), 32) != FVM_S_OK ||
-        fvm_sstream_push(&stream, input, size, &record, &used) != FVM_S_OK || record.tag != 3 ||
-        record.size != 1 || record.payload[0] != 0xbf || fvm_sstream_reset(&stream) != FVM_S_OK)
+        fvm_sstream_push(&stream, input, size, &record, &used) != FVM_S_OK || record.tag != 3 || record.size != 1 ||
+        record.payload[0] != 0xbf || fvm_sstream_reset(&stream) != FVM_S_OK)
+    {
         return 1;
+    }
     unsigned char slot[FVM_SSLOT_BYTES], object[1];
     FVM_SMediaInfo media = {FVM_SMEDIA_FILE, 1, 1, 1, 0, 1};
     FVM_SMediaReceiver receiver;
@@ -45,17 +54,22 @@ int main()
     if (fvm_smedia_write(3, &media, 0, "x", 1, slot, sizeof(slot), &used) != FVM_S_OK ||
         fvm_smedia_read(slot, used, 3, &piece) != FVM_S_OK ||
         fvm_smedia_receiver_init(&receiver, 3, &media, object, sizeof(object)) != FVM_S_OK ||
-        fvm_smedia_accept(&receiver, slot, used, &complete) != FVM_S_OK || !complete ||
-        object[0] != 'x')
+        fvm_smedia_accept(&receiver, slot, used, &complete) != FVM_S_OK || !complete || object[0] != 'x')
+    {
         return 1;
+    }
     FVM_SControlLimits limits = {3, 63, 0, 0};
     FVM_SControlExchange exchange;
     if (fvm_scontrol_init(&exchange, &limits) != FVM_S_OK || exchange.active_id)
+    {
         return 1;
+    }
     FVM_SAdaptConfig adaptive_config;
     if (fvm_sadapt_config_init(&adaptive_config) != FVM_S_OK || adaptive_config.profiles ||
         adaptive_config.struct_size != sizeof(adaptive_config))
+    {
         return 1;
+    }
     FVM_RHeartbeatPolicy policy;
     FVM_RHeartbeat heartbeat;
     FVM_RDispatch *dispatch = 0;
@@ -66,12 +80,13 @@ int main()
     memset(&policy, 0, sizeof(policy));
     policy.struct_size = sizeof(policy);
     policy.transports = FVM_RH_TRANSPORTS;
-    if (fvm_rheartbeat_init(&heartbeat, &policy, 1, 0) != FVM_R_OK ||
-        fvm_rdispatch_create(0, &dispatch) != FVM_R_OK ||
+    if (fvm_rheartbeat_init(&heartbeat, &policy, 1, 0) != FVM_R_OK || fvm_rdispatch_create(0, &dispatch) != FVM_R_OK ||
         fvm_rdispatch_resources(dispatch, 1, 0, 0, &used) != FVM_R_OK || used != 0 ||
         fvm_rfs_create(dispatch, 1, &fs) != FVM_R_OK || fvm_r9p_create(fs, &server) != FVM_R_OK ||
         fvm_r9p_destroy(&server) != FVM_R_OK || fvm_rfs_destroy(&fs) != FVM_R_OK ||
         fvm_rdispatch_destroy(&dispatch) != FVM_R_OK)
+    {
         return 1;
+    }
     return 0;
 }

@@ -21,7 +21,7 @@ callbacks=1 pointer=23,45 budget exhausted after publication
 
 Независимые регистрации стоят одну, три и пять единиц. Событие тратит три на
 укоренённый снимок, одну на публикацию и одну на первый обработчик. Следующее
-списание завершается ошибкой до второго. Пример ожидает [`FVM_ERROR`](../../../include/flashvm/flashvm.h#L43), проверяет
+списание завершается ошибкой до второго. Пример ожидает [`FVM_ERROR`](../../../include/flashvm/flashvm.h#L45), проверяет
 один завершённый callback и сохранённую позицию; автоматического повтора нет.
 
 Назначение функций, владение и блокировки перечислены в
@@ -48,5 +48,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../../../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

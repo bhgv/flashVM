@@ -4,7 +4,7 @@ The interpreter now handles PushDuplicate (0x4c), StackSwap (0x4d), Not
 (0x12), Equals (0x0e), Less (0x0f), And (0x10) and Or (0x11).
 
 `Equals`, `Less`, `And` and `Or` currently accept numeric operands only.
-Other operand combinations return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) rather than silently
+Other operand combinations return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) rather than silently
 pretending to implement Flash coercion rules. `Not` accepts the existing
 primitive value representations and objects, but is not a complete AVM1
 ToBoolean implementation.
@@ -25,5 +25,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -1,53 +1,60 @@
 /* FlashVM: учебный AS2 пример Point, Matrix и Rectangle. */
 /* Подключаем имя Point из пространства flash.geom для создания координат. */
-import flash.geom.Point;
+import flash.geom.Point; // Подключаем имя Point из пространства flash.geom для создания координат.
 /* Подключаем Matrix для аффинных преобразований координат. */
-import flash.geom.Matrix;
+import flash.geom.Matrix; // Подключаем Matrix для аффинных преобразований координат.
 /* Подключаем Rectangle для работы с областями и границами. */
-import flash.geom.Rectangle;
+import flash.geom.Rectangle; // Подключаем Rectangle для работы с областями и границами.
 /* Создаём точку с координатами x=3 и y=4. */
-var source:Point = new Point(3, 4);
+var source: Point = new Point(3, 4); // Создаём точку с координатами x=3 и y=4.
 /* Создаём единичную матрицу без изменения исходной точки. */
-var transform:Matrix = new Matrix();
+var transform: Matrix = new Matrix(); // Создаём единичную матрицу без изменения исходной точки.
 /* Сдвигаем координаты матрицы на 10 вправо и на 20 вниз. */
-transform.translate(10, 20);
+transform.translate(10, 20); // Сдвигаем координаты матрицы на 10 вправо и на 20 вниз.
 /* Получаем новую точку (13, 24); source остаётся (3, 4). */
-var moved:Point = transform.transformPoint(source);
+var moved: Point = transform.transformPoint(source); // Получаем новую точку (13, 24); source остаётся (3, 4).
 /* Создаём прямоугольник с началом (10, 20), шириной 30 и высотой 40. */
-var region:Rectangle = new Rectangle(10, 20, 30, 40);
+var region: Rectangle = new Rectangle(10, 20, 30, 40); // Создаём прямоугольник с началом (10, 20), шириной 30 и высотой 40.
 /* Проверяем точку: верхняя и левая границы включаются, правая и нижняя исключаются. */
-trace(region.containsPoint(moved));
+trace(region.containsPoint(moved)); // Проверяем точку: верхняя и левая границы включаются, правая и нижняя исключаются.
 /* Получаем новую точку правого нижнего угла (40, 60). */
-trace(region.bottomRight);
+trace(region.bottomRight); // Получаем новую точку правого нижнего угла (40, 60).
 /* Увеличиваем ширину на 4, высоту на 6, сохраняя центр прямоугольника. */
-region.inflate(2, 3);
+region.inflate(2, 3); // Увеличиваем ширину на 4, высоту на 6, сохраняя центр прямоугольника.
 /* Печатаем новые начало и размер: (x=8, y=17, w=34, h=46). */
-trace(region.toString());
+trace(region.toString()); // Печатаем новые начало и размер: (x=8, y=17, w=34, h=46).
 /* Подключаем ColorTransform для изменения числовых цветовых каналов. */
-import flash.geom.ColorTransform;
+import flash.geom.ColorTransform; // Подключаем ColorTransform для изменения числовых цветовых каналов.
 /* Создаём преобразование с единичными множителями и нулевыми смещениями. */
-var tint:ColorTransform = new ColorTransform();
+var tint: ColorTransform = new ColorTransform(); // Создаём преобразование с единичными множителями и нулевыми смещениями.
 /* Задаём постоянный RGB-цвет: множители RGB становятся нулевыми, alpha сохраняется. */
-tint.rgb = 0x336699;
+tint.rgb = 0x336699; // Задаём постоянный RGB-цвет: множители RGB становятся нулевыми, alpha сохраняется.
 /* Печатаем числовое упакованное значение RGB — 3368601. */
-trace(tint.rgb);
+trace(tint.rgb); // Печатаем числовое упакованное значение RGB — 3368601.
 /* Копируем все восемь каналов через документированную сигнатуру AS2-конструктора. */
-var tintCopy:ColorTransform = new ColorTransform(tint.redMultiplier, tint.greenMultiplier, tint.blueMultiplier, tint.alphaMultiplier, tint.redOffset, tint.greenOffset, tint.blueOffset, tint.alphaOffset);
+var tintCopy: ColorTransform = new ColorTransform(tint.redMultiplier, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.greenMultiplier, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.blueMultiplier, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.alphaMultiplier, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.redOffset, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.greenOffset, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.blueOffset, // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
+    tint.alphaOffset); // Копируем все восемь каналов через документированную сигнатуру AS2-конструктора.
 /* Печатаем все множители и смещения независимой копии. */
-trace(tintCopy.toString());
+trace(tintCopy.toString()); // Печатаем все множители и смещения независимой копии.
 /* Подключаем Transform для доступа к матрице и цвету существующего MovieClip. */
-import flash.geom.Transform;
+import flash.geom.Transform; // Подключаем Transform для доступа к матрице и цвету существующего MovieClip.
 /* Создаём пустой клип на свободной глубине текущего экземпляра. */
-var sample:MovieClip = this.createEmptyMovieClip("geometrySample", this.getNextHighestDepth());
+var sample: MovieClip = this.createEmptyMovieClip("geometrySample", this.getNextHighestDepth()); // Создаём пустой клип на свободной глубине текущего экземпляра.
 /* Получаем обёртку, связанную с живым клипом; она не копирует сам клип. */
-var live:Transform = sample.transform;
+var live: Transform = sample.transform; // Получаем обёртку, связанную с живым клипом; она не копирует сам клип.
 /* Берём независимый снимок локальной матрицы клипа. */
-var pose:Matrix = live.matrix;
+var pose: Matrix = live.matrix; // Берём независимый снимок локальной матрицы клипа.
 /* Меняем только снимок: сам клип пока остаётся на прежнем месте. */
-pose.translate(10, 20);
+pose.translate(10, 20); // Меняем только снимок: сам клип пока остаётся на прежнем месте.
 /* Присваиваем изменённый снимок обратно и переносим клип. */
-live.matrix = pose;
+live.matrix = pose; // Присваиваем изменённый снимок обратно и переносим клип.
 /* Применяем цветовые параметры; дальнейшие изменения tintCopy не изменят клип. */
-live.colorTransform = tintCopy;
+live.colorTransform = tintCopy; // Применяем цветовые параметры; дальнейшие изменения tintCopy не изменят клип.
 /* Печатаем матрицу с учётом всех родителей клипа. */
-trace(live.concatenatedMatrix);
+trace(live.concatenatedMatrix); // Печатаем матрицу с учётом всех родителей клипа.

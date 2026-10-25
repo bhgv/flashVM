@@ -2,9 +2,9 @@
 
 Актуально с v0.917: пустая AS2-таблица включает default из метрик шрифта: [контракт](TEXT_DEFAULT_TABS.ru.md). Native create_tabbed с count=0 не изменён. Ограничения default ниже описывают контрольную точку v0.903–v0.914.
 
-v0.903 добавляет [fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L140). Аргументы шрифта, UTF-8 с длиной,
+v0.903 добавляет [fvm_text_layout_create_tabbed](../include/flashvm/text_layout.h#L163). Аргументы шрифта, UTF-8 с длиной,
 параметров, флагов shaping, знаковых letterSpacing и отступа первой строки — как
-у [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121); дополнительно stops и count. Таблица содержит
+у [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L142); дополнительно stops и count. Таблица содержит
 до [FVM_TEXT_LAYOUT_MAX_TAB_STOPS](../include/flashvm/text_layout.h#L14) (64) конечных, неотрицательных, строго возрастающих
 native-позиций не более 1 000 000 пикселей. NULL допустим только при count=0.
 Нулевой count сохраняет старый API, включая UNSUPPORTED для U+0009. Прежние
@@ -27,10 +27,10 @@ advance и пустым контуром. Экспорт не рисует .notd
 смещают целую строку. Размер исключает выравнивающее заполнение, включает исходный
 отступ и сохраняет диапазоны. Подчёркивание включает реальные advances tab.
 
-Шрифт/текст/параметры/таблица заимствуются только на вызов. [FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет
-метаданными, глифами и контурами; освобождение [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). Экспорт
-[fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L28),
-освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные пережить раскладку/шрифт. Шрифт должен
+Шрифт/текст/параметры/таблица заимствуются только на вызов. [FVM_TextLayout](../src/capi/text_layout_c.cpp#L15) владеет
+метаданными, глифами и контурами; освобождение [fvm_text_layout_destroy](../include/flashvm/text_layout.h#L99). Экспорт
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L199)/fvm_text_layout_glyph_path возвращает отдельные [FVM_Path](../src/capi/path_c.cpp#L31),
+освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L64) и способные пережить раскладку/шрифт. Шрифт должен
 быть действующим, text может быть NULL только при нулевой длине. NULL options
 выбирает неограниченную ширину, естественную высоту и AUTO/START. Границы флагов,
 интервалов/отступа прежние. VM/GC не участвуют. Доступ к изменяемому шрифту
@@ -66,7 +66,7 @@ tab неподдержанным. Полное присваивание испо
 соответствие флага до импорта шрифта этого стиля. Прежнее время жизни шрифтов при
 импорте графа сохраняется. Публичные C-структуры и версия wire прежние.
 
-Обычные native-барьеры GC сохраняются внутри getters; рекурсивный [fvm_gc_collect](../include/flashvm/gc.h#L44) там отклоняется. Проверяются побочные действия/ошибки getters и GC после вызова без ослабления барьеров. Текст с tab проверяется даже при пустой новой таблице, поэтому неподдержанный default tab отклоняется до публикации. Без переноса TextField justify сохраняет прежнюю естественную left-раскладку; сочетание native tab+JUSTIFY отклоняется, когда justify фактически выбран в раскладке.
+Обычные native-барьеры GC сохраняются внутри getters; рекурсивный [fvm_gc_collect](../include/flashvm/gc.h#L54) там отклоняется. Проверяются побочные действия/ошибки getters и GC после вызова без ослабления барьеров. Текст с tab проверяется даже при пустой новой таблице, поэтому неподдержанный default tab отклоняется до публикации. Без переноса TextField justify сохраняет прежнюю естественную left-раскладку; сочетание native tab+JUSTIFY отклоняется, когда justify фактически выбран в раскладке.
 
 Проверки v0.914: прошли 132 native/tutorial теста, включая 14 новых в этой серии. Прошли 39 целевых ASan/UBSan проверок (27 прежних и 12 новых tab-layout/state). Семь новых переборов отказов C++-памяти выполнены только в обычной сборке. Прошли 17 NO_FONTS тестов, включая новые C89-вызовы таблицы/допуска; оба примера компилируются в этом профиле. LeakSanitizer выключен из-за недоступности /proc, проверка утечек не заявляется.
 
@@ -83,15 +83,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `FVM_Path` | struct | [src/capi/path_c.cpp:28](../src/capi/path_c.cpp#L28) |
-| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
-| `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:140](../include/flashvm/text_layout.h#L140) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
+| `FVM_Path` | struct | [src/capi/path_c.cpp:31](../src/capi/path_c.cpp#L31) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:64](../include/flashvm/path.h#L64) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:142](../include/flashvm/text_layout.h#L142) |
+| `fvm_text_layout_create_tabbed` | function | [include/flashvm/text_layout.h:163](../include/flashvm/text_layout.h#L163) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:99](../include/flashvm/text_layout.h#L99) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:218](../include/flashvm/text_layout.h#L218) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:199](../include/flashvm/text_layout.h#L199) |
 | `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:28](../src/standard/text_constants.h#L28) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:15](../src/capi/text_layout_c.cpp#L15) |
 <!-- source-links:end -->

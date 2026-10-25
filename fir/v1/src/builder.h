@@ -2,6 +2,8 @@
 #ifndef FIR_BUILDER_H
 #define FIR_BUILDER_H
 #include "fir.h"
+
+
 enum
 {
     B_VERSION,
@@ -18,10 +20,22 @@ enum
     B_LANGUAGE,
     B_SEMANTICS
 };
+
+
 void fir_build_token(int role, const char *text, int line);
+
+
 void fir_build_begin(int line);
+
+
 void fir_build_end(void);
+
+
 void fir_build_op(FirOp op);
+
+
 void fir_build_channels(void);
+
+
 void fir_build_error(const char *message, int line);
 #endif

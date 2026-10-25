@@ -38,9 +38,9 @@ on_time, исправленная поздно — на late. Поздний и�
 
 | API | Владение, ошибки и выполнение |
 | --- | --- |
-| [`fvm_smeasure_init`](../include/flashvm/smeasure.h#L36) | Проверяет идентификаторы, число частей и deadline; атомарно заменяет caller state. INVALID сохраняет прежнее состояние. Заимствований нет; повторная инициализация явно отменяет старое окно. |
-| [`fvm_smeasure_record`](../include/flashvm/smeasure.h#L45) | Принимает доверенный индекс, valid 0/1 и монотонное относительное время. INVALID при неверных аргументах, CONFLICT при закрытии/регрессии времени; ошибка сохраняет состояние. Последовательный владелец, ограниченное постоянное время. |
-| [`fvm_smeasure_finish`](../include/flashvm/smeasure.h#L51) | Замораживает собственную копию отчёта. INVALID при неверном RTT/аргументах, CONFLICT при раннем/повторном вызове или регрессии времени. Ошибка сохраняет state/output. Копию можно передать [`fvm_sadapt_feedback_write`](../include/flashvm/sadapt.h#L117) или [`fvm_sadapt_observe`](../include/flashvm/sadapt.h#L106); framing от этого сам не меняется. |
+| [`fvm_smeasure_init`](../include/flashvm/smeasure.h#L38) | Проверяет идентификаторы, число частей и deadline; атомарно заменяет caller state. INVALID сохраняет прежнее состояние. Заимствований нет; повторная инициализация явно отменяет старое окно. |
+| [`fvm_smeasure_record`](../include/flashvm/smeasure.h#L49) | Принимает доверенный индекс, valid 0/1 и монотонное относительное время. INVALID при неверных аргументах, CONFLICT при закрытии/регрессии времени; ошибка сохраняет состояние. Последовательный владелец, ограниченное постоянное время. |
+| [`fvm_smeasure_finish`](../include/flashvm/smeasure.h#L57) | Замораживает собственную копию отчёта. INVALID при неверном RTT/аргументах, CONFLICT при раннем/повторном вызове или регрессии времени. Ошибка сохраняет state/output. Копию можно передать [`fvm_sadapt_feedback_write`](../include/flashvm/sadapt.h#L135) или [`fvm_sadapt_observe`](../include/flashvm/sadapt.h#L118); framing от этого сам не меняется. |
 
 State, входные данные и выходы не перекрываются; вызовы одного окна сериализуются.
 Это состояние свободно копируется для снимков: самоссылок и заимствованных VM
@@ -64,19 +64,19 @@ Native-контракт проверяет точный deadline, повторы
 
 ## Адаптер проверенного медиаприёмника (v0.748)
 
-[FVM_SMeasureMedia](../include/flashvm/smeasure.h#L57) привязывает один инициализированный [FVM_SMediaReceiver](../include/flashvm/smedia.h#L47),
+[FVM_SMeasureMedia](../include/flashvm/smeasure.h#L65) привязывает один инициализированный [FVM_SMediaReceiver](../include/flashvm/smedia.h#L53),
 ещё не принявший ни одной части. Копируются согласованные mode, stream, epoch,
 object, presentation time, total, profile и tag; сам native receiver и его
 готовое хранилище заимствуются до finish. Приём после смены объекта/профиля даёт
 CONFLICT. Не переинициализируйте и не меняйте receiver отдельно до закрытия;
 state, буферы и выходы не перекрываются, все вызовы сериализует один владелец.
 
-[`fvm_smeasure_media_accept`](../include/flashvm/smeasure.h#L78) проверяет время хоста, затем slot и настоящие данные
-через [`fvm_smedia_accept`](../include/flashvm/smedia.h#L82). Лишь успешное принятие засчитывает проверенный индекс.
+[`fvm_smeasure_media_accept`](../include/flashvm/smeasure.h#L90) проверяет время хоста, затем slot и настоящие данные
+через [`fvm_smedia_accept`](../include/flashvm/smedia.h#L96). Лишь успешное принятие засчитывает проверенный индекс.
 Точный повтор остаётся одной частью, другой валидный payload того же индекса
 даёт CONFLICT. Повреждённый или чужой slot сохраняет adapter, receiver, image
 и complete. Он остаётся отсутствующим: неверный заголовок не доказывает индекс.
-Хост может вызвать [`fvm_smeasure_record`](../include/flashvm/smeasure.h#L45) для вложенного measurement, лишь когда
+Хост может вызвать [`fvm_smeasure_record`](../include/flashvm/smeasure.h#L49) для вложенного measurement, лишь когда
 отдельный доверенный конверт идентифицирует повреждение; позиция в batch сама
 по себе не является индексом медиачасти.
 
@@ -87,9 +87,9 @@ state, буферы и выходы не перекрываются, все вы
 
 | API | Владение и результат |
 | --- | --- |
-| [`fvm_smeasure_media_init`](../include/flashvm/smeasure.h#L71) | Привязывает пустой initialized receiver; выводит expected из согласованных total/profile. Без нового image allocation. INVALID при неверном descriptor, CONFLICT при уже принятых частях; ошибка сохраняет выход. |
-| [`fvm_smeasure_media_accept`](../include/flashvm/smeasure.h#L78) | Заимствует slot лишь на вызов; проверяет identity/checksum/повтор до копирования и учёта. Закрытое окно, регрессия времени, другой объект/профиль дают CONFLICT; ошибки codec атомарны. complete меняется лишь после успешного принятия. |
-| [`fvm_smeasure_media_finish`](../include/flashvm/smeasure.h#L82) | Замораживает собственный отчёт с elapsed и явным RTT хоста. Контракт ошибок/атомарности как у обычного finish; после успеха заимствование receiver заканчивается, память не освобождается. |
+| [`fvm_smeasure_media_init`](../include/flashvm/smeasure.h#L81) | Привязывает пустой initialized receiver; выводит expected из согласованных total/profile. Без нового image allocation. INVALID при неверном descriptor, CONFLICT при уже принятых частях; ошибка сохраняет выход. |
+| [`fvm_smeasure_media_accept`](../include/flashvm/smeasure.h#L90) | Заимствует slot лишь на вызов; проверяет identity/checksum/повтор до копирования и учёта. Закрытое окно, регрессия времени, другой объект/профиль дают CONFLICT; ошибки codec атомарны. complete меняется лишь после успешного принятия. |
+| [`fvm_smeasure_media_finish`](../include/flashvm/smeasure.h#L96) | Замораживает собственный отчёт с elapsed и явным RTT хоста. Контракт ошибок/атомарности как у обычного finish; после успеха заимствование receiver заканчивается, память не освобождается. |
 
 [C89 пример media_parts](../examples/embedding/media_parts/README.ru.md)
 теперь формирует FILE отчёт до восстановления и отдельный LIVE отчёт с
@@ -118,17 +118,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../include/flashvm/sadapt.h#L117) |
-| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:106](../include/flashvm/sadapt.h#L106) |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:135](../include/flashvm/sadapt.h#L135) |
+| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:118](../include/flashvm/sadapt.h#L118) |
 | `FVM_SAdaptFeedback` | struct | [include/flashvm/sadapt.h:39](../include/flashvm/sadapt.h#L39) |
 | `FVM_SMeasure` | struct | [include/flashvm/smeasure.h:22](../include/flashvm/smeasure.h#L22) |
-| `fvm_smeasure_finish` | function | [include/flashvm/smeasure.h:51](../include/flashvm/smeasure.h#L51) |
-| `fvm_smeasure_init` | function | [include/flashvm/smeasure.h:36](../include/flashvm/smeasure.h#L36) |
-| `fvm_smeasure_media_accept` | function | [include/flashvm/smeasure.h:78](../include/flashvm/smeasure.h#L78) |
-| `fvm_smeasure_media_finish` | function | [include/flashvm/smeasure.h:82](../include/flashvm/smeasure.h#L82) |
-| `fvm_smeasure_media_init` | function | [include/flashvm/smeasure.h:71](../include/flashvm/smeasure.h#L71) |
-| `fvm_smeasure_record` | function | [include/flashvm/smeasure.h:45](../include/flashvm/smeasure.h#L45) |
-| `FVM_SMeasureMedia` | struct | [include/flashvm/smeasure.h:57](../include/flashvm/smeasure.h#L57) |
-| `fvm_smedia_accept` | function | [include/flashvm/smedia.h:82](../include/flashvm/smedia.h#L82) |
-| `FVM_SMediaReceiver` | struct | [include/flashvm/smedia.h:47](../include/flashvm/smedia.h#L47) |
+| `fvm_smeasure_finish` | function | [include/flashvm/smeasure.h:57](../include/flashvm/smeasure.h#L57) |
+| `fvm_smeasure_init` | function | [include/flashvm/smeasure.h:38](../include/flashvm/smeasure.h#L38) |
+| `fvm_smeasure_media_accept` | function | [include/flashvm/smeasure.h:90](../include/flashvm/smeasure.h#L90) |
+| `fvm_smeasure_media_finish` | function | [include/flashvm/smeasure.h:96](../include/flashvm/smeasure.h#L96) |
+| `fvm_smeasure_media_init` | function | [include/flashvm/smeasure.h:81](../include/flashvm/smeasure.h#L81) |
+| `fvm_smeasure_record` | function | [include/flashvm/smeasure.h:49](../include/flashvm/smeasure.h#L49) |
+| `FVM_SMeasureMedia` | struct | [include/flashvm/smeasure.h:65](../include/flashvm/smeasure.h#L65) |
+| `fvm_smedia_accept` | function | [include/flashvm/smedia.h:96](../include/flashvm/smedia.h#L96) |
+| `FVM_SMediaReceiver` | struct | [include/flashvm/smedia.h:53](../include/flashvm/smedia.h#L53) |
 <!-- source-links:end -->

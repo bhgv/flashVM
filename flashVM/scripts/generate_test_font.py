@@ -9,83 +9,143 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
 
 root = Path(__file__).resolve().parents[1]
-names = ['.notdef', 'space', 'A', 'V', 'f', 'i', 'fi', 'curved', 'acute',
-         'Aacute', 'alef', 'bet', 'beh', 'beh.init', 'beh.medi', 'beh.fina']
+names = [
+    ".notdef",
+    "space",
+    "A",
+    "V",
+    "f",
+    "i",
+    "fi",
+    "curved",
+    "acute",
+    "Aacute",
+    "alef",
+    "bet",
+    "beh",
+    "beh.init",
+    "beh.medi",
+    "beh.fina",
+]
 glyphs = {}
 for name in names:
     pen = TTGlyphPen(glyphs)
-    if name == 'Aacute':
-        pen.addComponent('A', (1, 0, 0, 1, 0, 0))
-        pen.addComponent('acute', (1, 0, 0, 1, 0, 100))
-    elif name == 'curved':
+    if name == "Aacute":
+        pen.addComponent("A", (1, 0, 0, 1, 0, 0))
+        pen.addComponent("acute", (1, 0, 0, 1, 0, 100))
+    elif name == "curved":
         pen.moveTo((100, 0))
         pen.qCurveTo((900, 900), (100, 900))
         pen.closePath()
-    elif name == 'acute':
-        pen.moveTo((200, 700)); pen.lineTo((400, 800))
-        pen.lineTo((450, 750)); pen.lineTo((250, 650)); pen.closePath()
-    elif name != 'space':
-        pen.moveTo((100, 0)); pen.lineTo((500, 0)); pen.lineTo((500, 700))
-        pen.lineTo((100, 700)); pen.closePath()
-        if name == 'A':
-            pen.moveTo((200, 200)); pen.lineTo((200, 500))
-            pen.lineTo((400, 500)); pen.lineTo((400, 200)); pen.closePath()
+    elif name == "acute":
+        pen.moveTo((200, 700))
+        pen.lineTo((400, 800))
+        pen.lineTo((450, 750))
+        pen.lineTo((250, 650))
+        pen.closePath()
+    elif name != "space":
+        pen.moveTo((100, 0))
+        pen.lineTo((500, 0))
+        pen.lineTo((500, 700))
+        pen.lineTo((100, 700))
+        pen.closePath()
+        if name == "A":
+            pen.moveTo((200, 200))
+            pen.lineTo((200, 500))
+            pen.lineTo((400, 500))
+            pen.lineTo((400, 200))
+            pen.closePath()
     glyphs[name] = pen.glyph()
 fb = FontBuilder(1000, isTTF=True)
 fb.setupGlyphOrder(names)
-fb.setupCharacterMap({32:'space', 65:'A', 86:'V', 102:'f', 105:'i', 66:'curved',
-                      0x301:'acute', 0xc1:'Aacute', 0x5d0:'alef', 0x5d1:'bet', 0x628:'beh'})
+fb.setupCharacterMap(
+    {
+        32: "space",
+        65: "A",
+        86: "V",
+        102: "f",
+        105: "i",
+        66: "curved",
+        0x301: "acute",
+        0xC1: "Aacute",
+        0x5D0: "alef",
+        0x5D1: "bet",
+        0x628: "beh",
+    }
+)
 fb.setupGlyf(glyphs)
-advances = {'space':300, 'f':350, 'i':250, 'fi':700, 'acute':0}
-fb.setupHorizontalMetrics({name:(advances.get(name, 600), 100 if name!='space' else 0) for name in names})
+advances = {"space": 300, "f": 350, "i": 250, "fi": 700, "acute": 0}
+fb.setupHorizontalMetrics(
+    {name: (advances.get(name, 600), 100 if name != "space" else 0) for name in names}
+)
 fb.setupHorizontalHeader(ascent=900, descent=-200, lineGap=100)
-fb.setupNameTable({'familyName':'FlashVM Test Geometry', 'styleName':'Regular',
-                  'uniqueFontIdentifier':'FlashVM-CC0-Test-1', 'fullName':'FlashVM Test Geometry',
-                  'psName':'FlashVMTestGeometry', 'version':'Version 1.0'})
-fb.setupOS2(sTypoAscender=900, sTypoDescender=-200, sTypoLineGap=100,
-            usWinAscent=900, usWinDescent=200)
+fb.setupNameTable(
+    {
+        "familyName": "FlashVM Test Geometry",
+        "styleName": "Regular",
+        "uniqueFontIdentifier": "FlashVM-CC0-Test-1",
+        "fullName": "FlashVM Test Geometry",
+        "psName": "FlashVMTestGeometry",
+        "version": "Version 1.0",
+    }
+)
+fb.setupOS2(
+    sTypoAscender=900, sTypoDescender=-200, sTypoLineGap=100, usWinAscent=900, usWinDescent=200
+)
 # TrueType post stores a top-edge position; FreeType normalizes it to bar center.
 # At 40px: center 4px below baseline, thickness 2px, independent of glyph outlines.
 fb.setupPost(underlinePosition=-75, underlineThickness=50)
 fb.setupMaxp()
-addOpenTypeFeaturesFromString(fb.font, '''languagesystem DFLT dflt;
+addOpenTypeFeaturesFromString(
+    fb.font,
+    """languagesystem DFLT dflt;
 languagesystem latn dflt; languagesystem arab dflt;
 feature liga { sub f i by fi; } liga;
 feature kern { pos A V -80; } kern;
 feature init { sub beh by beh.init; } init;
 feature medi { sub beh by beh.medi; } medi;
 feature fina { sub beh by beh.fina; } fina;
-''')
-fb.font['head'].created = fb.font['head'].modified = 2082844800
+""",
+)
+fb.font["head"].created = fb.font["head"].modified = 2082844800
 fb.font.recalcTimestamp = False
+
+
 def save_fixture(filename, header_name, symbol, guard):
     """Commit deterministic original-font bytes so runtime tests need no fontTools."""
-    path = root/'tests/fixtures'/filename
+    path = root / "tests/fixtures" / filename
     fb.save(path)
     data = path.read_bytes()
-    header = '/* CC0 FlashVM geometric test font; generated by scripts/generate_test_font.py. */\n'
-    header += '#ifndef '+guard+'\n#define '+guard+'\n'
-    header += 'static const unsigned char '+symbol+'[] = {\n'
+    header = "/* CC0 FlashVM geometric test font; generated by scripts/generate_test_font.py. */\n"
+    header += "#ifndef " + guard + "\n#define " + guard + "\n"
+    header += "static const unsigned char " + symbol + "[] = {\n"
     for i in range(0, len(data), 16):
-        header += '    ' + ', '.join(str(v) for v in data[i:i+16]) + ',\n'
-    header += '};\n#endif\n'
-    (root/'tests/fixtures'/header_name).write_text(header)
-    print(filename, len(data), 'bytes written')
+        header += "    " + ", ".join(str(v) for v in data[i : i + 16]) + ",\n"
+    header += "};\n#endif\n"
+    (root / "tests/fixtures" / header_name).write_text(header)
+    print(filename, len(data), "bytes written")
 
-save_fixture('geometry.ttf', 'font_data.h', 'fvm_test_font', 'FVM_TEST_FONT_DATA_H')
+
+save_fixture("geometry.ttf", "font_data.h", "fvm_test_font", "FVM_TEST_FONT_DATA_H")
 # Reflect only V horizontally: identical rectangle bounds, opposite contour winding.
 # This intentionally inconsistent font exercises rejection rather than guessed unions.
 from fontTools.pens.transformPen import TransformPen
+
 pen = TTGlyphPen(glyphs)
-fb.font['glyf']['V'].draw(TransformPen(pen, (-1, 0, 0, 1, 600, 0)), fb.font['glyf'])
-fb.font['glyf']['V'] = pen.glyph()
-save_fixture('geometry_mixed.ttf', 'font_mixed_data.h', 'fvm_test_font_mixed', 'FVM_TEST_FONT_MIXED_DATA_H')
+fb.font["glyf"]["V"].draw(TransformPen(pen, (-1, 0, 0, 1, 600, 0)), fb.font["glyf"])
+fb.font["glyf"]["V"] = pen.glyph()
+save_fixture(
+    "geometry_mixed.ttf", "font_mixed_data.h", "fvm_test_font_mixed", "FVM_TEST_FONT_MIXED_DATA_H"
+)
 
 # A separate synthetic OpenType oracle distinguishes optional clig from required rlig.
 # Reload the ordinary face so this fixture retains consistent outline winding.
 from fontTools.ttLib import TTFont
-fb.font = TTFont(root/'tests/fixtures/geometry.ttf', recalcTimestamp=False)
-addOpenTypeFeaturesFromString(fb.font, '''languagesystem DFLT dflt;
+
+fb.font = TTFont(root / "tests/fixtures/geometry.ttf", recalcTimestamp=False)
+addOpenTypeFeaturesFromString(
+    fb.font,
+    """languagesystem DFLT dflt;
 languagesystem latn dflt; languagesystem arab dflt;
 feature liga { sub f i by fi; } liga;
 feature clig { sub f f by fi; } clig;
@@ -94,32 +154,48 @@ feature kern { pos A V -80; } kern;
 feature init { sub beh by beh.init; } init;
 feature medi { sub beh by beh.medi; } medi;
 feature fina { sub beh by beh.fina; } fina;
-''')
-save_fixture('geometry_ligatures.ttf', 'font_ligature_data.h', 'fvm_test_font_ligatures', 'FVM_TEST_FONT_LIGATURE_DATA_H')
+""",
+)
+save_fixture(
+    "geometry_ligatures.ttf",
+    "font_ligature_data.h",
+    "fvm_test_font_ligatures",
+    "FVM_TEST_FONT_LIGATURE_DATA_H",
+)
 fb.font.close()
 
 # Separate real styled faces exercise explicit family binding, never runtime synthesis.
 # Only the AV probe outlines/advances differ; the ordinary source is reloaded per face.
 for suffix, symbol, weight, italic, advance, xscale, slant in [
-    ('bold', 'fvm_test_font_bold', 700, False, 700, 1.25, 0),
-    ('italic', 'fvm_test_font_italic', 400, True, 650, 1, 0.2),
-    ('bold_italic', 'fvm_test_font_bold_italic', 700, True, 750, 1.25, 0.2),
+    ("bold", "fvm_test_font_bold", 700, False, 700, 1.25, 0),
+    ("italic", "fvm_test_font_italic", 400, True, 650, 1, 0.2),
+    ("bold_italic", "fvm_test_font_bold_italic", 700, True, 750, 1.25, 0.2),
 ]:
-    fb.font = TTFont(root/'tests/fixtures/geometry.ttf', recalcTimestamp=False)
-    for glyph_name in ('A', 'V'):
-        probe = TTGlyphPen(fb.font['glyf'])
-        fb.font['glyf'][glyph_name].draw(TransformPen(probe, (xscale, 0, slant, 1, 0, 0)), fb.font['glyf'])
-        fb.font['glyf'][glyph_name] = probe.glyph()
-        fb.font['hmtx'][glyph_name] = (advance, round(100*xscale))
+    fb.font = TTFont(root / "tests/fixtures/geometry.ttf", recalcTimestamp=False)
+    for glyph_name in ("A", "V"):
+        probe = TTGlyphPen(fb.font["glyf"])
+        fb.font["glyf"][glyph_name].draw(
+            TransformPen(probe, (xscale, 0, slant, 1, 0, 0)), fb.font["glyf"]
+        )
+        fb.font["glyf"][glyph_name] = probe.glyph()
+        fb.font["hmtx"][glyph_name] = (advance, round(100 * xscale))
     bold = weight == 700
-    fb.font['OS/2'].usWeightClass = weight
-    fb.font['OS/2'].fsSelection = (32 if bold else 0) | (1 if italic else 0)
-    fb.font['head'].macStyle = (1 if bold else 0) | (2 if italic else 0)
-    fb.font['post'].italicAngle = -12 if italic else 0
-    style_name = 'Bold Italic' if bold and italic else 'Bold' if bold else 'Italic'
-    for name_id, text in [(2, style_name), (3, 'FlashVM-CC0-'+suffix),
-                          (4, 'FlashVM Test Geometry '+style_name),
-                          (6, 'FlashVMTestGeometry-'+suffix)]:
-        fb.font['name'].setName(text, name_id, 3, 1, 0x409)
-    save_fixture('geometry_'+suffix+'.ttf', 'font_'+suffix+'_data.h', symbol, 'FVM_TEST_FONT_'+suffix.upper()+'_DATA_H')
+    fb.font["OS/2"].usWeightClass = weight
+    fb.font["OS/2"].fsSelection = (32 if bold else 0) | (1 if italic else 0)
+    fb.font["head"].macStyle = (1 if bold else 0) | (2 if italic else 0)
+    fb.font["post"].italicAngle = -12 if italic else 0
+    style_name = "Bold Italic" if bold and italic else "Bold" if bold else "Italic"
+    for name_id, text in [
+        (2, style_name),
+        (3, "FlashVM-CC0-" + suffix),
+        (4, "FlashVM Test Geometry " + style_name),
+        (6, "FlashVMTestGeometry-" + suffix),
+    ]:
+        fb.font["name"].setName(text, name_id, 3, 1, 0x409)
+    save_fixture(
+        "geometry_" + suffix + ".ttf",
+        "font_" + suffix + "_data.h",
+        symbol,
+        "FVM_TEST_FONT_" + suffix.upper() + "_DATA_H",
+    )
     fb.font.close()

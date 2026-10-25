@@ -3,7 +3,7 @@
 Loaded ActionPush now produces undefined when a Constant8 or Constant16 index is
 outside the current string pool, including an absent/empty pool. Existing valid
 indices still create owned strings. Standalone host execution retains its strict
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) result. Truncated index payloads remain malformed in every
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) result. Truncated index payloads remain malformed in every
 mode: the decoder checks the full index width before examining the pool.
 
 The widths have separate documented [FVM_AVM1_CONSTANT8_INDEX_BYTES](../src/avm1/encoding_constants.h#L137) and
@@ -45,5 +45,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_AVM1_CONSTANT16_INDEX_BYTES` | macro / define | [src/avm1/encoding_constants.h:139](../src/avm1/encoding_constants.h#L139) |
 | `FVM_AVM1_CONSTANT8_INDEX_BYTES` | macro / define | [src/avm1/encoding_constants.h:137](../src/avm1/encoding_constants.h#L137) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

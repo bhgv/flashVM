@@ -1,11 +1,15 @@
 /* Two real converted event identities survive root stream EOF and retained tail handoff. */
 #define main mix_tutorial_reference_main
+#include <stdio.h>
+#include <stdlib.h>
 #include "../examples/multimedia/swf_stream_mix/main.c"
+
 #undef main
 #include "flashvm/swf_sound_mix_queue.h"
 #include "flashvm/swf_stream_output.h"
-#include <cassert>
 #include <cstring>
+
+
 struct Queue
 {
     size_t count, calls, accepted;
@@ -13,60 +17,105 @@ struct Queue
     FVM_AudioQueueBackend *adapter;
     int fail, fail_clear, throwing, fail_observe;
 };
+
+
 /* Compare actual accepted samples later; a failed backend must accept no frames. */
 static FVM_Result write_pcm(void *raw, const short *pcm, size_t frames)
 {
     Queue *q = (Queue *)raw;
     ++q->calls;
     size_t n = 91;
-    assert(q->adapter->queued(q->adapter->userdata, &n) == FVM_INVALID_ARGUMENT && n == 91);
+    if (!(q->adapter->queued(q->adapter->userdata, &n) == FVM_INVALID_ARGUMENT && n == 91))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     if (q->throwing)
+    {
         throw 7;
+    }
     if (q->fail)
+    {
         return FVM_ERROR;
-    assert(q->accepted + frames <= 16);
+    }
+    if (!(q->accepted + frames <= 16))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     std::memcpy(q->saved + q->accepted * 2, pcm, frames * 2 * sizeof(short));
     q->accepted += frames;
     q->count += frames;
     return FVM_OK;
 }
+
+
 static FVM_Result queued(void *p, size_t *out)
 {
     Queue *q = (Queue *)p;
     *out = q->count;
     return q->fail_observe ? FVM_ERROR : FVM_OK;
 }
+
+
 static FVM_Result pause_native(void *, int)
 {
     return FVM_OK;
 }
+
+
 static FVM_Result clear_native(void *p)
 {
     Queue *q = (Queue *)p;
     if (q->fail_clear)
+    {
         return FVM_ERROR;
+    }
     q->count = 0;
     return FVM_OK;
 }
 #ifndef FVM_MIX_IDENTITY_STREAM_FIXTURE_ONLY
+
+
 int main(int argc, char **argv)
 {
     bool throwing = argc == 1;
-    assert(argc == 1 || (argc == 2 && !std::strcmp(argv[1], "--no-throw")));
+    if (!(argc == 1 || (argc == 2 && !std::strcmp(argv[1], "--no-throw"))))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_Config config;
     FVM_Runtime *rt = 0;
     FVM_Context *c = 0;
-    assert(fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &rt) == FVM_OK &&
-           fvm_context_create(rt, &c) == FVM_OK &&
-           fvm_load_memory(c, movie, sizeof(movie)) == FVM_OK);
+    if (!(fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &rt) == FVM_OK &&
+          fvm_context_create(rt, &c) == FVM_OK && fvm_load_memory(c, movie, sizeof(movie)) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFStreamSoundSnapshot *source = 0;
-    assert(fvm_swf_stream_sound_snapshot_open_pcm(c, 0, &source) == FVM_OK);
+    if (!(fvm_swf_stream_sound_snapshot_open_pcm(c, 0, &source) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFSoundMixerConfig geometry = {sizeof(geometry), 48000, 2, 2, FVM_SWF_SOUND_MIXER_CONVERT};
     FVM_SWFSoundMixer *mixer = 0;
-    assert(fvm_swf_sound_mixer_create_configured(&geometry, &mixer) == FVM_OK);
-    FVM_SWFSoundVoice *prepared[2]={0,0};
+    if (!(fvm_swf_sound_mixer_create_configured(&geometry, &mixer) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_SWFSoundVoice *prepared[2] = {0, 0};
     for (size_t i = 0; i < 2; ++i)
-        assert(fvm_swf_sound_voice_open(c,i,prepared+i)==FVM_OK);
+    {
+        if (!(fvm_swf_sound_voice_open(c, i, prepared + i) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);
     FVM_AudioQueueBackend backend;
@@ -84,85 +133,253 @@ int main(int argc, char **argv)
     backend.clear = clear_native;
     FVM_AudioQueueBackend adapter = backend, saved = backend;
     FVM_SWFSoundMixQueue *mix = 0;
-    assert(fvm_swf_sound_mix_queue_create(mixer, &backend, 0, &mix, &adapter) ==
-               FVM_INVALID_ARGUMENT &&
-           !mix && !std::memcmp(&adapter, &saved, sizeof(saved)));
-    assert(fvm_swf_sound_mix_queue_create(mixer, &backend, 2, &mix, &adapter) == FVM_OK &&
-           !q.calls);
+    if (!(fvm_swf_sound_mix_queue_create(mixer, &backend, 0, &mix, &adapter) == FVM_INVALID_ARGUMENT && !mix &&
+          !std::memcmp(&adapter, &saved, sizeof(saved))))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_create(mixer, &backend, 2, &mix, &adapter) == FVM_OK && !q.calls))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.adapter = &adapter;
-    assert(fvm_swf_sound_mix_queue_clock_begin(mix)==FVM_OK);
-    size_t storage=0;assert(fvm_swf_sound_mix_queue_storage_required(2,2,&storage)==FVM_OK && fvm_swf_sound_mix_queue_set_identity_tracking(mix,1,storage+FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS*sizeof(double))==FVM_OK);
-    for(unsigned i=0;i<2;++i)assert(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix,prepared+i,(size_t)-1)==FVM_OK && !prepared[i]);
+    if (!(fvm_swf_sound_mix_queue_clock_begin(mix) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    size_t storage = 0;
+    if (!(fvm_swf_sound_mix_queue_storage_required(2, 2, &storage) == FVM_OK &&
+          fvm_swf_sound_mix_queue_set_identity_tracking(
+              mix, 1, storage + FVM_SWF_SOUND_MIX_QUEUE_ID_SLOTS * sizeof(double)) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for (unsigned i = 0; i < 2; ++i)
+    {
+        if (!(fvm_swf_sound_mix_queue_submit_prepared_bounded(mix, prepared + i, (size_t)-1) == FVM_OK && !prepared[i]))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
     FVM_SWFStreamConverter converter;
-    assert(fvm_swf_stream_converter_init(&converter, source, 48000, 2) == FVM_OK);
+    if (!(fvm_swf_stream_converter_init(&converter, source, 48000, 2) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFStreamOutput output;
     short retry[4];
-    assert(fvm_swf_stream_output_init(&output, &converter, &adapter, retry, 4, 2, 4) == FVM_OK);
+    if (!(fvm_swf_stream_output_init(&output, &converter, &adapter, retry, 4, 2, 4) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     size_t accepted = 91;
-    FVM_SWFStreamConverter before_gate=converter;
-    assert(fvm_swf_stream_output_pump_until(&output,0,&accepted)==FVM_NOT_FOUND && !accepted && !std::memcmp(&before_gate,&converter,sizeof(converter)));
-    FVM_SWFStreamOutputInfo gated;gated.struct_size=sizeof(gated);
-    assert(fvm_swf_stream_output_info(&output,&gated)==FVM_OK && !gated.eof);
+    FVM_SWFStreamConverter before_gate = converter;
+    if (!(fvm_swf_stream_output_pump_until(&output, 0, &accepted) == FVM_NOT_FOUND && !accepted &&
+          !std::memcmp(&before_gate, &converter, sizeof(converter))))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_SWFStreamOutputInfo gated;
+    gated.struct_size = sizeof(gated);
+    if (!(fvm_swf_stream_output_info(&output, &gated) == FVM_OK && !gated.eof))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.fail = 1;
-    assert(fvm_swf_stream_output_pump(&output, &accepted) == FVM_ERROR && !accepted);
+    if (!(fvm_swf_stream_output_pump(&output, &accepted) == FVM_ERROR && !accepted))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFSoundMixQueueInfo info;
     info.struct_size = sizeof(info);
-    assert(fvm_swf_sound_mix_queue_info(mix, &info) == FVM_OK && info.pending_frames == 2);
+    if (!(fvm_swf_sound_mix_queue_info(mix, &info) == FVM_OK && info.pending_frames == 2))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     short changed[4];
     std::memcpy(changed, retry, sizeof(changed));
     ++changed[0];
     size_t calls = q.calls;
-    assert(adapter.write(adapter.userdata, changed, 2) == FVM_INVALID_ARGUMENT && q.calls == calls);
+    if (!(adapter.write(adapter.userdata, changed, 2) == FVM_INVALID_ARGUMENT && q.calls == calls))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.fail_clear = 1;
-    assert(adapter.clear(adapter.userdata) == FVM_ERROR &&
-           fvm_swf_sound_mix_queue_info(mix, &info) == FVM_OK && info.pending_frames == 2);
+    if (!(adapter.clear(adapter.userdata) == FVM_ERROR && fvm_swf_sound_mix_queue_info(mix, &info) == FVM_OK &&
+          info.pending_frames == 2))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFStreamConverter cursor = converter;
     if (throwing)
     {
         q.throwing = 1;
-        assert(fvm_swf_stream_output_pump(&output, &accepted) == FVM_ERROR && !accepted);
+        if (!(fvm_swf_stream_output_pump(&output, &accepted) == FVM_ERROR && !accepted))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         q.throwing = 0;
     }
-    assert(!std::memcmp(&cursor, &converter, sizeof(cursor)));
+    if (!(!std::memcmp(&cursor, &converter, sizeof(cursor))))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.fail = 0;
-    assert(fvm_swf_stream_output_pump(&output, &accepted) == FVM_OK && accepted == 2 &&
-           q.saved[0] == 30000 && q.saved[1] == 30000 && q.saved[2] == -25125);
+    if (!(fvm_swf_stream_output_pump(&output, &accepted) == FVM_OK && accepted == 2 && q.saved[0] == 30000 &&
+          q.saved[1] == 30000 && q.saved[2] == -25125))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.fail_observe = 1;
     size_t untouched = 91;
-    assert(adapter.queued(adapter.userdata, &untouched) == FVM_ERROR && untouched == 91);
+    if (!(adapter.queued(adapter.userdata, &untouched) == FVM_ERROR && untouched == 91))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     q.fail_observe = 0;
     for (unsigned guard = 0; guard < 16; ++guard)
     {
         q.count = 0;
         FVM_Result result = fvm_swf_stream_output_pump(&output, &accepted);
         if (result == FVM_NOT_FOUND)
+        {
             break;
-        assert(result == FVM_OK);
+        }
+        if (!(result == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
-    assert(q.accepted == 9);
+    if (!(q.accepted == 9))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_SWFStreamOutputInfo stream_info;
-    stream_info.struct_size=sizeof(stream_info);
-    assert(fvm_swf_stream_output_info(&output,&stream_info)==FVM_OK && stream_info.eof && !stream_info.pending_frames);
-    FVM_SWFSoundMixQueueClock shared;shared.struct_size=sizeof(shared);
-    assert(fvm_swf_sound_mix_queue_clock_info(mix,&shared)==FVM_OK && shared.submitted_frames==9);
-    FVM_SWFSoundMixQueueIdentityInfo identity;identity.struct_size=sizeof(identity);
-    assert(fvm_swf_sound_mix_queue_identity_info(mix,8,&identity)==FVM_OK && identity.end_frame==14 && identity.until_end_frames==5 && identity.active);
-    q.count=0;q.fail=1;
-    assert(fvm_swf_sound_mix_queue_pump_tail(mix,2,4,&accepted)==FVM_ERROR && !accepted);
-    FVM_SWFSoundMixQueuePending pending;pending.struct_size=sizeof(pending);
-    assert(fvm_swf_sound_mix_queue_pending(mix,&pending)==FVM_OK && pending.origin==FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL);
-    assert(fvm_swf_sound_mix_queue_clock_info(mix,&shared)==FVM_OK && shared.submitted_frames==9 && shared.played_frames==9);
-    q.fail=0;
-    for(unsigned guard=0;guard<8;++guard){q.count=0;FVM_Result result=fvm_swf_sound_mix_queue_pump_tail(mix,2,4,&accepted);if(result==FVM_NOT_FOUND)break;assert(result==FVM_OK && accepted==2);}
-    const short expected[]={30000,-25125,11875,-10250,250,-1875,10500,4125,-30000,-30000,-30000,-30000,-30000,-30000,0};
-    assert(q.accepted==15);
-    for(size_t i=0;i<15;++i)assert(q.saved[i*2]==expected[i] && q.saved[i*2+1]==expected[i]);
-    assert(fvm_swf_stream_output_info(&output,&stream_info)==FVM_OK && stream_info.submitted_frames==9 && stream_info.eof);
-    assert(fvm_swf_sound_mix_queue_clock_info(mix,&shared)==FVM_OK && shared.submitted_frames==15 && shared.played_frames==15 && !shared.queued_frames && shared.seconds==15.0/48000);
-    assert(fvm_swf_sound_mix_queue_identity_info(mix,7,&identity)==FVM_OK && identity.end_frame==9 && !identity.active);
-    assert(fvm_swf_sound_mix_queue_identity_info(mix,8,&identity)==FVM_OK && identity.end_frame==14 && !identity.active);
-    assert(fvm_swf_sound_mix_queue_set_identity_tracking(mix,0,0)==FVM_OK && fvm_swf_sound_mix_queue_clock_end(mix)==FVM_OK);
-    fvm_swf_sound_mix_queue_close(mix);fvm_swf_sound_mixer_close(mixer);fvm_swf_stream_sound_snapshot_close(source);
+    stream_info.struct_size = sizeof(stream_info);
+    if (!(fvm_swf_stream_output_info(&output, &stream_info) == FVM_OK && stream_info.eof &&
+          !stream_info.pending_frames))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_SWFSoundMixQueueClock shared;
+    shared.struct_size = sizeof(shared);
+    if (!(fvm_swf_sound_mix_queue_clock_info(mix, &shared) == FVM_OK && shared.submitted_frames == 9))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_SWFSoundMixQueueIdentityInfo identity;
+    identity.struct_size = sizeof(identity);
+    if (!(fvm_swf_sound_mix_queue_identity_info(mix, 8, &identity) == FVM_OK && identity.end_frame == 14 &&
+          identity.until_end_frames == 5 && identity.active))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    q.count = 0;
+    q.fail = 1;
+    if (!(fvm_swf_sound_mix_queue_pump_tail(mix, 2, 4, &accepted) == FVM_ERROR && !accepted))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_SWFSoundMixQueuePending pending;
+    pending.struct_size = sizeof(pending);
+    if (!(fvm_swf_sound_mix_queue_pending(mix, &pending) == FVM_OK &&
+          pending.origin == FVM_SWF_SOUND_MIX_QUEUE_PENDING_TAIL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_clock_info(mix, &shared) == FVM_OK && shared.submitted_frames == 9 &&
+          shared.played_frames == 9))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    q.fail = 0;
+    for (unsigned guard = 0; guard < 8; ++guard)
+    {
+        q.count = 0;
+        FVM_Result result = fvm_swf_sound_mix_queue_pump_tail(mix, 2, 4, &accepted);
+        if (result == FVM_NOT_FOUND)
+        {
+            break;
+        }
+        if (!(result == FVM_OK && accepted == 2))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
+    const short expected[] = {
+        30000, -25125, 11875, -10250, 250, -1875, 10500, 4125, -30000, -30000, -30000, -30000, -30000, -30000, 0};
+    if (!(q.accepted == 15))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for (size_t i = 0; i < 15; ++i)
+    {
+        if (!(q.saved[i * 2] == expected[i] && q.saved[i * 2 + 1] == expected[i]))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (!(fvm_swf_stream_output_info(&output, &stream_info) == FVM_OK && stream_info.submitted_frames == 9 &&
+          stream_info.eof))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_clock_info(mix, &shared) == FVM_OK && shared.submitted_frames == 15 &&
+          shared.played_frames == 15 && !shared.queued_frames && shared.seconds == 15.0 / 48000))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_identity_info(mix, 7, &identity) == FVM_OK && identity.end_frame == 9 &&
+          !identity.active))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_identity_info(mix, 8, &identity) == FVM_OK && identity.end_frame == 14 &&
+          !identity.active))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_swf_sound_mix_queue_set_identity_tracking(mix, 0, 0) == FVM_OK &&
+          fvm_swf_sound_mix_queue_clock_end(mix) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_swf_sound_mix_queue_close(mix);
+    fvm_swf_sound_mixer_close(mixer);
+    fvm_swf_stream_sound_snapshot_close(source);
     return 0;
 }
 

@@ -57,15 +57,15 @@ mount/bind are not implemented here. Accepted plan: [namespace](../../../doc/RES
 
 | API | Purpose and ownership |
 | --- | --- |
-| [`fvm_sbindings_init`](../../../include/flashvm/sbindings.h#L33) | Create an empty incoming table in caller slots, without allocation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L43) | Encode the full immutable declaration list to a disjoint caller payload buffer; atomic validation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L66) | Frame metadata/value bytes with canonical length/tag and checksum; borrow source only during call. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_apply`](../../../include/flashvm/sbindings.h#L49) | Verify tag-zero frame and copy all bindings atomically; conflicts leave the table untouched. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_init`](../../../include/flashvm/sstream.h#L24) | Bind native state to owned receive buffer and explicit record quota; no I/O. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L33) | Retain each fragment; only OK publishes a borrowed verified view. MORE still reports consumed bytes. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L37) | Copy the receiving direction's type/version metadata; no global tag interpretation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L38) | Invalidate the last view after its last use; retain caller storage, discard state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L80) | Verify one complete record in fread bytes and return its exact consumed extent; view borrows input. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_init`](../../../include/flashvm/sbindings.h#L37) | Create an empty incoming table in caller slots, without allocation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L51) | Encode the full immutable declaration list to a disjoint caller payload buffer; atomic validation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L76) | Frame metadata/value bytes with canonical length/tag and checksum; borrow source only during call. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_apply`](../../../include/flashvm/sbindings.h#L59) | Verify tag-zero frame and copy all bindings atomically; conflicts leave the table untouched. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_init`](../../../include/flashvm/sstream.h#L26) | Bind native state to owned receive buffer and explicit record quota; no I/O. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L37) | Retain each fragment; only OK publishes a borrowed verified view. MORE still reports consumed bytes. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L43) | Copy the receiving direction's type/version metadata; no global tag interpretation. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L44) | Invalidate the last view after its last use; retain caller storage, discard state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L94) | Verify one complete record in fread bytes and return its exact consumed extent; view borrows input. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 
 ## Cross / Другие OS и CPU
 
@@ -91,13 +91,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../../../include/flashvm/sbindings.h#L49) |
-| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../../../include/flashvm/sbindings.h#L33) |
-| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
-| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../../../include/flashvm/srecord.h#L80) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../../../include/flashvm/srecord.h#L66) |
-| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../../../include/flashvm/sstream.h#L24) |
-| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../../../include/flashvm/sstream.h#L33) |
-| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../../../include/flashvm/sstream.h#L38) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:59](../../../include/flashvm/sbindings.h#L59) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:51](../../../include/flashvm/sbindings.h#L51) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:94](../../../include/flashvm/srecord.h#L94) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:76](../../../include/flashvm/srecord.h#L76) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:26](../../../include/flashvm/sstream.h#L26) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:37](../../../include/flashvm/sstream.h#L37) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:44](../../../include/flashvm/sstream.h#L44) |
 <!-- source-links:end -->

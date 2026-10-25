@@ -14,33 +14,33 @@ exception-block orchestration. No roadmap stage is marked complete.
 
 | File in handlers/ | Service | Retained semantics / Сохранённое поведение |
 | --- | --- | --- |
-| numeric.cpp | [fvm_exec_numeric](../include/flashvm/execution.h#L151) | Numeric arithmetic, remainder, 32-bit operations; coercion order, pre-SWF5 division error, SWF8 logical-shift result. |
-| compare.cpp | [fvm_exec_compare](../include/flashvm/execution.h#L108) | Add2, loose/strict equality, Less2/Greater; primitive hints, coercion order, counted UTF-16 string ordering, NaN rules. |
-| string_extract.cpp | [fvm_exec_string_extract](../include/flashvm/execution.h#L181) | StringExtract and MBStringExtract; length/start/text conversion order, Int32 wrapping, UTF-16 ranges and legacy ASCII gate. |
-| member.cpp | [fvm_exec_member](../include/flashvm/execution.h#L206) | GetMember/SetMember, counted keys, raw native table index distinction. |
-| display_property.cpp | [fvm_exec_display_property](../include/flashvm/execution.h#L177) | GetProperty/SetProperty, numeric index before target resolution, read-only gates and SWF7+ NaN name policy. |
-| select_target.cpp | [fvm_exec_select_target](../include/flashvm/execution.h#L198) | Empty-path reset, undefined SWF6/7 boundary, invalid target state. |
-| url.cpp | [fvm_exec_url](../include/flashvm/execution.h#L200) | Counted URL/target, target-before-URL conversion, flag validation and synchronous host sink. |
-| trace.cpp | [fvm_exec_trace](../include/flashvm/execution.h#L203) | Conversion even without a sink; trace-specific undefined spelling and host barrier. |
-| frame_control.cpp | [fvm_exec_frame_control](../include/flashvm/execution.h#L339) | NEXT/PREVIOUS/PLAY/STOP/GOTO commands; intrinsic MovieClip dispatch. |
-| call_frame.cpp | [fvm_exec_call_frame](../include/flashvm/execution.h#L342) | Number/label/clip:frame resolution and nested actions without seeking. |
-| script_call.cpp | [fvm_avm1_call_script](../src/avm1/handlers/script_call.cpp#L20) | Shared version-aware activation preparation: formals, arguments aliases, super, Function2 preloads, scopes and caller restoration. Private interpreter fallback only. |
-| native_binding.cpp | [fvm_function_set_body](../include/flashvm/function.h#L43) | Validate and attach/remove a context-local generated body and GC capture. |
-| native_body.cpp | [fvm_exec_native_body](../src/avm1/handlers/native_body.cpp#L10) | Prepared-frame body entry, target/this restoration, result validation and finalizer-entry marker. Private activation dispatch. |
+| numeric.cpp | [fvm_exec_numeric](../include/flashvm/execution.h#L189) | Numeric arithmetic, remainder, 32-bit operations; coercion order, pre-SWF5 division error, SWF8 logical-shift result. |
+| compare.cpp | [fvm_exec_compare](../include/flashvm/execution.h#L129) | Add2, loose/strict equality, Less2/Greater; primitive hints, coercion order, counted UTF-16 string ordering, NaN rules. |
+| string_extract.cpp | [fvm_exec_string_extract](../include/flashvm/execution.h#L235) | StringExtract and MBStringExtract; length/start/text conversion order, Int32 wrapping, UTF-16 ranges and legacy ASCII gate. |
+| member.cpp | [fvm_exec_member](../include/flashvm/execution.h#L278) | GetMember/SetMember, counted keys, raw native table index distinction. |
+| display_property.cpp | [fvm_exec_display_property](../include/flashvm/execution.h#L229) | GetProperty/SetProperty, numeric index before target resolution, read-only gates and SWF7+ NaN name policy. |
+| select_target.cpp | [fvm_exec_select_target](../include/flashvm/execution.h#L264) | Empty-path reset, undefined SWF6/7 boundary, invalid target state. |
+| url.cpp | [fvm_exec_url](../include/flashvm/execution.h#L268) | Counted URL/target, target-before-URL conversion, flag validation and synchronous host sink. |
+| trace.cpp | [fvm_exec_trace](../include/flashvm/execution.h#L273) | Conversion even without a sink; trace-specific undefined spelling and host barrier. |
+| frame_control.cpp | [fvm_exec_frame_control](../include/flashvm/execution.h#L451) | NEXT/PREVIOUS/PLAY/STOP/GOTO commands; intrinsic MovieClip dispatch. |
+| call_frame.cpp | [fvm_exec_call_frame](../include/flashvm/execution.h#L456) | Number/label/clip:frame resolution and nested actions without seeking. |
+| script_call.cpp | [fvm_avm1_call_script](../src/avm1/handlers/script_call.cpp#L23) | Shared version-aware activation preparation: formals, arguments aliases, super, Function2 preloads, scopes and caller restoration. Private interpreter fallback only. |
+| native_binding.cpp | [fvm_function_set_body](../include/flashvm/function.h#L49) | Validate and attach/remove a context-local generated body and GC capture. |
+| native_body.cpp | [fvm_exec_native_body](../src/avm1/handlers/native_body.cpp#L12) | Prepared-frame body entry, target/this restoration, result validation and finalizer-entry marker. Private activation dispatch. |
 
 ## Public C contract / Публичный C-контракт
 
 `include/flashvm/execution.h` declares C89-compatible operations on explicit
-[`FVM_Value`](../include/flashvm/value.h#L24) operands and semantic command enums. They accept no Action opcode,
+[`FVM_Value`](../include/flashvm/value.h#L26) operands and semantic command enums. They accept no Action opcode,
 bytecode pointer, instruction offset or interpreter operand stack. Outputs may
 alias inputs; failed value services leave the output intact. Runtime context
-[`FVM_Context`](../src/core/runtime.hpp#L247) remains necessary for object ownership, GC, SWF-version policy,
+[`FVM_Context`](../src/core/runtime.hpp#L257) remains necessary for object ownership, GC, SWF-version policy,
 display targets and host services. This is independence from the interpreter,
 not independence from the managed runtime. Private `Execution` state is isolated
 in `execution_state.hpp` and never appears in the public ABI.
 
 C89-функции принимают значения и смысловые команды. Коды Action, пи-код,
-счётчик команд и стек интерпретатора не входят в их интерфейсы. [`FVM_Context`](../src/core/runtime.hpp#L247)
+счётчик команд и стек интерпретатора не входят в их интерфейсы. [`FVM_Context`](../src/core/runtime.hpp#L257)
 нужен как среда объектов, GC, версионных правил и служб; он не передаёт
 обработчику детали декодирования. Результат можно записать поверх операнда;
 ошибка не меняет выходное значение. Изменения объектов, сделанные пользовательским
@@ -60,15 +60,15 @@ function and capture are rooted. Extra generated-code temporaries must use
 
 ## Generated body attachment / Привязка нативного тела
 
-`function.h` introduces [`FVM_ScriptFrame`](../include/flashvm/function.h#L16) ABI 1 and [`FVM_ScriptBody`](../include/flashvm/function.h#L36).
-[`fvm_function_set_body`](../include/flashvm/function.h#L43) keeps the original AVM1 body and metadata. Both bodies
+`function.h` introduces [`FVM_ScriptFrame`](../include/flashvm/function.h#L18) ABI 1 and [`FVM_ScriptBody`](../include/flashvm/function.h#L40).
+[`fvm_function_set_body`](../include/flashvm/function.h#L49) keeps the original AVM1 body and metadata. Both bodies
 share the activation builder, including Function2's separate receiver/implicit
 this and suppress/preload policies. The descriptor exposes the actual arguments
 object even when its named binding is suppressed, prepared register slots, and
 undefined super when suppressed. Native code gets the prepared activation rather
 than constructing another calling convention.
 
-[`fvm_function_set_body`](../include/flashvm/function.h#L43) сохраняет исходное тело и метаданные. При снятии привязки
+[`fvm_function_set_body`](../include/flashvm/function.h#L49) сохраняет исходное тело и метаданные. При снятии привязки
 исполняется исходный AVM1. Нативное тело получает готовую область видимости,
 массив arguments, настоящий receiver, версионный implicit_this, super и регистры.
 Объект arguments доступен в дескрипторе даже при подавленном именованном binding.
@@ -77,7 +77,7 @@ than constructing another calling convention.
 [GC:] Each call snapshots its code/userdata/capture before activation setup;
 self-unbinding affects later calls and cannot drop the running call's capture.
 Capture is marked through the function and temporary snapshot roots. The body
-returns ordinary [`FVM_Result`](../include/flashvm/flashvm.h#L40) statuses and uses [`fvm_exception_raise`](../include/flashvm/exception.h#L67) for script
+returns ordinary [`FVM_Result`](../include/flashvm/flashvm.h#L42) statuses and uses [`fvm_exception_raise`](../include/flashvm/exception.h#L78) for script
 throws; result strings are copied/validated before roots leave scope. Scope,
 this, target, recursion depth and execution nesting restore on error/OOM.
 An armed finalizer is consumed only after successful entry preparation.
@@ -134,7 +134,7 @@ MovieClip, Function2 and full SWF compatibility limitations remain open.
 
 ### v0.317: intrinsic root-lock C service
 
-clip_lock_root.cpp adds [fvm_exec_clip_lock_root](../include/flashvm/execution.h#L245) for explicit native instance/value
+clip_lock_root.cpp adds [fvm_exec_clip_lock_root](../include/flashvm/execution.h#L335) for explicit native instance/value
 query and atomic assignment. It shares versioned Boolean conversion and roots
 without accepting instruction bytes or an operand stack. Native getter/setter
 bridges each occupy a separate standard file; root/path lookup reads raw native
@@ -190,7 +190,7 @@ appending method entries. See MOVIECLIP_DRAG.md.
 
 ### v0.332: atomic local transform copy
 
-clip_copy_transform.cpp provides [fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L71) for native clip
+clip_copy_transform.cpp provides [fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L84) for native clip
 identities, without Action IDs or an interpreter stack. A typed MovieClip.transform
 setter shares it with C/generated callers; paired public/private map rollback
 keeps matrix and color publication atomic on failures. See CLIP_COPY_TRANSFORM.md.
@@ -201,7 +201,7 @@ setter MovieClip.transform. Исходные getter-побочные эффек�
 
 ### v0.333: explicit point conversion
 
-clip_point.cpp exports [fvm_exec_clip_point](../include/flashvm/execution.h#L65), used by separate local/global native
+clip_point.cpp exports [fvm_exec_clip_point](../include/flashvm/execution.h#L76), used by separate local/global native
 adapter files. It preserves existing point-field conversion, physical matrices,
 ordered setter errors and callback transport IDs. See CLIP_POINT_SERVICE.md for
 remaining loaded-Flash policy differences. The large MovieClip file no longer
@@ -248,7 +248,7 @@ See CLIP_WORLD_MATRIX.md for snapshot/cycle/error contracts and remaining scope.
 байткода и стека. Переносимость, сырая сцена и завершение стадий ещё открыты.
 
 In v0.341, host pointer projection and drag inverse projection share the
-context-free C89 [`fvm_affine_inverse_point`](../include/flashvm/affine.h#L19) service (AFFINE_PROJECTION.md).
+context-free C89 [`fvm_affine_inverse_point`](../include/flashvm/affine.h#L22) service (AFFINE_PROJECTION.md).
 The execution adapters retain state, callbacks, GC barriers and publication.
 В v0.341 числовая double-проекция мыши/drag вынесена в общий C-интерфейс;
 состояние и корни остаются в адаптерах. Это не завершает этапы roadmap.
@@ -264,12 +264,12 @@ interpreter. Full input snapshots and partial results are GC-rooted across
 callbacks. See LITERAL_SERVICES.md. Построение литералов вынесено из основного
 цикла; C-интерфейс не принимает стек или пи-код.
 
-In v0.344, [`fvm_exec_literal_count`](../include/flashvm/execution.h#L36) extracts versioned count conversion as well.
+In v0.344, [`fvm_exec_literal_count`](../include/flashvm/execution.h#L39) extracts versioned count conversion as well.
 The adapter handles undefined rejection without consuming entry operands; it
 still owns encoded layout and stack publication. Преобразование счётчика,
 построение Array и построение Object теперь доступны через отдельные C-функции.
 
-In v0.345, NewObject count preparation delegates to [`fvm_exec_constructor_count`](../include/flashvm/execution.h#L488),
+In v0.345, NewObject count preparation delegates to [`fvm_exec_constructor_count`](../include/flashvm/execution.h#L648),
 preserving its distinct host bound and loaded call-count semantics. The obsolete
 literal-limit alias leaves the bytecode header. См. NEW_OBJECT_NAMES.md;
 адаптер сохраняет порядок имени/счётчика и отвечает только за раскладку аргументов.
@@ -283,29 +283,29 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_affine_inverse_point` | function | [include/flashvm/affine.h:19](../include/flashvm/affine.h#L19) |
-| `fvm_avm1_call_script` | function | [src/avm1/handlers/script_call.cpp:20](../src/avm1/handlers/script_call.cpp#L20) |
-| `FVM_Context` | struct | [src/core/runtime.hpp:247](../src/core/runtime.hpp#L247) |
-| `fvm_exception_raise` | function | [include/flashvm/exception.h:67](../include/flashvm/exception.h#L67) |
-| `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
-| `fvm_exec_clip_copy_transform` | function | [include/flashvm/execution.h:71](../include/flashvm/execution.h#L71) |
-| `fvm_exec_clip_lock_root` | function | [include/flashvm/execution.h:245](../include/flashvm/execution.h#L245) |
-| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
-| `fvm_exec_compare` | function | [include/flashvm/execution.h:108](../include/flashvm/execution.h#L108) |
-| `fvm_exec_constructor_count` | function | [include/flashvm/execution.h:488](../include/flashvm/execution.h#L488) |
-| `fvm_exec_display_property` | function | [include/flashvm/execution.h:177](../include/flashvm/execution.h#L177) |
-| `fvm_exec_frame_control` | function | [include/flashvm/execution.h:339](../include/flashvm/execution.h#L339) |
-| `fvm_exec_literal_count` | function | [include/flashvm/execution.h:36](../include/flashvm/execution.h#L36) |
-| `fvm_exec_member` | function | [include/flashvm/execution.h:206](../include/flashvm/execution.h#L206) |
-| `fvm_exec_native_body` | function | [src/avm1/handlers/native_body.cpp:10](../src/avm1/handlers/native_body.cpp#L10) |
-| `fvm_exec_numeric` | function | [include/flashvm/execution.h:151](../include/flashvm/execution.h#L151) |
-| `fvm_exec_select_target` | function | [include/flashvm/execution.h:198](../include/flashvm/execution.h#L198) |
-| `fvm_exec_string_extract` | function | [include/flashvm/execution.h:181](../include/flashvm/execution.h#L181) |
-| `fvm_exec_trace` | function | [include/flashvm/execution.h:203](../include/flashvm/execution.h#L203) |
-| `fvm_exec_url` | function | [include/flashvm/execution.h:200](../include/flashvm/execution.h#L200) |
-| `fvm_function_set_body` | function | [include/flashvm/function.h:43](../include/flashvm/function.h#L43) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `FVM_ScriptBody` | callback typedef | [include/flashvm/function.h:36](../include/flashvm/function.h#L36) |
-| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:16](../include/flashvm/function.h#L16) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `fvm_affine_inverse_point` | function | [include/flashvm/affine.h:22](../include/flashvm/affine.h#L22) |
+| `fvm_avm1_call_script` | function | [src/avm1/handlers/script_call.cpp:23](../src/avm1/handlers/script_call.cpp#L23) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
+| `fvm_exception_raise` | function | [include/flashvm/exception.h:78](../include/flashvm/exception.h#L78) |
+| `fvm_exec_call_frame` | function | [include/flashvm/execution.h:456](../include/flashvm/execution.h#L456) |
+| `fvm_exec_clip_copy_transform` | function | [include/flashvm/execution.h:84](../include/flashvm/execution.h#L84) |
+| `fvm_exec_clip_lock_root` | function | [include/flashvm/execution.h:335](../include/flashvm/execution.h#L335) |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:76](../include/flashvm/execution.h#L76) |
+| `fvm_exec_compare` | function | [include/flashvm/execution.h:129](../include/flashvm/execution.h#L129) |
+| `fvm_exec_constructor_count` | function | [include/flashvm/execution.h:648](../include/flashvm/execution.h#L648) |
+| `fvm_exec_display_property` | function | [include/flashvm/execution.h:229](../include/flashvm/execution.h#L229) |
+| `fvm_exec_frame_control` | function | [include/flashvm/execution.h:451](../include/flashvm/execution.h#L451) |
+| `fvm_exec_literal_count` | function | [include/flashvm/execution.h:39](../include/flashvm/execution.h#L39) |
+| `fvm_exec_member` | function | [include/flashvm/execution.h:278](../include/flashvm/execution.h#L278) |
+| `fvm_exec_native_body` | function | [src/avm1/handlers/native_body.cpp:12](../src/avm1/handlers/native_body.cpp#L12) |
+| `fvm_exec_numeric` | function | [include/flashvm/execution.h:189](../include/flashvm/execution.h#L189) |
+| `fvm_exec_select_target` | function | [include/flashvm/execution.h:264](../include/flashvm/execution.h#L264) |
+| `fvm_exec_string_extract` | function | [include/flashvm/execution.h:235](../include/flashvm/execution.h#L235) |
+| `fvm_exec_trace` | function | [include/flashvm/execution.h:273](../include/flashvm/execution.h#L273) |
+| `fvm_exec_url` | function | [include/flashvm/execution.h:268](../include/flashvm/execution.h#L268) |
+| `fvm_function_set_body` | function | [include/flashvm/function.h:49](../include/flashvm/function.h#L49) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_ScriptBody` | callback typedef | [include/flashvm/function.h:40](../include/flashvm/function.h#L40) |
+| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:18](../include/flashvm/function.h#L18) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

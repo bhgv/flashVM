@@ -4,10 +4,10 @@
 
 [English](STREAM_ADPCM.md) · [снимки PCM](SWF_STREAM_SOUND.md) · [плеер](PLAYER_PCM_STREAMS.ru.md)
 
-[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L88) — дополнительная C89-функция подготовки.
+[`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L110) — дополнительная C89-функция подготовки.
 Вызывается владельцем контекста до публикации данных worker. Возвращённый
 неизменяемый снимок принадлежит вызывающему; освобождение — через
-[`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L199). После уничтожения контекста/runtime
+[`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L248). После уничтожения контекста/runtime
 reader/converter/output используют снимок без VM, аллокаций, декодирования
 и обратных вызовов. Подготовка не продвигает MovieClip и не открывает устройства.
 
@@ -30,9 +30,9 @@ Flash состоят исключительно из полных пакетов
 частоте и числе каналов. Индексы потока/блока, номера кадров, рекомендованные
 параметры и среднее сохраняются. `sample_count_known` устанавливается;
 размеры и количество сэмплов описывают декодированные данные.
-[`fvm_swf_stream_sound_snapshot_info`](../include/flashvm/swf_stream_sound.h#L166) и [`fvm_swf_stream_sound_snapshot_block_at`](../include/flashvm/swf_stream_sound.h#L170)
+[`fvm_swf_stream_sound_snapshot_info`](../include/flashvm/swf_stream_sound.h#L201) и [`fvm_swf_stream_sound_snapshot_block_at`](../include/flashvm/swf_stream_sound.h#L209)
 возвращают **нормализованное** представление. Исходные live-функции и
-[`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L65) продолжают выдавать оригинальные непрозрачные
+[`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L83) продолжают выдавать оригинальные непрозрачные
 ADPCM-байты. Для сохранения сжатого оригинала используйте raw API. Публичные
 структуры ABI не меняются; существующие reader/converter работают с обычным PCM.
 
@@ -81,9 +81,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:170](../include/flashvm/swf_stream_sound.h#L170) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../include/flashvm/swf_stream_sound.h#L199) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:166](../include/flashvm/swf_stream_sound.h#L166) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:209](../include/flashvm/swf_stream_sound.h#L209) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:248](../include/flashvm/swf_stream_sound.h#L248) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:201](../include/flashvm/swf_stream_sound.h#L201) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:83](../include/flashvm/swf_stream_sound.h#L83) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:110](../include/flashvm/swf_stream_sound.h#L110) |
 <!-- source-links:end -->

@@ -3,12 +3,17 @@
 #define FLASHVM_HOST_H
 #include "path.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #define FVM_HOST_RGBA_BYTES 4U /* Straight-alpha RGBA8 bytes in every public frame. */
+
+
 /* Synchronous host consumer. Copy/upload the borrowed frame before returning;
  * do not retain its descriptor or pixels. Return the actual backend status. */
 typedef FVM_Result (*FVM_HostPresentCallback)(const FVM_RasterSurface *surface, void *userdata);
+
+
 /* Validate a nonempty frame against its actual accessible byte count, then call
  * the consumer exactly once. Row padding is allowed; the final row need only
  * contain width*4 bytes. No context, allocation, OS, SDL or GPU dependency.
@@ -17,6 +22,8 @@ typedef FVM_Result (*FVM_HostPresentCallback)(const FVM_RasterSurface *surface, 
  * Calls are synchronous on the caller's thread; backend thread rules still apply. */
 FVM_API FVM_Result fvm_host_present(const FVM_RasterSurface *surface, size_t byte_count,
                                     FVM_HostPresentCallback callback, void *userdata);
+
+
 /* Invert the host's world-to-event-space affine transform for one event.
  * Include stage origin, device scale, letterbox and actor transform exactly once.
  * Outputs must be non-NULL and distinct; errors preserve both. Finite nonsingular

@@ -1,34 +1,34 @@
 /* FlashVM: Embedding/ActionScript tutorial: example as2.
- * File: examples/embedding/gesture_dispatch/example_as2.as.
- */
+* File: examples/embedding/gesture_dispatch/example_as2.as.
+*/
 
 // ActionScript 2.0: DESIGN TARGET, NOT YET SUPPORTED by the runtime.
 // Native gesture callbacks currently reach C only; AVM1 event dispatch
 // requires MovieClip hit-testing and the Flash event bridge.
 /* Объявляем функцию или назначаем обработчик события. */
-_root.onTap = function(fingers, x, y)
+_root.onTap = function(fingers, x, y) // Объявляем функцию или назначаем обработчик события.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем trace: выводим диагностическое представление значения.
- * "tap " + fingers — значение или выражение для вывода. */
-    trace("tap " + fingers);
+    * "tap " + fingers — значение или выражение для вывода. */
+    trace("tap " + fingers); // Вызываем trace: выводим диагностическое представление значения. "tap " + fingers — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-};
+}; // Завершаем текущий блок или описание объекта.
 /* Объявляем функцию или назначаем обработчик события. */
-_root.onMultiTap = function(fingers, x, y)
+_root.onMultiTap = function(fingers, x, y) // Объявляем функцию или назначаем обработчик события.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем trace: выводим диагностическое представление значения.
- * "multitap " + fingers — значение или выражение для вывода. */
-    trace("multitap " + fingers);
+    * "multitap " + fingers — значение или выражение для вывода. */
+    trace("multitap " + fingers); // Вызываем trace: выводим диагностическое представление значения. "multitap " + fingers — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-};
+}; // Завершаем текущий блок или описание объекта.
 /* Объявляем функцию или назначаем обработчик события. */
-_root.onSwipe = function(fingers, direction, x, y)
+_root.onSwipe = function(fingers, direction, x, y) // Объявляем функцию или назначаем обработчик события.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем trace: выводим диагностическое представление значения.
- * "swipe " + direction — значение или выражение для вывода. */
-    trace("swipe " + direction);
+    * "swipe " + direction — значение или выражение для вывода. */
+    trace("swipe " + direction); // Вызываем trace: выводим диагностическое представление значения. "swipe " + direction — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-};
+}; // Завершаем текущий блок или описание объекта.

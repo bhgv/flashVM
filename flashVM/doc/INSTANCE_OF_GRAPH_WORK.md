@@ -1,6 +1,6 @@
 # Budgeted interface graph membership — v0.381
 
-Loaded [fvm_exec_instance_of](../include/flashvm/execution.h#L226) no longer rejects a graph after 4096 visited
+Loaded [fvm_exec_instance_of](../include/flashvm/execution.h#L308) no longer rejects a graph after 4096 visited
 interface nodes. An identity-keyed hash map replaces the linear visited-vector
 scan. Complete pointer equality resolves bucket collisions, including low-bit
 hash truncation on LLP64; the requested native ports require size_t to hold a
@@ -11,7 +11,7 @@ An execution-work scope starts before loaded coercions and shares the existing
 AVM1 counter with nested script/native execution. Outermost direct calls reset
 the counter; nested calls retain it. Every ordinary prototype iteration, pending
 node pop (including duplicates) and interface edge is charged before processing
-or appending. Budget exhaustion or unsigned counter saturation returns [FVM_ERROR](../include/flashvm/flashvm.h#L43)
+or appending. Budget exhaustion or unsigned counter saturation returns [FVM_ERROR](../include/flashvm/flashvm.h#L45)
 and leaves output intact. A zero instruction limit remains unlimited. Worker
 stop polling uses the existing native Array policy once per 64 charged units.
 Array callers retain that policy through their old type alias; no Array work
@@ -56,6 +56,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_instance_of` | function | [include/flashvm/execution.h:226](../include/flashvm/execution.h#L226) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_instance_of` | function | [include/flashvm/execution.h:308](../include/flashvm/execution.h#L308) |
 <!-- source-links:end -->

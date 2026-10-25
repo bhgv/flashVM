@@ -60,24 +60,24 @@ DefineShape4 fills v0.1211–v0.1224: the SWF8 scene loader decodes fill-only ta
 
 Заливки DefineShape4 v0.1211–v0.1224: загрузчик сцены SWF8 декодирует тег 83 без обводок, проверяет отдельный EdgeBounds, принимает RGBA solid/bitmap-заливки, 1–15 упорядоченных точек, PAD/REFLECT/REPEAT, RGB/linearRGB и точный знаковый внутренний FIXED8-фокус. Скалярные свойства графа сохраняют режимы после GC, сериализации, переноса через канал и удаления отправителя. Проверки Shape1/2/3 сохранены. Двенадцать новых тестов покрывают 18 исходных режимов, 90 сочетаний числа точек и режимов, все 511 внутренних фокусов, повреждённые/усечённые записи, старые версии, повторные ID и вложенные определения, отказы памяти, четыре bitmap-режима, StateNewStyles, замену персонажа и 16 перемоток; четыре OS-потока выполняют 96 независимых циклов загрузки/рендеринга/GC. Пройдены 130 нативных тестов, 11 ASan/UBSan-тестов и allocation-тест с явным --no-faults (ограничение sanitizer unwinding; реальные отказы проверены нативно), три SDK-free проверки загрузки/ошибок без графики. LeakSanitizer отключён. Ссылки на исходники и проверки примеров проходят. Непустые банки LINESTYLE2, границы/ограничение фокуса, сравнение с Flash, полная семантика обводок и приёмка устройств/других платформ остаются открытыми. Все девять этапов открыты. [Контракт](SHAPE4_FILLS.ru.md).
 
-Interior focal gradients v0.1197–v0.1210: additive C89 fill/stroke entries and SWF8 radial beginGradientFill/lineGradientStyle accept signed focal positions strictly inside (-1,1), with RGB/linearRGB and PAD/REFLECT/REPEAT. Zero preserves centered bytes; [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, callback IDs and wire/resource types are unchanged. A cancellation-safe ray solver selects ratio before existing color/coverage composition. Finite endpoint/outside script inputs remain UNSUPPORTED; native inputs are INVALID_ARGUMENT. Validation passes 118 selected native gradient/raster/scene/graph/GC/quality/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent horizontal tables, 288 ray-contour samples and nearest-interior boundary samples pass. Real AVM1 tests cover 144 host/SWF8 interpreter/manual/automatic JIT configurations, each with success and atomic boundary rejection (288 calls), checking native counters. Four OS workers complete 128 isolated paint/GC epochs; 192 signed focal affine/alpha/quality renders pass. Copy/duplicate/current-active aliases, binary/channel sender teardown, mixed opposite origins, raw metadata/getter exclusion, numeric coercion effects and allocation fault sweeps are covered. SDK-free C89 admission/invalid-input checks pass; three graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable, without a separate detached build claim. Endpoints/clamping, Flash Fixed8/reference rounding, DefineShape4/LineStyle2, complete stroke semantics and device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](FOCAL_GRADIENTS.md).
+Interior focal gradients v0.1197–v0.1210: additive C89 fill/stroke entries and SWF8 radial beginGradientFill/lineGradientStyle accept signed focal positions strictly inside (-1,1), with RGB/linearRGB and PAD/REFLECT/REPEAT. Zero preserves centered bytes; [FVM_Gradient](../include/flashvm/gradient.h#L48) layout, callback IDs and wire/resource types are unchanged. A cancellation-safe ray solver selects ratio before existing color/coverage composition. Finite endpoint/outside script inputs remain UNSUPPORTED; native inputs are INVALID_ARGUMENT. Validation passes 118 selected native gradient/raster/scene/graph/GC/quality/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent horizontal tables, 288 ray-contour samples and nearest-interior boundary samples pass. Real AVM1 tests cover 144 host/SWF8 interpreter/manual/automatic JIT configurations, each with success and atomic boundary rejection (288 calls), checking native counters. Four OS workers complete 128 isolated paint/GC epochs; 192 signed focal affine/alpha/quality renders pass. Copy/duplicate/current-active aliases, binary/channel sender teardown, mixed opposite origins, raw metadata/getter exclusion, numeric coercion effects and allocation fault sweeps are covered. SDK-free C89 admission/invalid-input checks pass; three graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable, without a separate detached build claim. Endpoints/clamping, Flash Fixed8/reference rounding, DefineShape4/LineStyle2, complete stroke semantics and device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](FOCAL_GRADIENTS.md).
 
-Внутренние focal-градиенты v0.1197–v0.1210: добавлены C89 fill/stroke entries и signed focal строго внутри (-1,1) для radial beginGradientFill/lineGradientStyle SWF8, RGB/linearRGB, PAD/REFLECT/REPEAT. Zero сохраняет centered bytes; layout [FVM_Gradient](../include/flashvm/gradient.h#L38), callback IDs и wire/resource types прежние. Устойчивый ray solver выбирает отношение до прежней color/coverage композиции. Конечные endpoint/outside script-аргументы остаются UNSUPPORTED, native — INVALID_ARGUMENT. Прошли 118 выбранных native gradient/raster/scene/graph/GC/quality/tutorial проверок, десять focused ASan/UBSan и явные no-throw/no-fault запуски; LeakSanitizer выключен. Проверены независимые горизонтальные таблицы, 288 ray-contour samples и ближайшие внутренние значения у границы. Реальные AVM1 тесты охватывают 144 host/SWF8 interpreter/manual/automatic JIT конфигурации: success и атомарный boundary rejection в каждой (288 вызовов), с native counters. Четыре OS worker проходят 128 независимых paint/GC циклов; проверены 192 signed focal affine/alpha/quality отрисовки. Проверены copy/duplicate/current-active aliases, binary/channel после уничтожения отправителя, mixed opposite origins, raw metadata без getters, numeric coercion effects и ошибки выделения. SDK-free C89 admission/invalid-input проверки проходят; три graphic tutorial явно пропускаются. Переименованный detached-компонент конфигурируется, copied checker проходит на native executable без заявления отдельной detached-сборки. Endpoints/clamping, Flash Fixed8/эталонное округление, DefineShape4/LineStyle2, полная stroke семантика, устройства и другие платформы открыты. Все девять этапов открыты. [Контракт](FOCAL_GRADIENTS.ru.md).
-
-
-Linear-light RGB v0.1183–v0.1196: additive C89 fill/stroke interpolation selectors and SWF8 beginGradientFill/lineGradientStyle support linearRGB for linear and centered-radial PAD/REFLECT/REPEAT ramps. [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, old RGB defaults and callback IDs remain unchanged. The sampler decodes at most fifteen sRGB stops into paint-local storage, interpolates RGB in linear light, re-encodes before color transforms and keeps alpha straight/linear. Endpoints and constant channels remain exact. Validation passes 105 selected native gradient/raster/scene/graph/GC/quality/tutorial tests, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent numeric tables cover dark transfer branches, duplicate stops, alpha/source-over and old RGB byte identity. Seventy-two real host/SWF8 AVM1 interpreter/manual/automatic JIT combinations check native counters; four OS workers complete 128 isolated paint/GC epochs; 96 affine/alpha/quality renders pass. Mixed RGB/linearRGB fill/stroke binary graphs retain independent policies after sender teardown. SDK-free C89 validation passes and two graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Counted names, version gates, copied inputs, duplicate/current-active aliases, raw metadata/getter exclusion and preparation fault sweeps are covered. DefineShape4/LineStyle2, nonzero focal, complete stroke scaling/caps/joins/mid-path fill semantics, per-pixel work metering and original-player/device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](LINEAR_RGB_GRADIENTS.md).
-
-LinearRGB v0.1183–v0.1196: добавлены C89 fill/stroke interpolation selectors и linearRGB для beginGradientFill/lineGradientStyle SWF8, linear/centered-radial PAD/REFLECT/REPEAT. Layout [FVM_Gradient](../include/flashvm/gradient.h#L38), старые RGB defaults и callback IDs сохранены. До пятнадцати sRGB stops декодируются в paint-local память, RGB интерполируется в линейном свете и кодируется до color transform; alpha остаётся straight/linear. Endpoints и постоянные каналы точные. Прошли 105 выбранных native gradient/raster/scene/graph/GC/quality/tutorial тестов, десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски; LeakSanitizer выключен. Независимые числовые таблицы проверяют тёмные transfer branches, duplicate stops, alpha/source-over и старую RGB byte identity. Проверены 72 реальных host/SWF8 AVM1 interpreter/manual/automatic JIT сочетания с native counters, четыре OS worker и 128 независимых paint/GC циклов, 96 affine/alpha/quality отрисовок. Mixed RGB/linearRGB fill/stroke binary graphs сохраняют разные политики после уничтожения отправителя. SDK-free C89 validation проходит, две graphic tutorial проверки явно пропускаются. Переименованный detached-компонент конфигурируется, скопированный checker проходит на native executable без заявления отдельной detached-сборки. Проверены counted names, версии, копирование аргументов, duplicate/current-active aliases, raw metadata без getters и ошибки подготовки. DefineShape4/LineStyle2, ненулевой focal, полная stroke scaling/caps/joins/mid-path fill семантика, per-pixel metering, эталонный плеер, устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](LINEAR_RGB_GRADIENTS.ru.md).
+Внутренние focal-градиенты v0.1197–v0.1210: добавлены C89 fill/stroke entries и signed focal строго внутри (-1,1) для radial beginGradientFill/lineGradientStyle SWF8, RGB/linearRGB, PAD/REFLECT/REPEAT. Zero сохраняет centered bytes; layout [FVM_Gradient](../include/flashvm/gradient.h#L48), callback IDs и wire/resource types прежние. Устойчивый ray solver выбирает отношение до прежней color/coverage композиции. Конечные endpoint/outside script-аргументы остаются UNSUPPORTED, native — INVALID_ARGUMENT. Прошли 118 выбранных native gradient/raster/scene/graph/GC/quality/tutorial проверок, десять focused ASan/UBSan и явные no-throw/no-fault запуски; LeakSanitizer выключен. Проверены независимые горизонтальные таблицы, 288 ray-contour samples и ближайшие внутренние значения у границы. Реальные AVM1 тесты охватывают 144 host/SWF8 interpreter/manual/automatic JIT конфигурации: success и атомарный boundary rejection в каждой (288 вызовов), с native counters. Четыре OS worker проходят 128 независимых paint/GC циклов; проверены 192 signed focal affine/alpha/quality отрисовки. Проверены copy/duplicate/current-active aliases, binary/channel после уничтожения отправителя, mixed opposite origins, raw metadata без getters, numeric coercion effects и ошибки выделения. SDK-free C89 admission/invalid-input проверки проходят; три graphic tutorial явно пропускаются. Переименованный detached-компонент конфигурируется, copied checker проходит на native executable без заявления отдельной detached-сборки. Endpoints/clamping, Flash Fixed8/эталонное округление, DefineShape4/LineStyle2, полная stroke семантика, устройства и другие платформы открыты. Все девять этапов открыты. [Контракт](FOCAL_GRADIENTS.ru.md).
 
 
-Gradient strokes v0.1169–v0.1182: additive C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L64) and SWF8 lineGradientStyle support linear/centered-radial PAD/REFLECT/REPEAT ordinary-RGB ramps. Existing [FVM_Gradient](../include/flashvm/gradient.h#L38) layout and callback IDs are retained; the new method callback is appended. Copied current/active stroke aliases, solid/clear/endFill transitions, duplicate and binary/channel ownership are covered. Validation: 91 selected native gradient/raster/scene/graph/GC/quality/tutorial tests pass, plus the independent mixed fill/stroke binary-transfer fixture. Ten focused ASan/UBSan checks and explicit no-throw/no-fault runs pass with LeakSanitizer disabled. Real AVM1 exercises 72 host/SWF8 interpreter/manual/automatic JIT combinations with native entry counts; four OS workers complete 128 isolated paint/GC epochs. Quality/affine/alpha tests cover 48 renders. SDK-free C89 validation passes and the graphic tutorial explicitly skips. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Preparation fault sweeps preserve the old style/active path or destination pixels, without rolling back coercion side effects. DefineShape4/LineStyle2, linearRGB, nonzero focal, complete line caps/joins/scaling/mid-path fill semantics, original-player and physical/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](GRADIENT_STROKES.md).
+Linear-light RGB v0.1183–v0.1196: additive C89 fill/stroke interpolation selectors and SWF8 beginGradientFill/lineGradientStyle support linearRGB for linear and centered-radial PAD/REFLECT/REPEAT ramps. [FVM_Gradient](../include/flashvm/gradient.h#L48) layout, old RGB defaults and callback IDs remain unchanged. The sampler decodes at most fifteen sRGB stops into paint-local storage, interpolates RGB in linear light, re-encodes before color transforms and keeps alpha straight/linear. Endpoints and constant channels remain exact. Validation passes 105 selected native gradient/raster/scene/graph/GC/quality/tutorial tests, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent numeric tables cover dark transfer branches, duplicate stops, alpha/source-over and old RGB byte identity. Seventy-two real host/SWF8 AVM1 interpreter/manual/automatic JIT combinations check native counters; four OS workers complete 128 isolated paint/GC epochs; 96 affine/alpha/quality renders pass. Mixed RGB/linearRGB fill/stroke binary graphs retain independent policies after sender teardown. SDK-free C89 validation passes and two graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Counted names, version gates, copied inputs, duplicate/current-active aliases, raw metadata/getter exclusion and preparation fault sweeps are covered. DefineShape4/LineStyle2, nonzero focal, complete stroke scaling/caps/joins/mid-path fill semantics, per-pixel work metering and original-player/device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](LINEAR_RGB_GRADIENTS.md).
 
-Градиентные обводки v0.1169–v0.1182: добавлены C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L64) и SWF8 lineGradientStyle для linear/centered-radial PAD/REFLECT/REPEAT с обычным RGB. Layout [FVM_Gradient](../include/flashvm/gradient.h#L38) и прежние callback IDs сохранены; новый callback добавлен в конец таблицы. Проверены copied current/active aliases, solid/clear/endFill transitions, duplicate и binary/channel ownership. Прошли 91 выбранный native gradient/raster/scene/graph/GC/quality/tutorial тест и дополнительный mixed fill/stroke binary-transfer fixture. Десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски прошли с выключенным LeakSanitizer. Реальные AVM1-вызовы проверяют 72 сочетания host/SWF8 interpreter/manual/automatic JIT с native entry counts; четыре OS worker проходят 128 независимых paint/GC циклов. Проверки quality/affine/alpha охватывают 48 отрисовок. SDK-free C89 validation проходит; graphic tutorial явно пропускается. Переименованный detached-компонент конфигурируется, его скопированный checker проходит на native executable без заявления отдельной detached-сборки. Ошибки подготовки сохраняют прежний стиль/active path или пиксели, не отменяя побочные эффекты coercion. DefineShape4/LineStyle2, linearRGB, ненулевой focal, полная caps/joins/scaling/mid-path fill семантика, эталонный плеер, реальные устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](GRADIENT_STROKES.ru.md).
+LinearRGB v0.1183–v0.1196: добавлены C89 fill/stroke interpolation selectors и linearRGB для beginGradientFill/lineGradientStyle SWF8, linear/centered-radial PAD/REFLECT/REPEAT. Layout [FVM_Gradient](../include/flashvm/gradient.h#L48), старые RGB defaults и callback IDs сохранены. До пятнадцати sRGB stops декодируются в paint-local память, RGB интерполируется в линейном свете и кодируется до color transform; alpha остаётся straight/linear. Endpoints и постоянные каналы точные. Прошли 105 выбранных native gradient/raster/scene/graph/GC/quality/tutorial тестов, десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски; LeakSanitizer выключен. Независимые числовые таблицы проверяют тёмные transfer branches, duplicate stops, alpha/source-over и старую RGB byte identity. Проверены 72 реальных host/SWF8 AVM1 interpreter/manual/automatic JIT сочетания с native counters, четыре OS worker и 128 независимых paint/GC циклов, 96 affine/alpha/quality отрисовок. Mixed RGB/linearRGB fill/stroke binary graphs сохраняют разные политики после уничтожения отправителя. SDK-free C89 validation проходит, две graphic tutorial проверки явно пропускаются. Переименованный detached-компонент конфигурируется, скопированный checker проходит на native executable без заявления отдельной detached-сборки. Проверены counted names, версии, копирование аргументов, duplicate/current-active aliases, raw metadata без getters и ошибки подготовки. DefineShape4/LineStyle2, ненулевой focal, полная stroke scaling/caps/joins/mid-path fill семантика, per-pixel metering, эталонный плеер, устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](LINEAR_RGB_GRADIENTS.ru.md).
 
 
-Gradient spread v0.1160–v0.1168 adds unsigned C89 PAD/REFLECT/REPEAT selection without changing [FVM_Gradient](../include/flashvm/gradient.h#L38) layout or the legacy PAD entry, plus Flash 8 beginGradientFill modes and optional copied graph metadata. Validation: 16 selected native gradient/quality/example tests pass; three focused ASan/UBSan tests pass with LeakSanitizer disabled; SDK-free NO_GRAPHICS C89 validation passes. Allocation sweeps preserve prior style and pixels on preparation failure; coercion errors retain explicit script side effects. New-mode JIT execution, worker concurrency, reference-player comparisons and physical/foreign platforms are not established by this series. DefineShape4, linearRGB, nonzero focal and lineGradientStyle remain open, as do all nine roadmap stages. [Contract](GRADIENT_SPREAD.md).
+Gradient strokes v0.1169–v0.1182: additive C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L82) and SWF8 lineGradientStyle support linear/centered-radial PAD/REFLECT/REPEAT ordinary-RGB ramps. Existing [FVM_Gradient](../include/flashvm/gradient.h#L48) layout and callback IDs are retained; the new method callback is appended. Copied current/active stroke aliases, solid/clear/endFill transitions, duplicate and binary/channel ownership are covered. Validation: 91 selected native gradient/raster/scene/graph/GC/quality/tutorial tests pass, plus the independent mixed fill/stroke binary-transfer fixture. Ten focused ASan/UBSan checks and explicit no-throw/no-fault runs pass with LeakSanitizer disabled. Real AVM1 exercises 72 host/SWF8 interpreter/manual/automatic JIT combinations with native entry counts; four OS workers complete 128 isolated paint/GC epochs. Quality/affine/alpha tests cover 48 renders. SDK-free C89 validation passes and the graphic tutorial explicitly skips. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Preparation fault sweeps preserve the old style/active path or destination pixels, without rolling back coercion side effects. DefineShape4/LineStyle2, linearRGB, nonzero focal, complete line caps/joins/scaling/mid-path fill semantics, original-player and physical/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](GRADIENT_STROKES.md).
 
-Gradient spread v0.1160–v0.1168: добавлены unsigned C89 selectors PAD/REFLECT/REPEAT без изменения layout [FVM_Gradient](../include/flashvm/gradient.h#L38) и старого PAD-вызова, режимы beginGradientFill для Flash 8 и optional metadata копируемых записей. Прошли 16 выбранных native gradient/quality/example тестов, три focused ASan/UBSan теста (LeakSanitizer выключен) и C89 validation сборки NO_GRAPHICS. Ошибки подготовки сохраняют прежний стиль и пиксели; ошибки coercion сохраняют явные побочные эффекты скрипта. Выполнение новых режимов через JIT, конкурентность workers, сравнение с эталонным плеером, реальные устройства и другие платформы этой серией не подтверждены. DefineShape4, linearRGB, ненулевой focal и lineGradientStyle открыты; все девять этапов roadmap также открыты. [Контракт](GRADIENT_SPREAD.ru.md).
+Градиентные обводки v0.1169–v0.1182: добавлены C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L82) и SWF8 lineGradientStyle для linear/centered-radial PAD/REFLECT/REPEAT с обычным RGB. Layout [FVM_Gradient](../include/flashvm/gradient.h#L48) и прежние callback IDs сохранены; новый callback добавлен в конец таблицы. Проверены copied current/active aliases, solid/clear/endFill transitions, duplicate и binary/channel ownership. Прошли 91 выбранный native gradient/raster/scene/graph/GC/quality/tutorial тест и дополнительный mixed fill/stroke binary-transfer fixture. Десять focused ASan/UBSan проверок и явные no-throw/no-fault запуски прошли с выключенным LeakSanitizer. Реальные AVM1-вызовы проверяют 72 сочетания host/SWF8 interpreter/manual/automatic JIT с native entry counts; четыре OS worker проходят 128 независимых paint/GC циклов. Проверки quality/affine/alpha охватывают 48 отрисовок. SDK-free C89 validation проходит; graphic tutorial явно пропускается. Переименованный detached-компонент конфигурируется, его скопированный checker проходит на native executable без заявления отдельной detached-сборки. Ошибки подготовки сохраняют прежний стиль/active path или пиксели, не отменяя побочные эффекты coercion. DefineShape4/LineStyle2, linearRGB, ненулевой focal, полная caps/joins/scaling/mid-path fill семантика, эталонный плеер, реальные устройства и другие платформы остаются открыты. Все девять этапов открыты. [Контракт](GRADIENT_STROKES.ru.md).
+
+
+Gradient spread v0.1160–v0.1168 adds unsigned C89 PAD/REFLECT/REPEAT selection without changing [FVM_Gradient](../include/flashvm/gradient.h#L48) layout or the legacy PAD entry, plus Flash 8 beginGradientFill modes and optional copied graph metadata. Validation: 16 selected native gradient/quality/example tests pass; three focused ASan/UBSan tests pass with LeakSanitizer disabled; SDK-free NO_GRAPHICS C89 validation passes. Allocation sweeps preserve prior style and pixels on preparation failure; coercion errors retain explicit script side effects. New-mode JIT execution, worker concurrency, reference-player comparisons and physical/foreign platforms are not established by this series. DefineShape4, linearRGB, nonzero focal and lineGradientStyle remain open, as do all nine roadmap stages. [Contract](GRADIENT_SPREAD.md).
+
+Gradient spread v0.1160–v0.1168: добавлены unsigned C89 selectors PAD/REFLECT/REPEAT без изменения layout [FVM_Gradient](../include/flashvm/gradient.h#L48) и старого PAD-вызова, режимы beginGradientFill для Flash 8 и optional metadata копируемых записей. Прошли 16 выбранных native gradient/quality/example тестов, три focused ASan/UBSan теста (LeakSanitizer выключен) и C89 validation сборки NO_GRAPHICS. Ошибки подготовки сохраняют прежний стиль и пиксели; ошибки coercion сохраняют явные побочные эффекты скрипта. Выполнение новых режимов через JIT, конкурентность workers, сравнение с эталонным плеером, реальные устройства и другие платформы этой серией не подтверждены. DefineShape4, linearRGB, ненулевой focal и lineGradientStyle открыты; все девять этапов roadmap также открыты. [Контракт](GRADIENT_SPREAD.ru.md).
 
 
 TextField visible-line observers and metered discovery v0.1146–v0.1159: supported native geometry/text/current-format edits now compare all five scroll properties, including bottomScroll. A changed bottom visible line notifies even when offsets and maxima agree. Descriptor-only admission preserves exact-first SWF6 folding/visibility and inherited/resolver discovery, charging exact lookups, prototype visits and every visited fallback entry through the shared preparation/delivery work budget. Validation passes 196 selected native text/font/graph/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw callback and no-fault allocation runs; LeakSanitizer is disabled. Allocation sweeps additionally cover all three edit kinds with and without the registry fast path. Ordinary tests distinguish rollback from committed partial delivery and cover VM/getter/C++ errors. Twenty-four version/name/descriptor combinations invoke no probe-time getter; large SWF6 tables exhaust work before publication and cover committed work failures. Cycles/foreign graphs and output/depth cleanup are checked. Twenty-seven real SWF6–8 edit/execution combinations exercise interpreter/manual/native JIT with native entry counts. Eighteen host/SWF4–8 edit combinations preserve old-version gates and no programmatic onChanged. Nested edits retain final content/style and rooted removed recipients. Four independent OS workers check 128 bottom-only text/GC epochs; binary/channel receivers keep fonts/listeners after sender destruction. SDK-free C89 ABI/admission passes, three font tutorials explicitly skip. A renamed detached component configures with bundled static font dependencies; its copied C89 checker passes against the native executable, without a separate detached build. C89 callback trace is 1 2 1 2 1 1 1 1 1 1 1; bottom-line trace is 2 2 2 2 3 3 3 1 1 2 1, final offsets=1/0, maxima=2/40, bottomScroll=1. Full original-player rounding/edit semantics, input/onChanged, HTML/mixed styles, external reflow/font-source rebinding, Selection/focus, SWF display-list text, devices/foreign platforms and all nine roadmap stages remain open. Name-byte processing and font work are not newly metered. [Contract](TEXT_VISIBLE_EVENTS.md).
@@ -1514,7 +1514,7 @@ execute-bit restoration. Проверки пройдены; stage completion н�
 ## v0.162 — rooted loaded sort snapshot / полный снимок сортировки
 
 Loaded sort captures all own values before key coercion; native sparse holes
-become own undefined values. An explicit [FVM_Value](../include/flashvm/value.h#L24) collector frame retains the
+become own undefined values. An explicit [FVM_Value](../include/flashvm/value.h#L26) collector frame retains the
 complete original graph through callbacks and restores caller roots on all exits.
 [RU/EN details](ARRAY_LEGACY_SORT_SNAPSHOT.md). Evidence: AGG 327/Cairo 326,
 six focused portable/restricted heap-global ASan+UBSan tests, fifteen byte-exact
@@ -2495,7 +2495,7 @@ integer zero/wrapping, callback roots and retained type-classification limitatio
 
 ### v0.255 — explicit-base display deletion
 
-[`fvm_exec_delete_path`](../include/flashvm/execution.h#L371) resolves slash-containing prefixes through the shared
+[`fvm_exec_delete_path`](../include/flashvm/execution.h#L495) resolves slash-containing prefixes through the shared
 MovieClip resolver and deletes a counted final member without reading it.
 [DELETE_DISPLAY_PATH.md](DELETE_DISPLAY_PATH.md) records tests and the remaining
 interpreter lexical-scope/path-selection boundary. Display resolver constants are
@@ -2869,7 +2869,7 @@ Full rename semantics, RemoveSprite and all roadmap stages remain open.
 
 ### v0.297 — explicit forced clip detachment / Явное отсоединение клипа
 
-The C89 [fvm_exec_detach_clip](../include/flashvm/execution.h#L237) service exposes native forced scene removal without
+The C89 [fvm_exec_detach_clip](../include/flashvm/execution.h#L323) service exposes native forced scene removal without
 bytecode or script method lookup. Host/SWF4–8 and positive/negative-depth fixtures
 cover override bypass, invalid objects and repeated calls; allocation injection
 checks link/root preservation through this public entry. See CLIP_DETACH_SERVICE.md.
@@ -2939,7 +2939,7 @@ named; an unused URL root is removed. See AVM1_DISPLAY_URL_WITH_MISSING.md.
 
 ### v0.306 — shared frame-request preparation / Общая подготовка кадра
 
-GotoFrame2 conversion now uses the C89 [fvm_exec_frame_request](../include/flashvm/execution.h#L336) service with rooted
+GotoFrame2 conversion now uses the C89 [fvm_exec_frame_request](../include/flashvm/execution.h#L446) service with rooted
 coercion, alias/error preservation and separate scene-bias policy. Timeline wire
 widths/root layouts use named macros. Raw Call/GotoFrame2 underflow fixtures cover
 SWF4–8 alongside direct C, collecting/throwing callbacks and allocation injection.
@@ -2987,7 +2987,7 @@ See [CLIP_COPY_TRANSFORM.md](CLIP_COPY_TRANSFORM.md).
 ### v0.333 Native point execution service
 
 Implemented extraction: localToGlobal/globalToLocal share the C89
-[fvm_exec_clip_point](../include/flashvm/execution.h#L65) service with generated callers. Separate native adapters keep
+[fvm_exec_clip_point](../include/flashvm/execution.h#L76) service with generated callers. Separate native adapters keep
 the same callback-table slots; field/getter coercion, physical ancestry and ordered
 setter failures retain previous behavior. This is not a compatibility upgrade to
 Flash's own-stored numeric field, twip or singular-fallback policies. See
@@ -3063,7 +3063,7 @@ snapshots still use the old double model. See SCENE_MATRIX.md; no stage is close
 ### v0.339 Per-ancestor scene matrix composition
 
 Implemented: context-free C89 binary32 composition and rooted physical world
-query [fvm_exec_clip_world_matrix](../include/flashvm/execution.h#L55). Loaded point ancestry now composes per level;
+query [fvm_exec_clip_world_matrix](../include/flashvm/execution.h#L64). Loaded point ancestry now composes per level;
 host point conversion keeps double behavior. Root-lock independence, bounded
 cycles, alias/errors and getter-driven load mode stability are covered by new
 fixtures. Local getter/decomposition snapshots, scrollRect/Stage, other display
@@ -3125,7 +3125,7 @@ automatic selection, other CPU/OS backends and roadmap stages remain open.
 
 Interpreter/JIT entry options and a same-thread switching API now select root
 and function execution. A bounded context-owned native cache falls back on
-unsupported bodies. Opt-in [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) replay recreates interpreter activation,
+unsupported bodies. Opt-in [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50) replay recreates interpreter activation,
 logs checkpoints and preserves the original thrown graph/fault/budget after
 retry success, a different exception or OOM. EXECUTION_MODES.md records contracts,
 executable cases, duplicated-effect semantics and backend/profile limitations.
@@ -3721,7 +3721,7 @@ matching pinned script_object.rs has_own_property. The query does not inspect
 private facade metadata or enumerate/read parent properties. It preserves the
 receiver's SWF casing. Host facade behavior remains unchanged. Nested/malformed
 receiver-facade chains have a bounded iterative traversal instead of recursive
-C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 
 `object_super_membership` failed against v0.425 and covers loaded SWF5–8 plus
 host, direct C and borrowed Object.hasOwnProperty.call, counted NUL names,
@@ -3863,7 +3863,7 @@ and [script_object.rs call_watcher](https://github.com/ruffle-rs/ruffle/blob/237
 The latter changes a thrown watch value to undefined; set_internal continues
 assignment and treats inherited setters separately from own set_local.
 
-[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) saves the thrown graph before clearing pending state.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L9) saves the thrown graph before clearing pending state.
 Its explicit root frame protects counted strings, objects and cycles through
 setter execution and collection. Destruction restores pending ownership before
 unlinking the saved frame. It unwinds before the enclosing lookup-owner root.
@@ -3875,7 +3875,7 @@ Object/Array numeric slots, readonly data, own/inherited script accessors, sette
 success/throw and error priority. A self-cyclic object thrown by the watcher
 survives a real collecting setter; pending state is suspended inside that setter.
 Existing counted-string/interpreter/native watch fixtures now expect undefined
-writeback for loaded throws. Raw runtime [FVM_ERROR](../include/flashvm/flashvm.h#L43) and allocation failures retain
+writeback for loaded throws. Raw runtime [FVM_ERROR](../include/flashvm/flashvm.h#L45) and allocation failures retain
 fail-fast handling; their equivalence to reference errors is not certified.
 Custom native length/resource setters, metatables, recursion limits and complete
 watcher/SWF compatibility require further checks. All nine stages remain open.
@@ -3977,7 +3977,7 @@ and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.
 ## v0.453 — resolver status and original native interfaces
 
 Resolver discovery now reports presence separately from callback status. An
-actual [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) from a resolver, returned method or revoked RPC interface
+actual [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L49) from a resolver, returned method or revoked RPC interface
 propagates unchanged; it cannot masquerade as an absent hook or trigger fallback.
 Existing interpreter/JIT tests cover resolver and callee NOT_FOUND, including
 super dispatch and callback counts. object_resolve_rpc checks SWF6/8 with two
@@ -4045,7 +4045,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.457 — snapshot direct global-call arguments
 
-[fvm_call_bytes](../include/flashvm/value.h#L98) copies arguments into a rooted vector before clearing the output
+[fvm_call_bytes](../include/flashvm/value.h#L148) copies arguments into a rooted vector before clearing the output
 or resolving a global Function. A result may alias an argument, and callbacks
 may mutate the caller's value array without changing the active invocation.
 Caller-owned external string buffers must still remain valid for the call.
@@ -4096,7 +4096,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.460 — root named-constructor arguments before global lookup
 
-[fvm_construct_bytes](../include/flashvm/value.h#L155) snapshots and roots caller arguments before resolving a
+[fvm_construct_bytes](../include/flashvm/value.h#L227) snapshots and roots caller arguments before resolving a
 constructor name. Global getters/resolvers can collect or mutate the caller's
 array before Function construction; registered C factories also receive the
 stable snapshot. The ordinary native barrier remains. Constructor output is
@@ -4133,7 +4133,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.462 — direct Function construction snapshots arguments
 
-[fvm_function_construct](../include/flashvm/function.h#L69) retains an unpinned input Function and snapshots/roots
+[fvm_function_construct](../include/flashvm/function.h#L85) retains an unpinned input Function and snapshots/roots
 arguments before native factory dispatch or script prototype access. A prototype
 getter may collect or mutate the caller's array before constructor invocation.
 External borrowed string buffers remain caller-owned for the complete call;
@@ -4167,7 +4167,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.464 — invoke the retained Function argument snapshot
 
-Direct [fvm_function_invoke](../include/flashvm/function.h#L65) now passes its retained copy to the callback, rather
+Direct [fvm_function_invoke](../include/flashvm/function.h#L79) now passes its retained copy to the callback, rather
 than the caller's mutable array. The output is cleared after copying, so it may
 alias any argument. Validation/OOM errors still clear the output; external string
 buffers remain caller-owned. Existing single-frame root layout and native barrier
@@ -4303,7 +4303,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 Getter-free own prototype reads now materialize the same cached Function value
 as public member reads for native-method-backed fields, without invoking the
 callback. Data/accessor precedence, source-version spelling and own-only lookup
-remain unchanged. The helper returns [FVM_Result](../include/flashvm/flashvm.h#L40) so wrapper failures propagate
+remain unchanged. The helper returns [FVM_Result](../include/flashvm/flashvm.h#L42) so wrapper failures propagate
 through construction, InstanceOf, ImplementsOp and registered clip selection.
 Extended function_constructor_stored_prototype covers cold/warm caches, host
 and SWF4–8, GC, instanceof and three NewObject modes. Extended
@@ -4784,7 +4784,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L152) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L196) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -4862,7 +4862,7 @@ PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
 
 ### v0.555 — allocation-free native S16 block mixing
 
-Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L131) validates every input before output,
+Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L179) validates every input before output,
 sums equal-rate/channel interleaved S16 exactly in a bounded signed-long
 accumulator and saturates once. Short/exhausted inputs become silence; a caller
 chooses output duration. No allocation, context, device, callbacks, resampling or
@@ -5338,23 +5338,23 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
-| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
-| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
-| `fvm_exec_clip_world_matrix` | function | [include/flashvm/execution.h:55](../include/flashvm/execution.h#L55) |
-| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:371](../include/flashvm/execution.h#L371) |
-| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:237](../include/flashvm/execution.h#L237) |
-| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:336](../include/flashvm/execution.h#L336) |
-| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:64](../include/flashvm/gradient.h#L64) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:179](../include/flashvm/multimedia.h#L179) |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:148](../include/flashvm/value.h#L148) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:227](../include/flashvm/value.h#L227) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:76](../include/flashvm/execution.h#L76) |
+| `fvm_exec_clip_world_matrix` | function | [include/flashvm/execution.h:64](../include/flashvm/execution.h#L64) |
+| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:495](../include/flashvm/execution.h#L495) |
+| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:323](../include/flashvm/execution.h#L323) |
+| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:446](../include/flashvm/execution.h#L446) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:85](../include/flashvm/function.h#L85) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:82](../include/flashvm/gradient.h#L82) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:196](../include/flashvm/swf_sound.h#L196) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:9](../src/core/watch_write_scope.hpp#L9) |
 <!-- source-links:end -->

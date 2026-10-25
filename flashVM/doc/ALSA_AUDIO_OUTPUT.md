@@ -9,8 +9,8 @@ FlashVM functions. Their versioned source archive is linked in the
 
 The optional provider uses actual Linux `snd_pcm_open`, `snd_pcm_set_params`,
 `snd_pcm_writei`, `snd_pcm_start`, `snd_pcm_prepare`, `snd_pcm_drop` and
-`snd_pcm_close`. It supplies a normal [`FVM_MediaOutput`](../include/flashvm/multimedia.h#L68) table for
-[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L82), so AVM1 StopSounds and global stopAllSounds reach the
+`snd_pcm_close`. It supplies a normal [`FVM_MediaOutput`](../include/flashvm/multimedia.h#L80) table for
+[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L100), so AVM1 StopSounds and global stopAllSounds reach the
 real endpoint. No FFmpeg subprocess, default device selection or automatic
 permission prompt is introduced. Channels do not own this provider.
 
@@ -38,8 +38,8 @@ provider and publish its copied-table-compatible callbacks.
 **Parameters, in order:** device is a required nonempty borrowed PCM name; rate
 is a nonzero samples-per-second request; channels is a nonzero interleaved channel
 count; latency_us is a nonzero ALSA buffer-latency request in microseconds;
-out is the required [FVM_AlsaOutput](../src/multimedia/audio/linux_alsa.hpp#L7) handle destination; output is the required
-[FVM_MediaOutput](../include/flashvm/multimedia.h#L68) table destination. Device text is needed only during the call.
+out is the required [FVM_AlsaOutput](../src/multimedia/audio/linux_alsa.hpp#L8) handle destination; output is the required
+[FVM_MediaOutput](../include/flashvm/multimedia.h#L80) table destination. Device text is needed only during the call.
 Both valid destinations are cleared before any argument/provider validation.
 
 **Format:** native-endian signed 16-bit, RW_INTERLEAVED. The provider requests
@@ -132,7 +132,7 @@ Write принимает только совпадающие rate/channels и п
 
 Provider не принадлежит VM/GC. Его userdata должно жить до окончания всех
 channel callbacks: сначала close каналов или уничтожение контекста, только потом
-[`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L79). Последний принимает null; ненулевой handle становится
+[`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L95). Последний принимает null; ненулевой handle становится
 недействительным даже при ERROR native close, повторять close старого указателя
 нельзя. Все операции на одном host/VM-потоке, без одновременного доступа из разных
 VM. Параметры/статусы/lifetime выше одинаковы для английского и русского контрактов.
@@ -172,9 +172,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AlsaOutput` | struct | [src/multimedia/audio/linux_alsa.hpp:7](../src/multimedia/audio/linux_alsa.hpp#L7) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:79](../include/flashvm/multimedia.h#L79) |
-| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:77](../include/flashvm/multimedia.h#L77) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |
+| `FVM_AlsaOutput` | struct | [src/multimedia/audio/linux_alsa.hpp:8](../src/multimedia/audio/linux_alsa.hpp#L8) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:100](../include/flashvm/multimedia.h#L100) |
+| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:95](../include/flashvm/multimedia.h#L95) |
+| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:80](../include/flashvm/multimedia.h#L80) |
 <!-- source-links:end -->

@@ -29,6 +29,4 @@ class TestRandom(unittest.TestCase):
             block = rng.randrange(20)
             rows.append(text + str(block))
             expected.append((pc, *points, block))
-        self.assertEqual(
-            inspect(prefix(rows, files=["a.b", "b.b", "c.b"]))[2], expected
-        )
+        self.assertEqual(inspect(prefix(rows, files=["a.b", "b.b", "c.b"]))[2], expected)

@@ -5,15 +5,19 @@
 /* C89 example: host delivers touch samples to FlashVM. */
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/gesture_recognizer.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Implement on gesture for this subsystem. */
+
+
 /* Определяем функцию on_gesture; параметры передаются вызывающей стороной в указанном порядке. */
 static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputPhase phase,
                        /* Продолжаем объявление или выражение с указанными параметрами. */
                        FVM_MouseButton button, void *user)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Завершаем выражение с указанным значением или аргументами. */
@@ -29,13 +33,16 @@ static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputP
            /* Завершаем выражение с указанным значением или аргументами. */
            (int)button);
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */
+
 
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -52,18 +59,20 @@ int main(void)
     int dispatched = 0;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_config_init(&config) != FVM_OK || fvm_runtime_create(&config, &runtime) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_config_init(&config) != FVM_OK || fvm_runtime_create(&config, &runtime) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End conditional branch: if (fvm_config_init(&config) != FVM_OK || fvm_runtime_create(&config, &runtime) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_context_create(runtime, &context) != FVM_OK)
     /* Начинаем блок инструкций или описание объекта. */
-    {
+    { /* Begin scope: Начинаем блок инструкций или описание объекта. */
         /* Освобождаем среду выполнения после завершения работы контекстов. */
         fvm_runtime_destroy(runtime);
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
         /* Завершаем текущий блок или описание объекта. */
-    }
+    } /* End scope: Начинаем блок инструкций или описание объекта. */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Two-finger tap behaves like a right mouse click. */
@@ -122,4 +131,4 @@ int main(void)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return dispatched ? 0 : 1;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

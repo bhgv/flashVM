@@ -6,8 +6,8 @@ stage a true marker in the same copied property map as the cleared parent and
 stopped playback. No marker is published before the existing transaction commits;
 allocation failure must preserve the original marker and ownership graph.
 
-The C89 [fvm_exec_clip_detached](../include/flashvm/execution.h#L241)(context, clip, out) returns this instance's marker
-as an [FVM_Value](../include/flashvm/value.h#L24) boolean. It bypasses public properties, accepts native instances
+The C89 [fvm_exec_clip_detached](../include/flashvm/execution.h#L329)(context, clip, out) returns this instance's marker
+as an [FVM_Value](../include/flashvm/value.h#L26) boolean. It bypasses public properties, accepts native instances
 only, rejects foreign/plain/prototype objects and preserves output on error.
 Legacy private state without the marker reads false; malformed marker types or
 numbers are rejected. Named uppercase macros document the two stored states.
@@ -54,6 +54,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_detached` | function | [include/flashvm/execution.h:241](../include/flashvm/execution.h#L241) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `fvm_exec_clip_detached` | function | [include/flashvm/execution.h:329](../include/flashvm/execution.h#L329) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

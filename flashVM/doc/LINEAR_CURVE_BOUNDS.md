@@ -8,9 +8,9 @@ Axis paths retain arbitrary admitted finite coordinates without a lattice requir
 
 ## Contract
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L564) retains its contract: an immutable borrowed path, a positive finite width up to 1,000,000, supported cap/join selectors and two required caller-owned outputs. Admission and traversal allocate nothing, invoke no callbacks/GC and need no context. Argument errors and unsupported curves preserve both outputs. Concurrent path mutation is forbidden. Existing finite bodies, round/none/square caps, round/bevel joins and Close geometry are reused. Constants and isolated Moves contribute no stroke.
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L733) retains its contract: an immutable borrowed path, a positive finite width up to 1,000,000, supported cap/join selectors and two required caller-owned outputs. Admission and traversal allocate nothing, invoke no callbacks/GC and need no context. Argument errors and unsupported curves preserve both outputs. Concurrent path mutation is forbidden. Existing finite bodies, round/none/square caps, round/bevel joins and Close geometry are reused. Constants and isolated Moves contribute no stroke.
 
-Non-axis off-grid coordinates, noncollinear controls and controls outside the endpoint interval are not reduced; non-round styles retain [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and the managed fallback. Round/round retains general analytic curves. Transforms can move a path off the lattice. The existing nonuniform width metric is unchanged.
+Non-axis off-grid coordinates, noncollinear controls and controls outside the endpoint interval are not reduced; non-round styles retain [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) and the managed fallback. Round/round retains general analytic curves. Transforms can move a path off the lattice. The existing nonuniform width metric is unchanged.
 
 Managed quadratic paths automatically share the new bounds through getBounds, dimensions and non-shape point hitTest. getRect and mixed fill paints retain the underlying path-box policy. Cubic remains native-only; MovieClip still rejects it. Pixels, shape-hit subdivision, C89 ABI, wire formats and callback IDs are unchanged. The [C89 tutorial](../examples/embedding/stroke_styles/README.md) adds a real diagonal curveTo with none/bevel and an ignored isolated moveTo.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:564](../src/capi/path_hit_c.cpp#L564) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:733](../src/capi/path_hit_c.cpp#L733) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -6,7 +6,7 @@
 
 ## Контракт и границы проверки
 
-[`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L107) принимает конечную affine-матрицу при прежних проверках и изменяет собственное состояние clip; clip принадлежит контексту. Измерения через [`fvm_object_call`](../include/flashvm/value.h#L126) заимствуют clip и объект целевого пространства в том же контексте; `getBounds` возвращает managed-объект, который нужно удерживать GC-root при последующих VM-вызовах. Fixtures немедленно копируют четыре числа перед следующими вызовами. `getRect` сохраняет границы без обводки. Измерение, размеры и non-shape hitTest разделяют исправленную bounds-ветку. Shape-hit использовал устойчивую норму раньше и проверяется на согласованность.
+[`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L138) принимает конечную affine-матрицу при прежних проверках и изменяет собственное состояние clip; clip принадлежит контексту. Измерения через [`fvm_object_call`](../include/flashvm/value.h#L184) заимствуют clip и объект целевого пространства в том же контексте; `getBounds` возвращает managed-объект, который нужно удерживать GC-root при последующих VM-вызовах. Fixtures немедленно копируют четыре числа перед следующими вызовами. `getRect` сохраняет границы без обводки. Измерение, размеры и non-shape hitTest разделяют исправленную bounds-ветку. Shape-hit использовал устойчивую норму раньше и проверяется на согласованность.
 
 Тесты используют отдельный identity-clip как целевое пространство; сингулярный source-transform допустим, но эта серия не меняет отказ при необратимом target-transform. Память, callbacks, thread/GC-ограничения публичных API сохраняются; управляемые объекты явно удерживаются и освобождаются в fixtures. Четыре worker используют отдельные runtime/контексты, не совместную мутацию одного clip.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:107](../include/flashvm/movieclip.h#L107) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
+| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
 <!-- source-links:end -->

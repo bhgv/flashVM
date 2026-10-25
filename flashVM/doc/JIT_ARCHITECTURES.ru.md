@@ -39,9 +39,9 @@ Linux и Intel macOS сначала подготавливают RW-память
 
 ## Запуск интерпретации и JIT
 
-Передайте [`FVM_ExecutionOptions`](../include/flashvm/execution_mode.h#L20) в [`fvm_function_invoke_options`](../include/flashvm/execution_mode.h#L76) или
-[`fvm_avm1_execute_options`](../include/flashvm/execution_mode.h#L73). Инициализируйте структуру через
-[`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L61). Поле `mode` принимает:
+Передайте [`FVM_ExecutionOptions`](../include/flashvm/execution_mode.h#L23) в [`fvm_function_invoke_options`](../include/flashvm/execution_mode.h#L101) или
+[`fvm_avm1_execute_options`](../include/flashvm/execution_mode.h#L96). Инициализируйте структуру через
+[`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L74). Поле `mode` принимает:
 
 - [`FVM_EXECUTION_INTERPRETER`](../include/flashvm/execution_mode.h#L14): исполнять исходное тело интерпретатором;
 - [`FVM_EXECUTION_JIT`](../include/flashvm/execution_mode.h#L15): скомпилировать поддерживаемое тело и кешировать его
@@ -95,18 +95,18 @@ DEFS [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) включает би�
 `flashvm/debug.h` объединяет существующие сведения о source/line/offset и новые
 операции установки breakpoint:
 
-- [`fvm_debug_map_action`](../include/flashvm/debug.h#L63): связать имя функции и AVM1 offset с файлом/строкой;
-- [`fvm_debug_set_breakpoint`](../include/flashvm/debug.h#L51): включить или удалить точную позицию инструкции;
-- [`fvm_debug_set_breakpoint_handler`](../include/flashvm/debug.h#L54): установить callback хоста.
+- [`fvm_debug_map_action`](../include/flashvm/debug.h#L79): связать имя функции и AVM1 offset с файлом/строкой;
+- [`fvm_debug_set_breakpoint`](../include/flashvm/debug.h#L61): включить или удалить точную позицию инструкции;
+- [`fvm_debug_set_breakpoint_handler`](../include/flashvm/debug.h#L66): установить callback хоста.
 
 Само добавление source map не устанавливает breakpoint. Для остановки по строке
 найдите соответствующий action offset и установите его. Callback вызывается
 перед этой инструкцией после обновления отладочной позиции и проверки бюджета.
-Возврат [FVM_OK](../include/flashvm/flashvm.h#L42) продолжает выполнение, другой статус прерывает текущий вызов.
+Возврат [FVM_OK](../include/flashvm/flashvm.h#L44) продолжает выполнение, другой статус прерывает текущий вызов.
 
 Наличие хотя бы одной точки переводит **всё тело соответствующей функции или
 блока** в интерпретацию, даже если код уже находится в JIT-кеше или вручную
-привязан через [`fvm_jit_body`](../include/flashvm/jit.h#L24). Другие функции могут работать через JIT.
+привязан через [`fvm_jit_body`](../include/flashvm/jit.h#L32). Другие функции могут работать через JIT.
 После удаления последней точки следующий вход снова использует кеш.
 Без callback тело всё равно интерпретируется.
 
@@ -132,7 +132,7 @@ DEFS [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) включает би�
 ## Исключение в JIT и диагностический повтор
 
 По умолчанию исключение просто передаётся вызывающему коду. Флаг
-[`FVM_EXEC_REPLAY_ON_EXCEPTION`](../include/flashvm/execution_mode.h#L17) явно разрешает повтор исходной функции через
+[`FVM_EXEC_REPLAY_ON_EXCEPTION`](../include/flashvm/execution_mode.h#L18) явно разрешает повтор исходной функции через
 интерпретатор с журналом и статистикой. Повтор получает свежую активацию,
 а после него наружу возвращается первоначальное исключение, даже если повтор
 завершился успешно. Побочные эффекты первого прохода не откатываются и могут
@@ -147,7 +147,7 @@ DEFS [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) включает би�
 статистикой и logger. Глобального изменяемого JIT-кеша или режима нет.
 Два worker могут одновременно компилировать и выполнять код, если каждый
 владеет отдельной VM. Один контекст нельзя одновременно вызывать из двух
-потоков. Ручные [FVM_JitCode](../src/jit/internal.hpp#L59) имеют несинхронизированный счётчик активности:
+потоков. Ручные [FVM_JitCode](../src/jit/internal.hpp#L84) имеют несинхронизированный счётчик активности:
 не разделяйте один дескриптор между параллельными потоками, компилируйте отдельно.
 Автоматический кеш уже разделён по контекстам.
 
@@ -188,23 +188,23 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_avm1_execute_options` | function | [include/flashvm/execution_mode.h:73](../include/flashvm/execution_mode.h#L73) |
-| `fvm_debug_map_action` | function | [include/flashvm/debug.h:63](../include/flashvm/debug.h#L63) |
-| `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:51](../include/flashvm/debug.h#L51) |
-| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
-| `FVM_EXEC_REPLAY_ON_EXCEPTION` | macro / define | [include/flashvm/execution_mode.h:17](../include/flashvm/execution_mode.h#L17) |
+| `fvm_avm1_execute_options` | function | [include/flashvm/execution_mode.h:96](../include/flashvm/execution_mode.h#L96) |
+| `fvm_debug_map_action` | function | [include/flashvm/debug.h:79](../include/flashvm/debug.h#L79) |
+| `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:61](../include/flashvm/debug.h#L61) |
+| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:66](../include/flashvm/debug.h#L66) |
+| `FVM_EXEC_REPLAY_ON_EXCEPTION` | macro / define | [include/flashvm/execution_mode.h:18](../include/flashvm/execution_mode.h#L18) |
 | `FVM_EXECUTION_INTERPRETER` | enum constant | [include/flashvm/execution_mode.h:14](../include/flashvm/execution_mode.h#L14) |
 | `FVM_EXECUTION_JIT` | enum constant | [include/flashvm/execution_mode.h:15](../include/flashvm/execution_mode.h#L15) |
 | `FVM_EXECUTION_MANUAL` | enum constant | [include/flashvm/execution_mode.h:13](../include/flashvm/execution_mode.h#L13) |
-| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:61](../include/flashvm/execution_mode.h#L61) |
-| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../include/flashvm/execution_mode.h#L64) |
-| `FVM_ExecutionOptions` | struct | [include/flashvm/execution_mode.h:20](../include/flashvm/execution_mode.h#L20) |
-| `fvm_function_invoke_options` | function | [include/flashvm/execution_mode.h:76](../include/flashvm/execution_mode.h#L76) |
-| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
-| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
-| `fvm_jit_body` | function | [include/flashvm/jit.h:24](../include/flashvm/jit.h#L24) |
-| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:74](../include/flashvm/execution_mode.h#L74) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:79](../include/flashvm/execution_mode.h#L79) |
+| `FVM_ExecutionOptions` | struct | [include/flashvm/execution_mode.h:23](../include/flashvm/execution_mode.h#L23) |
+| `fvm_function_invoke_options` | function | [include/flashvm/execution_mode.h:101](../include/flashvm/execution_mode.h#L101) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:19](../include/flashvm/jit.h#L19) |
+| `fvm_jit_body` | function | [include/flashvm/jit.h:32](../include/flashvm/jit.h#L32) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:84](../src/jit/internal.hpp#L84) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `INTERPRETER` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
 | `JIT` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
 <!-- source-links:end -->

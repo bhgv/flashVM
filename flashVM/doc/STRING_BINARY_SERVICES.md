@@ -1,6 +1,6 @@
 # Binary string services / Двухместные строковые операции — v0.267
 
-[`fvm_exec_string_add`](../include/flashvm/execution.h#L185) and [`fvm_exec_string_compare`](../include/flashvm/execution.h#L189) provide C89 interfaces over
+[`fvm_exec_string_add`](../include/flashvm/execution.h#L241) and [`fvm_exec_string_compare`](../include/flashvm/execution.h#L247) provide C89 interfaces over
 two values. Each has a separate implementation file. No service receives action
 codes, bytecode offsets, interpreter stacks or register banks. String comparison
 accepts the existing semantic EQUAL/LESS/GREATER identifiers; other modes fail
@@ -56,6 +56,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_string_add` | function | [include/flashvm/execution.h:185](../include/flashvm/execution.h#L185) |
-| `fvm_exec_string_compare` | function | [include/flashvm/execution.h:189](../include/flashvm/execution.h#L189) |
+| `fvm_exec_string_add` | function | [include/flashvm/execution.h:241](../include/flashvm/execution.h#L241) |
+| `fvm_exec_string_compare` | function | [include/flashvm/execution.h:247](../include/flashvm/execution.h#L247) |
 <!-- source-links:end -->

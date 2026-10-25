@@ -11,17 +11,30 @@
 namespace
 {
 typedef fvm_detail::vector<unsigned char> Bytes;
+
+
 /* Append bounded bytes; budget exhaustion has the same best-effort boundary as OOM. */
 void append(Bytes &out, const void *raw, size_t n)
 {
     if (n > FVM_CRASH_MAX_BYTES - out.size())
+    {
         throw std::bad_alloc();
+    }
     const unsigned char *p = (const unsigned char *)raw;
     for (size_t i = 0; i < n; ++i)
+    {
         out.push_back(p[i]);
+    }
 }
+
+
 /* Append a fixed ASCII JSON token. */
-void text(Bytes &out, const char *s) { append(out, s, std::strlen(s)); }
+void text(Bytes &out, const char *s)
+{
+    append(out, s, std::strlen(s));
+}
+
+
 /* Encode arbitrary counted identifier bytes as reversible JSON byte escapes. */
 void quoted(Bytes &out, const char *s, size_t n)
 {
@@ -30,7 +43,9 @@ void quoted(Bytes &out, const char *s, size_t n)
     {
         unsigned char ch = (unsigned char)s[i];
         if (ch >= 32 && ch < 127 && ch != '"' && ch != '\\')
+        {
             append(out, &ch, 1);
+        }
         else
         {
             char escaped[7];
@@ -40,6 +55,8 @@ void quoted(Bytes &out, const char *s, size_t n)
     }
     text(out, "\"");
 }
+
+
 /* Represent integer sizes without narrowing to a platform-specific printf size modifier. */
 void integer(Bytes &out, unsigned long n)
 {
@@ -47,6 +64,8 @@ void integer(Bytes &out, unsigned long n)
     std::sprintf(b, "%lu", n);
     text(out, b);
 }
+
+
 /* Pointer IDs are opaque snapshot-local object identities, never deserialization handles. */
 void identity(Bytes &out, const void *p)
 {
@@ -54,6 +73,8 @@ void identity(Bytes &out, const void *p)
     std::sprintf(b, "%p", p);
     quoted(out, b, std::strlen(b));
 }
+
+
 /* Format raw typed values without getters, coercion, graph traversal or script entry. */
 void value(Bytes &out, const FVM_Value &v)
 {
@@ -61,9 +82,13 @@ void value(Bytes &out, const FVM_Value &v)
     integer(out, (unsigned long)v.type);
     text(out, ",\"value\":");
     if (v.type == FVM_VALUE_OBJECT)
+    {
         identity(out, v.object);
+    }
     else if (v.type == FVM_VALUE_STRING)
+    {
         quoted(out, v.string, fvm_value_string_size(&v));
+    }
     else if (v.type == FVM_VALUE_NUMBER)
     {
         char b[64];
@@ -71,13 +96,19 @@ void value(Bytes &out, const FVM_Value &v)
         quoted(out, b, std::strlen(b));
     }
     else if (v.type == FVM_VALUE_BOOLEAN)
+    {
         text(out, v.boolean ? "true" : "false");
+    }
     else
+    {
         text(out, "null");
+    }
     text(out, ",\"primitive_meta\":");
     identity(out, v.metatable);
     text(out, "}");
 }
+
+
 /* A section is copied independently so postmortem storage owns no live VM references. */
 struct SavedFrame
 {
@@ -92,13 +123,17 @@ struct SavedFrame
     const void *machine_address;    /* Original RX address, retained only as an opaque identity. */
     unsigned int argc;              /* Supplied argument count. */
     Bytes bytecode, machine;        /* Owned source and optional generated instruction bytes. */
+
+
     /* Initialize copied frame metadata. */
     SavedFrame()
-        : source_available(false), offset(0), line(0), external(false), forced(false), jit(false),
-          machine_address(0), argc(0)
+        : source_available(false), offset(0), line(0), external(false), forced(false), jit(false), machine_address(0),
+          argc(0)
     {
     }
 };
+
+
 /* Encode a fixed-width little-endian ZIP field. */
 void field(Bytes &out, unsigned long n, unsigned int width)
 {
@@ -109,12 +144,20 @@ void field(Bytes &out, unsigned long n, unsigned int width)
         n >>= FVM_CRASH_BYTE_BITS;
     }
 }
+
+
 /* Stored ZIP entries use CRC32; no compressor or third-party dynamic dependency is needed. */
 struct Archive
 {
     Bytes files, directory; /* Local records/payload and central directory. */
     unsigned int count;     /* Number of complete entries. */
-    Archive() : count(0) {} /* Start an empty ZIP32 container. */
+
+
+    Archive() : count(0)
+    {
+    } /* Start an empty ZIP32 container. */
+
+
     /* Add one ASCII-named entry with complete size and CRC in both directory records. */
     void add(const char *name, const void *p, size_t n)
     {
@@ -153,6 +196,8 @@ struct Archive
         append(directory, name, length);
         ++count;
     }
+
+
     /* Finish an archive only after all local entries have been built successfully. */
     void finish(Bytes &out)
     {
@@ -169,6 +214,8 @@ struct Archive
         out.swap(files);
     }
 };
+
+
 /* Resolve host mapping from immutable function name and AVM1 offset, including suspended callers.
  */
 void location(FVM_Context *c, const FVM_CrashActivation &a, SavedFrame &out)
@@ -200,6 +247,8 @@ void location(FVM_Context *c, const FVM_CrashActivation &a, SavedFrame &out)
         }
     }
 }
+
+
 /* Snapshot available raw local bindings; missing optimized locals remain explicitly unavailable. */
 void locals(Bytes &out, FVM_Object *activation)
 {
@@ -210,12 +259,14 @@ void locals(Bytes &out, FVM_Object *activation)
     }
     text(out, "[");
     bool comma = false;
-    for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i =
-             activation->properties.begin();
-         i != activation->properties.end(); ++i)
+    for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = activation->properties.begin();
+         i != activation->properties.end();
+         ++i)
     {
         if (comma)
+        {
             text(out, ",");
+        }
         comma = true;
         text(out, "{\"name\":");
         quoted(out, i->first.data(), i->first.size());
@@ -225,6 +276,8 @@ void locals(Bytes &out, FVM_Object *activation)
     }
     text(out, "]");
 }
+
+
 /* Capture raw object/class fields and descriptor identities without calling user code. */
 void heap(FVM_Context *c, Bytes &out)
 {
@@ -235,7 +288,9 @@ void heap(FVM_Context *c, Bytes &out)
     {
         FVM_Object *o = c->objects[n];
         if (n)
+        {
             text(out, ",");
+        }
         text(out, "{\"id\":");
         identity(out, o);
         text(out, ",\"prototype\":");
@@ -246,18 +301,23 @@ void heap(FVM_Context *c, Bytes &out)
         integer(out, (unsigned long)o->resource_kind);
         text(out, ",\"resource_result\":");
         if (o->resource_result_valid)
+        {
             value(out, o->resource_result);
+        }
         else
+        {
             text(out, "null");
+        }
         text(out, ",\"properties\":");
         locals(out, o);
         text(out, ",\"indexed\":[");
         bool comma = false;
-        for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = o->indexed.begin();
-             i != o->indexed.end(); ++i)
+        for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         {
             if (comma)
+            {
                 text(out, ",");
+            }
             comma = true;
             text(out, "{\"index\":");
             integer(out, i->first);
@@ -268,10 +328,13 @@ void heap(FVM_Context *c, Bytes &out)
         text(out, "],\"attributes\":[");
         comma = false;
         for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator i = o->attributes.begin();
-             i != o->attributes.end(); ++i)
+             i != o->attributes.end();
+             ++i)
         {
             if (comma)
+            {
                 text(out, ",");
+            }
             comma = true;
             text(out, "{\"name\":");
             quoted(out, i->first.data(), i->first.size());
@@ -282,21 +345,26 @@ void heap(FVM_Context *c, Bytes &out)
         text(out, "],\"native_methods\":[");
         comma = false;
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = o->methods.begin();
-             i != o->methods.end(); ++i)
+             i != o->methods.end();
+             ++i)
         {
             if (comma)
+            {
                 text(out, ",");
+            }
             comma = true;
             quoted(out, i->first.data(), i->first.size());
         }
         text(out, "],\"accessors\":[");
         comma = false;
-        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator i =
-                 o->accessors.begin();
-             i != o->accessors.end(); ++i)
+        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator i = o->accessors.begin();
+             i != o->accessors.end();
+             ++i)
         {
             if (comma)
+            {
                 text(out, ",");
+            }
             comma = true;
             quoted(out, i->first.data(), i->first.size());
         }
@@ -305,36 +373,57 @@ void heap(FVM_Context *c, Bytes &out)
     text(out, "]}");
 }
 } // namespace
+
+
 /* Copied snapshots retain no managed pointers; only active debugger queries borrow live values. */
 struct FVM_CrashReport
 {
     fvm_detail::vector<SavedFrame> frames; /* Owned innermost-first body snapshots. */
     Bytes trace, zip;                      /* Persistent JSON/ZIP payloads. */
     FVM_Result status;                     /* Original execution failure. */
-    FVM_CrashReport() : status(FVM_OK) {}  /* Initialize an empty postmortem report. */
+
+
+    FVM_CrashReport() : status(FVM_OK)
+    {
+    } /* Initialize an empty postmortem report. */
 };
+
+
 /* Destroy copied byte storage without traversing managed state. */
 FVM_CrashState::~FVM_CrashState()
 {
     delete report;
     fvm_debug_symbols_destroy(symbols);
 }
+
+
 /* Register a borrowed stack frame only for enabled diagnostics and meaningful activations. */
-FVM_CrashScope::FVM_CrashScope(FVM_Context *c, const fvm_detail::string *name, const void *source,
-                               size_t size, unsigned int argc, const FVM_Value *argv,
-                               FVM_Object *activation, bool enabled)
-    : context_(c), linked_(enabled &&
-                           (c->crash.mode != FVM_CRASH_NONE || c->crash.symbols ||
-                            !c->execution_mode.breakpoints.empty()) &&
-                           !c->crash.busy && !c->execution_mode.replay_depth)
+FVM_CrashScope::FVM_CrashScope(FVM_Context *c,
+                               const fvm_detail::string *name,
+                               const void *source,
+                               size_t size,
+                               unsigned int argc,
+                               const FVM_Value *argv,
+                               FVM_Object *activation,
+                               bool enabled)
+    : context_(c),
+      linked_(enabled &&
+              (c->crash.mode != FVM_CRASH_NONE || c->crash.symbols || !c->execution_mode.breakpoints.empty()) &&
+              !c->crash.busy && !c->execution_mode.replay_depth)
 {
     rooted_ = false;
     if (!linked_)
+    {
         return;
+    }
     if (!c->crash.active)
+    {
         c->crash.preparation_status = FVM_OK;
+    }
     if (c->crash.active)
+    {
         c->crash.active->offset = c->debug_offset;
+    }
     frame_.previous = c->crash.active;
     frame_.name = name;
     frame_.source = (const unsigned char *)source;
@@ -365,7 +454,9 @@ FVM_CrashScope::FVM_CrashScope(FVM_Context *c, const fvm_detail::string *name, c
                 {
                     size_t n = fvm_value_string_size(argv + i);
                     if (n > FVM_CRASH_MAX_BYTES - copied)
+                    {
                         throw std::bad_alloc();
+                    }
                     copied += n;
                     strings_[i] = fvm_detail::string(argv[i].string, n);
                     arguments_[i].string = strings_[i].data();
@@ -389,21 +480,31 @@ FVM_CrashScope::FVM_CrashScope(FVM_Context *c, const fvm_detail::string *name, c
     c->crash.active = &frame_;
     c->crash.propagating = false;
 }
+
+
 /* Pop borrowed links before their source/activation storage goes out of scope. */
 FVM_CrashScope::~FVM_CrashScope()
 {
     if (rooted_)
+    {
         context_->gc_frames = argument_roots_.previous;
+    }
     if (linked_)
+    {
         context_->crash.active = frame_.previous;
+    }
 }
+
+
 /* Build a best-effort report while all participating activation values remain rooted. */
 void fvm_crash_failure(FVM_Context *c, FVM_Result status)
 {
     FVM_CrashState &s = c->crash;
-    if (status == FVM_OK || c->execution_mode.replay_depth || s.mode == FVM_CRASH_NONE || s.busy ||
-        s.propagating || !s.active)
+    if (status == FVM_OK || c->execution_mode.replay_depth || s.mode == FVM_CRASH_NONE || s.busy || s.propagating ||
+        !s.active)
+    {
         return;
+    }
     s.propagating = true;
     s.busy = true;
     s.diagnostic_status = s.preparation_status;
@@ -432,15 +533,18 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             saved.argc = a->argc;
             location(c, *a, saved);
             size_t native = s.mode == FVM_CRASH_ZIP_CODE ? a->machine_size : 0;
-            if (a->source_size > FVM_CRASH_MAX_BYTES - copied ||
-                native > FVM_CRASH_MAX_BYTES - copied - a->source_size)
+            if (a->source_size > FVM_CRASH_MAX_BYTES - copied || native > FVM_CRASH_MAX_BYTES - copied - a->source_size)
+            {
                 throw std::bad_alloc();
+            }
             copied += a->source_size + native;
             append(saved.bytecode, a->source, a->source_size);
             append(saved.machine, a->machine, native);
             r->frames.push_back(saved);
             if (n)
+            {
                 text(r->trace, ",");
+            }
             text(r->trace, "{\"function\":");
             quoted(r->trace, saved.name.data(), saved.name.size());
             text(r->trace, ",\"engine\":");
@@ -453,9 +557,13 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             quoted(r->trace, saved.source.data(), saved.source.size());
             text(r->trace, ",\"source_line\":");
             if (saved.source_available)
+            {
                 quoted(r->trace, saved.source_line.data(), saved.source_line.size());
+            }
             else
+            {
                 text(r->trace, "null");
+            }
             text(r->trace, ",\"line\":");
             integer(r->trace, saved.line);
             text(r->trace, ",\"offset\":");
@@ -466,33 +574,46 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             for (unsigned int j = 0; j < a->argc; ++j)
             {
                 if (j)
+                {
                     text(r->trace, ",");
+                }
                 value(r->trace, a->argv[j]);
             }
             text(r->trace, "],\"locals\":");
             if (s.mode == FVM_CRASH_BACKTRACE)
+            {
                 text(r->trace, "null");
+            }
             else
+            {
                 locals(r->trace, a->activation);
+            }
             if (a->forced)
             {
                 text(r->trace, ",\"registers\":[");
                 for (unsigned int j = 0; j < a->register_count; ++j)
                 {
                     if (j)
+                    {
                         text(r->trace, ",");
+                    }
                     value(r->trace, a->registers[j]);
                 }
                 text(r->trace, "],\"register_locals\":[");
                 bool comma = false;
                 if (a->function && a->function->function2)
+                {
                     for (size_t j = 0; j < a->function->parameters.size(); ++j)
                     {
                         unsigned int reg = a->function->parameter_registers[j];
                         if (!reg || reg >= a->register_count)
+                        {
                             continue;
+                        }
                         if (comma)
+                        {
                             text(r->trace, ",");
+                        }
                         comma = true;
                         text(r->trace, "{\"name\":");
                         const fvm_detail::string &name = a->function->parameters[j];
@@ -503,6 +624,7 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
                         value(r->trace, a->registers[reg]);
                         text(r->trace, "}");
                     }
+                }
                 text(r->trace, "]");
             }
             text(r->trace, "}");
@@ -516,10 +638,9 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             Bytes objects;
             heap(c, objects);
             Archive archive;
-            const char manifest[] =
-                "{\"format\":1,\"kind\":\"FlashVM VM fault\",\"byte_strings\":\"JSON escapes "
-                "encode original bytes\",\"native_resources\":\"metadata "
-                "only\",\"jit_backend\":\"see backtrace engine and host build\"}";
+            const char manifest[] = "{\"format\":1,\"kind\":\"FlashVM VM fault\",\"byte_strings\":\"JSON escapes "
+                                    "encode original bytes\",\"native_resources\":\"metadata "
+                                    "only\",\"jit_backend\":\"see backtrace engine and host build\"}";
             archive.add("manifest.json", manifest, sizeof(manifest) - 1);
             archive.add("backtrace.json", s.report->trace.begin(), s.report->trace.size());
             archive.add("heap.json", objects.begin(), objects.size());
@@ -545,14 +666,17 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
                     unsigned long id;
                     const char *name, *source;
                     size_t name_size, source_size;
-                    if (fvm_debug_source_at(c, i, &id, &name, &name_size, &source, &source_size) !=
-                        FVM_OK)
+                    if (fvm_debug_source_at(c, i, &id, &name, &name_size, &source, &source_size) != FVM_OK)
+                    {
                         continue;
+                    }
                     char entry[64];
                     std::sprintf(entry, "sources/module%lu.txt", (unsigned long)i);
                     archive.add(entry, source, source_size);
                     if (i)
+                    {
                         text(index, ",");
+                    }
                     text(index, "{\"module\":");
                     integer(index, id);
                     text(index, ",\"name\":");
@@ -569,15 +693,20 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             {
                 FILE *file = std::fopen(s.path.c_str(), "wb");
                 if (!file)
+                {
                     s.diagnostic_status = FVM_ERROR;
+                }
                 else
                 {
-                    bool ok = std::fwrite(s.report->zip.begin(), 1, s.report->zip.size(), file) ==
-                              s.report->zip.size();
+                    bool ok = std::fwrite(s.report->zip.begin(), 1, s.report->zip.size(), file) == s.report->zip.size();
                     if (std::fclose(file) != 0)
+                    {
                         ok = false;
+                    }
                     if (!ok)
+                    {
                         s.diagnostic_status = FVM_ERROR;
+                    }
                 }
             }
         }
@@ -605,16 +734,22 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
     }
     s.busy = false;
 }
+
+
 /* Publish a fully copied policy before replacing the old path. */
-extern "C" FVM_Result fvm_crash_configure(FVM_Context *c, FVM_CrashMode mode, const char *path,
-                                          FVM_CrashHandler handler, void *data)
+extern "C" FVM_Result
+fvm_crash_configure(FVM_Context *c, FVM_CrashMode mode, const char *path, FVM_CrashHandler handler, void *data)
 {
-    if (!c || c->destroying || c->gc_releasing || c->avm1_execution_depth || c->crash.active ||
-        c->crash.busy || mode < FVM_CRASH_NONE || mode > FVM_CRASH_DEBUGGER || (!handler && data) ||
+    if (!c || c->destroying || c->gc_releasing || c->avm1_execution_depth || c->crash.active || c->crash.busy ||
+        mode < FVM_CRASH_NONE || mode > FVM_CRASH_DEBUGGER || (!handler && data) ||
         (mode == FVM_CRASH_DEBUGGER && !handler))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
+
+
         fvm_detail::string copied(path ? path : "");
         c->crash.path.swap(copied);
     }
@@ -627,31 +762,42 @@ extern "C" FVM_Result fvm_crash_configure(FVM_Context *c, FVM_CrashMode mode, co
     c->crash.userdata = data;
     return FVM_OK;
 }
+
+
 /* Select preservation cost independently from the report/break action. */
 extern "C" FVM_Result fvm_crash_set_detail(FVM_Context *c, FVM_CrashDetail detail)
 {
-    if (!c || c->destroying || c->gc_releasing || c->avm1_execution_depth || c->crash.busy ||
-        c->crash.active || detail < FVM_CRASH_DETAIL_NATURAL || detail > FVM_CRASH_DETAIL_FORCE)
+    if (!c || c->destroying || c->gc_releasing || c->avm1_execution_depth || c->crash.busy || c->crash.active ||
+        detail < FVM_CRASH_DETAIL_NATURAL || detail > FVM_CRASH_DETAIL_FORCE)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     c->crash.detail = detail;
     return FVM_OK;
 }
+
+
 /* Drop owned postmortem bytes while preserving configured policy. */
 extern "C" FVM_Result fvm_crash_clear(FVM_Context *c)
 {
     if (!c || c->crash.busy)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     delete c->crash.report;
     c->crash.report = 0;
     c->crash.diagnostic_status = FVM_OK;
     return FVM_OK;
 }
+
+
 /* Expose original status independently from capture/I/O failures. */
-extern "C" FVM_Result fvm_crash_info(FVM_Context *c, size_t *count, FVM_Result *status,
-                                     FVM_Result *diagnostic)
+extern "C" FVM_Result fvm_crash_info(FVM_Context *c, size_t *count, FVM_Result *status, FVM_Result *diagnostic)
 {
     if (!c || !count || !status || !diagnostic)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *diagnostic = c->crash.diagnostic_status;
     if (!c->crash.report)
     {
@@ -662,13 +808,19 @@ extern "C" FVM_Result fvm_crash_info(FVM_Context *c, size_t *count, FVM_Result *
     *status = c->crash.report->status;
     return FVM_OK;
 }
+
+
 /* Return stable views into copied, context-owned frame data. */
 extern "C" FVM_Result fvm_crash_frame(FVM_Context *c, size_t index, FVM_CrashFrame *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->crash.report || index >= c->crash.report->frames.size())
+    {
         return FVM_NOT_FOUND;
+    }
     const SavedFrame &f = c->crash.report->frames[index];
     FVM_CrashFrame v;
     v.function = f.name.c_str();
@@ -688,54 +840,77 @@ extern "C" FVM_Result fvm_crash_frame(FVM_Context *c, size_t index, FVM_CrashFra
     *out = v;
     return FVM_OK;
 }
+
+
 /* Return copied postmortem payload; no source VM pointers are embedded as live handles. */
 extern "C" FVM_Result fvm_crash_data(FVM_Context *c, int zip, const void **out, size_t *size)
 {
     if (!c || !out || !size)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->crash.report)
+    {
         return FVM_NOT_FOUND;
+    }
     const Bytes &b = zip ? c->crash.report->zip : c->crash.report->trace;
     *out = b.begin();
     *size = b.size();
     return FVM_OK;
 }
+
 namespace
 {
+
+
 /* Resolve a live frame only inside the synchronous DEBUGGER callback. */
 FVM_CrashActivation *live(FVM_Context *c, size_t index)
 {
-    if (!c || (!c->execution_mode.breakpoint_busy &&
-               (!c->crash.busy || c->crash.mode != FVM_CRASH_DEBUGGER)))
+    if (!c || (!c->execution_mode.breakpoint_busy && (!c->crash.busy || c->crash.mode != FVM_CRASH_DEBUGGER)))
+    {
         return 0;
+    }
     FVM_CrashActivation *f = c->crash.active;
     while (f && index--)
+    {
         f = f->previous;
+    }
     return f;
 }
 } // namespace
+
+
 /* Borrow an original supplied argument from the suspended invocation. */
-extern "C" FVM_Result fvm_crash_argument(FVM_Context *c, size_t frame, unsigned int index,
-                                         FVM_Value *out)
+extern "C" FVM_Result fvm_crash_argument(FVM_Context *c, size_t frame, unsigned int index, FVM_Value *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_CrashActivation *f = live(c, frame);
     if (!f || index >= f->argc)
+    {
         return FVM_NOT_FOUND;
+    }
     *out = f->argv[index];
     return FVM_OK;
 }
+
+
 /* Enumerate only materialized activation fields; never force getters or reconstruct optimized
  * state. */
-extern "C" FVM_Result fvm_crash_local(FVM_Context *c, size_t frame, size_t index, const char **name,
-                                      size_t *size, FVM_Value *out)
+extern "C" FVM_Result
+fvm_crash_local(FVM_Context *c, size_t frame, size_t index, const char **name, size_t *size, FVM_Value *out)
 {
     if (!c || !name || !size || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_CrashActivation *f = live(c, frame);
     if (!f || !f->activation)
+    {
         return FVM_NOT_FOUND;
+    }
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = f->activation->properties.begin();
     while (i != f->activation->properties.end() && index)
     {
@@ -745,12 +920,16 @@ extern "C" FVM_Result fvm_crash_local(FVM_Context *c, size_t frame, size_t index
     if (i == f->activation->properties.end())
     {
         if (!f->forced || !f->function || !f->function->function2)
+        {
             return FVM_NOT_FOUND;
+        }
         for (size_t j = 0; j < f->function->parameters.size(); ++j)
         {
             unsigned int reg = f->function->parameter_registers[j];
             if (!reg || reg >= f->register_count)
+            {
                 continue;
+            }
             if (index)
             {
                 --index;
@@ -768,53 +947,71 @@ extern "C" FVM_Result fvm_crash_local(FVM_Context *c, size_t frame, size_t index
     *out = i->second;
     return FVM_OK;
 }
+
+
 /* Expose already-maintained registers without adding per-instruction spills. */
-extern "C" FVM_Result fvm_crash_register(FVM_Context *c, size_t frame, unsigned int index,
-                                         FVM_Value *out)
+extern "C" FVM_Result fvm_crash_register(FVM_Context *c, size_t frame, unsigned int index, FVM_Value *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_CrashActivation *f = live(c, frame);
     if (!f || index >= f->register_count)
+    {
         return FVM_NOT_FOUND;
+    }
     *out = f->registers[index];
     return FVM_OK;
 }
 
+
 /* Return the copied executed source line independently from borrowed symbol-bundle lifetime. */
-extern "C" FVM_Result fvm_crash_source_line(FVM_Context *c, size_t index, const char **out,
-                                            size_t *size)
+extern "C" FVM_Result fvm_crash_source_line(FVM_Context *c, size_t index, const char **out, size_t *size)
 {
     if (!c || !out || !size)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->crash.report || index >= c->crash.report->frames.size())
+    {
         return FVM_NOT_FOUND;
+    }
     const SavedFrame &f = c->crash.report->frames[index];
     if (!f.source_available)
+    {
         return FVM_NOT_FOUND;
+    }
     *out = f.source_line.data();
     *size = f.source_line.size();
     return FVM_OK;
 }
+
+
 /* Distinguish interpreter, generated JIT and embedding-owned native bodies. */
 extern "C" FVM_Result fvm_crash_frame_engine(FVM_Context *c, size_t index, FVM_CrashEngine *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->crash.report || index >= c->crash.report->frames.size())
+    {
         return FVM_NOT_FOUND;
+    }
     const SavedFrame &f = c->crash.report->frames[index];
-    *out = f.jit        ? FVM_CRASH_ENGINE_JIT
-           : f.external ? FVM_CRASH_ENGINE_NATIVE
-                        : FVM_CRASH_ENGINE_INTERPRETER;
+    *out = f.jit ? FVM_CRASH_ENGINE_JIT : f.external ? FVM_CRASH_ENGINE_NATIVE : FVM_CRASH_ENGINE_INTERPRETER;
     return FVM_OK;
 }
+
 
 /* Count borrowed execution frames only while a host debugger callback owns the stop. */
 extern "C" FVM_Result fvm_debug_frame_count(FVM_Context *c, size_t *count)
 {
     if (!c || !count)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_CrashActivation *frame = live(c, 0);
     if (!frame)
     {
@@ -830,14 +1027,20 @@ extern "C" FVM_Result fvm_debug_frame_count(FVM_Context *c, size_t *count)
     *count = n;
     return FVM_OK;
 }
+
+
 /* Expose a stable borrowed activation view without constructing a postmortem report. */
 extern "C" FVM_Result fvm_debug_frame_at(FVM_Context *c, size_t index, FVM_DebugFrame *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_CrashActivation *frame = live(c, index);
     if (!frame || index >= FVM_CRASH_MAX_FRAMES)
+    {
         return FVM_NOT_FOUND;
+    }
     FVM_DebugFrame view;
     view.function = frame->name ? frame->name->data() : "<root>";
     view.function_size = frame->name ? frame->name->size() : sizeof("<root>") - 1;

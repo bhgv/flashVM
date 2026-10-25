@@ -53,5 +53,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_get_time` | function | [include/flashvm/execution.h:168](../include/flashvm/execution.h#L168) |
+| `fvm_exec_get_time` | function | [include/flashvm/execution.h:214](../include/flashvm/execution.h#L214) |
 <!-- source-links:end -->

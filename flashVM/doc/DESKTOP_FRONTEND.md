@@ -105,7 +105,7 @@ The application reads a seekable file of at most [`FVM_SWF_DEFAULT_LIMIT`](../in
 Canonical loading supports the existing FWS/CWS profile. The scene importer can
 reject unsupported tags; the frontend reports the VM status instead of ignoring
 them. Stage dimensions come from the authored RECT, not currently visible shape
-bounds. Twips use [`FVM_SWF_TWIPS_PER_PIXEL`](../include/flashvm/swf.h#L27) (20). Pixel dimensions are rounded up
+bounds. Twips use [`FVM_SWF_TWIPS_PER_PIXEL`](../include/flashvm/swf.h#L30) (20). Pixel dimensions are rounded up
 and must fit 1..4096 per axis. The host viewport subtracts the authored left/top
 origin without changing `_x`, `_y`, visibility, color or child transforms.
 
@@ -127,7 +127,7 @@ sampling and filter compatibility remain roadmap work.
 
 ### fvm_swf_stage_bounds
 
-Declared with [`FVM_SWFStageBounds`](../include/flashvm/swf.h#L29) in [swf.h](../include/flashvm/swf.h).
+Declared with [`FVM_SWFStageBounds`](../include/flashvm/swf.h#L34) in [swf.h](../include/flashvm/swf.h).
 Pass an owning-thread loaded context and nonnull output with exact `struct_size`.
 OK copies signed `x_min/x_max/y_min/y_max` in twips. Equal edges are valid metadata;
 inverted edges are INVALID_ARGUMENT. Null/wrong-sized output, terminal/collecting
@@ -139,7 +139,7 @@ callbacks, script, GC, borrowed bytes or retained ownership are involved.
 
 Declared in [movieclip.h](../include/flashvm/movieclip.h). Arguments are owning
 context, same-context MovieClip, valid caller-owned RGBA surface and nonnull
-[`FVM_Affine`](../include/flashvm/path.h#L33) viewport. All six viewport values must be finite; singular matrices
+[`FVM_Affine`](../include/flashvm/path.h#L39) viewport. All six viewport values must be finite; singular matrices
 are not rejected just for being singular. The matrix is copied before getters.
 It is multiplied on the left of each authored world matrix exactly once, including
 children, while preserving ordinary root visibility/color and script transforms.
@@ -201,7 +201,7 @@ Windowless logical-stage adapter / Адаптер без окна: [EN](OFFSCREE
 Queued resource owner control / Очередь управления ресурсами: [EN](RESOURCE_DISPATCH.md) / [RU](RESOURCE_DISPATCH.ru.md).
 
 
-Desktop stream preparation now uses [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../include/flashvm/swf_stream_sound.h#L137): canonical whole ADPCM packets remain accepted; partial packets require a unique byte/padding endpoint. Ambiguous counts stay UNSUPPORTED before audio acquisition. Aggregate retained/peak budgets still apply. / Подготовка коротких ADPCM блоков разрешена только при единственной длине; неоднозначные блоки не угадываются. [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md).
+Desktop stream preparation now uses [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../include/flashvm/swf_stream_sound.h#L167): canonical whole ADPCM packets remain accepted; partial packets require a unique byte/padding endpoint. Ambiguous counts stay UNSUPPORTED before audio acquisition. Aggregate retained/peak budgets still apply. / Подготовка коротких ADPCM блоков разрешена только при единственной длине; неоднозначные блоки не угадываются. [EN](INFERRED_ADPCM.md) / [RU](INFERRED_ADPCM.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -212,12 +212,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
+| `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:137](../include/flashvm/swf_stream_sound.h#L137) |
-| `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:27](../include/flashvm/swf.h#L27) |
-| `FVM_SWFStageBounds` | struct | [include/flashvm/swf.h:29](../include/flashvm/swf.h#L29) |
+| `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:45](../include/flashvm/swf.h#L45) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:167](../include/flashvm/swf_stream_sound.h#L167) |
+| `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:30](../include/flashvm/swf.h#L30) |
+| `FVM_SWFStageBounds` | struct | [include/flashvm/swf.h:34](../include/flashvm/swf.h#L34) |
 <!-- source-links:end -->

@@ -24,7 +24,7 @@ Null/undefined снимается со стека и пропускает тел
 
 Parent-handle владеет вложенными отображениями кода и рекурсивно освобождает их.
 Во время исполнения активны parent и child; collecting/reentrant callback не
-может освободить ни один. [`fvm_jit_code_size`](../include/flashvm/jit.h#L35) возвращает сумму машинных байтов
+может освободить ни один. [`fvm_jit_code_size`](../include/flashvm/jit.h#L51) возвращает сумму машинных байтов
 всего дерева; предел компиляции и учёт JIT-кэша также включают дочерние байты.
 Допускается 64 уровня With, как в интерпретаторе. Ошибка компиляции сохраняет
 прежний выходной handle и освобождает подготовленные вложенные отображения.
@@ -60,5 +60,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:51](../include/flashvm/jit.h#L51) |
 <!-- source-links:end -->

@@ -5,9 +5,9 @@
 Текущее файловое расширение v0.1211+: [заливки SWF8 DefineShape4](SHAPE4_FILLS.ru.md), 15 точек, режимы и внутренний FIXED8-фокус. LINESTYLE2 и граничные фокусы не поддержаны. Прежние общие исключения Shape4 ниже относятся к истории. Все девять этапов открыты.
 
 
-Для C89 и SWF8 radial gradients добавлены signed focal-позиции строго внутри нормализованного единичного круга: fill/stroke, RGB/linearRGB, PAD/REFLECT/REPEAT. Ноль сохраняет прежний centered sampler побайтно. Layout [FVM_Gradient](../include/flashvm/gradient.h#L38) и callback IDs не меняются. Все девять этапов roadmap открыты.
+Для C89 и SWF8 radial gradients добавлены signed focal-позиции строго внутри нормализованного единичного круга: fill/stroke, RGB/linearRGB, PAD/REFLECT/REPEAT. Ноль сохраняет прежний centered sampler побайтно. Layout [FVM_Gradient](../include/flashvm/gradient.h#L48) и callback IDs не меняются. Все девять этапов roadmap открыты.
 
-Это checkpoint внутренних focal. Adobe API описывает границы -1/+1 и clamping значений к ним. Для таких конечных script-аргументов здесь сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46): endpoint policy не реализуется и не заменяется произвольной epsilon-аппроксимацией. Полная Fixed8/rounding приёмка эталонного плеера открыта.
+Это checkpoint внутренних focal. Adobe API описывает границы -1/+1 и clamping значений к ним. Для таких конечных script-аргументов здесь сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48): endpoint policy не реализуется и не заменяется произвольной epsilon-аппроксимацией. Полная Fixed8/rounding приёмка эталонного плеера открыта.
 
 ## Вызовы C89
 
@@ -17,16 +17,16 @@
 | --- | --- |
 | path | Ненулевой заимствованный путь с конечными координатами в прежних raster-пределах. Команды не меняются и не сохраняются. |
 | surface | Ненулевая RGBA-поверхность и буфер с корректными dimensions/stride. Вызывающий обеспечивает исключительный доступ на время рисования. |
-| gradient | Прежний [FVM_Gradient](../include/flashvm/gradient.h#L38): обратимая ограниченная конечная матрица, 1–15 упорядоченных stops и прежние color-transform пределы. Ненулевой focal требует [FVM_GRADIENT_RADIAL](../include/flashvm/gradient.h#L16). |
+| gradient | Прежний [FVM_Gradient](../include/flashvm/gradient.h#L48): обратимая ограниченная конечная матрица, 1–15 упорядоченных stops и прежние color-transform пределы. Ненулевой focal требует [FVM_GRADIENT_RADIAL](../include/flashvm/gradient.h#L18). |
 | even_odd | Fill selector 0 или 1. Stroke использует прежнее покрытие backend. |
 | width | Для stroke: конечная положительная destination-ширина, не более [FVM_GRADIENT_MAX_STROKE_WIDTH](../include/flashvm/gradient.h#L10). Ноль неверен; один пиксель следует задавать явно как 1. |
 | spread | Unsigned PAD=0, REFLECT=1 или REPEAT=2. |
-| interpolation | Unsigned RGB=0 или LINEAR_RGB=1 из [FVM_GradientInterpolation](../include/flashvm/gradient.h#L26). |
+| interpolation | Unsigned RGB=0 или LINEAR_RGB=1 из [FVM_GradientInterpolation](../include/flashvm/gradient.h#L32). |
 | focal | Конечная нормализованная X-позиция с абсолютным значением строго меньше [FVM_GRADIENT_FOCAL_LIMIT](../include/flashvm/gradient.h#L9) (1). Y-позиция равна нулю. Границы и значения вне диапазона неверны. |
 
-Успех возвращает [FVM_OK](../include/flashvm/flashvm.h#L42). Неверные geometry, focal/type, selectors, width, stops или destination дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до рисования. Корректный запрос без backend даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Ошибка выделения samples/coverage даёт [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) и сохраняет пиксели. Атомарна одна paint-операция; предыдущие успешные paints сцены не отменяются при более поздней ошибке.
+Успех возвращает [FVM_OK](../include/flashvm/flashvm.h#L44). Неверные geometry, focal/type, selectors, width, stops или destination дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до рисования. Корректный запрос без backend даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Ошибка выделения samples/coverage даёт [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) и сохраняет пиксели. Атомарна одна paint-операция; предыдущие успешные paints сцены не отменяются при более поздней ошибке.
 
-Прежние gradient entries используют focal zero. Старый no-selector fill остаётся PAD/RGB; spread/interpolation entries сохраняют defaults. Новые вызовы с focal=0 проверены побайтно против прежних. [fvm_gradient_init](../include/flashvm/gradient.h#L48) и public struct не получают поля.
+Прежние gradient entries используют focal zero. Старый no-selector fill остаётся PAD/RGB; spread/interpolation entries сохраняют defaults. Новые вызовы с focal=0 проверены побайтно против прежних. [fvm_gradient_init](../include/flashvm/gradient.h#L60) и public struct не получают поля.
 
 ## Геометрия и численная политика
 
@@ -42,11 +42,11 @@ Focal задаётся до gradient/world affine transforms и следует �
 
 ## AS2 и optional copied metadata
 
-Optional восьмой аргумент beginGradientFill/lineGradientStyle приводится к числу только для radial. Отсутствующий/undefined или zero сохраняет центр. Ненулевой внутренний focal требует загруженного SWF8; host-контексты его принимают. В более раннем loaded profile сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Linear игнорирует аргумент без вызова coercion callback. Visibility lineGradientStyle и предварительный lineStyle прежние.
+Optional восьмой аргумент beginGradientFill/lineGradientStyle приводится к числу только для radial. Отсутствующий/undefined или zero сохраняет центр. Ненулевой внутренний focal требует загруженного SWF8; host-контексты его принимают. В более раннем loaded profile сохраняется [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Linear игнорирует аргумент без вызова coercion callback. Visibility lineGradientStyle и предварительный lineStyle прежние.
 
-Конечные boundary/outside значения дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) без публикации стиля. Nonfinite radial coercion сохраняет прежний успешный no-op. Script-side clamping к endpoint-градиентам пока отсутствует. Coercion может вызывать valueOf и менять state. VM/native errors и ошибки подготовки сохраняют прежний published style/active path, если сам скрипт их не меняет; явные эффекты и reentrant изменения не отменяются.
+Конечные boundary/outside значения дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) без публикации стиля. Nonfinite radial coercion сохраняет прежний успешный no-op. Script-side clamping к endpoint-градиентам пока отсутствует. Coercion может вызывать valueOf и менять state. VM/native errors и ошибки подготовки сохраняют прежний published style/active path, если сам скрипт их не меняет; явные эффекты и reentrant изменения не отменяются.
 
-Immutable descriptor хранит optional own numeric `focal` только для ненулевого положения. Отсутствие или явный ноль означает centered. Restored non-number, nonfinite, boundary/outside или ненулевой focal с linear geometry дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до изменения пикселей одной paint-операцией. Renderer читает raw owned scalar и не вызывает focal getter или inherited property.
+Immutable descriptor хранит optional own numeric `focal` только для ненулевого положения. Отсутствие или явный ноль означает centered. Restored non-number, nonfinite, boundary/outside или ненулевой focal с linear geometry дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до изменения пикселей одной paint-операцией. Renderer читает raw owned scalar и не вызывает focal getter или inherited property.
 
 Stops, matrix и focal копируются. duplicateMovieClip клонирует current/active aliases в одном графе. Binary serialization и каналы сохраняют разные fill/stroke origins и цветовые политики после уничтожения отправителя. Resource kind, wire format и callback ID не добавляются. Получателю нужен новый renderer: старый reader может проигнорировать optional scalar и нарисовать centered geometry.
 
@@ -67,7 +67,7 @@ Focal endpoints/clamping, Flash Fixed8, сравнение округления/
 
 ## v0.1210 verification
 
-Внутренние focal-градиенты v0.1197–v0.1210: добавлены C89 fill/stroke entries и signed focal строго внутри (-1,1) для radial beginGradientFill/lineGradientStyle SWF8, RGB/linearRGB, PAD/REFLECT/REPEAT. Zero сохраняет centered bytes; layout [FVM_Gradient](../include/flashvm/gradient.h#L38), callback IDs и wire/resource types прежние. Устойчивый ray solver выбирает отношение до прежней color/coverage композиции. Конечные endpoint/outside script-аргументы остаются UNSUPPORTED, native — INVALID_ARGUMENT. Прошли 118 выбранных native gradient/raster/scene/graph/GC/quality/tutorial проверок, десять focused ASan/UBSan и явные no-throw/no-fault запуски; LeakSanitizer выключен. Проверены независимые горизонтальные таблицы, 288 ray-contour samples и ближайшие внутренние значения у границы. Реальные AVM1 тесты охватывают 144 host/SWF8 interpreter/manual/automatic JIT конфигурации: success и атомарный boundary rejection в каждой (288 вызовов), с native counters. Четыре OS worker проходят 128 независимых paint/GC циклов; проверены 192 signed focal affine/alpha/quality отрисовки. Проверены copy/duplicate/current-active aliases, binary/channel после уничтожения отправителя, mixed opposite origins, raw metadata без getters, numeric coercion effects и ошибки выделения. SDK-free C89 admission/invalid-input проверки проходят; три graphic tutorial явно пропускаются. Переименованный detached-компонент конфигурируется, copied checker проходит на native executable без заявления отдельной detached-сборки. Endpoints/clamping, Flash Fixed8/эталонное округление, DefineShape4/LineStyle2, полная stroke семантика, устройства и другие платформы открыты. Все девять этапов открыты. [Контракт](FOCAL_GRADIENTS.ru.md).
+Внутренние focal-градиенты v0.1197–v0.1210: добавлены C89 fill/stroke entries и signed focal строго внутри (-1,1) для radial beginGradientFill/lineGradientStyle SWF8, RGB/linearRGB, PAD/REFLECT/REPEAT. Zero сохраняет centered bytes; layout [FVM_Gradient](../include/flashvm/gradient.h#L48), callback IDs и wire/resource types прежние. Устойчивый ray solver выбирает отношение до прежней color/coverage композиции. Конечные endpoint/outside script-аргументы остаются UNSUPPORTED, native — INVALID_ARGUMENT. Прошли 118 выбранных native gradient/raster/scene/graph/GC/quality/tutorial проверок, десять focused ASan/UBSan и явные no-throw/no-fault запуски; LeakSanitizer выключен. Проверены независимые горизонтальные таблицы, 288 ray-contour samples и ближайшие внутренние значения у границы. Реальные AVM1 тесты охватывают 144 host/SWF8 interpreter/manual/automatic JIT конфигурации: success и атомарный boundary rejection в каждой (288 вызовов), с native counters. Четыре OS worker проходят 128 независимых paint/GC циклов; проверены 192 signed focal affine/alpha/quality отрисовки. Проверены copy/duplicate/current-active aliases, binary/channel после уничтожения отправителя, mixed opposite origins, raw metadata без getters, numeric coercion effects и ошибки выделения. SDK-free C89 admission/invalid-input проверки проходят; три graphic tutorial явно пропускаются. Переименованный detached-компонент конфигурируется, copied checker проходит на native executable без заявления отдельной detached-сборки. Endpoints/clamping, Flash Fixed8/эталонное округление, DefineShape4/LineStyle2, полная stroke семантика, устройства и другие платформы открыты. Все девять этапов открыты. [Контракт](FOCAL_GRADIENTS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -78,16 +78,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
 | `FVM_GRADIENT_FOCAL_LIMIT` | macro / define | [include/flashvm/gradient.h:9](../include/flashvm/gradient.h#L9) |
-| `fvm_gradient_init` | function | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:60](../include/flashvm/gradient.h#L60) |
 | `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:10](../include/flashvm/gradient.h#L10) |
-| `FVM_GRADIENT_RADIAL` | enum constant | [include/flashvm/gradient.h:16](../include/flashvm/gradient.h#L16) |
-| `FVM_GradientInterpolation` | enum | [include/flashvm/gradient.h:26](../include/flashvm/gradient.h#L26) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_draw_gradient_focal` | function | [include/flashvm/gradient.h:85](../include/flashvm/gradient.h#L85) |
-| `fvm_path_stroke_gradient_focal` | function | [include/flashvm/gradient.h:90](../include/flashvm/gradient.h#L90) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_GRADIENT_RADIAL` | enum constant | [include/flashvm/gradient.h:18](../include/flashvm/gradient.h#L18) |
+| `FVM_GradientInterpolation` | enum | [include/flashvm/gradient.h:32](../include/flashvm/gradient.h#L32) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_path_draw_gradient_focal` | function | [include/flashvm/gradient.h:111](../include/flashvm/gradient.h#L111) |
+| `fvm_path_stroke_gradient_focal` | function | [include/flashvm/gradient.h:118](../include/flashvm/gradient.h#L118) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

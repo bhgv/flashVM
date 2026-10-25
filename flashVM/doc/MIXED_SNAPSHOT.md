@@ -1,6 +1,6 @@
 # Coherent mixed stream snapshots
 
-[`fvm_swf_stream_output_mix_info`](../include/flashvm/swf_stream_output.h#L138) observes the paired stream and accepted BASE/TAIL
+[`fvm_swf_stream_output_mix_info`](../include/flashvm/swf_stream_output.h#L162) observes the paired stream and accepted BASE/TAIL
 ledger through exactly one real `queued` callback. Separate queries can observe
 separate points while the device drains: use this API when category sums must
 match source/retry metadata and the common clock in one result.
@@ -8,7 +8,7 @@ match source/retry metadata and the common clock in one result.
 ## Contract
 
 Pass a live initialized stream, its exact adapted mix queue, and disjoint writable
-[`FVM_SWFStreamMixInfo`](../include/flashvm/swf_stream_output.h#L26) with only outer struct_size set to sizeof. Nested sizes are
+[`FVM_SWFStreamMixInfo`](../include/flashvm/swf_stream_output.h#L28) with only outer struct_size set to sizeof. Nested sizes are
 initialized on success. The stream's submitted epoch must equal the queue's;
 origin tracking must be enabled. Keep converter, immutable source snapshot, mixer,
 backend userdata and retry PCM alive. Externally serialize both owners and queue
@@ -111,6 +111,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:138](../include/flashvm/swf_stream_output.h#L138) |
-| `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:26](../include/flashvm/swf_stream_output.h#L26) |
+| `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:162](../include/flashvm/swf_stream_output.h#L162) |
+| `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:28](../include/flashvm/swf_stream_output.h#L28) |
 <!-- source-links:end -->

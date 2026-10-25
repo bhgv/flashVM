@@ -36,13 +36,13 @@ See [full EN contract](../../../doc/MOUSE.md#cursor-visibility-request) and
 
 | API | Parameters, result and ownership |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Writable config: initialize supported ABI defaults; acquire no owner. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Initialized config, runtime output: acquire outer owner; release after its contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Live runtime, context output: independent requested visibility initially 1. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L41) | Live context, mandatory writable int output: copy requested 0/1, not OS state; invalid call preserves output; [FVM_OK](../../../include/flashvm/flashvm.h#L42)/FVM_INVALID_ARGUMENT only. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L46) | Context, visible=0/1, mandatory writable previous int: set request and return old 0/1; invalid call preserves state/output, no allocation/OS callback. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Acquired context: destroy only after no callback uses it; invalidate its state. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Acquired runtime: release after context cleanup, including partial setup failure. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Writable config: initialize supported ABI defaults; acquire no owner. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Initialized config, runtime output: acquire outer owner; release after its contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Live runtime, context output: independent requested visibility initially 1. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L53) | Live context, mandatory writable int output: copy requested 0/1, not OS state; invalid call preserves output; [FVM_OK](../../../include/flashvm/flashvm.h#L44)/FVM_INVALID_ARGUMENT only. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L60) | Context, visible=0/1, mandatory writable previous int: set request and return old 0/1; invalid call preserves state/output, no allocation/OS callback. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Acquired context: destroy only after no callback uses it; invalidate its state. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Acquired runtime: release after context cleanup, including partial setup failure. [Embedding](../../../doc/EMBEDDING_API.md). |
 
 Русский: таблица описывает каждую функцию отдельно. В этом примере нет скриптов
 или объектов GC: достаточно освободить context, затем runtime. printf/fprintf
@@ -59,10 +59,10 @@ explains SWF5 cursor support, SWF6 listener guards and ignored arguments.
 
 | API | Parameters and behavior |
 | --- | --- |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Live context: install ordinary objects; real allocation errors propagate. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L50) | Standard-installed context: atomically install cursor/listener subset, preserve conflicts; version gates remain explicit. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
-| [`fvm_get_global`](../../../include/flashvm/value.h#L85) | Context, name Mouse, writable value output: borrow namespace retained by global binding, no host ownership transfer. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Context, borrowed receiver, hide/show name, count=0, NULL args, writable out: ordinary rooted native method lookup, return Number previous request; real lookup/callback errors propagate. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Live context: install ordinary objects; real allocation errors propagate. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L66) | Standard-installed context: atomically install cursor/listener subset, preserve conflicts; version gates remain explicit. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
+| [`fvm_get_global`](../../../include/flashvm/value.h#L125) | Context, name Mouse, writable value output: borrow namespace retained by global binding, no host ownership transfer. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_object_call`](../../../include/flashvm/value.h#L184) | Context, borrowed receiver, hide/show name, count=0, NULL args, writable out: ordinary rooted native method lookup, return Number previous request; real lookup/callback errors propagate. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
 
 Русский: второй этап примера вызывает те же методы, что доступны фильму. Возврат
 проверяется как Number, затем копируется в скаляр. Преобразования аргументов,
@@ -78,17 +78,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_get_global` | function | [include/flashvm/value.h:85](../../../include/flashvm/value.h#L85) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../../include/flashvm/mouse.h#L46) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../../../include/flashvm/flashvm.h#L45) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../../../include/flashvm/flashvm.h#L42) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../../../include/flashvm/mouse.h#L50) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_get_global` | function | [include/flashvm/value.h:125](../../../include/flashvm/value.h#L125) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../../../include/flashvm/mouse.h#L53) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:60](../../../include/flashvm/mouse.h#L60) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../../../include/flashvm/flashvm.h#L47) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../../../include/flashvm/value.h#L184) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../../../include/flashvm/flashvm.h#L44) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:66](../../../include/flashvm/mouse.h#L66) |
 <!-- source-links:end -->

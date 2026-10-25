@@ -35,7 +35,7 @@ ActionScript не управляет потоками напрямую. Скри
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L21) | [RENDER_THREADS.md#русский](../../../doc/RENDER_THREADS.md#русский) — Параллельные задания рендеринга. |
+| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L25) | [RENDER_THREADS.md#русский](../../../doc/RENDER_THREADS.md#русский) — Параллельные задания рендеринга. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-parallel_render).
 <!-- example-catalog-api:end -->
@@ -49,5 +49,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:21](../../../include/flashvm/render_jobs.h#L21) |
+| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../../../include/flashvm/render_jobs.h#L25) |
 <!-- source-links:end -->

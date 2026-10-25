@@ -10,7 +10,7 @@ before receiver/argument coercion, so nested callbacks use the enclosing AVM1
 budget. Split charges each scan position, delimiter comparison and emitted
 UTF-16 unit. Encoding a supplementary character charges both units. Search
 charges each candidate position and compared unit, including failed long-prefix
-comparisons. Finite instruction limits and counter saturation return [FVM_ERROR](../include/flashvm/flashvm.h#L43); zero remains
+comparisons. Finite instruction limits and counter saturation return [FVM_ERROR](../include/flashvm/flashvm.h#L45); zero remains
 unlimited. Worker cancellation retains the shared periodic polling policy.
 Unloaded host traversals retain their previous accounting policy.
 
@@ -93,5 +93,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

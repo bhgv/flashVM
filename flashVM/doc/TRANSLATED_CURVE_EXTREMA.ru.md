@@ -6,11 +6,11 @@
 
 Общий helper `curve_bounds` сначала учитывает конечную точку. Если начало ненулевое, все активные controls имеют тот же знак и их модули лежат между половиной и удвоенным модулем начала, лемма Стербенца обеспечивает точное вычитание локальных координат при обычной двоичной IEEE-арифметике с постепенным underflow. Производные и вычисление Bernstein используют локальные координаты; origin прибавляется один раз к каждому экстремуму. Другие конфигурации сохраняют прежнюю арифметику. Для малых discriminants сохраняется прежнее масштабирование двоичным показателем.
 
-Изменение действует в публичном [`fvm_path_bounds`](../include/flashvm/path.h#L71) и private round/round stroke bounds. Выделения памяти и сохраняемого состояния нет. Публичные заголовки, ownership, статусы, callback identities и wire formats не меняются. Cubic остаётся native path; команды cubic MovieClip и генерация JIT не добавляются.
+Изменение действует в публичном [`fvm_path_bounds`](../include/flashvm/path.h#L97) и private round/round stroke bounds. Выделения памяти и сохраняемого состояния нет. Публичные заголовки, ownership, статусы, callback identities и wire formats не меняются. Cubic остаётся native path; команды cubic MovieClip и генерация JIT не добавляются.
 
 ## Контракт API и пример
 
-[`fvm_path_bounds`](../include/flashvm/path.h#L71) заимствует неизменяемый ненулевой path и записывает четыре собственных скаляра в ненулевой output. Null возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); допустимое измерение, включая пустой нулевой box, возвращает [FVM_OK](../include/flashvm/flashvm.h#L42). Владение не передаётся, VM, GC и host callbacks не вызываются. Независимые paths можно читать параллельно; изменение того же path во время измерения требует синхронизации вызывающей стороны. Admission координат и прежняя обработка move-only contours сохраняются. Выделение и редактирование path по-прежнему могут завершаться ошибками собственных API.
+[`fvm_path_bounds`](../include/flashvm/path.h#L97) заимствует неизменяемый ненулевой path и записывает четыре собственных скаляра в ненулевой output. Null возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); допустимое измерение, включая пустой нулевой box, возвращает [FVM_OK](../include/flashvm/flashvm.h#L44). Владение не передаётся, VM, GC и host callbacks не вызываются. Независимые paths можно читать параллельно; изменение того же path во время измерения требует синхронизации вызывающей стороны. Admission координат и прежняя обработка move-only contours сохраняются. Выделение и редактирование path по-прежнему могут завершаться ошибками собственных API.
 
 Существующий исполняемый [пример C89 cubic](../examples/embedding/cubic_extrema/README.ru.md) остаётся применимым и повторно проверяется во всех выбранных профилях. Новых публичных функций нет.
 
@@ -59,7 +59,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../include/flashvm/path.h#L97) |
 <!-- source-links:end -->

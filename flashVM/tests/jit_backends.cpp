@@ -1,28 +1,64 @@
 /* Offline encoders use synthetic helpers, never truncated host addresses. */
+#include <stdio.h>
+#include <stdlib.h>
 #include "../src/jit/internal.hpp"
-#include <cassert>
 #include <cstdio>
 #include <cstring>
+
+
 static bool resolve(FVM_JitStep step, unsigned char *address, void *userdata)
 {
     unsigned value = step == fvm_jit_checkpoint ? 0x200000 : step == fvm_jit_push ? 0x200100 : 0x200200;
     std::memset(address, 0, 8);
-    for (unsigned i = 0; i < 4; ++i) address[i] = (unsigned char)(value >> (i * 8));
+    for (unsigned i = 0; i < 4; ++i)
+    {
+        address[i] = (unsigned char)(value >> (i * 8));
+    }
     unsigned mode = userdata ? *(unsigned *)userdata : 0;
-    if (mode == 1) address[4] = 1;
-    if (mode == 2) address[0] |= 1;
+    if (mode == 1)
+    {
+        address[4] = 1;
+    }
+    if (mode == 2)
+    {
+        address[0] |= 1;
+    }
     return true;
 }
-static void save(const char *directory, int target, const char *suffix,
-                 const fvm_detail::vector<unsigned char> &bytes)
+
+
+static void save(const char *directory, int target, const char *suffix, const fvm_detail::vector<unsigned char> &bytes)
 {
-    if (!directory) return;
-    char path[1024]; assert(std::strlen(directory) < 900);
+    if (!directory)
+    {
+        return;
+    }
+    char path[1024];
+    if (!(std::strlen(directory) < 900))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     std::sprintf(path, "%s/backend-%d%s.bin", directory, target, suffix);
-    FILE *file=std::fopen(path,"wb");assert(file);
-    assert(std::fwrite(bytes.begin(),1,bytes.size(),file)==bytes.size());
-    assert(std::fclose(file)==0);
+    FILE *file = std::fopen(path, "wb");
+    if (!(file))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(std::fwrite(bytes.begin(), 1, bytes.size(), file) == bytes.size()))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(std::fclose(file) == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
+
+
 int main(int argc, char **argv)
 {
     FVM_JitCode code;
@@ -38,42 +74,74 @@ int main(int argc, char **argv)
     code.actions[2].target = 1;
     code.actions[3].calls.push_back(FVM_JitCall(fvm_jit_push, 3));
     code.actions[3].branch = FVM_JIT_EXIT;
-    const FVM_JitTarget targets[] = {FVM_JIT_TARGET_X86, FVM_JIT_TARGET_ARM,
-        FVM_JIT_TARGET_ARM64, FVM_JIT_TARGET_RISCV, FVM_JIT_TARGET_RISCV64,
-        FVM_JIT_TARGET_MACOS_ARM64};
-    for (size_t target = 0; target < sizeof(targets)/sizeof(targets[0]); ++target)
+    const FVM_JitTarget targets[] = {FVM_JIT_TARGET_X86,
+                                     FVM_JIT_TARGET_ARM,
+                                     FVM_JIT_TARGET_ARM64,
+                                     FVM_JIT_TARGET_RISCV,
+                                     FVM_JIT_TARGET_RISCV64,
+                                     FVM_JIT_TARGET_MACOS_ARM64};
+    for (size_t target = 0; target < sizeof(targets) / sizeof(targets[0]); ++target)
     {
         int t = targets[target];
         fvm_detail::vector<unsigned char> bytes;
-        assert(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, 0) == FVM_OK);
-        assert(bytes.size() > 32);
+        if (!(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, 0) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(bytes.size() > 32))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         save(argc == 2 ? argv[1] : 0, t, "", bytes);
-        if (t == FVM_JIT_TARGET_MACOS_ARM64 || t == FVM_JIT_TARGET_ARM64 || t == FVM_JIT_TARGET_RISCV64 || t == FVM_JIT_TARGET_ARM)
+        if (t == FVM_JIT_TARGET_MACOS_ARM64 || t == FVM_JIT_TARGET_ARM64 || t == FVM_JIT_TARGET_RISCV64 ||
+            t == FVM_JIT_TARGET_ARM)
         {
             unsigned mode = t == FVM_JIT_TARGET_ARM ? 2 : 1;
-            assert(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, &mode)==FVM_OK);
+            if (!(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, &mode) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             save(argc == 2 ? argv[1] : 0, t, mode == 1 ? "-high" : "-thumb", bytes);
         }
         size_t prior = bytes.size();
         unsigned char first = bytes[0];
         code.actions[1].target = 999999;
-        assert(fvm_jit_encode((FVM_JitTarget)t,code,bytes,resolve,0)==FVM_INVALID_ARGUMENT);
-        assert(bytes.size()==prior && bytes[0]==first);
+        if (!(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, 0) == FVM_INVALID_ARGUMENT))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(bytes.size() == prior && bytes[0] == first))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         code.actions[1].target = 3;
         FVM_JitCode far;
         far.actions = code.actions;
         far.actions.resize(22004);
         far.actions.back() = code.actions.back();
-        far.actions[1].target = far.actions.size()-1;
+        far.actions[1].target = far.actions.size() - 1;
         far.actions[3] = FVM_JitAction();
-        for(size_t i=3;i+1<far.actions.size();++i)
+        for (size_t i = 3; i + 1 < far.actions.size(); ++i)
         {
-            far.actions[i].calls.push_back(FVM_JitCall(fvm_jit_push,99));
-            far.actions[i].calls.push_back(FVM_JitCall(fvm_jit_push,99));
+            far.actions[i].calls.push_back(FVM_JitCall(fvm_jit_push, 99));
+            far.actions[i].calls.push_back(FVM_JitCall(fvm_jit_push, 99));
         }
-        assert(fvm_jit_encode((FVM_JitTarget)t,far,bytes,resolve,0)==FVM_OK);
-        assert(bytes.size()>1048576);
-        save(argc == 2 ? argv[1] : 0,t,"-far",bytes);
+        if (!(fvm_jit_encode((FVM_JitTarget)t, far, bytes, resolve, 0) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(bytes.size() > 1048576))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        save(argc == 2 ? argv[1] : 0, t, "-far", bytes);
     }
     return 0;
 }

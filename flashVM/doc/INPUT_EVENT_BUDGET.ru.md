@@ -27,11 +27,11 @@ AsBroadcaster. Ограничивается всё синхронное собы
 
 ## Ошибки, публикация и владение
 
-Исчерпание бюджета или обнаруженная остановка worker возвращает [`FVM_ERROR`](../include/flashvm/flashvm.h#L43).
+Исчерпание бюджета или обнаруженная остановка worker возвращает [`FVM_ERROR`](../include/flashvm/flashvm.h#L45).
 Add/remove учитывают перемещения до изменения списка: ошибка сохраняет
 идентичность, порядок и GC-корни регистраций. Нативные remove также сохраняют
 `removed` при ошибке. Успешные результаты/boolean-контракты не меняются.
-Отказ памяти по-прежнему даёт [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44).
+Отказ памяти по-прежнему даёт [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46).
 
 Ошибка подготовки снимка/публикации ничего не доставляет и сохраняет корректное
 состояние ввода/фокуса. Существующая проверка может очистить уже удалённый клип.
@@ -76,7 +76,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

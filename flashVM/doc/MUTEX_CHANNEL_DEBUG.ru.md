@@ -1,6 +1,6 @@
 # Общие мутексы, каналы и отладчик (версия разработки v0.5)
 
-Перед AVM1 вызовите [`fvm_extensions_install`](../include/flashvm/extensions.h#L17). Устанавливаются пять пространств
+Перед AVM1 вызовите [`fvm_extensions_install`](../include/flashvm/extensions.h#L19). Устанавливаются пять пространств
 имён: `gc`, `thread`, `channel`, `metatable`, `mutex`.
 Примеры: [ActionScript](../examples/actionscript/shared_mutex.as),
 [встраивание на C89](../examples/embedding/shared_mutex/main.c).
@@ -23,12 +23,12 @@
 
 ID — уникальные в процессе числа 1..4294967295, точно представимые в ActionScript;
 адреса памяти не используются. ID не переиспользуются. У нативного callback
-есть [`fvm_context_identity`](../include/flashvm/mutex.h#L16); отдельные интерпретаторы хоста тоже имеют свои ID.
+есть [`fvm_context_identity`](../include/flashvm/mutex.h#L18); отдельные интерпретаторы хоста тоже имеют свои ID.
 Одновременно исполнять один VM-контекст в нескольких нативных потоках нельзя.
 
 Мутекс нерекурсивный: повторный захват владельцем, освобождение чужого или
-незахваченного мутекса возвращают [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Нативный неблокирующий вызов
-`fvm_mutex_set(context, mutex, 0)` при занятости возвращает [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47).
+незахваченного мутекса возвращают [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Нативный неблокирующий вызов
+`fvm_mutex_set(context, mutex, 0)` при занятости возвращает [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49).
 Ожидание проверяет состояние каждые 1 мс и учитывает запрос остановки worker.
 Гарантий очередности, справедливости и работы в реальном времени нет.
 Уничтожение контекста после выхода callback освобождает оставшиеся захваты;
@@ -54,13 +54,13 @@ ID — уникальные в процессе числа 1..4294967295, точ
 сериализуется как раньше.
 
 Очереди, удерживающие циклические ссылки на каналы, отвергаются с
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46): нельзя отправить канал в себя или замкнуть цикл очередей,
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48): нельзя отправить канал в себя или замкнуть цикл очередей,
 которые удерживают друг друга. Проверка резервирует связи до помещения посылки
 в очередь и не допускает гонку встречных отправок. После конкурентного чтения
 можно повторить ранее отвергнутую отправку. Обычные циклы таблиц разрешены.
 
 Файловые каналы и долговременная сериализация живые дескрипторы не сохраняют:
-операция возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) до записи. Сетевые прокси мутексов,
+операция возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) до записи. Сетевые прокси мутексов,
 `origin` с интернет-адресом, распределённый захват и межпроцессное восстановление
 дескрипторов ещё не реализованы. Адреса нативных объектов в файлы не записываются.
 
@@ -69,22 +69,22 @@ ID — уникальные в процессе числа 1..4294967295, точ
 C89 API находится в `flashvm/debug.h`. Снимки реестра мутексов защищены общим
 замком и содержат копии полей, а не указатели на живые VM-объекты. Строки имени
 функции и файла ограничены 255 байтами. Недостаточный размер массива возвращает
-[`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) и необходимое количество строк, без частичного снимка.
+[`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) и необходимое количество строк, без частичного снимка.
 
-- [`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L87): ID, создатель, владелец, состояние, ожидающий,
+- [`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L108): ID, создатель, владелец, состояние, ожидающий,
   место захвата владельцем и место ожидания. `deadlocked` помечает участников
   доказанного цикла ожидания мутексов. Ожидающий за таким циклом не считается
   участником самого цикла.
-- [`fvm_debug_channel_wait_snapshot`](../include/flashvm/debug.h#L139): блокирующие ожидания скриптовых `send` и
+- [`fvm_debug_channel_wait_snapshot`](../include/flashvm/debug.h#L178): блокирующие ожидания скриптовых `send` и
   `receive`, ID канала и интерпретатора, направление и место в скрипте.
   Дедлоки только на каналах или смешанные циклы каналов/мутексов пока не
   доказываются: неизвестно, кто обязан отправить или принять данные.
-- [`fvm_debug_channel_state`](../include/flashvm/debug.h#L118): согласованные ID, размер и ёмкость очереди,
+- [`fvm_debug_channel_state`](../include/flashvm/debug.h#L150): согласованные ID, размер и ёмкость очереди,
   признаки закрытия и заморозки.
-- [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L114): запретить извлечение сообщений, включая C API
+- [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L144): запретить извлечение сообщений, включая C API
   примитивов. Отправка продолжается. Возобновление — явный вызов с нулём.
   Закрытие не отменяет заморозку. Весь интерпретатор не приостанавливается.
-- [`fvm_debug_channel_message`](../include/flashvm/debug.h#L125): посмотреть посылку по индексу без извлечения.
+- [`fvm_debug_channel_message`](../include/flashvm/debug.h#L159): посмотреть посылку по индексу без извлечения.
   Обычные данные — неизменный снимок на момент отправки, восстановленный в
   контекст отладчика. Общие дескрипторы остаются живыми: для фиксации их
   состояния отдельно получите снимки мутексов/каналов.
@@ -95,10 +95,10 @@ C89 API находится в `flashvm/debug.h`. Снимки реестра м�
 отладчика; одновременно обращаться к контексту исполняющегося worker нельзя.
 
 AVM1 фиксирует имя функции и смещение действия в её блоке. Привязку к исходному
-файлу задаёт хост или компилятор через `[fvm_debug_map_action](../include/flashvm/debug.h#L63)(context, function,
+файлу задаёт хост или компилятор через `[fvm_debug_map_action](../include/flashvm/debug.h#L79)(context, function,
 offset, source, line)`: выбирается ближайшая предшествующая запись этой функции.
 Пустое имя означает верхний блок. Карты копируются в скриптовые worker при
-запуске. Для нативных callback есть [`fvm_debug_set_location`](../include/flashvm/debug.h#L59).
+запуске. Для нативных callback есть [`fvm_debug_set_location`](../include/flashvm/debug.h#L73).
 Автоматическое восстановление исходника, интерактивный UI и полный стек вызовов
 пока отсутствуют. У примитивного нативного API каналов нет VM-контекста, поэтому
 скриптовое место ожидания неизвестно. Отладочная заморозка файлов не реализована.
@@ -129,17 +129,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_context_identity` | function | [include/flashvm/mutex.h:16](../include/flashvm/mutex.h#L16) |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../include/flashvm/debug.h#L114) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../include/flashvm/debug.h#L125) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../include/flashvm/debug.h#L118) |
-| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:139](../include/flashvm/debug.h#L139) |
-| `fvm_debug_map_action` | function | [include/flashvm/debug.h:63](../include/flashvm/debug.h#L63) |
-| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:87](../include/flashvm/debug.h#L87) |
-| `fvm_debug_set_location` | function | [include/flashvm/debug.h:59](../include/flashvm/debug.h#L59) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `fvm_mutex_set` | function | [include/flashvm/mutex.h:26](../include/flashvm/mutex.h#L26) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_context_identity` | function | [include/flashvm/mutex.h:18](../include/flashvm/mutex.h#L18) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../include/flashvm/debug.h#L144) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../include/flashvm/debug.h#L159) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../include/flashvm/debug.h#L150) |
+| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:178](../include/flashvm/debug.h#L178) |
+| `fvm_debug_map_action` | function | [include/flashvm/debug.h:79](../include/flashvm/debug.h#L79) |
+| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:108](../include/flashvm/debug.h#L108) |
+| `fvm_debug_set_location` | function | [include/flashvm/debug.h:73](../include/flashvm/debug.h#L73) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `fvm_mutex_set` | function | [include/flashvm/mutex.h:36](../include/flashvm/mutex.h#L36) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

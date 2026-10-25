@@ -2,7 +2,7 @@
 
 С v0.862 ненулевой трекинг отключает liga/clig: разделимые необязательные лигатуры работают, обязательные/неоднозначные кластеры ещё не поддержаны. [Contract](TEXT_LIGATURE_TRACKING.ru.md).
 
-[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L103) добавляет конечное число пикселей после каждого
+[`fvm_text_layout_create_spaced`](../include/flashvm/text_layout.h#L122) добавляет конечное число пикселей после каждого
 поддержанного символа, включая последний в строке. Нативный предел: от -4096
 до 4096 пикселей. Основание: [описание letterSpacing Adobe AS2 Flash 8](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html).
 Существующие C API сохраняют нулевой интервал и ABI структуры параметров.
@@ -11,7 +11,7 @@
 раскладки, флаги shaping, интервал и выходной указатель. Неверные флаги,
 интервал и отсутствующий выход дают INVALID_ARGUMENT; успешная раскладка
 владеет своими данными. Отказ памяти даёт OUT_OF_MEMORY. При ошибке выход
-обнуляется. Освобождение: [`fvm_text_layout_destroy`](../include/flashvm/text_layout.h#L84); экспортированные контуры
+обнуляется. Освобождение: [`fvm_text_layout_destroy`](../include/flashvm/text_layout.h#L99); экспортированные контуры
 независимы. NO_FONTS проверяет флаги/интервал и возвращает UNSUPPORTED.
 VM и корни GC не используются. Независимые шрифты и буферы допускают
 конкурентные вызовы; общий изменяемый шрифт требует синхронизации вызывающего.
@@ -71,6 +71,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:122](../include/flashvm/text_layout.h#L122) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:99](../include/flashvm/text_layout.h#L99) |
 <!-- source-links:end -->

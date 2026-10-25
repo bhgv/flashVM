@@ -5,9 +5,9 @@ FWS/CWS до SWF8, GC, прототипы, метатаблицы, нативн�
 скриптовые функции доступны. Полная совместимость Flash8, таймлайн и JIT ещё
 не реализованы.
 
-[fvm_avm1_execute](../include/flashvm/avm1.h#L38) проверяет поток с завершающим End и запускает его в контексте.
-[fvm_swf_execute_actions](../include/flashvm/avm1.h#L73) запускает верхние DoAction загруженного SWF, но не
-реализует полный цикл кадров и событий спрайтов. [fvm_avm1_call](../include/flashvm/avm1.h#L66) вызывает функцию
+[fvm_avm1_execute](../include/flashvm/avm1.h#L46) проверяет поток с завершающим End и запускает его в контексте.
+[fvm_swf_execute_actions](../include/flashvm/avm1.h#L93) запускает верхние DoAction загруженного SWF, но не
+реализует полный цикл кадров и событий спрайтов. [fvm_avm1_call](../include/flashvm/avm1.h#L82) вызывает функцию
 с корнями GC для аргументов и получателя. Нативные функции и глобальные
 переменные работают в том же контексте.
 
@@ -36,7 +36,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_avm1_call` | function | [include/flashvm/avm1.h:66](../include/flashvm/avm1.h#L66) |
-| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../include/flashvm/avm1.h#L38) |
-| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](../include/flashvm/avm1.h#L73) |
+| `fvm_avm1_call` | function | [include/flashvm/avm1.h:82](../include/flashvm/avm1.h#L82) |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:46](../include/flashvm/avm1.h#L46) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:93](../include/flashvm/avm1.h#L93) |
 <!-- source-links:end -->

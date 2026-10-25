@@ -9,7 +9,7 @@ Current v0.761 policy: [bounded PCM header sequences play](PLAYER_PCM_STREAMS.md
 ## SWF5 cursor namespace (v0.662)
 
 The player now installs Mouse for SWF5–8, matching the existing
-[fvm_standard_mouse_install](../include/flashvm/mouse.h#L50) contract. Mouse.hide/show return the previous requested
+[fvm_standard_mouse_install](../include/flashvm/mouse.h#L66) contract. Mouse.hide/show return the previous requested
 visibility. addListener/removeListener remain unsupported for loaded SWF5; installing
 the namespace does not bypass that version gate. SWF1–4 keep the earlier path.
 The SDL owner-thread cursor policy and teardown restoration are unchanged.
@@ -22,11 +22,11 @@ video checks script/runtime behavior, not a physical cursor or complete Flash AP
 
 Root streaming sound is validated before window/device setup. Originally all unmuted root streams were rejected; v0.758 permits the bounded
 single-PCM policy linked above.
-With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L151) API and
-[FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L141). It validates and omits only root stream controls
-from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L102) remains strict.
+With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L194) API and
+[FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L182). It validates and omits only root stream controls
+from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L129) remains strict.
 
-The opt-in requires its decoded input to match the current [fvm_load_memory](../include/flashvm/flashvm.h#L72) source
+The opt-in requires its decoded input to match the current [fvm_load_memory](../include/flashvm/flashvm.h#L90) source
 byte-for-byte. Validation therefore covers the exact imported root: stream header
 order/version, frame membership, duplicate blocks and PCM alignment. Unknown flag
 bits fail; output is null on failure. Runs no actions and opens no device. Host
@@ -70,7 +70,7 @@ and the speed suffix. It is a deterministic dependency/grammar test, not a fresh
 runtime validation of an installed foreign locale or every floating-point target.
 ## C interface details and tutorial (v0.666)
 
-[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L151) receives the owning context, borrowed complete FWS/CWS
+[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L194) receives the owning context, borrowed complete FWS/CWS
 bytes and exact size, a borrowed clip name, flags, and mandatory object-output
 pointer. Install the standard object model first. The byte/name inputs need only
 outlive the call; imported storage is owned by the context. The returned object
@@ -79,9 +79,9 @@ The function runs synchronously on the owner thread outside collection/teardown,
 performs no script/device callbacks, and does not change the canonical loaded SWF.
 Zero flags delegate to the same strict import behavior as the original API.
 
-[FVM_OK](../include/flashvm/flashvm.h#L42) returns a clip; malformed input, mismatched canonical source or unknown
-flags return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); remaining unsupported scene features (including
-sprite streams) return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46); allocation failure returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44).
+[FVM_OK](../include/flashvm/flashvm.h#L44) returns a clip; malformed input, mismatched canonical source or unknown
+flags return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); remaining unsupported scene features (including
+sprite streams) return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48); allocation failure returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46).
 If out itself is null there is no output to clear; otherwise every failure leaves
 *out null. Opaque compressed stream bytes are not semantically decoded or certified.
 Event-sound callback ownership and timing are unchanged.
@@ -115,13 +115,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:151](../include/flashvm/movieclip.h#L151) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
-| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:141](../include/flashvm/movieclip.h#L141) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../include/flashvm/flashvm.h#L90) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:194](../include/flashvm/movieclip.h#L194) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:66](../include/flashvm/mouse.h#L66) |
+| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:182](../include/flashvm/movieclip.h#L182) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

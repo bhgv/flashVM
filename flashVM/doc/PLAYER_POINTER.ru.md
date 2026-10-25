@@ -25,7 +25,7 @@ SDL_FINGERUP или потери фокуса/ухода в фон. Дополн
 логический размер сцены; mouse events уже содержат логические пиксели SDL.
 При доставке добавляется authored origin SWF, скриптовые матрицы не меняются.
 Неконечные/выходящие за диапазон координаты или отсутствие логического размера
-фиксируют [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до изменения контакта/позиции хоста.
+фиксируют [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до изменения контакта/позиции хоста.
 Это один первичный контакт, а не распознавание жестов или полный multitouch;
 прижатие координат к краям viewport самим SDL сохраняется.
 
@@ -34,14 +34,14 @@ SDL_FINGERUP или потери фокуса/ухода в фон. Дополн
 FVM_DESKTOP_PENDING_EVENTS ограничивает FIFO 128 событиями. В ней нет managed
 указателей VM или заимствованных event buffers. Каждое событие хранит свою
 позицию и нужный снимок клавиатуры либо pointer type. Движения не объединяются
-молча. Переполнение фиксирует [FVM_ERROR](../include/flashvm/flashvm.h#L43); плеер сообщает сбой вместо успешной
+молча. Переполнение фиксирует [FVM_ERROR](../include/flashvm/flashvm.h#L45); плеер сообщает сбой вместо успешной
 доставки потерянных событий.
 
 `fvm_desktop_window_pump_input(view, context, origin_x, origin_y)` синхронно
 обрабатывает входную порцию в общем потоке-владельце перед кадром ролика.
-Нулевые владельцы, неконечный origin и вложенный pump дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45)
+Нулевые владельцы, неконечный origin и вложенный pump дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47)
 до изъятия события. Клавиатурный callback видит позицию своего события и его
-keyboard snapshot; pointer event вызывает [fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L29) с drag до
+keyboard snapshot; pointer event вызывает [fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L37) с drag до
 обработчиков. Перестановки «сначала все клавиши/потом указатель» нет.
 Итоговые HostInput/polling публикуются затем по прежнему циклу плеера.
 
@@ -73,7 +73,7 @@ multitouch и security-origin остаются открытыми. Core-only п�
 
 v0.597 исправляет найденный при запуске готовых роликов дефект: --mute раньше
 не создавал ни устройство, ни callback корневого StartSound, поэтому первый
-звуковой event останавливал timeline с [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Теперь --mute устанавливает
+звуковой event останавливал timeline с [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Теперь --mute устанавливает
 явный muted_sound: подтверждает только эти проверенные уведомления без декодирования,
 очереди PCM, worker и открытия аудиоустройства. Обычный режим со звуком и его
 ошибки не меняются. Прочие неподдержанные scene tags/actions по прежнему отклоняются.
@@ -118,8 +118,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

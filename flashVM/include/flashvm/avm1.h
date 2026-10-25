@@ -10,67 +10,87 @@
 extern "C"
 {
 #endif
-    /* Define FVM_AVM1Info struct and its representation. */
-    typedef struct FVM_AVM1Info
-    {
-        unsigned long struct_size;       /* Size of this structure for API compatibility checks. */
-        unsigned long instruction_count; /* Number of decoded bytecode instructions. */
-        unsigned long push_count;        /* Number of decoded pushed values. */
-        unsigned long branch_count;      /* Number of decoded branch instructions. */
-    } FVM_AVM1Info;
-    /* Borrowed display-target metadata for the current AVM1 activation, including host callbacks. */
-    typedef struct FVM_AVM1TargetInfo
-    {
-        unsigned long struct_size; /* Caller-provided structure size for ABI validation. */
-        int active; /* Nonzero during a scoped AVM1 activation; zero outside execution. */
-        FVM_Object *base_clip; /* Borrowed base clip, null when the activation has no scene base. */
-        FVM_Object *target_clip; /* Borrowed selected clip, null for invalid or unavailable target. */
-    } FVM_AVM1TargetInfo;
-    /* Query active target metadata without allocating or invoking script. Borrowed clips must be
+/* Define FVM_AVM1Info struct and its representation. */
+typedef struct FVM_AVM1Info
+{
+    unsigned long struct_size;       /* Size of this structure for API compatibility checks. */
+    unsigned long instruction_count; /* Number of decoded bytecode instructions. */
+    unsigned long push_count;        /* Number of decoded pushed values. */
+    unsigned long branch_count;      /* Number of decoded branch instructions. */
+} FVM_AVM1Info;
+
+
+/* Borrowed display-target metadata for the current AVM1 activation, including host callbacks. */
+typedef struct FVM_AVM1TargetInfo
+{
+    unsigned long struct_size; /* Caller-provided structure size for ABI validation. */
+    int active;                /* Nonzero during a scoped AVM1 activation; zero outside execution. */
+    FVM_Object *base_clip;     /* Borrowed base clip, null when the activation has no scene base. */
+    FVM_Object *target_clip;   /* Borrowed selected clip, null for invalid or unavailable target. */
+} FVM_AVM1TargetInfo;
+
+
+/* Query active target metadata without allocating or invoking script. Borrowed clips must be
      * explicitly retained before use after activation exit or a later collection. */
-    FVM_API FVM_Result fvm_avm1_get_target_info(FVM_Context *, FVM_AVM1TargetInfo *);
-    /* Validates instruction framing, not the full AVM1 operand semantics. */
-    /* Validate standalone framing (explicit ActionEnd required) and count encoded records. */
-    FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
-    /* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
-    /* Loaded SWF contexts accept implicit End at the exact supplied block boundary.
+FVM_API FVM_Result fvm_avm1_get_target_info(FVM_Context *, FVM_AVM1TargetInfo *);
+/* Validates instruction framing, not the full AVM1 operand semantics. */
+
+
+/* Validate standalone framing (explicit ActionEnd required) and count encoded records. */
+FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
+/* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
+
+
+/* Loaded SWF contexts accept implicit End at the exact supplied block boundary.
      * Unloaded standalone execution requires explicit ActionEnd. Source bytes are unchanged. */
-    FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
-    /* [GC:] Set the ActionTrace sink and optional same-context retained capture.
+FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
+
+
+/* [GC:] Set the ActionTrace sink and optional same-context retained capture.
      * Callback receives one STRING argument and the global receiver; its result is ignored.
      * NULL callback with NULL userdata/capture disables delivery. Do not destroy the context
      * from the callback. Text is borrowed for the synchronous call; retain a copy if needed. */
-    FVM_API FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *, FVM_NativeFunction, void *,
-                                                 FVM_Object *);
-    /* URL request carries no HTTP method selection. */
+FVM_API FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *, FVM_NativeFunction, void *,
+                                             FVM_Object *);
+/* URL request carries no HTTP method selection. */
 #define FVM_AVM1_URL_METHOD_NONE 0U
-    /* URL request selects HTTP GET. */
+/* URL request selects HTTP GET. */
 #define FVM_AVM1_URL_METHOD_GET 1U
-    /* URL request selects HTTP POST. */
+/* URL request selects HTTP POST. */
 #define FVM_AVM1_URL_METHOD_POST 2U
-    /* Request targets a movie clip instead of host navigation. */
+/* Request targets a movie clip instead of host navigation. */
 #define FVM_AVM1_URL_LOAD_TARGET 64U
-    /* Request loads variables into the target. */
+/* Request loads variables into the target. */
 #define FVM_AVM1_URL_LOAD_VARIABLES 128U
-    /* [GC:] Register a synchronous host URL request sink and optional same-context capture.
+
+
+/* [GC:] Register a synchronous host URL request sink and optional same-context capture.
      * Callback receives STRING URL, STRING target/FSCommand arguments, NUMBER flags and the
      * global receiver. Strings are counted and borrowed. Return status propagates; result is
      * ignored. No sink returns FVM_UNSUPPORTED. The VM performs no network/navigation here.
      * NULL callback/userdata/capture disables delivery. Do not destroy the context in callback. */
-    FVM_API FVM_Result fvm_avm1_set_url_rooted(FVM_Context *, FVM_NativeFunction, void *,
-                                               FVM_Object *);
-    /* Execute with a retained receiver using the same loaded/unloaded block framing policy. */
-    FVM_API FVM_Result fvm_avm1_execute_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
-    /* Invoke a named AVM1 function with rooted parameter bindings and receiver. */
-    /* Call avm1. */
-    FVM_API FVM_Result fvm_avm1_call(FVM_Context *, const char *, FVM_Object *, unsigned int,
-                                     const FVM_Value *, FVM_Value *);
-    /* Invoke a complete counted AVM1/global Function key with the same receiver contract. */
-    FVM_API FVM_Result fvm_avm1_call_bytes(FVM_Context *, const char *, size_t, FVM_Object *,
-                                           unsigned int, const FVM_Value *, FVM_Value *);
-    /* Executes top-level DoAction tags from the loaded FWS file, in file order. */
-    /* Execute swf actions. */
-    FVM_API FVM_Result fvm_swf_execute_actions(FVM_Context *);
+FVM_API FVM_Result fvm_avm1_set_url_rooted(FVM_Context *, FVM_NativeFunction, void *,
+                                           FVM_Object *);
+
+
+/* Execute with a retained receiver using the same loaded/unloaded block framing policy. */
+FVM_API FVM_Result fvm_avm1_execute_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
+/* Invoke a named AVM1 function with rooted parameter bindings and receiver. */
+
+
+/* Call avm1. */
+FVM_API FVM_Result fvm_avm1_call(FVM_Context *, const char *, FVM_Object *, unsigned int,
+                                 const FVM_Value *, FVM_Value *);
+
+
+/* Invoke a complete counted AVM1/global Function key with the same receiver contract. */
+FVM_API FVM_Result fvm_avm1_call_bytes(FVM_Context *, const char *, size_t, FVM_Object *,
+                                       unsigned int, const FVM_Value *, FVM_Value *);
+/* Executes top-level DoAction tags from the loaded FWS file, in file order. */
+
+
+/* Execute swf actions. */
+FVM_API FVM_Result fvm_swf_execute_actions(FVM_Context *);
 #ifdef __cplusplus
 }
 #endif

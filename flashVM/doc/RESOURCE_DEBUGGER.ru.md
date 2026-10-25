@@ -17,13 +17,13 @@ unlock и проверка владельца; NULL policy означает од
 
 | Функция/тип | Контракт |
 | --- | --- |
-| [`fvm_rdebug_create`](../include/flashvm/rdebug.h#L73) | Context, dispatcher, путь, обязательный service, заимствованный userdata, два outputs. Выделяет native-память и регистрирует шесть операций без выдачи прав и установки hook. Ошибка не меняет outputs: INVALID для аргументов/пути, NOMEM при отказе памяти, остальные статусы регистрации передаются. |
-| [`FVM_RDebugService`](../include/flashvm/rdebug.h#L68) | Синхронный вызов владельца после обработки доступных команд остановленной VM. [FVM_OK](../include/flashvm/flashvm.h#L42) — снова обработать очередь; другой [FVM_Result](../include/flashvm/flashvm.h#L40) — прервать исполнение. Реальный host ожидает транспорт/event loop с отменой и защитой от потерянного wakeup. Нельзя reenter/collect/destroy этого context и throw/longjmp через C. Потоки, сокеты, timeout и stdin не создаются. |
-| [`fvm_rdebug_breakpoint`](../include/flashvm/rdebug.h#L83) | Устанавливается через `fvm_debug_set_breakpoint_handler(context, fvm_rdebug_breakpoint, adapter)`. Копирует сведения настоящей остановки, публикует STOP и обслуживает очередь до RESUME точного stop или ошибки service. Чужой context/рекурсия: INVALID_ARGUMENT; исчерпание stop/offset/line Uint32: UNSUPPORTED. Вызывать вручную или из транспортного потока нельзя. |
-| [`fvm_rdebug_revoke`](../include/flashvm/rdebug.h#L79) | Владелец отзывает права сессии на этом ресурсе и её claim. Статусы диспетчера сохраняются. После остановки транспорта отдельно вызовите dispatcher_disconnect для остальных ресурсов/команд. Потеря контроллера не продолжает VM автоматически. |
-| [`fvm_rdebug_destroy`](../include/flashvm/rdebug.h#L88) | Сначала снять VM hook и остановить пользователей. Во время остановки/обработчика: BUSY. Иначе unregister отзывает watch и старые команды, память освобождается, указатель обнуляется. Context и dispatcher не уничтожаются. |
-| [`fvm_rdebug_snapshot_read`](../include/flashvm/rdebug.h#L91) | Клиентский декодер ответов SNAPSHOT и событий STOP/RESUME/ABORT. Проверяет канонические целые, Uint32, версию, состояние, флаги, число кадров, строки с длинами и точный конец. INVALID не меняет output. |
-| [`fvm_rdebug_frame_read`](../include/flashvm/rdebug.h#L93) | Проверяет и копирует FRAME: версия, булевы поля, engine, длина имени, отсутствие хвоста. При ошибке output неизменен. Это копия метаданных, а не живая активация VM. |
+| [`fvm_rdebug_create`](../include/flashvm/rdebug.h#L81) | Context, dispatcher, путь, обязательный service, заимствованный userdata, два outputs. Выделяет native-память и регистрирует шесть операций без выдачи прав и установки hook. Ошибка не меняет outputs: INVALID для аргументов/пути, NOMEM при отказе памяти, остальные статусы регистрации передаются. |
+| [`FVM_RDebugService`](../include/flashvm/rdebug.h#L74) | Синхронный вызов владельца после обработки доступных команд остановленной VM. [FVM_OK](../include/flashvm/flashvm.h#L44) — снова обработать очередь; другой [FVM_Result](../include/flashvm/flashvm.h#L42) — прервать исполнение. Реальный host ожидает транспорт/event loop с отменой и защитой от потерянного wakeup. Нельзя reenter/collect/destroy этого context и throw/longjmp через C. Потоки, сокеты, timeout и stdin не создаются. |
+| [`fvm_rdebug_breakpoint`](../include/flashvm/rdebug.h#L95) | Устанавливается через `fvm_debug_set_breakpoint_handler(context, fvm_rdebug_breakpoint, adapter)`. Копирует сведения настоящей остановки, публикует STOP и обслуживает очередь до RESUME точного stop или ошибки service. Чужой context/рекурсия: INVALID_ARGUMENT; исчерпание stop/offset/line Uint32: UNSUPPORTED. Вызывать вручную или из транспортного потока нельзя. |
+| [`fvm_rdebug_revoke`](../include/flashvm/rdebug.h#L89) | Владелец отзывает права сессии на этом ресурсе и её claim. Статусы диспетчера сохраняются. После остановки транспорта отдельно вызовите dispatcher_disconnect для остальных ресурсов/команд. Потеря контроллера не продолжает VM автоматически. |
+| [`fvm_rdebug_destroy`](../include/flashvm/rdebug.h#L102) | Сначала снять VM hook и остановить пользователей. Во время остановки/обработчика: BUSY. Иначе unregister отзывает watch и старые команды, память освобождается, указатель обнуляется. Context и dispatcher не уничтожаются. |
+| [`fvm_rdebug_snapshot_read`](../include/flashvm/rdebug.h#L107) | Клиентский декодер ответов SNAPSHOT и событий STOP/RESUME/ABORT. Проверяет канонические целые, Uint32, версию, состояние, флаги, число кадров, строки с длинами и точный конец. INVALID не меняет output. |
+| [`fvm_rdebug_frame_read`](../include/flashvm/rdebug.h#L111) | Проверяет и копирует FRAME: версия, булевы поля, engine, длина имени, отсутствие хвоста. При ошибке output неизменен. Это копия метаданных, а не живая активация VM. |
 
 ## Операции и двоичные поля
 
@@ -70,9 +70,9 @@ missed,size,bytes`. Большой payload: S_LIMIT; неверные ID: S_INVA
 неизвестный тег: S_UNKNOWN, другая схема/неверное тело: S_INVALID. Outputs
 меняются только при S_OK. Это не аутентификация и не выдача прав.
 
-Аутентифицированный адаптер передаёт запросы в [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L29) и
+Аутентифицированный адаптер передаёт запросы в [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L33) и
 кодирует ответы/события. Реальный тест использует этот путь для команд и обеих
-подписок. Сетевой listener, мост графов [FVM_Channel](../src/capi/channel_c.c#L27), Styx/9P и mount пока не
+подписок. Сетевой listener, мост графов [FVM_Channel](../src/capi/channel_c.c#L30), Styx/9P и mount пока не
 добавлены. Нельзя без разбора рассылать приватные сведения отладчика. Ресурсы
 могут иметь разных владельцев; этот адаптер обслуживает ровно один context.
 
@@ -97,25 +97,25 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Channel` | struct | [src/capi/channel_c.c:27](../src/capi/channel_c.c#L27) |
-| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:30](../src/capi/channel_c.c#L30) |
+| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:66](../include/flashvm/debug.h#L66) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_RDEBUG_BREAKPOINT` | macro / define | [include/flashvm/rdebug.h:12](../include/flashvm/rdebug.h#L12) |
-| `fvm_rdebug_breakpoint` | function | [include/flashvm/rdebug.h:83](../include/flashvm/rdebug.h#L83) |
+| `fvm_rdebug_breakpoint` | function | [include/flashvm/rdebug.h:95](../include/flashvm/rdebug.h#L95) |
 | `FVM_RDEBUG_CLAIM` | macro / define | [include/flashvm/rdebug.h:14](../include/flashvm/rdebug.h#L14) |
-| `fvm_rdebug_create` | function | [include/flashvm/rdebug.h:73](../include/flashvm/rdebug.h#L73) |
-| `fvm_rdebug_destroy` | function | [include/flashvm/rdebug.h:88](../include/flashvm/rdebug.h#L88) |
+| `fvm_rdebug_create` | function | [include/flashvm/rdebug.h:81](../include/flashvm/rdebug.h#L81) |
+| `fvm_rdebug_destroy` | function | [include/flashvm/rdebug.h:102](../include/flashvm/rdebug.h#L102) |
 | `FVM_RDEBUG_FRAME` | macro / define | [include/flashvm/rdebug.h:11](../include/flashvm/rdebug.h#L11) |
-| `fvm_rdebug_frame_read` | function | [include/flashvm/rdebug.h:93](../include/flashvm/rdebug.h#L93) |
+| `fvm_rdebug_frame_read` | function | [include/flashvm/rdebug.h:111](../include/flashvm/rdebug.h#L111) |
 | `FVM_RDEBUG_NAME` | macro / define | [include/flashvm/rdebug.h:7](../include/flashvm/rdebug.h#L7) |
 | `FVM_RDEBUG_RELEASE` | macro / define | [include/flashvm/rdebug.h:15](../include/flashvm/rdebug.h#L15) |
 | `FVM_RDEBUG_RESUME` | macro / define | [include/flashvm/rdebug.h:17](../include/flashvm/rdebug.h#L17) |
-| `fvm_rdebug_revoke` | function | [include/flashvm/rdebug.h:79](../include/flashvm/rdebug.h#L79) |
+| `fvm_rdebug_revoke` | function | [include/flashvm/rdebug.h:89](../include/flashvm/rdebug.h#L89) |
 | `FVM_RDEBUG_SNAPSHOT` | macro / define | [include/flashvm/rdebug.h:10](../include/flashvm/rdebug.h#L10) |
-| `fvm_rdebug_snapshot_read` | function | [include/flashvm/rdebug.h:91](../include/flashvm/rdebug.h#L91) |
-| `FVM_RDebugService` | callback typedef | [include/flashvm/rdebug.h:68](../include/flashvm/rdebug.h#L68) |
-| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:29](../include/flashvm/rwire.h#L29) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_revent_record_read` | function | [include/flashvm/rwire.h:49](../include/flashvm/rwire.h#L49) |
-| `fvm_revent_record_write` | function | [include/flashvm/rwire.h:45](../include/flashvm/rwire.h#L45) |
+| `fvm_rdebug_snapshot_read` | function | [include/flashvm/rdebug.h:107](../include/flashvm/rdebug.h#L107) |
+| `FVM_RDebugService` | callback typedef | [include/flashvm/rdebug.h:74](../include/flashvm/rdebug.h#L74) |
+| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:33](../include/flashvm/rwire.h#L33) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_revent_record_read` | function | [include/flashvm/rwire.h:61](../include/flashvm/rwire.h#L61) |
+| `fvm_revent_record_write` | function | [include/flashvm/rwire.h:55](../include/flashvm/rwire.h#L55) |
 <!-- source-links:end -->

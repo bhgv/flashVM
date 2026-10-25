@@ -4,7 +4,7 @@
 
 ## Отмена с v0.680
 
-ABI прежних options/loader сохраняется. [FVM_NetControl](../ports/network/socket.h#L21) в
+ABI прежних options/loader сохраняется. [FVM_NetControl](../ports/network/socket.h#L23) в
 [socket.h](../ports/network/socket.h) содержит cancelled и заимствованный userdata.
 Null callback отключает отмену, ненулевой результат запрашивает её. Сохраняйте
 callback/состояние до возврата. Callback выполняется на потоке загрузки: он должен
@@ -16,10 +16,10 @@ FVM_SocketHTTPRequest в [socket_http.h](../frontend/common/socket_http.h)
 0 — null. [fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L60) имеет обычную сигнатуру fetch;
 userdata — null для defaults либо указатель request.
 [fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L30) из [http.h](../frontend/common/http.h)
-принимает null либо [FVM_NetControl](../ports/network/socket.h#L21). Прежний libcurl callback по-прежнему
+принимает null либо [FVM_NetControl](../ports/network/socket.h#L23). Прежний libcurl callback по-прежнему
 отклоняет ненулевой userdata.
 
-Отмена даёт [FVM_ERROR](../include/flashvm/flashvm.h#L43) без публикации resolved. Ошибки sink возвращаются точно;
+Отмена даёт [FVM_ERROR](../include/flashvm/flashvm.h#L45) без публикации resolved. Ошибки sink возвращаются точно;
 частичные данные при ошибке отбрасываются. Native waits проверяют отмену каждые
 50ms ожидания под общим deadline; проверки есть и при разборе буферов HTTP/TLS.
 Libcurl использует свою, потенциально более медленную progress/sink cadence.
@@ -187,7 +187,7 @@ C-код player/transfer прошёл UBSan на настоящем async HTTP �
 
 Истечение запрашивает кооперативную отмену: проверяется poll, sink, cancellation
 callback и итоговая публикация. Поздний успешный ответ не публикует байты.
-[FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) содержит [FVM_ERROR](../include/flashvm/flashvm.h#L43), без данных/адреса, с сохранением
+[FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) содержит [FVM_ERROR](../include/flashvm/flashvm.h#L45), без данных/адреса, с сохранением
 received. Побеждает первая зафиксированная причина cancel/deadline; готовый view
 не меняется. Pending может сохраняться после дедлайна, пока DNS или пользовательский
 код не вернулся. Release всегда делает join: это не принудительное прерывание
@@ -208,6 +208,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_NetControl` | struct | [ports/network/socket.h:21](../ports/network/socket.h#L21) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
 <!-- source-links:end -->

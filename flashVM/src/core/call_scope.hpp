@@ -4,14 +4,15 @@
 #include "runtime.hpp"
 #include "call_scope_constants.h"
 
+
 /* [GC:] Save invocation identity and retain both old and new owner objects. */
 class FVM_CallScope
 {
-    FVM_Context *context_;        /* Context whose invocation state is changed. */
-    FVM_Object *old_constructor_; /* [GC:] Constructor restored when the nested call ends. */
-    FVM_Object *old_function_;    /* [GC:] Function restored when the nested call ends. */
-    FVM_Object *old_owner_;       /* [GC:] Prototype owner restored when the nested call ends. */
-    bool old_this_undefined_; /* Actual this metadata restored after nested invocation. */
+    FVM_Context *context_;         /* Context whose invocation state is changed. */
+    FVM_Object *old_constructor_;  /* [GC:] Constructor restored when the nested call ends. */
+    FVM_Object *old_function_;     /* [GC:] Function restored when the nested call ends. */
+    FVM_Object *old_owner_;        /* [GC:] Prototype owner restored when the nested call ends. */
+    bool old_this_undefined_;      /* Actual this metadata restored after nested invocation. */
     unsigned int old_super_depth_; /* Explicit/inferred superclass depth restored after nesting. */
     /* [GC:] Inline frames retain saved/active identities without allocating a temporary vector. */
     FVM_GCRootFrame frames_[FVM_CALL_SCOPE_SNAPSHOT_COUNT];
@@ -21,15 +22,19 @@ class FVM_CallScope
     FVM_CallScope &operator=(const FVM_CallScope &); /* Copy assignment is unavailable. */
 
   public:
+
+
     /* [GC:] Publish invocation identities and optional explicit superclass depth for one call. */
-    FVM_CallScope(FVM_Context *c, FVM_Object *constructor, FVM_Object *function, FVM_Object *owner,
+    FVM_CallScope(FVM_Context *c,
+                  FVM_Object *constructor,
+                  FVM_Object *function,
+                  FVM_Object *owner,
                   unsigned int super_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH,
                   bool undefined_this = false)
         : context_(c), old_constructor_(c->calling_constructor), old_function_(c->calling_function),
           old_owner_(c->calling_owner), old_this_undefined_(c->calling_this_undefined),
           old_super_depth_(c->calling_super_depth)
-    {
-        /* [GC:] Build complete snapshots before changing context-visible metadata. */
+    { /* [GC:] Build complete snapshots before changing context-visible metadata. */
         FVM_Object *objects[FVM_CALL_SCOPE_SNAPSHOT_COUNT] = {
             old_constructor_, old_function_, old_owner_, constructor, function, owner};
         for (size_t i = 0; i < FVM_CALL_SCOPE_SNAPSHOT_COUNT; ++i)
@@ -47,6 +52,8 @@ class FVM_CallScope
         c->calling_super_depth = super_depth;
         c->calling_this_undefined = undefined_this;
     }
+
+
     /* [GC:] Restore invocation identity and roots even when the callee throws. */
     ~FVM_CallScope()
     {

@@ -5,7 +5,7 @@ once with the version-aware AVM1 string policy. Already counted strings avoid
 an additional conversion and retain embedded NUL. Host-only C calls retain the
 existing requirement for a String name. Empty names remain ignored.
 
-The common [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408) service owns conversion, path parsing and
+The common [`fvm_exec_variable_set`](../include/flashvm/execution.h#L542) service owns conversion, path parsing and
 binding selection; interpreter dispatch only adapts stack operands. No bytecode,
 program counter or operand stack enters the C interface. The additional named
 root slot retains converted text separately from its original input. Scope,
@@ -44,5 +44,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:542](../include/flashvm/execution.h#L542) |
 <!-- source-links:end -->

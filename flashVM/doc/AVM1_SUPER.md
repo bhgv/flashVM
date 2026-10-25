@@ -14,7 +14,7 @@ not merely the receiver's immediate prototype. Escaped facades observe later
 prototype changes. Constructor calls use the current `__constructor__` reference
 and the existing receiver. Getter/setter and named method calls retain that receiver.
 Named property writes search ancestor setters; canonical numeric property writes
-currently return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) rather than silently writing an inaccessible
+currently return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) rather than silently writing an inaccessible
 facade field. Native boxed superclass initialization and exact SWF-version behavior
 remain open.
 
@@ -58,7 +58,7 @@ this is not a Flash Player conformance claim.
 фасад учитывает последующие изменения цепочки. `super()` использует текущий
 `__constructor__` и тот же экземпляр. Методы и аксессоры получают исходный `this`.
 Именованные записи используют setter предка; числовые записи пока явно возвращают
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Полная инициализация нативных boxed-суперклассов ещё открыта.
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). Полная инициализация нативных boxed-суперклассов ещё открыта.
 
 [GC:] Временные кадры удерживают старые и новые сведения о вызове и восстанавливают
 их при ошибках. Фасад удерживает получатель и собственный нативный callback.
@@ -80,5 +80,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

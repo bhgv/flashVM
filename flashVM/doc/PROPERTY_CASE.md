@@ -87,7 +87,7 @@ matching pinned script_object.rs has_own_property. The query does not inspect
 private facade metadata or enumerate/read parent properties. It preserves the
 receiver's SWF casing. Host facade behavior remains unchanged. Nested/malformed
 receiver-facade chains have a bounded iterative traversal instead of recursive
-C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 
 `object_super_membership` failed against v0.425 and covers loaded SWF5–8 plus
 host, direct C and borrowed Object.hasOwnProperty.call, counted NUL names,
@@ -373,7 +373,7 @@ ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
 
 ## v0.444 — allocation-free invocation identity roots
 
-[FVM_CallScope](../src/core/call_scope.hpp#L8) now retains saved/active constructor, function and owner through
+[FVM_CallScope](../src/core/call_scope.hpp#L9) now retains saved/active constructor, function and owner through
 six inline root frames. Publishing the complete chain and restoring the
 previous identity no longer allocate a temporary vector. Nested calls and
 unwinding preserve the caller's root head. This is an implementation/GC
@@ -566,6 +566,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:9](../src/core/call_scope.hpp#L9) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

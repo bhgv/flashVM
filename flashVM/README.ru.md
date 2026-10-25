@@ -1781,7 +1781,7 @@ FlashVM — экспериментальная библиотека C++98 с п�
 
 ## Состав API
 
-- `flashvm/flashvm.h`: конфигурация, Runtime, Context, загрузка SWF из памяти. [`fvm_advance`](include/flashvm/flashvm.h#L74) пока возвращает [`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L46).
+- `flashvm/flashvm.h`: конфигурация, Runtime, Context, загрузка SWF из памяти. [`fvm_advance`](include/flashvm/flashvm.h#L94) пока возвращает [`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L48).
 - `flashvm/value.h`: значения, объекты, глобальные переменные, нативные функции; объекты принадлежат контексту, указатели не сохранять после его уничтожения.
 - `flashvm/swf.h`: анализ FWS/CWS до SWF 8, без ZWS.
 - `flashvm/avm1.h`: анализ и частичное выполнение AVM1; JIT отсутствует.
@@ -1884,15 +1884,15 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 ## Нативный `__call` (этап 26)
 
-`include/flashvm/meta_call.h` предоставляет [`fvm_meta_call`](include/flashvm/meta_call.h#L20): обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Опциональные объекты потоков и каналов ActionScript реализованы через [`fvm_extensions_install`](include/flashvm/extensions.h#L17); проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
+`include/flashvm/meta_call.h` предоставляет [`fvm_meta_call`](include/flashvm/meta_call.h#L22): обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Опциональные объекты потоков и каналов ActionScript реализованы через [`fvm_extensions_install`](include/flashvm/extensions.h#L19); проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
 
 ### Внутренние каналы (этап 27)
 
-См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Потоки VM и методы каналов ActionScript доступны через [`fvm_extensions_install`](include/flashvm/extensions.h#L17); нестандартные операторы языка пока отсутствуют.
+См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Потоки VM и методы каналов ActionScript доступны через [`fvm_extensions_install`](include/flashvm/extensions.h#L19); нестандартные операторы языка пока отсутствуют.
 
 ### Нативные рабочие потоки
 
-См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` доступен после [`fvm_extensions_install`](include/flashvm/extensions.h#L17); см. `doc/ACTIONSCRIPT_EXTENSIONS.ru.md`.
+См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` доступен после [`fvm_extensions_install`](include/flashvm/extensions.h#L19); см. `doc/ACTIONSCRIPT_EXTENSIONS.ru.md`.
 
 Управление жизненным циклом потоков (отложенный запуск, состояния, ожидание):
 [doc/WORKER_LIFECYCLE.ru.md](doc/WORKER_LIFECYCLE.ru.md).
@@ -1901,7 +1901,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 Переносимый C89 API поддерживает запрос остановки потока и ожидание массива
 потоков. См. [документацию](doc/WORKER_CANCELLATION.ru.md) и
-`examples/embedding/worker_stop/`. Объект ActionScript `thread` доступен через [`fvm_extensions_install`](include/flashvm/extensions.h#L17).
+`examples/embedding/worker_stop/`. Объект ActionScript `thread` доступен через [`fvm_extensions_install`](include/flashvm/extensions.h#L19).
 
 ## Обмен сообщениями между потоками
 
@@ -2068,9 +2068,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_advance` | function | [include/flashvm/flashvm.h:74](include/flashvm/flashvm.h#L74) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](include/flashvm/extensions.h#L17) |
-| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](include/flashvm/meta_call.h#L20) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](include/flashvm/swf_stream_output.h#L92) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](include/flashvm/flashvm.h#L46) |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:94](include/flashvm/flashvm.h#L94) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](include/flashvm/extensions.h#L19) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](include/flashvm/meta_call.h#L22) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](include/flashvm/swf_stream_output.h#L106) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

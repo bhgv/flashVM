@@ -38,9 +38,7 @@ class TestCleanup(BuildCase):
         from unittest.mock import patch
         from support import driver
 
-        with patch.object(
-            driver.os, "replace", side_effect=OSError("publication denied")
-        ):
+        with patch.object(driver.os, "replace", side_effect=OSError("publication denied")):
             result = self.build()
             self.rejected(result, "publish")
             self.assertNotIn("sha256", result)

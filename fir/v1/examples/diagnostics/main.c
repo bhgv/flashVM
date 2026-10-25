@@ -3,6 +3,7 @@
 #include "fir.h"
 #include <string.h>
 
+
 /* Compile an intentionally invalid source snapshot and inspect the first error.
  * This function owns both temporary streams and closes them on every path.
  * Caller-owned diagnostic structs contain scalars only and survive stream close. */
@@ -18,30 +19,41 @@ int main(void)
     char message[256];
     int ok = 0;
     if (!input || !output)
+    {
         goto done;
-    if (fwrite(text, 1, strlen(text), input) != strlen(text) || fflush(input) ||
-        fseek(input, 0, SEEK_SET))
+    }
+    if (fwrite(text, 1, strlen(text), input) != strlen(text) || fflush(input) || fseek(input, 0, SEEK_SET))
+    {
         goto done;
+    }
     /* A semantic rejection is expected. No FIR bytes should be published. */
-    if (fir_source_ex(input, output, FIR_AS2, "diagnostic_example",
-                      message, sizeof(message), &diagnostic))
+    if (fir_source_ex(input, output, FIR_AS2, "diagnostic_example", message, sizeof(message), &diagnostic))
+    {
         goto done;
-    if (diagnostic.kind != FIR_DIAG_SEMANTIC || !diagnostic.has_location ||
-        diagnostic.byte_offset != 14 || diagnostic.byte_length != 7 ||
-        diagnostic.line != 1 || diagnostic.column != 15 || ftell(output) != 0)
+    }
+    if (diagnostic.kind != FIR_DIAG_SEMANTIC || !diagnostic.has_location || diagnostic.byte_offset != 14 ||
+        diagnostic.byte_length != 7 || diagnostic.line != 1 || diagnostic.column != 15 || ftell(output) != 0)
+    {
         goto done;
+    }
     /* This output is for a person. Machine clients should consume the struct
      * directly, or opt into --diagnostics-json when running fir1_source. */
     printf("%s\nbyte span=[%zu,%zu), line=%zu, byte column=%zu\n",
-           message, diagnostic.byte_offset,
+           message,
+           diagnostic.byte_offset,
            diagnostic.byte_offset + diagnostic.byte_length,
-           diagnostic.line, diagnostic.column);
+           diagnostic.line,
+           diagnostic.column);
     puts("PASS source diagnostic example");
     ok = 1;
 done:
     if (input)
+    {
         fclose(input);
+    }
     if (output)
+    {
         fclose(output);
+    }
     return ok ? 0 : 1;
 }

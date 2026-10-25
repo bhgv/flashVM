@@ -10,7 +10,7 @@
 | `std::vector<T>` | `fvm_detail::vector<T>` | `src/details/vector.hpp` |
 | `std::map<string,T>` | `fvm_detail::map<fvm_detail::string,T>` | `src/details/hash_table.hpp` |
 
-Это **внутренние реализации**, не часть стабильного публичного C ABI. Для встраивания и расширений используются непрозрачные [`FVM_Context`](../src/core/runtime.hpp#L247), [`FVM_Object`](../src/core/runtime.hpp#L122) и [`FVM_Value`](../include/flashvm/value.h#L24) из `include/flashvm/`.
+Это **внутренние реализации**, не часть стабильного публичного C ABI. Для встраивания и расширений используются непрозрачные [`FVM_Context`](../src/core/runtime.hpp#L257), [`FVM_Object`](../src/core/runtime.hpp#L133) и [`FVM_Value`](../include/flashvm/value.h#L26) из `include/flashvm/`.
 
 ### Строка
 
@@ -24,7 +24,7 @@
 
 ### Гибридная таблица и метатаблицы: фактическое состояние
 
-Сейчас [`FVM_Object`](../src/core/runtime.hpp#L122) содержит **два контейнера**: `properties` для строковых ключей и `indexed` для беззнаковых числовых ключей. Это **пока не** единая гибридная таблица Lua (массив + хэш + очередь). Запланированы плотная массивная часть, разреженная хэш-часть и операции очереди с определённым порядком.
+Сейчас [`FVM_Object`](../src/core/runtime.hpp#L133) содержит **два контейнера**: `properties` для строковых ключей и `indexed` для беззнаковых числовых ключей. Это **пока не** единая гибридная таблица Lua (массив + хэш + очередь). Запланированы плотная массивная часть, разреженная хэш-часть и операции очереди с определённым порядком.
 
 `FVM_Object::metatable` — ссылка на обычный объект-таблицу; копия не создаётся. Подстановка через `__index` и `__newindex` пока ограничена табличными значениями. Функциональные метаметоды, метатаблицы примитивных типов, общая диспетчеризация метаметодов и полноценные `setmetatable`/`getmetatable` ещё не реализованы. Прототипы AVM1 и метатаблицы — разные механизмы.
 
@@ -41,7 +41,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:247](../src/core/runtime.hpp#L247) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:133](../src/core/runtime.hpp#L133) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

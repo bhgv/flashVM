@@ -2,9 +2,9 @@
 
 ## Offline encoder / Автономный генератор
 
-The private [`FVM_JIT_TARGET_WINDOWS_X64`](../src/jit/backend.hpp#L16) target is separate from Linux System V
+The private [`FVM_JIT_TARGET_WINDOWS_X64`](../src/jit/backend.hpp#L18) target is separate from Linux System V
 AMD64. It accepts the same decoded call plan and bounded source branches through
-[`fvm_jit_encode`](../src/jit/backend.hpp#L30). Its resolver supplies complete eight-byte helper addresses;
+[`fvm_jit_encode`](../src/jit/backend.hpp#L38). Its resolver supplies complete eight-byte helper addresses;
 no host-pointer truncation or foreign code execution is implicit in encoding.
 v0.560 added the encoder and Linux ABI evidence; v0.561 additionally selects
 `windows-x64` for ordinary Windows x64 builds and implements native memory/unwind
@@ -45,16 +45,16 @@ The shared frame constants tie encoding and OS metadata to one documented layout
 
 | Constant / Константа | Contract / Контракт |
 | --- | --- |
-| [`FVM_JIT_WIN64_SHADOW_BYTES`](../ports/windows/code.c#L26) | 32 bytes of caller-owned home slots / 32 байта shadow space |
-| [`FVM_JIT_WIN64_PUSH_END`](../ports/windows/code.c#L35) | Saved r12 becomes unwind-visible at offset 6 / r12 сохранён на смещении 6 |
-| [`FVM_JIT_WIN64_ALLOC_END`](../ports/windows/code.c#L34) | Allocation completed at offset 10 / выделение закончено на смещении 10 |
+| [`FVM_JIT_WIN64_SHADOW_BYTES`](../ports/windows/code.c#L33) | 32 bytes of caller-owned home slots / 32 байта shadow space |
+| [`FVM_JIT_WIN64_PUSH_END`](../ports/windows/code.c#L50) | Saved r12 becomes unwind-visible at offset 6 / r12 сохранён на смещении 6 |
+| [`FVM_JIT_WIN64_ALLOC_END`](../ports/windows/code.c#L48) | Allocation completed at offset 10 / выделение закончено на смещении 10 |
 | [`FVM_JIT_WIN64_PROLOGUE_BYTES`](../src/jit/windows_x64_constants.h#L14) | Fixed prologue length 13 / длина пролога 13 |
-| [`FVM_JIT_WIN64_UNWIND_CODES`](../ports/windows/code.c#L33) | Two records describing allocation and push / два unwind-кода |
+| [`FVM_JIT_WIN64_UNWIND_CODES`](../ports/windows/code.c#L46) | Two records describing allocation and push / два unwind-кода |
 
 ## Availability correction / Исправление доступности — v0.562
 
 The v0.561 pointer-width switch omitted the Windows target. Selection and offline
-encoding existed, but [`fvm_jit_available`](../include/flashvm/jit.h#L13) would reject Windows because its ABI
+encoding existed, but [`fvm_jit_available`](../include/flashvm/jit.h#L15) would reject Windows because its ABI
 width was reported as zero. v0.562 explicitly returns eight bytes for Microsoft
 x64 (LLP64); this corrects the earlier activation claim. No actual Windows run
 is retroactively claimed. New target-width and macro-specialized production
@@ -68,9 +68,9 @@ Windows target. Поэтому проверка доступности возв�
 
 ## Windows publication and ownership / Публикация и владение
 
-[`fvm_jit_host_target`](../src/jit/backend.cpp#L6) selects Microsoft x64 only for `_WIN32` with an ordinary
+[`fvm_jit_host_target`](../src/jit/backend.cpp#L8) selects Microsoft x64 only for `_WIN32` with an ordinary
 64-bit x86 ABI; 32-bit Windows, ARM64/ARM64EC and other unimplemented Windows ABIs
-remain unsupported. [`fvm_jit_backend_name`](../include/flashvm/jit.h#L15) reports `windows-x64`. Existing compile,
+remain unsupported. [`fvm_jit_backend_name`](../include/flashvm/jit.h#L19) reports `windows-x64`. Existing compile,
 function attachment, source/machine views, active-frame lifetime guards and
 interpreter fallback contracts remain unchanged. Availability reports compiled
 support; OS policy can still reject an individual mapping as UNSUPPORTED.
@@ -103,8 +103,8 @@ ERROR_OUTOFMEMORY return OUT_OF_MEMORY, other allocation/protection/cache/table
 failures return UNSUPPORTED. Code larger than the existing JIT bound is rejected
 before copying. Mapping cleanup follows every failed publication. The private
 `mapped` value is an opaque release cookie (Windows table offset, Linux mapping
-length); it is **not** the public emitted byte count. [`fvm_jit_machine_code`](../include/flashvm/jit.h#L33) and
-[`fvm_jit_code_size`](../include/flashvm/jit.h#L35) continue to exclude alignment/unwind/table/page overhead.
+length); it is **not** the public emitted byte count. [`fvm_jit_machine_code`](../include/flashvm/jit.h#L47) and
+[`fvm_jit_code_size`](../include/flashvm/jit.h#L51) continue to exclude alignment/unwind/table/page overhead.
 
 При ошибке оба выхода внутреннего create неизменны: неверные аргументы/пролог —
 INVALID_ARGUMENT, известные ошибки нехватки памяти — OUT_OF_MEMORY, запрет
@@ -112,7 +112,7 @@ INVALID_ARGUMENT, известные ошибки нехватки памяти 
 копирования. Внутренний mapped служит cookie очистки, а не размером машинного
 кода; публичные размеры не включают unwind-таблицу, выравнивание и страницы ОС.
 
-[`fvm_port_code_release`](../ports/code_port.c#L75) unregisters using `RtlDeleteFunctionTable` **before**
+[`fvm_port_code_release`](../ports/code_port.c#L93) unregisters using `RtlDeleteFunctionTable` **before**
 `VirtualFree(MEM_RELEASE)`. A null/inactive mapping needs no work. Callers must
 ensure no active frame, debugger stack walk or other thread is using the mapping;
 existing host ownership rules do not permit release races. If OS unregistration
@@ -189,18 +189,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
-| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
-| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
-| `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
-| `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
-| `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
-| `FVM_JIT_TARGET_WINDOWS_X64` | enum constant | [src/jit/backend.hpp:16](../src/jit/backend.hpp#L16) |
-| `FVM_JIT_WIN64_ALLOC_END` | enum constant | [ports/windows/code.c:34](../ports/windows/code.c#L34) |
-| `FVM_JIT_WIN64_PROLOGUE_BYTES` | macro / define | [src/jit/windows_x64_constants.h:14](../src/jit/windows_x64_constants.h#L14) |
-| `FVM_JIT_WIN64_PUSH_END` | enum constant | [ports/windows/code.c:35](../ports/windows/code.c#L35) |
-| `FVM_JIT_WIN64_SHADOW_BYTES` | enum constant | [ports/windows/code.c:26](../ports/windows/code.c#L26) |
-| `FVM_JIT_WIN64_UNWIND_CODES` | enum constant | [ports/windows/code.c:33](../ports/windows/code.c#L33) |
-| `fvm_port_code_create` | function | [ports/code_port.c:32](../ports/code_port.c#L32) |
-| `fvm_port_code_release` | function | [ports/code_port.c:75](../ports/code_port.c#L75) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:19](../include/flashvm/jit.h#L19) |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:51](../include/flashvm/jit.h#L51) |
+| `fvm_jit_encode` | function | [src/jit/backend.hpp:38](../src/jit/backend.hpp#L38) |
+| `fvm_jit_host_target` | function | [src/jit/backend.cpp:8](../src/jit/backend.cpp#L8) |
+| `fvm_jit_machine_code` | function | [include/flashvm/jit.h:47](../include/flashvm/jit.h#L47) |
+| `FVM_JIT_TARGET_WINDOWS_X64` | enum constant | [src/jit/backend.hpp:18](../src/jit/backend.hpp#L18) |
+| `FVM_JIT_WIN64_ALLOC_END` | enum constant | [ports/windows/code.c:48](../ports/windows/code.c#L48) |
+| `FVM_JIT_WIN64_PROLOGUE_BYTES` | enum constant | [ports/windows/code.c:45](../ports/windows/code.c#L45) |
+| `FVM_JIT_WIN64_PUSH_END` | enum constant | [ports/windows/code.c:50](../ports/windows/code.c#L50) |
+| `FVM_JIT_WIN64_SHADOW_BYTES` | enum constant | [ports/windows/code.c:33](../ports/windows/code.c#L33) |
+| `FVM_JIT_WIN64_UNWIND_CODES` | enum constant | [ports/windows/code.c:46](../ports/windows/code.c#L46) |
+| `fvm_port_code_create` | function | [ports/code_port.c:40](../ports/code_port.c#L40) |
+| `fvm_port_code_release` | function | [ports/code_port.c:93](../ports/code_port.c#L93) |
 <!-- source-links:end -->

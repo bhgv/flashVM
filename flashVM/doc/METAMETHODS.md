@@ -1,8 +1,8 @@
 # Native metamethod callbacks (stage 23)
 
 `flashvm/metamethod.h` defines an additive C89 ABI for native callbacks stored on
-an ordinary shared metatable. Use [`fvm_table_set_metatable`](../include/flashvm/table.h#L24) to attach the table
-and [`fvm_table_get_metatable`](../include/flashvm/table.h#L26) to retrieve the **same pointer** (no copy).
+an ordinary shared metatable. Use [`fvm_table_set_metatable`](../include/flashvm/table.h#L30) to attach the table
+and [`fvm_table_get_metatable`](../include/flashvm/table.h#L34) to retrieve the **same pointer** (no copy).
 
 Supported registered names: `__index`, `__newindex`, `__iterate`, `__gc`.
 Callbacks receive `(context, self, argc, argv, result, userdata)`. In every
@@ -15,7 +15,7 @@ return a separate key for custom iterators; `out_key` remains undefined.
 Without a callback, iteration enumerates indexed and named own properties.
 
 `__gc` receives a third reference to the object being finalized. It runs at
-most once when [`fvm_meta_finalize`](../include/flashvm/metamethod.h#L60) is called, or during context destruction.
+most once when [`fvm_meta_finalize`](../include/flashvm/metamethod.h#L82) is called, or during context destruction.
 **This is not a garbage collector**: unreachable objects are not discovered
 and collected incrementally. C-only userdata, primitive metatables, AS
 function values, `pairs()` syntax and the other Lua metamethods are not yet
@@ -42,8 +42,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:60](../include/flashvm/metamethod.h#L60) |
-| `fvm_table_get_metatable` | function | [include/flashvm/table.h:26](../include/flashvm/table.h#L26) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
+| `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:82](../include/flashvm/metamethod.h#L82) |
+| `fvm_table_get_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../include/flashvm/table.h#L30) |
 | `FVM_VALUE_UNDEFINED` | enum constant | [include/flashvm/value.h:16](../include/flashvm/value.h#L16) |
 <!-- source-links:end -->

@@ -1,17 +1,29 @@
+#include <stdio.h>
 #include "flashvm/standard.h"
 #include "flashvm/exception.h"
-#include <assert.h>
 #include <string.h>
 #include <float.h>
 #include <stdlib.h>
+
+
 static void expect(FVM_Context *c, FVM_Value *value, const char *expected)
 {
     FVM_Value out;
-    assert(fvm_value_to_string(c, value, &out) == FVM_OK);
-    assert(out.type == FVM_VALUE_STRING && !strcmp(out.string, expected));
+    if (!(fvm_value_to_string(c, value, &out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(out.type == FVM_VALUE_STRING && !strcmp(out.string, expected)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
-static FVM_Result self_value(FVM_Context *c, FVM_Object *self, unsigned int n,
-                             const FVM_Value *args, FVM_Value *out, void *user)
+
+
+static FVM_Result
+self_value(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args, FVM_Value *out, void *user)
 {
     (void)c;
     (void)n;
@@ -22,8 +34,10 @@ static FVM_Result self_value(FVM_Context *c, FVM_Object *self, unsigned int n,
     out->object = self;
     return FVM_OK;
 }
-static FVM_Result numeric(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
-                          FVM_Value *out, void *user)
+
+
+static FVM_Result
+numeric(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args, FVM_Value *out, void *user)
 {
     (void)c;
     (void)self;
@@ -33,8 +47,10 @@ static FVM_Result numeric(FVM_Context *c, FVM_Object *self, unsigned int n, cons
     fvm_value_number(out, 73);
     return FVM_OK;
 }
-static FVM_Result raises(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
-                         FVM_Value *out, void *user)
+
+
+static FVM_Result
+raises(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args, FVM_Value *out, void *user)
 {
     FVM_Value value;
     (void)self;
@@ -45,8 +61,10 @@ static FVM_Result raises(FVM_Context *c, FVM_Object *self, unsigned int n, const
     fvm_value_string(&value, "conversion threw");
     return fvm_exception_raise(c, &value);
 }
-static FVM_Result recursive(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
-                            FVM_Value *out, void *user)
+
+
+static FVM_Result
+recursive(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args, FVM_Value *out, void *user)
 {
     FVM_Value value;
     (void)n;
@@ -57,6 +75,8 @@ static FVM_Result recursive(FVM_Context *c, FVM_Object *self, unsigned int n, co
     value.object = self;
     return fvm_value_to_string(c, &value, out);
 }
+
+
 int main(void)
 {
     FVM_Config config;
@@ -77,9 +97,21 @@ int main(void)
                            "1e+21",
                            "2.2250738585072014e-308",
                            "1.7976931348623157e+308"};
-    assert(fvm_config_init(&config) == FVM_OK);
-    assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
-    assert(fvm_context_create(runtime, &c) == FVM_OK);
+    if (!(fvm_config_init(&config) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_runtime_create(&config, &runtime) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(runtime, &c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_undefined(&value);
     expect(c, &value, "undefined");
     value.type = FVM_VALUE_NULL;
@@ -92,8 +124,16 @@ int main(void)
     {
         fvm_value_number(&value, numbers[i]);
         expect(c, &value, texts[i]);
-        assert(fvm_value_to_string(c, &value, &out) == FVM_OK);
-        assert(strtod(out.string, 0) == numbers[i]);
+        if (!(fvm_value_to_string(c, &value, &out) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(strtod(out.string, 0) == numbers[i]))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     /* Deterministic binary64 samples exercise exponent/sign/digit boundaries.
        Skip this layout-dependent sample only on non-IEEE double platforms. */
@@ -112,59 +152,164 @@ int main(void)
             }
             memcpy(&number, bytes, sizeof(number));
             if (number != number || number > DBL_MAX || number < -DBL_MAX)
+            {
                 continue;
+            }
             fvm_value_number(&value, number);
-            assert(fvm_value_to_string(c, &value, &out) == FVM_OK);
-            assert(strtod(out.string, 0) == number);
+            if (!(fvm_value_to_string(c, &value, &out) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(strtod(out.string, 0) == number))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
         }
     }
-    assert(fvm_standard_install(c) == FVM_OK);
-    assert(fvm_get_global(c, "NaN", &value) == FVM_OK);
+    if (!(fvm_standard_install(c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_get_global(c, "NaN", &value) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     expect(c, &value, "NaN");
-    assert(fvm_get_global(c, "Infinity", &value) == FVM_OK);
+    if (!(fvm_get_global(c, "Infinity", &value) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     expect(c, &value, "Infinity");
     value.number = -value.number;
     expect(c, &value, "-Infinity");
     fvm_value_string(&value, "");
     expect(c, &value, "");
     fvm_value_string(&value, temporary);
-    assert(fvm_value_to_string(c, &value, &out) == FVM_OK);
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     temporary[0] = 'X';
-    assert(!strcmp(out.string, "copied buffer"));
+    if (!(!strcmp(out.string, "copied buffer")))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_number(&value, 17);
-    assert(fvm_value_to_string(c, &value, &value) == FVM_OK);
-    assert(!strcmp(value.string, "17"));
-    assert(fvm_object_create(c, &object) == FVM_OK);
+    if (!(fvm_value_to_string(c, &value, &value) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(!strcmp(value.string, "17")))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_create(c, &object) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_undefined(&value);
     value.type = FVM_VALUE_OBJECT;
     value.object = object;
     expect(c, &value, "[object Object]");
-    assert(fvm_object_define_method_rooted(c, object, "toString", self_value, 0, 0) == FVM_OK);
-    assert(fvm_value_to_string(c, &value, &out) == FVM_UNSUPPORTED &&
-           out.type == FVM_VALUE_UNDEFINED);
-    assert(fvm_object_define_method_rooted(c, object, "valueOf", numeric, 0, 0) == FVM_OK);
+    if (!(fvm_object_define_method_rooted(c, object, "toString", self_value, 0, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_UNSUPPORTED && out.type == FVM_VALUE_UNDEFINED))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_define_method_rooted(c, object, "valueOf", numeric, 0, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     expect(c, &value, "73");
-    assert(fvm_object_define_method_rooted(c, object, "toString", raises, 0, 0) == FVM_OK);
-    assert(fvm_value_to_string(c, &value, &out) == FVM_EXCEPTION);
-    assert(fvm_exception_get(c, &out) == FVM_OK && !strcmp(out.string, "conversion threw"));
-    assert(fvm_exception_clear(c) == FVM_OK);
-    assert(fvm_object_define_method_rooted(c, object, "toString", recursive, 0, 0) == FVM_OK);
-    assert(fvm_value_to_string(c, &value, &out) == FVM_UNSUPPORTED);
+    if (!(fvm_object_define_method_rooted(c, object, "toString", raises, 0, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_EXCEPTION))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_exception_get(c, &out) == FVM_OK && !strcmp(out.string, "conversion threw")))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_exception_clear(c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_define_method_rooted(c, object, "toString", recursive, 0, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_UNSUPPORTED))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     /* Recursion unwinding restores the conversion depth for later calls. */
     fvm_value_number(&value, 8);
     expect(c, &value, "8");
-    assert(fvm_context_create(runtime, &other) == FVM_OK);
-    assert(fvm_object_create(other, &foreign) == FVM_OK);
+    if (!(fvm_context_create(runtime, &other) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_create(other, &foreign) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_undefined(&value);
     value.type = FVM_VALUE_OBJECT;
     value.object = foreign;
-    assert(fvm_value_to_string(c, &value, &out) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_undefined(&value);
     value.type = (FVM_ValueType)99;
-    assert(fvm_value_to_string(c, &value, &out) == FVM_INVALID_ARGUMENT);
-    assert(fvm_value_to_string(c, 0, &out) == FVM_INVALID_ARGUMENT);
-    assert(fvm_value_to_string(0, &value, &out) == FVM_INVALID_ARGUMENT);
-    assert(fvm_value_to_string(c, &value, 0) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_value_to_string(c, &value, &out) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(c, 0, &out) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(0, &value, &out) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_value_to_string(c, &value, 0) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_context_destroy(other);
     fvm_context_destroy(c);
     fvm_runtime_destroy(runtime);

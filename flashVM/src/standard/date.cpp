@@ -14,9 +14,11 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+
 namespace
-{
-/* Define anonymous enum and its representation. */
+{ /* Define anonymous enum and its representation. */
+
+
 enum
 {
     DATE_OBJECT = FVM_RESOURCE_DATE,
@@ -24,11 +26,13 @@ enum
     DATE_GENERIC_PROTOTYPE = FVM_RESOURCE_OBJECT /* Loaded prototype has no native timestamp. */
 };
 
+
 /* Define Fields struct and its representation. */
 struct Fields
 {
     double year, month, day, hour, minute, second, ms, weekday;
 };
+
 
 /* Compute and return invalid. */
 double invalid()
@@ -36,17 +40,20 @@ double invalid()
     return std::numeric_limits<double>::quiet_NaN();
 }
 
+
 /* Compute and return finite. */
 bool finite(double v)
 {
     return v == v && std::fabs(v) != std::numeric_limits<double>::infinity();
 }
 
+
 /* Compute and return integer. */
 double integer(double v)
 {
     return v < 0 ? -std::floor(-v) : std::floor(v);
 }
+
 
 /* Loaded minute setters use signed 32-bit truncation with an invalid sentinel.
  * NaN, infinities and values outside the signed range become INT32_MIN. */
@@ -55,11 +62,13 @@ double minute_component(double v)
     return v >= -2147483648.0 && v <= 2147483647.0 ? integer(v) : -2147483648.0;
 }
 
+
 /* Compute and return clip. */
 double clip(double v)
 {
     return !finite(v) || std::fabs(v) > FVM_DATE_TIME_CLIP_LIMIT ? invalid() : integer(v);
 }
+
 
 /* Compute and return days. */
 double days(double year, double month, double day)
@@ -67,7 +76,9 @@ double days(double year, double month, double day)
     double normalized = year + std::floor(month / 12);
     month -= std::floor(month / 12) * 12;
     if (!finite(normalized) || std::fabs(normalized) > 1000000)
+    {
         return invalid();
+    }
     long y = (long)normalized;
     y -= month <= 1;
 
@@ -79,12 +90,13 @@ double days(double year, double month, double day)
     return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
 }
 
+
 /* Compute and return make. */
 double make(const Fields &f)
 {
-    return days(f.year, f.month, f.day) * 86400000 + f.hour * 3600000 + f.minute * 60000 +
-           f.second * 1000 + f.ms;
+    return days(f.year, f.month, f.day) * 86400000 + f.hour * 3600000 + f.minute * 60000 + f.second * 1000 + f.ms;
 }
+
 
 /* Compute and return split. */
 Fields split(double time)
@@ -96,8 +108,7 @@ Fields split(double time)
     long z = (long)day + 719468;
     long era = (long)std::floor((double)z / 146097);
     long doe = z - era * 146097, yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    long y = yoe + era * 400, doy = doe - (365 * yoe + yoe / 4 - yoe / 100),
-         mp = (5 * doy + 2) / 153;
+    long y = yoe + era * 400, doy = doe - (365 * yoe + yoe / 4 - yoe / 100), mp = (5 * doy + 2) / 153;
 
     /* Computation / Вычисление и обновление состояния. */
     f.day = doy - (153 * mp + 2) / 5 + 1;
@@ -114,9 +125,12 @@ Fields split(double time)
     f.ms = rest - f.second * 1000;
     f.weekday = std::fmod(day + 4, 7);
     if (f.weekday < 0)
+    {
         f.weekday += 7;
+    }
     return f;
 }
+
 
 /* Compute and return date. */
 bool date(FVM_Object *o)
@@ -125,9 +139,9 @@ bool date(FVM_Object *o)
            o->resource_result.type == FVM_VALUE_NUMBER;
 }
 
+
 /* Compute and return number arg. */
-FVM_Result number_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i,
-                      double fallback, double &v)
+FVM_Result number_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i, double fallback, double &v)
 {
     if (i >= n)
     {
@@ -136,19 +150,24 @@ FVM_Result number_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsign
     }
     FVM_Result r = fvm_value_to_number(c, a + i, &v);
     if (r == FVM_OK && finite(v))
+    {
         v = integer(v);
+    }
     return r;
 }
 
+
 /* Compute and return value. */
-FVM_Result value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
-                 void *)
+FVM_Result value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     if (!date(o))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = o->resource_result;
     return FVM_OK;
 }
+
 
 /* Read the Flash hour projection, including its half-millisecond boundary rule. */
 double loaded_hours(double time)
@@ -157,6 +176,7 @@ double loaded_hours(double time)
     return hour < 0 ? hour + 24.0 : hour;
 }
 
+
 /* Read integer milliseconds using truncation before negative remainder normalization. */
 double loaded_milliseconds(double time)
 {
@@ -164,11 +184,14 @@ double loaded_milliseconds(double time)
     return millisecond < 0 ? millisecond + 1000 : millisecond;
 }
 
+
 /* Read the current value. */
 FVM_Result get(FVM_Context *c, FVM_Object *o, FVM_Value *out, int field, bool utc)
 {
     if (!date(o))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     double t = o->resource_result.number;
     if (!finite(t))
     {
@@ -177,7 +200,9 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, FVM_Value *out, int field, bool ut
     }
     double east = 0;
     if (!utc && !fvm_port_calendar_offset(t, &east))
+    {
         return FVM_UNSUPPORTED;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
@@ -192,17 +217,21 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, FVM_Value *out, int field, bool ut
                : field == 8 ? f.year - 1900
                             : -east;
     if (c->swf_loaded && field == 3)
+    {
         v = loaded_hours(t + east * 60000);
+    }
     else if (c->swf_loaded && field == 6)
+    {
         v = loaded_milliseconds(t + east * 60000);
+    }
     fvm_value_number(out, v);
     return FVM_OK;
 }
-#define GET(name, field, utc)                                                                      \
-    FVM_Result name(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,                \
-                    FVM_Value *out, void *)                                                        \
-    {                                                                                              \
-        return get(c, o, out, field, utc);                                                         \
+
+#define GET(name, field, utc)                                                                                          \
+    FVM_Result name(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out, void *)            \
+    {                                                                                                                  \
+        return get(c, o, out, field, utc);                                                                             \
     }
 GET(get_year, 0, false)
 GET(get_month, 1, false)
@@ -215,12 +244,19 @@ GET(get_day, 7, false)
 GET(get_old_year, 8, false)
 GET(get_offset, 9, false)
 GET(get_utc_year, 0, true)
-GET(get_utc_month, 1, true) GET(get_utc_date, 2, true) GET(get_utc_hours, 3, true)
-    GET(get_utc_minutes, 4, true) GET(get_utc_seconds, 5, true) GET(get_utc_ms, 6, true)
-        GET(get_utc_day, 7, true) GET(get_utc_old_year, 8, true)
+GET(get_utc_month, 1, true)
+GET(get_utc_date, 2, true)
+GET(get_utc_hours, 3, true)
+GET(get_utc_minutes, 4, true)
+GET(get_utc_seconds, 5, true)
+GET(get_utc_ms, 6, true)
+GET(get_utc_day, 7, true)
+GET(get_utc_old_year, 8, true)
 #undef GET
-    /* Compute and return normalized utc. */
-    FVM_Result normalized_utc(const Fields &input, double &out)
+
+
+/* Compute and return normalized utc. */
+FVM_Result normalized_utc(const Fields &input, double &out)
 {
     double local = make(input);
     if (!finite(local) || std::fabs(local) > FVM_DATE_TIME_CLIP_LIMIT)
@@ -230,17 +266,21 @@ GET(get_utc_month, 1, true) GET(get_utc_date, 2, true) GET(get_utc_hours, 3, tru
     }
     Fields f = split(local);
     if (!fvm_port_calendar_utc(f.year, f.month, f.day, f.hour, f.minute, f.second, f.ms, &out))
+    {
         return FVM_UNSUPPORTED;
+    }
     out = clip(out);
     return FVM_OK;
 }
 
+
 /* Update the current value. */
-FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
-               int field, bool utc)
+FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out, int field, bool utc)
 {
     if (!date(o))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     double t = o->resource_result.number, east = 0;
@@ -251,9 +291,13 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         return FVM_OK;
     }
     if (!valid)
+    {
         t = 0;
+    }
     if (valid && !utc && !fvm_port_calendar_offset(t, &east))
+    {
         return FVM_UNSUPPORTED;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
@@ -266,29 +310,33 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     }
     double *slots[] = {&f.year, &f.month, &f.day, &f.hour, &f.minute, &f.second, &f.ms};
     unsigned int start = field == 8 ? 0 : (unsigned int)field;
-    unsigned int count = field == 0                               ? 3
-                         : field == 1                             ? 2
-                         : field == 2 || field == 6 || field == 8 ? 1
-                                                                  : 7 - start;
+    unsigned int count = field == 0 ? 3 : field == 1 ? 2 : field == 2 || field == 6 || field == 8 ? 1 : 7 - start;
     FVM_Value missing;
     fvm_value_undefined(&missing);
     for (unsigned int i = 0; i < count; ++i)
     {
         if (i && i >= n)
+        {
             break;
+        }
         double v = 0;
         /* Minute bounds must be checked before the general integer projection. */
-        FVM_Result r = c->swf_loaded && field == 4
-                           ? fvm_value_to_number(c, n ? a + i : &missing, &v)
-                           : number_arg(c, n ? n : 1, n ? a : &missing, i, 0, v);
+        FVM_Result r = c->swf_loaded && field == 4 ? fvm_value_to_number(c, n ? a + i : &missing, &v)
+                                                   : number_arg(c, n ? n : 1, n ? a : &missing, i, 0, v);
         if (r != FVM_OK)
+        {
             return r;
+        }
         /* Loaded setMonth treats a NaN month as January, including missing input.
          * Other components and infinities retain the ordinary invalid-date rule. */
         if (c->swf_loaded && field == 1 && !i && v != v)
+        {
             v = 0;
+        }
         if (c->swf_loaded && field == 4)
+        {
             v = minute_component(v);
+        }
         if (!finite(v))
         {
             o->resource_result.number = invalid();
@@ -296,7 +344,9 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
             return FVM_OK;
         }
         if (field == 8 && v >= 0 && v <= 99)
+        {
             v += 1900;
+        }
         *slots[start + i] = v;
     }
 
@@ -317,33 +367,43 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
          * SWF8 normalizes that remainder into the nonnegative day range. */
         double remainder = std::fmod(t + east * 60000.0, 86400000.0);
         if (c->swf_info.version > FVM_SWF_VERSION_7 && remainder < 0)
+        {
             remainder += 86400000.0;
+        }
         double projected = days(f.year, f.month, f.day) * 86400000.0 + remainder;
         result = clip(projected);
         if (finite(result))
         {
             result = std::floor(projected);
             if (!utc)
+            {
                 r = normalized_utc(split(result), result);
+            }
         }
     }
     else if (utc)
+    {
         result = clip(make(f));
+    }
     else
+    {
         r = normalized_utc(f, result);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     o->resource_result.number = result;
     *out = o->resource_result;
     return FVM_OK;
 }
-#define SET(name, field, utc)                                                                      \
-    FVM_Result name(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,             \
-                    FVM_Value *out, void *)                                                        \
-    {                                                                                              \
-        return set(c, o, n, a, out, field, utc);                                                   \
+
+#define SET(name, field, utc)                                                                                          \
+    FVM_Result name(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)         \
+    {                                                                                                                  \
+        return set(c, o, n, a, out, field, utc);                                                                       \
     }
 SET(set_year, 0, false)
 SET(set_month, 1, false)
@@ -356,15 +416,20 @@ SET(set_old_year, 8, false)
 SET(set_utc_year, 0, true)
 SET(set_utc_month, 1, true)
 SET(set_utc_date, 2, true)
-SET(set_utc_hours, 3, true) SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5, true)
-    SET(set_utc_ms, 6, true)
+SET(set_utc_hours, 3, true)
+SET(set_utc_minutes, 4, true)
+SET(set_utc_seconds, 5, true)
+SET(set_utc_ms, 6, true)
 #undef SET
-    /* Update time. */
-    FVM_Result set_time(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
-                        FVM_Value *out, void *)
+
+
+/* Update time. */
+FVM_Result set_time(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     if (!date(o))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     double t = invalid();
@@ -374,38 +439,54 @@ SET(set_utc_hours, 3, true) SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5
         double projected = clip(t);
         /* Loaded TimeClip floors negative fractions; host callers retain truncation. */
         if (c->swf_loaded && finite(projected))
+        {
             projected = std::floor(t);
+        }
         o->resource_result.number = projected;
         *out = o->resource_result;
     }
     return r;
 }
 
+
 /* Format one timestamp through the existing local calendar adapter. */
 FVM_Result format_time(FVM_Context *c, double t, FVM_Value *out)
 {
     if (!finite(t))
+    {
         return fvm_value_string(out, "Invalid Date");
+    }
     double east = 0;
     if (!fvm_port_calendar_offset(t, &east))
+    {
         return FVM_UNSUPPORTED;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
     if (c->swf_loaded)
+    {
         f.hour = loaded_hours(t + east * 60000);
+    }
     const char *week[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     int offset = (int)std::fabs(east);
     char buffer[128];
     /* Loaded Date text leaves the day unpadded, unlike the retained host spelling. */
-    const char *format = c->swf_loaded ? "%s %s %d %02d:%02d:%02d GMT%c%02d%02d %ld"
-                                     : "%s %s %02d %02d:%02d:%02d GMT%c%02d%02d %ld";
-    std::sprintf(buffer, format,
-                 week[(unsigned int)f.weekday], months[(unsigned int)f.month], (int)f.day,
-                 (int)f.hour, (int)f.minute, (int)f.second, east < 0 ? '-' : '+', offset / 60,
-                 offset % 60, (long)f.year);
+    const char *format =
+        c->swf_loaded ? "%s %s %d %02d:%02d:%02d GMT%c%02d%02d %ld" : "%s %s %02d %02d:%02d:%02d GMT%c%02d%02d %ld";
+    std::sprintf(buffer,
+                 format,
+                 week[(unsigned int)f.weekday],
+                 months[(unsigned int)f.month],
+                 (int)f.day,
+                 (int)f.hour,
+                 (int)f.minute,
+                 (int)f.second,
+                 east < 0 ? '-' : '+',
+                 offset / 60,
+                 offset % 60,
+                 (long)f.year);
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
@@ -413,16 +494,16 @@ FVM_Result format_time(FVM_Context *c, double t, FVM_Value *out)
     return fvm_value_to_string(c, &v, out);
 }
 
+
 /* Format native Date data; unloaded wrong receivers retain the host guard. */
-FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
-                void *)
+FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     return date(o) ? format_time(c, o->resource_result.number, out) : FVM_INVALID_ARGUMENT;
 }
 
+
 /* Compute and return components. */
-FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, bool local,
-                      double &out)
+FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, bool local, double &out)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -433,7 +514,9 @@ FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, boo
     {
         FVM_Result r = number_arg(c, n, args, i, defaults[i], *fields[i]);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (!finite(*fields[i]))
         {
             out = invalid();
@@ -443,29 +526,36 @@ FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, boo
     /* Loaded component construction also offsets negative years below 100.
      * Host construction retains the ordinary 0..99 adjustment. */
     if (c->swf_loaded ? f.year < 100 : f.year >= 0 && f.year <= 99)
+    {
         f.year += 1900;
+    }
     if (local)
+    {
         return normalized_utc(f, out);
+    }
     out = clip(make(f));
     return FVM_OK;
 }
 
+
 /* Compute and return utc. */
-FVM_Result utc(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args, FVM_Value *out,
-               void *)
+FVM_Result utc(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args, FVM_Value *out, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double t = 0;
     FVM_Result r = components(c, n, args, false, t);
     if (r == FVM_OK)
+    {
         fvm_value_number(out, t);
+    }
     return r;
 }
 
+
 /* Initialize a prepared loaded receiver, or allocate using the historical host lookup. */
-FVM_Result constructor(FVM_Context *c, unsigned int n, const FVM_Value *a,
-                       FVM_Value *out, void *userdata, FVM_Object *prepared)
+FVM_Result
+constructor(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out, void *userdata, FVM_Object *prepared)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -474,7 +564,9 @@ FVM_Result constructor(FVM_Context *c, unsigned int n, const FVM_Value *a,
     if (!n)
     {
         if (!fvm_port_clock_ms(&t))
+        {
             return FVM_ERROR;
+        }
         t = clip(t);
     }
     else if (n == 1)
@@ -483,24 +575,36 @@ FVM_Result constructor(FVM_Context *c, unsigned int n, const FVM_Value *a,
         /* Loaded single-timestamp construction retains bounded fractional data.
          * Keep the existing range/nonfinite guard until the calendar engine is audited. */
         if (!c->swf_loaded || !finite(t) || std::fabs(t) > FVM_DATE_TIME_CLIP_LIMIT)
+        {
             t = clip(t);
+        }
     }
     else
+    {
         r = components(c, n, a, true, t);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
     FVM_Object *o = prepared;
     if (!o)
     {
         FVM_Value proto;
         r = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &proto);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (proto.type != FVM_VALUE_OBJECT)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_object_create(c, &o);
         if (r != FVM_OK)
+        {
             return r;
+        }
         o->resource_kind = DATE_OBJECT;
         o->prototype = proto.object;
     }
@@ -514,18 +618,24 @@ FVM_Result constructor(FVM_Context *c, unsigned int n, const FVM_Value *a,
     return FVM_OK;
 }
 
+
 /* Loaded Date() returns current local time as text without coercing arguments.
  * The captured class retains the historical unloaded constructor fallback. */
-FVM_Result date_call(FVM_Context *c, FVM_Object *, unsigned int count,
-                     const FVM_Value *args, FVM_Value *out, void *userdata)
+FVM_Result
+date_call(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
+    {
         return constructor(c, count, args, out, userdata, 0);
+    }
     double timestamp = 0;
     if (!fvm_port_clock_ms(&timestamp))
+    {
         return FVM_ERROR;
+    }
     return format_time(c, timestamp, out);
 }
+
 
 /* Define Method struct and its representation. */
 struct Method
@@ -533,9 +643,11 @@ struct Method
     const char *name;
     FVM_NativeFunction callback;
 };
+
+
 /* Convert the shared Date operand prefix once, stopping at undefined or seven values. */
-FVM_Result project_arguments(FVM_Context *c, unsigned int count, const FVM_Value *args,
-                             FVM_Value *numbers, unsigned int &used)
+FVM_Result
+project_arguments(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *numbers, unsigned int &used)
 {
     used = 0;
     while (used < count && used < FVM_DATE_ARGUMENT_LIMIT && args[used].type != FVM_VALUE_UNDEFINED)
@@ -543,24 +655,32 @@ FVM_Result project_arguments(FVM_Context *c, unsigned int count, const FVM_Value
         double number = 0;
         FVM_Result result = fvm_avm1_number(c, args + used, &number);
         if (result != FVM_OK)
+        {
             return result;
+        }
         fvm_value_number(numbers + used, number);
         ++used;
     }
     return FVM_OK;
 }
 
+
 /* Project loaded constructor operands; unloaded construction keeps the host contract. */
-FVM_Result loaded_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
-                              const FVM_Value *args, FVM_Value *out, void *userdata)
+FVM_Result loaded_constructor(
+    FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
+    {
         return constructor(c, count, args, out, userdata, 0);
+    }
     FVM_Object *receiver = 0;
-    FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)userdata,
-                                                        DATE_OBJECT, &receiver);
+    FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)userdata, DATE_OBJECT, &receiver);
     if (result != FVM_OK)
+    {
         return result;
+    }
+
+
     /* [GC:] Argument callbacks cannot replace or reclaim the selected Date receiver. */
     FVM_ObjectRootScope receiver_root(c, receiver);
     FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
@@ -569,17 +689,22 @@ FVM_Result loaded_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
     return result == FVM_OK ? constructor(c, used, numbers, out, userdata, receiver) : result;
 }
 
+
 /* Date.UTC uses the same operand prefix; fewer than two projected values return undefined. */
-FVM_Result loaded_utc(FVM_Context *c, FVM_Object *self, unsigned int count,
-                      const FVM_Value *args, FVM_Value *out, void *userdata)
+FVM_Result
+loaded_utc(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
+    {
         return utc(c, self, count, args, out, userdata);
+    }
     FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
     unsigned int used = 0;
     FVM_Result result = project_arguments(c, count, args, numbers, used);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (used < 2)
     {
         fvm_value_undefined(out);
@@ -588,21 +713,32 @@ FVM_Result loaded_utc(FVM_Context *c, FVM_Object *self, unsigned int count,
     return utc(c, self, used, numbers, out, userdata);
 }
 
+
 /* [GC:] Numeric argument projections contain no object/string edges. The native
  * invocation retains the original operands while conversions run in source order. */
-FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
-                         const FVM_Value *args, FVM_Value *out, void *userdata,
+FVM_Result loaded_method(FVM_Context *c,
+                         FVM_Object *self,
+                         unsigned int count,
+                         const FVM_Value *args,
+                         FVM_Value *out,
+                         void *userdata,
                          FVM_NativeFunction callback)
 {
     if (!c->swf_loaded)
+    {
         return callback(c, self, count, args, out, userdata);
+    }
     if (!self || self->owner != c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
     unsigned int used = 0;
     FVM_Result result = project_arguments(c, count, args, numbers, used);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (self->resource_kind != DATE_OBJECT)
     {
         fvm_value_undefined(out);
@@ -612,10 +748,12 @@ FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
 }
 
 /* Preserve one stable native callback identity per Date method implementation. */
-#define DATE_LOADED_WRAPPER(name) \
-    FVM_Result loaded_##name(FVM_Context *c, FVM_Object *self, unsigned int count, \
-                             const FVM_Value *args, FVM_Value *out, void *userdata) \
-    { return loaded_method(c, self, count, args, out, userdata, name); }
+#define DATE_LOADED_WRAPPER(name)                                                                                      \
+    FVM_Result loaded_##name(                                                                                          \
+        FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)   \
+    {                                                                                                                  \
+        return loaded_method(c, self, count, args, out, userdata, name);                                               \
+    }
 /* Dispatch value through the versioned Date argument projection. */
 DATE_LOADED_WRAPPER(value)
 /* Dispatch text through the versioned Date argument projection. */
@@ -734,10 +872,11 @@ const Method methods[] = {{"getTime", loaded_value},
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
+fvm_date_stage(FVM_Context *c,
+               fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
+               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -748,14 +887,16 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     FVM_Result r = fvm_object_create(c, &klass);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &proto);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -768,9 +909,13 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     if (c->swf_loaded)
+    {
         fvm_value_undefined(&proto->resource_result);
+    }
     else
+    {
         fvm_value_number(&proto->resource_result, invalid());
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -794,8 +939,7 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         e.callback = methods[i].callback;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->methods[methods[i].name] = e;
@@ -809,7 +953,9 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["UTC"] = e;
     if (c->swf_loaded)
+    {
         klass->attributes["UTC"] = 7;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = loaded_constructor;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
@@ -826,6 +972,7 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+
 /* Validate date. */
 FVM_Result fvm_date_validate(FVM_Context *c)
 {
@@ -836,82 +983,120 @@ FVM_Result fvm_date_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
+
 /* [GC:] Prepare class and per-method flags independently of optional invalid-payload activation.
  * Individual user descriptors and flags retain their shapes before any primitive commits. */
 void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Date");
     if (ctor == c->constructors.end() || ctor->second.callback != loaded_constructor || !ctor->second.root)
+    {
         return;
+    }
     FVM_Object *klass = ctor->second.root;
     /* UTC belongs to the captured class, independent of its public prototype slot. */
     out.class_attributes = klass->attributes;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator utc = klass->methods.find("UTC");
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator utc_flags = klass->attributes.find("UTC");
-    if (utc != klass->methods.end() && utc->second.callback == loaded_utc &&
-        utc_flags != klass->attributes.end() && utc_flags->second == FVM_PROPERTY_DONT_ENUM &&
-        klass->properties.find("UTC") == klass->properties.end() &&
+    if (utc != klass->methods.end() && utc->second.callback == loaded_utc && utc_flags != klass->attributes.end() &&
+        utc_flags->second == FVM_PROPERTY_DONT_ENUM && klass->properties.find("UTC") == klass->properties.end() &&
         klass->accessors.find("UTC") == klass->accessors.end())
+    {
         out.class_attributes["UTC"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY;
+    }
     out.klass = klass;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+    {
         return;
+    }
     FVM_Object *proto = stored->second.object;
     if (!proto || proto->resource_kind != DATE_OBJECT)
+    {
         return;
+    }
     /* Attribute preparation is independent of the native payload activation guard. */
     out.prototype_attributes = proto->attributes;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
-        fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback,
-                                      FVM_PROPERTY_BUILTIN_FLAGS, out.prototype_attributes);
+    {
+        fvm_stage_default_method_flags(
+            proto, methods[i].name, methods[i].callback, FVM_PROPERTY_BUILTIN_FLAGS, out.prototype_attributes);
+    }
     out.attribute_prototype = proto;
     if (!date(proto) || proto->resource_result.number == proto->resource_result.number)
+    {
         return;
+    }
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("getTime");
     if (method == proto->methods.end() || method->second.callback != loaded_value)
+    {
         return;
+    }
     out.prototype = proto;
 }
+
 
 /* Publish the prepared Date layout and flag tables without a failing operation. */
 void fvm_date_commit_loaded(FVM_DatePrototypeActivation &prepared)
 {
     if (prepared.klass)
+    {
         prepared.klass->attributes.swap(prepared.class_attributes);
+    }
     if (prepared.attribute_prototype)
+    {
         prepared.attribute_prototype->attributes.swap(prepared.prototype_attributes);
+    }
     if (!prepared.prototype)
+    {
         return;
+    }
     prepared.prototype->resource_kind = DATE_GENERIC_PROTOTYPE;
     prepared.prototype->resource_result_valid = false;
     fvm_value_undefined(&prepared.prototype->resource_result);
 }
 
+
 /* Map a native date callback to its stable serialization identifier. */
 unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 {
     if (callback == date_call)
+    {
         return 752;
+    }
     if (callback == loaded_constructor)
+    {
         return 751;
+    }
     if (callback == loaded_utc)
+    {
         return 750;
+    }
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    {
         if (callback == methods[i].callback)
+        {
             return 700 + (unsigned long)i;
+        }
+    }
     return 0;
 }
+
 
 /* Restore a native date callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_date_callback_from_id(unsigned long id)
 {
     if (id == 752)
+    {
         return date_call;
+    }
     if (id == 751)
+    {
         return loaded_constructor;
+    }
     if (id == 750)
+    {
         return loaded_utc;
-    return id >= 700 && id < 700 + sizeof(methods) / sizeof(methods[0]) ? methods[id - 700].callback
-                                                                        : 0;
+    }
+    return id >= 700 && id < 700 + sizeof(methods) / sizeof(methods[0]) ? methods[id - 700].callback : 0;
 }

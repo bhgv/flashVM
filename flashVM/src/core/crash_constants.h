@@ -7,6 +7,6 @@
 #define FVM_CRASH_ZIP_CENTRAL 0x02014b50UL           /* ZIP central directory record. */
 #define FVM_CRASH_ZIP_END 0x06054b50UL               /* ZIP end-of-directory record. */
 #define FVM_CRASH_ZIP_VERSION 20U                    /* ZIP 2.0 compatible stored entries. */
-#define FVM_CRASH_BYTE_MASK 255U /* Low byte during little-endian record encoding. */
-#define FVM_CRASH_BYTE_BITS 8U   /* ZIP field byte width. */
+#define FVM_CRASH_BYTE_MASK 255U                     /* Low byte during little-endian record encoding. */
+#define FVM_CRASH_BYTE_BITS 8U                       /* ZIP field byte width. */
 #endif

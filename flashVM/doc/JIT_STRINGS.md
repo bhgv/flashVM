@@ -16,7 +16,7 @@ greater converts left before right. Errors propagate through the existing safe
 native boundary without committing a result.
 
 The shared services' existing compatibility limits are preserved: SWF4–5
-length/extract/character operations reject non-ASCII with [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
+length/extract/character operations reject non-ASCII with [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48);
 character construction maps zero to an empty string and surrogate units to a
 replacement character. MB and ordinary variants share the interpreter policy.
 This extension does not certify historical multibyte encodings or full Flash
@@ -46,5 +46,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

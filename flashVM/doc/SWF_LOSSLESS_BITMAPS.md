@@ -6,7 +6,7 @@
 DefineBitsLossless2 (36, SWF 3+). Статически подключённый bundled zlib
 распаковывает данные; выбранные GRAPHICS_AGG/GRAPHICS_CAIRO используют
 одну модель RGBA и bitmap-заливок. NO_GRAPHICS сохраняет ресурсы и граф
-сцены, но возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) при растеризации.
+сцены, но возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) при растеризации.
 
 Поддержаны палитры RGB/RGBA, строки индексов с padding до четырёх байтов,
 big-endian RGB555 с padding и XRGB/ARGB. Входные premultiplied-компоненты
@@ -19,7 +19,7 @@ big-endian RGB555 с padding и XRGB/ARGB. Входные premultiplied-комп
 длина распакованных строк и точное потребление zlib-потока. Повреждённые,
 обрезанные и дополненные потоки не публикуют частичный результат. Размеры
 ограничены 2880×2880 текущей моделью BitmapData; больший ресурс даёт
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Совокупный размер декодированных RGBA ресурсов и размер
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Совокупный размер декодированных RGBA ресурсов и размер
 отдельного распакованного буфера ограничены лимитом загрузчика. Этот лимит
 не является полной оценкой одновременных временных аллокаций VM.
 
@@ -94,5 +94,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

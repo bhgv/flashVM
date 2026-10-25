@@ -35,11 +35,11 @@ Unicode-символа (scalar value). Проверка UTF-8 отклоняет
 кодировки, суррогаты и значения выше U+10FFFF. Нулевой байт внутри
 буфера допустим.
 
-* [`fvm_utf8_validate`](../include/flashvm/utf8.h#L24) — проверить буфер и посчитать Unicode-символы.
-* [`fvm_utf8_read`](../include/flashvm/utf8.h#L27) — прочитать один символ и продвинуть позицию при успехе.
-* [`fvm_utf8_write`](../include/flashvm/utf8.h#L31) — записать символ UTF-8 в предоставленный буфер.
-* [`fvm_utf8_offset`](../include/flashvm/utf8.h#L35) — получить байтовое смещение по индексу символа.
-* [`fvm_regex_search`](../include/flashvm/regex.h#L15) — найти первое совпадение, вернуть байтовые границы.
+* [`fvm_utf8_validate`](../include/flashvm/utf8.h#L27) — проверить буфер и посчитать Unicode-символы.
+* [`fvm_utf8_read`](../include/flashvm/utf8.h#L32) — прочитать один символ и продвинуть позицию при успехе.
+* [`fvm_utf8_write`](../include/flashvm/utf8.h#L38) — записать символ UTF-8 в предоставленный буфер.
+* [`fvm_utf8_offset`](../include/flashvm/utf8.h#L44) — получить байтовое смещение по индексу символа.
+* [`fvm_regex_search`](../include/flashvm/regex.h#L17) — найти первое совпадение, вернуть байтовые границы.
   Результат: 1 — найдено, 0 — не найдено, -1 — неверные аргументы,
   -2 — исчерпан лимит вычислений.
 
@@ -61,9 +61,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_regex_search` | function | [include/flashvm/regex.h:15](../include/flashvm/regex.h#L15) |
-| `fvm_utf8_offset` | function | [include/flashvm/utf8.h:35](../include/flashvm/utf8.h#L35) |
-| `fvm_utf8_read` | function | [include/flashvm/utf8.h:27](../include/flashvm/utf8.h#L27) |
-| `fvm_utf8_validate` | function | [include/flashvm/utf8.h:24](../include/flashvm/utf8.h#L24) |
-| `fvm_utf8_write` | function | [include/flashvm/utf8.h:31](../include/flashvm/utf8.h#L31) |
+| `fvm_regex_search` | function | [include/flashvm/regex.h:17](../include/flashvm/regex.h#L17) |
+| `fvm_utf8_offset` | function | [include/flashvm/utf8.h:44](../include/flashvm/utf8.h#L44) |
+| `fvm_utf8_read` | function | [include/flashvm/utf8.h:32](../include/flashvm/utf8.h#L32) |
+| `fvm_utf8_validate` | function | [include/flashvm/utf8.h:27](../include/flashvm/utf8.h#L27) |
+| `fvm_utf8_write` | function | [include/flashvm/utf8.h:38](../include/flashvm/utf8.h#L38) |
 <!-- source-links:end -->

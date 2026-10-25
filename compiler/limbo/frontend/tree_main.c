@@ -2,14 +2,20 @@
 #include "frontend.h"
 #include <stdlib.h>
 
+
 /* Print absent links distinctly from valid zero-based node indices. */
 static void link_index(size_t index)
 {
     if (index == SIZE_MAX)
+    {
         fputs("-", stdout);
+    }
     else
+    {
         printf("%lu", (unsigned long)index);
+    }
 }
+
 
 /* Read one bounded source snapshot and print grammar node relationships with byte spans. */
 int main(int argc, char **argv)
@@ -22,10 +28,14 @@ int main(int argc, char **argv)
     LimboNode node;
     int ok;
     if (argc != 2)
+    {
         return 2;
+    }
     input = fopen(argv[1], "rb");
     if (!input)
+    {
         return 2;
+    }
     data = (char *)malloc(2u * 1024u * 1024u + 1);
     if (!data)
     {
@@ -48,12 +58,16 @@ int main(int argc, char **argv)
     free(data);
     if (!ok)
     {
-        fprintf(stderr, "%d:%d E%d byte %ld: %s\n", diagnostic.line, diagnostic.column,
-                diagnostic.code, diagnostic.offset, diagnostic.message);
+        fprintf(stderr,
+                "%d:%d E%d byte %ld: %s\n",
+                diagnostic.line,
+                diagnostic.column,
+                diagnostic.code,
+                diagnostic.offset,
+                diagnostic.message);
         return 1;
     }
-    printf("source\t%lu\nnodes\t%lu\n", (unsigned long)limbo_tree_size(tree),
-           (unsigned long)limbo_tree_count(tree));
+    printf("source\t%lu\nnodes\t%lu\n", (unsigned long)limbo_tree_size(tree), (unsigned long)limbo_tree_count(tree));
     for (i = 0; i < limbo_tree_count(tree); ++i)
     {
         if (!limbo_tree_node(tree, i, &node))
@@ -61,7 +75,10 @@ int main(int argc, char **argv)
             limbo_tree_destroy(tree);
             return 1;
         }
-        printf("node\t%lu\t%s\t%lu\t%lu\t", (unsigned long)i, node.kind, (unsigned long)node.begin,
+        printf("node\t%lu\t%s\t%lu\t%lu\t",
+               (unsigned long)i,
+               node.kind,
+               (unsigned long)node.begin,
                (unsigned long)node.end);
         link_index(node.parent);
         putchar('\t');

@@ -1,8 +1,8 @@
 # Отступ первой строки абзаца
 
-v0.893 добавляет [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L121). Аргументы — заимствованный
+v0.893 добавляет [fvm_text_layout_create_indented](../include/flashvm/text_layout.h#L142). Аргументы — заимствованный
 шрифт, UTF-8 с явной длиной, параметры раскладки, флаги shaping и letterSpacing
-как у [fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103), плюс конечный first_line_indent в
+как у [fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L122), плюс конечный first_line_indent в
 [-4096,4096] native-пикселей. C API принимает дробные отступы. Публичные
 структуры и прежние сигнатуры не меняются; ноль сохраняет прежнее поведение.
 
@@ -25,9 +25,9 @@ max(0, advance + отступ первой строки) без выравнив
 Высота, исходные кластеры и диапазоны байтов сохраняются. Границы координат и
 бюджета shaping проверяются.
 
-[FVM_TextLayout](../src/capi/text_layout_c.cpp#L14) владеет копиями глифов, метаданными и контурами; освобождение —
-[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L84). [fvm_text_layout_path](../include/flashvm/text_layout.h#L168)/fvm_text_layout_glyph_path
-возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L28), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L52) и способные
+[FVM_TextLayout](../src/capi/text_layout_c.cpp#L15) владеет копиями глифов, метаданными и контурами; освобождение —
+[fvm_text_layout_destroy](../include/flashvm/text_layout.h#L99). [fvm_text_layout_path](../include/flashvm/text_layout.h#L199)/fvm_text_layout_glyph_path
+возвращают независимые [FVM_Path](../src/capi/path_c.cpp#L31), освобождаемые [fvm_path_destroy](../include/flashvm/path.h#L64) и способные
 пережить шрифт/раскладку. Шрифт, текст и параметры заимствуются только на вызов.
 VM/GC не участвуют. Изменяемый шрифт требует сериализации доступа; неизменяемая
 раскладка допускает конкурентное чтение.
@@ -73,13 +73,13 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_FONT_SHAPE_FLAGS` | macro / define | [include/flashvm/font.h:11](../include/flashvm/font.h#L11) |
-| `FVM_Path` | struct | [src/capi/path_c.cpp:28](../src/capi/path_c.cpp#L28) |
-| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
-| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:121](../include/flashvm/text_layout.h#L121) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
-| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:84](../include/flashvm/text_layout.h#L84) |
-| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:183](../include/flashvm/text_layout.h#L183) |
-| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:168](../include/flashvm/text_layout.h#L168) |
+| `FVM_Path` | struct | [src/capi/path_c.cpp:31](../src/capi/path_c.cpp#L31) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:64](../include/flashvm/path.h#L64) |
+| `fvm_text_layout_create_indented` | function | [include/flashvm/text_layout.h:142](../include/flashvm/text_layout.h#L142) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:122](../include/flashvm/text_layout.h#L122) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:99](../include/flashvm/text_layout.h#L99) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:218](../include/flashvm/text_layout.h#L218) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:199](../include/flashvm/text_layout.h#L199) |
 | `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:25](../src/standard/text_constants.h#L25) |
-| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:14](../src/capi/text_layout_c.cpp#L14) |
+| `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:15](../src/capi/text_layout_c.cpp#L15) |
 <!-- source-links:end -->

@@ -72,13 +72,13 @@ return INVALID. Neither decoding nor applying the policy grants native authority
 
 | API | Ownership / result |
 | --- | --- |
-| [`fvm_sadapt_config_init`](../include/flashvm/sadapt.h#L96) | Fill defaults only; host supplies ladder/identity/initial index. No allocation or startup. |
-| [`fvm_sadapt_init`](../include/flashvm/sadapt.h#L100) | Validate full ladder/config and copy native state atomically. Keep state at a stable address: its copied config points into its own ladder; do not memcpy/move a live policy to a different address. |
-| [`fvm_sadapt_observe`](../include/flashvm/sadapt.h#L106) | Validate and consume one report; copy KEEP/INSUFFICIENT or a pending SHRINK/GROW hint. Failure preserves state/decision. No negotiation, callbacks, I/O or geometry change. |
-| [`fvm_sadapt_commit`](../include/flashvm/sadapt.h#L111) | Acknowledge the exact pending geometry after control ACK; update current and begin cooldown. Wrong selection/no proposal CONFLICT. |
-| [`fvm_sadapt_reject`](../include/flashvm/sadapt.h#L114) | Abandon pending candidate, preserve current and begin cooldown; no remote rollback. |
-| [`fvm_sadapt_feedback_write`](../include/flashvm/sadapt.h#L117) | Encode compact tag-zero report from validated counts into caller storage; output/used atomic. |
-| [`fvm_sadapt_feedback_read`](../include/flashvm/sadapt.h#L119) | Verify one record and copy report only on OK; prefix/checksum errors propagate, output/used atomic. |
+| [`fvm_sadapt_config_init`](../include/flashvm/sadapt.h#L104) | Fill defaults only; host supplies ladder/identity/initial index. No allocation or startup. |
+| [`fvm_sadapt_init`](../include/flashvm/sadapt.h#L110) | Validate full ladder/config and copy native state atomically. Keep state at a stable address: its copied config points into its own ladder; do not memcpy/move a live policy to a different address. |
+| [`fvm_sadapt_observe`](../include/flashvm/sadapt.h#L118) | Validate and consume one report; copy KEEP/INSUFFICIENT or a pending SHRINK/GROW hint. Failure preserves state/decision. No negotiation, callbacks, I/O or geometry change. |
+| [`fvm_sadapt_commit`](../include/flashvm/sadapt.h#L125) | Acknowledge the exact pending geometry after control ACK; update current and begin cooldown. Wrong selection/no proposal CONFLICT. |
+| [`fvm_sadapt_reject`](../include/flashvm/sadapt.h#L130) | Abandon pending candidate, preserve current and begin cooldown; no remote rollback. |
+| [`fvm_sadapt_feedback_write`](../include/flashvm/sadapt.h#L135) | Encode compact tag-zero report from validated counts into caller storage; output/used atomic. |
+| [`fvm_sadapt_feedback_read`](../include/flashvm/sadapt.h#L139) | Verify one record and copy report only on OK; prefix/checksum errors propagate, output/used atomic. |
 
 All caller state, input reports and output decisions must be disjoint and used
 serially. No VM/GC references or process-global mutable state are retained.
@@ -146,11 +146,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:111](../include/flashvm/sadapt.h#L111) |
-| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:96](../include/flashvm/sadapt.h#L96) |
-| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:119](../include/flashvm/sadapt.h#L119) |
-| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../include/flashvm/sadapt.h#L117) |
-| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:100](../include/flashvm/sadapt.h#L100) |
-| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:106](../include/flashvm/sadapt.h#L106) |
-| `fvm_sadapt_reject` | function | [include/flashvm/sadapt.h:114](../include/flashvm/sadapt.h#L114) |
+| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:125](../include/flashvm/sadapt.h#L125) |
+| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:104](../include/flashvm/sadapt.h#L104) |
+| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:139](../include/flashvm/sadapt.h#L139) |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:135](../include/flashvm/sadapt.h#L135) |
+| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:110](../include/flashvm/sadapt.h#L110) |
+| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:118](../include/flashvm/sadapt.h#L118) |
+| `fvm_sadapt_reject` | function | [include/flashvm/sadapt.h:130](../include/flashvm/sadapt.h#L130) |
 <!-- source-links:end -->

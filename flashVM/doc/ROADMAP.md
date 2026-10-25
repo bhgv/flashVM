@@ -1054,7 +1054,7 @@ ASan+UBSan — по 7/7. Входы JIT проверены на Linux x64; NO_OS
 исходному объекту, как has_own_property в закреплённом script_object.rs. Запрос
 не читает приватные данные фасада и свойства родителя, сохраняет правила
 регистра версии SWF. Host-поведение прежнее. Цепочки вложенных/повреждённых
-фасадов обходятся итеративно с пределом; цикл возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+фасадов обходятся итеративно с пределом; цикл возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 
 object_super_membership воспроизвёл сбой v0.425. Проверены SWF5–8 и host, C API и
 заимствованный Object.hasOwnProperty.call, NUL в имени, регистр, наследуемые и
@@ -1187,7 +1187,7 @@ Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd; ссылки в WATCH_THROW.md.
 Первый продолжает присваивание и отдельно обрабатывает наследуемый setter;
 второй заменяет присваиваемое значение на undefined при script-исключении.
 
-[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) сохраняет граф исключения до очистки pending-состояния.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L9) сохраняет граф исключения до очистки pending-состояния.
 Явный корень защищает строки, объекты и циклы во время setter/GC. Деструктор
 восстанавливает владение pending-значением до снятия корня и выполняется раньше
 окружающего корня владельца поиска. Отказ выделения до приостановки сохраняет
@@ -1198,7 +1198,7 @@ object_watch_throw воспроизвёл ошибку v0.431. Проверен�
 успех/исключение setter и приоритет ошибок. Самоцикличный объект исключения
 переживает настоящий GC внутри setter, где pending-состояние приостановлено.
 Прежние тесты строк с NUL и JIT теперь ожидают запись undefined при loaded throw.
-[FVM_ERROR](../include/flashvm/flashvm.h#L43) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
+[FVM_ERROR](../include/flashvm/flashvm.h#L45) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
 эталона не заявляется. Нативная длина/ресурсы, метатаблицы, пределы рекурсии и
 полная совместимость требуют проверок. Все девять стадий остаются открытыми.
 
@@ -1381,7 +1381,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 закреплённый avm1/value.rs type_of проверяет as_function, а не общую вызываемость.
 
 object_super_typeof воспроизвёл прежний результат `function`, затем проверяет
-host/SWF5–8, запись C-helper в исходный [FVM_Value](../include/flashvm/value.h#L24), Function, экземпляры, GC и
+host/SWF5–8, запись C-helper в исходный [FVM_Value](../include/flashvm/value.h#L26), Function, экземпляры, GC и
 повтор, отсутствие вызова конструктора и сохранение прямого super.
 jit_object_super_typeof повторяет TypeOf в интерпретаторе и двух режимах JIT с
 настоящими нативными входами. Остальные рефлексия/преобразования super и все
@@ -1435,7 +1435,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 
 ## v0.444 — корни идентичности вызова без выделения памяти
 
-[FVM_CallScope](../src/core/call_scope.hpp#L8) удерживает сохранённые/активные constructor, function и owner
+[FVM_CallScope](../src/core/call_scope.hpp#L9) удерживает сохранённые/активные constructor, function и owner
 через шесть встроенных root-frame. Публикация полной цепочки и восстановление
 прежней идентичности больше не выделяют временный вектор. Вложенные вызовы и
 раскрутка исключения сохраняют начало корней вызывающей стороны. Это изменение
@@ -1623,7 +1623,7 @@ AGG/NO_OS_PORTS на Linux/heap-global ASan+UBSan — по 6/6. Первый п�
 
 ## v0.453 — статусы resolver и исходные нативные интерфейсы
 
-Наличие resolver отделено от статуса callback. Реальный [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) от
+Наличие resolver отделено от статуса callback. Реальный [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L49) от
 обработчика, возвращённого метода или отозванного RPC-интерфейса передаётся
 без маскировки под отсутствие hook и без повторного вызова через fallback.
 Проверки интерпретатора/JIT включают эти ошибки, super и счётчики вызовов.
@@ -1690,7 +1690,7 @@ CallFunction в трёх режимах JIT/интерпретатора. Пол
 
 ## v0.457 — снимок аргументов прямого глобального вызова
 
-[fvm_call_bytes](../include/flashvm/value.h#L98) копирует аргументы в вектор с GC-корнем до очистки результата
+[fvm_call_bytes](../include/flashvm/value.h#L148) копирует аргументы в вектор с GC-корнем до очистки результата
 и поиска Function. Результат может совпадать с аргументом; изменение исходного
 массива callback не меняет активный вызов. Внешние строковые буферы по-прежнему
 должны жить до конца вызова. Обычный GC-барьер нативных callbacks сохранён.
@@ -1738,7 +1738,7 @@ host/SWF4–8, глобальные и методные обёртки, изме
 
 ## v0.460 — корни аргументов конструктора до поиска глобального имени
 
-[fvm_construct_bytes](../include/flashvm/value.h#L155) создаёт снимок аргументов с GC-корнем до поиска конструктора.
+[fvm_construct_bytes](../include/flashvm/value.h#L227) создаёт снимок аргументов с GC-корнем до поиска конструктора.
 Getter/resolver может изменить исходный массив или вызвать GC до начала
 построения Function; зарегистрированная C-фабрика также получает стабильный
 снимок. Обычный нативный барьер сохранён. Выход остаётся указателем на Object;
@@ -1773,7 +1773,7 @@ Stack ASan/LeakSanitizer отключены; все стадии и другие
 
 ## v0.462 — снимок аргументов прямого конструктора Function
 
-[fvm_function_construct](../include/flashvm/function.h#L69) удерживает незакреплённую Function и копирует аргументы
+[fvm_function_construct](../include/flashvm/function.h#L85) удерживает незакреплённую Function и копирует аргументы
 с GC-корнями до нативной фабрики или чтения prototype. Getter может собрать
 мусор и изменить исходный массив до вызова конструктора. Внешние строковые
 буферы остаются ответственностью вызывающего; нативный GC-барьер сохранён.
@@ -1804,7 +1804,7 @@ function_construct_native_result воспроизвёл ошибку и пров
 
 ## v0.464 — прямой Function-вызов использует удерживаемый снимок
 
-[fvm_function_invoke](../include/flashvm/function.h#L65) передаёт callback копию аргументов вместо изменяемого
+[fvm_function_invoke](../include/flashvm/function.h#L79) передаёт callback копию аргументов вместо изменяемого
 массива хоста. Результат очищается после копирования и может совпадать с любым
 аргументом. Ошибки проверки/OOM очищают выход; внешние строки остаются
 ответственностью вызывающего. Раскладка корневого кадра и GC-барьер сохранены.
@@ -1919,7 +1919,7 @@ Object/Number в accessor, native accessor, наследуемые/смешан�
 Внутреннее чтение prototype теперь получает кэшированную Function-обёртку
 собственного native method, не вызывая callback. Сохраняются source-version
 регистр, приоритет data/accessor и отсутствие поиска по наследованию.
-Общий helper возвращает [FVM_Result](../include/flashvm/flashvm.h#L40): ошибки создания обёртки передаются через
+Общий helper возвращает [FVM_Result](../include/flashvm/flashvm.h#L42): ошибки создания обёртки передаются через
 конструкторы, instanceof, ImplementsOp и регистрацию MovieClip.
 Расширены function_constructor_stored_prototype (холодный и тёплый кэш,
 SWF4–8/host, GC, instanceof, три режима NewObject) и
@@ -2756,7 +2756,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L152) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L196) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -2834,7 +2834,7 @@ PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
 
 ### v0.555 — allocation-free native S16 block mixing
 
-Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L131) validates every input before output,
+Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L179) validates every input before output,
 sums equal-rate/channel interleaved S16 exactly in a bounded signed-long
 accumulator and saturates once. Short/exhausted inputs become silence; a caller
 chooses output duration. No allocation, context, device, callbacks, resampling or
@@ -2865,7 +2865,7 @@ platform acceptance остаются открытыми. No roadmap stage is clo
 ### v0.556 — native StopSounds and observable tutorial execution modes
 
 Implemented / реализовано: StopSounds now emits a fixed semantic helper call
-through [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) and the same [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) service used by the
+through [fvm_jit_stop_sounds](../src/jit/effects.cpp#L9) and the same [fvm_audio_stop_all](../include/flashvm/multimedia.h#L120) service used by the
 interpreter. The action consumes no operands, preserves lower stack values and
 attempts every active context output in registration order, returning the first
 failure. Successful channels become inactive; failures remain retryable. The
@@ -2902,8 +2902,8 @@ unregistered snapshots, add codecs or certify physical/foreign-OS playback.
 
 ### v0.557 — native ToggleQuality with shared stage policy
 
-Implemented / реализовано: ToggleQuality lowers through [fvm_jit_toggle_quality](../src/jit/display.cpp#L7)
-to the existing allocation-free [fvm_stage_toggle_quality](../include/flashvm/stage.h#L25) service. It preserves
+Implemented / реализовано: ToggleQuality lowers through [fvm_jit_toggle_quality](../src/jit/display.cpp#L9)
+to the existing allocation-free [fvm_stage_toggle_quality](../include/flashvm/stage.h#L31) service. It preserves
 stack operands, context isolation and the remembered BEST/reset policy. Normal
 source checkpoints still gate delivery and later failures do not roll back the
 scalar transition. Unknown-record rejection and independent nested fallback
@@ -3551,20 +3551,20 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
-| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
-| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
-| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
-| `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:7](../src/jit/effects.cpp#L7) |
-| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:7](../src/jit/display.cpp#L7) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:179](../include/flashvm/multimedia.h#L179) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:120](../include/flashvm/multimedia.h#L120) |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:148](../include/flashvm/value.h#L148) |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:9](../src/core/call_scope.hpp#L9) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:227](../include/flashvm/value.h#L227) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:85](../include/flashvm/function.h#L85) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
+| `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:9](../src/jit/effects.cpp#L9) |
+| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:9](../src/jit/display.cpp#L9) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:31](../include/flashvm/stage.h#L31) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:196](../include/flashvm/swf_sound.h#L196) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:9](../src/core/watch_write_scope.hpp#L9) |
 <!-- source-links:end -->

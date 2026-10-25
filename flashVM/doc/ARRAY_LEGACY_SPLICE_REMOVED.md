@@ -8,7 +8,7 @@ Property-aware путь больше не вызывает getter при фор�
 Бюджет включает вложенные преобразования границ в рамках того же вызова.
 
 Созданный removed/копируемый результат удерживается allocation-free корнем
-[FVM_ObjectRootScope](../src/core/object_root_scope.hpp#L6) до завершения native-метода. Корень не меняет calling-owner
+[FVM_ObjectRootScope](../src/core/object_root_scope.hpp#L8) до завершения native-метода. Корень не меняет calling-owner
 и восстанавливается при возвратах и исключениях. Используется также для общих
 slice/splice результатов. Корень защищает graph/строки при поздних callback.
 
@@ -57,5 +57,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ObjectRootScope` | class | [src/core/object_root_scope.hpp:6](../src/core/object_root_scope.hpp#L6) |
+| `FVM_ObjectRootScope` | class | [src/core/object_root_scope.hpp:8](../src/core/object_root_scope.hpp#L8) |
 <!-- source-links:end -->

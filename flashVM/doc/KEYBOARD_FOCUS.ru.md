@@ -20,7 +20,7 @@ ClipActions. SDL-плеер сам не выбирает клип. Хост мо
 нативным физическим предком, отклоняются. Проверяется закрытое состояние сцены,
 а не заменяемые скриптом свойства `_parent`.
 
-Успех — [`FVM_OK`](../include/flashvm/flashvm.h#L42): прежний выбор атомарно заменяется новым. Контекст удерживает
+Успех — [`FVM_OK`](../include/flashvm/flashvm.h#L44): прежний выбор атомарно заменяется новым. Контекст удерживает
 сильный корень GC на клип и достижимую сцену; дополнительный pin на время выбора
 не нужен. У прежнего клипа снимается только этот корень, остальные ссылки, pins
 и регистрации слушателя сохраняются. Скрипт не исполняется, состояние клавиатуры
@@ -29,16 +29,16 @@ ClipActions. SDL-плеер сам не выбирает клип. Хост мо
 ограничен [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L88): 256 посещённых узлов, включая
 сам выбранный клип.
 
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) — неверный контекст, чужой объект, тип/прототип, удалённый
-клип или повреждённое закрытое состояние. [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) — отказ памяти при
-проверке. [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) — чрезмерная/циклическая цепочка предков или перехваченное
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) — неверный контекст, чужой объект, тип/прототип, удалённый
+клип или повреждённое закрытое состояние. [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) — отказ памяти при
+проверке. [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) — чрезмерная/циклическая цепочка предков или перехваченное
 непредвиденное исключение C++. При ошибке прежний выбор сохраняется. Владение
 userdata не передаётся, обращения к устройствам ОС нет.
 
 ## fvm_input_get_keyboard_focus
 
 `fvm_input_get_keyboard_focus(context, out)` принимает живой заимствованный
-контекст и ненулевой принадлежащий вызывающему `FVM_Object **out`. При [`FVM_OK`](../include/flashvm/flashvm.h#L42)
+контекст и ненулевой принадлежащий вызывающему `FVM_Object **out`. При [`FVM_OK`](../include/flashvm/flashvm.h#L44)
 записывает заимствованный указатель на клип либо null. Новый pin не создаётся:
 для хранения указателя после сброса/смены фокуса нужен обычный корень GC.
 
@@ -48,18 +48,18 @@ userdata не передаётся, обращения к устройствам
 скрытие или смена родителя живого клипа не сбрасывают выбор. Скриптовые getters
 и уведомления не вызываются.
 
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) — неверный контекст/выход либо повреждённое состояние;
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) — отказ памяти при проверке; [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) — чрезмерная цепочка
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) — неверный контекст/выход либо повреждённое состояние;
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) — отказ памяти при проверке; [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) — чрезмерная цепочка
 предков либо непредвиденное перехваченное исключение C++. Ошибка сохраняет и
 выход, и выбор. Запрос пустого выбора не выделяет память.
 
 ## Доставка и время жизни
 
-[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) проверяет снимок и удалённость выбранного клипа,
+[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108) проверяет снимок и удалённость выбранного клипа,
 затем подготавливает защищённый корнями список: выбранный клип первым, далее
 слушатели Key в порядке регистрации. Только после успешной подготовки публикует
 новое состояние клавиатуры. Каждый получает ноль аргументов и собственный объект
-в `this`; коды доступны через Key или [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L71). Если выбранный
+в `this`; коды доступны через Key или [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L77). Если выбранный
 клип также явно зарегистрирован слушателем Key, он получает оба вызова: каналы
 независимы, устранения повторов между ними нет. Выбор сам по себе не добавляет
 клип в Key._listeners и не расходует лимит регистраций.
@@ -78,7 +78,7 @@ userdata не передаётся, обращения к устройствам
 синхронизации. Уничтожение и сборка/освобождение GC запрещают оба вызова, обычный
 callback клавиатуры допускает их. Уничтожение контекста снимает корень и остаётся
 запрещённым во время доставки. Выбор, физическое состояние и регистрации не
-сериализуются; [`fvm_load_memory`](../include/flashvm/flashvm.h#L72), замена Key и [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L73) их
+сериализуются; [`fvm_load_memory`](../include/flashvm/flashvm.h#L90), замена Key и [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L81) их
 автоматически не снимают. Хост должен явно сбросить выбор при выгрузке ролика
 или передаче ввода другому интерфейсу. Потеря фокуса ОС отдельно сбрасывает
 физическое состояние клавиатуры.
@@ -87,7 +87,7 @@ callback клавиатуры допускает их. Уничтожение к
 
 [Исполняемый C89-пример](../examples/embedding/keyboard_listeners/README.md)
 сравнивает слушателя Key и явный выбор клипа, без окна и устройств. После
-установки стандартных объектов он вызывает [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L95) и сразу
+установки стандартных объектов он вызывает [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L120) и сразу
 выбирает возвращённый заимствованный клип, защищая его до выделений памяти при
 назначении обработчиков. При любой ошибке освобождение завершает контекст.
 
@@ -100,7 +100,7 @@ callback клавиатуры допускает их. Уничтожение к
 памяти, ошибку подготовки и сброс null без выделения памяти. Это тесты VM/хоста,
 а не приёмка физической клавиатуры или полной совместимости фокуса Flash.
 
-[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L101).
+[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L123).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -111,18 +111,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:73](../include/flashvm/keyboard.h#L73) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:95](../include/flashvm/movieclip.h#L95) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:77](../include/flashvm/keyboard.h#L77) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:102](../include/flashvm/keyboard.h#L102) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:81](../include/flashvm/keyboard.h#L81) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:97](../include/flashvm/keyboard.h#L97) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../include/flashvm/flashvm.h#L90) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:120](../include/flashvm/movieclip.h#L120) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:88](../src/standard/movieclip_constants.h#L88) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:133](../src/core/runtime.hpp#L133) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:123](../include/flashvm/keyboard.h#L123) |
 <!-- source-links:end -->

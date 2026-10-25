@@ -2,7 +2,7 @@
 
 v0.333 extracts the existing localToGlobal/globalToLocal operation from the large
 MovieClip implementation into handlers/clip_point.cpp. The value-based C89 entry
-[fvm_exec_clip_point](../include/flashvm/execution.h#L65)(context, clip, reverse, point) accepts an object-valued point;
+[fvm_exec_clip_point](../include/flashvm/execution.h#L76)(context, clip, reverse, point) accepts an object-valued point;
 reverse=0 projects local pixels to physical world pixels, nonzero performs the
 inverse. The methods retain their existing positions in the native callback table,
 so serialized identities do not change. Each native adapter occupies its own file.
@@ -23,7 +23,7 @@ Those loaded-Flash policy differences and exact twip conversion remain open;
 this extraction makes no new Flash semantic compatibility claim.
 
 В v0.333 обработчики localToGlobal/globalToLocal вынесены в общий C89-сервис
-[fvm_exec_clip_point](../include/flashvm/execution.h#L65) и два отдельных нативных адаптера. Прежние позиции callbacks
+[fvm_exec_clip_point](../include/flashvm/execution.h#L76) и два отдельных нативных адаптера. Прежние позиции callbacks
 сохранены. Сервис принимает клип, направление и объект-точку, без байткода и
 стека интерпретатора; координаты задаются в пикселях физической сцены.
 
@@ -71,5 +71,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:76](../include/flashvm/execution.h#L76) |
 <!-- source-links:end -->

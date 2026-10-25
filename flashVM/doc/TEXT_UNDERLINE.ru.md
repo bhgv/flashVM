@@ -1,13 +1,13 @@
 # Подчёркивание по метрикам шрифта
 
-[`fvm_font_underline_metrics`](../include/flashvm/font.h#L72) копирует центр и полную толщину подчёркивания
+[`fvm_font_underline_metrics`](../include/flashvm/font.h#L90) копирует центр и полную толщину подчёркивания
 масштабируемого шрифта в пикселях без хинтинга; положительная y направлена вниз
 от базовой линии. FreeType нормализует метрики исходного формата:
 [руководство](https://freetype.org/freetype2/docs/tutorial/step2.html) описывает
 центр подчёркивания и масштабирование единиц шрифта. Толщина не подбирается.
 
-Аргументы: заимствованный шрифт и обязательный выход [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L34).
-[FVM_OK](../include/flashvm/flashvm.h#L42) публикует числа, которые переживают шрифт. При ошибке выход обнуляется:
+Аргументы: заимствованный шрифт и обязательный выход [`FVM_FontUnderlineMetrics`](../include/flashvm/font.h#L40).
+[FVM_OK](../include/flashvm/flashvm.h#L44) публикует числа, которые переживают шрифт. При ошибке выход обнуляется:
 отсутствующий выход/шрифт с поддержкой шрифтов даёт INVALID_ARGUMENT;
 отсутствующие или неположительные масштабированные метрики — UNSUPPORTED.
 NO_FONTS отклоняет отсутствующий выход, иначе обнуляет его и даёт UNSUPPORTED.
@@ -24,7 +24,7 @@ advances и подстановки глифов не изменены. Это н
 
 ## Независимые контуры строк (v0.838)
 
-[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L180) заимствует неизменяемую раскладку, индекс
+[`fvm_text_layout_line_underline_path`](../include/flashvm/text_layout.h#L213) заимствует неизменяемую раскладку, индекс
 строки, центр/толщину из метрик шрифта и обязательный выход. Результат —
 независимый замкнутый прямоугольник от line.x до line.x+advance на baseline+center.
 Пробелы и знаковый межбуквенный интервал включены. При нулевом advance результат
@@ -48,7 +48,7 @@ ToBoolean; null/undefined сохраняют стиль. Снимки текущ
 и сбрасывает кэш; setNewTextFormat влияет только на будущий текст. До принятия
 формата текущий шрифт должен предоставить пригодные метрики подчёркивания.
 
-[`fvm_textfield_path`](../include/flashvm/standard_text.h#L77) добавляет полосу каждой строки с положительным advance
+[`fvm_textfield_path`](../include/flashvm/standard_text.h#L91) добавляет полосу каждой строки с положительным advance
 после контуров глифов, с тем же gutter и выравниванием поля с переносами и без.
 Пробелы и знаковый межбуквенный интервал включены. textWidth/textHeight,
 getTextExtent и расстояния baseline не меняются; отдельные глифы не декорируются.
@@ -64,7 +64,7 @@ v0.841: `textfield_underline_missing.cpp` изменяет толщину post �
 
 v0.842: `jit_textfield_underline.cpp` выполняет AVM1 SetMember/CallMethod в интерпретаторе, подключённом нативном коде и автоматическом JIT, проверяя полосу из пяти команд, неизменные метрики, счётчики нативного входа и баланс GC. `text_underline_os_ports.cpp` разделяет одну неизменяемую раскладку между четырьмя настоящими OS-потоками после уничтожения шрифта; по 128 итераций экспортируют независимые полосы с разными параметрами.
 
-v0.843: [C89-пример](../examples/embedding/text_layout/README.md) добавляет --underline, копии метрик шрифта, независимые полосы и проверку реального RGBA-пикселя (1,40), alpha 255. Метаданные глифов/bidi и метрики прежние; три полосы добавляют 15 команд. Новые демонстрируемые API: [`fvm_path_append`](../include/flashvm/path.h#L67) копирует временные полосы с единичной матрицей, после возврата источник освобождается; [`fvm_path_count`](../include/flashvm/path.h#L56) читает число команд без выделений. Контуры переживают шрифт/раскладку; VM, окно и устройство не нужны.
+v0.843: [C89-пример](../examples/embedding/text_layout/README.md) добавляет --underline, копии метрик шрифта, независимые полосы и проверку реального RGBA-пикселя (1,40), alpha 255. Метаданные глифов/bidi и метрики прежние; три полосы добавляют 15 команд. Новые демонстрируемые API: [`fvm_path_append`](../include/flashvm/path.h#L91) копирует временные полосы с единичной матрицей, после возврата источник освобождается; [`fvm_path_count`](../include/flashvm/path.h#L72) читает число команд без выделений. Контуры переживают шрифт/раскладку; VM, окно и устройство не нужны.
 
 ## Пересечения и правила заливки (v0.844)
 
@@ -105,11 +105,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:72](../include/flashvm/font.h#L72) |
-| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:34](../include/flashvm/font.h#L34) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_append` | function | [include/flashvm/path.h:67](../include/flashvm/path.h#L67) |
-| `fvm_path_count` | function | [include/flashvm/path.h:56](../include/flashvm/path.h#L56) |
-| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:180](../include/flashvm/text_layout.h#L180) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../include/flashvm/standard_text.h#L77) |
+| `fvm_font_underline_metrics` | function | [include/flashvm/font.h:90](../include/flashvm/font.h#L90) |
+| `FVM_FontUnderlineMetrics` | struct | [include/flashvm/font.h:40](../include/flashvm/font.h#L40) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_append` | function | [include/flashvm/path.h:91](../include/flashvm/path.h#L91) |
+| `fvm_path_count` | function | [include/flashvm/path.h:72](../include/flashvm/path.h#L72) |
+| `fvm_text_layout_line_underline_path` | function | [include/flashvm/text_layout.h:213](../include/flashvm/text_layout.h#L213) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:91](../include/flashvm/standard_text.h#L91) |
 <!-- source-links:end -->

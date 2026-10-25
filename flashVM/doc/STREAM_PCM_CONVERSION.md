@@ -41,9 +41,9 @@ Every OK advances output or block position. EOF is NOT_FOUND, preserving outputs
 
 | API | Contract |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L48) | Validate explicit output rate/channels and borrow a prepared native PCM snapshot; copy source metadata/count. INVALID_ARGUMENT for bad args, UNSUPPORTED for codecs/host representation. No allocation; errors preserve state. |
-| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L67) | Positive max_frames; exact chunk.struct_size; enough scalar capacity and nonnull PCM for nonempty results. Bounded planning validates capacity before output. EOF/errors preserve PCM/chunk/written/state. No VM, I/O, allocation, callbacks or implicit retry. |
-| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L73) | Set a valid block/source offset <= actual sample_count; block_count/0 is EOF. Start a new grid with phase zero. Invalid positions preserve state. Already queued/played output is not rewound. |
+| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L52) | Validate explicit output rate/channels and borrow a prepared native PCM snapshot; copy source metadata/count. INVALID_ARGUMENT for bad args, UNSUPPORTED for codecs/host representation. No allocation; errors preserve state. |
+| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L75) | Positive max_frames; exact chunk.struct_size; enough scalar capacity and nonnull PCM for nonempty results. Bounded planning validates capacity before output. EOF/errors preserve PCM/chunk/written/state. No VM, I/O, allocation, callbacks or implicit retry. |
+| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L83) | Set a valid block/source offset <= actual sample_count; block_count/0 is EOF. Start a new grid with phase zero. Invalid positions preserve state. Already queued/played output is not rewound. |
 
 Snapshot ownership stays with the host until every converter/reader is quiesced.
 Source runtime/context may be destroyed after snapshot preparation. Serialize each
@@ -100,7 +100,7 @@ Validation at v0.752: 73 selected native regression checks pass (two resource-pl
 
 ## Continuous segment interpolation (v0.803)
 
-[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L56) has the same arguments, statuses, borrowed
+[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L62) has the same arguments, statuses, borrowed
 snapshot lifetime and single-owner/native-thread contract as init. It selects linear
 interpolation against the first sample of the next nonempty block. Only segment EOF
 holds the final value. Movie-frame gaps and empty blocks contain no implicit silence.
@@ -143,8 +143,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../include/flashvm/swf_stream_convert.h#L48) |
-| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../include/flashvm/swf_stream_convert.h#L56) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../include/flashvm/swf_stream_convert.h#L67) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:52](../include/flashvm/swf_stream_convert.h#L52) |
+| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:62](../include/flashvm/swf_stream_convert.h#L62) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:75](../include/flashvm/swf_stream_convert.h#L75) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:83](../include/flashvm/swf_stream_convert.h#L83) |
 <!-- source-links:end -->

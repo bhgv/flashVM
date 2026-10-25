@@ -1,7 +1,7 @@
 # Shared Delete2 references / Общий обработчик ссылок Delete2
 
 v0.257 moves Delete2 operand coercion and reference resolution into one C89 entry,
-[`fvm_exec_delete_reference`](../include/flashvm/execution.h#L391). The interpreter now checks operand availability,
+[`fvm_exec_delete_reference`](../include/flashvm/execution.h#L521). The interpreter now checks operand availability,
 selects its target, calls the service and stores the result. Inputs are managed
 scope/target/this objects and a value: no bytecode, stack or raw local map is used.
 
@@ -12,7 +12,7 @@ in SWF5+, then a literal variable name if no object resolves. Plain references
 use managed scopes and target/global fallback; exact this/_global handling is
 included, while remaining historical name-case/this-cell semantics stay open.
 
-[`fvm_exec_scope_member`](../include/flashvm/execution.h#L385) reads a final member only after checking its presence.
+[`fvm_exec_scope_member`](../include/flashvm/execution.h#L513) reads a final member only after checking its presence.
 Missing members allow a complete retry in an outer scope; present undefined,
 null or primitive values stop retries. Consequently an inner undefined owner
 cannot cause deletion of an unrelated outer object. The final property being
@@ -63,6 +63,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:391](../include/flashvm/execution.h#L391) |
-| `fvm_exec_scope_member` | function | [include/flashvm/execution.h:385](../include/flashvm/execution.h#L385) |
+| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:521](../include/flashvm/execution.h#L521) |
+| `fvm_exec_scope_member` | function | [include/flashvm/execution.h:513](../include/flashvm/execution.h#L513) |
 <!-- source-links:end -->

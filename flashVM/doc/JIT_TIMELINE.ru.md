@@ -13,7 +13,7 @@ NextFrame, PreviousFrame, Play, Stop, GotoFrame, GotoLabel и GotoFrame2 исп�
 из нативных помощников общий встроенный сервис кадров, обходя подменяемые методы
 скрипта. Фиксированные команды работают с активным display target. Отсутствующий
 выбранный клип при существующем базовом таймлайне означает отсутствие действия;
-без базового таймлайна возвращается [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Отсутствующая метка
+без базового таймлайна возвращается [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Отсутствующая метка
 игнорируется, как в интерпретаторе.
 
 GotoFrame сохраняет UI16 с нулевой базой как числовую константу с базой один.
@@ -57,5 +57,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

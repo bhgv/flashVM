@@ -1,5 +1,13 @@
 /* Independent integer fixtures for the pinned current-player nondecimal digit policy. */
-struct LoadedRadixExpected { unsigned radix; const char *sentinel; const char *maximum; const char *positive; const char *negative; };
+struct LoadedRadixExpected
+{
+    unsigned radix;
+    const char *sentinel;
+    const char *maximum;
+    const char *positive;
+    const char *negative;
+};
+
 static const LoadedRadixExpected loaded_radix_expected[] = {
     {2, "-/0000000000000000000000000000000", "1111111111111111111111111111111", "101010", "-101010"},
     {3, "-/.//./..././/0.0./0.", "12112122212110202101", "1120", "-1120"},
@@ -34,5 +42,4 @@ static const LoadedRadixExpected loaded_radix_expected[] = {
     {33, "-/\033\024\026\023\033.", "1lsqtl1", "19", "-19"},
     {34, "-/#(\017\026\025\026", "1d8xqrp", "18", "-18"},
     {35, "-/+\021..\022\031", "15v22um", "17", "-17"},
-    {36, "-\015\036\0340\015\034", "zik0zj", "16", "-16"}
-};
+    {36, "-\015\036\0340\015\034", "zik0zj", "16", "-16"}};

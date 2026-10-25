@@ -24,8 +24,11 @@
 #include <cstring>
 #include <cstdio>
 #include <new>
+
 namespace
 {
+
+
 /* Compute and return length. */
 FVM_Result length(FVM_Context *c, FVM_Object *o, unsigned long &out)
 {
@@ -35,23 +38,34 @@ FVM_Result length(FVM_Context *c, FVM_Object *o, unsigned long &out)
     FVM_Result r = fvm_object_get(c, o, "length", &value);
     double n = 0;
     if (r == FVM_OK)
+    {
         r = fvm_value_to_number(c, &value, &n);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (!(n == n) || !n || std::fabs(n) == HUGE_VAL)
+    {
         n = 0;
+    }
     n = std::fmod(n < 0 ? -std::floor(-n) : std::floor(n), 4294967296.0);
     if (n < 0)
+    {
         n += 4294967296.0;
+    }
     out = (unsigned long)n;
     return FVM_OK;
 }
+
 
 /* Read the current value. */
 FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &out, bool &present, bool *observable = 0)
 {
     if (observable)
+    {
         *observable = false;
+    }
     char key[32];
     std::sprintf(key, "%lu", index);
     FVM_Object *cursor = o;
@@ -76,12 +90,16 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
         {
             present = true;
             if (observable)
+            {
                 *observable = true;
+            }
             return fvm_object_get_no_index(c, o, key, &out);
         }
     }
     return cursor ? FVM_ERROR : FVM_OK;
 }
+
+
 /* Read legacy Array element data without invoking accessors or walking prototypes. */
 void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
 {
@@ -102,8 +120,11 @@ void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
     }
     fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
     if (slot != o->indexed.end())
+    {
         out = slot->second;
+    }
 }
+
 
 /* Read a signed raw own key without interpreting prototypes or invoking accessors. */
 void legacy_signed_element(FVM_Object *o, long index, FVM_Value &out)
@@ -118,14 +139,19 @@ void legacy_signed_element(FVM_Object *o, long index, FVM_Value &out)
     std::sprintf(key, "%ld", index);
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(key);
     if (property != o->properties.end())
+    {
         out = property->second;
+    }
     else
     {
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(key);
         if (accessor != o->accessors.end())
+        {
             fvm_base_accessor_data(accessor->second, out);
+        }
     }
 }
+
 
 /* Read own length storage, including lazy native Functions, without getters or inheritance. */
 FVM_Result legacy_length_data(FVM_Context *c, FVM_Object *o, FVM_Value &value)
@@ -134,58 +160,76 @@ FVM_Result legacy_length_data(FVM_Context *c, FVM_Object *o, FVM_Value &value)
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property =
         fvm_property_find(c, o->properties, fvm_detail::string("length"));
     if (property != o->properties.end())
+    {
         value = property->second;
+    }
     else
     {
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
             fvm_property_find(c, o->accessors, fvm_detail::string("length"));
         if (accessor != o->accessors.end())
         {
-            if (!fvm_base_accessor_data(accessor->second, value) &&
-                fvm_base_array_length_accessor(accessor->second) && o->resource_result_valid)
+            if (!fvm_base_accessor_data(accessor->second, value) && fvm_base_array_length_accessor(accessor->second) &&
+                o->resource_result_valid)
+            {
                 value = o->resource_result;
+            }
         }
         else
         {
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
                 fvm_property_find(c, o->methods, fvm_detail::string("length"));
             if (method != o->methods.end())
+            {
                 return fvm_function_wrap_entry(c, o, method->first, method->second, &value);
+            }
         }
     }
     return FVM_OK;
 }
 
+
 /* Capture own-data length once; deleted native accessors do not expose cached storage. */
-FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
-                               long *signed_length = 0)
+FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out, long *signed_length = 0)
 {
     if (signed_length)
+    {
         *signed_length = 0;
+    }
     FVM_Value value;
     FVM_Result status = legacy_length_data(c, o, value);
     if (status != FVM_OK)
+    {
         return status;
+    }
+
+
     /* [GC:] valueOf can remove its own length binding and collect during conversion. */
     FVM_ObjectRootScope roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);
     double number = 0;
     status = fvm_avm1_number(c, &value, &number);
     if (status != FVM_OK)
+    {
         return status;
+    }
     const long length = fvm_array_number_length(number);
     if (signed_length)
+    {
         *signed_length = length;
+    }
     out = length > 0 ? (unsigned long)length : 0;
     return FVM_OK;
 }
+
 
 /* Store native length through its live own representation, without setter/watch dispatch. */
 FVM_Result legacy_native_length(FVM_Object *o, double count)
 {
     if (o->resource_kind != FVM_RESOURCE_ARRAY)
+    {
         return FVM_OK;
-    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
-        o->accessors.find("length");
+    }
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find("length");
     if (accessor == o->accessors.end() || !fvm_base_array_length_accessor(accessor->second))
     {
         FVM_Value value;
@@ -201,15 +245,18 @@ FVM_Result legacy_native_length(FVM_Object *o, double count)
     return FVM_OK;
 }
 
+
 /* Apply native truncation after reading current raw data, then publish the live length slot. */
 FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_ArrayWorkScope &work);
 
+
 /* Extend the live native length before storing an own element, including recreated data slots. */
 FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value &value)
-{
-    /* [GC:] Length coercion can detach the incoming element before its own publication. */
+{ /* [GC:] Length coercion can detach the incoming element before its own publication. */
     fvm_detail::vector<FVM_Value> retained;
     retained.push_back(value);
+
+
     FVM_ValueVectorRootScope roots(c, retained);
     if (o->resource_kind == FVM_RESOURCE_ARRAY)
     {
@@ -217,19 +264,26 @@ FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long ind
         long current = 0;
         FVM_Result status = legacy_data_length(c, o, ignored, &current);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if ((double)index >= current)
         {
+
+
             FVM_ArrayWorkScope work(c);
             status = legacy_set_length(c, o, index + 1, work);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
     }
     char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
     std::sprintf(key, "%lu", index);
     return fvm_base_store_data(c, o, key, *retained.begin(), false);
 }
+
 
 /* Copy one splice source by own presence/data; retain source properties until native length shrink. */
 FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long to)
@@ -240,14 +294,19 @@ FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from,
     int present = 0, removed = 0;
     FVM_Result status = fvm_object_has_own(c, o, source, &present);
     if (status != FVM_OK)
+    {
         return status;
+    }
     if (!present)
+    {
         return fvm_object_delete(c, o, destination, &removed);
+    }
     FVM_Value value;
     legacy_data_element(o, from, value);
     /* Copy source data without deleting it; native set_length removes trailing indices later. */
     return legacy_store_element(c, o, to, value);
 }
+
 
 /* Set signed raw length, deleting nonnegative native tails before readonly length handling. */
 FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_ArrayWorkScope &work)
@@ -257,21 +316,26 @@ FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_Ar
         FVM_Value previous;
         FVM_Result status = legacy_length_data(c, o, previous);
         if (status != FVM_OK)
+        {
             return status;
-        const long signed_old = previous.type == FVM_VALUE_NUMBER
-                                    ? fvm_array_number_length(previous.number) : 0;
+        }
+        const long signed_old = previous.type == FVM_VALUE_NUMBER ? fvm_array_number_length(previous.number) : 0;
         const unsigned long old = signed_old > 0 ? (unsigned long)signed_old : 0;
         for (unsigned long i = count > 0 ? (unsigned long)count : 0; i < old; ++i)
         {
             status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
             std::sprintf(key, "%lu", i);
             int removed = 0;
             status = fvm_object_delete(c, o, key, &removed);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         return legacy_native_length(o, count);
     }
@@ -281,12 +345,13 @@ FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_Ar
 }
 
 /* Store one signed own element, growing native length before readonly data handling. */
-FVM_Result legacy_store_signed_element(FVM_Context *c, FVM_Object *o, long index,
-                                        const FVM_Value &value, FVM_ArrayWorkScope &work)
-{
-    /* [GC:] A converted length may detach the value before raw signed storage. */
+FVM_Result
+legacy_store_signed_element(FVM_Context *c, FVM_Object *o, long index, const FVM_Value &value, FVM_ArrayWorkScope &work)
+{ /* [GC:] A converted length may detach the value before raw signed storage. */
     fvm_detail::vector<FVM_Value> retained;
     retained.push_back(value);
+
+
     FVM_ValueVectorRootScope roots(c, retained);
     if (o->resource_kind == FVM_RESOURCE_ARRAY)
     {
@@ -294,12 +359,16 @@ FVM_Result legacy_store_signed_element(FVM_Context *c, FVM_Object *o, long index
         long current = 0;
         FVM_Result status = legacy_data_length(c, o, ignored, &current);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (index >= current)
         {
             status = legacy_set_length(c, o, (double)index + 1, work);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
     }
     char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
@@ -307,16 +376,20 @@ FVM_Result legacy_store_signed_element(FVM_Context *c, FVM_Object *o, long index
     return fvm_base_store_data(c, o, key, *retained.begin(), false);
 }
 
+
 /* Write the current value. */
 FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value *value)
 {
     char key[32];
     std::sprintf(key, "%lu", index);
     if (value)
+    {
         return fvm_object_set(c, o, key, value);
+    }
     int deleted = 0;
     return fvm_object_delete(c, o, key, &deleted);
 }
+
 
 /* Resize the current value. */
 FVM_Result resize(FVM_Context *c, FVM_Object *o, unsigned long count)
@@ -327,6 +400,7 @@ FVM_Result resize(FVM_Context *c, FVM_Object *o, unsigned long count)
     fvm_value_number(&value, (double)count);
     return fvm_object_set(c, o, "length", &value);
 }
+
 
 /* Compute and return move. */
 FVM_Result move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long to)
@@ -339,9 +413,9 @@ FVM_Result move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long
     return r == FVM_OK ? write(c, o, to, present ? &value : 0) : r;
 }
 
+
 /* Compute and return integer. */
-FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int index,
-                   double fallback, double &out)
+FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int index, double fallback, double &out)
 {
     if (index >= n)
     {
@@ -350,17 +424,24 @@ FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned 
     }
     FVM_Result r = fvm_value_to_number(c, a + index, &out);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (!(out == out))
+    {
         out = 0;
+    }
     else
+    {
         out = out < 0 ? -std::floor(-out) : std::floor(out);
+    }
     return FVM_OK;
 }
 
+
 /* Coerce a supplied legacy slice index through signed wrapping Int32. */
-FVM_Result legacy_index(FVM_Context *c, unsigned int n, const FVM_Value *a,
-                         unsigned int index, double fallback, double &out)
+FVM_Result
+legacy_index(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int index, double fallback, double &out)
 {
     if (index >= n)
     {
@@ -369,28 +450,40 @@ FVM_Result legacy_index(FVM_Context *c, unsigned int n, const FVM_Value *a,
     }
     FVM_Result status = fvm_avm1_number(c, a + index, &out);
     if (status != FVM_OK)
+    {
         return status;
+    }
     if (!(out == out) || !out || std::fabs(out) == HUGE_VAL)
+    {
         out = 0;
+    }
     else
     {
         out = out < 0 ? -std::floor(-out) : std::floor(out);
         out = std::fmod(out, 4294967296.0);
         if (out < 0)
+        {
             out += 4294967296.0;
+        }
         if (out >= 2147483648.0)
+        {
             out -= 4294967296.0;
+        }
     }
     return FVM_OK;
 }
+
 
 /* Compute and return bound. */
 unsigned long bound(double n, unsigned long count)
 {
     if (n < 0)
+    {
         n += count;
+    }
     return n <= 0 ? 0 : n >= count ? count : (unsigned long)n;
 }
+
 
 /* Implement object for this subsystem. */
 void object(FVM_Value *out, FVM_Object *o)
@@ -402,20 +495,26 @@ void object(FVM_Value *out, FVM_Object *o)
     out->object = o;
 }
 
+
 /* Restore the numeric max-heap invariant while charging each bounded sift iteration. */
-FVM_Result sift(fvm_detail::vector<unsigned long> &values, size_t root, size_t count,
-                 FVM_ArrayWorkScope &work)
+FVM_Result sift(fvm_detail::vector<unsigned long> &values, size_t root, size_t count, FVM_ArrayWorkScope &work)
 {
     while (root < count / 2)
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         size_t child = root * 2 + 1;
         if (child + 1 < count && values[child] < values[child + 1])
+        {
             ++child;
+        }
         if (values[root] >= values[child])
+        {
             break;
+        }
         unsigned long value = values[root];
         values[root] = values[child];
         values[child] = value;
@@ -424,6 +523,7 @@ FVM_Result sift(fvm_detail::vector<unsigned long> &values, size_t root, size_t c
     return FVM_OK;
 }
 
+
 /* Sort candidate indices in ascending read order using project-owned contiguous storage. */
 FVM_Result sort_indices(fvm_detail::vector<unsigned long> &values, FVM_ArrayWorkScope &work)
 {
@@ -431,47 +531,64 @@ FVM_Result sort_indices(fvm_detail::vector<unsigned long> &values, FVM_ArrayWork
     {
         FVM_Result status = sift(values, i - 1, values.size(), work);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     for (size_t i = values.size(); i > 1; --i)
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         unsigned long value = values[0];
         values[0] = values[i - 1];
         values[i - 1] = value;
         status = sift(values, 0, i - 1, work);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     return FVM_OK;
 }
 
 /* Collect complete numeric names without truncating embedded NULs. */
 template <class T>
-FVM_Result names(fvm_detail::map<fvm_detail::string, T> &entries, unsigned long start,
-                 unsigned long end, fvm_detail::map<unsigned long, bool> &indices,
+
+
+FVM_Result names(fvm_detail::map<fvm_detail::string, T> &entries,
+                 unsigned long start,
+                 unsigned long end,
+                 fvm_detail::map<unsigned long, bool> &indices,
                  FVM_ArrayWorkScope &work)
 {
-    for (typename fvm_detail::map<fvm_detail::string, T>::iterator i = entries.begin();
-         i != entries.end(); ++i)
+    for (typename fvm_detail::map<fvm_detail::string, T>::iterator i = entries.begin(); i != entries.end(); ++i)
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         unsigned long index = 0;
-        if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index) &&
-            index >= start && index < end)
+        if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index) && index >= start &&
+            index < end)
+        {
             indices[index] = true;
+        }
     }
     return FVM_OK;
 }
 
+
 /* Snapshot observable indices; dense/cyclic chains keep ordinary sequential HasProperty behavior. */
-FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end,
-                       fvm_detail::vector<unsigned long> &out, bool &sequential,
-                       FVM_ArrayWorkScope &work)
+FVM_Result candidates(FVM_Object *source,
+                      unsigned long start,
+                      unsigned long end,
+                      fvm_detail::vector<unsigned long> &out,
+                      bool &sequential,
+                      FVM_ArrayWorkScope &work)
 {
     out.clear();
     sequential = false;
@@ -482,23 +599,36 @@ FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.begin();
-             i != cursor->indexed.end(); ++i)
+             i != cursor->indexed.end();
+             ++i)
         {
             status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             if (i->first >= start && i->first < end)
+            {
                 indices[i->first] = true;
+            }
         }
         status = names(cursor->properties, start, end, indices, work);
         if (status == FVM_OK)
+        {
             status = names(cursor->accessors, start, end, indices, work);
+        }
         if (status == FVM_OK)
+        {
             status = names(cursor->methods, start, end, indices, work);
+        }
         if (status != FVM_OK)
+        {
             return status;
+        }
         unsigned long span = end - start;
         if (indices.size() >= span / 2 + span % 2)
         {
@@ -513,14 +643,21 @@ FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end
         return FVM_OK;
     }
     for (fvm_detail::map<unsigned long, bool>::iterator i = indices.begin(); i != indices.end(); ++i)
+    {
         out.push_back(i->first);
+    }
     return sort_indices(out, work);
 }
 
+
 /* Copy huge sparse ranges, refreshing future indices after any getter or method materialization. */
-FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
-                         unsigned long start, unsigned long end, FVM_ArrayWorkScope &work,
-                         unsigned long offset = 0)
+FVM_Result sparse_slice(FVM_Context *c,
+                        FVM_Object *source,
+                        FVM_Object *result,
+                        unsigned long start,
+                        unsigned long end,
+                        FVM_ArrayWorkScope &work,
+                        unsigned long offset = 0)
 {
     unsigned long cursor = start;
     while (cursor < end)
@@ -529,21 +666,29 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
         bool sequential = false;
         FVM_Result status = candidates(source, cursor, end, indices, sequential, work);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (sequential)
         {
             for (; cursor < end; ++cursor)
             {
                 status = work.step();
                 if (status != FVM_OK)
+                {
                     return status;
+                }
                 FVM_Value value;
                 bool present = false;
                 status = get(c, source, cursor, value, present);
                 if (status == FVM_OK && present)
+                {
                     status = fvm_array_store_own(c, result, offset + cursor - start, value);
+                }
                 if (status != FVM_OK)
+                {
                     return status;
+                }
             }
             return FVM_OK;
         }
@@ -552,14 +697,20 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
         {
             status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             FVM_Value value;
             bool present = false, observable = false;
             status = get(c, source, indices[i], value, present, &observable);
             if (status == FVM_OK && present)
+            {
                 status = fvm_array_store_own(c, result, offset + indices[i] - start, value);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
             cursor = indices[i] + 1;
             if (observable)
             {
@@ -568,50 +719,74 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
             }
         }
         if (!refresh)
+        {
             return FVM_OK;
+        }
     }
     return FVM_OK;
 }
 
+
 /* Insert into signed own keys without invoking accessors, setters or watches. */
-FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
-                           const FVM_ArraySpliceBounds &bounds, FVM_Value *out,
+FVM_Result negative_splice(FVM_Context *c,
+                           FVM_Object *o,
+                           const FVM_Value *a,
+                           const FVM_ArraySpliceBounds &bounds,
+                           FVM_Value *out,
                            FVM_ArrayWorkScope &work)
 {
     FVM_Object *result = 0;
     FVM_Result status = fvm_array_create_like(c, 0, 0, &result, true);
     if (status != FVM_OK)
+    {
         return status;
+    }
+
+
     /* [GC:] Retain the removed array until every insertion and length write succeeds. */
     FVM_ObjectRootScope roots(c, result);
     for (unsigned int i = 0; i < bounds.added; ++i)
     {
         status = work.step();
         if (status != FVM_OK)
+        {
             return status;
-        status = legacy_store_signed_element(c, o,
-            (long)((double)bounds.negative_length + i),
-            a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], work);
+        }
+        status = legacy_store_signed_element(
+            c, o, (long)((double)bounds.negative_length + i), a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], work);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     status = legacy_set_length(c, o, (double)bounds.negative_length + bounds.added, work);
     if (status == FVM_OK)
+    {
         object(out, result);
+    }
     return status;
 }
 
+
 /* Copy the signed source range selected by loaded slice on a negative length. */
-FVM_Result negative_slice(FVM_Context *c, FVM_Object *o, long length,
-                           unsigned int n, const FVM_Value *a, FVM_Value *out,
-                           FVM_ArrayWorkScope &work)
+FVM_Result negative_slice(FVM_Context *c,
+                          FVM_Object *o,
+                          long length,
+                          unsigned int n,
+                          const FVM_Value *a,
+                          FVM_Value *out,
+                          FVM_ArrayWorkScope &work)
 {
     double first = 0;
     FVM_Result status = legacy_index(c, n, a, 0, 0, first);
     if (status != FVM_OK)
+    {
         return status;
+    }
     if (first < 0 && first + length < FVM_INT32_MIN_NUMBER)
+    {
         return FVM_UNSUPPORTED;
+    }
     long start = first < 0 ? 0 : length;
     long end = length;
     if (n > 1 && a[1].type != FVM_VALUE_UNDEFINED)
@@ -619,40 +794,60 @@ FVM_Result negative_slice(FVM_Context *c, FVM_Object *o, long length,
         double last = 0;
         status = legacy_index(c, n, a, 1, 0, last);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (last < 0 && last + length < FVM_INT32_MIN_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         end = last < 0 ? 0 : length;
     }
     double count = end > start ? (double)end - start : 0;
     if (count > FVM_INT32_MAX_NUMBER)
+    {
         return FVM_UNSUPPORTED;
+    }
     FVM_Object *result = 0;
-    status = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0,
-                                  (unsigned long)count, &result, true);
+    status =
+        fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0, (unsigned long)count, &result, true);
     if (status != FVM_OK)
+    {
         return status;
+    }
+
+
     /* [GC:] Retain copied managed values in the unfinished result until publication. */
     FVM_ObjectRootScope roots(c, result);
     for (unsigned long i = 0; i < (unsigned long)count; ++i)
     {
         status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         FVM_Value value;
         legacy_signed_element(o, (long)((double)start + i), value);
         status = fvm_array_store_own(c, result, i, value);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     object(out, result);
     return FVM_OK;
 }
 
+
 /* Run signed end operations with native length updates and borrowed length retention. */
-FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
-                         long length, unsigned int n, const FVM_Value *a,
-                         FVM_Value *out, FVM_ArrayWorkScope &work)
+FVM_Result negative_end(FVM_Context *c,
+                        FVM_Object *o,
+                        const char *method,
+                        long length,
+                        unsigned int n,
+                        const FVM_Value *a,
+                        FVM_Value *out,
+                        FVM_ArrayWorkScope &work)
 {
     const bool native = o->resource_kind == FVM_RESOURCE_ARRAY;
     bool pushing = !std::strcmp(method, "push");
@@ -662,12 +857,16 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
         double total = (double)length + n;
         /* Reject signed overflow before publishing any own element. */
         if (total > FVM_INT32_MAX_NUMBER || (double)n > FVM_INT32_MAX_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         for (unsigned int i = 0; i < n; ++i)
         {
             FVM_Result status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
             std::sprintf(key, "%ld", (long)(pushing ? (double)length + i : i));
             if (unshifting)
@@ -676,16 +875,21 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
                 status = fvm_object_delete(c, o, key, &removed);
             }
             if (status == FVM_OK)
-                status = legacy_store_signed_element(c, o,
-                    (long)(pushing ? (double)length + i : i), a[i], work);
+            {
+                status = legacy_store_signed_element(c, o, (long)(pushing ? (double)length + i : i), a[i], work);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         if (pushing || native)
         {
             FVM_Result status = legacy_set_length(c, o, total, work);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         fvm_value_number(out, total);
         return FVM_OK;
@@ -693,17 +897,23 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
     if (!std::strcmp(method, "shift"))
     {
         if (native && (double)length == FVM_INT32_MIN_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         /* [GC:] The native call barrier retains the raw result during length-tail deletion. */
         FVM_Value value;
         legacy_data_element(o, 0, value);
         FVM_Result status = native ? legacy_set_length(c, o, (double)length - 1, work) : FVM_OK;
         if (status == FVM_OK)
+        {
             *out = value;
+        }
         return status;
     }
     if ((double)length == FVM_INT32_MIN_NUMBER)
+    {
         return FVM_UNSUPPORTED;
+    }
     char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
     std::sprintf(key, "%ld", length - 1);
     FVM_Value value;
@@ -712,17 +922,28 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
     int removed = 0;
     FVM_Result status = fvm_object_delete(c, o, key, &removed);
     if (status == FVM_OK && native)
+    {
         status = legacy_set_length(c, o, (double)length - 1, work);
+    }
     if (status == FVM_OK)
+    {
         *out = value;
+    }
     return status;
 }
 
+
 /* Execute a borrowed method with captured splice bounds or caller-owned fast metadata.
  * [GC:] Fast metadata must contain no unrooted managed edges and lives through this call. */
-FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
-               const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
-               const FVM_ArraySpliceBounds *prepared, void *fast_data)
+FVM_Result run(FVM_Context *c,
+               FVM_Object *o,
+               const char *method,
+               unsigned int n,
+               const FVM_Value *a,
+               FVM_Value *out,
+               FVM_NativeFunction fast,
+               const FVM_ArraySpliceBounds *prepared,
+               void *fast_data)
 {
     FVM_ArraySpliceBounds local_bounds;
     if (!std::strcmp(method, "splice"))
@@ -731,7 +952,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         {
             FVM_Result status = fvm_array_splice_prepare(c, o, n, a, local_bounds);
             if (status != FVM_OK)
+            {
                 return status;
+            }
             prepared = &local_bounds;
         }
         if (prepared->rejected)
@@ -740,66 +963,94 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             return FVM_OK;
         }
     }
-    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
-                                  !std::strcmp(method, "concat") ||
-                                  (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse") ||
-                                                    !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn"))));
+
+
+    FVM_ArrayWorkScope work(c,
+                            !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
+                                !std::strcmp(method, "concat") ||
+                                (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse") ||
+                                                   !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn"))));
     if (prepared && prepared->negative_length < 0)
+    {
         return negative_splice(c, o, a, *prepared, out, work);
+    }
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
         FVM_Result status = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0, 0, &result, true);
         if (status != FVM_OK)
+        {
             return status;
+        }
         unsigned long total = 0;
         /* Read each array length at its turn, after earlier source getters have run. */
-        for (unsigned int k = 0; ; ++k)
+        for (unsigned int k = 0;; ++k)
         {
             status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             FVM_Value value;
             if (!k)
+            {
                 object(&value, o);
+            }
             else
+            {
                 value = a[k - 1];
+            }
             FVM_Object *source = value.type == FVM_VALUE_OBJECT ? value.object : 0;
-            bool spread = source && (source->resource_kind == FVM_RESOURCE_ARRAY || (!k && (!source->resource_kind || source->resource_kind == FVM_RESOURCE_OBJECT)));
+            bool spread = source && (source->resource_kind == FVM_RESOURCE_ARRAY ||
+                                     (!k && (!source->resource_kind || source->resource_kind == FVM_RESOURCE_OBJECT)));
             unsigned long count = 1;
             if (spread)
-                status = c->swf_loaded ? legacy_data_length(c, source, count)
-                                       : length(c, source, count);
+            {
+                status = c->swf_loaded ? legacy_data_length(c, source, count) : length(c, source, count);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
             if ((double)total + count > 4294967295.0)
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
             if (spread)
             {
                 if (c->swf_loaded)
-                {
-                    /* Historical concat defines a stored result slot even for missing source data. */
+                { /* Historical concat defines a stored result slot even for missing source data. */
                     for (unsigned long i = 0; i < count && status == FVM_OK; ++i)
                     {
                         status = work.step();
                         if (status != FVM_OK)
+                        {
                             break;
+                        }
                         FVM_Value element;
                         legacy_data_element(source, i, element);
                         status = fvm_array_store_own(c, result, total + i, element);
                     }
                 }
                 else
+                {
                     status = sparse_slice(c, source, result, 0, count, work, total);
+                }
             }
             else
+            {
                 status = fvm_array_store_own(c, result, total, value);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
             total += count;
             result->resource_result.number = total;
             if (k == n)
+            {
                 break;
+            }
         }
         object(out, result);
         return FVM_OK;
@@ -808,27 +1059,38 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     /* Loaded end-removal methods use raw own data and resize only native Arrays. */
     if (c->swf_loaded && (!std::strcmp(method, "pop") || !std::strcmp(method, "shift")))
     {
+
+
         FVM_ArrayWorkScope mutation_work(c);
         unsigned long count = 0;
         long signed_length = 0;
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (signed_length < 0)
+        {
             return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        }
         fvm_value_undefined(out);
         if (!count)
+        {
             return FVM_OK;
+        }
         bool shifting = !std::strcmp(method, "shift");
         FVM_Value result;
         legacy_data_element(o, shifting ? 0 : count - 1, result);
         /* [GC:] Native invocation defers collection while removed raw values await publication. */
         if (shifting)
+        {
             for (unsigned long i = 1; i < count; ++i)
             {
                 status = mutation_work.step();
                 if (status != FVM_OK)
+                {
                     return status;
+                }
                 FVM_Value value;
                 legacy_data_element(o, i, value);
                 char key[32];
@@ -836,10 +1098,15 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 int removed = 0;
                 status = fvm_object_delete(c, o, key, &removed);
                 if (status == FVM_OK)
+                {
                     status = fvm_base_store_data(c, o, key, value);
+                }
                 if (status != FVM_OK)
+                {
                     return status;
+                }
             }
+        }
         if (!shifting || o->resource_kind == FVM_RESOURCE_ARRAY)
         {
             char key[32];
@@ -847,14 +1114,17 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             int removed = 0;
             status = fvm_object_delete(c, o, key, &removed);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         if (o->resource_kind == FVM_RESOURCE_ARRAY)
-        {
-            /* Native length data changes without setter/watcher dispatch or a nondeletable clamp. */
+        { /* Native length data changes without setter/watcher dispatch or a nondeletable clamp. */
             status = legacy_set_length(c, o, count - 1, mutation_work);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         *out = result;
         return FVM_OK;
@@ -863,29 +1133,43 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     /* Loaded push stores own data without deleting virtual slots or invoking their callbacks. */
     if (c->swf_loaded && !std::strcmp(method, "push"))
     {
+
+
         FVM_ArrayWorkScope mutation_work(c);
         unsigned long count = 0;
         long signed_length = 0;
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (signed_length < 0)
+        {
             return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        }
         if ((double)count + n > FVM_INT32_MAX_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         for (unsigned int i = 0; i < n; ++i)
         {
             status = mutation_work.step();
             if (status == FVM_OK)
+            {
                 status = legacy_store_element(c, o, count + i, a[i]);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         if (o->resource_kind == FVM_RESOURCE_ARRAY)
         {
             status = legacy_set_length(c, o, count + n, mutation_work);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         else
         {
@@ -893,7 +1177,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             fvm_value_number(&value, (double)count + n);
             status = fvm_base_store_data(c, o, "length", value, false);
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         fvm_value_number(out, (double)count + n);
         return FVM_OK;
@@ -902,21 +1188,31 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     /* Loaded unshift moves raw own values, including holes, without changing borrowed length. */
     if (c->swf_loaded && !std::strcmp(method, "unshift"))
     {
+
+
         FVM_ArrayWorkScope mutation_work(c);
         unsigned long count = 0;
         long signed_length = 0;
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (signed_length < 0)
+        {
             return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        }
         if ((double)count + n > FVM_INT32_MAX_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         for (unsigned long i = count; i; --i)
         {
             status = mutation_work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             FVM_Value value;
             legacy_data_element(o, i - 1, value);
             char key[32];
@@ -924,28 +1220,39 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             int removed = 0;
             status = fvm_object_delete(c, o, key, &removed);
             if (status == FVM_OK)
+            {
                 status = legacy_store_element(c, o, i + n - 1, value);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
         for (unsigned int i = 0; i < n; ++i)
         {
             status = mutation_work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             char key[32];
             std::sprintf(key, "%u", i);
             int removed = 0;
             status = fvm_object_delete(c, o, key, &removed);
             if (status == FVM_OK)
+            {
                 status = legacy_store_element(c, o, i, a[i]);
+            }
             if (status != FVM_OK)
+            {
                 return status;
+            }
         }
-        status = o->resource_kind == FVM_RESOURCE_ARRAY
-                     ? legacy_set_length(c, o, count + n, mutation_work) : FVM_OK;
+        status = o->resource_kind == FVM_RESOURCE_ARRAY ? legacy_set_length(c, o, count + n, mutation_work) : FVM_OK;
         if (status != FVM_OK)
+        {
             return status;
+        }
         fvm_value_number(out, (double)count + n);
         return FVM_OK;
     }
@@ -955,42 +1262,69 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     long signed_length = 0;
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
+    {
         count = prepared->length;
-    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse") ||
-                             !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn")))
+    }
+    else if (c->swf_loaded &&
+             (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse") ||
+              !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn")))
+    {
         r = legacy_data_length(c, o, count, &signed_length);
+    }
     else
+    {
         r = length(c, o, count);
+    }
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (c->swf_loaded && signed_length < 0 && !std::strcmp(method, "slice"))
+    {
         return negative_slice(c, o, signed_length, n, a, out, work);
+    }
     if (!std::strcmp(method, "push"))
     {
         if ((double)count + n > 4294967295.0)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         for (unsigned int i = 0; i < n && r == FVM_OK; ++i)
+        {
             r = write(c, o, count + i, a + i);
+        }
         if (r == FVM_OK)
+        {
             r = resize(c, o, count + n);
+        }
         if (r == FVM_OK)
+        {
             fvm_value_number(out, (double)count + n);
+        }
         return r;
     }
     if (!std::strcmp(method, "pop"))
     {
         fvm_value_undefined(out);
         if (!count)
+        {
             return resize(c, o, 0);
+        }
         bool present;
         FVM_Value value;
         r = get(c, o, count - 1, value, present);
         if (r == FVM_OK)
+        {
             r = write(c, o, count - 1, 0);
+        }
         if (r == FVM_OK)
+        {
             r = resize(c, o, count - 1);
+        }
         if (r == FVM_OK)
+        {
             *out = value;
+        }
         return r;
     }
     /* Loaded traversals use charged loops; host mutation and sorting retain their bounds. */
@@ -998,7 +1332,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     if ((!c->swf_loaded && bounded_sort && count > FVM_ARRAY_HOST_GENERIC_SORT_MAX_LENGTH) ||
         (!c->swf_loaded && !bounded_sort && count > FVM_ARRAY_HOST_MUTATION_MAX_LENGTH &&
          (!std::strcmp(method, "shift") || !std::strcmp(method, "unshift") || !std::strcmp(method, "reverse"))))
+    {
         return FVM_UNSUPPORTED;
+    }
     if (!std::strcmp(method, "shift"))
     {
         if (!count)
@@ -1010,27 +1346,45 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         bool present;
         r = get(c, o, 0, value, present);
         for (unsigned long i = 1; i < count && r == FVM_OK; ++i)
+        {
             r = move(c, o, i, i - 1);
+        }
         if (r == FVM_OK && count)
+        {
             r = write(c, o, count - 1, 0);
+        }
         if (r == FVM_OK)
+        {
             r = resize(c, o, count ? count - 1 : 0);
+        }
         if (r == FVM_OK)
+        {
             *out = value;
+        }
         return r;
     }
     if (!std::strcmp(method, "unshift"))
     {
         if ((double)count + n > 4294967295.0)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         for (unsigned long i = count; i && r == FVM_OK; --i)
+        {
             r = move(c, o, i - 1, i + n - 1);
+        }
         for (unsigned int i = 0; i < n && r == FVM_OK; ++i)
+        {
             r = write(c, o, i, a + i);
+        }
         if (r == FVM_OK)
+        {
             r = resize(c, o, count + n);
+        }
         if (r == FVM_OK)
+        {
             fvm_value_number(out, (double)count + n);
+        }
         return r;
     }
     if (!std::strcmp(method, "reverse"))
@@ -1043,7 +1397,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             {
                 r = work.step();
                 if (r != FVM_OK)
+                {
                     break;
+                }
                 legacy_data_element(o, i, left);
                 legacy_data_element(o, count - i - 1, right);
                 char lower[32], upper[32];
@@ -1052,23 +1408,37 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 int removed = 0;
                 r = fvm_object_delete(c, o, lower, &removed);
                 if (r == FVM_OK)
+                {
                     r = fvm_object_delete(c, o, upper, &removed);
+                }
                 if (r == FVM_OK)
+                {
                     r = fvm_base_store_data(c, o, lower, right);
+                }
                 if (r == FVM_OK)
+                {
                     r = fvm_base_store_data(c, o, upper, left);
+                }
                 continue;
             }
             r = get(c, o, i, left, lp);
             if (r == FVM_OK)
+            {
                 r = get(c, o, count - i - 1, right, rp);
+            }
             if (r == FVM_OK)
+            {
                 r = write(c, o, i, rp ? &right : 0);
+            }
             if (r == FVM_OK)
+            {
                 r = write(c, o, count - i - 1, lp ? &left : 0);
+            }
         }
         if (r == FVM_OK)
+        {
             object(out, o);
+        }
         return r;
     }
     if (!std::strcmp(method, "slice") || !std::strcmp(method, "splice"))
@@ -1080,12 +1450,13 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         unsigned int added = splice ? prepared->added : 0;
         if (splice && ((!c->swf_loaded && count > FVM_ARRAY_HOST_MUTATION_MAX_LENGTH) ||
                        (c->swf_loaded && (double)count - deleted + added > FVM_INT32_MAX_NUMBER)))
+        {
             return FVM_UNSUPPORTED;
+        }
         if (!splice)
         {
             double first = 0, last = 0;
-            r = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first)
-                              : integer(c, n, a, 0, 0, first);
+            r = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first) : integer(c, n, a, 0, 0, first);
             if (r == FVM_OK)
             {
                 unsigned int end_args = n > 1 && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n;
@@ -1093,24 +1464,35 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                                   : integer(c, end_args, a, 1, count, last);
             }
             if (r != FVM_OK)
+            {
                 return r;
+            }
             start = bound(first, count);
             end = bound(last, count);
             if (end < start)
+            {
                 end = start;
+            }
             deleted = end - start;
         }
         FVM_Object *result = 0;
         r = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0, deleted, &result, true);
+
+
         /* [GC:] Keep the removed/copy result alive through source mutation callbacks. */
         FVM_ObjectRootScope result_roots(c, result);
         if (!splice && !c->swf_loaded && (deleted > 65536 || o->resource_kind == FVM_RESOURCE_ARRAY) && r == FVM_OK)
+        {
             r = sparse_slice(c, o, result, start, end, work);
+        }
         else
+        {
             for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
             {
                 if (!splice || c->swf_loaded)
+                {
                     r = work.step();
+                }
                 FVM_Value value;
                 bool present = false;
                 if (r == FVM_OK)
@@ -1121,115 +1503,171 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                         present = true;
                     }
                     else
+                    {
                         r = get(c, o, start + i, value, present);
+                    }
                 }
                 if (r == FVM_OK && present)
+                {
                     r = fvm_array_store_own(c, result, i, value);
+                }
             }
+        }
         if (splice && c->swf_loaded)
         {
             if (added > deleted)
+            {
                 for (unsigned long i = count; i > start + deleted && r == FVM_OK; --i)
                 {
                     r = work.step();
                     if (r == FVM_OK)
+                    {
                         r = legacy_splice_move(c, o, i - 1, i - 1 - deleted + added);
+                    }
                 }
+            }
             else
+            {
                 for (unsigned long i = start + deleted; i < count && r == FVM_OK; ++i)
                 {
                     r = work.step();
                     if (r == FVM_OK)
+                    {
                         r = legacy_splice_move(c, o, i, i - deleted + added);
+                    }
                 }
+            }
             for (unsigned int i = 0; i < added && r == FVM_OK; ++i)
             {
                 r = work.step();
                 if (r == FVM_OK)
+                {
                     r = legacy_store_element(c, o, start + i, a[i + 2]);
+                }
             }
             if (r == FVM_OK)
+            {
                 r = legacy_set_length(c, o, count - deleted + added, work);
+            }
         }
         else if (splice)
         {
             if (added < deleted)
             {
                 for (unsigned long i = start; i < count - deleted && r == FVM_OK; ++i)
+                {
                     r = move(c, o, i + deleted, i + added);
+                }
                 for (unsigned long i = count; i > count - deleted + added && r == FVM_OK; --i)
+                {
                     r = write(c, o, i - 1, 0);
+                }
             }
             else if (added > deleted)
+            {
                 for (unsigned long i = count - deleted; i > start && r == FVM_OK; --i)
+                {
                     r = move(c, o, i + deleted - 1, i + added - 1);
+                }
+            }
             for (unsigned int i = 0; i < added && r == FVM_OK; ++i)
+            {
                 r = write(c, o, start + i, a + i + 2);
+            }
             if (r == FVM_OK)
+            {
                 r = resize(c, o, count - deleted + added);
+            }
         }
         if (r == FVM_OK)
+        {
             object(out, result);
+        }
         return r;
     }
     if (!std::strcmp(method, "join"))
     {
         for (size_t i = 0; i < c->joining_arrays.size(); ++i)
+        {
             if (c->joining_arrays[i] == o)
+            {
                 return fvm_value_string(out, "");
+            }
+        }
         c->joining_arrays.push_back(o);
+
+
         /* Define Pop struct and its representation. */
         struct Pop
         {
             FVM_Context *c;
+
+
             /* Release the resources owned by this Pop instance. */
             ~Pop()
             {
                 c->joining_arrays.pop_back();
             }
         } pop;
+
         pop.c = c;
         FVM_Value separator;
         r = n && (c->swf_loaded || a[0].type != FVM_VALUE_UNDEFINED)
-                ? (c->swf_loaded ? fvm_avm1_string(c, a[0], &separator)
-                                 : fvm_value_to_string(c, a, &separator))
+                ? (c->swf_loaded ? fvm_avm1_string(c, a[0], &separator) : fvm_value_to_string(c, a, &separator))
                 : fvm_value_string(&separator, ",");
         if (r != FVM_OK)
+        {
             return r;
+        }
         fvm_detail::vector<char> bytes;
         for (unsigned long i = 0; i < count; ++i)
         {
             r = work.step();
             if (r != FVM_OK)
+            {
                 return r;
+            }
             if (i)
+            {
                 for (size_t j = 0; j < fvm_string_size(separator); ++j)
                 {
                     r = work.step();
                     if (r != FVM_OK)
+                    {
                         return r;
+                    }
                     bytes.push_back(separator.string[j]);
                 }
+            }
             FVM_Value value;
             bool present;
             if (c->swf_loaded)
+            {
                 legacy_data_element(o, i, value);
+            }
             else
+            {
                 r = get(c, o, i, value, present);
+            }
             if (r != FVM_OK)
+            {
                 return r;
+            }
             if (c->swf_loaded || (value.type != FVM_VALUE_UNDEFINED && value.type != FVM_VALUE_NULL))
             {
                 FVM_Value text;
-                r = c->swf_loaded ? fvm_avm1_string(c, value, &text)
-                                    : fvm_value_to_string(c, &value, &text);
+                r = c->swf_loaded ? fvm_avm1_string(c, value, &text) : fvm_value_to_string(c, &value, &text);
                 if (r != FVM_OK)
+                {
                     return r;
+                }
                 for (size_t j = 0; j < fvm_string_size(text); ++j)
                 {
                     r = work.step();
                     if (r != FVM_OK)
+                    {
                         return r;
+                    }
                     bytes.push_back(text.string[j]);
                 }
             }
@@ -1243,10 +1681,14 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     /* Build a sorting snapshot: loaded input/output uses raw own data; unloaded mode remains property-aware. */
     FVM_Object *snapshot = 0;
     r = fvm_array_create_like(c, 0, count, &snapshot, true);
+
+
     /* [GC:] Keep the sorting input alive through custom comparator and field/string callbacks. */
     FVM_ObjectRootScope snapshot_roots(c, snapshot);
     if (r == FVM_OK)
+    {
         snapshot->prototype = 0;
+    }
     for (unsigned long i = 0; i < count && r == FVM_OK; ++i)
     {
         FVM_Value value;
@@ -1264,20 +1706,28 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         {
             r = get(c, o, i, value, present);
             if (r == FVM_OK && present)
+            {
                 r = fvm_table_set_index(c, snapshot, i, &value);
+            }
         }
     }
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fast(c, snapshot, n, a, out, fast_data);
     if (r != FVM_OK)
+    {
         return r;
+    }
     bool sorting = !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn");
     if (sorting)
     {
         if ((out->type == FVM_VALUE_NUMBER && out->number == 0) ||
             (out->type == FVM_VALUE_OBJECT && out->object != snapshot))
+        {
             return FVM_OK;
+        }
         for (unsigned long i = 0; i < count && r == FVM_OK; ++i)
         {
             FVM_Value value;
@@ -1295,69 +1745,90 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             {
                 r = get(c, snapshot, i, value, present);
                 if (r == FVM_OK)
+                {
                     r = write(c, o, i, present ? &value : 0);
+                }
             }
         }
         if (r == FVM_OK && out->type == FVM_VALUE_OBJECT)
+        {
             object(out, o);
+        }
     }
     return r;
 }
 } // namespace
+
+
 /* Convert exact Array length writes before readonly checks or live descriptor dispatch. */
-FVM_Result fvm_array_prepare_length_data(FVM_Context *c, FVM_Object *o,
-                                         const FVM_Value &input, bool *prepared)
+FVM_Result fvm_array_prepare_length_data(FVM_Context *c, FVM_Object *o, const FVM_Value &input, bool *prepared)
 {
     *prepared = false;
     if (!c->swf_loaded || o->resource_kind != FVM_RESOURCE_ARRAY)
+    {
         return FVM_OK;
+    }
     *prepared = true;
+
+
     FVM_ArrayWorkScope work(c);
     double number = 0;
     FVM_Result status = fvm_avm1_number(c, &input, &number);
     if (status != FVM_OK)
+    {
         return status;
+    }
     FVM_Value previous;
     status = legacy_length_data(c, o, previous);
     if (status != FVM_OK || previous.type != FVM_VALUE_NUMBER)
+    {
         return status;
+    }
     const long first = fvm_array_number_length(number);
     const long old = fvm_array_number_length(previous.number);
     for (long index = first > 0 ? first : 0; index < old; ++index)
     {
         status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
         std::sprintf(key, "%ld", index);
         int removed = 0;
         status = fvm_object_delete(c, o, key, &removed);
         if (status != FVM_OK)
+        {
             return status;
+        }
     }
     return FVM_OK;
 }
 
+
 /* Write loaded own data while preserving the receiver's current length, tail and property flags. */
-FVM_Result fvm_array_legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index,
-                                         const FVM_Value &value)
+FVM_Result fvm_array_legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value &value)
 {
     return legacy_store_element(c, o, index, value);
 }
 
+
 /* Export the shared own-data Int32 reader without exposing getter or cached-length shortcuts. */
 FVM_Result fvm_array_legacy_length(FVM_Context *c, FVM_Object *o, long *out)
 {
-    if (!c || !o || o->owner != c || !out || !c->swf_loaded ||
-        o->resource_kind != FVM_RESOURCE_ARRAY)
+    if (!c || !o || o->owner != c || !out || !c->swf_loaded || o->resource_kind != FVM_RESOURCE_ARRAY)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         unsigned long ignored = 0;
         long length = 0;
         FVM_Result status = legacy_data_length(c, o, ignored, &length);
         if (status == FVM_OK)
+        {
             *out = length;
+        }
         return status;
     }
     catch (const std::bad_alloc &)
@@ -1366,14 +1837,18 @@ FVM_Result fvm_array_legacy_length(FVM_Context *c, FVM_Object *o, long *out)
     }
 }
 
+
 /* Share native raw length mutation with ordinary indexed assignment. */
 FVM_Result fvm_array_legacy_set_length(FVM_Context *c, FVM_Object *o, long length)
 {
-    if (!c || !o || o->owner != c || !c->swf_loaded ||
-        o->resource_kind != FVM_RESOURCE_ARRAY)
+    if (!c || !o || o->owner != c || !c->swf_loaded || o->resource_kind != FVM_RESOURCE_ARRAY)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
+
+
         FVM_ArrayWorkScope work(c);
         return legacy_set_length(c, o, (double)length, work);
     }
@@ -1383,119 +1858,171 @@ FVM_Result fvm_array_legacy_set_length(FVM_Context *c, FVM_Object *o, long lengt
     }
 }
 
+
 /* Capture observable splice inputs once, leaving a rejected result without allocation. */
-FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n,
-                                    const FVM_Value *a, FVM_ArraySpliceBounds &out)
+FVM_Result
+fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_ArraySpliceBounds &out)
 {
     out = FVM_ArraySpliceBounds();
     if (!c || !o || o->owner != c || (n && !a))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!n || a[0].type == FVM_VALUE_UNDEFINED)
+    {
         return FVM_OK;
+    }
     double first = 0, last = 0;
-    FVM_Result status = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first)
-                                      : integer(c, n, a, 0, 0, first);
+    FVM_Result status = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first) : integer(c, n, a, 0, 0, first);
     long signed_length = 0;
     if (status == FVM_OK)
-        status = c->swf_loaded ? legacy_data_length(c, o, out.length, &signed_length)
-                              : length(c, o, out.length);
+    {
+        status = c->swf_loaded ? legacy_data_length(c, o, out.length, &signed_length) : length(c, o, out.length);
+    }
     if (status != FVM_OK)
+    {
         return status;
+    }
     /* Capture signed insertion bounds for native Arrays and borrowed objects alike. */
     if (c->swf_loaded && signed_length < 0)
     {
         if (first < 0 && first + signed_length < FVM_INT32_MIN_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+        {
             return FVM_OK;
+        }
         status = legacy_index(c, n, a, 1, first < 0 ? signed_length : 0, last);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (first < 0 || last < 0)
+        {
             return FVM_OK;
+        }
         out.added = n > FVM_ARRAY_SPLICE_INSERT_ARGUMENT ? n - FVM_ARRAY_SPLICE_INSERT_ARGUMENT : 0;
         if ((double)signed_length + out.added > FVM_INT32_MAX_NUMBER)
+        {
             return FVM_UNSUPPORTED;
+        }
         out.negative_length = signed_length;
         out.rejected = false;
         return FVM_OK;
     }
     out.start = bound(first, out.length);
     if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+    {
         return FVM_OK;
+    }
     status = c->swf_loaded ? legacy_index(c, n, a, 1, out.length - out.start, last)
-                            : integer(c, n, a, 1, out.length - out.start, last);
+                           : integer(c, n, a, 1, out.length - out.start, last);
     if (status != FVM_OK)
+    {
         return status;
+    }
     if (last < 0)
+    {
         return FVM_OK;
+    }
     out.deleted = last >= out.length - out.start ? out.length - out.start : (unsigned long)last;
     out.added = n > 2 ? n - 2 : 0;
     if ((double)out.length - out.deleted + out.added > 4294967295.0)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     out.rejected = false;
     return FVM_OK;
 }
+
 
 /* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
     if (!o || o->resource_kind != FVM_RESOURCE_ARRAY)
+    {
         return true;
+    }
     if (o->owner->swf_loaded)
     {
-        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator length =
-            o->accessors.find("length");
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator length = o->accessors.find("length");
         if (length == o->accessors.end() || !fvm_base_array_length_accessor(length->second))
+        {
             return true;
+        }
     }
     if (o->resource_result_valid)
     {
         if (o->resource_result.type != FVM_VALUE_NUMBER || o->resource_result.metatable)
+        {
             return true;
+        }
         const double length = o->resource_result.number;
         /* Fast storage assumes canonical integral bounds; loaded traversal is signed. */
         const double maximum = o->owner->swf_loaded ? FVM_INT32_MAX_NUMBER : FVM_UINT32_MAX_NUMBER;
         if (!(length >= 0 && length <= maximum && length == std::floor(length)))
+        {
             return true;
+        }
     }
     for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, o = o->prototype)
     {
         if (depth && !o->indexed.empty())
+        {
             return true;
+        }
         for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.begin();
-             i != o->properties.end(); ++i)
+             i != o->properties.end();
+             ++i)
         {
             unsigned long index;
             if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
+            {
                 return true;
+            }
         }
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = o->methods.begin();
-             i != o->methods.end(); ++i)
+             i != o->methods.end();
+             ++i)
         {
             unsigned long index;
             if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
+            {
                 return true;
+            }
         }
-        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator i =
-                 o->accessors.begin();
-             i != o->accessors.end(); ++i)
+        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator i = o->accessors.begin();
+             i != o->accessors.end();
+             ++i)
         {
             unsigned long index;
             if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
+            {
                 return true;
+            }
         }
     }
     return o != 0;
 }
 
+
 /* Guard borrowed method execution and forward synchronous caller-owned preparation. */
-FVM_Result fvm_array_generic(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
-                             const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
-                             const FVM_ArraySpliceBounds *prepared, void *fast_data)
+FVM_Result fvm_array_generic(FVM_Context *c,
+                             FVM_Object *o,
+                             const char *method,
+                             unsigned int n,
+                             const FVM_Value *a,
+                             FVM_Value *out,
+                             FVM_NativeFunction fast,
+                             const FVM_ArraySpliceBounds *prepared,
+                             void *fast_data)
 {
     if (!c || !o || o->owner != c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         return run(c, o, method, n, a, out, fast, prepared, fast_data);

@@ -2,13 +2,16 @@
 #include "support.hpp"
 #include "execution_roots.h"
 #include "flashvm/standard.h"
+
+
 /* [GC:] Own retained strings and publish a new root only after preparation succeeds. */
-extern "C" FVM_Result fvm_exec_global_register(FVM_Context *c, int write, unsigned int index,
-                                               const FVM_Value *input, FVM_Value *out)
+extern "C" FVM_Result
+fvm_exec_global_register(FVM_Context *c, int write, unsigned int index, const FVM_Value *input, FVM_Value *out)
 {
-    if (!c || !out || c->destroying || c->gc_releasing ||
-        (write && fvm_validate_value(c, input) != FVM_OK))
+    if (!c || !out || c->destroying || c->gc_releasing || (write && fvm_validate_value(c, input) != FVM_OK))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (index >= FVM_EXEC_GLOBAL_REGISTER_COUNT)
     {
         fvm_value_undefined(out);
@@ -20,8 +23,7 @@ extern "C" FVM_Result fvm_exec_global_register(FVM_Context *c, int write, unsign
         return FVM_OK;
     }
     if (input->type != FVM_VALUE_STRING)
-    {
-        /* Scalar/object copies invoke no callbacks or allocation between publication and output. */
+    { /* Scalar/object copies invoke no callbacks or allocation between publication and output. */
         FVM_Value value = *input;
         c->avm1_global_registers[index] = value;
         *out = value;
@@ -29,14 +31,17 @@ extern "C" FVM_Result fvm_exec_global_register(FVM_Context *c, int write, unsign
     }
     try
     {
+
+
         FVM_ExecutionRoots roots(c, FVM_GLOBAL_REGISTER_ROOT_COUNT);
         roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT] = *input;
         if (input->type == FVM_VALUE_STRING)
         {
-            FVM_Result status =
-                fvm_value_to_string(c, input, &roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT]);
+            FVM_Result status = fvm_value_to_string(c, input, &roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT]);
             if (status != FVM_OK)
+            {
                 return status;
+            }
             roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT].metatable = input->metatable;
         }
         c->avm1_global_registers[index] = roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT];

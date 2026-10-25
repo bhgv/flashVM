@@ -56,8 +56,8 @@ for null/destruction/collection/release state. It retains the BEST preference
 while switching HIGH/BEST → LOW or LOW/MEDIUM → HIGH/BEST. **Lifetime:** no
 returned handle or managed reference. **Execution:** same VM-thread restrictions
 as the setter; no allocation, script callback, GC or replay. A body containing
-Since v0.557 ToggleQuality lowers to [fvm_jit_toggle_quality](../src/jit/display.cpp#L7), which directly
-calls [fvm_stage_toggle_quality](../include/flashvm/stage.h#L25). Its source checkpoint precedes the transition;
+Since v0.557 ToggleQuality lowers to [fvm_jit_toggle_quality](../src/jit/display.cpp#L9), which directly
+calls [fvm_stage_toggle_quality](../include/flashvm/stage.h#L31). Its source checkpoint precedes the transition;
 the helper consumes no operands, pushes no result, allocates nothing and retains
 no managed references. Unsupported operations elsewhere in a body can still
 force fallback. Instruction-budget failure before the action leaves policy
@@ -96,8 +96,8 @@ The conversion policy follows pinned Ruffle
 [stage properties](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/stage_object.rs)
 and [quality labels](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/render/src/quality.rs).
 This source comparison is separate from original Flash Player acceptance.
-Implementation: [`fvm_movieclip_quality_read`](../src/standard/movieclip_quality.cpp#L27), [`fvm_movieclip_quality_write`](../src/standard/movieclip_quality.cpp#L46) and
-[`fvm_exec_display_property`](../include/flashvm/execution.h#L177).
+Implementation: [`fvm_movieclip_quality_read`](../src/standard/movieclip_quality.cpp#L35), [`fvm_movieclip_quality_write`](../src/standard/movieclip_quality.cpp#L63) and
+[`fvm_exec_display_property`](../include/flashvm/execution.h#L229).
 
 ### Свойства качества
 
@@ -120,8 +120,8 @@ callback сохраняет его назначение, но качество �
 
 ## Renderer integration and limits
 
-[`fvm_path_draw_quality`](../src/capi/path_c.cpp#L264) applies AGG's half-coverage threshold for LOW and Cairo's
-ANTIALIAS_NONE. [`fvm_path_mask_quality`](../src/capi/path_c.cpp#L441) carries the same choice into gradient
+[`fvm_path_draw_quality`](../src/capi/path_c.cpp#L314) applies AGG's half-coverage threshold for LOW and Cairo's
+ANTIALIAS_NONE. [`fvm_path_mask_quality`](../src/capi/path_c.cpp#L528) carries the same choice into gradient
 and bitmap paint. Solid fills, strokes and optional geometry-coverage surfaces
 use the same context selection. Bitmap paint's own smoothing option is retained;
 edge antialiasing is a separate decision.
@@ -138,9 +138,9 @@ audio remains open. A source dispatch inventory does not close any stage. See th
 backend; различия bitmap downsampling и исторических сеток качества остаются
 открытыми. Отдельные path API без контекста сохраняют прежнее сглаживание.
 
-[`fvm_stage_get_quality`](../include/flashvm/stage.h#L19) копирует enum через обязательный выходной указатель.
-[`fvm_stage_set_quality`](../include/flashvm/stage.h#L22) проверяет четыре значения и явно сбрасывает старое
-предпочтение BEST при выборе любого другого режима. [`fvm_stage_toggle_quality`](../include/flashvm/stage.h#L25)
+[`fvm_stage_get_quality`](../include/flashvm/stage.h#L21) копирует enum через обязательный выходной указатель.
+[`fvm_stage_set_quality`](../include/flashvm/stage.h#L26) проверяет четыре значения и явно сбрасывает старое
+предпочтение BEST при выборе любого другого режима. [`fvm_stage_toggle_quality`](../include/flashvm/stage.h#L31)
 использует тот же переход, что реальный Action 0x08, и сохраняет предпочтение
 BEST при временном переходе в LOW. Все операции без выделения памяти, callback
 и GC; вызываются на VM-потоке, setter/toggle запрещены при сборке/уничтожении.
@@ -149,7 +149,7 @@ BEST при временном переходе в LOW. Все операции 
 
 Загрузка SWF не сбрасывает настройку хоста; новая VM получает HIGH. Перенос
 объекта MovieClip не переносит настройку сцены его исходной VM. JIT-body с этим
-Action с v0.557 компилируется в прямой [fvm_jit_toggle_quality](../src/jit/display.cpp#L7) с общим stage
+Action с v0.557 компилируется в прямой [fvm_jit_toggle_quality](../src/jit/display.cpp#L9) с общим stage
 service. Он не меняет стек, не выделяет память и не содержит managed roots.
 Checkpoint до действия может запретить его выполнение; ошибка бюджета после
 действия не откатывает политику. Проверки охватывают
@@ -190,15 +190,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_display_property` | function | [include/flashvm/execution.h:177](../include/flashvm/execution.h#L177) |
-| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:7](../src/jit/display.cpp#L7) |
-| `fvm_movieclip_quality_read` | function | [src/standard/movieclip_quality.cpp:27](../src/standard/movieclip_quality.cpp#L27) |
-| `fvm_movieclip_quality_write` | function | [src/standard/movieclip_quality.cpp:46](../src/standard/movieclip_quality.cpp#L46) |
-| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:264](../src/capi/path_c.cpp#L264) |
-| `fvm_path_mask_quality` | function | [src/capi/path_c.cpp:441](../src/capi/path_c.cpp#L441) |
-| `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |
+| `fvm_exec_display_property` | function | [include/flashvm/execution.h:229](../include/flashvm/execution.h#L229) |
+| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:9](../src/jit/display.cpp#L9) |
+| `fvm_movieclip_quality_read` | function | [src/standard/movieclip_quality.cpp:35](../src/standard/movieclip_quality.cpp#L35) |
+| `fvm_movieclip_quality_write` | function | [src/standard/movieclip_quality.cpp:63](../src/standard/movieclip_quality.cpp#L63) |
+| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:314](../src/capi/path_c.cpp#L314) |
+| `fvm_path_mask_quality` | function | [src/capi/path_c.cpp:528](../src/capi/path_c.cpp#L528) |
+| `fvm_stage_get_quality` | function | [include/flashvm/stage.h:21](../include/flashvm/stage.h#L21) |
 | `FVM_STAGE_QUALITY_HIGH` | enum constant | [include/flashvm/stage.h:15](../include/flashvm/stage.h#L15) |
-| `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
-| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
+| `fvm_stage_set_quality` | function | [include/flashvm/stage.h:26](../include/flashvm/stage.h#L26) |
+| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:31](../include/flashvm/stage.h#L31) |
 | `FVM_StageQuality` | enum | [include/flashvm/stage.h:11](../include/flashvm/stage.h#L11) |
 <!-- source-links:end -->

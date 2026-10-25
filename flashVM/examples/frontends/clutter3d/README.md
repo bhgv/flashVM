@@ -77,7 +77,7 @@ is handled under the v0.613 policy below.
 Coordinates are **not** assumed equal to native stage pixels. First
 clutter_actor_transform_stage_point converts actual stage event coordinates into
 the texture's projected local allocation space (including actor transforms).
-Then [fvm_host_pointer_to_world](../../../include/flashvm/host.h#L26) removes local width/320 and height/200 once.
+Then [fvm_host_pointer_to_world](../../../include/flashvm/host.h#L33) removes local width/320 and height/200 once.
 Do not invert the actor projection or device scale again. Texture scaling is
 presentation only; no authored MovieClip matrix is changed. The common renderer
 uses VM world position, draws green/red marker pixels, then returns its borrowed
@@ -240,6 +240,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:33](../../../include/flashvm/host.h#L33) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../../../include/flashvm/mouse.h#L53) |
 <!-- source-links:end -->

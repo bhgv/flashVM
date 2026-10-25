@@ -1,7 +1,7 @@
 # Ввод retained ClipEventKeyPress — v0.628
 
-[English](CLIP_KEYPRESS.md). [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L66) переводит копию keyboard
-transition в SWF selector. [`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L97) доставляет именно
+[English](CLIP_KEYPRESS.md). [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L68) переводит копию keyboard
+transition в SWF selector. [`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L106) доставляет именно
 этот raw byte по выбранному дереву MovieClip. SDL-плеер выполняет этап после
 успешных KeyDown records и именованных методов.
 
@@ -72,7 +72,7 @@ Batch/flags не сериализуются; retained selectors/code и source i
 обычными graph API.
 
 Новый host KeyPress route разрешает updateAfterEvent в подходящих records. Запросы
-объединяются и переживают ошибки. Старый selected [`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L55)
+объединяются и переживают ошибки. Старый selected [`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L58)
 для KeyPress не получает нового разрешения сам, но наследует eligible outer scope.
 Прежний контракт хоста не меняется скрыто.
 
@@ -142,8 +142,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_CLIP_KEY_NONE` | macro / define | [include/flashvm/clip_actions.h:24](../include/flashvm/clip_actions.h#L24) |
-| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:66](../include/flashvm/keyboard.h#L66) |
+| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:68](../include/flashvm/keyboard.h#L68) |
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
-| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../include/flashvm/clip_actions.h#L97) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:58](../include/flashvm/clip_actions.h#L58) |
+| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:106](../include/flashvm/clip_actions.h#L106) |
 <!-- source-links:end -->

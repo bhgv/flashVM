@@ -90,7 +90,7 @@ The host owns authentication, transport, native callback installation and grants
 | --- | --- |
 | [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L70) | Dispatcher, canonical path, per-slot capacity, adapter and target outputs. Allocate fixed native cache and five READ operations; borrow dispatcher until destroy. Invalid descriptor/capacity INVALID, oversize LIMIT, allocation NOMEM, registration errors propagate. Outputs only on OK. No SDK/device startup or grants. |
 | [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L79) | Adapter and borrowed valid frame. Validate format, reason, bounded dimensions, counters, source/visible extents; copy packed pixels to a spare, publish metadata, commit latest. No allocation. Invalid frame INVALID; capacity/sequence LIMIT; missing spare BUSY increments dropped only. Publication failures preserve prior published image. Caller owns callback failure/drop policy. |
-| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L85) | Standard frame observer callback; userdata is adapter. OK or BUSY returns [FVM_OK](../include/flashvm/flashvm.h#L42), intentionally dropping only bounded export under backpressure. INVALID maps [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); other failures [FVM_ERROR](../include/flashvm/flashvm.h#L43). Retains no callback pointer/source/pixel/VM borrow. A host may instead call capture to choose another policy. |
+| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L85) | Standard frame observer callback; userdata is adapter. OK or BUSY returns [FVM_OK](../include/flashvm/flashvm.h#L44), intentionally dropping only bounded export under backpressure. INVALID maps [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); other failures [FVM_ERROR](../include/flashvm/flashvm.h#L45). Retains no callback pointer/source/pixel/VM borrow. A host may instead call capture to choose another policy. |
 | [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L89) | Decode one counted metadata payload, not the outer S envelope. Validate complete schema, lease pair/range, packed geometry, flags, nonzero sequence/presentations, reason, source length and exact end. INVALID preserves native output. Client owns the copied result; no adapter/VM access or allocation. |
 | [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L94) | Owner supplies adapter and authenticated session after transport quiesces. Remove this resource's rights, destroy its watches and release every session-owned pin. Errors leave pins intact; a regrant cannot revive old generations. Also disconnect the native dispatcher session when appropriate. |
 | [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L100) | Owner quiesces capture/handlers/clients, then unregisters exact resource and frees all native buffers, invalidating even outstanding pins. Running handler BUSY preserves pointer. On OK null pointer; queued old jobs later complete UNKNOWN and still need acknowledgement/disconnect. Dispatcher/client files/SDK remain host-owned. |
@@ -253,8 +253,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 <!-- source-links:end -->

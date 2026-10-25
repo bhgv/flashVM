@@ -1,7 +1,7 @@
 # Qualified Delete2 / Составные имена при удалении
 
 v0.251 adds dot/colon member paths to Delete2. The interpreter resolves the first
-binding, then [`fvm_exec_delete_path`](../include/flashvm/execution.h#L371) traverses the remaining counted path from
+binding, then [`fvm_exec_delete_path`](../include/flashvm/execution.h#L495) traverses the remaining counted path from
 that base value. Intermediate object getters may run; the final member is deleted
 without being read. Missing/primitive prefixes report false. DONT_DELETE and
 inherited-final-member behavior remain those of the shared delete-member service.
@@ -56,5 +56,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:371](../include/flashvm/execution.h#L371) |
+| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:495](../include/flashvm/execution.h#L495) |
 <!-- source-links:end -->

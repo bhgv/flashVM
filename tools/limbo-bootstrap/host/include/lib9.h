@@ -5,6 +5,9 @@
 #define FLASHVM_HOST_LIB9_H
 #define getcallerpc disvm_unused_arm_callerpc
 #include "../../upstream/Linux/arm/include/lib9.h"
+
 #undef getcallerpc
+
+
 extern uintptr getcallerpc(void *);
 #endif

@@ -12,7 +12,7 @@ SDL-аудиомоста и версии заголовков/связанной
 драйвер, декодер, устройство или воспроизведение потокового звука.
 
 Для C-хоста `fvm_desktop_build_info` заполняет `FVM_DesktopBuildInfo` без выделений
-памяти; нулевой out возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Строка версии статическая,
+памяти; нулевой out возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Строка версии статическая,
 её нельзя освобождать. Интерфейс расположен в frontend/common/player.h и является
 внутренним интерфейсом хоста, не новым стабильным ABI библиотеки VM. Заголовок
 содержит extern C для C++98; отдельный тест действительно связывает C++-хост с
@@ -65,5 +65,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

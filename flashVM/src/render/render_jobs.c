@@ -5,6 +5,8 @@
 #include "flashvm/render_jobs.h"
 #include "../../ports/thread_port.h"
 #include <stdlib.h>
+
+
 /* Define Worker struct and its representation. */
 typedef struct Worker
 {
@@ -12,6 +14,7 @@ typedef struct Worker
     void *userdata;
     unsigned int start, end;
 } Worker;
+
 
 /* Run worker. */
 static void run_worker(void *arg)
@@ -21,12 +24,14 @@ static void run_worker(void *arg)
     Worker *w = (Worker *)arg;
     unsigned int i;
     for (i = w->start; i < w->end; ++i)
+    {
         w->callback(w->userdata, i);
+    }
 }
 
+
 /* Render jobs run. */
-int fvm_render_jobs_run(unsigned int count, unsigned int workers, FVM_RenderJob callback,
-                        void *userdata)
+int fvm_render_jobs_run(unsigned int count, unsigned int workers, FVM_RenderJob callback, void *userdata)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -35,9 +40,13 @@ int fvm_render_jobs_run(unsigned int count, unsigned int workers, FVM_RenderJob 
     unsigned int i, started = 0, n;
     int failed = 0;
     if (!callback)
+    {
         return -1;
+    }
     if (!count)
+    {
         return 0;
+    }
     if (workers == 0 || count == 1)
     {
         Worker w;
@@ -79,9 +88,13 @@ int fvm_render_jobs_run(unsigned int count, unsigned int workers, FVM_RenderJob 
     }
     /* Complete unstarted partitions synchronously even on partial failure. */
     for (; i < n; ++i)
+    {
         run_worker(&tasks[i]);
+    }
     for (i = 0; i < started; ++i)
+    {
         fvm_port_thread_join(threads[i]);
+    }
 
     /* Cleanup / Освобождение ресурсов. */
     free(tasks);

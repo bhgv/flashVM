@@ -2,7 +2,7 @@
 
 ## Назначение и реализация / Purpose and implementation
 
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L102).poll. Main явно
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L132).poll. Main явно
 открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
 его адрес через userdata. Callback не владеет fd и делегирует read нативному
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
@@ -46,11 +46,11 @@ cmake --build build-media --target flashvm_examples_multimedia_system_devices_ma
 
 | API (public source declaration is linked below) | Detailed contract and ownership guide |
 | --- | --- |
-| [`fvm_device_poll`](../../../include/flashvm/multimedia.h#L140) | [MULTIMEDIA_BRIDGES.md — fvm_device_poll](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_device_poll) |
-| [`fvm_input_linux_evdev_read`](../../../include/flashvm/multimedia.h#L143) | [MULTIMEDIA_BRIDGES.md — fvm_input_linux_evdev_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_input_linux_evdev_read) |
+| [`fvm_device_poll`](../../../include/flashvm/multimedia.h#L194) | [MULTIMEDIA_BRIDGES.md — fvm_device_poll](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_device_poll) |
+| [`fvm_input_linux_evdev_read`](../../../include/flashvm/multimedia.h#L199) | [MULTIMEDIA_BRIDGES.md — fvm_input_linux_evdev_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_input_linux_evdev_read) |
 
-Типы: [FVM_MediaBackend](../../../include/flashvm/multimedia.h#L57), [FVM_MediaSession](../../../src/multimedia/common/session.hpp#L5), [FVM_MediaFrame](../../../include/flashvm/multimedia.h#L38), [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L68),
-[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L102) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L93) описаны в
+Типы: [FVM_MediaBackend](../../../include/flashvm/multimedia.h#L68), [FVM_MediaSession](../../../src/multimedia/common/session.hpp#L6), [FVM_MediaFrame](../../../include/flashvm/multimedia.h#L40), [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L80),
+[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L132) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L122) описаны в
 [общем руководстве](../../../doc/MULTIMEDIA_BRIDGES.md#общий-контракт--common-contract).
 Ни одна демонстрация не завершает roadmap этап 4 или 9.
 
@@ -63,12 +63,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_device_poll` | function | [include/flashvm/multimedia.h:140](../../../include/flashvm/multimedia.h#L140) |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:102](../../../include/flashvm/multimedia.h#L102) |
-| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:93](../../../include/flashvm/multimedia.h#L93) |
-| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:143](../../../include/flashvm/multimedia.h#L143) |
-| `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:57](../../../include/flashvm/multimedia.h#L57) |
-| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:38](../../../include/flashvm/multimedia.h#L38) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
-| `FVM_MediaSession` | struct | [src/multimedia/common/session.hpp:5](../../../src/multimedia/common/session.hpp#L5) |
+| `fvm_device_poll` | function | [include/flashvm/multimedia.h:194](../../../include/flashvm/multimedia.h#L194) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:132](../../../include/flashvm/multimedia.h#L132) |
+| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:122](../../../include/flashvm/multimedia.h#L122) |
+| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:199](../../../include/flashvm/multimedia.h#L199) |
+| `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
+| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:40](../../../include/flashvm/multimedia.h#L40) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:80](../../../include/flashvm/multimedia.h#L80) |
+| `FVM_MediaSession` | struct | [src/multimedia/common/session.hpp:6](../../../src/multimedia/common/session.hpp#L6) |
 <!-- source-links:end -->

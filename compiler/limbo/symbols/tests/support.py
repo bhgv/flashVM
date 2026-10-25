@@ -32,9 +32,12 @@ def inspect(data, good=True):
         path = Path(directory) / "input.sbl"
         path.write_bytes(data)
         result = subprocess.run([TOOL, str(path)], capture_output=True, timeout=15)
-    assert result.returncode == (0 if good else 1), (result.returncode, result.stderr)
-    assert b"ERROR: AddressSanitizer" not in result.stderr, result.stderr
-    assert b"runtime error:" not in result.stderr, result.stderr
+    if not (result.returncode == (0 if good else 1)):
+        raise AssertionError((result.returncode, result.stderr))
+    if not (b"ERROR: AddressSanitizer" not in result.stderr):
+        raise AssertionError(result.stderr)
+    if not (b"runtime error:" not in result.stderr):
+        raise AssertionError(result.stderr)
     if not good:
         return result.stderr
     values = {}

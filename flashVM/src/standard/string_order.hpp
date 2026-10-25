@@ -9,9 +9,12 @@
 #include "../core/unicode_constants.h"
 #include "flashvm/flashvm.h"
 #include <cstring>
+
 /* Compare UTF-8/WTF-8 storage by AVM1 UTF-16 code-unit order, without allocating
  * temporary strings or using host locale. Supplementary characters contribute
  * two units; U+10000 consequently sorts before U+E000. */
+
+
 /* Compute and return string order. */
 inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right, int &order)
 {
@@ -28,7 +31,9 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
         {
             end[i] = !pending[i] && offset[i] == length[i];
             if (end[i])
+            {
                 continue;
+            }
             if (pending[i])
             {
                 unit[i] = pending[i];
@@ -37,14 +42,14 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
             else
             {
                 if (fvm_string_read(text[i], length[i], offset[i], unit[i]) != FVM_OK)
+                {
                     return FVM_INVALID_ARGUMENT;
+                }
                 if (unit[i] >= FVM_UTF16_SUPPLEMENTARY_OFFSET)
                 {
                     unit[i] -= FVM_UTF16_SUPPLEMENTARY_OFFSET;
-                    pending[i] =
-                        FVM_UTF16_LOW_SURROGATE_BASE + (unit[i] & FVM_UTF16_PAIR_PAYLOAD_MASK);
-                    unit[i] =
-                        FVM_UTF16_HIGH_SURROGATE_BASE + (unit[i] >> FVM_UTF16_PAIR_PAYLOAD_BITS);
+                    pending[i] = FVM_UTF16_LOW_SURROGATE_BASE + (unit[i] & FVM_UTF16_PAIR_PAYLOAD_MASK);
+                    unit[i] = FVM_UTF16_HIGH_SURROGATE_BASE + (unit[i] >> FVM_UTF16_PAIR_PAYLOAD_BITS);
                 }
             }
         }
@@ -56,18 +61,21 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
     }
 }
 
+
 /* Compare counted byte spans after validating both string representations. */
-inline FVM_Result fvm_string_order(const char *left, size_t left_size, const char *right,
-                                   size_t right_size, int &order)
+inline FVM_Result fvm_string_order(const char *left, size_t left_size, const char *right, size_t right_size, int &order)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value a, b;
     FVM_Result r = fvm_value_string_bytes(&a, left, left_size);
     if (r == FVM_OK)
+    {
         r = fvm_value_string_bytes(&b, right, right_size);
+    }
     return r == FVM_OK ? fvm_string_order(a, b, order) : r;
 }
+
 
 /* Compare borrowed NUL-terminated names through the counted representation. */
 inline FVM_Result fvm_string_order(const char *left, const char *right, int &order)

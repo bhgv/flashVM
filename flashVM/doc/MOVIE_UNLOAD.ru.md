@@ -19,11 +19,11 @@ lockroot и сохранённые обработчики клипа. Новое
 удерживаемые между потенциально собирающими вызовами объекты закрепляются pin.
 Конструкторы, сеттеры, действия кадров и unload callbacks не вызываются.
 Повторная очистка разрешена. Все выделения памяти и проверки предшествуют
-публикации. [`FVM_OK`](../include/flashvm/flashvm.h#L42) публикует целое новое состояние; [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44)
+публикации. [`FVM_OK`](../include/flashvm/flashvm.h#L44) публикует целое новое состояние; [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46)
 сохраняет старое содержимое и связи детей. Null, чужой контекст, прототип класса,
-внутренняя статическая фигура и запрещённая фаза дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+внутренняя статическая фигура и запрещённая фаза дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 Повреждённое приватное состояние может вернуть ошибку проверки; непредвиденное
-исключение преобразуется в [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). После публикации запрашивается обновление
+исключение преобразуется в [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). После публикации запрашивается обновление
 сцены. Аргументы заимствуются, владение ими не передаётся.
 
 ## Проверка физической принадлежности
@@ -33,7 +33,7 @@ lockroot и сохранённые обработчики клипа. Новое
 семантики `_lockroot`. Все указатели обязательны; оба экземпляра принадлежат
 контексту. Живой экземпляр включает себя. Отсоединённый узел на выбранном пути
 или завершение пути до предка дают ноль. Успех записывает ноль либо единицу.
-Ошибки состояния, выделения памяти и превышение [`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L192)
+Ошибки состояния, выделения памяти и превышение [`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L245)
 не изменяют выход. Ограничение также останавливает циклы. Поток владельца,
 вне GC/уничтожения; оба объекта удерживаются вызывающей стороной до возврата.
 Это моментальная проверка, а не подписка на изменения.
@@ -169,11 +169,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:197](../include/flashvm/movieclip.h#L197) |
-| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:192](../include/flashvm/movieclip.h#L192) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:207](../include/flashvm/movieclip.h#L207) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:252](../include/flashvm/movieclip.h#L252) |
+| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:245](../include/flashvm/movieclip.h#L245) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:264](../include/flashvm/movieclip.h#L264) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

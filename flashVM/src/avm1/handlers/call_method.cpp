@@ -8,32 +8,46 @@
 #include "../../core/property_key.hpp"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
+
+
 /* Invoke a member or construct its value with all operands retained across callbacks. */
-extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
+extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c,
+                                           int construct,
                                            const FVM_Value *owner_value,
-                                           const FVM_Value *name_value, FVM_Object *anonymous_this,
-                                           unsigned int argc, const FVM_Value *argv, FVM_Value *out)
+                                           const FVM_Value *name_value,
+                                           FVM_Object *anonymous_this,
+                                           unsigned int argc,
+                                           const FVM_Value *argv,
+                                           FVM_Value *out)
 {
-    if (!c || !out || c->destroying || c->gc_releasing ||
-        fvm_validate_value(c, owner_value) != FVM_OK ||
-        fvm_validate_value(c, name_value) != FVM_OK ||
-        (anonymous_this && anonymous_this->owner != c) || argc > FVM_EXEC_MAX_METHOD_ARGUMENTS ||
-        (argc && !argv) ||
-        (!c->swf_loaded && name_value->type != FVM_VALUE_STRING &&
-         name_value->type != FVM_VALUE_NULL && name_value->type != FVM_VALUE_UNDEFINED))
+    if (!c || !out || c->destroying || c->gc_releasing || fvm_validate_value(c, owner_value) != FVM_OK ||
+        fvm_validate_value(c, name_value) != FVM_OK || (anonymous_this && anonymous_this->owner != c) ||
+        argc > FVM_EXEC_MAX_METHOD_ARGUMENTS || (argc && !argv) ||
+        (!c->swf_loaded && name_value->type != FVM_VALUE_STRING && name_value->type != FVM_VALUE_NULL &&
+         name_value->type != FVM_VALUE_UNDEFINED))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (unsigned int i = 0; i < argc; ++i)
+    {
         if (fvm_validate_value(c, argv + i) != FVM_OK)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
+    }
     if (owner_value->type == FVM_VALUE_NULL || owner_value->type == FVM_VALUE_UNDEFINED)
     {
         if (construct && !c->swf_loaded)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         fvm_value_undefined(out);
         return FVM_OK;
     }
     try
     {
+
+
         FVM_ExecutionRoots roots(c, (size_t)argc + FVM_METHOD_ARGUMENT_ROOT_BASE);
         roots.values[FVM_METHOD_OWNER_ROOT] = *owner_value;
         roots.values[FVM_METHOD_NAME_ROOT] = *name_value;
@@ -43,7 +57,9 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             roots.values[FVM_METHOD_THIS_ROOT].object = anonymous_this;
         }
         for (unsigned int i = 0; i < argc; ++i)
+        {
             roots.values[FVM_METHOD_ARGUMENT_ROOT_BASE + i] = argv[i];
+        }
         const FVM_Value *args = argc ? roots.values.begin() + FVM_METHOD_ARGUMENT_ROOT_BASE : 0;
         const FVM_Value &owner = roots.values[FVM_METHOD_OWNER_ROOT];
         FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
@@ -52,15 +68,21 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             FVM_Value &boxed = roots.values[FVM_METHOD_BOX_ROOT];
             FVM_Result status = fvm_exec_to_object(c, &owner, &boxed);
             if (status != FVM_OK)
+            {
                 return status;
+            }
             if (boxed.type != FVM_VALUE_OBJECT)
             {
                 status = fvm_object_create(c, &receiver);
                 if (status != FVM_OK)
+                {
                     return status;
+                }
             }
             else
+            {
                 receiver = boxed.object;
+            }
         }
         /* [GC:] Retain the box before method lookup or a constructor getter can execute script. */
         roots.values[FVM_METHOD_BOX_ROOT].type = FVM_VALUE_OBJECT;
@@ -68,20 +90,25 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         fvm_detail::string name;
         const FVM_Value &source_name = roots.values[FVM_METHOD_NAME_ROOT];
         FVM_Value &text = roots.values[FVM_METHOD_TEXT_ROOT];
-        if (source_name.type != FVM_VALUE_UNDEFINED &&
-            (c->swf_loaded || source_name.type != FVM_VALUE_NULL))
+        if (source_name.type != FVM_VALUE_UNDEFINED && (c->swf_loaded || source_name.type != FVM_VALUE_NULL))
         {
             FVM_Result converted = fvm_exec_to_string(c, &source_name, &text);
             if (converted != FVM_OK)
+            {
                 return converted;
+            }
             converted = fvm_property_key(text.string, fvm_string_size(text), name);
             if (converted != FVM_OK)
+            {
                 return converted;
+            }
         }
         FVM_NativeEntry native_method;
         FVM_Result lookup = fvm_lookup_native_method(receiver, name, &native_method);
         if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
+        {
             return lookup;
+        }
         FVM_Value result;
         fvm_value_undefined(&result);
         FVM_Result status;
@@ -95,16 +122,21 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
                 status = FVM_OK;
             }
             else
+            {
                 status = fvm_object_get_bytes(c, receiver, name.data(), name.size(), &function);
+            }
             if (status != FVM_OK)
+            {
                 return status;
-            if (function.type != FVM_VALUE_OBJECT ||
-                (c->swf_loaded && !function.object->constructable.callback &&
-                 (function.object->resource_kind != FVM_RESOURCE_SCRIPT_FUNCTION ||
-                  !function.object->invocable.callback)))
+            }
+            if (function.type != FVM_VALUE_OBJECT || (c->swf_loaded && !function.object->constructable.callback &&
+                                                      (function.object->resource_kind != FVM_RESOURCE_SCRIPT_FUNCTION ||
+                                                       !function.object->invocable.callback)))
             {
                 if (!c->swf_loaded)
+                {
                     return FVM_INVALID_ARGUMENT;
+                }
                 *out = result;
                 return FVM_OK;
             }
@@ -113,33 +145,45 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         else if (name.empty())
         {
             if (c->swf_loaded && !receiver->invocable.callback)
+            {
                 status = FVM_OK;
+            }
             else if (c->swf_loaded)
             {
+
+
                 /* [GC:] An anonymous Function call has no defining member owner. Retain its
                  * identity and depth zero; a super facade publishes its own constructor scope. */
                 FVM_CallScope call(c, 0, receiver, 0, FVM_ANONYMOUS_CALL_SUPER_DEPTH, true);
                 status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
             }
             else
+            {
                 status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
+            }
         }
         else if (c->swf_loaded)
+        {
             status = fvm_exec_invoke_member(c, receiver, &text, argc, args, &result);
+        }
         else
         {
             fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator script =
                 c->script_functions.find(name);
             if (receiver->resource_kind != FVM_RESOURCE_SUPER && lookup == FVM_NOT_FOUND &&
                 script != c->script_functions.end())
-                status = fvm_avm1_call_script(c, script->first, script->second, argc, args,
-                                              receiver, &result);
+            {
+                status = fvm_avm1_call_script(c, script->first, script->second, argc, args, receiver, &result);
+            }
             else
-                status = fvm_object_call_bytes(c, receiver, name.data(), name.size(), argc, args,
-                                               &result);
+            {
+                status = fvm_object_call_bytes(c, receiver, name.data(), name.size(), argc, args, &result);
+            }
         }
         if (status == FVM_OK)
+        {
             *out = result;
+        }
         return status;
     }
     catch (const std::bad_alloc &)

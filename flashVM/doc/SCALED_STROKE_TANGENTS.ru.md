@@ -4,7 +4,7 @@ Current precision correction / Уточнение точности: [EN](SUBNORM
 
 Ненулевой отрезок больше не исчезает, когда квадрат длины округляется до нуля. Только в этом случае компоненты делятся на максимальный модуль перед вычислением нормы. Обычные отрезки сохраняют прежний порядок вычислений. Сертифицированные линейные Bezier теперь используют тот же путь без прежнего отказа из-за квадрата нормы.
 
-Внутренние [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L564) и [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L482) заимствуют неизменяемый путь; результаты принадлежат вызывающему. Выделений, callbacks VM и GC нет. Совместная мутация запрещена. Валидация и транзакционные ошибки bounds сохраняются. Публичный прежний distance walker, деление кривых, rasterizer и C89 ABI не меняются.
+Внутренние [`fvm_path_stroke_bounds_style`](../src/capi/path_hit_c.cpp#L733) и [`fvm_path_hit_test_style`](../src/capi/path_hit_c.cpp#L633) заимствуют неизменяемый путь; результаты принадлежат вызывающему. Выделений, callbacks VM и GC нет. Совместная мутация запрещена. Валидация и транзакционные ошибки bounds сохраняются. Публичный прежний distance walker, деление кривых, rasterizer и C89 ABI не меняются.
 
 Проверяются горизонтальные, вертикальные, диагональные и обратные отрезки с двоичными показателями от -540 до -1000, шесть сочетаний торцов/соединений, попадание в середину и независимые нормализованные границы. Прежняя проверка underflow quadratic/cubic теперь требует успешных точных границ при показателе -600.
 
@@ -24,6 +24,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:482](../src/capi/path_hit_c.cpp#L482) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:564](../src/capi/path_hit_c.cpp#L564) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:633](../src/capi/path_hit_c.cpp#L633) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:733](../src/capi/path_hit_c.cpp#L733) |
 <!-- source-links:end -->

@@ -29,7 +29,7 @@
 [`GRAPHICS_CAIRO`](../cmake/BuildDefinitions.cmake#L7) собирает встроенные Cairo/Pixman и включает Cairo в API
 растеризации FlashVM. [`GRAPHICS_AGG`](../cmake/BuildDefinitions.cmake#L7) выбирает встроенный AGG. [`NO_GRAPHICS`](../cmake/BuildDefinitions.cmake#L7)
 не собирает ни одну графическую библиотеку; корректный вызов растеризации
-возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). zlib и mini_regex включены во всех вариантах.
+возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). zlib и mini_regex включены во всех вариантах.
 [`SQLITE`](../cmake/BuildDefinitions.cmake#L10) собирает amalgamation, C-адаптер и SQLite-программы; поиск или подмена
 системной библиотекой отсутствует.
 
@@ -88,7 +88,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `AUTO_PLATFORM` | DEFS switch | [cmake/BuildDefinitions.cmake:8](../cmake/BuildDefinitions.cmake#L8) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 | `GRAPHICS_AGG` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
 | `GRAPHICS_CAIRO` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
 | `HEADLESS` | DEFS switch | [cmake/BuildDefinitions.cmake:9](../cmake/BuildDefinitions.cmake#L9) |

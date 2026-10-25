@@ -1,11 +1,12 @@
 /* C89 wire fixture: Load=42, EnterFrame=17, MouseMove=84 and Left KeyPress=168. */
-#ifndef FVM_TUTORIAL_CLIP_ACTION_MOVIE_H /* Keep the immutable wire fixture local. */
-#define FVM_TUTORIAL_CLIP_ACTION_MOVIE_H /* Prevent duplicate inclusion. */
-#define FVM_TUTORIAL_CLIP_ACTION_EXPECTED 42 /* Explicit Load overwrites EnterFrame. */
-#define FVM_TUTORIAL_CLIP_INPUT_EXPECTED 84 /* Retained MouseMove overwrites the Load marker. */
+#ifndef FVM_TUTORIAL_CLIP_ACTION_MOVIE_H      /* Keep the immutable wire fixture local. */
+#define FVM_TUTORIAL_CLIP_ACTION_MOVIE_H      /* Prevent duplicate inclusion. */
+#define FVM_TUTORIAL_CLIP_ACTION_EXPECTED 42  /* Explicit Load overwrites EnterFrame. */
+#define FVM_TUTORIAL_CLIP_INPUT_EXPECTED 84   /* Retained MouseMove overwrites the Load marker. */
 #define FVM_TUTORIAL_CLIP_METHOD_EXPECTED 126 /* Native input method overwrites the MouseMove marker. */
-#define FVM_TUTORIAL_CLIP_KEY_EXPECTED 168 /* Left KeyPress overwrites the optional method marker. */
+#define FVM_TUTORIAL_CLIP_KEY_EXPECTED 168    /* Left KeyPress overwrites the optional method marker. */
 static const unsigned char fvm_tutorial_clip_action_movie[] = { /* Loader copies these borrowed source bytes. */
+    /* Loader copies these borrowed source bytes. */
     0x46, 0x57, 0x53, 0x08, 0x16, 0x01, 0x00, 0x00, 0x80, 0x00, 0x00, 0x14, /* SWF octets 0..11: immutable wire records, not host pointers. */
     0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x0c, 0x01, 0x00, 0xc8, 0x09, 0x07, /* SWF octets 12..23: immutable wire records, not host pointers. */
     0x00, 0x01, 0x00, 0x40, 0x00, 0x00, 0x00, 0xbf, 0x06, 0xed, 0x00, 0x00, /* SWF octets 24..35: immutable wire records, not host pointers. */
@@ -29,6 +30,6 @@ static const unsigned char fvm_tutorial_clip_action_movie[] = { /* Loader copies
     0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x96, 0x12, 0x00, 0x00, 0x75, 0x70, /* SWF octets 240..251: immutable wire records, not host pointers. */
     0x64, 0x61, 0x74, 0x65, 0x41, 0x66, 0x74, 0x65, 0x72, 0x45, 0x76, 0x65, /* SWF octets 252..263: immutable wire records, not host pointers. */
     0x6e, 0x74, 0x00, 0x3d, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, /* SWF octets 264..275: immutable wire records, not host pointers. */
-    0x00, 0x00, /* SWF octets 276..277: immutable wire records, not host pointers. */
+    0x00, 0x00,                                                             /* SWF octets 276..277: immutable wire records, not host pointers. */
 }; /* End the independent source fixture. */
 #endif /* FVM_TUTORIAL_CLIP_ACTION_MOVIE_H. */

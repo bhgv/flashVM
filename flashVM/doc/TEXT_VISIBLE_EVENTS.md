@@ -25,7 +25,7 @@ contexts support the event. Programmatic edits do not synthesize onChanged.
 
 ## Descriptor-only work accounting
 
-[fvm_textfield_observer_present](../src/standard/text_listeners.cpp#L73) is a private C++98 owner-thread helper, not a new
+[fvm_textfield_observer_present](../src/standard/text_listeners.cpp#L116) is a private C++98 owner-thread helper, not a new
 public C ABI entry. It validates receiver/lifecycle/version and leaves its Boolean
 output false on status failure. Before admitting measurement it checks the private
 registration edge or potential own/inherited onScroller descriptors and loaded
@@ -39,7 +39,7 @@ folded fallback consume shared native execution work. Traversal checks owning
 contexts and the existing prototype-depth bound. Cycles, foreign graph segments,
 work exhaustion and periodic worker cancellation do not publish an edit.
 
-Discovery shares the existing [FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L28) execution budget through
+Discovery shares the existing [FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L37) execution budget through
 candidate preparation and dispatch; it does not reset the budget before callbacks.
 Fixed lookup keys may allocate, with the ordinary public-call allocation status
 mapping. Bounds count visited tables/entries, not each byte of a stored name or
@@ -94,6 +94,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_textfield_observer_present` | function | [src/standard/text_listeners.cpp:73](../src/standard/text_listeners.cpp#L73) |
-| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:28](../src/standard/text_listeners.hpp#L28) |
+| `fvm_textfield_observer_present` | function | [src/standard/text_listeners.cpp:116](../src/standard/text_listeners.cpp#L116) |
+| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:37](../src/standard/text_listeners.hpp#L37) |
 <!-- source-links:end -->

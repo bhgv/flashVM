@@ -29,8 +29,14 @@ def git(repo, *args, data=None, stdout=subprocess.PIPE):
     """Run Git with user/system configuration isolated from archive construction."""
     env = dict(os.environ)
     env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
-    return subprocess.run(["git", "-C", str(repo), *args], input=data, stdout=stdout,
-                          stderr=subprocess.PIPE, env=env, check=True).stdout
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        input=data,
+        stdout=stdout,
+        stderr=subprocess.PIPE,
+        env=env,
+        check=True,
+    ).stdout
 
 
 def create(repo, revision, output):
@@ -41,7 +47,11 @@ def create(repo, revision, output):
         raise ValueError("output already exists: " + str(output))
     if git(repo, "rev-parse", "--is-shallow-repository").strip() == b"true":
         raise ValueError("complete history is required; shallow repositories are rejected")
-    commit = git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}").decode().strip()
+    commit = (
+        git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}")
+        .decode()
+        .strip()
+    )
     version_path = "flashVM/VERSION.txt"
     try:
         version = git(repo, "show", commit + ":" + version_path).decode().strip()
@@ -54,7 +64,14 @@ def create(repo, revision, output):
     date = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc)
     if not ZIP_MIN_YEAR <= date.year <= ZIP_MAX_YEAR:
         raise ValueError("commit timestamp is outside ZIP date range")
-    stamp = (date.year, date.month, date.day, date.hour, date.minute, date.second // ZIP_TIME_RESOLUTION_SECONDS * ZIP_TIME_RESOLUTION_SECONDS)
+    stamp = (
+        date.year,
+        date.month,
+        date.day,
+        date.hour,
+        date.minute,
+        date.second // ZIP_TIME_RESOLUTION_SECONDS * ZIP_TIME_RESOLUTION_SECONDS,
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="flashvm-export-", dir=output.parent) as temporary:
         stage = Path(temporary) / "FlashVM"
@@ -63,24 +80,54 @@ def create(repo, revision, output):
         git(stage, "init", "--quiet", "--template=", "--object-format=" + object_format)
         metadata = stage / ".git"
         repository_format = "0" if object_format == "sha1" else "1"
-        format_extension = "" if object_format == "sha1" else (
-            '[extensions]\n\tobjectformat = ' + object_format + '\n')
+        format_extension = (
+            ""
+            if object_format == "sha1"
+            else ("[extensions]\n\tobjectformat = " + object_format + "\n")
+        )
         (metadata / "config").write_text(
-            '[core]\n\trepositoryformatversion = ' + repository_format + '\n\tfilemode = true\n\tbare = false\n'
+            "[core]\n\trepositoryformatversion = "
+            + repository_format
+            + "\n\tfilemode = true\n\tbare = false\n"
             '\tlogallrefupdates = false\n[remote "origin"]\n'
-            '\turl = https://github.com/bhgv/flashVM.git\n'
-            '\tfetch = +refs/heads/*:refs/remotes/origin/*\n' + format_extension, encoding="utf-8")
+            "\turl = https://github.com/bhgv/flashVM.git\n"
+            "\tfetch = +refs/heads/*:refs/remotes/origin/*\n" + format_extension,
+            encoding="utf-8",
+        )
         # Retain every ancestor of this commit, without copying unrelated local refs.
         pack = Path(temporary) / "history.pack"
         with pack.open("wb") as stream:
-            git(repo, "pack-objects", "--stdout", "--revs", "--no-reuse-delta",
-                "--no-reuse-object", "--threads=1", "--window=" + str(PACK_WINDOW), "--depth=" + str(PACK_DEPTH),
-                data=(commit + "\n").encode(), stdout=stream)
+            git(
+                repo,
+                "pack-objects",
+                "--stdout",
+                "--revs",
+                "--no-reuse-delta",
+                "--no-reuse-object",
+                "--threads=1",
+                "--window=" + str(PACK_WINDOW),
+                "--depth=" + str(PACK_DEPTH),
+                data=(commit + "\n").encode(),
+                stdout=stream,
+            )
         with pack.open("rb") as stream:
             env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
-            subprocess.run(["git", "-C", str(stage), "-c", "pack.writeReverseIndex=false",
-                            "index-pack", "--stdin"], stdin=stream, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, env=env, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(stage),
+                    "-c",
+                    "pack.writeReverseIndex=false",
+                    "index-pack",
+                    "--stdin",
+                ],
+                stdin=stream,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=True,
+            )
         (metadata / "refs/heads/master").write_text(commit + "\n", encoding="ascii")
         (metadata / "HEAD").write_text("ref: refs/heads/master\n", encoding="ascii")
         git(stage, "checkout", "--force", "--quiet", "master")
@@ -96,7 +143,9 @@ def create(repo, revision, output):
                 metadata_entry, name = entry.split(b"\t", 1)
                 modes[os.fsdecode(name)] = int(metadata_entry.split()[0], 8)
         candidate = Path(temporary) / output.name
-        with zipfile.ZipFile(candidate, "w", zipfile.ZIP_DEFLATED, compresslevel=ZIP_COMPRESSION_LEVEL) as archive:
+        with zipfile.ZipFile(
+            candidate, "w", zipfile.ZIP_DEFLATED, compresslevel=ZIP_COMPRESSION_LEVEL
+        ) as archive:
             paths = sorted(p for p in stage.rglob("*") if p.is_file() or p.is_symlink())
             for path in paths:
                 relative = path.relative_to(stage).as_posix()

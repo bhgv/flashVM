@@ -69,10 +69,10 @@ Reader сначала проверяет целые и лимиты, затем 
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L56) | Заимствует число и output хоста, проверяет limbs/знак и ёмкость до записи. Used публикуется только при OK; ошибка сохраняет bytes/used. |
-| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L58) | Заимствует префикс, value/used обязательны. Публикация только при OK. При MORE вызывающий сохраняет и дополняет префикс. |
-| [`fvm_srecord_write`](../include/flashvm/srecord.h#L66) | Заимствует tag/payload, пишет лишь после полной проверки. Payload не пересекается с output. Без выделений памяти, VM и транспорта. |
-| [`fvm_srecord_read`](../include/flashvm/srecord.h#L80) | Возвращает одну проверенную заимствованную view и consumed. Limit считает body. При MORE/ошибке выходы прежние; следующие записи не потребляются. |
+| [`fvm_sinteger_write`](../include/flashvm/srecord.h#L62) | Заимствует число и output хоста, проверяет limbs/знак и ёмкость до записи. Used публикуется только при OK; ошибка сохраняет bytes/used. |
+| [`fvm_sinteger_read`](../include/flashvm/srecord.h#L66) | Заимствует префикс, value/used обязательны. Публикация только при OK. При MORE вызывающий сохраняет и дополняет префикс. |
+| [`fvm_srecord_write`](../include/flashvm/srecord.h#L76) | Заимствует tag/payload, пишет лишь после полной проверки. Payload не пересекается с output. Без выделений памяти, VM и транспорта. |
+| [`fvm_srecord_read`](../include/flashvm/srecord.h#L94) | Возвращает одну проверенную заимствованную view и consumed. Limit считает body. При MORE/ошибке выходы прежние; следующие записи не потребляются. |
 
 Независимое хранение делает вызовы реентерабельными. Глобального изменяемого
 состояния, входа в VM/GC/SDL/device нет. Общие буферы синхронизирует хост.
@@ -135,10 +135,10 @@ unsigned число_привязок
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L33) | Заполняет descriptor/capacity, не меняя slots. Без выделений/VM/GC; reinit создаёт пустую таблицу направления. |
-| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L37) | Копирует metadata в output; UNKNOWN для нуля/неизвестного тега. Ошибка сохраняет output. Указатель объекта или полномочия не выдаёт. |
-| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L43) | Проверяет весь список и ёмкость, пишет только двоичный payload декларации. Его оборачивают record_write с тегом 0 в отдельный буфер. |
-| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L49) | Проверяет целую запись тега 0/checksum и все элементы до атомарного добавления. Идентификаторы копируются; вход нужен лишь на время вызова. Used меняется только при OK. |
+| [`fvm_sbindings_init`](../include/flashvm/sbindings.h#L37) | Заполняет descriptor/capacity, не меняя slots. Без выделений/VM/GC; reinit создаёт пустую таблицу направления. |
+| [`fvm_sbindings_lookup`](../include/flashvm/sbindings.h#L43) | Копирует metadata в output; UNKNOWN для нуля/неизвестного тега. Ошибка сохраняет output. Указатель объекта или полномочия не выдаёт. |
+| [`fvm_sbindings_payload_write`](../include/flashvm/sbindings.h#L51) | Проверяет весь список и ёмкость, пишет только двоичный payload декларации. Его оборачивают record_write с тегом 0 в отдельный буфер. |
+| [`fvm_sbindings_apply`](../include/flashvm/sbindings.h#L59) | Проверяет целую запись тега 0/checksum и все элементы до атомарного добавления. Идентификаторы копируются; вход нужен лишь на время вызова. Used меняется только при OK. |
 
 Descriptor/slots/input/output не перекрываются. Скрытых выделений/блокировок
 нет; общий доступ lookup/apply/reset синхронизирует хост. Двухпроходная проверка
@@ -156,9 +156,9 @@ VM-объекты автоматически не сериализуются и 
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_sstream_init`](../include/flashvm/sstream.h#L24) | Заполняет state и параметры буфера, не меняя байты. Capacity >=3, body limit 1..BODY_MAX. Меньший буфер задаёт дополнительное ограничение всей записи. |
-| [`fvm_sstream_push`](../include/flashvm/sstream.h#L33) | Used сообщает потреблённый вход при MORE/OK/ошибке данных; view меняется только при OK и живёт до reset/disposal. После завершения push возвращает INVALID/used=0. Ошибка данных сохраняется до reset. |
-| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L38) | Явно сбрасывает префикс/ошибку/заимствование без очистки байтов. Сначала остановить пользователей view. Reset не синхронизирует поток и не отменяет удалённые команды. |
+| [`fvm_sstream_init`](../include/flashvm/sstream.h#L26) | Заполняет state и параметры буфера, не меняя байты. Capacity >=3, body limit 1..BODY_MAX. Меньший буфер задаёт дополнительное ограничение всей записи. |
+| [`fvm_sstream_push`](../include/flashvm/sstream.h#L37) | Used сообщает потреблённый вход при MORE/OK/ошибке данных; view меняется только при OK и живёт до reset/disposal. После завершения push возвращает INVALID/used=0. Ошибка данных сохраняется до reset. |
+| [`fvm_sstream_reset`](../include/flashvm/sstream.h#L44) | Явно сбрасывает префикс/ошибку/заимствование без очистки байтов. Сначала остановить пользователей view. Reset не синхронизирует поток и не отменяет удалённые команды. |
 
 В отличие от полного record_read, MORE здесь уже сохраняет потреблённые байты.
 Повторно подаются только непотреблённые. При OK обработать view, сбросить state,
@@ -178,15 +178,15 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_S_OK` | enum constant | [include/flashvm/srecord.h:30](../include/flashvm/srecord.h#L30) |
-| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../include/flashvm/sbindings.h#L49) |
-| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../include/flashvm/sbindings.h#L33) |
-| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
-| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
-| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:58](../include/flashvm/srecord.h#L58) |
-| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:56](../include/flashvm/srecord.h#L56) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../include/flashvm/srecord.h#L80) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
-| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../include/flashvm/sstream.h#L24) |
-| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../include/flashvm/sstream.h#L33) |
-| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../include/flashvm/sstream.h#L38) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:59](../include/flashvm/sbindings.h#L59) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:37](../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:43](../include/flashvm/sbindings.h#L43) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:51](../include/flashvm/sbindings.h#L51) |
+| `fvm_sinteger_read` | function | [include/flashvm/srecord.h:66](../include/flashvm/srecord.h#L66) |
+| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:62](../include/flashvm/srecord.h#L62) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:94](../include/flashvm/srecord.h#L94) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:76](../include/flashvm/srecord.h#L76) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:26](../include/flashvm/sstream.h#L26) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:37](../include/flashvm/sstream.h#L37) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:44](../include/flashvm/sstream.h#L44) |
 <!-- source-links:end -->

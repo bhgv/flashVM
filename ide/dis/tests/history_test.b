@@ -1,8 +1,9 @@
 implement HistoryTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Bootstrap only: the production service never imports Sys or halts its host.
 HistoryTest: module
@@ -11,35 +12,42 @@ HistoryTest: module
 };
 checks := 0;
 
+
 # Terminate this isolated reference emulator after a terminal test result.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: halt returned";
 }
 
+
 # Keep assertions active regardless of native build configuration.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
 
+
 # Own one reply rendezvous until the serialized request completes.
 exchange(commands: chan of core->Request, operation, expected, first, last: int,
-         text: string): core->Reply
+text: string): core->Reply
 {
     reply := chan of core->Reply;
     commands <-= core->Request(7, operation, expected, first, last, text, "", reply);
     return <-reply;
 }
+
 
 # Rejected history commands must retain the entire observable snapshot.
 state(result: core->Reply, status, revision, saved: int, text: string)
@@ -50,6 +58,7 @@ state(result: core->Reply, status, revision, saved: int, text: string)
     require(result.id == 7, "correlation");
     require(result.offset == -1 && result.line == -1 && result.column == -1, "no invented navigation result");
 }
+
 
 # Exercise history semantics, admission, session retirement and exact entry eviction.
 init()
@@ -88,19 +97,22 @@ init()
     # 65 changes admit exactly the most recent 64 prior texts; "0" is evicted.
     commands = core->start();
     result := exchange(commands, core->Open, 0, 0, 0, "0");
-    for(index := 1; index <= 65; index++){
+    for(index := 1; index <= 65; index++)
+    {
         text := sys->sprint("%d", index);
         result = exchange(commands, core->Replace, result.revision, 0, len result.text, text);
         state(result, core->Ok, index + 1, 1, text);
     }
     revision := result.revision;
-    for(index = 64; index >= 1; index--){
+    for(index = 64; index >= 1; index--)
+    {
         revision++;
         result = exchange(commands, core->Undo, result.revision, 0, 0, "");
         state(result, core->Ok, revision, 1, sys->sprint("%d", index));
     }
     state(exchange(commands, core->Undo, revision, 0, 0, ""), core->NotFound, revision, 1, "1");
-    for(index = 2; index <= 65; index++){
+    for(index = 2; index <= 65; index++)
+    {
         revision++;
         result = exchange(commands, core->Redo, result.revision, 0, 0, "");
         state(result, core->Ok, revision, 1, sys->sprint("%d", index));

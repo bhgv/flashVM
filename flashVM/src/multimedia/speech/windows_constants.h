@@ -1,16 +1,11 @@
 /* Windows SAPI event masks. Include after the SDK declares ULONGLONG/SPEI_*. */
-#ifndef FVM_SPEECH_WINDOWS_CONSTANTS_H
-#define FVM_SPEECH_WINDOWS_CONSTANTS_H
+#ifndef FVM_SPEECH_WINDOWS_CONSTANTS_H                  /* Keep the private mask declarations unique. */
+#define FVM_SPEECH_WINDOWS_CONSTANTS_H                  /* Mark this Windows-only constants header included. */
 
-/* Convert before shifting: Windows long is 32-bit even on x64. No C++11 ull
- * literal is required at the first-party C++98 call site. */
-#define FVM_WINDOWS_SAPI_EVENT_ONE ((ULONGLONG)1)
+#define FVM_WINDOWS_SAPI_EVENT_ONE ((ULONGLONG)1)       /* Cast before shifting; Windows long remains 32-bit on x64. */
+#define FVM_WINDOWS_SAPI_FINAL_EVENTS                   /* Final recognition plus the SDK's required flag-check bits. */  \
+    ((FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RECOGNITION) | /* Subscribe to completed transcripts, not interim hypotheses. */ \
+     (FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RESERVED1) |   /* Retain the first required SDK flag-check bit. */               \
+     (FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RESERVED2))    /* Retain the second required SDK flag-check bit. */
 
-/* Same three bits as SPFEI(SPEI_RECOGNITION): final recognition plus both SDK
- * reserved flag-check bits. This does not subscribe to interim transcripts. */
-#define FVM_WINDOWS_SAPI_FINAL_EVENTS                                                              \
-    ((FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RECOGNITION) |                                            \
-     (FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RESERVED1) |                                              \
-     (FVM_WINDOWS_SAPI_EVENT_ONE << SPEI_RESERVED2))
-
-#endif
+#endif                                                  /* End the private include guard; no C++11 ull literal is required. */

@@ -7,13 +7,13 @@ no effect. Any native instance can stop the context-wide drag, regardless of
 which instance started it. These callbacks survive channel graph transport;
 the destination maintains independent pointer and active drag state.
 
-The C89 [fvm_exec_drag_values](../include/flashvm/execution.h#L264)(context, clip, center, bound_count, bounds) service
+The C89 [fvm_exec_drag_values](../include/flashvm/execution.h#L359)(context, clip, center, bound_count, bounds) service
 prepares script-style options without an operand stack. Center may be NULL and
 otherwise projects versioned Boolean truth without valueOf/toString callbacks.
 Zero bound values means unconstrained. One through four values enable limits,
 converted in forward xMin/yMin/xMax/yMax order; missing trailing values convert
 from undefined and normalize through the native engine. Counts above the public
-[FVM_EXEC_DRAG_BOUND_LIMIT](../include/flashvm/execution.h#L18) and invalid/foreign inputs are rejected. Native script
+[FVM_EXEC_DRAG_BOUND_LIMIT](../include/flashvm/execution.h#L19) and invalid/foreign inputs are rejected. Native script
 adapters ignore arguments after the four limits, as the reference does.
 
 All operands and the receiver remain rooted through number conversion. Direct
@@ -67,6 +67,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_EXEC_DRAG_BOUND_LIMIT` | macro / define | [include/flashvm/execution.h:18](../include/flashvm/execution.h#L18) |
-| `fvm_exec_drag_values` | function | [include/flashvm/execution.h:264](../include/flashvm/execution.h#L264) |
+| `FVM_EXEC_DRAG_BOUND_LIMIT` | macro / define | [include/flashvm/execution.h:19](../include/flashvm/execution.h#L19) |
+| `fvm_exec_drag_values` | function | [include/flashvm/execution.h:359](../include/flashvm/execution.h#L359) |
 <!-- source-links:end -->

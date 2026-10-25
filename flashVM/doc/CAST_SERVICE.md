@@ -1,6 +1,6 @@
 # Value-based casts / Общий обработчик приведений — v0.282
 
-C89 [`fvm_exec_cast`](../include/flashvm/execution.h#L230) returns the original matching value or null. In loaded SWFs,
+C89 [`fvm_exec_cast`](../include/flashvm/execution.h#L314) returns the original matching value or null. In loaded SWFs,
 primitive inputs invoke the common object-conversion service for its constructor
 side effects before returning null. A wrapper never replaces the original input
 in the membership test. Null/undefined conversion does not call a constructor.
@@ -44,5 +44,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_cast` | function | [include/flashvm/execution.h:230](../include/flashvm/execution.h#L230) |
+| `fvm_exec_cast` | function | [include/flashvm/execution.h:314](../include/flashvm/execution.h#L314) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Scoped target paths / Поиск путей в областях видимости
 
-v0.256 adds the C89 [`fvm_exec_scope_target`](../include/flashvm/execution.h#L378) value service. Callers supply a managed
+v0.256 adds the C89 [`fvm_exec_scope_target`](../include/flashvm/execution.h#L504) value service. Callers supply a managed
 activation/With chain, selected fallback target, optional explicit this object and
 counted path. Each scope retries the complete object path after a partial miss;
 then target/global are tried. Missing paths return undefined, errors preserve out,
@@ -51,5 +51,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_scope_target` | function | [include/flashvm/execution.h:378](../include/flashvm/execution.h#L378) |
+| `fvm_exec_scope_target` | function | [include/flashvm/execution.h:504](../include/flashvm/execution.h#L504) |
 <!-- source-links:end -->

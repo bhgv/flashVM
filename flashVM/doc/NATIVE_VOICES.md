@@ -4,8 +4,8 @@ Since v0.797 the desktop uses output identity deadlines for NoMultiple; the low-
 
 ## v0.783: exact storage and preparation ceilings
 
-[`fvm_swf_sound_voice_open_bounded`](../include/flashvm/swf_sound.h#L97) retains the existing PCM/ADPCM/MP3, range,
-loop and envelope behavior of [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82). Its additional budget
+[`fvm_swf_sound_voice_open_bounded`](../include/flashvm/swf_sound.h#L119) retains the existing PCM/ADPCM/MP3, range,
+loop and envelope behavior of [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L100). Its additional budget
 covers the native object, exact selected-interval S16 array and copied envelope
 records. Check addition/multiplication before allocating any of these owners;
 even an empty voice needs its native object. Zero or insufficient budget returns
@@ -13,7 +13,7 @@ OUT_OF_MEMORY and null output. Runtime payload limits still apply independently.
 Codec/source errors propagate. Decoder stack, VM allocations, allocator overhead,
 process RSS and output queues are excluded. The ceiling bounds storage, not CPU.
 
-[`fvm_swf_sound_voice_storage_info`](../include/flashvm/swf_sound.h#L101) copies exact retained/PCM/envelope charges
+[`fvm_swf_sound_voice_storage_info`](../include/flashvm/swf_sound.h#L125) copies exact retained/PCM/envelope charges
 without allocating, callbacks or source access. Caller sets exact struct_size;
 invalid arguments preserve output. The voice remains independently owned after
 reload, GC and context teardown. All operations require external serialization;
@@ -26,7 +26,7 @@ not certify complete SWF sound, reference timing or physical device behavior.
 
 ## v0.784: reusable prepared PCM
 
-[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L111) makes a deep independent copy of a prepared voice,
+[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L137) makes a deep independent copy of a prepared voice,
 including its current cursor, repetition and envelope segment, or EOF. It never
 re-enters a context or decoder. The explicit budget includes the object and exact
 arrays. On failure the source is unchanged and output is null. Keep source and
@@ -43,7 +43,7 @@ Exact/short budgets and argument preservation are exercised after source teardow
 
 ## v0.785: native cursor positioning
 
-[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L123) selects a repeat and source-relative frame without
+[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L153) selects a repeat and source-relative frame without
 allocation or decoding. For a nonempty voice choose play_index < play_count and
 frame < frames_per_play, or (play_count,0) for EOF. Empty/zero-play voices accept
 only (0,0), remaining finished. Invalid input leaves all progress unchanged.
@@ -60,12 +60,12 @@ progress, empty and zero-loop owners with allocation forbidden throughout seeks.
 
 ## v0.786: aggregate mixer ownership
 
-[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L108) returns fixed mixer object/scratch/slot bytes,
+[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L135) returns fixed mixer object/scratch/slot bytes,
 all owned voice bytes and their checked sum. Release tails and converter lookahead
 remain charged until the slot actually retires. Invalid query arguments preserve
 output. No source VM, callback or allocation is involved.
 
-[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L96) applies the existing transfer and
+[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L119) applies the existing transfer and
 SyncNoMultiple/finished policy with an aggregate object/slot/voice ceiling.
 Budget rejection leaves the incoming handle, progress and all old slots intact.
 NoMultiple and finished no-ops consume their unused owner without adding storage,
@@ -73,7 +73,7 @@ even with a zero budget. Ordinary adoption includes old plus new voice objects,
 PCM and envelope arrays. Queue buffers, allocator overhead and external templates
 are excluded. Keep all owners serialized; no callback/VM/allocation occurs.
 
-[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L114) queries the same non-releasing same-ID condition
+[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L143) queries the same non-releasing same-ID condition
 used by SyncNoMultiple. Valid IDs are 1..65535; errors preserve output. An
 observation is not a reservation: recheck controls when adopting under the lock.
 `swf_sound_mixer_storage` forbids allocations after VM teardown and verifies exact
@@ -122,7 +122,7 @@ are not hardware, ThreadSanitizer or foreign-platform acceptance.
 
 ## v0.789: reject fixed mixer storage before allocation
 
-[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L65) adds a fixed object/scratch/slot ceiling to
+[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L78) adds a fixed object/scratch/slot ceiling to
 configured construction. Validate geometry first, then checked-size the exact
 object and slot table before either allocation. Zero/short budget returns OOM
 and null output; other configured errors propagate. No callback, device or VM.
@@ -196,13 +196,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../include/flashvm/swf_sound_mixer.h#L65) |
-| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:108](../include/flashvm/swf_sound_mixer.h#L108) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:96](../include/flashvm/swf_sound_mixer.h#L96) |
-| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
-| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:123](../include/flashvm/swf_sound.h#L123) |
-| `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
+| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:143](../include/flashvm/swf_sound_mixer.h#L143) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:135](../include/flashvm/swf_sound_mixer.h#L135) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:119](../include/flashvm/swf_sound_mixer.h#L119) |
+| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:137](../include/flashvm/swf_sound.h#L137) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:119](../include/flashvm/swf_sound.h#L119) |
+| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:153](../include/flashvm/swf_sound.h#L153) |
+| `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:125](../include/flashvm/swf_sound.h#L125) |
 <!-- source-links:end -->

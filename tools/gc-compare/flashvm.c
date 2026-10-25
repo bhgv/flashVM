@@ -7,13 +7,23 @@
 #include <time.h>
 
 /* Keep the benchmark fail-closed even in Release builds with NDEBUG. */
-#define REQUIRE(call) do { if (!(call)) { fprintf(stderr, "failed line %d: %s\n", __LINE__, #call); return 1; } } while (0)
+#define REQUIRE(call)                                                                                                  \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(call))                                                                                                   \
+        {                                                                                                              \
+            fprintf(stderr, "failed line %d: %s\n", __LINE__, #call);                                                  \
+            return 1;                                                                                                  \
+        }                                                                                                              \
+    } while (0)
+
 
 /* CPU time is not wall-clock tail latency; the runner labels it accordingly. */
 static double milliseconds(clock_t start, clock_t end)
 {
     return 1000.0 * (double)(end - start) / (double)CLOCKS_PER_SEC;
 }
+
 
 /* Build a dead/live ring or dead objects, then measure complete collections. */
 int main(int argc, char **argv)
@@ -53,7 +63,9 @@ int main(int argc, char **argv)
     REQUIRE(fvm_gc_mode(context, FVM_GC_SUSPENDED) == FVM_OK);
     REQUIRE(fvm_gc_object_count(context, &baseline) == FVM_OK);
     if (!strcmp(argv[1], "strings_traced"))
+    {
         REQUIRE(fvm_gc_string_mode(context, FVM_GC_STRINGS_TRACED) == FVM_OK);
+    }
     fvm_value_undefined(&value);
     start = clock();
     if (is_string)
@@ -67,7 +79,9 @@ int main(int argc, char **argv)
             sprintf(ascii, "text-%lu-suffix", index);
             length = strlen(ascii);
             for (character = 0; character < length; character++)
+            {
                 text[character] = (unsigned char)ascii[character];
+            }
             REQUIRE(fvm_value_string_utf16(context, text, length, &value) == FVM_OK);
         }
     }
@@ -76,7 +90,9 @@ int main(int argc, char **argv)
         objects = (FVM_Object **)calloc(count, sizeof(*objects));
         REQUIRE(objects);
         for (index = 0; index < count; index++)
+        {
             REQUIRE(fvm_object_create(context, &objects[index]) == FVM_OK);
+        }
         if (ring)
         {
             value.type = FVM_VALUE_OBJECT;
@@ -100,21 +116,34 @@ int main(int argc, char **argv)
         REQUIRE(fvm_gc_unpin(context, objects[0]) == FVM_OK);
     }
     else
+    {
         kept = allocated;
+    }
     REQUIRE(fvm_gc_collect(context, &reclaimed) == FVM_OK);
     collected = clock();
     REQUIRE(fvm_gc_object_count(context, &after) == FVM_OK);
     REQUIRE(fvm_gc_string_stats(context, &strings_after) == FVM_OK);
     REQUIRE(after == baseline && (is_string || reclaimed == count));
     if (!strcmp(argv[1], "strings_arena"))
+    {
         REQUIRE(strings_after.buffers == strings_before.buffers);
+    }
     if (!strcmp(argv[1], "strings_traced"))
+    {
         REQUIRE(strings_after.buffers == 0);
+    }
     printf("{\"case\":\"%s\",\"count\":%lu,\"allocation_cpu_ms\":%.6f,\"keep_collect_cpu_ms\":%.6f,"
            "\"drop_collect_cpu_ms\":%.6f,\"objects_before\":%lu,\"objects_after\":%lu,"
            "\"strings_before_bytes\":%lu,\"strings_after_bytes\":%lu}\n",
-           argv[1], count, milliseconds(start, allocated), keep_ms, milliseconds(kept, collected),
-           before, after, (unsigned long)strings_before.allocated_bytes, (unsigned long)strings_after.allocated_bytes);
+           argv[1],
+           count,
+           milliseconds(start, allocated),
+           keep_ms,
+           milliseconds(kept, collected),
+           before,
+           after,
+           (unsigned long)strings_before.allocated_bytes,
+           (unsigned long)strings_after.allocated_bytes);
     free(objects);
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);

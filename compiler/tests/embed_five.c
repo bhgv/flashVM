@@ -6,6 +6,7 @@
 #include "firsyn.h"
 #include <string.h>
 
+
 /* Input/diagnostics stay caller-owned; no parser process or console adapter is used. */
 int main(void)
 {
@@ -21,13 +22,16 @@ int main(void)
     unsigned int i;
     for (i = 0; i < 32; ++i)
     {
-        if (as1_check("@", 1, &a1) || as2_check("@", 1, &a2) || as3_check("@", 1, &a3) ||
-            limbo_check("@", 1, &lb) || firsyn_check(bad_fir, strlen(bad_fir), &ir))
+        if (as1_check("@", 1, &a1) || as2_check("@", 1, &a2) || as3_check("@", 1, &a3) || limbo_check("@", 1, &lb) ||
+            firsyn_check(bad_fir, strlen(bad_fir), &ir))
+        {
             return 1;
-        if (!as1_check(as, strlen(as), &a1) || !as2_check(as, strlen(as), &a2) ||
-            !as3_check(as, strlen(as), &a3) || !limbo_check(limbo, strlen(limbo), &lb) ||
-            !firsyn_check(fir, strlen(fir), &ir))
+        }
+        if (!as1_check(as, strlen(as), &a1) || !as2_check(as, strlen(as), &a2) || !as3_check(as, strlen(as), &a3) ||
+            !limbo_check(limbo, strlen(limbo), &lb) || !firsyn_check(fir, strlen(fir), &ir))
+        {
             return 2;
+        }
     }
     return 0;
 }

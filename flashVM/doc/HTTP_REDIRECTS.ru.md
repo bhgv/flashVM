@@ -6,10 +6,10 @@
 [fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) инициализирует [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L21): без redirects,
 connect 10с / total 30с, штатный trust. Явные native callbacks [fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L72)
 и [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L76) требуют policy в userdata; worker-вариант также
-заимствует [FVM_NetControl](../ports/network/socket.h#L21). Старые socket options/controlled requests/callbacks сохранены.
+заимствует [FVM_NetControl](../ports/network/socket.h#L23). Старые socket options/controlled requests/callbacks сохранены.
 
 max_redirects=0..[FVM_HTTP_REDIRECT_MAX](../frontend/common/http_policy.h#L6) (8), connect_ms>0 и <=total_ms,
-total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L8) (120с), необязательный ca_file. Неверная policy не запускает I/O.
+total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L9) (120с), необязательный ca_file. Неверная policy не запускает I/O.
 Общий монотонный бюджет включает все hops/headers/body и прошедшее время DNS;
 переполнение ticks учтено. DNS/CA/user callbacks принудительно не прерываются.
 Job deadlines и отмена хоста по-прежнему действуют на всю цепочку.
@@ -120,6 +120,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_NET_MAX_MS` | macro / define | [ports/network/socket.h:8](../ports/network/socket.h#L8) |
-| `FVM_NetControl` | struct | [ports/network/socket.h:21](../ports/network/socket.h#L21) |
+| `FVM_NET_MAX_MS` | macro / define | [ports/network/socket.h:9](../ports/network/socket.h#L9) |
+| `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
 <!-- source-links:end -->

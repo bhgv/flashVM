@@ -66,7 +66,7 @@ No timeout is installed implicitly by old APIs. Provider I/O timeouts remain sep
 
 Progress lines contain id/kind/phase/received/result; numeric phases 1..6 correspond
 to BEGIN, WAIT, FETCHED, FAILED, CANCELLED, TIMED_OUT. Kinds 1..3 are ROOT, CHILD,
-VARIABLES. Result is the signed [FVM_Result](../include/flashvm/flashvm.h#L40) (NOT_FOUND during BEGIN/WAIT). Repeated
+VARIABLES. Result is the signed [FVM_Result](../include/flashvm/flashvm.h#L42) (NOT_FOUND during BEGIN/WAIT). Repeated
 WAIT with unchanged body count is suppressed. Structured lines contain no URL or
 response body; ordinary player diagnostics can still name a movie/source URL.
 Help/version work without devices, including with these valid monitor options.
@@ -101,5 +101,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

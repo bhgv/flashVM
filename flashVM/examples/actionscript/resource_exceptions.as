@@ -1,74 +1,79 @@
 /* FlashVM: Embedding/ActionScript tutorial: resource exceptions.
- * File: examples/actionscript/resource_exceptions.as.
- */
+* File: examples/actionscript/resource_exceptions.as.
+*/
 
 // SWF 7/8 ActionScript example. Install FlashVM extension namespaces first.
 // Пример SWF 7/8: приложение должно сначала установить расширения FlashVM.
 /* Объявляем lock и сохраняем начальное значение. */
-var lock = mutex.new();
+var lock = mutex.new(); // Объявляем lock и сохраняем начальное значение.
 /* Объявляем acquired и сохраняем начальное значение. */
-var acquired = false;
+var acquired = false; // Объявляем acquired и сохраняем начальное значение.
 /* Начинаем блок, исключения которого будут обработаны ниже. */
-try
+try // Начинаем блок, исключения которого будут обработаны ниже.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем lock.set: захватываем общий мутекс; при необходимости ожидаем. */
-    lock.set();
+    lock.set(); // Вызываем lock.set: захватываем общий мутекс; при необходимости ожидаем.
     /* Сохраняем вычисленное значение: acquired. */
-    acquired = true;
+    acquired = true; // Сохраняем вычисленное значение: acquired.
     // Work with the shared resource / Работа с общим ресурсом.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Обрабатываем исключение из предыдущего блока. */
-catch (failure)
+catch (failure) // Обрабатываем исключение из предыдущего блока.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем trace: выводим диагностическое представление значения.
- * failure.code + ": " + failure.message — значение или выражение для вывода. */
-    trace(failure.code + ": " + failure.message);
+    * failure.code + ": " + failure.message — значение или выражение для вывода. */
+    trace(failure.code + ": " + failure.message); // Вызываем trace: выводим диагностическое представление значения. failure.code + ": " + failure.message — значение или выражение для вывода.
     /* Вызываем trace: выводим диагностическое представление значения.
- * failure.context.transport — значение или выражение для вывода. */
-    trace(failure.context.transport);
+    * failure.context.transport — значение или выражение для вывода. */
+    trace(failure.context.transport); // Вызываем trace: выводим диагностическое представление значения. failure.context.transport — значение или выражение для вывода.
     /* Вызываем trace: выводим диагностическое представление значения.
- * failure.context.path — значение или выражение для вывода. */
-    trace(failure.context.path);
+    * failure.context.path — значение или выражение для вывода. */
+    trace(failure.context.path); // Вызываем trace: выводим диагностическое представление значения. failure.context.path — значение или выражение для вывода.
     /* Вызываем trace: выводим диагностическое представление значения.
- * failure.context.address — значение или выражение для вывода. */
-    trace(failure.context.address);
+    * failure.context.address — значение или выражение для вывода. */
+    trace(failure.context.address); // Вызываем trace: выводим диагностическое представление значения. failure.context.address — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Продолжаем объявление или выражение с указанными параметрами. */
-finally
+finally // Продолжаем объявление или выражение с указанными параметрами.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Проверяем условие перед выполнением следующей ветки. */
-    if (acquired)
+    if (acquired) // Проверяем условие перед выполнением следующей ветки.
     /* Начинаем блок инструкций или описание объекта. */
-    {
+    { // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
         /* Вызываем lock.reset: освобождаем захваченный мутекс. */
-        lock.reset();
+        lock.reset(); // Вызываем lock.reset: освобождаем захваченный мутекс.
         /* Завершаем текущий блок или описание объекта. */
-    }
+    } // End the documented branch/scope.
+
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Вызываем lock.close: закрываем дескриптор общего мутекса. */
-lock.close();
+lock.close(); // Вызываем lock.close: закрываем дескриптор общего мутекса.
 /* Начинаем блок, исключения которого будут обработаны ниже. */
-try
+try // Начинаем блок, исключения которого будут обработаны ниже.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем lock.touch: проверяем текущее состояние захвата мутекса. */
-    lock.touch();
+    lock.touch(); // Вызываем lock.touch: проверяем текущее состояние захвата мутекса.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Обрабатываем исключение из предыдущего блока. */
-catch (closed)
+catch (closed) // Обрабатываем исключение из предыдущего блока.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     // 1001 = resource.closed. Catching leaves a copied debugger event.
     // Перехват не удаляет копию события из очереди отладчика.
     /* Вызываем trace: выводим диагностическое представление значения.
- * closed.code — значение или выражение для вывода. */
-    trace(closed.code);
+    * closed.code — значение или выражение для вывода. */
+    trace(closed.code); // Вызываем trace: выводим диагностическое представление значения. closed.code — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.

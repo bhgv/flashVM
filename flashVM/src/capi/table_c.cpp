@@ -19,24 +19,31 @@
 #include "flashvm/debug.h"
 #include <new>
 #include <cstring>
+
+
 /* Compute and return valid. */
 static int valid(FVM_Context *c, FVM_Object *o)
 {
     return c && o && o->owner == c;
 }
 
+
 /* Compute and return store. */
 static FVM_Result store(FVM_Context *c, const FVM_Value *v, FVM_Value *out)
 {
     if (fvm_validate_value(c, v) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = *v;
     if (v->type == FVM_VALUE_STRING)
     {
         size_t n = fvm_string_size(*v);
         char *p = new (std::nothrow) char[n + 1];
         if (!p)
+        {
             return FVM_OUT_OF_MEMORY;
+        }
         std::memcpy(p, v->string, n);
         p[n] = 0;
         try
@@ -54,393 +61,521 @@ static FVM_Result store(FVM_Context *c, const FVM_Value *v, FVM_Value *out)
     }
     return FVM_OK;
 }
+
 extern "C"
 {
-    /* Update index. */
-    static FVM_Result set_index(FVM_Context *c, FVM_Object *o, unsigned long key,
-                                const FVM_Value *v)
-    {
 
-        /* Initialization / Инициализация локального состояния. */
-        FVM_Value x;
-        FVM_Result r;
-        FVM_Value watched;
-        bool prepared_watch = false;
-        if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
-            return FVM_INVALID_ARGUMENT;
-        /* [GC:] Length conversion can detach the receiver and watched value before storage. */
-        FVM_ObjectRootScope receiver_roots(c, o);
-        fvm_detail::vector<FVM_Value> retained;
-        FVM_ValueVectorRootScope value_roots(c, retained);
-        FVM_WatchWriteScope write(c);
-        if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
+
+/* Update index. */
+static FVM_Result set_index(FVM_Context *c, FVM_Object *o, unsigned long key, const FVM_Value *v)
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    FVM_Value x;
+    FVM_Result r;
+    FVM_Value watched;
+    bool prepared_watch = false;
+    if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+
+
+    /* [GC:] Length conversion can detach the receiver and watched value before storage. */
+    FVM_ObjectRootScope receiver_roots(c, o);
+    fvm_detail::vector<FVM_Value> retained;
+
+
+    FVM_ValueVectorRootScope value_roots(c, retained);
+
+
+    FVM_WatchWriteScope write(c);
+    if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
+    {
+        if (key > 0xffffffffUL)
         {
-            if (key > 0xffffffffUL)
-                return FVM_INVALID_ARGUMENT;
-            char name[FVM_TABLE_INDEX_KEY_BYTES];
-            std::sprintf(name, "%lu", key);
-            if (key == 0xffffffffUL)
-                return fvm_object_set(c, o, name, v);
-            if (c->swf_loaded)
-            {
-                r = write.defer(fvm_property_watch_prepare(c, o, name, v, &watched), watched);
-                if (r != FVM_OK)
-                    return r;
-                prepared_watch = true;
-            }
-            if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
-                retained.push_back(watched);
-            /* Loaded growth can truncate on Int32 overflow and must propagate errors. */
-            r = fvm_array_prepare_index(c, o, fvm_detail::string(name));
+            return FVM_INVALID_ARGUMENT;
+        }
+        char name[FVM_TABLE_INDEX_KEY_BYTES];
+        std::sprintf(name, "%lu", key);
+        if (key == 0xffffffffUL)
+        {
+            return fvm_object_set(c, o, name, v);
+        }
+        if (c->swf_loaded)
+        {
+            r = write.defer(fvm_property_watch_prepare(c, o, name, v, &watched), watched);
             if (r != FVM_OK)
+            {
                 return r;
-            unsigned int flags = 0;
-            FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
+            }
+            prepared_watch = true;
+        }
+        if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
+        {
+            retained.push_back(watched);
+        }
+        /* Loaded growth can truncate on Int32 overflow and must propagate errors. */
+        r = fvm_array_prepare_index(c, o, fvm_detail::string(name));
+        if (r != FVM_OK)
+        {
+            return r;
+        }
+        unsigned int flags = 0;
+        FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
+        if (status != FVM_OK)
+        {
+            return status;
+        }
+        /* Loaded script setters run even when their stored indexed data is readonly. */
+        if (flags & 4)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+            if (!c->swf_loaded || script == o->accessors.end() || !fvm_base_script_accessor(script->second))
+            {
+                return write.finish(FVM_OK);
+            }
+        }
+        if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY &&
+            (o->resource_result.type != FVM_VALUE_NUMBER || key >= o->resource_result.number))
+        {
+            status = fvm_object_property_flags(c, o, "length", &flags);
             if (status != FVM_OK)
+            {
                 return status;
-            /* Loaded script setters run even when their stored indexed data is readonly. */
+            }
             if (flags & 4)
             {
-                fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-                if (!c->swf_loaded || script == o->accessors.end() ||
-                    !fvm_base_script_accessor(script->second))
-                    return write.finish(FVM_OK);
+                return write.finish(FVM_OK);
             }
-            if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY &&
-                (o->resource_result.type != FVM_VALUE_NUMBER || key >= o->resource_result.number))
-            {
-                status = fvm_object_property_flags(c, o, "length", &flags);
-                if (status != FVM_OK)
-                    return status;
-                if (flags & 4)
-                    return write.finish(FVM_OK);
-            }
-        }
-        if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
-        {
-            char name[FVM_TABLE_INDEX_KEY_BYTES];
-            std::sprintf(name, "%lu", key);
-            FVM_Object *cursor = o;
-            unsigned int depth = 0;
-            while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
-            {
-                if (cursor != o && !fvm_property_available(c, cursor, name))
-                {
-                    cursor = cursor->prototype;
-                    continue;
-                }
-                /* Only own data blocks loaded virtual dispatch; inherited data is skipped. */
-                if (c->swf_loaded ? cursor == o && fvm_property_own_write_data(c, cursor, fvm_detail::string(name)) :
-                    cursor->indexed.find(key) != cursor->indexed.end() ||
-                    cursor->properties.find(name) != cursor->properties.end())
-                    break;
-                if (cursor->accessors.find(name) != cursor->accessors.end())
-                    return write.finish(prepared_watch ? fvm_object_set_from(c, o, o, name, &watched, true, true)
-                                                       : fvm_object_set_no_index(c, o, name, v), cursor != o);
-                cursor = cursor->prototype;
-            }
-            if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
-                return FVM_ERROR;
-        }
-        char watched_name[FVM_TABLE_INDEX_KEY_BYTES];
-        std::sprintf(watched_name, "%lu", key);
-        if (!prepared_watch)
-        {
-            r = fvm_property_watch_prepare(c, o, watched_name, v, &watched);
-            if (r != FVM_OK)
-                return r;
-        }
-        r = store(c, &watched, &x);
-        if (r != FVM_OK)
-            return r;
-        try
-        {
-            o->indexed[key] = x;
-            fvm_property_clear_versions(c, o, watched_name);
-            fvm_array_note_index(o, key);
-        }
-        catch (...)
-        {
-            return FVM_OUT_OF_MEMORY;
-        }
-        return write.finish(FVM_OK);
-    }
-    /* Read index. */
-    static FVM_Result get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
-    {
-        if (!valid(c, o) || !out)
-            return FVM_INVALID_ARGUMENT;
-
-        /* Initialization / Инициализация локального состояния. */
-        FVM_Object *receiver = o;
-        bool standard_indices = o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT;
-        if (standard_indices)
-        {
-            char name[FVM_TABLE_INDEX_KEY_BYTES];
-            std::sprintf(name, "%lu", key);
-            if (key > 0xffffffffUL)
-                return FVM_INVALID_ARGUMENT;
-            if (key == 0xffffffffUL)
-            {
-                char name[FVM_TABLE_INDEX_KEY_BYTES];
-                std::sprintf(name, "%lu", key);
-                return fvm_object_get(c, o, name, out);
-            }
-            FVM_Object *cursor = o;
-            unsigned int depth = 0;
-            while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
-            {
-                if (!fvm_property_available(c, cursor, name))
-                {
-                    cursor = cursor->prototype;
-                    continue;
-                }
-                fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.find(key);
-                if (i != cursor->indexed.end())
-                {
-                    *out = i->second;
-                    return FVM_OK;
-                }
-                if (cursor->properties.find(name) != cursor->properties.end() ||
-                    cursor->accessors.find(name) != cursor->accessors.end() ||
-                    cursor->methods.find(name) != cursor->methods.end())
-                    return fvm_object_get_no_index(c, receiver, name, out);
-                cursor = cursor->prototype;
-            }
-            if (cursor)
-                return FVM_ERROR;
-        }
-        for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
-        {
-            if (standard_indices)
-            {
-                char name[FVM_TABLE_INDEX_KEY_BYTES];
-                std::sprintf(name, "%lu", key);
-                if (!fvm_property_available(c, o, name))
-                {
-                    o = o->metatable;
-                    continue;
-                }
-            }
-            fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.find(key);
-            if (it != o->indexed.end())
-            {
-                *out = it->second;
-                return FVM_OK;
-            }
-            o = o->metatable;
-        }
-        if (standard_indices)
-        {
-            char name[FVM_TABLE_INDEX_KEY_BYTES];
-            std::sprintf(name, "%lu", key);
-            return fvm_object_get_no_index(c, receiver, name, out);
-        }
-        fvm_value_undefined(out);
-        return FVM_OK;
-    }
-    /* Update table index. */
-    FVM_Result fvm_table_set_index(FVM_Context *c, FVM_Object *o, unsigned long key,
-                                   const FVM_Value *v)
-    {
-        try
-        {
-            return set_index(c, o, key, v);
-        }
-        catch (const std::bad_alloc &)
-        {
-            return FVM_OUT_OF_MEMORY;
-        }
-        catch (...)
-        {
-            return FVM_ERROR;
         }
     }
-    /* Read table index. */
-    FVM_Result fvm_table_get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
+    if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
     {
-        if (!out)
-            return FVM_INVALID_ARGUMENT;
-        fvm_value_undefined(out);
-        try
-        {
-            return get_index(c, o, key, out);
-        }
-        catch (const std::bad_alloc &)
-        {
-            fvm_value_undefined(out);
-            return FVM_OUT_OF_MEMORY;
-        }
-        catch (...)
-        {
-            fvm_value_undefined(out);
-            return FVM_ERROR;
-        }
-    }
-    /* Update table metatable. */
-    FVM_Result fvm_table_set_metatable(FVM_Context *c, FVM_Object *o, FVM_Object *meta)
-    {
-        if (!valid(c, o) || (meta && !valid(c, meta)))
-            return FVM_INVALID_ARGUMENT;
-
-        /* Initialization / Инициализация локального состояния. */
-        FVM_Object *cursor = meta;
+        char name[FVM_TABLE_INDEX_KEY_BYTES];
+        std::sprintf(name, "%lu", key);
+        FVM_Object *cursor = o;
         unsigned int depth = 0;
         while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {
-            if (cursor == o)
-                return FVM_INVALID_ARGUMENT;
-            cursor = cursor->metatable;
+            if (cursor != o && !fvm_property_available(c, cursor, name))
+            {
+                cursor = cursor->prototype;
+                continue;
+            }
+            /* Only own data blocks loaded virtual dispatch; inherited data is skipped. */
+            if (c->swf_loaded ? cursor == o && fvm_property_own_write_data(c, cursor, fvm_detail::string(name))
+                              : cursor->indexed.find(key) != cursor->indexed.end() ||
+                                    cursor->properties.find(name) != cursor->properties.end())
+            {
+                break;
+            }
+            if (cursor->accessors.find(name) != cursor->accessors.end())
+            {
+                return write.finish(prepared_watch ? fvm_object_set_from(c, o, o, name, &watched, true, true)
+                                                   : fvm_object_set_no_index(c, o, name, v),
+                                    cursor != o);
+            }
+            cursor = cursor->prototype;
+        }
+        if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
+        {
+            return FVM_ERROR;
+        }
+    }
+    char watched_name[FVM_TABLE_INDEX_KEY_BYTES];
+    std::sprintf(watched_name, "%lu", key);
+    if (!prepared_watch)
+    {
+        r = fvm_property_watch_prepare(c, o, watched_name, v, &watched);
+        if (r != FVM_OK)
+        {
+            return r;
+        }
+    }
+    r = store(c, &watched, &x);
+    if (r != FVM_OK)
+    {
+        return r;
+    }
+    try
+    {
+        o->indexed[key] = x;
+        fvm_property_clear_versions(c, o, watched_name);
+        fvm_array_note_index(o, key);
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    return write.finish(FVM_OK);
+}
+
+
+/* Read index. */
+static FVM_Result get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
+{
+    if (!valid(c, o) || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+
+    /* Initialization / Инициализация локального состояния. */
+    FVM_Object *receiver = o;
+    bool standard_indices = o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT;
+    if (standard_indices)
+    {
+        char name[FVM_TABLE_INDEX_KEY_BYTES];
+        std::sprintf(name, "%lu", key);
+        if (key > 0xffffffffUL)
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        if (key == 0xffffffffUL)
+        {
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
+            std::sprintf(name, "%lu", key);
+            return fvm_object_get(c, o, name, out);
+        }
+        FVM_Object *cursor = o;
+        unsigned int depth = 0;
+        while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
+        {
+            if (!fvm_property_available(c, cursor, name))
+            {
+                cursor = cursor->prototype;
+                continue;
+            }
+            fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.find(key);
+            if (i != cursor->indexed.end())
+            {
+                *out = i->second;
+                return FVM_OK;
+            }
+            if (cursor->properties.find(name) != cursor->properties.end() ||
+                cursor->accessors.find(name) != cursor->accessors.end() ||
+                cursor->methods.find(name) != cursor->methods.end())
+            {
+                return fvm_object_get_no_index(c, receiver, name, out);
+            }
+            cursor = cursor->prototype;
         }
         if (cursor)
-            return FVM_INVALID_ARGUMENT;
-        o->metatable = meta;
-        return FVM_OK;
+        {
+            return FVM_ERROR;
+        }
     }
-    /* Read table metatable. */
-    FVM_Result fvm_table_get_metatable(FVM_Context *c, FVM_Object *o, FVM_Object **out)
+    for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
-        if (!valid(c, o) || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = o->metatable;
-        return FVM_OK;
+        if (standard_indices)
+        {
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
+            std::sprintf(name, "%lu", key);
+            if (!fvm_property_available(c, o, name))
+            {
+                o = o->metatable;
+                continue;
+            }
+        }
+        fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.find(key);
+        if (it != o->indexed.end())
+        {
+            *out = it->second;
+            return FVM_OK;
+        }
+        o = o->metatable;
     }
-    /* Count table named. */
-    FVM_Result fvm_table_named_count(FVM_Context *c, FVM_Object *o, size_t *out)
+    if (standard_indices)
     {
-        if (!valid(c, o) || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = o->properties.size();
-        return FVM_OK;
+        char name[FVM_TABLE_INDEX_KEY_BYTES];
+        std::sprintf(name, "%lu", key);
+        return fvm_object_get_no_index(c, receiver, name, out);
     }
-    /* Count table indexed. */
-    FVM_Result fvm_table_indexed_count(FVM_Context *c, FVM_Object *o, size_t *out)
-    {
-        if (!valid(c, o) || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = o->indexed.size();
-        return FVM_OK;
-    }
-    /* Compute and return table named at. */
-    FVM_Result fvm_table_named_at(FVM_Context *c, FVM_Object *o, size_t index, const char **name,
-                                  FVM_Value *out)
-    {
-        if (!valid(c, o) || !name || !out || index >= o->properties.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator it = o->properties.begin();
-        while (index--)
-            ++it;
+    fvm_value_undefined(out);
+    return FVM_OK;
+}
 
-        /* Computation / Вычисление и обновление состояния. */
-        *name = it->first.c_str();
-        *out = it->second;
-        return FVM_OK;
-    }
-    /* Return the byte count alongside the borrowed complete own property name. */
-    FVM_Result fvm_table_named_at_bytes(FVM_Context *c, FVM_Object *o, size_t index,
-                                       const char **name, size_t *size, FVM_Value *out)
-    {
-        if (!valid(c, o) || !name || !size || !out || index >= o->properties.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator entry = o->properties.begin();
-        while (index--)
-            ++entry;
-        *name = entry->first.data();
-        *size = entry->first.size();
-        *out = entry->second;
-        return FVM_OK;
-    }
-    /* Compute and return table indexed at. */
-    FVM_Result fvm_table_indexed_at(FVM_Context *c, FVM_Object *o, size_t index, unsigned long *key,
-                                    FVM_Value *out)
-    {
-        if (!valid(c, o) || !key || !out || index >= o->indexed.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.begin();
-        while (index--)
-            ++it;
 
-        /* Computation / Вычисление и обновление состояния. */
-        *key = it->first;
-        *out = it->second;
-        return FVM_OK;
+/* Update table index. */
+FVM_Result fvm_table_set_index(FVM_Context *c, FVM_Object *o, unsigned long key, const FVM_Value *v)
+{
+    try
+    {
+        return set_index(c, o, key, v);
     }
-    /* Count debug object. */
-    FVM_Result fvm_debug_object_count(FVM_Context *c, size_t *out)
+    catch (const std::bad_alloc &)
     {
-        if (!c || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = c->objects.size();
-        return FVM_OK;
+        return FVM_OUT_OF_MEMORY;
     }
-    /* Compute and return debug object at. */
-    FVM_Result fvm_debug_object_at(FVM_Context *c, size_t i, FVM_Object **out)
+    catch (...)
     {
-        if (!c || !out || i >= c->objects.size())
-            return FVM_INVALID_ARGUMENT;
-        *out = c->objects[i];
-        return FVM_OK;
+        return FVM_ERROR;
     }
-    /* Count debug native function. */
-    FVM_Result fvm_debug_native_function_count(FVM_Context *c, size_t *out)
+}
+
+
+/* Read table index. */
+FVM_Result fvm_table_get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
+{
+    if (!out)
     {
-        if (!c || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = c->functions.size();
-        return FVM_OK;
+        return FVM_INVALID_ARGUMENT;
     }
-    /* Compute and return debug native function at. */
-    FVM_Result fvm_debug_native_function_at(FVM_Context *c, size_t i, const char **out)
+    fvm_value_undefined(out);
+    try
     {
-        if (!c || !out || i >= c->functions.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::const_iterator it =
-            c->functions.begin();
-        while (i--)
-            ++it;
-        *out = it->first.c_str();
-        return FVM_OK;
+        return get_index(c, o, key, out);
     }
-    /* Count debug script function. */
-    FVM_Result fvm_debug_script_function_count(FVM_Context *c, size_t *out)
+    catch (const std::bad_alloc &)
     {
-        if (!c || !out)
-            return FVM_INVALID_ARGUMENT;
-        *out = c->script_functions.size();
-        return FVM_OK;
+        fvm_value_undefined(out);
+        return FVM_OUT_OF_MEMORY;
     }
-    /* Compute and return debug script function at. */
-    FVM_Result fvm_debug_script_function_at(FVM_Context *c, size_t i, const char **out)
+    catch (...)
     {
-        if (!c || !out || i >= c->script_functions.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator it =
-            c->script_functions.begin();
-        while (i--)
-            ++it;
-        *out = it->first.c_str();
-        return FVM_OK;
-    }    /* Return the complete borrowed native registry key and its byte count. */
-    FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *c, size_t index,
-                                                  const char **out, size_t *size)
-    {
-        if (!c || !out || !size || index >= c->functions.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::const_iterator entry = c->functions.begin();
-        while (index--) ++entry;
-        *out = entry->first.data();*size = entry->first.size();
-        return FVM_OK;
+        fvm_value_undefined(out);
+        return FVM_ERROR;
     }
-    /* Return the complete borrowed script registry key and its byte count. */
-    FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *c, size_t index,
-                                                  const char **out, size_t *size)
+}
+
+
+/* Update table metatable. */
+FVM_Result fvm_table_set_metatable(FVM_Context *c, FVM_Object *o, FVM_Object *meta)
+{
+    if (!valid(c, o) || (meta && !valid(c, meta)))
     {
-        if (!c || !out || !size || index >= c->script_functions.size())
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator entry = c->script_functions.begin();
-        while (index--) ++entry;
-        *out = entry->first.data();*size = entry->first.size();
-        return FVM_OK;
+        return FVM_INVALID_ARGUMENT;
     }
 
+    /* Initialization / Инициализация локального состояния. */
+    FVM_Object *cursor = meta;
+    unsigned int depth = 0;
+    while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
+    {
+        if (cursor == o)
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        cursor = cursor->metatable;
+    }
+    if (cursor)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    o->metatable = meta;
+    return FVM_OK;
+}
+
+
+/* Read table metatable. */
+FVM_Result fvm_table_get_metatable(FVM_Context *c, FVM_Object *o, FVM_Object **out)
+{
+    if (!valid(c, o) || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = o->metatable;
+    return FVM_OK;
+}
+
+
+/* Count table named. */
+FVM_Result fvm_table_named_count(FVM_Context *c, FVM_Object *o, size_t *out)
+{
+    if (!valid(c, o) || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = o->properties.size();
+    return FVM_OK;
+}
+
+
+/* Count table indexed. */
+FVM_Result fvm_table_indexed_count(FVM_Context *c, FVM_Object *o, size_t *out)
+{
+    if (!valid(c, o) || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = o->indexed.size();
+    return FVM_OK;
+}
+
+
+/* Compute and return table named at. */
+FVM_Result fvm_table_named_at(FVM_Context *c, FVM_Object *o, size_t index, const char **name, FVM_Value *out)
+{
+    if (!valid(c, o) || !name || !out || index >= o->properties.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator it = o->properties.begin();
+    while (index--)
+    {
+        ++it;
+    }
+
+    /* Computation / Вычисление и обновление состояния. */
+    *name = it->first.c_str();
+    *out = it->second;
+    return FVM_OK;
+}
+
+
+/* Return the byte count alongside the borrowed complete own property name. */
+FVM_Result
+fvm_table_named_at_bytes(FVM_Context *c, FVM_Object *o, size_t index, const char **name, size_t *size, FVM_Value *out)
+{
+    if (!valid(c, o) || !name || !size || !out || index >= o->properties.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator entry = o->properties.begin();
+    while (index--)
+    {
+        ++entry;
+    }
+    *name = entry->first.data();
+    *size = entry->first.size();
+    *out = entry->second;
+    return FVM_OK;
+}
+
+
+/* Compute and return table indexed at. */
+FVM_Result fvm_table_indexed_at(FVM_Context *c, FVM_Object *o, size_t index, unsigned long *key, FVM_Value *out)
+{
+    if (!valid(c, o) || !key || !out || index >= o->indexed.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.begin();
+    while (index--)
+    {
+        ++it;
+    }
+
+    /* Computation / Вычисление и обновление состояния. */
+    *key = it->first;
+    *out = it->second;
+    return FVM_OK;
+}
+
+
+/* Count debug object. */
+FVM_Result fvm_debug_object_count(FVM_Context *c, size_t *out)
+{
+    if (!c || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = c->objects.size();
+    return FVM_OK;
+}
+
+
+/* Compute and return debug object at. */
+FVM_Result fvm_debug_object_at(FVM_Context *c, size_t i, FVM_Object **out)
+{
+    if (!c || !out || i >= c->objects.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = c->objects[i];
+    return FVM_OK;
+}
+
+
+/* Count debug native function. */
+FVM_Result fvm_debug_native_function_count(FVM_Context *c, size_t *out)
+{
+    if (!c || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = c->functions.size();
+    return FVM_OK;
+}
+
+
+/* Compute and return debug native function at. */
+FVM_Result fvm_debug_native_function_at(FVM_Context *c, size_t i, const char **out)
+{
+    if (!c || !out || i >= c->functions.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::const_iterator it = c->functions.begin();
+    while (i--)
+    {
+        ++it;
+    }
+    *out = it->first.c_str();
+    return FVM_OK;
+}
+
+
+/* Count debug script function. */
+FVM_Result fvm_debug_script_function_count(FVM_Context *c, size_t *out)
+{
+    if (!c || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    *out = c->script_functions.size();
+    return FVM_OK;
+}
+
+
+/* Compute and return debug script function at. */
+FVM_Result fvm_debug_script_function_at(FVM_Context *c, size_t i, const char **out)
+{
+    if (!c || !out || i >= c->script_functions.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator it = c->script_functions.begin();
+    while (i--)
+    {
+        ++it;
+    }
+    *out = it->first.c_str();
+    return FVM_OK;
+} /* Return the complete borrowed native registry key and its byte count. */
+
+
+FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *c, size_t index, const char **out, size_t *size)
+{
+    if (!c || !out || !size || index >= c->functions.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::const_iterator entry = c->functions.begin();
+    while (index--)
+    {
+        ++entry;
+    }
+    *out = entry->first.data();
+    *size = entry->first.size();
+    return FVM_OK;
+}
+
+
+/* Return the complete borrowed script registry key and its byte count. */
+FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *c, size_t index, const char **out, size_t *size)
+{
+    if (!c || !out || !size || index >= c->script_functions.size())
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator entry = c->script_functions.begin();
+    while (index--)
+    {
+        ++entry;
+    }
+    *out = entry->first.data();
+    *size = entry->first.size();
+    return FVM_OK;
+}
 }

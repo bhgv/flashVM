@@ -22,11 +22,11 @@
 контейнеры, allocation, VM, callback или device. Публичный host ABI остаётся C89.
 Этот первый checkpoint ещё не подключает декодер к публичному чтению SWF resources.
 
-[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L94) проверяет полный непрерывный MPEG-1/2/2.5 Layer-III packet до
+[fvm_swf_mp3_probe](../src/swf/sound_mp3.cpp#L128) проверяет полный непрерывный MPEG-1/2/2.5 Layer-III packet до
 публикации bytes/rate/channels и числа кадров 576 либо 1152. Reserved поля,
 укороченный packet и мусор перед sync отвергаются; Layer I/II и free-format bitrate
 возвращают UNSUPPORTED. Поддержаны CBR и переменные стандартные bitrate indices.
-[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L29) сохраняет reservoir/filter history между пакетами и публикует
+[FVM_SWFMP3Decoder](../src/swf/sound_mp3.hpp#L45) сохраняет reservoir/filter history между пакетами и публикует
 PCM после проверки точной геометрии. Decode failure терминален для этого decoder;
 поиск sync через мусор и concealment отсутствующего reservoir не выдаются за успех.
 Проверка CRC, определение free-format bitrate и полная верификация corrupt Huffman
@@ -51,7 +51,7 @@ python3 scripts/check_vendor_sources.py
 
 ## v0.777 декодирование DefineSound
 
-[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L148) теперь читает MP3 в SWF4–8 без allocation/callback. Диапазон
+[fvm_swf_sound_read_pcm](../include/flashvm/swf_sound.h#L190) теперь читает MP3 в SWF4–8 без allocation/callback. Диапазон
 отсчитывается после неотрицательного SI16 SeekSamples. Сначала проверяются все
 полные packets; затем новый stack decoder копирует только выбранные кадры.
 Объявленная длина должна помещаться после latency; полный encoder tail проверяется,
@@ -59,7 +59,7 @@ python3 scripts/check_vendor_sources.py
 Даже нулевое чтение проверяет весь источник. Изменение/teardown и output buffers
 сериализуются owner; managed pointers после возврата не остаются.
 
-[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L134) выдаёт фактические MPEG rate/channels из первого корректного
+[fvm_swf_sound_info](../include/flashvm/swf_sound.h#L174) выдаёт фактические MPEG rate/channels из первого корректного
 packet, сохраняя исходные байты и объявленную длину. Advisory SWF flags не вызывают
 скрытый resampling. Неверные opaque metadata остаются доступны для анализа, но
 decode отвергает данные. Отрицательная latency, free-format и другие MPEG layers
@@ -94,7 +94,7 @@ MPEG samples, полные интервалы и native lifetime. Decoder/public
 
 ## v0.779 bounded continuous MP3 snapshots
 
-[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L88) и bounded-вариант теперь нормализуют root
+[fvm_swf_stream_sound_snapshot_open_pcm](../include/flashvm/swf_stream_sound.h#L110) и bounded-вариант теперь нормализуют root
 MP3 в immutable PCM_NATIVE/S16. Полные Layer-III packets идут в порядке блоков;
 один reservoir/filter state проходит через все блоки, включая пустые markers.
 Wire SampleCount обязан совпасть с полным decoded MPEG count блока. Фактические
@@ -168,7 +168,7 @@ ASan injected exception-unwind не засчитывается, как опис�
 
 ## v0.782 подготовленные mixer commands без исходной VM
 
-[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L88)(mixer, voice) принимает указатель на живой
+[fvm_swf_sound_mixer_submit_prepared](../include/flashvm/swf_sound_mixer.h#L109)(mixer, voice) принимает указатель на живой
 исключительно принадлежащий caller native voice. OK забирает владение и обнуляет
 handle; finished/NoMultiple no-op закрывает ненужный owner. Ошибка сохраняет handle,
 progress и старые slots. Null — INVALID_ARGUMENT, strict geometry mismatch —
@@ -178,7 +178,7 @@ UNSUPPORTED, заполнение — OUT_OF_MEMORY. NoMultiple сначала �
 Нет allocation/callback/VM/managed root. Owner storage не пересекается; доступ
 сериализуется снаружи. После transfer handle нельзя читать или закрывать.
 
-[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L120)(mixer, sound_id) применяет прежний immediate/DECLICK
+[fvm_swf_sound_mixer_stop_id](../include/flashvm/swf_sound_mixer.h#L151)(mixer, sound_id) применяет прежний immediate/DECLICK
 stop без context. ID допустим 1–65535; null/неверный ID — INVALID_ARGUMENT до
 изменения, отсутствующий ID — OK. Повторный stop не запускает fade заново.
 Команды влияют на будущее смешивание: retained retry и accepted device PCM
@@ -205,11 +205,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:94](../src/swf/sound_mp3.cpp#L94) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
-| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:120](../include/flashvm/swf_sound_mixer.h#L120) |
-| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:88](../include/flashvm/swf_sound_mixer.h#L88) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:148](../include/flashvm/swf_sound.h#L148) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
-| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:29](../src/swf/sound_mp3.hpp#L29) |
+| `fvm_swf_mp3_probe` | function | [src/swf/sound_mp3.cpp:128](../src/swf/sound_mp3.cpp#L128) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:174](../include/flashvm/swf_sound.h#L174) |
+| `fvm_swf_sound_mixer_stop_id` | function | [include/flashvm/swf_sound_mixer.h:151](../include/flashvm/swf_sound_mixer.h#L151) |
+| `fvm_swf_sound_mixer_submit_prepared` | function | [include/flashvm/swf_sound_mixer.h:109](../include/flashvm/swf_sound_mixer.h#L109) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:190](../include/flashvm/swf_sound.h#L190) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:110](../include/flashvm/swf_stream_sound.h#L110) |
+| `FVM_SWFMP3Decoder` | struct | [src/swf/sound_mp3.hpp:45](../src/swf/sound_mp3.hpp#L45) |
 <!-- source-links:end -->

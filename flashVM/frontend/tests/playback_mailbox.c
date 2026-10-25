@@ -5,15 +5,28 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <string.h>
-#define CHECK(expression) do { if (!(expression)) { fprintf(stderr, "mailbox line %d: %s\n", __LINE__, #expression); return 1; } } while (0)
+
+#define CHECK(expression)                                                                                              \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(expression))                                                                                             \
+        {                                                                                                              \
+            fprintf(stderr, "mailbox line %d: %s\n", __LINE__, #expression);                                           \
+            return 1;                                                                                                  \
+        }                                                                                                              \
+    } while (0)
 #define STRESS_READERS 4
 #define STRESS_OBSERVATIONS 5000UL
+
+
 /* Native scalar synchronization only; there is no VM or window in this process. */
 typedef struct Stress
 {
     FVM_DesktopPlaybackMailbox *mailbox;
     SDL_atomic_t done, reads, failed;
 } Stress;
+
+
 /* Poll consistent copied records while posting intents from real OS threads. */
 static int reader(void *raw)
 {
@@ -29,24 +42,33 @@ static int reader(void *raw)
         if (result == FVM_OK)
         {
             expected = 0;
-            if (snapshot.movie_ticks != snapshot.total_ticks ||
-                snapshot.presentations != snapshot.total_ticks ||
+            if (snapshot.movie_ticks != snapshot.total_ticks || snapshot.presentations != snapshot.total_ticks ||
                 snapshot.elapsed_ms != (double)snapshot.total_ticks ||
                 snapshot.paused != (int)(snapshot.total_ticks & 1UL) ||
-                sscanf(snapshot.source, "source-%lu", &expected) != 1 ||
-                expected != snapshot.total_ticks)
+                sscanf(snapshot.source, "source-%lu", &expected) != 1 || expected != snapshot.total_ticks)
+            {
                 SDL_AtomicSet(&stress->failed, 1);
+            }
             SDL_AtomicAdd(&stress->reads, 1);
         }
         else if (result != FVM_NOT_FOUND)
+        {
             SDL_AtomicSet(&stress->failed, 1);
+        }
         if (fvm_desktop_playback_mailbox_post(stress->mailbox, FVM_DESKTOP_PLAYBACK_STEP) != FVM_OK)
+        {
             SDL_AtomicSet(&stress->failed, 1);
+        }
         ++turns;
-        if (!(turns & 31U)) SDL_Delay(0);
+        if (!(turns & 31U))
+        {
+            SDL_Delay(0);
+        }
     }
     return 0;
 }
+
+
 /* Verify exact ABI validation, terminal precedence, quota rollback and process teardown ownership. */
 int main(void)
 {
@@ -112,11 +134,15 @@ int main(void)
     CHECK(fvm_desktop_playback_mailbox_release(mailbox) == FVM_OK);
     CHECK(!strcmp(snapshot.source, "terminal"));
     for (i = 0; i < FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES; ++i)
+    {
         CHECK(fvm_desktop_playback_mailbox_create(&quota[i]) == FVM_OK);
+    }
     unchanged = quota[0];
     CHECK(fvm_desktop_playback_mailbox_create(&unchanged) == FVM_ERROR && unchanged == quota[0]);
     for (i = 0; i < FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES; ++i)
+    {
         CHECK(fvm_desktop_playback_mailbox_release(quota[i]) == FVM_OK);
+    }
     memset(&stress, 0, sizeof(stress));
     CHECK(fvm_desktop_playback_mailbox_create(&stress.mailbox) == FVM_OK);
     for (i = 0; i < STRESS_READERS; ++i)

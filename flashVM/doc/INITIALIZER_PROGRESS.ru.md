@@ -1,8 +1,8 @@
 # Прогресс и бюджет инициализации — v0.632
 
 Сохраняется отложенная политика корневого DoInitAction SWF6–8 из
-[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L102) проверяет/сохраняет
-код без исполнения, а [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) запускает инициализаторы библиотеки
+[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L129) проверяет/сохраняет
+код без исполнения, а [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) запускает инициализаторы библиотеки
 в исходном корне перед сценой/кадром, в том числе при первом advance общего потомка.
 ActionCall по-прежнему исполняет только выбранные действия кадра и не запускает
 инициализацию. Полная Player preload/sprite-ID семантика остаётся открытой.
@@ -17,14 +17,14 @@ ActionCall по-прежнему исполняет только выбранн�
 Библиотека, таблица и исходный корень должны принадлежать контексту; эти edges
 проверяются и при завершённом cursor. Для зафиксированного размера N и cursor P < N
 до первого исполнения копируются ordinal P..N-1. Дырка в оставшемся диапазоне даёт
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) до новых действий. Порядок добавления не влияет на запуск.
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) до новых действий. Порядок добавления не влияет на запуск.
 Завершённый префикс не копируется и не перепроверяется. Cursor на/после конца текущей
 таблицы означает завершение; правка private metadata автоматически его не откатывает.
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) списывает единицу за каждый копируемый pending ordinal,
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) списывает единицу за каждый копируемый pending ordinal,
 затем единицу перед попыткой блока, плюс прежние checkpoints AVM1 (включая End).
 Cursor попытки фиксируется до декодирования hex/исполнения, сохраняя прежнюю политику
-at-most-once при ошибке. Неверный код, [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), исключение или лимит могут
+at-most-once при ошибке. Неверный код, [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), исключение или лимит могут
 привести к пропуску частично/ещё не исполненного attempted блока в следующий раз:
 эффекты нельзя откатить. После очистки исключения host может вызвать advance для
 непопробованного суффикса. Ошибка копирования или списания следующего entry оставляет
@@ -48,9 +48,9 @@ Callback не меняет захваченный batch. Замена ранне
 при возврате, ошибке и OOM. Cursor/флаг — приватное состояние runtime и не сериализуются:
 получающий контекст запускает переданную библиотеку заново.
 
-[GC:] Внешний tick [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L9) сохраняет захваченный код и исходный root
+[GC:] Внешний tick [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L11) сохраняет захваченный код и исходный root
 при изменении таблицы. Явная сборка внутри native tick callback возвращает
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); вне вызова реальный GC разрешён. Идентичности не переживают
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47); вне вызова реальный GC разрешён. Идентичности не переживают
 вызов, указатели callbacks не передаются в графе; host регистрирует их на стороне
 получателя. Concurrent-доступ, публичное редактирование cursor и новый C/wire ABI
 не добавляются.
@@ -95,11 +95,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
 | `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:28](../src/standard/movieclip_constants.h#L28) |
-| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:11](../src/core/native_call_guard.hpp#L11) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

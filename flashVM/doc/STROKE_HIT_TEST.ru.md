@@ -11,7 +11,7 @@ LINESTYLE2 тега DefineShape4 SWF 8. Проверяется геометри�
 
 ## Геометрический контракт
 
-Внутренняя [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L482) принимает координаты назначения и
+Внутренняя [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L633) принимает координаты назначения и
 положительную ширину. Ненулевой прямой отрезок даёт конечный прямоугольник.
 Butt не продлевает отрезок, square продлевает его на половину ширины, round
 добавляет круглый торец. Соединение добавляет только внешний треугольник bevel
@@ -28,10 +28,10 @@ Flash на каждой границе, cusp или крайнем масшта�
 выделять память.
 
 Нулевая ширина использует прежний алгоритм заливки и правило even-odd/nonzero.
-Публичная C89 [fvm_path_hit_test](../include/flashvm/path.h#L75) сохраняет прежний тест круглой линии, включая
+Публичная C89 [fvm_path_hit_test](../include/flashvm/path.h#L103) сохраняет прежний тест круглой линии, включая
 поведение вырожденных отрезков. Публичный ABI и wire-форматы не меняются.
 Неподдержанный selector или неверные координаты, ширина, правило заливки и
-указатель результата дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до изменения результата.
+указатель результата дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до изменения результата.
 Предел координат остаётся +/-2 000 000, ширины — 1 000 000.
 
 ## Метаданные и время жизни
@@ -103,7 +103,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:482](../src/capi/path_hit_c.cpp#L482) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_path_hit_test` | function | [include/flashvm/path.h:103](../include/flashvm/path.h#L103) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:633](../src/capi/path_hit_c.cpp#L633) |
 <!-- source-links:end -->

@@ -1,6 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm/raster.h"
-#include <assert.h>
 #include <string.h>
+
+
 int main(void)
 {
     unsigned char buffer[8 * 40];
@@ -28,25 +31,56 @@ int main(void)
     color.a = 128;
     result = fvm_raster_fill_polygon(&surface, rectangle, 4, color);
 #if defined(FVM_HAS_AGG) || defined(FVM_HAS_CAIRO)
-    assert(result == FVM_OK);
+    if (!(result == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     for (y = 0; y < 8; ++y)
     {
         for (x = 0; x < 8; ++x)
         {
             unsigned char *pixel = buffer + y * 40 + x * 4;
             if (x >= 2 && x < 6 && y >= 2 && y < 6)
-            {
-                /* AGG source-over rounding can lose one RGB unit at alpha 128. */
-                assert(pixel[0] >= 199 && pixel[0] <= 200);
-                assert(pixel[1] >= 99 && pixel[1] <= 100);
-                assert(pixel[2] >= 49 && pixel[2] <= 50);
-                assert(pixel[3] == 128);
+            { /* AGG source-over rounding can lose one RGB unit at alpha 128. */
+                if (!(pixel[0] >= 199 && pixel[0] <= 200))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(pixel[1] >= 99 && pixel[1] <= 100))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(pixel[2] >= 49 && pixel[2] <= 50))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(pixel[3] == 128))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
             }
             else
-                assert(pixel[0] == 0 && pixel[3] == 0);
+            {
+                if (!(pixel[0] == 0 && pixel[3] == 0))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
         for (x = 32; x < 40; ++x)
-            assert(buffer[y * 40 + x] == 0);
+        {
+            if (!(buffer[y * 40 + x] == 0))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+        }
     }
     /* Clip a polygon that crosses all four image boundaries. */
     rectangle[0].x = -10;
@@ -58,18 +92,42 @@ int main(void)
     rectangle[3].x = -10;
     rectangle[3].y = 10;
     color.a = 255;
-    assert(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_OK);
-    assert(buffer[3] == 255 && buffer[7 * 40 + 7 * 4 + 3] == 255);
+    if (!(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(buffer[3] == 255 && buffer[7 * 40 + 7 * 4 + 3] == 255))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #else
     (void)x;
     (void)y;
-    assert(result == FVM_UNSUPPORTED);
+    if (!(result == FVM_UNSUPPORTED))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #endif
     surface.stride = 31;
-    assert(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     surface.stride = 40;
     rectangle[0].x = 4097;
-    assert(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_INVALID_ARGUMENT);
-    assert(fvm_raster_fill_polygon(&surface, rectangle, 2, color) == FVM_INVALID_ARGUMENT);
+    if (!(fvm_raster_fill_polygon(&surface, rectangle, 4, color) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_raster_fill_polygon(&surface, rectangle, 2, color) == FVM_INVALID_ARGUMENT))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }

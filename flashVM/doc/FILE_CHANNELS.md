@@ -10,15 +10,15 @@ The descriptor `<"file", path, mode>` corresponds to `channel.create("file", pat
 
 Each handle has independent read and write positions. Reading starts at byte zero. A successfully sent message is flushed before send returns. Operations on one retained/shared handle are protected by its channel mutex. Independent handles/processes are not protected by that mutex: use a single shared writer handle. This adapter uses stdio/`long` positions; it does not promise files beyond `LONG_MAX` on platforms with 32-bit `long`. Flush is not a crash-atomic transaction or an fsync durability guarantee.
 
-`send`/`receive` and `trySend`/`tryReceive` use typed serialized records. At EOF, nonblocking receive returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) (`tryReceive()` returns undefined); blocking native receive returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43); the AS wrapper throws `resource.io`
-([`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L48)). It never waits indefinitely for another process to append. Read/write permission errors and operations after close throw resource exceptions
+`send`/`receive` and `trySend`/`tryReceive` use typed serialized records. At EOF, nonblocking receive returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) (`tryReceive()` returns undefined); blocking native receive returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45); the AS wrapper throws `resource.io`
+([`FVM_EXCEPTION`](../include/flashvm/flashvm.h#L50)). It never waits indefinitely for another process to append. Read/write permission errors and operations after close throw resource exceptions
 from AS methods; low-level native calls retain error statuses. See [exceptions](EXCEPTIONS.md). `available` checks for remaining bytes; it does not validate the next record. Queue capacity and pending-message count are unsupported for file channels.
 
-[`fvm_channel_file_read`](../include/flashvm/channel.h#L57) and [`fvm_channel_file_write`](../include/flashvm/channel.h#L59) provide raw byte access to ordinary files, including embedded NUL bytes. These operations use the same read/write positions. Do not interleave raw data and typed records unless the raw data forms complete records. The ActionScript bridge currently exposes typed messages only.
+[`fvm_channel_file_read`](../include/flashvm/channel.h#L73) and [`fvm_channel_file_write`](../include/flashvm/channel.h#L77) provide raw byte access to ordinary files, including embedded NUL bytes. These operations use the same read/write positions. Do not interleave raw data and typed records unless the raw data forms complete records. The ActionScript bridge currently exposes typed messages only.
 
 ## Persistent graph format
 
-[`fvm_value_serialize`](../include/flashvm/serialization.h#L18) returns an owned buffer; release it exactly once with [`fvm_serialized_free`](../include/flashvm/serialization.h#L24). [`fvm_value_deserialize`](../include/flashvm/serialization.h#L21) restores into a destination context. Both memory graph channels and file message channels use this format. A queued snapshot retains no source VM pointers and remains usable after source context destruction.
+[`fvm_value_serialize`](../include/flashvm/serialization.h#L20) returns an owned buffer; release it exactly once with [`fvm_serialized_free`](../include/flashvm/serialization.h#L30). [`fvm_value_deserialize`](../include/flashvm/serialization.h#L25) restores into a destination context. Both memory graph channels and file message channels use this format. A queued snapshot retains no source VM pointers and remains usable after source context destruction.
 
 Format 1 has a 16-byte envelope: `FVMG`, three zero bytes, version byte 1, big-endian 32-bit body length, and big-endian CRC32 of the body. Numbers use IEEE-754 binary64 in big-endian order. Object references are numbered graph IDs, not addresses. The format is FlashVM-specific, not SWF, AMF or Lua serialization. Unsupported floating-point representations are rejected. CRC detects accidental corruption; it is not authentication.
 
@@ -35,19 +35,19 @@ Snapshots preserve named/indexed properties, prototype and metatable edges, cycl
 | Extension namespace objects (gc/thread/channel/metatable) | No namespace codec yet; rejected |
 | MovieClip and other unimplemented Flash classes | No runtime implementation/codec yet |
 
-Install the destination text bridge with [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L21) before restoring TextField. Embedded fonts are registered transactionally; an existing name must have exactly the same bytes and face index. Conflicts reject restoration. Current/future font faces are embedded separately, so records are bounded but not deduplicated. Faces use signed 32-bit indices in this format. All normal restrictions of the implemented TextField subset still apply.
+Install the destination text bridge with [`fvm_standard_text_install`](../include/flashvm/standard_text.h#L23) before restoring TextField. Embedded fonts are registered transactionally; an existing name must have exactly the same bytes and face index. Conflicts reject restoration. Current/future font faces are embedded separately, so records are bounded but not deduplicated. Faces use signed 32-bit indices in this format. All normal restrictions of the implemented TextField subset still apply.
 
-Application native callbacks require the same stable name registered in sender and receiver with [`fvm_serialization_register_callback`](../include/flashvm/serialization.h#L30). Native code addresses are never stored. Userdata must be NULL or exactly the callback's traced root; the root is cloned and rebound. Arbitrary userdata memory and collector-entry callbacks are rejected. Built-in callback identities and TextField selector arguments use reserved internal IDs. Registration cannot override built-in code. A missing application callback rejects restore. Native callback registration does not transfer named AVM1 function definitions or executable bytecode.
+Application native callbacks require the same stable name registered in sender and receiver with [`fvm_serialization_register_callback`](../include/flashvm/serialization.h#L38). Native code addresses are never stored. Userdata must be NULL or exactly the callback's traced root; the root is cloned and rebound. Arbitrary userdata memory and collector-entry callbacks are rejected. Built-in callback identities and TextField selector arguments use reserved internal IDs. Registration cannot override built-in code. A missing application callback rejects restore. Native callback registration does not transfer named AVM1 function definitions or executable bytecode.
 
-A primitive-only C receive returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) without consuming an object/metadata graph, allowing a context-aware receive afterward. Invalid/truncated file framing leaves the read cursor unchanged. Context-aware receive consumes a fully framed record even if its payload/codec fails to restore, as memory queues consume rejected packets. File access failure during a partial write disables subsequent operations on that handle; the tail may require external recovery.
+A primitive-only C receive returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) without consuming an object/metadata graph, allowing a context-aware receive afterward. Invalid/truncated file framing leaves the read cursor unchanged. Context-aware receive consumes a fully framed record even if its payload/codec fails to restore, as memory queues consume rejected packets. File access failure during a partial write disables subsequent operations on that handle; the tail may require external recovery.
 
 ## Metadata on every existing value type
 
-[`fvm_value_set_metatable`](../include/flashvm/metamethod.h#L36) / [`fvm_value_get_metatable`](../include/flashvm/metamethod.h#L38) work with undefined, null, Boolean, number, string and object values. Primitive metadata belongs to the value and follows assignment/copy; replacing a primitive with [`fvm_value_number`](../include/flashvm/value.h#L42), [`fvm_value_string`](../include/flashvm/value.h#L46), etc. clears it. Object metadata belongs to shared object identity, including supported built-in objects. Metatables must belong to the same context. Clearing attachment uses NULL.
+[`fvm_value_set_metatable`](../include/flashvm/metamethod.h#L44) / [`fvm_value_get_metatable`](../include/flashvm/metamethod.h#L48) work with undefined, null, Boolean, number, string and object values. Primitive metadata belongs to the value and follows assignment/copy; replacing a primitive with [`fvm_value_number`](../include/flashvm/value.h#L50), [`fvm_value_string`](../include/flashvm/value.h#L58), etc. clears it. Object metadata belongs to shared object identity, including supported built-in objects. Metatables must belong to the same context. Clearing attachment uses NULL.
 
-ActionScript uses `value = metatable.attach(value, table)` and `metatable.get(value)`; passing null/undefined as the second argument removes attachment. This namespace is installed by [`fvm_extensions_install`](../include/flashvm/extensions.h#L17). Metadata is traced through globals, table entries, indexed entries, AVM1 stacks/registers/locals, native capture roots and explicit C root scopes. A C local is not automatically a GC root: use the existing root-scope API or a global/pinned object.
+ActionScript uses `value = metatable.attach(value, table)` and `metatable.get(value)`; passing null/undefined as the second argument removes attachment. This namespace is installed by [`fvm_extensions_install`](../include/flashvm/extensions.h#L19). Metadata is traced through globals, table entries, indexed entries, AVM1 stacks/registers/locals, native capture roots and explicit C root scopes. A C local is not automatically a GC root: use the existing root-scope API or a global/pinned object.
 
-[`fvm_value_meta_invoke`](../include/flashvm/metamethod.h#L42) dispatches a registered native hook with `[ownerValue, definingMetatable, operationArguments...]`. The callback receiver is NULL for primitives and the owner object for objects. Missing hooks return [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47). Hook lookup follows bounded metatable chains. Callback output is validated for destination-context ownership.
+[`fvm_value_meta_invoke`](../include/flashvm/metamethod.h#L54) dispatches a registered native hook with `[ownerValue, definingMetatable, operationArguments...]`. The callback receiver is NULL for primitives and the owner object for objects. Missing hooks return [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49). Hook lookup follows bounded metatable chains. Callback output is validated for destination-context ownership.
 
 Registered names: `__index`, `__newindex`, `__iterate`, `__gc`, `__call`, `__add`, `__sub`, `__mul`, `__div`, `__mod`, `__pow`, `__unm`, `__eq`, `__lt`, `__le`, `__concat`, `__tostring`. Generic value property access and AVM1 GetMember/SetMember call primitive `__index`/`__newindex`. AVM1 arithmetic Add/Subtract/Multiply/Divide and Equals/Less consult hooks, left operand first, then right; operation arguments remain in original left/right order. Hooks for other operations can be invoked explicitly but are not yet wired into all opcodes/coercions. Existing object indexing, iteration, invocation and finalization APIs remain available. `__gc` finalizes objects with stable identity, not individual scalar copies.
 
@@ -68,23 +68,23 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_file_read` | function | [include/flashvm/channel.h:57](../include/flashvm/channel.h#L57) |
-| `fvm_channel_file_write` | function | [include/flashvm/channel.h:59](../include/flashvm/channel.h#L59) |
-| `fvm_channel_open_file` | function | [include/flashvm/channel.h:51](../include/flashvm/channel.h#L51) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../include/flashvm/serialization.h#L30) |
-| `fvm_serialized_free` | function | [include/flashvm/serialization.h:24](../include/flashvm/serialization.h#L24) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_value_deserialize` | function | [include/flashvm/serialization.h:21](../include/flashvm/serialization.h#L21) |
-| `fvm_value_get_metatable` | function | [include/flashvm/metamethod.h:38](../include/flashvm/metamethod.h#L38) |
-| `fvm_value_meta_invoke` | function | [include/flashvm/metamethod.h:42](../include/flashvm/metamethod.h#L42) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../include/flashvm/value.h#L42) |
-| `fvm_value_serialize` | function | [include/flashvm/serialization.h:18](../include/flashvm/serialization.h#L18) |
-| `fvm_value_set_metatable` | function | [include/flashvm/metamethod.h:36](../include/flashvm/metamethod.h#L36) |
-| `fvm_value_string` | function | [include/flashvm/value.h:46](../include/flashvm/value.h#L46) |
+| `fvm_channel_file_read` | function | [include/flashvm/channel.h:73](../include/flashvm/channel.h#L73) |
+| `fvm_channel_file_write` | function | [include/flashvm/channel.h:77](../include/flashvm/channel.h#L77) |
+| `fvm_channel_open_file` | function | [include/flashvm/channel.h:63](../include/flashvm/channel.h#L63) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:38](../include/flashvm/serialization.h#L38) |
+| `fvm_serialized_free` | function | [include/flashvm/serialization.h:30](../include/flashvm/serialization.h#L30) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:23](../include/flashvm/standard_text.h#L23) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
+| `fvm_value_deserialize` | function | [include/flashvm/serialization.h:25](../include/flashvm/serialization.h#L25) |
+| `fvm_value_get_metatable` | function | [include/flashvm/metamethod.h:48](../include/flashvm/metamethod.h#L48) |
+| `fvm_value_meta_invoke` | function | [include/flashvm/metamethod.h:54](../include/flashvm/metamethod.h#L54) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../include/flashvm/value.h#L50) |
+| `fvm_value_serialize` | function | [include/flashvm/serialization.h:20](../include/flashvm/serialization.h#L20) |
+| `fvm_value_set_metatable` | function | [include/flashvm/metamethod.h:44](../include/flashvm/metamethod.h#L44) |
+| `fvm_value_string` | function | [include/flashvm/value.h:58](../include/flashvm/value.h#L58) |
 <!-- source-links:end -->

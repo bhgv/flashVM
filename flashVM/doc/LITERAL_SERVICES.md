@@ -2,7 +2,7 @@
 
 v0.343 extracts Array/Object construction from `interpreter.cpp` into
 `handlers/literal_array.cpp` and `handlers/literal_object.cpp`. Public C89
-functions [`fvm_exec_literal_array`](../include/flashvm/execution.h#L41) and [`fvm_exec_literal_object`](../include/flashvm/execution.h#L48) take a bounded
+functions [`fvm_exec_literal_array`](../include/flashvm/execution.h#L46) and [`fvm_exec_literal_object`](../include/flashvm/execution.h#L55) take a bounded
 entry count and ordinary values, never Action codes, bytecode or an operand
 stack. They can be called by C extensions and future generated bodies.
 The adapter still decodes/coerces the count, pops entries in AVM1 order,
@@ -14,7 +14,7 @@ Object entries are supplied in assignment order. Object construction precedes
 name conversion; each name conversion precedes its setter. Loaded SWFs use AVM1
 string conversion and ignore empty converted names. Hosts retain empty names.
 Counted keys, duplicate writes and existing property-set semantics are retained.
-The maximum explicit count is [`FVM_EXEC_MAX_LITERAL_ENTRIES`](../include/flashvm/execution.h#L20) (65536).
+The maximum explicit count is [`FVM_EXEC_MAX_LITERAL_ENTRIES`](../include/flashvm/execution.h#L21) (65536).
 
 Both services validate all input ownership, copy values before callbacks and
 root the complete snapshot and partial result. They permit collecting script
@@ -46,14 +46,14 @@ regressions, not a new Flash Player oracle comparison or JIT backend validation.
 
 ## v0.344: literal count conversion / Преобразование счётчика
 
-[`fvm_exec_literal_count`](../include/flashvm/execution.h#L36) now owns count coercion as a separate value-only C
+[`fvm_exec_literal_count`](../include/flashvm/execution.h#L39) now owns count coercion as a separate value-only C
 operation. It returns a normalized integer Number, or undefined when loaded
 AVM1 rejects a negative/out-of-signed32 count. This sentinel tells the adapter
 to consume only the count, leaving entry operands untouched. Loaded NaN becomes
 zero; nonnegative fractions are floored. Counts above 65536 but within the
-signed range return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Unloaded hosts retain their previous
-strict policy: non-Number input is [`FVM_ERROR`](../include/flashvm/flashvm.h#L43), invalid numeric input is
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). Neither mode constructs an object or consumes operands.
+signed range return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). Unloaded hosts retain their previous
+strict policy: non-Number input is [`FVM_ERROR`](../include/flashvm/flashvm.h#L45), invalid numeric input is
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Neither mode constructs an object or consumes operands.
 Errors preserve output; aliases are allowed. Coercible inputs are retained
 through script and GC. No interpreter activation is required.
 
@@ -83,11 +83,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_literal_array` | function | [include/flashvm/execution.h:41](../include/flashvm/execution.h#L41) |
-| `fvm_exec_literal_count` | function | [include/flashvm/execution.h:36](../include/flashvm/execution.h#L36) |
-| `fvm_exec_literal_object` | function | [include/flashvm/execution.h:48](../include/flashvm/execution.h#L48) |
-| `FVM_EXEC_MAX_LITERAL_ENTRIES` | macro / define | [include/flashvm/execution.h:20](../include/flashvm/execution.h#L20) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_literal_array` | function | [include/flashvm/execution.h:46](../include/flashvm/execution.h#L46) |
+| `fvm_exec_literal_count` | function | [include/flashvm/execution.h:39](../include/flashvm/execution.h#L39) |
+| `fvm_exec_literal_object` | function | [include/flashvm/execution.h:55](../include/flashvm/execution.h#L55) |
+| `FVM_EXEC_MAX_LITERAL_ENTRIES` | macro / define | [include/flashvm/execution.h:21](../include/flashvm/execution.h#L21) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

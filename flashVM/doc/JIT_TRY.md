@@ -33,7 +33,7 @@ exits before finally. Callback writes and allocation failures are not transactio
 Root JIT policy selection is now inside its allocation guard. Previously, creating
 the empty breakpoint-name key could throw `std::bad_alloc` before the guard, escaping
 a root C API call. The allocation regression reproduced that termination; root
-entries now return [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), with the handled result published correctly.
+entries now return [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), with the handled result published correctly.
 
 | Test | Coverage |
 | --- | --- |
@@ -62,5 +62,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

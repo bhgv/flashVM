@@ -1,14 +1,18 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm/text_layout.h"
 #include "flashvm/worker.h"
 #include "flashvm/channel.h"
 #include "fixtures/font_data.h"
-#include <assert.h>
+
 #ifdef FVM_HAS_FONTS
 struct Shared
 {
     FVM_Channel *gate;
     FVM_TextLayout *layout;
 };
+
+
 static FVM_Result task(FVM_Context *context, const FVM_Value *input, FVM_Value *out, void *userdata)
 {
     struct Shared *shared = (struct Shared *)userdata;
@@ -22,20 +26,50 @@ static FVM_Result task(FVM_Context *context, const FVM_Value *input, FVM_Value *
     unsigned int i;
     (void)context;
     (void)input;
-    assert(fvm_channel_receive_owned(shared->gate, &token, 1) == FVM_OK);
-    assert(fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 40, &font) == FVM_OK);
+    if (!(fvm_channel_receive_owned(shared->gate, &token, 1) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 40, &font) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     for (i = 0; i < 50; ++i)
     {
-        assert(fvm_text_layout_create(font, "AV fi", 5, &options, &layout) == FVM_OK);
-        assert(fvm_text_layout_metrics(layout, &metrics) == FVM_OK && metrics.line_count == 2);
+        if (!(fvm_text_layout_create(font, "AV fi", 5, &options, &layout) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_text_layout_metrics(layout, &metrics) == FVM_OK && metrics.line_count == 2))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         fvm_text_layout_destroy(layout);
         /* Shared layout is read-only and its font has already been destroyed. */
-        assert(fvm_text_layout_metrics(shared->layout, &metrics) == FVM_OK &&
-               metrics.glyph_count == 3);
-        assert(fvm_text_layout_glyph(shared->layout, 0, &glyph) == FVM_OK &&
-               glyph.shaped.glyph == 6);
-        assert(fvm_text_layout_glyph_path(shared->layout, 0, &copy) == FVM_OK);
-        assert(fvm_path_set_point(copy, 0, 0, (double)i, 0) == FVM_OK);
+        if (!(fvm_text_layout_metrics(shared->layout, &metrics) == FVM_OK && metrics.glyph_count == 3))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_text_layout_glyph(shared->layout, 0, &glyph) == FVM_OK && glyph.shaped.glyph == 6))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_text_layout_glyph_path(shared->layout, 0, &copy) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_path_set_point(copy, 0, 0, (double)i, 0) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         fvm_path_destroy(copy);
     }
     fvm_font_destroy(font);
@@ -43,6 +77,8 @@ static FVM_Result task(FVM_Context *context, const FVM_Value *input, FVM_Value *
     return FVM_OK;
 }
 #endif
+
+
 int main(void)
 {
 #ifdef FVM_HAS_FONTS
@@ -52,20 +88,56 @@ int main(void)
     FVM_Worker *workers[8];
     FVM_Value token, out[8];
     unsigned int i;
-    assert(fvm_config_init(&config) == FVM_OK);
-    assert(fvm_channel_create(&shared.gate) == FVM_OK);
-    assert(fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 40, &font) == FVM_OK);
-    assert(fvm_text_layout_create(font, "fiAA", 4, 0, &shared.layout) == FVM_OK);
+    if (!(fvm_config_init(&config) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_channel_create(&shared.gate) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 40, &font) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_text_layout_create(font, "fiAA", 4, 0, &shared.layout) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_font_destroy(font);
     fvm_value_number(&token, 1);
     for (i = 0; i < 8; ++i)
-        assert(fvm_worker_run(&config, task, &token, &shared, &workers[i]) == FVM_OK);
-    for (i = 0; i < 8; ++i)
-        assert(fvm_channel_send(shared.gate, &token) == FVM_OK);
-    assert(fvm_worker_join_all(workers, 8, out) == FVM_OK);
+    {
+        if (!(fvm_worker_run(&config, task, &token, &shared, &workers[i]) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
     for (i = 0; i < 8; ++i)
     {
-        assert(out[i].number == 50);
+        if (!(fvm_channel_send(shared.gate, &token) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (!(fvm_worker_join_all(workers, 8, out) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for (i = 0; i < 8; ++i)
+    {
+        if (!(out[i].number == 50))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         fvm_worker_destroy(workers[i]);
     }
     fvm_text_layout_destroy(shared.layout);

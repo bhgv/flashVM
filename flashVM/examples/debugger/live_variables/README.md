@@ -47,11 +47,11 @@ NATURAL/FORCE — политика VM, независимая от CMake Release
 - [`fvm_crash_register`](../../../doc/DEBUG_API.md#fvm_crash_register) — подробный debugger/runtime-контракт.
 - [`fvm_crash_set_detail`](../../../doc/DEBUG_API.md#fvm_crash_set_detail) — подробный debugger/runtime-контракт.
 - [`fvm_debug_frame_at`](../../../doc/DEBUG_API.md#fvm_debug_frame_at) — подробный debugger/runtime-контракт.
-- [`fvm_exception_clear`](../../../include/flashvm/exception.h#L65) — декларация и контракт общего VM API.
+- [`fvm_exception_clear`](../../../include/flashvm/exception.h#L74) — декларация и контракт общего VM API.
 - [`fvm_execution_set_mode`](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — подробный debugger/runtime-контракт.
-- [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52) — декларация и контракт общего VM API.
-- [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) — декларация и контракт общего VM API.
-- [`fvm_value_number`](../../../include/flashvm/value.h#L42) — декларация и контракт общего VM API.
+- [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L62) — декларация и контракт общего VM API.
+- [`fvm_function_invoke`](../../../include/flashvm/function.h#L79) — декларация и контракт общего VM API.
+- [`fvm_value_number`](../../../include/flashvm/value.h#L50) — декларация и контракт общего VM API.
 
 [Полный справочник EN](../../../doc/DEBUG_API.md) ·
 [Справочник RU](../../../doc/DEBUG_API.ru.md) ·
@@ -81,17 +81,17 @@ function links to its detailed reference or public ownership contract.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_crash_argument`](../../../include/flashvm/crash.h#L77) | [DEBUG_API.md#fvm_crash_argument](../../../doc/DEBUG_API.md#fvm_crash_argument) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_crash_configure`](../../../include/flashvm/crash.h#L55) | [DEBUG_API.md#fvm_crash_configure](../../../doc/DEBUG_API.md#fvm_crash_configure) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_crash_local`](../../../include/flashvm/crash.h#L79) | [DEBUG_API.md#fvm_crash_local](../../../doc/DEBUG_API.md#fvm_crash_local) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_crash_register`](../../../include/flashvm/crash.h#L82) | [DEBUG_API.md#fvm_crash_register](../../../doc/DEBUG_API.md#fvm_crash_register) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_crash_set_detail`](../../../include/flashvm/crash.h#L60) | [DEBUG_API.md#fvm_crash_set_detail](../../../doc/DEBUG_API.md#fvm_crash_set_detail) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_frame_at`](../../../include/flashvm/debug.h#L34) | [DEBUG_API.md#fvm_debug_frame_at](../../../doc/DEBUG_API.md#fvm_debug_frame_at) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_exception_clear`](../../../include/flashvm/exception.h#L65) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
-| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
-| [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_crash_argument`](../../../include/flashvm/crash.h#L103) | [DEBUG_API.md#fvm_crash_argument](../../../doc/DEBUG_API.md#fvm_crash_argument) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_configure`](../../../include/flashvm/crash.h#L65) | [DEBUG_API.md#fvm_crash_configure](../../../doc/DEBUG_API.md#fvm_crash_configure) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_local`](../../../include/flashvm/crash.h#L107) | [DEBUG_API.md#fvm_crash_local](../../../doc/DEBUG_API.md#fvm_crash_local) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_register`](../../../include/flashvm/crash.h#L112) | [DEBUG_API.md#fvm_crash_register](../../../doc/DEBUG_API.md#fvm_crash_register) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_set_detail`](../../../include/flashvm/crash.h#L72) | [DEBUG_API.md#fvm_crash_set_detail](../../../doc/DEBUG_API.md#fvm_crash_set_detail) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_frame_at`](../../../include/flashvm/debug.h#L38) | [DEBUG_API.md#fvm_debug_frame_at](../../../doc/DEBUG_API.md#fvm_debug_frame_at) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h#L74) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L79) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L62) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_invoke`](../../../include/flashvm/function.h#L79) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-debugger-live_variables).
 <!-- example-catalog-api:end -->
@@ -105,16 +105,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_crash_argument` | function | [include/flashvm/crash.h:77](../../../include/flashvm/crash.h#L77) |
-| `fvm_crash_configure` | function | [include/flashvm/crash.h:55](../../../include/flashvm/crash.h#L55) |
-| `fvm_crash_local` | function | [include/flashvm/crash.h:79](../../../include/flashvm/crash.h#L79) |
-| `fvm_crash_register` | function | [include/flashvm/crash.h:82](../../../include/flashvm/crash.h#L82) |
-| `fvm_crash_set_detail` | function | [include/flashvm/crash.h:60](../../../include/flashvm/crash.h#L60) |
-| `fvm_debug_frame_at` | function | [include/flashvm/debug.h:34](../../../include/flashvm/debug.h#L34) |
-| `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../../../include/flashvm/exception.h#L65) |
+| `fvm_crash_argument` | function | [include/flashvm/crash.h:103](../../../include/flashvm/crash.h#L103) |
+| `fvm_crash_configure` | function | [include/flashvm/crash.h:65](../../../include/flashvm/crash.h#L65) |
+| `fvm_crash_local` | function | [include/flashvm/crash.h:107](../../../include/flashvm/crash.h#L107) |
+| `fvm_crash_register` | function | [include/flashvm/crash.h:112](../../../include/flashvm/crash.h#L112) |
+| `fvm_crash_set_detail` | function | [include/flashvm/crash.h:72](../../../include/flashvm/crash.h#L72) |
+| `fvm_debug_frame_at` | function | [include/flashvm/debug.h:38](../../../include/flashvm/debug.h#L38) |
+| `fvm_exception_clear` | function | [include/flashvm/exception.h:74](../../../include/flashvm/exception.h#L74) |
 | `FVM_EXECUTION_JIT` | enum constant | [include/flashvm/execution_mode.h:15](../../../include/flashvm/execution_mode.h#L15) |
-| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
-| `fvm_function_create_avm1` | function | [include/flashvm/function.h:52](../../../include/flashvm/function.h#L52) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../../../include/flashvm/function.h#L65) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:79](../../../include/flashvm/execution_mode.h#L79) |
+| `fvm_function_create_avm1` | function | [include/flashvm/function.h:62](../../../include/flashvm/function.h#L62) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../../../include/flashvm/function.h#L79) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 <!-- source-links:end -->

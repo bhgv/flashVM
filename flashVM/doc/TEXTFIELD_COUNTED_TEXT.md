@@ -40,7 +40,7 @@ exact valid keywords and zero-count borrowed strings with nonempty backing data.
 Graph restoration now rejects native text beyond 16384 bytes or 4096 validated
 Unicode scalars before allocating a Field or importing its fonts. Previously
 restoration checked UTF-8 but could bypass the editing envelope. Invalid native
-payloads return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) and graph restoration rolls back objects,
+payloads return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) and graph restoration rolls back objects,
 allocation counters and imported fonts. The valid 4096-scalar and supplementary
 16384-byte/8192-unit boundaries remain accepted.
 
@@ -70,5 +70,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

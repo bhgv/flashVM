@@ -27,10 +27,10 @@ and ignores assignments. Accessors are nonenumerable and nondeletable on the
 builtin prototype; ordinary user property descriptors can still shadow them.
 Numeric ActionGetProperty/ActionSetProperty continue to bypass named shadows.
 
-The C host can read/write through [`fvm_object_get`](../include/flashvm/value.h#L72) / [`fvm_object_set`](../include/flashvm/value.h#L74) without a
+The C host can read/write through [`fvm_object_get`](../include/flashvm/value.h#L102) / [`fvm_object_set`](../include/flashvm/value.h#L106) without a
 console or frontend dependency. Their normal same-context validation, borrowed
 result storage and error rules apply. Keep the context and receiver alive;
-[`fvm_gc_pin`](../include/flashvm/gc.h#L48) is required when a host pointer must survive a later collecting call.
+[`fvm_gc_pin`](../include/flashvm/gc.h#L60) is required when a host pointer must survive a later collecting call.
 Accessor invocation retains operands during script conversion, and native bounds
 snapshots prevent collection while geometry callbacks inspect descendants.
 Explicit collecting reentry remains subject to the normal native-call restriction.
@@ -69,7 +69,7 @@ explicit provenance; a native clip without any source returns an empty string.
 The builtin class prototype returns undefined. This is source metadata, not a new
 network request, and it does not reinterpret `_lockroot` as a source boundary.
 
-Source strings are copied by [`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L162). The getter returns managed
+Source strings are copied by [`fvm_movieclip_set_source`](../include/flashvm/movieclip.h#L207). The getter returns managed
 borrowed storage using the ordinary object API lifetime. Unloading retains the
 origin, detached children retain their old origin, and successful content
 replacement publishes its new origin atomically. Failed replacement preserves it.
@@ -110,8 +110,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:162](../include/flashvm/movieclip.h#L162) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../include/flashvm/gc.h#L60) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:207](../include/flashvm/movieclip.h#L207) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../include/flashvm/value.h#L102) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../include/flashvm/value.h#L106) |
 <!-- source-links:end -->

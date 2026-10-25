@@ -1,5 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm_build_config.h"
-#include <assert.h>
 
 #if (defined(GRAPHICS_AGG) + defined(GRAPHICS_CAIRO) + defined(NO_GRAPHICS)) != 1
 #error Rasterizer keys must be exclusive
@@ -19,8 +20,14 @@
 #if defined(SQLITE) && !defined(FVM_HAS_SQLITE)
 #error SQLite key must select the actual library
 #endif
+
+
 int main(void)
 {
-    assert(HEADLESS == 1);
+    if (!(HEADLESS == 1))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }

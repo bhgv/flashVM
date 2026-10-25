@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /* Print a bounded UTF-8 message as JSON, escaping control bytes and quotes. */
 static void json_string(FILE *stream, const char *text)
 {
@@ -12,33 +13,46 @@ static void json_string(FILE *stream, const char *text)
     for (; *p; ++p)
     {
         if (*p == '"' || *p == '\\')
+        {
             fprintf(stream, "\\%c", *p);
+        }
         else if (*p < 32)
+        {
             fprintf(stream, "\\u%04x", (unsigned)*p);
+        }
         else
+        {
             fputc(*p, stream);
+        }
     }
     fputc('"', stream);
 }
 
+
 /* Emit exactly one record on a parsed request's failure, never a success log. */
 static void report(int json, const FirSourceDiagnostic *diagnostic, const char *message)
 {
-    static const char *kinds[] = {"none", "argument", "input", "encoding", "limit",
-                                "resource", "syntax", "semantic", "output"};
+    static const char *kinds[] = {
+        "none", "argument", "input", "encoding", "limit", "resource", "syntax", "semantic", "output"};
     if (!json)
     {
         fprintf(stderr, "%s\n", message);
         return;
     }
-    fprintf(stderr, "{\"schema\":1,\"kind\":\"%s\",\"code\":%d,\"has_location\":%s,"
+    fprintf(stderr,
+            "{\"schema\":1,\"kind\":\"%s\",\"code\":%d,\"has_location\":%s,"
             "\"byte_offset\":%zu,\"byte_length\":%zu,\"line\":%zu,\"column\":%zu,\"message\":",
-            kinds[diagnostic->kind], diagnostic->code,
-            diagnostic->has_location ? "true" : "false", diagnostic->byte_offset,
-            diagnostic->byte_length, diagnostic->line, diagnostic->column);
+            kinds[diagnostic->kind],
+            diagnostic->code,
+            diagnostic->has_location ? "true" : "false",
+            diagnostic->byte_offset,
+            diagnostic->byte_length,
+            diagnostic->line,
+            diagnostic->column);
     json_string(stderr, message);
     fputs("}\n", stderr);
 }
+
 
 /* Validate options, stage compilation, and open the destination only on success.
  * Output copy failures can leave a prefix; source rejection preserves old files. */
@@ -75,29 +89,42 @@ int main(int argc, char **argv)
         return 0;
     }
     if (argc < 5 || strcmp(argv[2], "--input"))
+    {
         goto usage;
+    }
     if (!strcmp(argv[1], "limbo"))
+    {
         language = FIR_LIMBO;
+    }
     else if (!strcmp(argv[1], "as1") || !strcmp(argv[1], "as2") || !strcmp(argv[1], "as3"))
+    {
         language = (FirLanguage)(argv[1][2] - '0');
+    }
     else
+    {
         goto usage;
+    }
     for (i = 5; i < argc; ++i)
     {
         if (!strcmp(argv[i], "--diagnostics-json") && !json)
+        {
             json = 1;
+        }
         else if (!strcmp(argv[i], "--module") && !have_module && i + 1 < argc)
         {
             module = argv[++i];
             have_module = 1;
         }
         else if (!strcmp(argv[i], "-g") && !debug_path && i + 1 < argc)
+        {
             debug_path = argv[++i];
+        }
         else
+        {
             goto usage;
+        }
     }
-    if (!strcmp(argv[3], argv[4]) || (debug_path &&
-        (!strcmp(debug_path, argv[3]) || !strcmp(debug_path, argv[4]))))
+    if (!strcmp(argv[3], argv[4]) || (debug_path && (!strcmp(debug_path, argv[3]) || !strcmp(debug_path, argv[4]))))
     {
         diagnostic.kind = FIR_DIAG_ARGUMENT;
         strcpy(error, "different input/output paths required");
@@ -112,7 +139,9 @@ int main(int argc, char **argv)
     }
     temporary = fir_temporary();
     if (debug_path)
+    {
         debug = fir_temporary();
+    }
     if (!temporary || (debug_path && !debug))
     {
         diagnostic.kind = FIR_DIAG_RESOURCE;
@@ -121,19 +150,29 @@ int main(int argc, char **argv)
     }
     status = 1;
     if (!fir_source_debug(input, temporary, language, module, error, sizeof(error), &diagnostic, debug))
+    {
         goto done;
+    }
     if (fflush(temporary) || fseek(temporary, 0, SEEK_SET))
+    {
         goto output_error;
+    }
     output = fopen(argv[4], "wb");
     if (!output)
+    {
         goto output_error;
+    }
     while ((length = fread(buffer, 1, sizeof(buffer), temporary)) != 0)
     {
         if (fwrite(buffer, 1, length, output) != length)
+        {
             goto output_error;
+        }
     }
     if (ferror(temporary))
+    {
         goto output_error;
+    }
     if (fclose(output))
     {
         output = NULL;
@@ -143,17 +182,25 @@ int main(int argc, char **argv)
     if (debug)
     {
         if (fflush(debug) || fseek(debug, 0, SEEK_SET))
+        {
             goto output_error;
+        }
         debug_file = fopen(debug_path, "wb");
         if (!debug_file)
+        {
             goto output_error;
+        }
         while ((length = fread(buffer, 1, sizeof(buffer), debug)) != 0)
         {
             if (fwrite(buffer, 1, length, debug_file) != length)
+            {
                 goto output_error;
+            }
         }
         if (ferror(debug))
+        {
             goto output_error;
+        }
         if (fclose(debug_file))
         {
             debug_file = NULL;
@@ -169,20 +216,33 @@ output_error:
     strcpy(error, "FIR output I/O failure");
 done:
     if (input)
+    {
         fclose(input);
+    }
     if (temporary)
+    {
         fclose(temporary);
+    }
     if (output)
+    {
         fclose(output);
+    }
     if (debug)
+    {
         fclose(debug);
+    }
     if (debug_file)
+    {
         fclose(debug_file);
+    }
     if (status)
+    {
         report(json, &diagnostic, error[0] ? error : "source operation failed");
+    }
     return status;
 usage:
     fputs("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir "
-          "[--module NAME] [--diagnostics-json] [-g DEBUG.json]\n", stderr);
+          "[--module NAME] [--diagnostics-json] [-g DEBUG.json]\n",
+          stderr);
     return 2;
 }

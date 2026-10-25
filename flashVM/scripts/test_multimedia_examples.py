@@ -9,8 +9,13 @@ import wave
 
 
 def run(program, *args, success=True):
-    result = subprocess.run([str(program), *map(str, args)], text=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+    result = subprocess.run(
+        [str(program), *map(str, args)],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=20,
+    )
     if (result.returncode == 0) != success:
         raise RuntimeError(f"{program}: {result.returncode}\n{result.stdout}\n{result.stderr}")
     return result.stdout
@@ -22,9 +27,13 @@ def main():
     parser.add_argument("--ffmpeg", action="store_true")
     args = parser.parse_args()
     build = args.build.resolve()
-    suffix = ".exe" if (build / "flashvm_examples_multimedia_ffmpeg_decode_main.exe").exists() else ""
+    suffix = (
+        ".exe" if (build / "flashvm_examples_multimedia_ffmpeg_decode_main.exe").exists() else ""
+    )
+
     def program(name):
         return build / ("flashvm_examples_multimedia_" + name + "_main" + suffix)
+
     with tempfile.TemporaryDirectory(prefix="flashvm-media-tutorials-") as folder:
         folder = Path(folder)
         raw = folder / "mono.raw"
@@ -46,8 +55,10 @@ def main():
                 raise RuntimeError("FFmpeg tutorial did not decode the WAV fixture")
             if "size=2x1" not in run(program("ffmpeg_decode"), "video", ppm):
                 raise RuntimeError("FFmpeg tutorial did not decode the PPM fixture")
-    print("PASS multimedia tutorials: real PCM source, malformed input, exact PPM output" +
-          (", native FFmpeg WAV/PPM decoding" if args.ffmpeg else ""))
+    print(
+        "PASS multimedia tutorials: real PCM source, malformed input, exact PPM output"
+        + (", native FFmpeg WAV/PPM decoding" if args.ffmpeg else "")
+    )
 
 
 if __name__ == "__main__":

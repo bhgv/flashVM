@@ -27,9 +27,9 @@ cmake --build build-examples --target flashvm_examples_embedding_image_codecs_ma
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_svg_destroy`](../../../include/flashvm/svg.h#L26) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
-| [`fvm_svg_rasterize`](../../../include/flashvm/svg.h#L24) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
-| [`fvm_svg_read`](../../../include/flashvm/svg.h#L18) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
+| [`fvm_svg_destroy`](../../../include/flashvm/svg.h#L34) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
+| [`fvm_svg_rasterize`](../../../include/flashvm/svg.h#L30) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
+| [`fvm_svg_read`](../../../include/flashvm/svg.h#L20) | [IMAGE_CODECS.md](../../../doc/IMAGE_CODECS.md) — Разбор SVG и растеризация. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-image_codecs).
 <!-- example-catalog-api:end -->
@@ -47,8 +47,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_svg_destroy` | function | [include/flashvm/svg.h:26](../../../include/flashvm/svg.h#L26) |
-| `fvm_svg_rasterize` | function | [include/flashvm/svg.h:24](../../../include/flashvm/svg.h#L24) |
-| `fvm_svg_read` | function | [include/flashvm/svg.h:18](../../../include/flashvm/svg.h#L18) |
+| `fvm_svg_destroy` | function | [include/flashvm/svg.h:34](../../../include/flashvm/svg.h#L34) |
+| `fvm_svg_rasterize` | function | [include/flashvm/svg.h:30](../../../include/flashvm/svg.h#L30) |
+| `fvm_svg_read` | function | [include/flashvm/svg.h:20](../../../include/flashvm/svg.h#L20) |
 | `IMAGE_CODECS` | DEFS switch | [cmake/BuildDefinitions.cmake:16](../../../cmake/BuildDefinitions.cmake#L16) |
 <!-- source-links:end -->

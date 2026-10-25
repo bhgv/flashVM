@@ -22,7 +22,7 @@ part discarded, and values outside the supported 2–36 interval are rejected.
 Decimal formatting uses the native string bridge. Bases 2/4/8/16/32 support
 finite fractions and the full binary64 range. Other nondecimal bases support
 exact integer magnitudes through 2^53−1; recurring fractions or larger values
-return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Digits above 9 are lowercase; zero and nonfinite values
+return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Digits above 9 are lowercase; zero and nonfinite values
 are handled explicitly. Bad receivers/radices
 currently return C result codes; standard TypeError/RangeError objects remain
 unfinished. This is not a complete version-dependent Flash formatter.
@@ -65,6 +65,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_construct` | function | [include/flashvm/value.h:232](../include/flashvm/value.h#L232) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -56,15 +56,15 @@ mount/bind пока не реализованы. Принятый план: [nam
 
 | API | Назначение и владение |
 | --- | --- |
-| [`fvm_sbindings_init`](../../../include/flashvm/sbindings.h#L33) | Создать пустую входящую таблицу в slots хоста, без выделений. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L43) | Закодировать список деклараций в отдельный буфер после полной проверки. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L66) | Обрамить metadata/value канонической длиной/тегом/checksum; вход заимствован лишь на время вызова. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_apply`](../../../include/flashvm/sbindings.h#L49) | Проверить тег 0 и атомарно скопировать привязки; конфликт оставляет таблицу прежней. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_init`](../../../include/flashvm/sstream.h#L24) | Связать state с receive-буфером и лимитом; без I/O. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L33) | Сохранить фрагмент; только OK публикует view. MORE также сообщает consumed. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L37) | Скопировать тип/версию входящего направления, без глобальной трактовки тегов. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L38) | После последнего использования инвалидировать view, сохранить storage, сбросить state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
-| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L80) | Проверить одну запись в байтах fread, вернуть точный consumed; view заимствует вход. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_init`](../../../include/flashvm/sbindings.h#L37) | Создать пустую входящую таблицу в slots хоста, без выделений. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L51) | Закодировать список деклараций в отдельный буфер после полной проверки. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L76) | Обрамить metadata/value канонической длиной/тегом/checksum; вход заимствован лишь на время вызова. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_apply`](../../../include/flashvm/sbindings.h#L59) | Проверить тег 0 и атомарно скопировать привязки; конфликт оставляет таблицу прежней. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_init`](../../../include/flashvm/sstream.h#L26) | Связать state с receive-буфером и лимитом; без I/O. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_push`](../../../include/flashvm/sstream.h#L37) | Сохранить фрагмент; только OK публикует view. MORE также сообщает consumed. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sbindings_lookup`](../../../include/flashvm/sbindings.h#L43) | Скопировать тип/версию входящего направления, без глобальной трактовки тегов. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_sstream_reset`](../../../include/flashvm/sstream.h#L44) | После последнего использования инвалидировать view, сохранить storage, сбросить state. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
+| [`fvm_srecord_read`](../../../include/flashvm/srecord.h#L94) | Проверить одну запись в байтах fread, вернуть точный consumed; view заимствует вход. [EN](../../../doc/SRECORD.md) / [RU](../../../doc/SRECORD.ru.md). |
 
 ## Cross / Другие OS и CPU
 
@@ -90,13 +90,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:49](../../../include/flashvm/sbindings.h#L49) |
-| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:33](../../../include/flashvm/sbindings.h#L33) |
-| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
-| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
-| `fvm_srecord_read` | function | [include/flashvm/srecord.h:80](../../../include/flashvm/srecord.h#L80) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../../../include/flashvm/srecord.h#L66) |
-| `fvm_sstream_init` | function | [include/flashvm/sstream.h:24](../../../include/flashvm/sstream.h#L24) |
-| `fvm_sstream_push` | function | [include/flashvm/sstream.h:33](../../../include/flashvm/sstream.h#L33) |
-| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:38](../../../include/flashvm/sstream.h#L38) |
+| `fvm_sbindings_apply` | function | [include/flashvm/sbindings.h:59](../../../include/flashvm/sbindings.h#L59) |
+| `fvm_sbindings_init` | function | [include/flashvm/sbindings.h:37](../../../include/flashvm/sbindings.h#L37) |
+| `fvm_sbindings_lookup` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:51](../../../include/flashvm/sbindings.h#L51) |
+| `fvm_srecord_read` | function | [include/flashvm/srecord.h:94](../../../include/flashvm/srecord.h#L94) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:76](../../../include/flashvm/srecord.h#L76) |
+| `fvm_sstream_init` | function | [include/flashvm/sstream.h:26](../../../include/flashvm/sstream.h#L26) |
+| `fvm_sstream_push` | function | [include/flashvm/sstream.h:37](../../../include/flashvm/sstream.h#L37) |
+| `fvm_sstream_reset` | function | [include/flashvm/sstream.h:44](../../../include/flashvm/sstream.h#L44) |
 <!-- source-links:end -->

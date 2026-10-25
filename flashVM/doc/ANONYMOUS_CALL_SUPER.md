@@ -11,7 +11,7 @@ its own constructor scope and relative depth inside the anonymous call.
 constructor/function/owner/depth metadata. Existing execution roots retain
 operands and arguments through callback removal, GC, throw, error and allocation
 failure. Unloaded host inference, named member calls, NewMethod, public direct
-[fvm_function_invoke](../include/flashvm/function.h#L65) and CallFunction/qualified-name policy are unchanged. No
+[fvm_function_invoke](../include/flashvm/function.h#L79) and CallFunction/qualified-name policy are unchanged. No
 public ABI or graph format changes.
 
 В загруженных SWF4–8 CallMethod с пустым или undefined именем вызывает значение
@@ -67,5 +67,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
 <!-- source-links:end -->

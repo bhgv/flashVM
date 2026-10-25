@@ -12,6 +12,8 @@
 #include <cmath>
 #include <limits>
 #include <new>
+
+
 /* [GC:] Own a mutable value array without changing this, targets or interpreter state. */
 class FVM_ExecutionRoots
 {
@@ -23,18 +25,25 @@ class FVM_ExecutionRoots
     FVM_ExecutionRoots &operator=(const FVM_ExecutionRoots &);
 
   public:
+
     fvm_detail::vector<FVM_Value> values; /* [GC:] Mutable operands and intermediate values. */
+
+
     /* [GC:] Initialize all slots before publishing the frame. */
     FVM_ExecutionRoots(FVM_Context *c, size_t count) : context_(c), values(count)
     {
         for (size_t i = 0; i < count; ++i)
+        {
             fvm_value_undefined(&values[i]);
+        }
         frame_.previous = c->gc_frames;
         frame_.stack = &values;
         frame_.locals = 0;
         frame_.receiver = 0;
         c->gc_frames = &frame_;
     }
+
+
     /* [GC:] Restore the caller's chain on success, failure and allocation exceptions. */
     ~FVM_ExecutionRoots()
     {

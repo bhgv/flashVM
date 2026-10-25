@@ -18,10 +18,10 @@
 | thickness | Отсутствие или явный undefined отключает текущий штрих без преобразования остальных аргументов. Конечное число ограничивается 0..255; ноль означает hairline. Прежние дробные ширины сохраняются. |
 | rgb | Отсутствие/undefined означает чёрный; конечное число преобразуется по прежнему правилу packed RGB24. |
 | alpha | Отсутствие/undefined означает 100; конечное число ограничивается 0..100. |
-| pixelHinting | Boolean-преобразование в SWF8/host; false/default поддержан, true даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
-| noScale | Строковое преобразование в SWF8/host; normal/default поддержан, остальные режимы дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
+| pixelHinting | Boolean-преобразование в SWF8/host; false/default поддержан, true даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
+| noScale | Строковое преобразование в SWF8/host; normal/default поддержан, остальные режимы дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
 | capsStyle | Строковое преобразование в SWF8/host; поддержаны round/default, none и square. |
-| jointStyle | Строковое преобразование в SWF8/host; поддержаны round/default и bevel; miter/неизвестное значение дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
+| jointStyle | Строковое преобразование в SWF8/host; поддержаны round/default и bevel; miter/неизвестное значение дают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
 | miterLimit | Для поддержанных соединений игнорируется без преобразования; miter отклоняется до использования аргумента. |
 
 Загруженные SWF1-7 сохраняют прежнюю видимость основного метода и игнорируют
@@ -31,7 +31,7 @@
 Другие опции сравниваются по полной длине преобразованной строки: суффикс после
 NUL не считается частью корректного ключевого слова. Неподдержанная строка
 возвращает ошибку, а не незаметный round. Неконечные thickness/color/alpha дают
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); ошибка преобразования сохраняет исходный статус.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); ошибка преобразования сохраняет исходный статус.
 Пограничные преобразования и неконечные значения требуют отдельной Flash-приёмки.
 
 ## Состояние, снимки и память
@@ -112,6 +112,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

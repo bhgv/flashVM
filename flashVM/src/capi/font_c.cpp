@@ -9,6 +9,8 @@
 #include <cstring>
 #include <climits>
 #include <new>
+
+
 /* Inspect a C caller's enum representation before any C++ scalar load can be undefined. */
 static bool valid_shape_direction(const FVM_TextDirection &direction)
 {
@@ -16,25 +18,36 @@ static bool valid_shape_direction(const FVM_TextDirection &direction)
     {
         FVM_TextDirection candidate = (FVM_TextDirection)value;
         if (!std::memcmp(&direction, &candidate, sizeof(candidate)))
+        {
             return true;
+        }
     }
     return false;
 }
 
+
 /* Validate borrowed UTF-32 input before allocations or any writes to caller buffers.
  * Inspect enum bytes first: arbitrary C representations must never be loaded as C++ enums. */
-static bool valid_bidi_input(const unsigned int *logical, size_t count,
-                             const FVM_TextDirection *direction, const unsigned int *visual,
-                             const size_t *map, const unsigned char *levels)
+static bool valid_bidi_input(const unsigned int *logical,
+                             size_t count,
+                             const FVM_TextDirection *direction,
+                             const unsigned int *visual,
+                             const size_t *map,
+                             const unsigned char *levels)
 {
-    if (!direction || !valid_shape_direction(*direction) ||
-        (!logical && count) || (!visual && count) || (!map && count) ||
-        (!levels && count) || count > FVM_FONT_BIDI_MAX_SCALARS)
+    if (!direction || !valid_shape_direction(*direction) || (!logical && count) || (!visual && count) ||
+        (!map && count) || (!levels && count) || count > FVM_FONT_BIDI_MAX_SCALARS)
+    {
         return false;
+    }
     for (size_t i = 0; i < count; ++i)
+    {
         if (logical[i] > FVM_FONT_UNICODE_MAX ||
             (logical[i] >= FVM_FONT_SURROGATE_BEGIN && logical[i] <= FVM_FONT_SURROGATE_END))
+        {
             return false;
+        }
+    }
     return true;
 }
 
@@ -49,6 +62,8 @@ static bool valid_bidi_input(const unsigned int *logical, size_t count,
 #include "wordbreak.h"
 #include "graphemebreak.h"
 #include "fribidi.h"
+
+
 /* Define FVM_Font struct and its representation. */
 struct FVM_Font
 {
@@ -56,39 +71,57 @@ struct FVM_Font
     FT_Library library;
     FT_Face face;
     hb_font_t *shaper;
+
+
     /* Initialize Font and its owned state. */
     FVM_Font() : library(0), face(0), shaper(0)
     {
     }
+
+
     /* Release the resources owned by this FVM_Font instance. */
     ~FVM_Font()
     {
         if (shaper)
+        {
             hb_font_destroy(shaper);
+        }
         if (face)
+        {
             FT_Done_Face(face);
+        }
         if (library)
+        {
             FT_Done_FreeType(library);
+        }
     }
 };
+
 
 /* Define FVM_TextRun struct and its representation. */
 struct FVM_TextRun
 {
     fvm_detail::vector<FVM_ShapedGlyph> glyphs;
 };
+
 /* Enforce a bounded Unicode input before passing it to the shaping/break APIs. */
+
+
 /* Compute and return valid utf8. */
 static bool valid_utf8(const char *text, size_t size)
 {
     if (size > 4 * 1024 * 1024 || (!text && size))
+    {
         return false;
+    }
     const unsigned char *s = (const unsigned char *)text;
     for (size_t i = 0; i < size;)
     {
         unsigned int c = s[i++], n = 0, min = 0;
         if (c < 0x80)
+        {
             continue;
+        }
         if (c >= 0xc2 && c <= 0xdf)
         {
             c &= 31;
@@ -108,34 +141,48 @@ static bool valid_utf8(const char *text, size_t size)
             min = 0x10000;
         }
         else
+        {
             return false;
+        }
         if (n > size - i)
+        {
             return false;
+        }
         for (unsigned int k = 0; k < n; ++k)
         {
             unsigned int v = s[i++];
             if ((v & 0xc0) != 0x80)
+            {
                 return false;
+            }
             c = (c << 6) | (v & 63);
         }
         if (c < min || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff))
+        {
             return false;
+        }
     }
     return true;
 }
 
+
 /* Read font. */
-extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, double pixels,
-                                    FVM_Font **out)
+extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, double pixels, FVM_Font **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     if (!bytes || !size || size > 32 * 1024 * 1024 || index < 0 || !(pixels > 0 && pixels <= 4096))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Font *font = new (std::nothrow) FVM_Font;
     if (!font)
+    {
         return FVM_OUT_OF_MEMORY;
+    }
     try
     {
         font->bytes.resize(size);
@@ -148,12 +195,17 @@ extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, 
     std::memcpy(font->bytes.begin(), bytes, size);
     FT_Error err = FT_Init_FreeType(&font->library);
     if (!err)
-        err = FT_New_Memory_Face(font->library, font->bytes.begin(), (FT_Long)size, index,
-                                 &font->face);
+    {
+        err = FT_New_Memory_Face(font->library, font->bytes.begin(), (FT_Long)size, index, &font->face);
+    }
     if (!err)
+    {
         err = FT_Set_Char_Size(font->face, 0, (FT_F26Dot6)(pixels * 64 + 0.5), 72, 72);
+    }
     if (!err)
+    {
         err = FT_Select_Charmap(font->face, FT_ENCODING_UNICODE);
+    }
     if (err)
     {
         delete font;
@@ -172,17 +224,21 @@ extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, 
     return FVM_OK;
 }
 
+
 /* Destroy font. */
 extern "C" void fvm_font_destroy(FVM_Font *font)
 {
     delete font;
 }
 
+
 /* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *out)
 {
     if (!font || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     out->ascent = font->face->size->metrics.ascender / 64.0;
@@ -192,48 +248,74 @@ extern "C" FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *ou
     return FVM_OK;
 }
 
+
 /* Use the face's declared average horizontal advance, never a sampled string. */
 extern "C" FVM_Result fvm_font_average_width(const FVM_Font *font, double *out)
 {
-    if (!out) return FVM_INVALID_ARGUMENT;
+    if (!out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
-    if (!font) return FVM_INVALID_ARGUMENT;
-    if (!FT_IS_SCALABLE(font->face)) return FVM_UNSUPPORTED;
+    if (!font)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (!FT_IS_SCALABLE(font->face))
+    {
+        return FVM_UNSUPPORTED;
+    }
     const TT_OS2 *table = (const TT_OS2 *)FT_Get_Sfnt_Table(font->face, ft_sfnt_os2);
     if (!table || table->version == FVM_FONT_OS2_MISSING_VERSION || table->xAvgCharWidth <= 0)
+    {
         return FVM_UNSUPPORTED;
+    }
     double width = FT_MulFix(table->xAvgCharWidth, font->face->size->metrics.x_scale) / FVM_FONT_METRIC_UNITS_PER_PIXEL;
-    if (!(width > 0 && width <= FVM_FONT_AVERAGE_MAX_EXTENT)) return FVM_UNSUPPORTED;
+    if (!(width > 0 && width <= FVM_FONT_AVERAGE_MAX_EXTENT))
+    {
+        return FVM_UNSUPPORTED;
+    }
     *out = width;
     return FVM_OK;
 }
+
 
 /* Scale the face's underline center/thickness, keeping y-down output consistent
  * with glyph outlines. FreeType normalizes source-format post metrics for us. */
 extern "C" FVM_Result fvm_font_underline_metrics(const FVM_Font *font, FVM_FontUnderlineMetrics *out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     std::memset(out, 0, sizeof(*out));
     if (!font)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!FT_IS_SCALABLE(font->face))
+    {
         return FVM_UNSUPPORTED;
+    }
     double center = -FT_MulFix(font->face->underline_position, font->face->size->metrics.y_scale) / 64.0;
     double thickness = FT_MulFix(font->face->underline_thickness, font->face->size->metrics.y_scale) / 64.0;
-    if (!(center >= -FVM_FONT_UNDERLINE_MAX_EXTENT && center <= FVM_FONT_UNDERLINE_MAX_EXTENT &&
-          thickness > 0 && thickness <= FVM_FONT_UNDERLINE_MAX_EXTENT))
+    if (!(center >= -FVM_FONT_UNDERLINE_MAX_EXTENT && center <= FVM_FONT_UNDERLINE_MAX_EXTENT && thickness > 0 &&
+          thickness <= FVM_FONT_UNDERLINE_MAX_EXTENT))
+    {
         return FVM_UNSUPPORTED;
+    }
     out->center_y = center;
     out->thickness = thickness;
     return FVM_OK;
 }
+
 
 /* Compute and return font char. */
 extern "C" unsigned int fvm_font_char(const FVM_Font *font, unsigned int unicode)
 {
     return font && unicode <= 0x10ffff ? FT_Get_Char_Index(font->face, unicode) : 0;
 }
+
 
 /* Define OutlineCopy struct and its representation. */
 struct OutlineCopy
@@ -242,35 +324,44 @@ struct OutlineCopy
     FVM_Result status;
     bool open;
 };
+
+
 /* Add outline. */
-static int add_outline(OutlineCopy *copy, FVM_PathVerb verb, const FT_Vector *a,
-                       const FT_Vector *b = 0, const FT_Vector *c = 0)
+static int
+add_outline(OutlineCopy *copy, FVM_PathVerb verb, const FT_Vector *a, const FT_Vector *b = 0, const FT_Vector *c = 0)
 {
     FVM_PathCommand command;
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memset(&command, 0, sizeof(command));
     command.verb = verb;
     const FT_Vector *v[3] = {a, b, c};
     for (unsigned int i = 0; i < 3; ++i)
+    {
         if (v[i])
         {
             command.x[i] = v[i]->x / 64.0;
             command.y[i] = -v[i]->y / 64.0;
         }
+    }
     copy->status = fvm_path_add(copy->path, &command);
     return copy->status == FVM_OK ? 0 : 1;
 }
+
 
 /* Compute and return outline move. */
 static int outline_move(const FT_Vector *to, void *user)
 {
     OutlineCopy *copy = (OutlineCopy *)user;
     if (copy->open && add_outline(copy, FVM_PATH_CLOSE, 0))
+    {
         return 1;
+    }
     copy->open = true;
     return add_outline(copy, FVM_PATH_MOVE, to);
 }
+
 
 /* Compute and return outline line. */
 static int outline_line(const FT_Vector *to, void *user)
@@ -278,11 +369,13 @@ static int outline_line(const FT_Vector *to, void *user)
     return add_outline((OutlineCopy *)user, FVM_PATH_LINE, to);
 }
 
+
 /* Compute and return outline conic. */
 static int outline_conic(const FT_Vector *control, const FT_Vector *to, void *user)
 {
     return add_outline((OutlineCopy *)user, FVM_PATH_QUADRATIC, control, to);
 }
+
 
 /* Compute and return outline cubic. */
 static int outline_cubic(const FT_Vector *a, const FT_Vector *b, const FT_Vector *to, void *user)
@@ -290,33 +383,45 @@ static int outline_cubic(const FT_Vector *a, const FT_Vector *b, const FT_Vector
     return add_outline((OutlineCopy *)user, FVM_PATH_CUBIC, a, b, to);
 }
 
+
 /* Compute and return font glyph. */
-extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Path **out, double *ax,
-                                     double *ay)
+extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Path **out, double *ax, double *ay)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     if (!font || glyph >= (unsigned long)font->face->num_glyphs || !ax || !ay)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FT_Error err = FT_Load_Glyph(font->face, glyph, FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
     if (err)
+    {
         return err == FT_Err_Out_Of_Memory ? FVM_OUT_OF_MEMORY : FVM_ERROR;
+    }
     if (font->face->glyph->format != FT_GLYPH_FORMAT_OUTLINE)
+    {
         return FVM_UNSUPPORTED;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Path *path = 0;
     FVM_Result status = fvm_path_create(&path);
     if (status != FVM_OK)
+    {
         return status;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     OutlineCopy copy = {path, FVM_OK, false};
     FT_Outline_Funcs callbacks = {outline_move, outline_line, outline_conic, outline_cubic, 0, 0};
     err = FT_Outline_Decompose(&font->face->glyph->outline, &callbacks, &copy);
     if (!err && copy.open)
+    {
         err = add_outline(&copy, FVM_PATH_CLOSE, 0);
+    }
     if (err)
     {
         fvm_path_destroy(path);
@@ -330,30 +435,53 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Pat
     return FVM_OK;
 }
 
+
 /* Compute and return shape segment. */
-static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
-                                size_t length, FVM_TextDirection direction, hb_script_t script,
-                                const char *language, bool remove_ignorables, unsigned int flags, FVM_TextRun **out)
+static FVM_Result shape_segment(FVM_Font *font,
+                                const char *text,
+                                size_t size,
+                                size_t offset,
+                                size_t length,
+                                FVM_TextDirection direction,
+                                hb_script_t script,
+                                const char *language,
+                                bool remove_ignorables,
+                                unsigned int flags,
+                                FVM_TextRun **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
-    if ((flags & ~FVM_FONT_SHAPE_FLAGS) || !font || !valid_utf8(text, size) || offset > size || length > size - offset ||
-        direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
+    if ((flags & ~FVM_FONT_SHAPE_FLAGS) || !font || !valid_utf8(text, size) || offset > size ||
+        length > size - offset || direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     hb_buffer_t *buffer = hb_buffer_create();
     if (buffer == hb_buffer_get_empty())
+    {
         return FVM_OUT_OF_MEMORY;
+    }
     hb_buffer_add_utf8(buffer, text ? text : "", (int)size, (unsigned int)offset, (int)length);
     if (script != HB_SCRIPT_INVALID)
+    {
         hb_buffer_set_script(buffer, script);
+    }
     if (remove_ignorables)
+    {
         hb_buffer_set_flags(buffer, HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES);
+    }
     if (direction != FVM_TEXT_AUTO)
-        hb_buffer_set_direction(buffer,
-                                direction == FVM_TEXT_LTR ? HB_DIRECTION_LTR : HB_DIRECTION_RTL);
+    {
+        hb_buffer_set_direction(buffer, direction == FVM_TEXT_LTR ? HB_DIRECTION_LTR : HB_DIRECTION_RTL);
+    }
     if (language)
+    {
         hb_buffer_set_language(buffer, hb_language_from_string(language, -1));
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     hb_buffer_guess_segment_properties(buffer);
@@ -361,7 +489,9 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
     hb_feature_t features[FVM_FONT_FEATURE_CAPACITY];
     unsigned int feature_count = 0;
     if (flags & FVM_FONT_SHAPE_NO_KERNING)
+    {
         features[feature_count++].tag = FVM_FONT_KERN_TAG;
+    }
     if (flags & FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES)
     {
         features[feature_count++].tag = FVM_FONT_LIGA_TAG;
@@ -415,50 +545,76 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
     return FVM_OK;
 }
 
+
 /* Compute and return font shape. */
-extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t size,
-                                     FVM_TextDirection direction, const char *language,
-                                     FVM_TextRun **out)
+extern "C" FVM_Result fvm_font_shape(
+    FVM_Font *font, const char *text, size_t size, FVM_TextDirection direction, const char *language, FVM_TextRun **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     if (!valid_shape_direction(direction))
+    {
         return FVM_INVALID_ARGUMENT;
-    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false, 0,
-                         out);
+    }
+    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false, 0, out);
 }
 
+
 /* Shape one owned native run with an explicit, bounded feature selection. */
-extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *font, const char *text, size_t size,
-                                                FVM_TextDirection direction, const char *language,
-                                                unsigned int flags, FVM_TextRun **out)
+extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *font,
+                                                const char *text,
+                                                size_t size,
+                                                FVM_TextDirection direction,
+                                                const char *language,
+                                                unsigned int flags,
+                                                FVM_TextRun **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     if (!valid_shape_direction(direction))
+    {
         return FVM_INVALID_ARGUMENT;
-    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language,
-                         false, flags, out);
+    }
+    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false, flags, out);
 }
+
+
 /* Shape a layout segment using the same selected features as width measurement. */
-FVM_Result fvm_font_shape_segment_configured(FVM_Font *font, const char *text, size_t size,
-                                             size_t offset, size_t length,
-                                             FVM_TextDirection direction, hb_script_t script,
-                                             const char *language, unsigned int flags,
+FVM_Result fvm_font_shape_segment_configured(FVM_Font *font,
+                                             const char *text,
+                                             size_t size,
+                                             size_t offset,
+                                             size_t length,
+                                             FVM_TextDirection direction,
+                                             hb_script_t script,
+                                             const char *language,
+                                             unsigned int flags,
                                              FVM_TextRun **out)
 {
-    return shape_segment(font, text, size, offset, length, direction, script, language, true,
-                         flags, out);
+    return shape_segment(font, text, size, offset, length, direction, script, language, true, flags, out);
 }
+
+
 /* Compute and return font shape segment. */
-FVM_Result fvm_font_shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
-                                  size_t length, FVM_TextDirection direction, hb_script_t script,
-                                  const char *language, FVM_TextRun **out)
+FVM_Result fvm_font_shape_segment(FVM_Font *font,
+                                  const char *text,
+                                  size_t size,
+                                  size_t offset,
+                                  size_t length,
+                                  FVM_TextDirection direction,
+                                  hb_script_t script,
+                                  const char *language,
+                                  FVM_TextRun **out)
 {
     return shape_segment(font, text, size, offset, length, direction, script, language, true, 0, out);
 }
+
 
 /* Return the number of glyph entries in the shaped run. */
 extern "C" size_t fvm_text_run_count(const FVM_TextRun *run)
@@ -466,14 +622,18 @@ extern "C" size_t fvm_text_run_count(const FVM_TextRun *run)
     return run ? run->glyphs.size() : 0;
 }
 
+
 /* Read one glyph placement and its source cluster from the shaped run. */
 extern "C" FVM_Result fvm_text_run_get(const FVM_TextRun *run, size_t index, FVM_ShapedGlyph *out)
 {
     if (!run || !out || index >= run->glyphs.size())
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = run->glyphs[index];
     return FVM_OK;
 }
+
 
 /* Release a shaped run and its retained glyph data. */
 extern "C" void fvm_text_run_destroy(FVM_TextRun *run)
@@ -481,21 +641,27 @@ extern "C" void fvm_text_run_destroy(FVM_TextRun *run)
     delete run;
 }
 
+
 /* Export the positioned glyph outlines of a shaped run as one path. */
-extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, FVM_Path **out,
-                                        double *ax, double *ay)
+extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, FVM_Path **out, double *ax, double *ay)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     if (!font || !run || !ax || !ay)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Path *path = 0;
     FVM_Result status = fvm_path_create(&path);
     if (status != FVM_OK)
+    {
         return status;
+    }
     double x = 0, y = 0;
     for (size_t i = 0; i < run->glyphs.size(); ++i)
     {
@@ -525,35 +691,52 @@ extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, 
     return FVM_OK;
 }
 
+
 /* Compute and return text breaks. */
-extern "C" FVM_Result fvm_text_breaks(const char *text, size_t size, const char *language,
-                                      char *line, char *word, char *grapheme)
+extern "C" FVM_Result
+fvm_text_breaks(const char *text, size_t size, const char *language, char *line, char *word, char *grapheme)
 {
     if (!valid_utf8(text, size) || (!line && !word && !grapheme))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (size)
     {
         if (line)
+        {
             set_linebreaks_utf8((const utf8_t *)text, size, language, line);
+        }
         if (word)
+        {
             set_wordbreaks_utf8((const utf8_t *)text, size, language, word);
+        }
         if (grapheme)
+        {
             set_graphemebreaks_utf8((const utf8_t *)text, size, language, grapheme);
+        }
     }
     return FVM_OK;
 }
 
+
 /* Compute and return text bidi. */
-extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
-                                    FVM_TextDirection *direction, unsigned int *visual, size_t *map,
+extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical,
+                                    size_t count,
+                                    FVM_TextDirection *direction,
+                                    unsigned int *visual,
+                                    size_t *map,
                                     unsigned char *levels)
 {
     if (!valid_bidi_input(logical, count, direction, visual, map, levels))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!count)
     {
         if (*direction == FVM_TEXT_AUTO)
+        {
             *direction = FVM_TEXT_LTR;
+        }
         return FVM_OK;
     }
     try
@@ -569,19 +752,28 @@ extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
             indices[i] = (FriBidiStrIndex)i;
         }
         fribidi_get_bidi_types(chars.begin(), (FriBidiStrIndex)count, types.begin());
-        fribidi_get_bracket_types(chars.begin(), (FriBidiStrIndex)count, types.begin(),
-                                  brackets.begin());
+        fribidi_get_bracket_types(chars.begin(), (FriBidiStrIndex)count, types.begin(), brackets.begin());
         FriBidiParType base = *direction == FVM_TEXT_AUTO  ? FRIBIDI_PAR_ON
                               : *direction == FVM_TEXT_LTR ? FRIBIDI_PAR_LTR
                                                            : FRIBIDI_PAR_RTL;
-        if (!fribidi_get_par_embedding_levels_ex(types.begin(), brackets.begin(),
-                                                 (FriBidiStrIndex)count, &base, embedding.begin()))
+        if (!fribidi_get_par_embedding_levels_ex(
+                types.begin(), brackets.begin(), (FriBidiStrIndex)count, &base, embedding.begin()))
+        {
             return FVM_OUT_OF_MEMORY;
+        }
         /* Save logical levels before reorder_line resets trailing whitespace. */
         fvm_detail::vector<FriBidiLevel> saved = embedding;
-        if (!fribidi_reorder_line(FRIBIDI_FLAG_REORDER_NSM, types.begin(), (FriBidiStrIndex)count,
-                                  0, base, embedding.begin(), chars.begin(), indices.begin()))
+        if (!fribidi_reorder_line(FRIBIDI_FLAG_REORDER_NSM,
+                                  types.begin(),
+                                  (FriBidiStrIndex)count,
+                                  0,
+                                  base,
+                                  embedding.begin(),
+                                  chars.begin(),
+                                  indices.begin()))
+        {
             return FVM_OUT_OF_MEMORY;
+        }
         for (size_t i = 0; i < count; ++i)
         {
             visual[i] = chars[i];
@@ -602,15 +794,19 @@ extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
 extern "C" FVM_Result fvm_font_read(const void *, size_t, long, double, FVM_Font **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
 
 /* Destroy font. */
 extern "C" void fvm_font_destroy(FVM_Font *)
 {
 }
+
 
 /* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *, FVM_FontMetrics *)
@@ -618,22 +814,30 @@ extern "C" FVM_Result fvm_font_metrics(const FVM_Font *, FVM_FontMetrics *)
     return FVM_UNSUPPORTED;
 }
 
+
 /* Disabled profiles return an empty scalar rather than an invented font metric. */
 extern "C" FVM_Result fvm_font_average_width(const FVM_Font *, double *out)
 {
-    if (!out) return FVM_INVALID_ARGUMENT;
+    if (!out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
 
 /* Preserve the underline ABI with explicit empty output in a NO_FONTS build. */
 extern "C" FVM_Result fvm_font_underline_metrics(const FVM_Font *, FVM_FontUnderlineMetrics *out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     std::memset(out, 0, sizeof(*out));
     return FVM_UNSUPPORTED;
 }
+
 
 /* Compute and return font char. */
 extern "C" unsigned int fvm_font_char(const FVM_Font *, unsigned int)
@@ -641,36 +845,45 @@ extern "C" unsigned int fvm_font_char(const FVM_Font *, unsigned int)
     return 0;
 }
 
+
 /* Compute and return font glyph. */
 extern "C" FVM_Result fvm_font_glyph(FVM_Font *, unsigned int, FVM_Path **out, double *, double *)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     return FVM_UNSUPPORTED;
 }
 
+
 /* Compute and return font shape. */
-extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextDirection direction,
-                                     const char *, FVM_TextRun **out)
+extern "C" FVM_Result
+fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextDirection direction, const char *, FVM_TextRun **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     return valid_shape_direction(direction) ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
 }
 
+
 /* Preserve feature validation and ownership publication when font support is absent. */
-extern "C" FVM_Result fvm_font_shape_configured(FVM_Font *, const char *, size_t,
-                                                FVM_TextDirection direction, const char *,
-                                                unsigned int flags, FVM_TextRun **out)
+extern "C" FVM_Result fvm_font_shape_configured(
+    FVM_Font *, const char *, size_t, FVM_TextDirection direction, const char *, unsigned int flags, FVM_TextRun **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
-    return (flags & ~FVM_FONT_SHAPE_FLAGS) || !valid_shape_direction(direction)
-               ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    return (flags & ~FVM_FONT_SHAPE_FLAGS) || !valid_shape_direction(direction) ? FVM_INVALID_ARGUMENT
+                                                                                : FVM_UNSUPPORTED;
 }
+
 
 /* Return the number of glyph entries in the shaped run. */
 extern "C" size_t fvm_text_run_count(const FVM_TextRun *)
@@ -678,26 +891,31 @@ extern "C" size_t fvm_text_run_count(const FVM_TextRun *)
     return 0;
 }
 
+
 /* Read one glyph placement and its source cluster from the shaped run. */
 extern "C" FVM_Result fvm_text_run_get(const FVM_TextRun *, size_t, FVM_ShapedGlyph *)
 {
     return FVM_UNSUPPORTED;
 }
 
+
 /* Release a shaped run and its retained glyph data. */
 extern "C" void fvm_text_run_destroy(FVM_TextRun *)
 {
 }
 
+
 /* Export the positioned glyph outlines of a shaped run as one path. */
-extern "C" FVM_Result fvm_text_run_path(FVM_Font *, const FVM_TextRun *, FVM_Path **out, double *,
-                                        double *)
+extern "C" FVM_Result fvm_text_run_path(FVM_Font *, const FVM_TextRun *, FVM_Path **out, double *, double *)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
 
 /* Compute and return text breaks. */
 extern "C" FVM_Result fvm_text_breaks(const char *, size_t, const char *, char *, char *, char *)
@@ -705,12 +923,15 @@ extern "C" FVM_Result fvm_text_breaks(const char *, size_t, const char *, char *
     return FVM_UNSUPPORTED;
 }
 
+
 /* Compute and return text bidi. */
-extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
-                                    FVM_TextDirection *direction, unsigned int *visual,
-                                    size_t *map, unsigned char *levels)
+extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical,
+                                    size_t count,
+                                    FVM_TextDirection *direction,
+                                    unsigned int *visual,
+                                    size_t *map,
+                                    unsigned char *levels)
 {
-    return valid_bidi_input(logical, count, direction, visual, map, levels)
-               ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
+    return valid_bidi_input(logical, count, direction, visual, map, levels) ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
 }
 #endif

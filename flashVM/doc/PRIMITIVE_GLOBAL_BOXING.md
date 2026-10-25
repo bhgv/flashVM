@@ -93,7 +93,7 @@ nullish or unavailable/nonobject result becomes a fresh bare object; omitted
 arguments still return false directly. Unloaded host queries retain their
 object-only behavior. The existing bounded prototype-cycle policy is unchanged.
 
-[`fvm_exec_to_object`](../include/flashvm/execution.h#L474) accepts only object results from a boxing constructor.
+[`fvm_exec_to_object`](../include/flashvm/execution.h#L628) accepts only object results from a boxing constructor.
 Native NewObject/NewMethod may legitimately return primitives (v0.475), but
 ToObject maps those results to undefined, allowing each consumer's existing
 fallback policy. Native barriers remain active during isPrototypeOf; getter GC
@@ -120,5 +120,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_to_object` | function | [include/flashvm/execution.h:474](../include/flashvm/execution.h#L474) |
+| `fvm_exec_to_object` | function | [include/flashvm/execution.h:628](../include/flashvm/execution.h#L628) |
 <!-- source-links:end -->

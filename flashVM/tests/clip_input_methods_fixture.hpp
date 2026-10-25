@@ -1,8 +1,12 @@
 /* Shared independent scene fixture for optional MovieClip input methods. */
+#include <stdio.h>
+#include <stdlib.h>
 #include "clip_input_fixture.hpp"
 #include "flashvm/function.h"
 #include "flashvm/execution_mode.h"
 #include "flashvm/jit.h"
+
+
 /* Wrap a borrowed managed object without extending its lifetime across host calls. */
 static FVM_Value method_value(FVM_Object *object)
 {
@@ -12,22 +16,41 @@ static FVM_Value method_value(FVM_Object *object)
     value.object = object;
     return value;
 }
+
+
 /* Create a pinned selected root with one placed sprite and an independent record marker. */
 static FVM_Object *method_root(FVM_Context *c, unsigned version = 8)
 {
     FVM_Object *root = clip_load(c, clip_movie(version, clip_event_table(version, 248, action(42))));
-    assert(fvm_movieclip_advance(c, root, 1) == FVM_OK);
+    if (!(fvm_movieclip_advance(c, root, 1) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return root;
 }
+
+
 /* The method must observe the corresponding retained record before changing its marker. */
-static FVM_Result method_marker(FVM_Context *c, FVM_Object *self, unsigned count,
-                                const FVM_Value *, FVM_Value *out, void *)
+static FVM_Result
+method_marker(FVM_Context *c, FVM_Object *self, unsigned count, const FVM_Value *, FVM_Value *out, void *)
 {
-    assert(!count && c->clip_input_dispatching && c->stage_update_allowed);
+    if (!(!count && c->clip_input_dispatching && c->stage_update_allowed))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_Value value;
     FVM_Result result = fvm_object_get(c, self, "seen", &value);
-    if (result != FVM_OK) return result;
-    assert(value.type == FVM_VALUE_NUMBER && value.number == 42);
+    if (result != FVM_OK)
+    {
+        return result;
+    }
+    if (!(value.type == FVM_VALUE_NUMBER && value.number == 42))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_value_number(&value, 84);
     result = fvm_object_set(c, self, "seen", &value);
     return result == FVM_OK ? fvm_call(c, "updateAfterEvent", 0, 0, out) : result;

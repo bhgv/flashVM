@@ -38,16 +38,16 @@ policy и точный struct_size нужно заполнить. Один state
 
 | Функция | Аргументы, результат и ограничения |
 | --- | --- |
-| [`fvm_rheartbeat_init`](../include/flashvm/rheartbeat.h#L76) | State, копируемая policy, ненулевая Uint32 эпоха аутентифицированного соединения, monotonic Uint32 now_ms. Проверяет ABI, маски и пределы интервалов. Hints требуют UDP+TCP и положительного request_gap_ms. Нулевой timer отключает период/дедлайн; универсальных NAT-defaults нет. Повторный init сбрасывает replay: при reconnect нужна новая аутентифицированная эпоха. |
-| [`fvm_rheartbeat_due`](../include/flashvm/rheartbeat.h#L81) | State, время, output-биты действий. Предлагает SEND_UDP/SEND_TCP, раздельные UDP_STALE/TCP_STALE и RECONNECT. Это не подтверждение отправки. Повторный poll может снова предложить неотправленное. STALE — подозрение, а не доказательство смерти peer и не отмена команд. |
-| [`fvm_rheartbeat_activity`](../include/flashvm/rheartbeat.h#L86) | State, ровно UDP либо TCP, received 0/1, now_ms. Только после настоящей успешной операции. Send сбрасывает idle; receive также silence своего пути. UDP не обновляет TCP. TCP обслуживает запрос probe, но решение reconnect остаётся host. |
-| [`fvm_rheartbeat_accept`](../include/flashvm/rheartbeat.h#L92) | State, копия hint и now_ms после проверки аутентификации/прав транспорта. Чужая эпоха/нет прав: DENIED; повтор/переупорядоченный sequence: CONFLICT; неверные поля/часы: INVALID. При OK отмечает получение UDP и объединяет hints. Команд VM и адресов назначения не принимает. |
-| [`fvm_rheartbeat_clear`](../include/flashvm/rheartbeat.h#L97) | State, непустая маска hints и now_ms. Host подтверждает/отклоняет совет и заново отсчитывает throttle. Счётчики фактической активности/приёма не сбрасываются. Сетевых действий нет. |
-| [`fvm_rheartbeat_next`](../include/flashvm/rheartbeat.h#L102) | State, outgoing flags, output-hint. Выдаёт возрастающий Uint32 sequence; исчерпание: LIMIT без изменений. Для I/O retry сохраните выданный hint. Локальные права входа не выдают прав на другом peer. |
-| [`fvm_rheartbeat_hint_write`](../include/flashvm/rheartbeat.h#L106) | Tag, hint, output/capacity, used. Поля `version,epoch,sequence,flags` — канонические неотрицательные S-integer в проверенной записи. Неверные поля: S_INVALID, ёмкость: S_LIMIT. Ошибки не меняют output/used. MAC не добавляется. |
-| [`fvm_rheartbeat_hint_read`](../include/flashvm/rheartbeat.h#L111) | Входные bindings, буфер/размер, output-hint, consumed. Нужна схема flashvm.transport.hint/version 1. Проверяет CRC и ровно четыре целых. Префикс: S_MORE, неизвестный тег: S_UNKNOWN, неверные поля/схема: S_INVALID; framing-статусы сохраняются. Outputs только при S_OK. Decode не разрешает accept автоматически. |
+| [`fvm_rheartbeat_init`](../include/flashvm/rheartbeat.h#L82) | State, копируемая policy, ненулевая Uint32 эпоха аутентифицированного соединения, monotonic Uint32 now_ms. Проверяет ABI, маски и пределы интервалов. Hints требуют UDP+TCP и положительного request_gap_ms. Нулевой timer отключает период/дедлайн; универсальных NAT-defaults нет. Повторный init сбрасывает replay: при reconnect нужна новая аутентифицированная эпоха. |
+| [`fvm_rheartbeat_due`](../include/flashvm/rheartbeat.h#L89) | State, время, output-биты действий. Предлагает SEND_UDP/SEND_TCP, раздельные UDP_STALE/TCP_STALE и RECONNECT. Это не подтверждение отправки. Повторный poll может снова предложить неотправленное. STALE — подозрение, а не доказательство смерти peer и не отмена команд. |
+| [`fvm_rheartbeat_activity`](../include/flashvm/rheartbeat.h#L96) | State, ровно UDP либо TCP, received 0/1, now_ms. Только после настоящей успешной операции. Send сбрасывает idle; receive также silence своего пути. UDP не обновляет TCP. TCP обслуживает запрос probe, но решение reconnect остаётся host. |
+| [`fvm_rheartbeat_accept`](../include/flashvm/rheartbeat.h#L104) | State, копия hint и now_ms после проверки аутентификации/прав транспорта. Чужая эпоха/нет прав: DENIED; повтор/переупорядоченный sequence: CONFLICT; неверные поля/часы: INVALID. При OK отмечает получение UDP и объединяет hints. Команд VM и адресов назначения не принимает. |
+| [`fvm_rheartbeat_clear`](../include/flashvm/rheartbeat.h#L111) | State, непустая маска hints и now_ms. Host подтверждает/отклоняет совет и заново отсчитывает throttle. Счётчики фактической активности/приёма не сбрасываются. Сетевых действий нет. |
+| [`fvm_rheartbeat_next`](../include/flashvm/rheartbeat.h#L118) | State, outgoing flags, output-hint. Выдаёт возрастающий Uint32 sequence; исчерпание: LIMIT без изменений. Для I/O retry сохраните выданный hint. Локальные права входа не выдают прав на другом peer. |
+| [`fvm_rheartbeat_hint_write`](../include/flashvm/rheartbeat.h#L124) | Tag, hint, output/capacity, used. Поля `version,epoch,sequence,flags` — канонические неотрицательные S-integer в проверенной записи. Неверные поля: S_INVALID, ёмкость: S_LIMIT. Ошибки не меняют output/used. MAC не добавляется. |
+| [`fvm_rheartbeat_hint_read`](../include/flashvm/rheartbeat.h#L131) | Входные bindings, буфер/размер, output-hint, consumed. Нужна схема flashvm.transport.hint/version 1. Проверяет CRC и ровно четыре целых. Префикс: S_MORE, неизвестный тег: S_UNKNOWN, неверные поля/схема: S_INVALID; framing-статусы сохраняются. Outputs только при S_OK. Decode не разрешает accept автоматически. |
 
-[`FVM_RHeartbeatPolicy`](../include/flashvm/rheartbeat.h#L28), [`FVM_RHeartbeat`](../include/flashvm/rheartbeat.h#L57), [`FVM_RHeartbeatHint`](../include/flashvm/rheartbeat.h#L47) — native-записи,
+[`FVM_RHeartbeatPolicy`](../include/flashvm/rheartbeat.h#L28), [`FVM_RHeartbeat`](../include/flashvm/rheartbeat.h#L61), [`FVM_RHeartbeatHint`](../include/flashvm/rheartbeat.h#L49) — native-записи,
 не wire layout. Таймеры: миллисекунды 0..[FVM_RH_MAX_INTERVAL](../include/flashvm/rheartbeat.h#L18). Часы Uint32 могут
 оборачиваться. Откат или неоднозначный промежуток свыше 2^31−1 мс: INVALID.
 Опрос нужен чаще примерно 24,8 суток. Возрастающие ages насыщаются, поэтому
@@ -92,15 +92,15 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_RH_MAX_INTERVAL` | macro / define | [include/flashvm/rheartbeat.h:18](../include/flashvm/rheartbeat.h#L18) |
-| `FVM_RHeartbeat` | struct | [include/flashvm/rheartbeat.h:57](../include/flashvm/rheartbeat.h#L57) |
-| `fvm_rheartbeat_accept` | function | [include/flashvm/rheartbeat.h:92](../include/flashvm/rheartbeat.h#L92) |
-| `fvm_rheartbeat_activity` | function | [include/flashvm/rheartbeat.h:86](../include/flashvm/rheartbeat.h#L86) |
-| `fvm_rheartbeat_clear` | function | [include/flashvm/rheartbeat.h:97](../include/flashvm/rheartbeat.h#L97) |
-| `fvm_rheartbeat_due` | function | [include/flashvm/rheartbeat.h:81](../include/flashvm/rheartbeat.h#L81) |
-| `fvm_rheartbeat_hint_read` | function | [include/flashvm/rheartbeat.h:111](../include/flashvm/rheartbeat.h#L111) |
-| `fvm_rheartbeat_hint_write` | function | [include/flashvm/rheartbeat.h:106](../include/flashvm/rheartbeat.h#L106) |
-| `fvm_rheartbeat_init` | function | [include/flashvm/rheartbeat.h:76](../include/flashvm/rheartbeat.h#L76) |
-| `fvm_rheartbeat_next` | function | [include/flashvm/rheartbeat.h:102](../include/flashvm/rheartbeat.h#L102) |
-| `FVM_RHeartbeatHint` | struct | [include/flashvm/rheartbeat.h:47](../include/flashvm/rheartbeat.h#L47) |
+| `FVM_RHeartbeat` | struct | [include/flashvm/rheartbeat.h:61](../include/flashvm/rheartbeat.h#L61) |
+| `fvm_rheartbeat_accept` | function | [include/flashvm/rheartbeat.h:104](../include/flashvm/rheartbeat.h#L104) |
+| `fvm_rheartbeat_activity` | function | [include/flashvm/rheartbeat.h:96](../include/flashvm/rheartbeat.h#L96) |
+| `fvm_rheartbeat_clear` | function | [include/flashvm/rheartbeat.h:111](../include/flashvm/rheartbeat.h#L111) |
+| `fvm_rheartbeat_due` | function | [include/flashvm/rheartbeat.h:89](../include/flashvm/rheartbeat.h#L89) |
+| `fvm_rheartbeat_hint_read` | function | [include/flashvm/rheartbeat.h:131](../include/flashvm/rheartbeat.h#L131) |
+| `fvm_rheartbeat_hint_write` | function | [include/flashvm/rheartbeat.h:124](../include/flashvm/rheartbeat.h#L124) |
+| `fvm_rheartbeat_init` | function | [include/flashvm/rheartbeat.h:82](../include/flashvm/rheartbeat.h#L82) |
+| `fvm_rheartbeat_next` | function | [include/flashvm/rheartbeat.h:118](../include/flashvm/rheartbeat.h#L118) |
+| `FVM_RHeartbeatHint` | struct | [include/flashvm/rheartbeat.h:49](../include/flashvm/rheartbeat.h#L49) |
 | `FVM_RHeartbeatPolicy` | struct | [include/flashvm/rheartbeat.h:28](../include/flashvm/rheartbeat.h#L28) |
 <!-- source-links:end -->

@@ -33,7 +33,7 @@ finally. Записи callbacks и отказы памяти не имеют т�
 Выбор корневого JIT-пути теперь целиком внутри обработчика отказов памяти.
 Раньше создание пустого ключа breakpoint могло выбросить `std::bad_alloc` до
 защитного блока и вывести C++-исключение через корневой C API. Регрессия
-воспроизвела аварийное завершение; теперь возвращается [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) с
+воспроизвела аварийное завершение; теперь возвращается [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) с
 корректно установленным признаком обработанного входа.
 
 | Тест | Проверки |
@@ -62,5 +62,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

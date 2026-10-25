@@ -1,38 +1,41 @@
 /* FlashVM: Embedding/ActionScript tutorial: error.
- * File: examples/actionscript/error.as.
- */
+* File: examples/actionscript/error.as.
+*/
 
 // API illustration; executable coverage is in tests/actionscript_error.cpp.
 // Иллюстрация API; исполняемая проверка находится в tests/actionscript_error.cpp.
 /* Начинаем блок, исключения которого будут обработаны ниже. */
-try
+try // Начинаем блок, исключения которого будут обработаны ниже.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Передаём исключение вызывающей стороне. */
-    throw new Error("operation failed");
+    throw new Error("operation failed"); // Передаём исключение вызывающей стороне.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Обрабатываем исключение из предыдущего блока. */
-catch (failure)
+catch (failure) // Обрабатываем исключение из предыдущего блока.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Проверяем условие перед выполнением следующей ветки. */
-    if (failure instanceof Error)
+    if (failure instanceof Error) // Проверяем условие перед выполнением следующей ветки.
     /* Начинаем блок инструкций или описание объекта. */
-    {
+    { // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
         /* Вызываем trace: выводим диагностическое представление значения.
- * failure.toString() — значение или выражение для вывода. */
-        trace(failure.toString());
+        * failure.toString() — значение или выражение для вывода. */
+        trace(failure.toString()); // Вызываем trace: выводим диагностическое представление значения. failure.toString() — значение или выражение для вывода.
         /* Завершаем текущий блок или описание объекта. */
-    }
+    } // End the documented branch/scope.
+
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.
+
 /* Продолжаем объявление или выражение с указанными параметрами. */
-finally
+finally // Продолжаем объявление или выражение с указанными параметрами.
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ // Begin the documented branch/scope: Начинаем блок инструкций или описание объекта.
     /* Вызываем trace: выводим диагностическое представление значения.
- * "completed" — значение или выражение для вывода. */
-    trace("completed");
+    * "completed" — значение или выражение для вывода. */
+    trace("completed"); // Вызываем trace: выводим диагностическое представление значения. "completed" — значение или выражение для вывода.
     /* Завершаем текущий блок или описание объекта. */
-}
+} // End the documented branch/scope.

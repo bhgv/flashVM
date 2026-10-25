@@ -65,7 +65,9 @@ def refresh(root, manifest, source, ref):
     errors = verify(root, manifest)
     if errors:
         raise ValueError("\n".join(errors) + "\nExport local changes as an upstream patch first.")
-    commit = git(source, "rev-parse", "--verify", "--end-of-options", ref + "^{commit}").decode().strip()
+    commit = (
+        git(source, "rev-parse", "--verify", "--end-of-options", ref + "^{commit}").decode().strip()
+    )
     listing = git(source, "ls-tree", "-rz", "--full-tree", commit)
     selected = []
     for entry in listing.split(b"\0"):
@@ -133,7 +135,11 @@ def main():
             errors = verify(root, manifest)
             if errors:
                 raise ValueError("\n".join(errors))
-            print("Verified {}: {} files at {}".format(root.name, len(manifest["files"]), manifest["revision"]))
+            print(
+                "Verified {}: {} files at {}".format(
+                    root.name, len(manifest["files"]), manifest["revision"]
+                )
+            )
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, str(error) + "\n")
 

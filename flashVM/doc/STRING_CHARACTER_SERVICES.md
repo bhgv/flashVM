@@ -1,6 +1,6 @@
 # String/character services / Строки и символы — v0.265
 
-[`fvm_exec_string_length`](../include/flashvm/execution.h#L192), [`fvm_exec_char_code`](../include/flashvm/execution.h#L194) and [`fvm_exec_char_from_code`](../include/flashvm/execution.h#L196)
+[`fvm_exec_string_length`](../include/flashvm/execution.h#L252), [`fvm_exec_char_code`](../include/flashvm/execution.h#L256) and [`fvm_exec_char_from_code`](../include/flashvm/execution.h#L260)
 provide C89 value interfaces for the ordinary/multibyte action pairs. Each
 operation has its own handler file, covering the supported SWF versions without
 interpreter stacks, register banks or bytecode access. StringExtract retains its
@@ -59,7 +59,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_char_code` | function | [include/flashvm/execution.h:194](../include/flashvm/execution.h#L194) |
-| `fvm_exec_char_from_code` | function | [include/flashvm/execution.h:196](../include/flashvm/execution.h#L196) |
-| `fvm_exec_string_length` | function | [include/flashvm/execution.h:192](../include/flashvm/execution.h#L192) |
+| `fvm_exec_char_code` | function | [include/flashvm/execution.h:256](../include/flashvm/execution.h#L256) |
+| `fvm_exec_char_from_code` | function | [include/flashvm/execution.h:260](../include/flashvm/execution.h#L260) |
+| `fvm_exec_string_length` | function | [include/flashvm/execution.h:252](../include/flashvm/execution.h#L252) |
 <!-- source-links:end -->

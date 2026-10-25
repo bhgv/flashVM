@@ -23,17 +23,12 @@ class Queries(unittest.TestCase):
         self.assertEqual(result.returncode, status, result.stderr)
         self.assertNotIn(b"runtime error:", result.stderr)
         self.assertNotIn(b"ERROR: AddressSanitizer", result.stderr)
-        self.assertEqual(
-            result.stdout, b"" if expected is None else f"{expected}\n".encode()
-        )
+        self.assertEqual(result.stdout, b"" if expected is None else f"{expected}\n".encode())
 
     # Use unrelated start/stop files and reversed spans to catch accidental range assumptions.
     def test_random_oracle(self):
         rng = random.Random(823174)
-        entries = [
-            tuple(rng.randrange(n) for n in (3, 30, 20, 3, 30, 20, 5))
-            for _ in range(160)
-        ]
+        entries = [tuple(rng.randrange(n) for n in (3, 30, 20, 3, 30, 20, 5)) for _ in range(160)]
         records = [f"{a}:{b}.{c},{d}:{e}.{f} {g}" for a, b, c, d, e, f, g in entries]
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "map.sbl"

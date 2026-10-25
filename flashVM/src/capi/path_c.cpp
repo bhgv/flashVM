@@ -12,6 +12,7 @@
 #include <cstring>
 #include <climits>
 #include <new>
+
 #ifdef FVM_HAS_AGG
 #include "agg_path_storage.h"
 #include "agg_conv_curve.h"
@@ -21,19 +22,24 @@
 #include "agg_rasterizer_scanline_aa.h"
 #include "agg_scanline_u.h"
 #include "agg_gamma_functions.h"
+
 #elif defined(FVM_HAS_CAIRO)
 #include "cairo.h"
+
 #endif
 /* Define FVM_Path struct and its representation. */
 struct FVM_Path
 {
     fvm_detail::vector<FVM_PathCommand> commands;
     bool open;
+
+
     /* Initialize Path and its owned state. */
     FVM_Path() : open(false)
     {
     }
 };
+
 
 /* Compute and return points. */
 static unsigned int points(FVM_PathVerb v)
@@ -41,20 +47,25 @@ static unsigned int points(FVM_PathVerb v)
     return v == FVM_PATH_CLOSE ? 0 : v == FVM_PATH_CUBIC ? 3 : v == FVM_PATH_QUADRATIC ? 2 : 1;
 }
 
+
 /* Compute and return coordinate. */
 static bool coordinate(double x)
 {
     return x >= -FVM_PATH_GEOMETRY_MAX_COORDINATE && x <= FVM_PATH_GEOMETRY_MAX_COORDINATE;
 }
 
+
 /* Create path. */
 extern "C" FVM_Result fvm_path_create(FVM_Path **out)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = new (std::nothrow) FVM_Path;
     return *out ? FVM_OK : FVM_OUT_OF_MEMORY;
 }
+
 
 /* Destroy path. */
 extern "C" void fvm_path_destroy(FVM_Path *p)
@@ -62,30 +73,43 @@ extern "C" void fvm_path_destroy(FVM_Path *p)
     delete p;
 }
 
+
 /* Count path. */
 extern "C" size_t fvm_path_count(const FVM_Path *p)
 {
     return p ? p->commands.size() : 0;
 }
 
+
 /* Read path. */
 extern "C" FVM_Result fvm_path_get(const FVM_Path *p, size_t i, FVM_PathCommand *out)
 {
     if (!p || !out || i >= p->commands.size())
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = p->commands[i];
     return FVM_OK;
 }
+
+
 /* Add path. */
 extern "C" FVM_Result fvm_path_add(FVM_Path *p, const FVM_PathCommand *c)
 {
-    if (!p || !c || c->verb < FVM_PATH_MOVE || c->verb > FVM_PATH_CLOSE ||
-        (c->verb != FVM_PATH_MOVE && !p->open) || p->commands.size() >= 1000000)
+    if (!p || !c || c->verb < FVM_PATH_MOVE || c->verb > FVM_PATH_CLOSE || (c->verb != FVM_PATH_MOVE && !p->open) ||
+        p->commands.size() >= 1000000)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (unsigned int i = 0; i < points(c->verb); ++i)
+    {
         if (!coordinate(c->x[i]) || !coordinate(c->y[i]))
+        {
             return FVM_INVALID_ARGUMENT;
+        }
+    }
     FVM_PathCommand copy;
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memset(&copy, 0, sizeof(copy));
@@ -107,12 +131,14 @@ extern "C" FVM_Result fvm_path_add(FVM_Path *p, const FVM_PathCommand *c)
     return FVM_OK;
 }
 
+
 /* Update path point. */
 extern "C" FVM_Result fvm_path_set_point(FVM_Path *p, size_t i, unsigned int n, double x, double y)
 {
-    if (!p || i >= p->commands.size() || n >= points(p->commands[i].verb) || !coordinate(x) ||
-        !coordinate(y))
+    if (!p || i >= p->commands.size() || n >= points(p->commands[i].verb) || !coordinate(x) || !coordinate(y))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     p->commands[i].x[n] = x;
@@ -120,41 +146,54 @@ extern "C" FVM_Result fvm_path_set_point(FVM_Path *p, size_t i, unsigned int n, 
     return FVM_OK;
 }
 
+
 /* Compute and return transform command. */
 static bool transform_command(FVM_PathCommand &c, const FVM_Affine *m)
 {
     if (!m)
+    {
         return true;
+    }
     for (unsigned int n = 0; n < points(c.verb); ++n)
     {
         double x = m->xx * c.x[n] + m->xy * c.y[n] + m->x0;
         double y = m->yx * c.x[n] + m->yy * c.y[n] + m->y0;
         if (!coordinate(x) || !coordinate(y))
+        {
             return false;
+        }
         c.x[n] = x;
         c.y[n] = y;
     }
     return true;
 }
 
+
 /* Compute and return valid matrix. */
 static bool valid_matrix(const FVM_Affine *m)
 {
-    return m && coordinate(m->xx) && coordinate(m->xy) && coordinate(m->yx) && coordinate(m->yy) &&
-           coordinate(m->x0) && coordinate(m->y0);
+    return m && coordinate(m->xx) && coordinate(m->xy) && coordinate(m->yx) && coordinate(m->yy) && coordinate(m->x0) &&
+           coordinate(m->y0);
 }
+
 
 /* Compute and return path transform. */
 extern "C" FVM_Result fvm_path_transform(FVM_Path *p, const FVM_Affine *m)
 {
     if (!p || !valid_matrix(m))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         fvm_detail::vector<FVM_PathCommand> copy = p->commands;
         for (size_t i = 0; i < copy.size(); ++i)
+        {
             if (!transform_command(copy[i], m))
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
+        }
         p->commands.swap(copy);
         return FVM_OK;
     }
@@ -164,12 +203,14 @@ extern "C" FVM_Result fvm_path_transform(FVM_Path *p, const FVM_Affine *m)
     }
 }
 
+
 /* Append path. */
 extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const FVM_Affine *m)
 {
-    if (!p || !source || (m && !valid_matrix(m)) ||
-        source->commands.size() > 1000000 - p->commands.size())
+    if (!p || !source || (m && !valid_matrix(m)) || source->commands.size() > 1000000 - p->commands.size())
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         fvm_detail::vector<FVM_PathCommand> copy = p->commands;
@@ -177,7 +218,9 @@ extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const
         {
             FVM_PathCommand c = source->commands[i];
             if (!transform_command(c, m))
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
             copy.push_back(c);
         }
         bool open = source->commands.empty() ? p->open : source->open;
@@ -191,11 +234,14 @@ extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const
     }
 }
 
+
 /* Compute and return path bounds. */
 extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
 {
     if (!p || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_PathBounds box = {0, 0, 0, 0};
@@ -239,6 +285,7 @@ extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
     return FVM_OK;
 }
 
+
 /* Compute and return valid surface. */
 static bool valid_surface(const FVM_RasterSurface *s)
 {
@@ -246,34 +293,50 @@ static bool valid_surface(const FVM_RasterSurface *s)
            s->stride >= (size_t)s->width * 4 && s->stride <= (size_t)INT_MAX / s->height;
 }
 #ifdef FVM_HAS_CAIRO
+
+
 /* Compute and return packed pixel. */
 static unsigned int packed_pixel(const unsigned char *p)
 {
     unsigned int a = p[3];
-    return (a << 24) | (((p[0] * a + 127) / 255) << 16) | (((p[1] * a + 127) / 255) << 8) |
-           ((p[2] * a + 127) / 255);
+    return (a << 24) | (((p[0] * a + 127) / 255) << 16) | (((p[1] * a + 127) / 255) << 8) | ((p[2] * a + 127) / 255);
 }
 #endif
 /* Draw path. */
-extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
-                                    double width, int even_odd)
+extern "C" FVM_Result
+fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color, double width, int even_odd)
 {
     return fvm_path_draw_quality(p, s, color, width, even_odd, true);
 }
+
+
 /* Keep the coverage policy local to this draw, including strokes and masks. */
-FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
-                                double width, int even_odd, bool antialias, unsigned cap, unsigned join)
+FVM_Result fvm_path_draw_quality(const FVM_Path *p,
+                                 FVM_RasterSurface *s,
+                                 FVM_RasterColor color,
+                                 double width,
+                                 int even_odd,
+                                 bool antialias,
+                                 unsigned cap,
+                                 unsigned join)
 {
     (void)antialias; /* NO_GRAPHICS validates inputs but has no backend policy to apply. */
-    if (!p || !valid_surface(s) || !(width >= 0 && width <= 4096) ||
-        (even_odd != 0 && even_odd != 1) ||
+    if (!p || !valid_surface(s) || !(width >= 0 && width <= 4096) || (even_odd != 0 && even_odd != 1) ||
         cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (size_t i = 0; i < p->commands.size(); ++i)
+    {
         for (unsigned int n = 0; n < points(p->commands[i].verb); ++n)
+        {
             if (!(p->commands[i].x[n] >= -4096 && p->commands[i].x[n] <= 4096) ||
                 !(p->commands[i].y[n] >= -4096 && p->commands[i].y[n] <= 4096))
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
+        }
+    }
 #ifdef FVM_HAS_AGG
     try
     {
@@ -304,7 +367,9 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
         agg::rasterizer_scanline_aa<> ras;
         agg::scanline_u8 scanline;
         if (!antialias)
+        {
             ras.gamma(agg::gamma_threshold(FVM_RENDER_BINARY_COVERAGE_THRESHOLD));
+        }
         ras.clip_box(0, 0, s->width, s->height);
         ras.filling_rule(even_odd ? agg::fill_even_odd : agg::fill_non_zero);
         if (width > 0)
@@ -312,17 +377,23 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
             agg::conv_stroke<agg::conv_curve<agg::path_storage> > stroke(curves);
             stroke.width(width);
             stroke.line_join(join == FVM_STROKE_JOIN_BEVEL ? agg::bevel_join : agg::round_join);
-            stroke.line_cap(cap == FVM_STROKE_CAP_BUTT ? agg::butt_cap :
-                            cap == FVM_STROKE_CAP_SQUARE ? agg::square_cap : agg::round_cap);
+            stroke.line_cap(cap == FVM_STROKE_CAP_BUTT     ? agg::butt_cap
+                            : cap == FVM_STROKE_CAP_SQUARE ? agg::square_cap
+                                                           : agg::round_cap);
             ras.add_path(stroke);
         }
         else
+        {
             ras.add_path(curves);
+        }
+
+
         agg::rendering_buffer buffer(s->pixels, s->width, s->height, (int)s->stride);
+
+
         agg::pixfmt_rgba32_plain pixels(buffer);
         agg::renderer_base<agg::pixfmt_rgba32_plain> renderer(pixels);
-        agg::render_scanlines_aa_solid(ras, scanline, renderer,
-                                       agg::rgba8(color.r, color.g, color.b, color.a));
+        agg::render_scanlines_aa_solid(ras, scanline, renderer, agg::rgba8(color.r, color.g, color.b, color.a));
         return FVM_OK;
     }
     catch (...)
@@ -330,8 +401,7 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
         return FVM_OUT_OF_MEMORY;
     }
 #elif defined(FVM_HAS_CAIRO)
-    cairo_surface_t *image =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)s->width, (int)s->height);
+    cairo_surface_t *image = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)s->width, (int)s->height);
     if (cairo_surface_status(image) != CAIRO_STATUS_SUCCESS)
     {
         cairo_surface_destroy(image);
@@ -340,11 +410,13 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
     unsigned char *data = cairo_image_surface_get_data(image);
     int stride = cairo_image_surface_get_stride(image);
     for (unsigned int y = 0; y < s->height; ++y)
+    {
         for (unsigned int x = 0; x < s->width; ++x)
         {
             unsigned int pixel = packed_pixel(s->pixels + y * s->stride + x * 4);
             std::memcpy(data + y * stride + x * 4, &pixel, 4);
         }
+    }
     cairo_surface_mark_dirty(image);
     cairo_t *cr = cairo_create(image);
     cairo_set_antialias(cr, antialias ? CAIRO_ANTIALIAS_DEFAULT : CAIRO_ANTIALIAS_NONE);
@@ -363,9 +435,13 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
             cairo_line_to(cr, c.x[0], c.y[0]);
             break;
         case FVM_PATH_QUADRATIC:
-            cairo_curve_to(cr, x + 2 * (c.x[0] - x) / 3, y + 2 * (c.y[0] - y) / 3,
-                           c.x[1] + 2 * (c.x[0] - c.x[1]) / 3, c.y[1] + 2 * (c.y[0] - c.y[1]) / 3,
-                           c.x[1], c.y[1]);
+            cairo_curve_to(cr,
+                           x + 2 * (c.x[0] - x) / 3,
+                           y + 2 * (c.y[0] - y) / 3,
+                           c.x[1] + 2 * (c.x[0] - c.x[1]) / 3,
+                           c.y[1] + 2 * (c.y[0] - c.y[1]) / 3,
+                           c.x[1],
+                           c.y[1]);
             break;
         case FVM_PATH_CUBIC:
             cairo_curve_to(cr, c.x[0], c.y[0], c.x[1], c.y[1], c.x[2], c.y[2]);
@@ -392,12 +468,16 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
     {
         cairo_set_line_width(cr, width);
         cairo_set_line_join(cr, join == FVM_STROKE_JOIN_BEVEL ? CAIRO_LINE_JOIN_BEVEL : CAIRO_LINE_JOIN_ROUND);
-        cairo_set_line_cap(cr, cap == FVM_STROKE_CAP_BUTT ? CAIRO_LINE_CAP_BUTT :
-                                cap == FVM_STROKE_CAP_SQUARE ? CAIRO_LINE_CAP_SQUARE : CAIRO_LINE_CAP_ROUND);
+        cairo_set_line_cap(cr,
+                           cap == FVM_STROKE_CAP_BUTT     ? CAIRO_LINE_CAP_BUTT
+                           : cap == FVM_STROKE_CAP_SQUARE ? CAIRO_LINE_CAP_SQUARE
+                                                          : CAIRO_LINE_CAP_ROUND);
         cairo_stroke(cr);
     }
     else
+    {
         cairo_fill(cr);
+    }
     cairo_status_t status = cairo_status(cr);
     cairo_destroy(cr);
     if (status != CAIRO_STATUS_SUCCESS)
@@ -407,13 +487,16 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
     }
     cairo_surface_flush(image);
     for (unsigned int y = 0; y < s->height; ++y)
+    {
         for (unsigned int x = 0; x < s->width; ++x)
         {
             unsigned char *rgba = s->pixels + y * s->stride + x * 4;
             unsigned int pixel;
             std::memcpy(&pixel, data + y * stride + x * 4, 4);
             if (pixel == packed_pixel(rgba))
+            {
                 continue;
+            }
             unsigned int a = pixel >> 24;
             rgba[3] = (unsigned char)a;
             for (unsigned int c = 0; c < 3; ++c)
@@ -423,6 +506,7 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
                 rgba[c] = (unsigned char)(straight > 255 ? 255 : straight);
             }
         }
+    }
     cairo_surface_destroy(image);
     return FVM_OK;
 #else
@@ -431,34 +515,46 @@ FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_Ra
 #endif
 }
 
+
 /* Compute and return path mask. */
-extern "C" FVM_Result fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst,
-                                    const FVM_RasterSurface *src, int even_odd)
+extern "C" FVM_Result
+fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst, const FVM_RasterSurface *src, int even_odd)
 {
     return fvm_path_mask_quality(p, dst, src, even_odd, true);
 }
+
+
 /* Mask sampling uses the same per-call edge policy as ordinary solid vector paths. */
-FVM_Result fvm_path_mask_quality(const FVM_Path *p, FVM_RasterSurface *dst,
-                                const FVM_RasterSurface *src, int even_odd, bool antialias)
+FVM_Result fvm_path_mask_quality(
+    const FVM_Path *p, FVM_RasterSurface *dst, const FVM_RasterSurface *src, int even_odd, bool antialias)
 {
     return fvm_path_mask_width_quality(p, dst, src, 0, even_odd, antialias);
 }
+
+
 /* Prepare fill/stroke coverage completely before source-over composition touches pixels. */
-FVM_Result fvm_path_mask_width_quality(const FVM_Path *p, FVM_RasterSurface *dst,
-                                       const FVM_RasterSurface *src, double width,
-                                       int even_odd, bool antialias, unsigned cap, unsigned join)
+FVM_Result fvm_path_mask_width_quality(const FVM_Path *p,
+                                       FVM_RasterSurface *dst,
+                                       const FVM_RasterSurface *src,
+                                       double width,
+                                       int even_odd,
+                                       bool antialias,
+                                       unsigned cap,
+                                       unsigned join)
 {
-    if (cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL ||
-        !p || !(width >= 0 && width <= 4096) ||
-        !valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
-        src->height != dst->height)
+    if (cap > FVM_STROKE_CAP_SQUARE || join > FVM_STROKE_JOIN_BEVEL || !p || !(width >= 0 && width <= 4096) ||
+        !valid_surface(dst) || !valid_surface(src) || src->width != dst->width || src->height != dst->height)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     size_t size = (size_t)dst->width * dst->height * 4;
     unsigned char *mask = new (std::nothrow) unsigned char[size];
     if (!mask)
+    {
         return FVM_OUT_OF_MEMORY;
+    }
     std::memset(mask, 0, size);
 
     /* Initialization / Инициализация локального состояния. */
@@ -466,20 +562,27 @@ FVM_Result fvm_path_mask_width_quality(const FVM_Path *p, FVM_RasterSurface *dst
     FVM_RasterColor white = {255, 255, 255, 255};
     FVM_Result result = fvm_path_draw_quality(p, &s, white, width, even_odd, antialias, cap, join);
     if (result == FVM_OK)
+    {
         for (unsigned int y = 0; y < dst->height; ++y)
+        {
             for (unsigned int x = 0; x < dst->width; ++x)
             {
                 unsigned char *d = dst->pixels + y * dst->stride + x * 4;
                 const unsigned char *v = src->pixels + y * src->stride + x * 4;
                 unsigned int a = (v[3] * mask[((size_t)y * dst->width + x) * 4 + 3] + 127) / 255;
                 if (!a)
+                {
                     continue;
+                }
                 unsigned int alpha = a * 255 + d[3] * (255 - a);
                 for (unsigned int c = 0; c < 3; ++c)
-                    d[c] = (unsigned char)((v[c] * a * 255 + d[c] * d[3] * (255 - a) + alpha / 2) /
-                                           alpha);
+                {
+                    d[c] = (unsigned char)((v[c] * a * 255 + d[c] * d[3] * (255 - a) + alpha / 2) / alpha);
+                }
                 d[3] = (unsigned char)((alpha + 127) / 255);
             }
+        }
+    }
     delete[] mask;
     return result;
 }

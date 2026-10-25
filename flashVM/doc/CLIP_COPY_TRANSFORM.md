@@ -8,7 +8,7 @@ subsequent source changes do not move/recolor the destination. Parent, children,
 name, depth and timeline identity stay with the destination.
 
 The same operation is available through C89
-[fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L71)(context, destination, source). It accepts native clip
+[fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L84)(context, destination, source). It accepts native clip
 identities, with no instruction stream, interpreter stack or Action IDs. Both
 operands must belong to the context and cannot be the MovieClip class prototype.
 Source and destination may be identical. Matrix and color publication is atomic
@@ -33,7 +33,7 @@ Transform compatibility remain open. No roadmap stage is closed.
 копирует локальные матрицу и цвет его клипа. Ссылка на источник не сохраняется;
 имя, родитель, дети, глубина и кадры получателя не меняются. Обычные объекты,
 примитивы и Transform без клипа игнорируются. Общий C89-сервис
-[fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L71) принимает два клипа, без стека и байткода;
+[fvm_exec_clip_copy_transform](../include/flashvm/execution.h#L84) принимает два клипа, без стека и байткода;
 самоприсваивание разрешено, чужой контекст и прототип класса отклоняются.
 
 Матрица и цвет публикуются вместе. При отказах памяти оба набора полей
@@ -71,5 +71,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_copy_transform` | function | [include/flashvm/execution.h:71](../include/flashvm/execution.h#L71) |
+| `fvm_exec_clip_copy_transform` | function | [include/flashvm/execution.h:84](../include/flashvm/execution.h#L84) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # AVM1 With scopes
 
-v0.233 introduces [`fvm_exec_with_scope`](../include/flashvm/execution.h#L346) and [`fvm_exec_scope_lookup`](../include/flashvm/execution.h#L350) in
+v0.233 introduces [`fvm_exec_with_scope`](../include/flashvm/execution.h#L462) and [`fvm_exec_scope_lookup`](../include/flashvm/execution.h#L468) in
 `flashvm/execution.h`. Their C89 interfaces accept managed objects and values;
 they neither decode Actions nor access an interpreter operand stack. Generated
 code can create the same scopes, resolve names and retain them as ordinary GC
@@ -45,6 +45,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_scope_lookup` | function | [include/flashvm/execution.h:350](../include/flashvm/execution.h#L350) |
-| `fvm_exec_with_scope` | function | [include/flashvm/execution.h:346](../include/flashvm/execution.h#L346) |
+| `fvm_exec_scope_lookup` | function | [include/flashvm/execution.h:468](../include/flashvm/execution.h#L468) |
+| `fvm_exec_with_scope` | function | [include/flashvm/execution.h:462](../include/flashvm/execution.h#L462) |
 <!-- source-links:end -->

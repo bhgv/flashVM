@@ -7,38 +7,53 @@
 #define FVM_STANDARD_FUNCTION_STATE_HPP
 #include "../core/runtime.hpp"
 #include "attribute_stage.hpp"
+
+
 /* Build constructor and prototype for function. */
-FVM_Result fvm_function_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
+FVM_Result fvm_function_stage(FVM_Context *,
+                              fvm_detail::map<fvm_detail::string, FVM_Value> &,
                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 /* [GC:] Install a parameter alias whose descriptor retains the activation object. */
-FVM_Result fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long, FVM_Object *,
-                                     const fvm_detail::string &);
+FVM_Result
+fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long, FVM_Object *, const fvm_detail::string &);
+
 
 /* Prepare canonical host method flags for loaded SWF without mutating live objects. */
 void fvm_function_prepare_loaded(FVM_Context *, FVM_MethodAttributeActivation &);
+
 
 /* Validate function. */
 FVM_Result fvm_function_validate(FVM_Context *);
 
 /* Implement function wrap entry for this subsystem. */
-FVM_Result fvm_function_wrap_entry(FVM_Context *, FVM_Object *, const fvm_detail::string &,
-                                   const FVM_NativeEntry &, FVM_Value *);
+FVM_Result
+fvm_function_wrap_entry(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_NativeEntry &, FVM_Value *);
+
 
 /* Implement function make script for this subsystem. */
-FVM_Result fvm_function_make_script(FVM_Context *, const FVM_ScriptFunction &, FVM_Object *,
-                                    FVM_Object **);
+FVM_Result fvm_function_make_script(FVM_Context *, const FVM_ScriptFunction &, FVM_Object *, FVM_Object **);
+
 
 /* Invoke avm1 script. */
-FVM_Result fvm_avm1_invoke_script(FVM_Context *, const FVM_ScriptFunction &, FVM_Object *,
-                                  FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *,
-                                  FVM_Object *, FVM_Object *);
+FVM_Result fvm_avm1_invoke_script(FVM_Context *,
+                                  const FVM_ScriptFunction &,
+                                  FVM_Object *,
+                                  FVM_Object *,
+                                  unsigned int,
+                                  const FVM_Value *,
+                                  FVM_Value *,
+                                  FVM_Object *,
+                                  FVM_Object *);
+
 
 /* Map a native function callback to its stable serialization identifier. */
 unsigned long fvm_function_callback_id(FVM_NativeFunction);
 
+
 /* Restore a native function callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_function_callback_from_id(unsigned long);
+
 
 /* Implement function collector callback for this subsystem. */
 bool fvm_function_collector_callback(FVM_NativeFunction);

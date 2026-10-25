@@ -35,17 +35,17 @@ storage must not overlap the filesystem's opaque storage or other output objects
 
 | Function | Contract |
 | --- | --- |
-| [`fvm_rfs_create`](../include/flashvm/rfs.h#L49) | Dispatcher, authenticated nonzero Uint32 session, output pointer. Allocates one fixed native object; NOMEM leaves output intact. Borrow dispatcher until destroy. This session's request-ID namespace must be exclusive to this instance, including other direct dispatcher callers; no rights or authentication are created. |
-| [`fvm_rfs_stat`](../include/flashvm/rfs.h#L51) | FS, canonical node, entry output. Rechecks current incarnation and rights; UNKNOWN for absent/invisible resources, DENIED for an unauthorized child, INVALID malformed node. Returns copied metadata, never a borrowed object. |
-| [`fvm_rfs_walk`](../include/flashvm/rfs.h#L54) | FS, parent directory node, single NUL-terminated component and entry output. Parent is checked first. Supports `..`, canonical resource names and authorized children; leaf traversal INVALID. No allocation, I/O or VM call. |
-| [`fvm_rfs_open`](../include/flashvm/rfs.h#L58) | FS, node, exact supported mode and descriptor output. Directories/PATH/EVENTS require READ; CALL requires READ|WRITE. Allocates one of [FVM_RFS_FILES](../include/flashvm/rfs.h#L5) native slots; events also allocate an independent dispatcher watch. Wrong mode DENIED, capacity LIMIT; errors publish no descriptor. |
-| [`fvm_rfs_readdir`](../include/flashvm/rfs.h#L62) | FS, open directory, zero-based entry index, output. Returns one copied entry; PENDING means end. Captured discovery remains stable; any resource/grant/operation-filter change gives CONFLICT until reopen. This includes unrelated visible resources and prevents a revoked entry leaking from a stale snapshot. |
-| [`fvm_rfs_read`](../include/flashvm/rfs.h#L67) | FS, descriptor, Uint32 offset, nonempty output capacity and count output. PATH allows arbitrary offsets, including EOF. CALL/EVENTS require exact next offset; PENDING means no result/event yet. Partial records remain owned by the descriptor; errors leave output/count unchanged. Zero capacity INVALID. Directories use readdir instead. |
-| [`fvm_rfs_write`](../include/flashvm/rfs.h#L73) | FS, CALL descriptor, offset zero, counted payload and count output. Exactly one request per open, including empty payload; at most [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9). Copies and queues with a monotonically assigned Uint32 request ID. OK is acceptance, never execution; repeated write CONFLICT, exhausted IDs LIMIT. A failed post leaves descriptor/count unchanged. |
-| [`fvm_rfs_close`](../include/flashvm/rfs.h#L79) | FS and descriptor. Cancels queued work, acknowledges its retained reply and closes its own observer; completed side effects remain. Running handler BUSY keeps the descriptor open for retry. Stale descriptor UNKNOWN. A revoked/removed watch or request is tolerated during cleanup. No session disconnect or VM destruction. |
-| [`fvm_rfs_destroy`](../include/flashvm/rfs.h#L82) | Pointer to FS pointer after users quiesce. Any open descriptor BUSY. Success frees only native FS storage and nulls pointer; dispatcher, grants and registrations remain host-owned. |
-| [`fvm_rdispatch_operation_index`](../include/flashvm/revents.h#L48) | Dispatcher, session, resource incarnation, operation ID, index output. Checks authority under its mutex and returns immutable zero-based server table position. UNKNOWN resource/operation, DENIED missing right; no queue mutation. This position is not a permission or an index into filtered discovery. |
-| [`fvm_rdispatch_watch_check`](../include/flashvm/revents.h#L69) | Dispatcher, session and watch. Checks incarnation/ownership without consuming data. Revoked/recreated watches UNKNOWN, another session DENIED. Used before returning retained event bytes after a partial read. |
+| [`fvm_rfs_create`](../include/flashvm/rfs.h#L55) | Dispatcher, authenticated nonzero Uint32 session, output pointer. Allocates one fixed native object; NOMEM leaves output intact. Borrow dispatcher until destroy. This session's request-ID namespace must be exclusive to this instance, including other direct dispatcher callers; no rights or authentication are created. |
+| [`fvm_rfs_stat`](../include/flashvm/rfs.h#L59) | FS, canonical node, entry output. Rechecks current incarnation and rights; UNKNOWN for absent/invisible resources, DENIED for an unauthorized child, INVALID malformed node. Returns copied metadata, never a borrowed object. |
+| [`fvm_rfs_walk`](../include/flashvm/rfs.h#L64) | FS, parent directory node, single NUL-terminated component and entry output. Parent is checked first. Supports `..`, canonical resource names and authorized children; leaf traversal INVALID. No allocation, I/O or VM call. |
+| [`fvm_rfs_open`](../include/flashvm/rfs.h#L70) | FS, node, exact supported mode and descriptor output. Directories/PATH/EVENTS require READ; CALL requires READ|WRITE. Allocates one of [FVM_RFS_FILES](../include/flashvm/rfs.h#L5) native slots; events also allocate an independent dispatcher watch. Wrong mode DENIED, capacity LIMIT; errors publish no descriptor. |
+| [`fvm_rfs_readdir`](../include/flashvm/rfs.h#L76) | FS, open directory, zero-based entry index, output. Returns one copied entry; PENDING means end. Captured discovery remains stable; any resource/grant/operation-filter change gives CONFLICT until reopen. This includes unrelated visible resources and prevents a revoked entry leaking from a stale snapshot. |
+| [`fvm_rfs_read`](../include/flashvm/rfs.h#L83) | FS, descriptor, Uint32 offset, nonempty output capacity and count output. PATH allows arbitrary offsets, including EOF. CALL/EVENTS require exact next offset; PENDING means no result/event yet. Partial records remain owned by the descriptor; errors leave output/count unchanged. Zero capacity INVALID. Directories use readdir instead. |
+| [`fvm_rfs_write`](../include/flashvm/rfs.h#L91) | FS, CALL descriptor, offset zero, counted payload and count output. Exactly one request per open, including empty payload; at most [FVM_R_BYTES](../include/flashvm/rdispatch.h#L9). Copies and queues with a monotonically assigned Uint32 request ID. OK is acceptance, never execution; repeated write CONFLICT, exhausted IDs LIMIT. A failed post leaves descriptor/count unchanged. |
+| [`fvm_rfs_close`](../include/flashvm/rfs.h#L99) | FS and descriptor. Cancels queued work, acknowledges its retained reply and closes its own observer; completed side effects remain. Running handler BUSY keeps the descriptor open for retry. Stale descriptor UNKNOWN. A revoked/removed watch or request is tolerated during cleanup. No session disconnect or VM destruction. |
+| [`fvm_rfs_destroy`](../include/flashvm/rfs.h#L104) | Pointer to FS pointer after users quiesce. Any open descriptor BUSY. Success frees only native FS storage and nulls pointer; dispatcher, grants and registrations remain host-owned. |
+| [`fvm_rdispatch_operation_index`](../include/flashvm/revents.h#L56) | Dispatcher, session, resource incarnation, operation ID, index output. Checks authority under its mutex and returns immutable zero-based server table position. UNKNOWN resource/operation, DENIED missing right; no queue mutation. This position is not a permission or an index into filtered discovery. |
+| [`fvm_rdispatch_watch_check`](../include/flashvm/revents.h#L85) | Dispatcher, session and watch. Checks incarnation/ownership without consuming data. Revoked/recreated watches UNKNOWN, another session DENIED. Used before returning retained event bytes after a partial read. |
 
 ## Calls, streams and cleanup
 
@@ -101,18 +101,18 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 | `FVM_R_WATCHES` | macro / define | [include/flashvm/revents.h:5](../include/flashvm/revents.h#L5) |
-| `fvm_rdispatch_operation_index` | function | [include/flashvm/revents.h:48](../include/flashvm/revents.h#L48) |
-| `fvm_rdispatch_watch_check` | function | [include/flashvm/revents.h:69](../include/flashvm/revents.h#L69) |
+| `fvm_rdispatch_operation_index` | function | [include/flashvm/revents.h:56](../include/flashvm/revents.h#L56) |
+| `fvm_rdispatch_watch_check` | function | [include/flashvm/revents.h:85](../include/flashvm/revents.h#L85) |
 | `FVM_RFS_BUFFER` | macro / define | [include/flashvm/rfs.h:7](../include/flashvm/rfs.h#L7) |
-| `fvm_rfs_close` | function | [include/flashvm/rfs.h:79](../include/flashvm/rfs.h#L79) |
-| `fvm_rfs_create` | function | [include/flashvm/rfs.h:49](../include/flashvm/rfs.h#L49) |
-| `fvm_rfs_destroy` | function | [include/flashvm/rfs.h:82](../include/flashvm/rfs.h#L82) |
+| `fvm_rfs_close` | function | [include/flashvm/rfs.h:99](../include/flashvm/rfs.h#L99) |
+| `fvm_rfs_create` | function | [include/flashvm/rfs.h:55](../include/flashvm/rfs.h#L55) |
+| `fvm_rfs_destroy` | function | [include/flashvm/rfs.h:104](../include/flashvm/rfs.h#L104) |
 | `FVM_RFS_FILES` | macro / define | [include/flashvm/rfs.h:5](../include/flashvm/rfs.h#L5) |
-| `fvm_rfs_open` | function | [include/flashvm/rfs.h:58](../include/flashvm/rfs.h#L58) |
-| `fvm_rfs_read` | function | [include/flashvm/rfs.h:67](../include/flashvm/rfs.h#L67) |
-| `fvm_rfs_readdir` | function | [include/flashvm/rfs.h:62](../include/flashvm/rfs.h#L62) |
-| `fvm_rfs_stat` | function | [include/flashvm/rfs.h:51](../include/flashvm/rfs.h#L51) |
+| `fvm_rfs_open` | function | [include/flashvm/rfs.h:70](../include/flashvm/rfs.h#L70) |
+| `fvm_rfs_read` | function | [include/flashvm/rfs.h:83](../include/flashvm/rfs.h#L83) |
+| `fvm_rfs_readdir` | function | [include/flashvm/rfs.h:76](../include/flashvm/rfs.h#L76) |
+| `fvm_rfs_stat` | function | [include/flashvm/rfs.h:59](../include/flashvm/rfs.h#L59) |
 | `FVM_RFS_TAG` | macro / define | [include/flashvm/rfs.h:17](../include/flashvm/rfs.h#L17) |
-| `fvm_rfs_walk` | function | [include/flashvm/rfs.h:54](../include/flashvm/rfs.h#L54) |
-| `fvm_rfs_write` | function | [include/flashvm/rfs.h:73](../include/flashvm/rfs.h#L73) |
+| `fvm_rfs_walk` | function | [include/flashvm/rfs.h:64](../include/flashvm/rfs.h#L64) |
+| `fvm_rfs_write` | function | [include/flashvm/rfs.h:91](../include/flashvm/rfs.h#L91) |
 <!-- source-links:end -->

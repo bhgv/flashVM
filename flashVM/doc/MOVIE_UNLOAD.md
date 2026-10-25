@@ -18,11 +18,11 @@ Call on the VM owner thread at a safe point, outside AVM1 execution, native
 callbacks, sound delivery, GC and teardown. The context and target must remain
 alive; pin clips retained across calls that can collect. No constructor, property
 setter, frame action or unload callback is invoked. Repeated clearing is allowed.
-All allocations and validation precede publication. [`FVM_OK`](../include/flashvm/flashvm.h#L42) commits the complete
-replacement; [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) leaves the old content and child bindings intact.
+All allocations and validation precede publication. [`FVM_OK`](../include/flashvm/flashvm.h#L44) commits the complete
+replacement; [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) leaves the old content and child bindings intact.
 Null/foreign objects, class prototypes, internal static shapes and invalid lifecycle
-states return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). Other malformed private state can return
-its validation error; unexpected implementation exceptions become [`FVM_ERROR`](../include/flashvm/flashvm.h#L43).
+states return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Other malformed private state can return
+its validation error; unexpected implementation exceptions become [`FVM_ERROR`](../include/flashvm/flashvm.h#L45).
 The operation requests a stage update after publication and borrows its arguments.
 
 ## Native attachment query
@@ -33,7 +33,7 @@ All pointers are required and both objects must be same-context instances. A liv
 instance includes itself. Any detached node on the selected chain yields zero;
 a chain ending before the ancestor also yields zero. Success writes zero or one.
 Invalid state, allocation failure and chains exceeding
-[`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L192) preserve the caller's output. The depth bound
+[`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L245) preserve the caller's output. The depth bound
 also rejects cycles. Use on the owner thread outside GC/teardown, retaining both
 borrowed objects through the call. This is a snapshot, not a retained subscription.
 
@@ -176,11 +176,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:197](../include/flashvm/movieclip.h#L197) |
-| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:192](../include/flashvm/movieclip.h#L192) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:207](../include/flashvm/movieclip.h#L207) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:252](../include/flashvm/movieclip.h#L252) |
+| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:245](../include/flashvm/movieclip.h#L245) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:264](../include/flashvm/movieclip.h#L264) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

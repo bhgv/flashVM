@@ -11,7 +11,7 @@ remain separate. This is bounded root integration, not complete SWF multimedia a
 ## Ownership and frame publication
 
 `fvm_desktop_audio_open_paused` snapshots bounded root sources on the VM owner,
-creates the mixer and the optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L13), begins its empty shared
+creates the mixer and the optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L14), begins its empty shared
 epoch, enables ID tracking, then initializes the stream producer against that
 adapter. Only the native worker renders copied sources; it retains no VM/GC pointer.
 Every mixer/producer/control operation shares the existing SDL mutex.
@@ -42,7 +42,7 @@ and host suspension hold this composition under the current stream pause policy.
 This does not certify original Flash pause/seek or sample-accurate event placement;
 new voices start beyond already accepted/pending PCM.
 
-[`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) coordinates a final EOF tail with both queue
+[`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) coordinates a final EOF tail with both queue
 epochs without adding fields to public structures. Its stream must have observed
 source EOF, own no base retry, use the exact adapted callbacks/userdata/geometry of
 the supplied live mix queue, and have the same accepted-frame count as its active
@@ -53,16 +53,16 @@ counted as submitted PCM, not source samples or physical DAC playback.
 
 | API | Status, ownership and execution contract |
 | --- | --- |
-| [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) | Required live stream/mix owners; optional accepted is cleared first. Null, reentry, no observed EOF, base retry, different backend or inconsistent epoch: INVALID_ARGUMENT. Inactive shared clock: NOT_FOUND. No voice or queue headroom: NOT_FOUND. Other backend/mixer statuses propagate; callback exceptions are ERROR. No allocation/VM/GC, ownership transfer or implicit pause/clear. Externally serialize all borrowed dependencies. |
+| [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) | Required live stream/mix owners; optional accepted is cleared first. Null, reentry, no observed EOF, base retry, different backend or inconsistent epoch: INVALID_ARGUMENT. Inactive shared clock: NOT_FOUND. No voice or queue headroom: NOT_FOUND. Other backend/mixer statuses propagate; callback exceptions are ERROR. No allocation/VM/GC, ownership transfer or implicit pause/clear. Externally serialize all borrowed dependencies. |
 | `fvm_desktop_audio_stream_pending` | Include authorized source work, accepted FIFO, live mixed voices and retained mix retry. Host suspension or authored stop returns zero; after StopSounds, a newly delivered event may keep completion alive while the base remains cancelled. No pumping, decoding or VM access; mutex-serialized and output preserved on failure. |
 
 A rejected tail write advances the mixer once and remains an exact TAIL retry in
 the mix queue. The producer's base buffer is not repurposed;
 `FVM_SWFStreamOutputInfo.pending_frames` still means base retry only. Query
-[`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31) for the retained tail. A valid FIFO observation may
+[`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L38) for the retained tail. A valid FIFO observation may
 refresh played time on a failing operation; no failed write increments accepted time.
 Do not interleave direct mix-tail writes or unrelated queue producers with paired
-tails. Settle a tail retry before [`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L156); acknowledged
+tails. Settle a tail retry before [`fvm_swf_stream_output_continue`](../include/flashvm/swf_stream_output.h#L186); acknowledged
 seek/clear cancels it. Explicit epoch mismatch is rejected before further rendering.
 
 Context StopSounds uses staged stream seek/clear through the adapter. Successful
@@ -88,7 +88,7 @@ concurrency/GC/debugger acceptance, physical devices/platforms and all nine road
 stages remain open. Historical checkpoint reports below do not change this scope.
 
 
-v0.975: Add [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L92) for final EOF: exact retry and coherent accepted/dequeued counters; no public struct change.
+v0.975: Add [fvm_swf_stream_output_pump_mix_tail](../include/flashvm/swf_stream_output.h#L106) for final EOF: exact retry and coherent accepted/dequeued counters; no public struct change.
 
 
 v0.976: Verify exact backend pairing, rejected/throwing retry, stream reentry and independently advanced epoch rejection.
@@ -140,9 +140,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:156](../include/flashvm/swf_stream_output.h#L156) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
-| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |
+| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:186](../include/flashvm/swf_stream_output.h#L186) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:14](../src/swf/sound_mix_queue.cpp#L14) |
 | `FVM_SWFStreamOutputInfo` | struct | [include/flashvm/swf_stream_output.h:12](../include/flashvm/swf_stream_output.h#L12) |
 <!-- source-links:end -->

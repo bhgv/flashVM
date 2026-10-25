@@ -2,15 +2,18 @@
 #include "../common/frame_internal.h"
 #include <stdio.h>
 #include <string.h>
-#define CHECK(x)                                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if (!(x))                                                                                  \
-        {                                                                                          \
-            fprintf(stderr, "frame line %d: %s\n", __LINE__, #x);                                  \
-            return 1;                                                                              \
-        }                                                                                          \
+
+#define CHECK(x)                                                                                                       \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+        {                                                                                                              \
+            fprintf(stderr, "frame line %d: %s\n", __LINE__, #x);                                                      \
+            return 1;                                                                                                  \
+        }                                                                                                              \
     } while (0)
+
+
 /* An ordinary function pointer suffices to validate the separate observer policy. */
 static FVM_Result observe(const FVM_DesktopFrame *frame, void *data)
 {
@@ -18,6 +21,8 @@ static FVM_Result observe(const FVM_DesktopFrame *frame, void *data)
     (void)data;
     return FVM_OK;
 }
+
+
 /* Require every malformed geometry to leave the full caller allocation unchanged. */
 static int rejects(FVM_DesktopFrame *frame, size_t capacity, size_t stride)
 {
@@ -27,15 +32,15 @@ static int rejects(FVM_DesktopFrame *frame, size_t capacity, size_t stride)
     return fvm_desktop_frame_copy(frame, output, capacity, stride) == FVM_INVALID_ARGUMENT &&
            !memcmp(output, before, sizeof(output));
 }
+
+
 int main(void)
 {
-    static const unsigned char input[] = {1,  2,  3, 4,  5,  6,  7,  8,  99, 98,
-                                          97, 96, 9, 10, 11, 12, 13, 14, 15, 16};
+    static const unsigned char input[] = {1, 2, 3, 4, 5, 6, 7, 8, 99, 98, 97, 96, 9, 10, 11, 12, 13, 14, 15, 16};
     static const unsigned char alias_input[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-    static const unsigned char expected[] = {1,    2,    3,    4,    5,    6,    7,    8,
-                                             0xa7, 0xa7, 0xa7, 0xa7, 0xa7, 0xa7, 0xa7, 0xa7,
-                                             9,    10,   11,   12,   13,   14,   15,   16};
+    static const unsigned char expected[] = {1,    2,    3,    4,    5, 6,  7,  8,  0xa7, 0xa7, 0xa7, 0xa7,
+                                             0xa7, 0xa7, 0xa7, 0xa7, 9, 10, 11, 12, 13,   14,   15,   16};
     FVM_DesktopFrameObserver observer;
     FVM_DesktopFrame frame, valid, alias;
     unsigned char output[32];

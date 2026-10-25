@@ -1,6 +1,6 @@
 # Frame request preparation / Подготовка запроса кадра — v0.306
 
-The C89 execution API exposes [fvm_exec_frame_request](../include/flashvm/execution.h#L336)(context, input, with_bias,
+The C89 execution API exposes [fvm_exec_frame_request](../include/flashvm/execution.h#L446)(context, input, with_bias,
 scene_bias, output). It prepares a Number or counted String without moving a
 timeline, selecting a target or reading bytecode. GotoFrame2 now delegates its
 previous conversion block to this single-operation handler; decoding remains in
@@ -21,7 +21,7 @@ whitespace and exponent strings remain labels. Full historical GotoFrame2 parsin
 label/path/scene behavior and clip lifecycle semantics still require independent
 compatibility work. This extraction does not certify their completeness.
 
-The scene offset is bounded by [FVM_EXEC_MAX_SCENE_FRAME_BIAS](../include/flashvm/execution.h#L14). It is validated
+The scene offset is bounded by [FVM_EXEC_MAX_SCENE_FRAME_BIAS](../include/flashvm/execution.h#L15). It is validated
 before callbacks. with_bias is independent of the offset's numeric value: enabled
 zero bias performs the existing addition and can change negative zero to positive
 zero; disabled bias preserves negative zero. No target or playback state is
@@ -80,6 +80,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:336](../include/flashvm/execution.h#L336) |
-| `FVM_EXEC_MAX_SCENE_FRAME_BIAS` | macro / define | [include/flashvm/execution.h:14](../include/flashvm/execution.h#L14) |
+| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:446](../include/flashvm/execution.h#L446) |
+| `FVM_EXEC_MAX_SCENE_FRAME_BIAS` | macro / define | [include/flashvm/execution.h:15](../include/flashvm/execution.h#L15) |
 <!-- source-links:end -->

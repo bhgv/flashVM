@@ -1,6 +1,6 @@
 # Intrinsic sibling construction / Общее дублирование клипа — v0.321
 
-[fvm_exec_duplicate_clip](../include/flashvm/execution.h#L303)(context, clip, name, depth, initial, out) is a C89
+[fvm_exec_duplicate_clip](../include/flashvm/execution.h#L408)(context, clip, name, depth, initial, out) is a C89
 value-based interface to existing native sibling construction. The name and
 public depth are explicit values; initial may be NULL or an initialization
 value. It neither reads AVM1 instructions nor looks up duplicateMovieClip.
@@ -50,5 +50,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_duplicate_clip` | function | [include/flashvm/execution.h:303](../include/flashvm/execution.h#L303) |
+| `fvm_exec_duplicate_clip` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
 <!-- source-links:end -->

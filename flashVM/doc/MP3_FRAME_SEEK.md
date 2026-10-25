@@ -17,15 +17,15 @@ stages remain open. Version numbers do not certify SWF 8 completeness.
 
 ## Immutable position query
 
-Set [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L143).struct_size to its exact size, then call
-[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) with a positive one-based movie frame.
+Set [FVM_SWFStreamSoundSeekPoint](../include/flashvm/swf_stream_sound.h#L175).struct_size to its exact size, then call
+[fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L196) with a positive one-based movie frame.
 The first authored block at/after it determines source_frame. The resolved
 block_index and first select normalized source PCM, potentially in another block.
 PCM/ADPCM use offset zero. No block at/after the request returns EOF with
-[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L141); exact PCM end retains the selected authored frame.
+[FVM_SWF_STREAM_SEEK_EOF_FRAME](../include/flashvm/swf_stream_sound.h#L171); exact PCM end retains the selected authored frame.
 Negative/past-end target, null or wrong-size output and frame zero return
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); encoded compressed data returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
-arithmetic overflow returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). Failed queries preserve output.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); encoded compressed data returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48);
+arithmetic overflow returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46). Failed queries preserve output.
 No allocation, decoding, callback, script or GC access occurs. Independent const
 reads can share a post-VM snapshot; synchronize close separately. The host owns
 source authorization, resampler phase reset and device queue transactions.
@@ -33,12 +33,12 @@ source authorization, resampler phase reset and device queue transactions.
 
 ## Transactional output
 
-[fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) validates converter geometry and the
-point before callbacks; [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) uses the current
+[fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L210) validates converter geometry and the
+point before callbacks; [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L215) uses the current
 converter. Both reuse pause → clear → publish. Only successful clear publishes
 the new cursor/binding and resets pending PCM, counters and resampler phase.
 A failed clear retains old PCM/cursors with the acknowledged pause still visible.
-Callback statuses propagate; exceptions become [FVM_ERROR](../include/flashvm/flashvm.h#L43) and busy reentry is
+Callback statuses propagate; exceptions become [FVM_ERROR](../include/flashvm/flashvm.h#L45) and busy reentry is
 rejected. No allocation/decode/VM/GC operation occurs. Keep snapshot, converter,
 backend and output storage alive and serialize mutations. Success remains paused.
 Legacy bind_frame/seek_frame continue selecting the authored block start.
@@ -61,11 +61,11 @@ source-time scheduling and A/V drift correction remain open.
 
 | Operation | Result and ownership |
 | --- | --- |
-| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L162) | Copies a position; never changes snapshot or output on error. Caller supplies exact structure size and retains snapshot. |
-| [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L176) | Validates another converter, pauses and clears backend, then publishes the binding. Both converters remain owned by host. |
-| [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L179) | Applies the same transaction to the currently bound converter. |
-| [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L54) | Applies the returned block_index/first to an offline native reader; no queue effects. |
-| [fvm_swf_stream_converter_seek](../include/flashvm/swf_stream_convert.h#L73) | Applies source position and resets rational phase to zero; native host owns synchronization. |
+| [fvm_swf_stream_sound_snapshot_seek_point](../include/flashvm/swf_stream_sound.h#L196) | Copies a position; never changes snapshot or output on error. Caller supplies exact structure size and retains snapshot. |
+| [fvm_swf_stream_output_bind_frame_aligned](../include/flashvm/swf_stream_output.h#L210) | Validates another converter, pauses and clears backend, then publishes the binding. Both converters remain owned by host. |
+| [fvm_swf_stream_output_seek_frame_aligned](../include/flashvm/swf_stream_output.h#L215) | Applies the same transaction to the currently bound converter. |
+| [fvm_swf_stream_pcm_reader_seek](../include/flashvm/swf_stream_pcm.h#L62) | Applies the returned block_index/first to an offline native reader; no queue effects. |
+| [fvm_swf_stream_converter_seek](../include/flashvm/swf_stream_convert.h#L83) | Applies source position and resets rational phase to zero; native host owns synchronization. |
 
 Source offsets count sample frames/pairs, not interleaved channel values or output
 frames. Queries are logarithmic in indexed blocks. MP3 normalization retains all
@@ -107,15 +107,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
-| `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:176](../include/flashvm/swf_stream_output.h#L176) |
-| `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:179](../include/flashvm/swf_stream_output.h#L179) |
-| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
-| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:141](../include/flashvm/swf_stream_sound.h#L141) |
-| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:162](../include/flashvm/swf_stream_sound.h#L162) |
-| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:143](../include/flashvm/swf_stream_sound.h#L143) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:83](../include/flashvm/swf_stream_convert.h#L83) |
+| `fvm_swf_stream_output_bind_frame_aligned` | function | [include/flashvm/swf_stream_output.h:210](../include/flashvm/swf_stream_output.h#L210) |
+| `fvm_swf_stream_output_seek_frame_aligned` | function | [include/flashvm/swf_stream_output.h:215](../include/flashvm/swf_stream_output.h#L215) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:62](../include/flashvm/swf_stream_pcm.h#L62) |
+| `FVM_SWF_STREAM_SEEK_EOF_FRAME` | macro / define | [include/flashvm/swf_stream_sound.h:171](../include/flashvm/swf_stream_sound.h#L171) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:196](../include/flashvm/swf_stream_sound.h#L196) |
+| `FVM_SWFStreamSoundSeekPoint` | struct | [include/flashvm/swf_stream_sound.h:175](../include/flashvm/swf_stream_sound.h#L175) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

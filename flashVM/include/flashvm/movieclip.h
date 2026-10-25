@@ -12,50 +12,67 @@
 extern "C"
 {
 #endif
-    /* Host event notification at actual root frame entry, before its DoAction blocks.
+
+
+/* Host event notification at actual root frame entry, before its DoAction blocks.
      * Ordinal selects the matching context SWF's root StartSound. Return a VM status.
      * No callback pointers/userdata cross serialization; host must register on the receiving VM. */
-    typedef FVM_Result (*FVM_MovieClipSoundCallback)(FVM_Context *, FVM_Object *, size_t, void *);
-    /* Borrow a synchronous host callback/userdata; null disables delivery, not sound validation.
+typedef FVM_Result (*FVM_MovieClipSoundCallback)(FVM_Context *, FVM_Object *, size_t, void *);
+
+
+/* Borrow a synchronous host callback/userdata; null disables delivery, not sound validation.
      * No device is opened. A sound frame without a callback returns UNSUPPORTED. */
-    FVM_API FVM_Result fvm_movieclip_set_sound_callback(FVM_Context *, FVM_MovieClipSoundCallback,
-                                                        void *);
-    /* Neutral SWF document metadata; strings are borrowed from the rooted clip graph. */
-    typedef struct FVM_SWFDocumentInfo
-    {
-        unsigned long struct_size;     /* Exact structure size required by this API. */
-        int file_attributes_present;   /* Distinguish absent attributes from explicit zero flags. */
-        unsigned long file_attributes; /* Supported flags are zero or HasMetadata (0x10). */
-        FVM_Value metadata; /* Undefined if absent; otherwise counted context-owned UTF-8. */
-    } FVM_SWFDocumentInfo;
-    /* Read without script execution; errors leave output unchanged. [GC:] Root the clip or retain
+FVM_API FVM_Result fvm_movieclip_set_sound_callback(FVM_Context *, FVM_MovieClipSoundCallback,
+                                                    void *);
+
+
+/* Neutral SWF document metadata; strings are borrowed from the rooted clip graph. */
+typedef struct FVM_SWFDocumentInfo
+{
+    unsigned long struct_size;     /* Exact structure size required by this API. */
+    int file_attributes_present;   /* Distinguish absent attributes from explicit zero flags. */
+    unsigned long file_attributes; /* Supported flags are zero or HasMetadata (0x10). */
+    FVM_Value metadata;            /* Undefined if absent; otherwise counted context-owned UTF-8. */
+} FVM_SWFDocumentInfo;
+
+
+/* Read without script execution; errors leave output unchanged. [GC:] Root the clip or retain
        the returned string before collection. Metadata is not parsed or executed as XML. */
-    FVM_API FVM_Result fvm_movieclip_swf_document_info(FVM_Context *, FVM_Object *,
-                                                       FVM_SWFDocumentInfo *);
-    /* Committed imported-content identity; independent of display transforms and source profile. */
-    typedef enum FVM_MovieClipContentFormat
-    {
-        FVM_MOVIECLIP_CONTENT_EMPTY = 0, /* Explicit unload: no imported payload. */
-        FVM_MOVIECLIP_CONTENT_SWF = 1,   /* Complete imported FWS/CWS movie. */
-        FVM_MOVIECLIP_CONTENT_PNG = 2,   /* Complete standalone PNG. */
-        FVM_MOVIECLIP_CONTENT_GIF = 3,   /* Complete supported standalone GIF. */
-        FVM_MOVIECLIP_CONTENT_JPEG = 4   /* Complete supported standalone JPEG. */
-    } FVM_MovieClipContentFormat;
+FVM_API FVM_Result fvm_movieclip_swf_document_info(FVM_Context *, FVM_Object *,
+                                                   FVM_SWFDocumentInfo *);
+
+
+/* Committed imported-content identity; independent of display transforms and source profile. */
+typedef enum FVM_MovieClipContentFormat
+{
+    FVM_MOVIECLIP_CONTENT_EMPTY = 0, /* Explicit unload: no imported payload. */
+    FVM_MOVIECLIP_CONTENT_SWF = 1,   /* Complete imported FWS/CWS movie. */
+    FVM_MOVIECLIP_CONTENT_PNG = 2,   /* Complete standalone PNG. */
+    FVM_MOVIECLIP_CONTENT_GIF = 3,   /* Complete supported standalone GIF. */
+    FVM_MOVIECLIP_CONTENT_JPEG = 4   /* Complete supported standalone JPEG. */
+} FVM_MovieClipContentFormat;
+
 #define FVM_MOVIECLIP_CONTENT_MAX_BYTES 4294967295UL /* Exact portable metadata counter bound. */
-    /* Scalar snapshot of the last successful external import or explicit unload, not live I/O. */
-    typedef struct FVM_MovieClipContentInfo
-    {
-        unsigned long struct_size; /* Must equal sizeof this structure for query. */
-        FVM_MovieClipContentFormat format; /* Imported format, or explicit EMPTY after unload. */
-        unsigned int swf_version; /* Header version for SWF; zero for image/empty content. */
-        size_t encoded_bytes; /* Exact input byte count, including a compressed SWF header. */
-        size_t decoded_bytes; /* Canonical uncompressed SWF bytes, or decoded RGBA payload bytes. */
-        unsigned int pixel_width; /* Original image width; zero for SWF/empty, ignores transforms. */
-        unsigned int pixel_height; /* Original image height; zero for SWF/empty. */
-    } FVM_MovieClipContentInfo;
-    /* Initialize caller-owned scalar storage; null is INVALID_ARGUMENT. No allocation/callback. */
-    FVM_API FVM_Result fvm_movieclip_content_info_init(FVM_MovieClipContentInfo *);
-    /* Read committed metadata without script, decoding, transport or retaining input bytes.
+
+
+/* Scalar snapshot of the last successful external import or explicit unload, not live I/O. */
+typedef struct FVM_MovieClipContentInfo
+{
+    unsigned long struct_size;         /* Must equal sizeof this structure for query. */
+    FVM_MovieClipContentFormat format; /* Imported format, or explicit EMPTY after unload. */
+    unsigned int swf_version;          /* Header version for SWF; zero for image/empty content. */
+    size_t encoded_bytes;              /* Exact input byte count, including a compressed SWF header. */
+    size_t decoded_bytes;              /* Canonical uncompressed SWF bytes, or decoded RGBA payload bytes. */
+    unsigned int pixel_width;          /* Original image width; zero for SWF/empty, ignores transforms. */
+    unsigned int pixel_height;         /* Original image height; zero for SWF/empty. */
+} FVM_MovieClipContentInfo;
+
+
+/* Initialize caller-owned scalar storage; null is INVALID_ARGUMENT. No allocation/callback. */
+FVM_API FVM_Result fvm_movieclip_content_info_init(FVM_MovieClipContentInfo *);
+
+
+/* Read committed metadata without script, decoding, transport or retaining input bytes.
      * Same-context native instance, owner thread outside GC/teardown. Caller retains the clip.
      * Exact struct_size required. NOT_FOUND for native/unmarked/internal-symbol/legacy content
      * with no external import record. Explicit unload is OK with EMPTY and zero counters.
@@ -63,53 +80,71 @@ extern "C"
      * Fields are copied scalars; no pin is needed for the snapshot after successful return.
      * Publication is atomic with content replacement; failures retain the old record.
      * Counts fit CONTENT_MAX_BYTES, not process memory usage or progressive transfer progress. */
-    FVM_API FVM_Result fvm_movieclip_get_content_info(FVM_Context *, FVM_Object *,
-                                                       FVM_MovieClipContentInfo *);
-    /* Copied intrinsic playhead; independent of replaceable ActionScript properties. */
-    typedef struct FVM_MovieClipPlaybackInfo
-    {
-        size_t struct_size;         /* Exact sizeof required; caller initializes before query. */
-        unsigned int frame;        /* Selected one-based local frame, including pending seeks. */
-        unsigned int total_frames; /* Positive intrinsic local timeline length. */
-        int playing;               /* Native play flag; unrelated to host/session suspension. */
-        int entered;               /* Selected frame controls/actions entered since last seek. */
-    } FVM_MovieClipPlaybackInfo;
-    /* Read scalar native state without getters, script calls, allocation or timeline advancement.
+FVM_API FVM_Result fvm_movieclip_get_content_info(FVM_Context *, FVM_Object *,
+                                                  FVM_MovieClipContentInfo *);
+
+
+/* Copied intrinsic playhead; independent of replaceable ActionScript properties. */
+typedef struct FVM_MovieClipPlaybackInfo
+{
+    size_t struct_size;        /* Exact sizeof required; caller initializes before query. */
+    unsigned int frame;        /* Selected one-based local frame, including pending seeks. */
+    unsigned int total_frames; /* Positive intrinsic local timeline length. */
+    int playing;               /* Native play flag; unrelated to host/session suspension. */
+    int entered;               /* Selected frame controls/actions entered since last seek. */
+} FVM_MovieClipPlaybackInfo;
+
+
+/* Read scalar native state without getters, script calls, allocation or timeline advancement.
      * Same-context native instance, owner thread outside GC/teardown; caller retains the clip.
      * INVALID_ARGUMENT for null/wrong-size/foreign/prototype/malformed state; preserve output.
      * No pointers escape. entered=0 after construction/seek: frame selection alone does not
      * authorize frame-entry media. playing=0 still allows onEnterFrame delivery on later ticks.
      * This is an observation, not a navigation event log or source-content identity token. */
-    FVM_API FVM_Result fvm_movieclip_get_playback_info(FVM_Context *, FVM_Object *,
-                                                        FVM_MovieClipPlaybackInfo *);
+FVM_API FVM_Result fvm_movieclip_get_playback_info(FVM_Context *, FVM_Object *,
+                                                   FVM_MovieClipPlaybackInfo *);
 #define FVM_MOVIECLIP_NAVIGATION_MAX 4294967295UL /* Portable cyclic navigation token bound. */
-    /* Copy the intrinsic explicit-navigation token without allocation/getters/VM advancement.
+
+
+/* Copy the intrinsic explicit-navigation token without allocation/getters/VM advancement.
      * Initially/legacy absent=0; successful goto/nextFrame/prevFrame selects increment it, even
      * for the same frame, wrapping MAX to 1. Ordinary play/stop/advance do not increment it.
      * Same owner/context/retention/GC/error-output rules as get_playback_info. No pointers escape.
      * Compare equality only for the same retained instance/content; this is not an event count,
      * ordered clock or identity across reload/transfer. An OOM after token publication may leave
      * a changed token before later frame fields commit, matching partial native seek effects. */
-    FVM_API FVM_Result fvm_movieclip_get_navigation(FVM_Context *, FVM_Object *, unsigned long *);
-    /* Create movieclip. */
-    FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
-                                            FVM_Object **);
-    /* Import root/sprite DoAction/FrameLabel timelines and ExportAssets from SWF 1..8.
+FVM_API FVM_Result fvm_movieclip_get_navigation(FVM_Context *, FVM_Object *, unsigned long *);
+
+
+/* Create movieclip. */
+FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
+                                        FVM_Object **);
+
+
+/* Import root/sprite DoAction/FrameLabel timelines and ExportAssets from SWF 1..8.
        FWS/CWS decoding is bounded; unimplemented scene/resource tags return FVM_UNSUPPORTED.
        Loading runs no actions. Exported sprites can be instantiated through attachMovie.
        On failure *out is null. [GC:] The returned clip and resource library must be rooted by their
        host owner. */
-    FVM_API FVM_Result fvm_movieclip_load_swf(FVM_Context *, const void *data, size_t size,
-                                              const char *name, FVM_Object **out);
-    /* Query the local affine transform in pixels, preserving authored shear/reflection. */
-    FVM_API FVM_Result fvm_movieclip_get_matrix(FVM_Context *, FVM_Object *, FVM_Affine *);
-    /* Atomically set a finite local transform and corresponding display components. */
-    FVM_API FVM_Result fvm_movieclip_set_matrix(FVM_Context *, FVM_Object *, const FVM_Affine *);
-    /* Copy a validated AVM1 frame action and optional label. Frames start at 1. */
-    /* Define movieclip frame. */
-    FVM_API FVM_Result fvm_movieclip_define_frame(FVM_Context *, FVM_Object *, unsigned int,
-                                                  const char *label, const void *actions, size_t);
-    /* Owner-thread synchronous ticks, including onEnterFrame on stopped/single-frame clips.
+FVM_API FVM_Result fvm_movieclip_load_swf(FVM_Context *, const void *data, size_t size,
+                                          const char *name, FVM_Object **out);
+
+
+/* Query the local affine transform in pixels, preserving authored shear/reflection. */
+FVM_API FVM_Result fvm_movieclip_get_matrix(FVM_Context *, FVM_Object *, FVM_Affine *);
+
+
+/* Atomically set a finite local transform and corresponding display components. */
+FVM_API FVM_Result fvm_movieclip_set_matrix(FVM_Context *, FVM_Object *, const FVM_Affine *);
+/* Copy a validated AVM1 frame action and optional label. Frames start at 1. */
+
+
+/* Define movieclip frame. */
+FVM_API FVM_Result fvm_movieclip_define_frame(FVM_Context *, FVM_Object *, unsigned int,
+                                              const char *label, const void *actions, size_t);
+
+
+/* Owner-thread synchronous ticks, including onEnterFrame on stopped/single-frame clips.
        Optional handlers use receiver/defining-owner method lookup; missing/noncallable is ignored.
        All ticks, callback AVM1 and charged native traversal share the outer instruction/work limit
        (zero disables the numeric limit, not cooperative worker cancellation). On
@@ -122,57 +157,73 @@ extern "C"
        the traversed graph; explicit collect returns INVALID_ARGUMENT and gc_step does no collection
        until return. Null/foreign clips, lifecycle phases, sound callback reentry and excessive tick
        counts return INVALID_ARGUMENT. Zero ticks does no work. */
-    FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
-    /* Render owner-thread geometry into the caller-owned raster surface (no timeline tick).
+FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
+
+
+/* Render owner-thread geometry into the caller-owned raster surface (no timeline tick).
        Children use ascending signed depth and a bounded local identity snapshot after parent
        drawing. Replacements/newborns from child getters wait; detached children are skipped.
        Each node accepts at most 65536 child slots and 64 descendant levels. Invalid/foreign/
        aliased private children return INVALID_ARGUMENT; prior pixels/getter effects remain.
        OUT_OF_MEMORY and getter errors propagate; disabled raster backends may return UNSUPPORTED.
+
+
        Sorting uses O(n log n) time and O(n) scratch without consuming instruction units.
        [GC:] The native barrier retains captured objects; caller owns surface storage throughout.
        See doc/RASTER_DEPTH_ORDER.md for lifetime, partial completion and limitations. */
-    FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterSurface *);
-    /* Render through a finite host viewport without changing script-visible clip transforms.
+FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterSurface *);
+
+
+/* Render through a finite host viewport without changing script-visible clip transforms.
        Viewport applies once to every world-space node, preserving root visibility/color. */
-    FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
-                                                 const FVM_Affine *viewport);
-    /* Explicit import policy; no other flag bits are accepted. */
-#define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS                                                           \
+FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
+                                             const FVM_Affine *viewport);
+/* Explicit import policy; no other flag bits are accepted. */
+#define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS \
     1UL /* Validate and omit root streaming sound controls.                                        \
          */
-    /* Import with optional root-stream muting; zero flags retain load_swf behavior.
+
+
+/* Import with optional root-stream muting; zero flags retain load_swf behavior.
      * Muting requires input to match the context's current fvm_load_memory source
      * after FWS/CWS decoding, so root stream validation uses the exact same bytes.
      * Validates header ordering, frame/count bounds and PCM block alignment before
      * scene allocation; does not decode compressed sound or support sprite streams.
      * Event sounds retain their existing explicit host callback policy. Runs no actions.
      * On failure *out is null. Owner thread, outside GC/teardown. [GC:] Root returned clip. */
-    FVM_API FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *, const void *, size_t, const char *,
-                                                 unsigned long flags, FVM_Object **out);
+FVM_API FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *, const void *, size_t, const char *,
+                                             unsigned long flags, FVM_Object **out);
 /* Source/location and form bounds are independent of wire SWF identities. */
 #define FVM_MOVIE_SOURCE_MAX_BYTES 4096U /* Maximum retained source provenance bytes. */
 #define FVM_FORM_MAX_FIELDS 65536U       /* Bound decoded loadVariables assignments. */
 #define FVM_FORM_HEX_ALPHA 10            /* First hexadecimal letter digit. */
 #define FVM_FORM_HEX_RADIX 16            /* Percent-escape digit radix. */
 #define FVM_FORM_ESCAPE_BYTES 3U         /* Percent marker and exactly two hexadecimal digits. */
-    /* Store a copied counted nonempty source location on a same-context clip's private graph.
+
+
+/* Store a copied counted nonempty source location on a same-context clip's private graph.
      * Owner thread, outside GC/teardown. No script callback. Invalid input preserves prior source.
      */
-    FVM_API FVM_Result fvm_movieclip_set_source(FVM_Context *, FVM_Object *, const char *, size_t);
-    /* Read nearest native ancestor source; NOT_FOUND/errors preserve required output.
+FVM_API FVM_Result fvm_movieclip_set_source(FVM_Context *, FVM_Object *, const char *, size_t);
+
+
+/* Read nearest native ancestor source; NOT_FOUND/errors preserve required output.
      * Returned string is borrowed managed storage: retain the clip across later GC. No callbacks.
      */
-    FVM_API FVM_Result fvm_movieclip_get_source(FVM_Context *, FVM_Object *, FVM_Value *out);
-    /* Import a strict supported SWF into an existing clip without changing its identity/placement.
+FVM_API FVM_Result fvm_movieclip_get_source(FVM_Context *, FVM_Object *, FVM_Value *out);
+
+
+/* Import a strict supported SWF into an existing clip without changing its identity/placement.
      * Retain host/script own properties, remove old child bindings and detach old children.
      * Runs no frame action. All allocation precedes publication; import/OOM errors preserve target.
      * Store source provenance with the new content. Root streaming audio remains unsupported here.
      * Owner thread outside active VM/native callbacks and GC/teardown; nested replacement
      * is INVALID_ARGUMENT. The native barrier protects temporary graphs. */
-    FVM_API FVM_Result fvm_movieclip_replace_swf(FVM_Context *, FVM_Object *, const void *, size_t,
-                                                 const char *source, size_t source_size);
-    /* Atomically replace a same-context clip with decoded standalone PNG/GIF/JPEG pixels.
+FVM_API FVM_Result fvm_movieclip_replace_swf(FVM_Context *, FVM_Object *, const void *, size_t,
+                                             const char *source, size_t source_size);
+
+
+/* Atomically replace a same-context clip with decoded standalone PNG/GIF/JPEG pixels.
      * Preserve identity/placement/properties and detach old children as replace_swf does.
      * Owner safe point only; no constructors/getters/frame callbacks. Caller borrows bytes/source.
      * Requires image codecs; unknown/unsupported formats return UNSUPPORTED, malformed input
@@ -181,22 +232,28 @@ extern "C"
      * SWF_DEFAULT_LIMIT. PNG/GIF require a loaded SWF8 profile, JPEG SWF6; native clips without a
      * profile are allowed. Animated/partial-canvas GIF remains unsupported. Alpha uses straight
      * RGBA storage. */
-    FVM_API FVM_Result fvm_movieclip_replace_image(FVM_Context *, FVM_Object *, const void *,
-                                                   size_t, const char *source, size_t source_size);
-    /* Dispatch complete SWF or image bytes by signature to the corresponding atomic operation.
+FVM_API FVM_Result fvm_movieclip_replace_image(FVM_Context *, FVM_Object *, const void *,
+                                               size_t, const char *source, size_t source_size);
+
+
+/* Dispatch complete SWF or image bytes by signature to the corresponding atomic operation.
      * Same ownership/safe-point/error rules; an invalid SWF never falls back to image decoding. */
-    FVM_API FVM_Result fvm_movieclip_replace_resource(FVM_Context *, FVM_Object *, const void *,
-                                                      size_t, const char *source,
-                                                      size_t source_size);
+FVM_API FVM_Result fvm_movieclip_replace_resource(FVM_Context *, FVM_Object *, const void *,
+                                                  size_t, const char *source,
+                                                  size_t source_size);
 /* Bound physical ancestry queries independently of script paths. */
 #define FVM_MOVIECLIP_QUERY_MAX_DEPTH 1024U
-    /* Query attachment through native parent edges, including clip==ancestor, without script
+
+
+/* Query attachment through native parent edges, including clip==ancestor, without script
      * getters or lockroot interpretation. Detached nodes along the selected chain return false.
      * Same-context instances required; errors/OOM/cyclic-overlong chains preserve *out.
      * Owner thread outside GC/teardown. Caller retains the borrowed clips through this call. */
-    FVM_API FVM_Result fvm_movieclip_attached_to(FVM_Context *, FVM_Object *clip,
-                                                 FVM_Object *ancestor, int *out);
-    /* Atomically clear contents while retaining clip identity, placement, own properties,
+FVM_API FVM_Result fvm_movieclip_attached_to(FVM_Context *, FVM_Object *clip,
+                                             FVM_Object *ancestor, int *out);
+
+
+/* Atomically clear contents while retaining clip identity, placement, own properties,
      * prototype, lockroot and retained clip handlers. Detach old children and remove their
      * matching bindings; externally retained children preserve their prior source base.
      * Publish one stopped empty frame with no drawing or old SWF dictionary/actions.
@@ -204,14 +261,16 @@ extern "C"
      * Owner safe point only: outside AVM1/native callbacks, GC/teardown and sound delivery.
      * OOM/validation failures preserve contents. Host owns independent audio/transport lifetime.
      * Does not cancel host requests or implement the full historical Flash unload lifecycle. */
-    FVM_API FVM_Result fvm_movieclip_unload(FVM_Context *, FVM_Object *);
-    /* Decode bounded form bytes (percent escapes, plus=space, ampersand separators), then
+FVM_API FVM_Result fvm_movieclip_unload(FVM_Context *, FVM_Object *);
+
+
+/* Decode bounded form bytes (percent escapes, plus=space, ampersand separators), then
      * assign counted string properties in order through public setters. Duplicate keys: last wins.
      * Empty keys ignored. Decode WTF-8/percent escapes before mutation; malformed input changes no
      * properties. Invoke optional onData after assignments; setter/handler failures retain prior
      * committed effects. Empty input succeeds. Owner thread; context/target must remain alive.
      * Native collection barrier retains destination during callbacks; no transport occurs here. */
-    FVM_API FVM_Result fvm_object_load_variables(FVM_Context *, FVM_Object *, const void *, size_t);
+FVM_API FVM_Result fvm_object_load_variables(FVM_Context *, FVM_Object *, const void *, size_t);
 #ifdef __cplusplus
 }
 #endif

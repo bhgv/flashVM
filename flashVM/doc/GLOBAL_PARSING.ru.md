@@ -1,7 +1,7 @@
 # Глобальные преобразования и разбор числового префикса — v0.11
 
-[`fvm_standard_install`](../include/flashvm/standard.h#L20) добавляет нативные функции parseInt, parseFloat и String.
-Они вызываются по имени через [`fvm_call`](../include/flashvm/value.h#L138) и AVM1 CallFunction. Конфликты имён
+[`fvm_standard_install`](../include/flashvm/standard.h#L22) добавляет нативные функции parseInt, parseFloat и String.
+Они вызываются по имени через [`fvm_call`](../include/flashvm/value.h#L204) и AVM1 CallFunction. Конфликты имён
 проверяются до установки; публикация атомарна, повторная установка проверяет методы.
 
 String() без аргументов возвращает пустую строку. С аргументом используется
@@ -36,7 +36,7 @@ parseFloat после преобразования и пропуска проб�
 преобразования, конфликты установки и отказы выделения памяти в каждой новой
 функции. Тесты: global_parsing.c, global_parsing_avm1.cpp, error_allocation.cpp.
 Мост вызова C теперь перехватывает std::bad_alloc при поиске имени и выполнении
-callback, возвращая [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44).
+callback, возвращая [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46).
 
 Десятичный префикс использует прежний независимый от локали парсер: правильное
 округление на всех границах binary64 пока не доказано. Последовательное накопление
@@ -166,7 +166,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../include/flashvm/value.h#L204) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
 <!-- source-links:end -->

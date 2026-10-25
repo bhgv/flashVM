@@ -5,9 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #ifndef _WIN32
 #include <unistd.h>
+
 #endif
+
+
 /* Honor an explicit TMPDIR without insecure predictable temporary names.
  * Unlink immediately: the stream alone owns the staged output. */
 FILE *fir_temporary(void)
@@ -21,10 +25,14 @@ FILE *fir_temporary(void)
         int fd;
         FILE *stream;
         if (length > 4096)
+        {
             return NULL;
+        }
         path = (char *)malloc(length + 24);
         if (!path)
+        {
             return NULL;
+        }
         snprintf(path, length + 24, "%s/fir1-XXXXXX", directory);
         fd = mkstemp(path);
         if (fd < 0)
@@ -41,14 +49,19 @@ FILE *fir_temporary(void)
         free(path);
         stream = fdopen(fd, "w+b");
         if (!stream)
+        {
             close(fd);
+        }
         return stream;
     }
 #endif
     return tmpfile();
 }
+
 /* Shared input encoding check, independent of either generated parser. */
 #include <stddef.h>
+
+
 /* UTF-8 validation rejects overlong sequences, surrogates and values above
  * U+10FFFF. Comments may contain Unicode too; NUL is never an EOF shortcut. */
 int fir_utf8(const unsigned char *text, size_t n)
@@ -62,17 +75,25 @@ int fir_utf8(const unsigned char *text, size_t n)
         if (remaining)
         {
             if (c < low || c > high)
+            {
                 return 0;
+            }
             --remaining;
             low = 0x80;
             high = 0xbf;
         }
         else if (!c)
+        {
             return 0;
+        }
         else if (c < 0x80)
+        {
             continue;
+        }
         else if (c >= 0xc2 && c <= 0xdf)
+        {
             remaining = 1;
+        }
         else if (c >= 0xe0 && c <= 0xef)
         {
             remaining = 2;
@@ -86,7 +107,9 @@ int fir_utf8(const unsigned char *text, size_t n)
             high = c == 0xf4 ? 0x8f : 0xbf;
         }
         else
+        {
             return 0;
+        }
     }
     return !remaining;
 }

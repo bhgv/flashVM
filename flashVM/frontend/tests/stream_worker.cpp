@@ -1,4 +1,6 @@
 /* Real SDL dummy queue receives only native PCM authorized by actual MovieClip entry. */
+#include <stdio.h>
+#include <stdlib.h>
 #include "../common/audio.h"
 #include "../../tests/swf_sound_fixture.hpp"
 #include "../../tests/swf_mp3_fixture.hpp"
@@ -6,45 +8,77 @@
 #include "flashvm/standard.h"
 #include "flashvm/gc.h"
 #include "flashvm/execution_mode.h"
-#include <cassert>
+
 using namespace sound_fixture;
+
+
 static void method(FVM_Context *c, FVM_Object *o, const char *name, unsigned frame = 0)
 {
     FVM_Value a, v;
     fvm_value_number(&a, frame);
-    assert(fvm_object_call(c, o, name, frame ? 1 : 0, frame ? &a : 0, &v) == FVM_OK);
+    if (!(fvm_object_call(c, o, name, frame ? 1 : 0, frame ? &a : 0, &v) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
+
+
 static FVM_SWFStreamOutputInfo observe(FVM_DesktopAudio *audio)
 {
     FVM_SWFStreamOutputInfo info;
     info.struct_size = sizeof(info);
-    assert(fvm_desktop_audio_stream_info(audio, &info) == FVM_OK);
+    if (!(fvm_desktop_audio_stream_info(audio, &info) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return info;
 }
+
+
 static void wait_frames(FVM_DesktopAudio *audio, double count)
 {
     for (unsigned i = 0; i < 200; ++i)
     {
-        assert(SDL_AtomicGet(&audio->error) == FVM_OK);
+        if (!(SDL_AtomicGet(&audio->error) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         if (observe(audio).submitted_frames == count)
+        {
             return;
+        }
         SDL_Delay(5);
     }
-    assert(false);
+    if (!(false))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
+
+
 int main()
 {
     for (unsigned mode = 0; mode < 2; ++mode)
+    {
         for (unsigned layout = 0; layout < 4; ++layout)
         {
             if (mode && !fvm_jit_available())
+            {
                 continue;
+            }
             FVM_Config cfg;
             FVM_Runtime *runtime = 0;
             FVM_Context *c = 0;
-            assert(fvm_config_init(&cfg) == FVM_OK &&
-                   fvm_runtime_create(&cfg, &runtime) == FVM_OK &&
-                   fvm_context_create(runtime, &c) == FVM_OK);
+            if (!(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &runtime) == FVM_OK &&
+                  fvm_context_create(runtime, &c) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             Bytes tags, head, pcm, empty;
             head.push_back(0x0e);
             head.push_back(0x3e);
@@ -53,11 +87,19 @@ int main()
             if (layout == 3)
             {
                 const mp3_fixture::Fixture &fixture = mp3_fixture::fixtures[0];
-                tags.clear(); head.clear();
-                head.push_back(0x0e); head.push_back(0x2e); word(head, 1); word(head, 529);
+                tags.clear();
+                head.clear();
+                head.push_back(0x0e);
+                head.push_back(0x2e);
+                word(head, 1);
+                word(head, 529);
                 tag(tags, 18, head);
-                word(pcm, (unsigned)fixture.frames); word(pcm, 529);
-                for (size_t byte = 0; byte < fixture.size; ++byte) pcm.push_back(fixture.data[byte]);
+                word(pcm, (unsigned)fixture.frames);
+                word(pcm, 529);
+                for (size_t byte = 0; byte < fixture.size; ++byte)
+                {
+                    pcm.push_back(fixture.data[byte]);
+                }
             }
             else if (layout == 2)
             {
@@ -70,18 +112,26 @@ int main()
                 /* Four-bit mono: width=2, predictor=1000, index=0, all differential codes zero. */
                 pcm.resize((2 + 22 + 4095 * 4 + 7) / 8);
                 for (size_t i = 0; i < pcm.size(); ++i)
+                {
                     pcm[i] = 0;
+                }
                 unsigned fields[3] = {2, 1000, 0}, widths[3] = {2, 16, 6}, bit = 0;
                 for (unsigned field = 0; field < 3; ++field)
+                {
                     for (unsigned j = widths[field]; j; --j)
                     {
                         pcm[bit / 8] |= ((fields[field] >> (j - 1)) & 1) << (7 - bit % 8);
                         ++bit;
                     }
+                }
             }
             else
+            {
                 for (unsigned i = 0; i < 4410; ++i)
+                {
                     word(pcm, 1000);
+                }
+            }
             tag(tags, 19, pcm);
             tag(tags, 1, empty);
             double first_count = layout == 2 ? 4459 : 4800;
@@ -112,7 +162,9 @@ int main()
             {
                 word(pcm, (unsigned short)-2000);
                 if (layout)
+                {
                     word(pcm, 3000);
+                }
             }
             tag(tags, 19, pcm);
             tag(tags, 1, empty);
@@ -120,86 +172,206 @@ int main()
             Bytes swf = movie(tags, 8);
             swf[12] = 4;
             swf[13] = 0;
-            assert(fvm_load_memory(c, swf.begin(), swf.size()) == FVM_OK &&
-                   fvm_standard_install(c) == FVM_OK);
-            assert(fvm_desktop_audio_validate(c) == FVM_OK);
+            if (!(fvm_load_memory(c, swf.begin(), swf.size()) == FVM_OK && fvm_standard_install(c) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_desktop_audio_validate(c) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             FVM_Object *clip = 0;
-            assert(fvm_movieclip_load_swf_ex(c, swf.begin(), swf.size(), "root",
-                                             FVM_SWF_IMPORT_MUTE_ROOT_STREAMS, &clip) == FVM_OK &&
-                   fvm_gc_pin(c, clip) == FVM_OK);
-            assert(fvm_execution_set_mode(c, mode ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER,
-                                          0) == FVM_OK);
+            if (!(fvm_movieclip_load_swf_ex(
+                      c, swf.begin(), swf.size(), "root", FVM_SWF_IMPORT_MUTE_ROOT_STREAMS, &clip) == FVM_OK &&
+                  fvm_gc_pin(c, clip) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_execution_set_mode(c, mode ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER, 0) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             FVM_DesktopAudio audio;
-            assert(fvm_desktop_audio_open(c, clip, &audio) == FVM_OK && audio.thread &&
-                   audio.stream_source && !audio.output &&
-                   audio.stream_count == (layout ? 3U : 1U));
+            if (!(fvm_desktop_audio_open(c, clip, &audio) == FVM_OK && audio.thread && audio.stream_source &&
+                  !audio.output && audio.stream_count == (layout ? 3U : 1U)))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             SDL_Delay(30);
-            assert(observe(&audio).submitted_frames == 0 && observe(&audio).paused);
-            assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(observe(&audio).submitted_frames == 0 && observe(&audio).paused))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK && fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             wait_frames(&audio, first_count);
             SDL_Delay(130);
-            assert(observe(&audio).submitted_frames ==
-                   first_count); /* Future frame3 held during slow host work. */
+            if (!(observe(&audio).submitted_frames == first_count))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            } /* Future frame3 held during slow host work. */
             method(c, clip, "stop");
-            assert(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             FVM_SWFStreamOutputInfo before = observe(&audio);
-            assert(before.paused);
+            if (!(before.paused))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             SDL_Delay(40);
-            assert(observe(&audio).played_frames == before.played_frames);
-            assert(fvm_movieclip_advance(c, clip, 2) == FVM_OK && fvm_gc_step(c, 0) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(observe(&audio).played_frames == before.played_frames))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_movieclip_advance(c, clip, 2) == FVM_OK && fvm_gc_step(c, 0) == FVM_OK &&
+                  fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             method(c, clip, "play");
-            assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK && fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             SDL_Delay(20);
-            assert(observe(&audio).submitted_frames == first_count); /* Actual frame2 gap. */
-            assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(observe(&audio).submitted_frames == first_count))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            } /* Actual frame2 gap. */
+            if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK && fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             wait_frames(&audio, first_count + 4800);
-            assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK && fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             for (unsigned i = 0; i < 100 && !observe(&audio).eof; ++i)
+            {
                 SDL_Delay(5);
-            assert(observe(&audio).eof);
-            assert(fvm_audio_stop_all(c) == FVM_OK && audio.stops == 1 &&
-                   observe(&audio).submitted_frames == 0);
+            }
+            if (!(observe(&audio).eof))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_audio_stop_all(c) == FVM_OK && audio.stops == 1 && observe(&audio).submitted_frames == 0))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             SDL_Delay(20);
-            assert(observe(&audio).submitted_frames == 0);
+            if (!(observe(&audio).submitted_frames == 0))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             method(c, clip, "gotoAndPlay", 1);
-            assert(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
-            assert(fvm_desktop_audio_pause(&audio, 1) == FVM_OK &&
-                   fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                   fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK);
+            if (!(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_desktop_audio_pause(&audio, 1) == FVM_OK && fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
+                  fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             SDL_Delay(20);
-            assert(observe(&audio).submitted_frames == 0); /* Host/session pause wins over play. */
-            assert(fvm_desktop_audio_tick(&audio) == FVM_OK);
+            if (!(observe(&audio).submitted_frames == 0))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            } /* Host/session pause wins over play. */
+            if (!(fvm_desktop_audio_tick(&audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             wait_frames(&audio, first_count);
             /* Same-frame seek enters entirely between observations; token still forces queue reset.
              */
-            assert(fvm_desktop_audio_pause(&audio, 1) == FVM_OK);
+            if (!(fvm_desktop_audio_pause(&audio, 1) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             method(c, clip, "gotoAndPlay", 1);
-            assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK);
-            assert(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK &&
-                   observe(&audio).submitted_frames == 0);
-            assert(fvm_desktop_audio_tick(&audio) == FVM_OK);
+            if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK && observe(&audio).submitted_frames == 0))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_desktop_audio_tick(&audio) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             wait_frames(&audio, first_count);
             if (layout)
             {
-                assert(fvm_desktop_audio_pause(&audio, 1) == FVM_OK);
+                if (!(fvm_desktop_audio_pause(&audio, 1) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
                 method(c, clip, "gotoAndPlay", 3);
-                assert(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK &&
-                       audio.stream_index == 2 && observe(&audio).submitted_frames == 0);
-                assert(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
-                       fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK &&
-                       fvm_desktop_audio_tick(&audio) == FVM_OK);
+                if (!(fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK && audio.stream_index == 2 &&
+                      observe(&audio).submitted_frames == 0))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(fvm_movieclip_advance(c, clip, 1) == FVM_OK &&
+                      fvm_desktop_audio_timeline(c, clip, &audio) == FVM_OK &&
+                      fvm_desktop_audio_tick(&audio) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
                 wait_frames(&audio, 4800);
             }
-            assert(fvm_desktop_audio_clear(c, &audio) == FVM_OK && !audio.thread && !audio.device &&
-                   !audio.stream_source);
-            assert(fvm_gc_unpin(c, clip) == FVM_OK);
+            if (!(fvm_desktop_audio_clear(c, &audio) == FVM_OK && !audio.thread && !audio.device &&
+                  !audio.stream_source))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_gc_unpin(c, clip) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             fvm_context_destroy(c);
             fvm_runtime_destroy(runtime);
         }
+    }
     return 0;
 }

@@ -66,32 +66,32 @@ authentication, congestion controller, video codec or remote window is installed
 
 | API | Ownership / выполнение |
 | --- | --- |
-| [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L95) | Own the bounded private queue; no worker/VM startup. Release after adapter destruction. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L109) | Own the bounded private queue; no worker/VM startup. Release after adapter destruction. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_create` | Allocate three exact 4096-byte cache slots and register native handlers; partial failures free storage, dispatcher borrowed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L108) | Explicitly grant READ to the trusted local session; wire metadata grants no authority. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_init`](../../../include/flashvm/scontrol.h#L74) | Copy real local buffer ceilings; no active profile or allocation. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L43) | Encode two immutable direction-local type declarations; input is borrowed only during the call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L66) | Wrap metadata/type declarations as compact checked records; output/used atomic on error. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L128) | Explicitly grant READ to the trusted local session; wire metadata grants no authority. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_init`](../../../include/flashvm/scontrol.h#L86) | Copy real local buffer ceilings; no active profile or allocation. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L51) | Encode two immutable direction-local type declarations; input is borrowed only during the call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L76) | Wrap metadata/type declarations as compact checked records; output/used atomic on error. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_options_init` | Initialize the native playback descriptor before choosing mute/frame limit/interpreter. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_frame_observer_init` | Initialize exact observer ABI; callback borrows owner state through runner return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_run_source_offscreen` | Run real linked SWF/raster synchronously without SDL video/events; all borrowed bytes live through return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_capture` | Copy callback pixels into a spare cache slot; no source pointer retained, BUSY requires explicit host policy. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L115) | Copy one private cache request; accepted ID must later be taken or cancelled/taken. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_pump`](../../../include/flashvm/rdispatch.h#L119) | Execute only this private pure-cache handler on the owner, one bounded job; never pump arbitrary VM work here. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L126) | Copy and acknowledge the terminal reply, releasing the request slot. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L121) | Cancel queued work if local pumping fails; take still acknowledges the cancellation reply. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L139) | Copy one private cache request; accepted ID must later be taken or cancelled/taken. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_pump`](../../../include/flashvm/rdispatch.h#L145) | Execute only this private pure-cache handler on the owner, one bounded job; never pump arbitrary VM work here. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L156) | Copy and acknowledge the terminal reply, releasing the request slot. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L149) | Cancel queued work if local pumping fails; take still acknowledges the cancellation reply. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_read` | Strictly decode owned ACQUIRE metadata, including exact lease and geometry. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_propose_at`](../../../include/flashvm/scontrol.h#L101) | Request a future capture-sequence activation boundary; keep prior active profile unchanged. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_write`](../../../include/flashvm/scontrol.h#L67) | Encode a small tag-zero proposal/ACK, no slot padding. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_read`](../../../include/flashvm/scontrol.h#L69) | Verify service bytes and copy exactly one message; trailing records stay unconsumed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_respond`](../../../include/flashvm/scontrol.h#L83) | Choose no-greater peer/local limits into pending ACK state. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_commit`](../../../include/flashvm/scontrol.h#L90) | Activate only exact/correlated ACK after reliable host queueing, with the same boundary. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_scontrol_active`](../../../include/flashvm/scontrol.h#L108) | Copy committed selected values; UNKNOWN before agreement; preserve outputs on errors. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_propose_at`](../../../include/flashvm/scontrol.h#L123) | Request a future capture-sequence activation boundary; keep prior active profile unchanged. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_write`](../../../include/flashvm/scontrol.h#L75) | Encode a small tag-zero proposal/ACK, no slot padding. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_read`](../../../include/flashvm/scontrol.h#L79) | Verify service bytes and copy exactly one message; trailing records stay unconsumed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_respond`](../../../include/flashvm/scontrol.h#L99) | Choose no-greater peer/local limits into pending ACK state. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_commit`](../../../include/flashvm/scontrol.h#L108) | Activate only exact/correlated ACK after reliable host queueing, with the same boundary. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_scontrol_active`](../../../include/flashvm/scontrol.h#L132) | Copy committed selected values; UNKNOWN before agreement; preserve outputs on errors. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_write_part` | Check current READ/lease owner and encode one agreed-size retained range without allocating or touching VM. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_sinteger_write`](../../../include/flashvm/srecord.h#L56) | Encode two portable fields for explicit lease release; no native-endian struct serialization. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_sinteger_write`](../../../include/flashvm/srecord.h#L62) | Encode two portable fields for explicit lease release; no native-endian struct serialization. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_revoke` | Quiesced owner removes session rights and every remaining pin, including error paths. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_resource_frame_destroy` | Unregister and free cache only after callbacks; successful destroy nulls its pointer. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Free a quiesced queue after its adapters and terminal replies are gone. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L163) | Free a quiesced queue after its adapters and terminal replies are gone. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | `fvm_desktop_shutdown` | Verify runner/SDL ownership ended; final native pixel export deliberately follows this call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 
 ## Feedback-driven real frame replay (v0.746)
@@ -128,12 +128,12 @@ congestion controller, authenticated remote service or video codec.
 
 | API | Ownership / результат |
 | --- | --- |
-| [`fvm_sadapt_config_init`](../../../include/flashvm/sadapt.h#L96) | Fill illustrative defaults before explicit demo overrides; no allocation. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
-| [`fvm_sadapt_init`](../../../include/flashvm/sadapt.h#L100) | Validate and copy three supported profiles; keep owner state at its stable address until completion. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
-| [`fvm_sadapt_feedback_read`](../../../include/flashvm/sadapt.h#L119) | Verify one bounded compact report, copying only on success; all three input records are decoded before output opens. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
-| [`fvm_sadapt_observe`](../../../include/flashvm/sadapt.h#L106) | Consume the preceding image window and return a pending candidate without changing framing or sending traffic. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
-| [`fvm_sadapt_feedback_write`](../../../include/flashvm/sadapt.h#L117) | Store a checked reverse-direction report in the demonstration transcript; caller owns output bytes. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
-| [`fvm_sadapt_commit`](../../../include/flashvm/sadapt.h#L111) | Confirm exact selected geometry only after reliable control ACK; mismatch aborts the example. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_config_init`](../../../include/flashvm/sadapt.h#L104) | Fill illustrative defaults before explicit demo overrides; no allocation. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_init`](../../../include/flashvm/sadapt.h#L110) | Validate and copy three supported profiles; keep owner state at its stable address until completion. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_feedback_read`](../../../include/flashvm/sadapt.h#L139) | Verify one bounded compact report, copying only on success; all three input records are decoded before output opens. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_observe`](../../../include/flashvm/sadapt.h#L118) | Consume the preceding image window and return a pending candidate without changing framing or sending traffic. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_feedback_write`](../../../include/flashvm/sadapt.h#L135) | Store a checked reverse-direction report in the demonstration transcript; caller owns output bytes. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
+| [`fvm_sadapt_commit`](../../../include/flashvm/sadapt.h#L125) | Confirm exact selected geometry only after reliable control ACK; mismatch aborts the example. [Contract](../../../doc/CHANNEL_ADAPTATION.md). |
 
 ```sh
 # Controlled demonstration input; replace with real trusted host measurements.
@@ -154,27 +154,27 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../../../include/flashvm/rdispatch.h#L121) |
-| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
-| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
-| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
-| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
-| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../../../include/flashvm/rdispatch.h#L119) |
-| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
-| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:111](../../../include/flashvm/sadapt.h#L111) |
-| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:96](../../../include/flashvm/sadapt.h#L96) |
-| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:119](../../../include/flashvm/sadapt.h#L119) |
-| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:117](../../../include/flashvm/sadapt.h#L117) |
-| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:100](../../../include/flashvm/sadapt.h#L100) |
-| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:106](../../../include/flashvm/sadapt.h#L106) |
-| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:43](../../../include/flashvm/sbindings.h#L43) |
-| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:108](../../../include/flashvm/scontrol.h#L108) |
-| `fvm_scontrol_commit` | function | [include/flashvm/scontrol.h:90](../../../include/flashvm/scontrol.h#L90) |
-| `fvm_scontrol_init` | function | [include/flashvm/scontrol.h:74](../../../include/flashvm/scontrol.h#L74) |
-| `fvm_scontrol_propose_at` | function | [include/flashvm/scontrol.h:101](../../../include/flashvm/scontrol.h#L101) |
-| `fvm_scontrol_read` | function | [include/flashvm/scontrol.h:69](../../../include/flashvm/scontrol.h#L69) |
-| `fvm_scontrol_respond` | function | [include/flashvm/scontrol.h:83](../../../include/flashvm/scontrol.h#L83) |
-| `fvm_scontrol_write` | function | [include/flashvm/scontrol.h:67](../../../include/flashvm/scontrol.h#L67) |
-| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:56](../../../include/flashvm/srecord.h#L56) |
-| `fvm_srecord_write` | function | [include/flashvm/srecord.h:66](../../../include/flashvm/srecord.h#L66) |
+| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../../../include/flashvm/rdispatch.h#L149) |
+| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../../../include/flashvm/rdispatch.h#L109) |
+| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../../../include/flashvm/rdispatch.h#L163) |
+| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:128](../../../include/flashvm/rdispatch.h#L128) |
+| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:139](../../../include/flashvm/rdispatch.h#L139) |
+| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:145](../../../include/flashvm/rdispatch.h#L145) |
+| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:156](../../../include/flashvm/rdispatch.h#L156) |
+| `fvm_sadapt_commit` | function | [include/flashvm/sadapt.h:125](../../../include/flashvm/sadapt.h#L125) |
+| `fvm_sadapt_config_init` | function | [include/flashvm/sadapt.h:104](../../../include/flashvm/sadapt.h#L104) |
+| `fvm_sadapt_feedback_read` | function | [include/flashvm/sadapt.h:139](../../../include/flashvm/sadapt.h#L139) |
+| `fvm_sadapt_feedback_write` | function | [include/flashvm/sadapt.h:135](../../../include/flashvm/sadapt.h#L135) |
+| `fvm_sadapt_init` | function | [include/flashvm/sadapt.h:110](../../../include/flashvm/sadapt.h#L110) |
+| `fvm_sadapt_observe` | function | [include/flashvm/sadapt.h:118](../../../include/flashvm/sadapt.h#L118) |
+| `fvm_sbindings_payload_write` | function | [include/flashvm/sbindings.h:51](../../../include/flashvm/sbindings.h#L51) |
+| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:132](../../../include/flashvm/scontrol.h#L132) |
+| `fvm_scontrol_commit` | function | [include/flashvm/scontrol.h:108](../../../include/flashvm/scontrol.h#L108) |
+| `fvm_scontrol_init` | function | [include/flashvm/scontrol.h:86](../../../include/flashvm/scontrol.h#L86) |
+| `fvm_scontrol_propose_at` | function | [include/flashvm/scontrol.h:123](../../../include/flashvm/scontrol.h#L123) |
+| `fvm_scontrol_read` | function | [include/flashvm/scontrol.h:79](../../../include/flashvm/scontrol.h#L79) |
+| `fvm_scontrol_respond` | function | [include/flashvm/scontrol.h:99](../../../include/flashvm/scontrol.h#L99) |
+| `fvm_scontrol_write` | function | [include/flashvm/scontrol.h:75](../../../include/flashvm/scontrol.h#L75) |
+| `fvm_sinteger_write` | function | [include/flashvm/srecord.h:62](../../../include/flashvm/srecord.h#L62) |
+| `fvm_srecord_write` | function | [include/flashvm/srecord.h:76](../../../include/flashvm/srecord.h#L76) |
 <!-- source-links:end -->

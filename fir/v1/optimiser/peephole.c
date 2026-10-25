@@ -4,11 +4,14 @@
 #include "fir.h"
 #include <stdint.h>
 
+
 /* Interpret a modulo-2^32 result without implementation-defined unsigned casts. */
 static int32_t signed_bits(uint32_t bits)
 {
     return bits <= INT32_MAX ? (int32_t)bits : (int32_t)(-1 - (int32_t)(UINT32_MAX - bits));
 }
+
+
 /* Fold known branches, find live blocks (including cycles), and compact label
  * indices. Instruction/value indices stay stable for definition references. */
 static int simplify_cfg(FirModule *m)
@@ -38,7 +41,9 @@ static int simplify_cfg(FirModule *m)
         {
             FirInstruction *in = &m->instructions[i];
             if (in->removed || !live[in->block])
+            {
                 continue;
+            }
             if (in->yes >= 0 && !live[in->yes])
             {
                 live[in->yes] = 1;
@@ -55,32 +60,46 @@ static int simplify_cfg(FirModule *m)
     {
         mapping[b] = live[b] ? count++ : -1;
         if (live[b])
+        {
             m->blocks[mapping[b]] = m->blocks[b];
+        }
         else
+        {
             changed = 1;
+        }
     }
     for (i = 0; i < m->count; ++i)
     {
         FirInstruction *in = &m->instructions[i];
         if (!live[in->block])
+        {
             in->removed = 1;
+        }
         /* Removed instructions may still be visited in later iterations. Keep
          * their block field valid without reviving them or their operands. */
         in->block = mapping[in->block] < 0 ? 0 : mapping[in->block];
         if (in->yes >= 0)
+        {
             in->yes = mapping[in->yes];
+        }
         if (in->no >= 0)
+        {
             in->no = mapping[in->no];
+        }
     }
     m->block_count = count;
     return changed;
 }
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
     int changed, i, j;
     if (!fir_verify(m, error, cap))
+    {
         return 0;
+    }
     do
     {
         changed = 0;
@@ -89,7 +108,9 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             FirInstruction *in = &m->instructions[i];
             FirInstruction *a, *b;
             if (in->removed)
+            {
                 continue;
+            }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
             if (in->op >= O_ADD && in->op <= O_EQ && a->op == O_I32 && b->op == O_I32)
@@ -122,8 +143,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 for (j = 0; j < i; ++j)
                 {
                     FirInstruction *old = &m->instructions[j];
-                    if (!old->removed && old->block == in->block && old->op == in->op &&
-                        old->a == in->a && old->b == in->b && old->type == in->type)
+                    if (!old->removed && old->block == in->block && old->op == in->op && old->a == in->a &&
+                        old->b == in->b && old->type == in->type)
                     {
                         in->op = O_COPY;
                         in->a = old->result;
@@ -138,9 +159,13 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 for (j = 0; j < m->count; ++j)
                 {
                     if (m->instructions[j].a == in->result)
+                    {
                         m->instructions[j].a = in->a;
+                    }
                     if (m->instructions[j].b == in->result)
+                    {
                         m->instructions[j].b = in->a;
+                    }
                 }
                 in->removed = 1;
                 changed = 1;
@@ -154,11 +179,17 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             FirInstruction *in = &m->instructions[i];
             int used = 0;
             if (in->removed || in->result < 0 || fir_effects(in->op) != 0)
+            {
                 continue;
+            }
             for (j = 0; j < m->count; ++j)
+            {
                 if (!m->instructions[j].removed &&
                     (m->instructions[j].a == in->result || m->instructions[j].b == in->result))
+                {
                     used = 1;
+                }
+            }
             if (!used)
             {
                 in->removed = 1;

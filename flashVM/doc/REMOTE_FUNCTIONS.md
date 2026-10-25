@@ -8,7 +8,7 @@ shared with channel/mutex capabilities. Each external call currently opens its o
 connection. Requests and replies carry target, source process/context and random
 call IDs; replies with mismatched IDs are rejected.
 
-Bind the original context with [`fvm_context_set_broker`](../include/flashvm/capability.h#L42), then enable
+Bind the original context with [`fvm_context_set_broker`](../include/flashvm/capability.h#L58), then enable
 `fvm_context_function_transfer(context, 1)`. Serialize/send functions while the
 host owns this context. Afterwards `fvm_context_function_serve(context, 1)` hands
 an idle context exclusively to the service thread. The host must not access its
@@ -33,7 +33,7 @@ function properties/prototype or a certified transparent constructor.
 
 Calls execute serially across one broker. Nested function calls within the same authority dispatch directly on its
 thread, preserving graph copies and original heap leases. The total nesting
-limit is 32 active calls; exceeding it returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Blocking broker resource operations
+limit is 32 active calls; exceeding it returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). Blocking broker resource operations
 from the service callback and cross-authority callback cycles are not supported
 as an unrestricted reentrant execution model. Network calls have a two-second socket timeout;
 lost replies never trigger automatic retry because side effects may already
@@ -87,8 +87,8 @@ without arguments displays usage and returns immediately.
 
 In v0.403, `fvm_context_function_revoke(context, function)` retires one canonical
 original target and drops only its broker-owned GC pin. Reclaim the source with
-`function_serve(context, 0)` first: a serving or active source returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43)
-before any object read. No matching export returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47). Existing
+`function_serve(context, 0)` first: a serving or active source returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45)
+before any object read. No matching export returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49). Existing
 interfaces become stale; re-export creates a fresh URI while other targets and
 host pins remain live. Broker target tokens now occupy fixed inline storage,
 so revoke, function detachment and entry removal during stop do not allocate
@@ -105,7 +105,7 @@ function's authority pin until source detachment.
 
 In v0.406, broker startup contains member-constructor allocation exceptions
 inside the C API and preserves explicit failure statuses. A failed valid startup
-returns a null handle; allocation failures report [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44). The startup
+returns a null handle; allocation failures report [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46). The startup
 sweep covers constructor/runtime/string boundaries, occupied listener failure and
 successful reuse of the port after stopping the original listener.
 
@@ -124,12 +124,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_context_function_revoke` | function | [include/flashvm/capability.h:61](../include/flashvm/capability.h#L61) |
-| `fvm_context_function_serve` | function | [include/flashvm/capability.h:56](../include/flashvm/capability.h#L56) |
-| `fvm_context_function_transfer` | function | [include/flashvm/capability.h:51](../include/flashvm/capability.h#L51) |
-| `fvm_context_set_broker` | function | [include/flashvm/capability.h:42](../include/flashvm/capability.h#L42) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_context_function_revoke` | function | [include/flashvm/capability.h:87](../include/flashvm/capability.h#L87) |
+| `fvm_context_function_serve` | function | [include/flashvm/capability.h:80](../include/flashvm/capability.h#L80) |
+| `fvm_context_function_transfer` | function | [include/flashvm/capability.h:73](../include/flashvm/capability.h#L73) |
+| `fvm_context_set_broker` | function | [include/flashvm/capability.h:58](../include/flashvm/capability.h#L58) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

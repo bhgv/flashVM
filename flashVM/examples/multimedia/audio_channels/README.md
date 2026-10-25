@@ -42,15 +42,15 @@ sink на системную библиотеку host заранее откры
 
 ## Демонстрируемые API
 
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82) — копирование output и публикация inactive: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
-- [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84) — проверенный borrowed PCM: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_write).
-- [`fvm_audio_channel_active`](../../../include/flashvm/multimedia.h#L90) — диагностический флаг: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_active).
-- [`fvm_audio_channel_close`](../../../include/flashvm/multimedia.h#L88) — остановка и снятие регистрации: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_close).
-- [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — действительное исполнение StopSounds: [общая семантика](../../../doc/AUDIO_CHANNELS.md#scope).
-- [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — runtime/context и порядок cleanup: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal audio cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L100) — копирование output и публикация inactive: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
+- [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L104) — проверенный borrowed PCM: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_write).
+- [`fvm_audio_channel_active`](../../../include/flashvm/multimedia.h#L116) — диагностический флаг: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_active).
+- [`fvm_audio_channel_close`](../../../include/flashvm/multimedia.h#L112) — остановка и снятие регистрации: [контракт](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_close).
+- [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L46) — действительное исполнение StopSounds: [общая семантика](../../../doc/AUDIO_CHANNELS.md#scope).
+- [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) — runtime/context и порядок cleanup: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal audio cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
-Связанные, но не вызываемые в этом примере: [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L92),
-[`fvm_audio_channel_stop`](../../../include/flashvm/multimedia.h#L86) и script `stopAllSounds()` — [полное руководство](../../../doc/AUDIO_CHANNELS.md).
+Связанные, но не вызываемые в этом примере: [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L120),
+[`fvm_audio_channel_stop`](../../../include/flashvm/multimedia.h#L108) и script `stopAllSounds()` — [полное руководство](../../../doc/AUDIO_CHANNELS.md).
 
 ## English
 
@@ -73,16 +73,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:90](../../../include/flashvm/multimedia.h#L90) |
-| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:88](../../../include/flashvm/multimedia.h#L88) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:86](../../../include/flashvm/multimedia.h#L86) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../../../include/flashvm/multimedia.h#L84) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../../../include/flashvm/multimedia.h#L92) |
-| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../../../include/flashvm/avm1.h#L38) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:116](../../../include/flashvm/multimedia.h#L116) |
+| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:112](../../../include/flashvm/multimedia.h#L112) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:100](../../../include/flashvm/multimedia.h#L100) |
+| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:108](../../../include/flashvm/multimedia.h#L108) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:104](../../../include/flashvm/multimedia.h#L104) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:120](../../../include/flashvm/multimedia.h#L120) |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:46](../../../include/flashvm/avm1.h#L46) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
 <!-- source-links:end -->

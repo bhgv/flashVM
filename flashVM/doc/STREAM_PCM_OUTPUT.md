@@ -7,7 +7,7 @@ its behavior. Hosts still own frame authorization and device queue scheduling.
 
 [Русский](STREAM_PCM_OUTPUT.ru.md), [conversion](STREAM_PCM_CONVERSION.md).
 `swf_stream_output.h` connects a prepared native converter to the existing
-[FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L16) contract. The producer, retry buffer and converter are
+[FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L18) contract. The producer, retry buffer and converter are
 caller-owned; init/pump/pause/info/seek allocate nothing and never access a VM.
 This is bounded FIFO production, not desktop SWF stream timeline playback.
 
@@ -54,11 +54,11 @@ and resumes explicitly. Already heard audio cannot be rolled back.
 
 | API | Contract |
 | --- | --- |
-| [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L52) | Copy backend and borrow caller native objects; empty queue and matching geometry required. INVALID_ARGUMENT for descriptors/bounds, UNSUPPORTED for insufficient double precision, backend statuses propagate. No allocation or source advancement. |
-| [`fvm_swf_stream_output_pump`](../include/flashvm/swf_stream_output.h#L61) | Observe budget, prepare/retry one block, copy through backend. Write failure retains pending bytes; empty markers OK/0; EOF/backpressure NOT_FOUND. Accepted output clears first; errors may preserve a newly prepared pending block intentionally. |
-| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L114) | Acknowledge exactly 0/1 pause state; no source/FIFO clearing or priming. Failure preserves acknowledged pause. |
-| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L126) | Copy clock/chunk only after a valid backlog observation. Exact struct_size required; error preserves output. No source read/allocation. |
-| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L144) | Validate source position, pause/clear, then reset source grid/pending/epoch. Staged failure contract above; invalid source positions trigger no backend side effects. |
+| [`fvm_swf_stream_output_init`](../include/flashvm/swf_stream_output.h#L58) | Copy backend and borrow caller native objects; empty queue and matching geometry required. INVALID_ARGUMENT for descriptors/bounds, UNSUPPORTED for insufficient double precision, backend statuses propagate. No allocation or source advancement. |
+| [`fvm_swf_stream_output_pump`](../include/flashvm/swf_stream_output.h#L69) | Observe budget, prepare/retry one block, copy through backend. Write failure retains pending bytes; empty markers OK/0; EOF/backpressure NOT_FOUND. Accepted output clears first; errors may preserve a newly prepared pending block intentionally. |
+| [`fvm_swf_stream_output_pause`](../include/flashvm/swf_stream_output.h#L132) | Acknowledge exactly 0/1 pause state; no source/FIFO clearing or priming. Failure preserves acknowledged pause. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L148) | Copy clock/chunk only after a valid backlog observation. Exact struct_size required; error preserves output. No source read/allocation. |
+| [`fvm_swf_stream_output_seek`](../include/flashvm/swf_stream_output.h#L170) | Validate source position, pause/clear, then reset source grid/pending/epoch. Staged failure contract above; invalid source positions trigger no backend side effects. |
 
 ## Build and evidence
 
@@ -126,8 +126,8 @@ movie-frame authorization, not host tick/presentation counts.
 
 | API | Ownership and errors |
 | --- | --- |
-| [`fvm_swf_stream_output_next_frame`](../include/flashvm/swf_stream_output.h#L65) | Copy pending/indexed next movie frame; source/backend ownership unchanged. No callback/VM/allocation. INVALID_ARGUMENT for null/reentry, NOT_FOUND for EOF; preserve output on failure. |
-| [`fvm_swf_stream_output_pump_until`](../include/flashvm/swf_stream_output.h#L74) | Same retry/backpressure/accepted=0 contract as pump; max_movie_frame is explicit authorization, zero blocks all frames. Future/pending-too-new returns NOT_FOUND; no conversion/write for that block. Seek/clear remains the host's backward-navigation operation. |
+| [`fvm_swf_stream_output_next_frame`](../include/flashvm/swf_stream_output.h#L75) | Copy pending/indexed next movie frame; source/backend ownership unchanged. No callback/VM/allocation. INVALID_ARGUMENT for null/reentry, NOT_FOUND for EOF; preserve output on failure. |
+| [`fvm_swf_stream_output_pump_until`](../include/flashvm/swf_stream_output.h#L86) | Same retry/backpressure/accepted=0 contract as pump; max_movie_frame is explicit authorization, zero blocks all frames. Future/pending-too-new returns NOT_FOUND; no conversion/write for that block. Seek/clear remains the host's backward-navigation operation. |
 
 Native contract tests cover gate zero, source frame gaps, failed future retries,
 empty markers, pending precedence, unchanged positions/bytes and EOF with retained
@@ -179,7 +179,7 @@ the intended safe point; failed ticks/actions may leave committed effects.
 
 ## Explicit frame-based source seek
 
-[`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L150) accepts a positive movie frame and binary-searches
+[`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L178) accepts a positive movie frame and binary-searches
 the immutable segment index for its first block at/after that frame, then delegates
 to the existing staged pause/clear/seek. A frame gap selects the later block and
 the gate still holds it until authorized. Beyond the last block selects source EOF.
@@ -196,14 +196,14 @@ The actual interpreter/native-JIT integration test uses this helper for gotoAndS
 
 | API | Ownership and errors |
 | --- | --- |
-| [`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L150) | Resolve first indexed block >= positive frame without VM/allocation, then pause/clear/reset epoch. Gaps wait, past end seeks EOF. Invalid metadata/arguments cause no backend effects; later callback failures obey staged seek semantics. |
+| [`fvm_swf_stream_output_seek_frame`](../include/flashvm/swf_stream_output.h#L178) | Resolve first indexed block >= positive frame without VM/allocation, then pause/clear/reset epoch. Gaps wait, past end seeks EOF. Invalid metadata/arguments cause no backend effects; later callback failures obey staged seek semantics. |
 
 Validation at v0.756: 77 selected native checks pass (one previously built MP3 test was rerun after restoring its executable permission), plus 14 shared-host checks. Updated frame-seek/gating/C89 contracts also pass the focused final suite. ASan/UBSan covers native output/reader/snapshot paths and actual MovieClip authorization with interpreter/native-JIT actions; whole-VM instrumentation and leak detection are not claimed (host disables leak checks). All six export modes compare exact PCM; the minimal build works without desktop frontend/device. New C++98/C89 implementation/consumer/tutorial objects compile for ARM64 Linux/musl, RISC-V64 Linux/musl and Windows x64/MinGW; no foreign execution/full cross-player acceptance. All nine roadmap stages remain open.
 
 
 ## Intrinsic timeline observation (v0.757)
 
-`fvm_movieclip_get_playback_info(context, clip, &info)` reads private local timeline state rather than replaceable `_currentframe` properties. Set `info.struct_size = sizeof(info)` first. The [`FVM_MovieClipPlaybackInfo`](../include/flashvm/movieclip.h#L69) result contains positive `frame` and `total_frames`, plus `playing` and `entered` flags. Construction and goto select a frame with `entered=0`; the first subsequent actual entry changes it to one. Selection alone must not authorize a stream block. A stopped clip still receives onEnterFrame on later ticks. Host pause is a separate policy.
+`fvm_movieclip_get_playback_info(context, clip, &info)` reads private local timeline state rather than replaceable `_currentframe` properties. Set `info.struct_size = sizeof(info)` first. The [`FVM_MovieClipPlaybackInfo`](../include/flashvm/movieclip.h#L88) result contains positive `frame` and `total_frames`, plus `playing` and `entered` flags. Construction and goto select a frame with `entered=0`; the first subsequent actual entry changes it to one. Selection alone must not authorize a stream block. A stopped clip still receives onEnterFrame on later ticks. Host pause is a separate policy.
 
 Call only on the VM owner thread, outside collection/teardown, retaining the same-context native clip for the call. No allocation, callback, script lookup, tick or managed pointer escapes; copied scalars need no root. Null/wrong-sized/foreign/prototype/corrupt input returns INVALID_ARGUMENT and preserves the entire descriptor. The query is not a navigation event log: multiple changes between observations may be invisible. The host still owns source identity, queue discontinuity and synchronization policy. `movieclip_playback_info.cpp` verifies invalid-output atomicity, zero-allocation observation, stopped ticks, seek/entry distinction, looping, replaced script property and GC-safe retained ownership.
 
@@ -236,7 +236,7 @@ zero-allocation calls after VM teardown, invalid output geometry, reentry and
 failed-clear preservation of pending retry bytes and both source positions.
 
 
-Gated mixed scheduling is additive: [fvm_swf_stream_output_pump_mix_until](../include/flashvm/swf_stream_output.h#L111) handles authorized base and held/EOF events with ordered retry. Original stream-only entry points retain their contracts. [Current contract](MIXED_GATES.md).
+Gated mixed scheduling is additive: [fvm_swf_stream_output_pump_mix_until](../include/flashvm/swf_stream_output.h#L127) handles authorized base and held/EOF events with ordered retry. Original stream-only entry points retain their contracts. [Current contract](MIXED_GATES.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -247,18 +247,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
-| `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
-| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:163](../include/flashvm/swf_stream_output.h#L163) |
-| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:156](../include/flashvm/swf_stream_output.h#L156) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:126](../include/flashvm/swf_stream_output.h#L126) |
-| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:52](../include/flashvm/swf_stream_output.h#L52) |
-| `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:65](../include/flashvm/swf_stream_output.h#L65) |
-| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:114](../include/flashvm/swf_stream_output.h#L114) |
-| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:61](../include/flashvm/swf_stream_output.h#L61) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
-| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:74](../include/flashvm/swf_stream_output.h#L74) |
-| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:144](../include/flashvm/swf_stream_output.h#L144) |
-| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:150](../include/flashvm/swf_stream_output.h#L150) |
+| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:18](../include/flashvm/swf_sound_output.h#L18) |
+| `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:104](../include/flashvm/movieclip.h#L104) |
+| `FVM_MovieClipPlaybackInfo` | struct | [include/flashvm/movieclip.h:88](../include/flashvm/movieclip.h#L88) |
+| `fvm_swf_stream_output_bind_frame` | function | [include/flashvm/swf_stream_output.h:195](../include/flashvm/swf_stream_output.h#L195) |
+| `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:186](../include/flashvm/swf_stream_output.h#L186) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:148](../include/flashvm/swf_stream_output.h#L148) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:58](../include/flashvm/swf_stream_output.h#L58) |
+| `fvm_swf_stream_output_next_frame` | function | [include/flashvm/swf_stream_output.h:75](../include/flashvm/swf_stream_output.h#L75) |
+| `fvm_swf_stream_output_pause` | function | [include/flashvm/swf_stream_output.h:132](../include/flashvm/swf_stream_output.h#L132) |
+| `fvm_swf_stream_output_pump` | function | [include/flashvm/swf_stream_output.h:69](../include/flashvm/swf_stream_output.h#L69) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:127](../include/flashvm/swf_stream_output.h#L127) |
+| `fvm_swf_stream_output_pump_until` | function | [include/flashvm/swf_stream_output.h:86](../include/flashvm/swf_stream_output.h#L86) |
+| `fvm_swf_stream_output_seek` | function | [include/flashvm/swf_stream_output.h:170](../include/flashvm/swf_stream_output.h#L170) |
+| `fvm_swf_stream_output_seek_frame` | function | [include/flashvm/swf_stream_output.h:178](../include/flashvm/swf_stream_output.h#L178) |
 <!-- source-links:end -->

@@ -10,7 +10,7 @@ replaces that receiver. Argument projection does not call coercion hooks.
 AVM1 NewObject and NewMethod use an internal value-returning construction
 boundary. Loaded native constructors may therefore return primitives. Script
 constructors retain their existing rule of ignoring returned values. The public
-[`fvm_function_construct`](../include/flashvm/function.h#L69) and named C construction APIs still require an object
+[`fvm_function_construct`](../include/flashvm/function.h#L85) and named C construction APIs still require an object
 owned by the current context and reject primitive results. Unloaded host behavior
 is preserved. Existing serialized callback identities are unchanged; ID 809
 identifies the distinct Function call callback.
@@ -58,5 +58,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:85](../include/flashvm/function.h#L85) |
 <!-- source-links:end -->

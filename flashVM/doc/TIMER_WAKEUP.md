@@ -1,32 +1,32 @@
 # Host timer wakeup hints — v0.622
 
-[Русский](TIMER_WAKEUP.ru.md). [fvm_timers_next_delay](../include/flashvm/timers.h#L29) lets an event loop cap its
+[Русский](TIMER_WAKEUP.ru.md). [fvm_timers_next_delay](../include/flashvm/timers.h#L34) lets an event loop cap its
 ordinary wait at the next scheduled callback. It reads the same unwrapped
-[context clock](GET_TIMER.md) and queue as [fvm_timers_poll](../include/flashvm/timers.h#L19), without invoking or
+[context clock](GET_TIMER.md) and queue as [fvm_timers_poll](../include/flashvm/timers.h#L22), without invoking or
 consuming a timer. Registration/delivery limits remain in [TIMERS.md](TIMERS.md).
 
 ## API and ownership
 
-Call [fvm_timers_next_delay](../include/flashvm/timers.h#L29) on the context owner thread, passing a host ceiling
+Call [fvm_timers_next_delay](../include/flashvm/timers.h#L34) on the context owner thread, passing a host ceiling
 `max_wait_ms`, a non-null `unsigned long *wait_ms` and a non-null `int *pending`.
 Choose a ceiling representable by the host's wait API. No memory is allocated,
 no user callback/coercion executes, and no managed result needs pinning.
 
-For an empty queue it returns [FVM_OK](../include/flashvm/flashvm.h#L42), wait=max_wait_ms and pending=0, without
+For an empty queue it returns [FVM_OK](../include/flashvm/flashvm.h#L44), wait=max_wait_ms and pending=0, without
 reading the platform clock. For a nonempty queue pending=1 and wait is the
 smaller of the ceiling and the earliest remaining delay rounded upward to an
 integer millisecond. Due timers return zero. A positive fractional remainder
 returns at least one unless the supplied ceiling is zero. Zero and ULONG_MAX
 ceilings are supported; an empty queue returns even ULONG_MAX exactly.
 
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) rejects null context/outputs and destruction, collection or
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) rejects null context/outputs and destruction, collection or
 release phases. Clock failure/invalid samples or exhausted execution work return
-[FVM_ERROR](../include/flashvm/flashvm.h#L43). Every error preserves both outputs and all pending records/deadlines.
+[FVM_ERROR](../include/flashvm/flashvm.h#L45). Every error preserves both outputs and all pending records/deadlines.
 Clock sampling may advance the existing retained elapsed sample before a later
 work error. Rollback and modulo-2^32 GetTime output do not wrap deadlines.
 
 The query may run inside a timer callback; it shares the caller's
-[FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L9) rather than resetting the budget. One work unit is charged
+[FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L11) rather than resetting the budget. One work unit is charged
 per pending entry scanned. Numeric limit zero keeps cooperative worker stop
 polling active. The query never short-circuits a due entry to bypass charging
 later queue entries. It creates no temporary GC root, string, Function or OS timer.
@@ -38,7 +38,7 @@ then wait for an OS event or that capped duration. Process events and repeat.
 A zero hint means retry delivery without blocking, not recursively poll from a
 callback. Query again after registration/cancellation or other queue changes.
 The hint is a snapshot, not an OS wakeup registration or a realtime deadline
-guarantee. [fvm_timers_poll](../include/flashvm/timers.h#L19) still rejects recursive delivery.
+guarantee. [fvm_timers_poll](../include/flashvm/timers.h#L22) still rejects recursive delivery.
 
 The common desktop player now pumps input and polls timers on active event-loop
 iterations, including between timeline frames. SDL waiting is capped by the
@@ -85,10 +85,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../include/flashvm/timers.h#L29) |
-| `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_timers_next_delay` | function | [include/flashvm/timers.h:34](../include/flashvm/timers.h#L34) |
+| `fvm_timers_poll` | function | [include/flashvm/timers.h:22](../include/flashvm/timers.h#L22) |
 <!-- source-links:end -->

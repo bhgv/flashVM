@@ -6,23 +6,23 @@
 
 
 [English](SOUND_SNAPSHOT.md). Дополнение к [доставке звука MovieClip](MOVIECLIP_SOUND.ru.md).
-[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) доставляет root StartSound через
-[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); изменения не открывают аудиоустройство.
+[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) доставляет root StartSound через
+[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L25); изменения не открывают аудиоустройство.
 
 Private `sounds` кадра — плотный список от нуля, ограниченный
 [`FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS`](../src/standard/movieclip_sound_constants.h#L8) (65536). Снимок скалярных индексов читается
 по ordinal, независимо от порядка вставки в hash table. Каждое значение должно быть
 целым неотрицательным Number ниже прежней границы, вычисленной из размера source.
 Пропуски, неверные типы, NaN/infinity, дробные/выходящие за пределы числа и слишком
-большой список дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) до первого host callback. Усечённый
+большой список дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) до первого host callback. Усечённый
 плотный префикс был структурно допустим в v0.637–v0.639. Начиная с v0.640 ниже
 дополнительно проверяются принадлежность кадру, полнота и уникальность.
 
 Весь native vector готовится до внешних эффектов. Поздняя ошибочная запись больше
 не обнаруживается после уже доставленного раннего события. OOM снимка даёт
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) без доставки этого пакета. После начала callbacks прежние
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) без доставки этого пакета. После начала callbacks прежние
 эффекты сохраняются при последующей ошибке. Приоритет сравнения source и политики
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) при отсутствии callback сохраняется. Пустой допустимый список
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) при отсутствии callback сохраняется. Пустой допустимый список
 при зарегистрированном callback ничего не доставляет. Сравнение полного hex-source
 по-прежнему линейно по размеру файла.
 
@@ -54,14 +54,14 @@ JIT, защитный снимок при изменении полей/спис
 
 ## Бюджет доставки (v0.638)
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) охватывает сравнение source, захват ordinal и доставку,
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) охватывает сравнение source, захват ordinal и доставку,
 наследуя внешний бюджет AVM1/tick и вложенную кооперативную работу host без сброса.
 Расходуется единица перед сравнением каждого канонического байта, перед копированием
 каждого ordinal и перед callback. Для N байтов source и K событий стоимость
 v0.638–v0.639 равна N+2K без внешнего timeline и host queries. Дополнение v0.640
 описано ниже. Чисто визуальный root без sound-source marker/list не добавляет работы.
 
-Исчерпание даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) до следующей native единицы; насыщенный счётчик не
+Исчерпание даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) до следующей native единицы; насыщенный счётчик не
 обнуляется и не переполняется. Ошибка подготовки не вызывает sound callbacks;
 ошибка доставки сохраняет выполненные callbacks. Несовпадение source может
 обнаружиться после оплаты сравнённого префикса. Конечный бюджет может остановить
@@ -77,9 +77,9 @@ callback канонического пакета из 200 событий. Это
 
 ## Бюджет метаданных (v0.639)
 
-Allocation-free read-only запросы [`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L130), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L134),
-[`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L132), [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60), [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62) и
-[`fvm_swf_sound_event_envelope`](../include/flashvm/swf_sound.h#L64) теперь разделяют native work и остановку worker
+Allocation-free read-only запросы [`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L166), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L174),
+[`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L170), [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L70), [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L74) и
+[`fvm_swf_sound_event_envelope`](../include/flashvm/swf_sound.h#L78) теперь разделяют native work и остановку worker
 с вызывающим кодом. `sound_at` удерживает один scope для обоих обходов; event lookup
 удерживает его при обходе событий и поиске выбранного ID. Внешний host query начинает
 новый бюджет, запрос из sound callback наследует бюджет доставки. Другие составные
@@ -98,9 +98,9 @@ payload не оплачиваются побайтно и не декодиру�
 Все шесть функций требуют живого контекста в потоке владельца вне terminal GC.
 Count требует ненулевой size_t output; record/envelope — точный struct_size.
 ID definitions — ненулевой UI16, ordinal и point начинаются с нуля. Нет source —
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46); нет выбранного значения — [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47); повреждённый stream,
-повтор выбранного ID или плохие аргументы — [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); бюджет/stop —
-[`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Все ошибки сохраняют outputs, включая count и все байты structs.
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48); нет выбранного значения — [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49); повреждённый stream,
+повтор выбранного ID или плохие аргументы — [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47); бюджет/stop —
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Все ошибки сохраняют outputs, включая count и все байты structs.
 Event count проверяет syntax без разрешения каждого dictionary ID. Event/envelope
 копируются; `FVM_SWFSoundInfo.data` заимствован до успешной перезагрузки source или
 уничтожения контекста. Новых callbacks, playback, mutations и allocations нет.
@@ -119,12 +119,12 @@ Root с `sound_source` теперь проверяет каждый фактич
 обход root stream собирает глобальные индексы StartSound нужного кадра. Захваченный
 managed list должен точно совпадать с этой native последовательностью. Индексы
 другого кадра/несуществующие, перестановки, дубликаты, лишние/пропущенные элементы,
-очистка/удаление таблицы и удаление frame record дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) до
+очистка/удаление таблицы и удаление frame record дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) до
 первого host callback. Порядок вставки корректных ordinal slots в hash table свободен.
 Снимок по-прежнему поверхностный; защита не разрешает правку metadata в callback.
 
-Private helper [`fvm_swf_sound_frame_ordinals`](../src/swf/sound_event_index.hpp#L8) проверяет framing/SOUNDINFO, разделяет
-metadata work и собирает не более [`FVM_SWF_SOUND_MAX_FRAME_ORDINALS`](../src/swf/sound_event_constants.h#L12) элементов.
+Private helper [`fvm_swf_sound_frame_ordinals`](../src/swf/sound_event_index.hpp#L10) проверяет framing/SOUNDINFO, разделяет
+metadata work и собирает не более [`FVM_SWF_SOUND_MAX_FRAME_ORDINALS`](../src/swf/sound_event_constants.h#L14) элементов.
 Выходной vector изменяется только при успехе; parse/work/OOM/cap failure сохраняет
 прежний vector и освобождает частичную native память. Helper не разрешает каждый
 resource ID, не декодирует codec и не кеширует context/source pointers. Прежняя
@@ -137,7 +137,7 @@ P envelope points и K выбранными events стоимость равна
 работа и host queries. Сбор индекса и сравнение добавляют по единице на event;
 полного обхода файла K раз нет. Канонически пустой кадр также сравнивает/разбирает
 свой source, но не требует callback. Непустой проверенный кадр без callback даёт
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46); плохой source/list или бюджет могут завершиться раньше этой
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48); плохой source/list или бюджет могут завершиться раньше этой
 диагностики. Перезагрузка постороннего source может отказать даже на пустом кадре
 sound-bound root; host должен сохранять соответствие source. Native scratch имеет
 per-frame caps, а не новую общую гарантию memory budget. Потребление входа кадра,
@@ -152,7 +152,7 @@ memory channel, уничтожает source context, собирает traced str
 отказ и явную правку/повтор с callbacks получателя в interpreter/native JIT.
 Прежний полный allocation sweep доставки также охватывает подготовку индекса.
 
-[`fvm_movieclip_define_frame`](../include/flashvm/movieclip.h#L110) сохраняет идентичность звуковой таблицы корректного
+[`fvm_movieclip_define_frame`](../include/flashvm/movieclip.h#L143) сохраняет идентичность звуковой таблицы корректного
 импортированного кадра при замене actions/label. Новая запись готовится до
 публикации; OOM сохраняет прежний кадр/таблицу. Это позволяет допустимой замене
 actions не терять звук и не нарушать каноническую полноту. Уже повреждённые metadata
@@ -187,23 +187,23 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:110](../include/flashvm/movieclip.h#L110) |
-| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:143](../include/flashvm/movieclip.h#L143) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
 | `FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS` | macro / define | [src/standard/movieclip_sound_constants.h:8](../src/standard/movieclip_sound_constants.h#L8) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:132](../include/flashvm/swf_sound.h#L132) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:130](../include/flashvm/swf_sound.h#L130) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
-| `fvm_swf_sound_frame_ordinals` | function | [src/swf/sound_event_index.hpp:8](../src/swf/sound_event_index.hpp#L8) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:134](../include/flashvm/swf_sound.h#L134) |
-| `FVM_SWF_SOUND_MAX_FRAME_ORDINALS` | macro / define | [src/swf/sound_event_constants.h:12](../src/swf/sound_event_constants.h#L12) |
-| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:14](../include/flashvm/swf_sound.h#L14) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:170](../include/flashvm/swf_sound.h#L170) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:166](../include/flashvm/swf_sound.h#L166) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:74](../include/flashvm/swf_sound.h#L74) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:70](../include/flashvm/swf_sound.h#L70) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
+| `fvm_swf_sound_frame_ordinals` | function | [src/swf/sound_event_index.hpp:10](../src/swf/sound_event_index.hpp#L10) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:174](../include/flashvm/swf_sound.h#L174) |
+| `FVM_SWF_SOUND_MAX_FRAME_ORDINALS` | macro / define | [src/swf/sound_event_constants.h:14](../src/swf/sound_event_constants.h#L14) |
+| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:16](../include/flashvm/swf_sound.h#L16) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

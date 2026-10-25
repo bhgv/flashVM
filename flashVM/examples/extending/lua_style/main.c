@@ -4,16 +4,20 @@
 
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/auxlib.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 
 /* Arguments remain on the callback stack. Returning 1 selects the topmost
  * value as the result; the host bridge discards the callback's arguments. */
 /* Add the current value. */
+
+
 /* Определяем функцию add; параметры передаются вызывающей стороной в указанном порядке. */
 static int add(FVM_Stack *stack)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Организуем повторение операций до выполнения условия завершения. */
@@ -27,8 +31,10 @@ static int add(FVM_Stack *stack)
     result = fvm_stack_checknumber(stack, 1, &left);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result != FVM_OK)
+    { /* Begin conditional branch: if (result != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return result;
+    } /* End conditional branch: if (result != FVM_OK). */
     /* Вызываем fvm_stack_checknumber: читаем числовой аргумент с проверкой типа.
      * stack — дескриптор стека API.
      * 2 — индекс выбираемого элемента.
@@ -36,8 +42,10 @@ static int add(FVM_Stack *stack)
     result = fvm_stack_checknumber(stack, 2, &right);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result != FVM_OK)
+    { /* Begin conditional branch: if (result != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return result;
+    } /* End conditional branch: if (result != FVM_OK). */
     /* Вызываем fvm_stack_pushnumber: добавляем число в стек API.
      * stack — дескриптор стека API.
      * left + right — число, добавляемое в стек результатов. */
@@ -45,13 +53,16 @@ static int add(FVM_Stack *stack)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return result == FVM_OK ? 1 : result;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */
+
 
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -66,20 +77,29 @@ int main(void)
     int status = 1;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_config_init(&config) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_config_init(&config) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End conditional branch: if (fvm_config_init(&config) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_runtime_create(&config, &runtime) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_runtime_create(&config, &runtime) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End conditional branch: if (fvm_runtime_create(&config, &runtime) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_context_create(runtime, &context) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_context_create(runtime, &context) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_context_create(runtime, &context) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_stack_register_cfunction(context, "add", add, 0) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_stack_register_cfunction(context, "add", add, 0) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_stack_register_cfunction(context, "add", add, 0) != FVM_OK). */
+
 
     /* Initialization / Инициализация локального состояния. */
     /* Записываем числовое значение и соответствующий тег типа. */
@@ -88,12 +108,16 @@ int main(void)
     fvm_value_number(&args[1], 22);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_call(context, "add", 2, args, &result) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_call(context, "add", 2, args, &result) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_call(context, "add", 2, args, &result) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result.type != FVM_VALUE_NUMBER || result.number != 42)
+    { /* Begin conditional branch: if (result.type != FVM_VALUE_NUMBER || result.number != 42). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (result.type != FVM_VALUE_NUMBER || result.number != 42). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -109,4 +133,4 @@ done:
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return status;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

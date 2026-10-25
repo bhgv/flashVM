@@ -1,9 +1,9 @@
 # updateAfterEvent и объединение redraw — v0.623
 
-[English](UPDATE_AFTER_EVENT.md). [fvm_standard_install](../include/flashvm/standard.h#L20) добавляет
+[English](UPDATE_AFTER_EVENT.md). [fvm_standard_install](../include/flashvm/standard.h#L22) добавляет
 `updateAfterEvent()` для host/SWF5–8 со стабильным ID [FVM_STAGE_UPDATE_CALLBACK](../src/standard/stage_update_constants.h#L5).
 Результат undefined, лишние аргументы не преобразуются. Ниже SWF5 возвращается
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), включая установку до загрузки старого SWF. Конфликтующие
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48), включая установку до загрузки старого SWF. Конфликтующие
 собственные имена сохраняются по активным правилам регистра SWF.
 
 ## Допустимые маршруты и время жизни
@@ -21,7 +21,7 @@ AsBroadcaster и onEnterFrame сами не дают права на запро�
 вызов как выбранному клипу, а не последующий observer-вызов. Полная автоматическая
 доставка ClipActions/target hit testing этим не добавлена.
 
-[FVM_StageUpdateEventScope](../src/standard/stage_update.hpp#L9) восстанавливает внешнее состояние при успехе, ошибке,
+[FVM_StageUpdateEventScope](../src/standard/stage_update.hpp#L12) восстанавливает внешнее состояние при успехе, ошибке,
 script exception и OOM. Уже отмеченный запрос остаётся pending при последующей
 ошибке callback. [GC:] Булевы поля не удерживают managed pointers; GC внутри
 script/native-body callback не потребляет запрос и не завершает scope.
@@ -36,14 +36,14 @@ Function использует текущую цепочку получателя
 ## C89 API host
 
 Все операции — на потоке владельца, без памяти и callback. Нулевой контекст и фазы
-уничтожения/сборки/освобождения дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) с сохранением состояния
+уничтожения/сборки/освобождения дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) с сохранением состояния
 и переданных результатов. Установка standard и script-event scope не нужны.
 
 | API | Контракт |
 | --- | --- |
-| [fvm_stage_request_update](../include/flashvm/stage.h#L38) | Отметить объединяемый запрос host независимо от script-события; timeline/render/device не выполняются. |
-| [fvm_stage_get_update](../include/flashvm/stage.h#L41) | Прочитать 0/1 в обязательный `int *` без потребления и передачи владения. |
-| [fvm_stage_take_update](../include/flashvm/stage.h#L45) | Прочитать и снять флаг в обязательный `int *` до отрисовки: новый запрос тогда сохраняется. При повторе неудачной презентации снова вызвать request. |
+| [fvm_stage_request_update](../include/flashvm/stage.h#L52) | Отметить объединяемый запрос host независимо от script-события; timeline/render/device не выполняются. |
+| [fvm_stage_get_update](../include/flashvm/stage.h#L57) | Прочитать 0/1 в обязательный `int *` без потребления и передачи владения. |
+| [fvm_stage_take_update](../include/flashvm/stage.h#L63) | Прочитать и снять флаг в обязательный `int *` до отрисовки: новый запрос тогда сохраняется. При повторе неудачной презентации снова вызвать request. |
 
 Renderer владеет презентацией и обработкой её ошибок. Чтение/потребление флага
 не доказывает показ пикселей в окне. Самостоятельный host может использовать свой
@@ -53,7 +53,7 @@ Renderer владеет презентацией и обработкой её о
 ## Общий desktop player
 
 Активный цикл потребляет запрос до внеочередного render текущей сцены между
-кадрами. [clear_stage](../frontend/common/player.c#L73) и [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L138) используют тот же presenter,
+кадрами. [clear_stage](../frontend/common/player.c#L73) и [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L179) используют тот же presenter,
 что обычные кадры. Timeline, frame scripts и authored deadline не продвигаются.
 Совпавший с обычным кадром запрос удовлетворяется этим кадром. Запрос во время
 презентации остаётся pending и не теряется за ожиданием. Фоновая приостановка и
@@ -113,13 +113,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
-| `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../include/flashvm/stage.h#L41) |
-| `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../include/flashvm/stage.h#L38) |
-| `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
+| `fvm_stage_get_update` | function | [include/flashvm/stage.h:57](../include/flashvm/stage.h#L57) |
+| `fvm_stage_request_update` | function | [include/flashvm/stage.h:52](../include/flashvm/stage.h#L52) |
+| `fvm_stage_take_update` | function | [include/flashvm/stage.h:63](../include/flashvm/stage.h#L63) |
 | `FVM_STAGE_UPDATE_CALLBACK` | macro / define | [src/standard/stage_update_constants.h:5](../src/standard/stage_update_constants.h#L5) |
-| `FVM_StageUpdateEventScope` | class | [src/standard/stage_update.hpp:9](../src/standard/stage_update.hpp#L9) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_StageUpdateEventScope` | class | [src/standard/stage_update.hpp:12](../src/standard/stage_update.hpp#L12) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

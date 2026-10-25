@@ -1,7 +1,7 @@
 # getTimer — ограниченные часы контекста (v0.620)
 
-[English](GET_TIMER.md). [fvm_standard_install](../include/flashvm/standard.h#L20) добавляет `getTimer()` для host и
-SWF4–8. Глобальная функция вызывает [fvm_exec_get_time](../include/flashvm/execution.h#L168) — тот же сервис, что GetTime
+[English](GET_TIMER.md). [fvm_standard_install](../include/flashvm/standard.h#L22) добавляет `getTimer()` для host и
+SWF4–8. Глобальная функция вызывает [fvm_exec_get_time](../include/flashvm/execution.h#L214) — тот же сервис, что GetTime
 AVM1 и машинный код JIT. Дополнительные аргументы игнорируются без ToString/valueOf.
 Извлечённая Function и обычный глобальный вызов используют одни часы.
 
@@ -11,7 +11,7 @@ AVM1 и машинный код JIT. Дополнительные аргумен
 отсчёт недоступен, первый успешный вызов устанавливает ноль. Допустимый отсчёт
 платформы конечный и неотрицательный. Прошедшие миллисекунды округляются вниз и
 берутся по модулю 2^32; значения выше 2^31 остаются положительными. При откате
-часов сохраняется предыдущее полное прошедшее время. [fvm_advance](../include/flashvm/flashvm.h#L74) на эти часы не
+часов сохраняется предыдущее полное прошедшее время. [fvm_advance](../include/flashvm/flashvm.h#L94) на эти часы не
 влияет. Это существующий контракт execution-сервиса; совпадение начала отсчёта и
 знакового переполнения с оригинальным Flash Player ещё не подтверждено.
 
@@ -21,20 +21,20 @@ AVM1 и машинный код JIT. Дополнительные аргумен
 
 ## Вызовы, ошибки и владение
 
-Сначала вызвать [fvm_standard_install](../include/flashvm/standard.h#L20), затем [fvm_call](../include/flashvm/value.h#L138) с именем `getTimer`, нулём
+Сначала вызвать [fvm_standard_install](../include/flashvm/standard.h#L22), затем [fvm_call](../include/flashvm/value.h#L204) с именем `getTimer`, нулём
 аргументов и ненулевым выходным указателем. Конфликтующие собственные имена
 сохраняются по активным правилам регистра SWF; установка возвращает
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Повторная установка проверяет идентичности регистраций.
-В загруженных версиях ниже SWF4 callback возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
-Глобальный вызов и [fvm_function_invoke](../include/flashvm/function.h#L65) извлечённой Function возвращают Number
-при успехе, [FVM_ERROR](../include/flashvm/flashvm.h#L43) при недоступных/некорректных часах и undefined при ошибке.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Повторная установка проверяет идентичности регистраций.
+В загруженных версиях ниже SWF4 callback возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
+Глобальный вызов и [fvm_function_invoke](../include/flashvm/function.h#L79) извлечённой Function возвращают Number
+при успехе, [FVM_ERROR](../include/flashvm/flashvm.h#L45) при недоступных/некорректных часах и undefined при ошибке.
 Внутренний callback отвергает фазы уничтожения, сборки и освобождения до чтения
 часов. Сам callback не выделяет память и не вызывает преобразования пользователя;
 обвязка вызова может выделять память. Нативные барьеры остаются активными.
-Публичная [fvm_exec_get_time](../include/flashvm/execution.h#L168) при ошибке сохраняет переданный результат.
+Публичная [fvm_exec_get_time](../include/flashvm/execution.h#L214) при ошибке сохраняет переданный результат.
 
-[GC:] Извлечённую Function нужно сохранять в корне или закреплять [fvm_gc_pin](../include/flashvm/gc.h#L48)
-через сборку, затем освобождать [fvm_gc_unpin](../include/flashvm/gc.h#L54). Числовой результат не владеет
+[GC:] Извлечённую Function нужно сохранять в корне или закреплять [fvm_gc_pin](../include/flashvm/gc.h#L60)
+через сборку, затем освобождать [fvm_gc_unpin](../include/flashvm/gc.h#L70). Числовой результат не владеет
 управляемой памятью. ID нового callback — 163, старые 150–162 не меняются.
 После сериализации и уничтожения отправителя импортированная Function читает
 часы получателя. Начало отсчёта отправителя и платформенные handles не переносятся.
@@ -64,15 +64,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_advance` | function | [include/flashvm/flashvm.h:74](../include/flashvm/flashvm.h#L74) |
-| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_get_time` | function | [include/flashvm/execution.h:168](../include/flashvm/execution.h#L168) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:94](../include/flashvm/flashvm.h#L94) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../include/flashvm/value.h#L204) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_get_time` | function | [include/flashvm/execution.h:214](../include/flashvm/execution.h#L214) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../include/flashvm/gc.h#L60) |
+| `fvm_gc_unpin` | function | [include/flashvm/gc.h:70](../include/flashvm/gc.h#L70) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
 | `FVM_TIME_GET_TIMER_CALLBACK` | macro / define | [src/standard/time_constants.h:5](../src/standard/time_constants.h#L5) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

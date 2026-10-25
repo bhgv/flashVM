@@ -67,16 +67,16 @@ Host userdata/mutex are never freed by the dispatcher.
 
 | C API | Purpose and publication |
 | --- | --- |
-| [`fvm_rdispatch_create`](../include/flashvm/rdispatch.h#L95) | Validate/copy policy and allocate one bounded native object; publish output only on OK, NOMEM otherwise. |
-| [`fvm_rdispatch_register`](../include/flashvm/rdispatch.h#L99) | Owner copies canonical path/operation table, borrows handler userdata and returns a fresh handle. |
-| [`fvm_rdispatch_unregister`](../include/flashvm/rdispatch.h#L105) | Owner releases registration/grants; executing handler BUSY, queued old handles become stale. |
-| [`fvm_rdispatch_grant`](../include/flashvm/rdispatch.h#L108) | Owner creates/replaces exact session authority; zero revokes and frees an entry. |
-| [`fvm_rdispatch_lookup`](../include/flashvm/rdispatch.h#L111) | Exact path lookup with current authority; copy handle only on OK. No ambient filesystem lookup. |
-| [`fvm_rdispatch_post`](../include/flashvm/rdispatch.h#L115) | Producers copy a bounded request after authority/identity/capacity checks. No handler runs here. |
-| [`fvm_rdispatch_pump`](../include/flashvm/rdispatch.h#L119) | Owner delivers at most budget callbacks unlocked and retains their copied results. No recursive pumping. |
-| [`fvm_rdispatch_cancel`](../include/flashvm/rdispatch.h#L121) | Session-scoped queued cancellation; does not interrupt a callback. |
-| [`fvm_rdispatch_take`](../include/flashvm/rdispatch.h#L126) | Copy and acknowledge completed result; releases identity and queue capacity. |
-| [`fvm_rdispatch_destroy`](../include/flashvm/rdispatch.h#L131) | Quiesced owner frees only dispatcher when no accepted requests remain; nulls caller pointer. |
+| [`fvm_rdispatch_create`](../include/flashvm/rdispatch.h#L109) | Validate/copy policy and allocate one bounded native object; publish output only on OK, NOMEM otherwise. |
+| [`fvm_rdispatch_register`](../include/flashvm/rdispatch.h#L115) | Owner copies canonical path/operation table, borrows handler userdata and returns a fresh handle. |
+| [`fvm_rdispatch_unregister`](../include/flashvm/rdispatch.h#L123) | Owner releases registration/grants; executing handler BUSY, queued old handles become stale. |
+| [`fvm_rdispatch_grant`](../include/flashvm/rdispatch.h#L128) | Owner creates/replaces exact session authority; zero revokes and frees an entry. |
+| [`fvm_rdispatch_lookup`](../include/flashvm/rdispatch.h#L133) | Exact path lookup with current authority; copy handle only on OK. No ambient filesystem lookup. |
+| [`fvm_rdispatch_post`](../include/flashvm/rdispatch.h#L139) | Producers copy a bounded request after authority/identity/capacity checks. No handler runs here. |
+| [`fvm_rdispatch_pump`](../include/flashvm/rdispatch.h#L145) | Owner delivers at most budget callbacks unlocked and retains their copied results. No recursive pumping. |
+| [`fvm_rdispatch_cancel`](../include/flashvm/rdispatch.h#L149) | Session-scoped queued cancellation; does not interrupt a callback. |
+| [`fvm_rdispatch_take`](../include/flashvm/rdispatch.h#L156) | Copy and acknowledge completed result; releases identity and queue capacity. |
+| [`fvm_rdispatch_destroy`](../include/flashvm/rdispatch.h#L163) | Quiesced owner frees only dispatcher when no accepted requests remain; nulls caller pointer. |
 
 Paths are bytewise case-sensitive, bounded and reject empty segments, dot/dot-dot,
 backslashes/control bytes and trailing slash. Non-ASCII bytes are opaque; no UTF-8
@@ -117,10 +117,10 @@ none call handlers. No type declaration is automatically accepted by this helper
 
 | API | Contract |
 | --- | --- |
-| [`fvm_rrequest_record_write`](../include/flashvm/rwire.h#L21) | Encode a bounded native request into caller output using its chosen bound tag; deliberately ignores native session field. No queue effects. S status/atomic output. |
-| [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L29) | Verify the incoming record/binding/payload, then copy to queue with authenticated session. consumed changes only on accepted post. On a framed rejection, transport must discard/respond explicitly rather than retry forever. |
-| [`fvm_rreply_record_write`](../include/flashvm/rwire.h#L34) | Serialize an owned native reply without taking a result; preserve that native copy for output/I/O retries. No automatic queue acknowledgement. |
-| [`fvm_rreply_record_read`](../include/flashvm/rwire.h#L40) | Verify incoming reply binding/schema and copy id/result/bytes only on OK. No callback or queue effect; all outputs unchanged on failure. |
+| [`fvm_rrequest_record_write`](../include/flashvm/rwire.h#L23) | Encode a bounded native request into caller output using its chosen bound tag; deliberately ignores native session field. No queue effects. S status/atomic output. |
+| [`fvm_rdispatch_post_record`](../include/flashvm/rwire.h#L33) | Verify the incoming record/binding/payload, then copy to queue with authenticated session. consumed changes only on accepted post. On a framed rejection, transport must discard/respond explicitly rather than retry forever. |
+| [`fvm_rreply_record_write`](../include/flashvm/rwire.h#L40) | Serialize an owned native reply without taking a result; preserve that native copy for output/I/O retries. No automatic queue acknowledgement. |
+| [`fvm_rreply_record_read`](../include/flashvm/rwire.h#L48) | Verify incoming reply binding/schema and copy id/result/bytes only on OK. No callback or queue effect; all outputs unchanged on failure. |
 
 These helpers do not implement sockets, authentication, reconnect deduplication,
 subscription routing, request cancellation packets or 9P. Native cancellation
@@ -209,18 +209,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../include/flashvm/rdispatch.h#L121) |
-| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../include/flashvm/rdispatch.h#L95) |
-| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../include/flashvm/rdispatch.h#L131) |
-| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../include/flashvm/rdispatch.h#L108) |
-| `fvm_rdispatch_lookup` | function | [include/flashvm/rdispatch.h:111](../include/flashvm/rdispatch.h#L111) |
-| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../include/flashvm/rdispatch.h#L115) |
-| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:29](../include/flashvm/rwire.h#L29) |
-| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../include/flashvm/rdispatch.h#L119) |
-| `fvm_rdispatch_register` | function | [include/flashvm/rdispatch.h:99](../include/flashvm/rdispatch.h#L99) |
-| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../include/flashvm/rdispatch.h#L126) |
-| `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../include/flashvm/rdispatch.h#L105) |
-| `fvm_rreply_record_read` | function | [include/flashvm/rwire.h:40](../include/flashvm/rwire.h#L40) |
-| `fvm_rreply_record_write` | function | [include/flashvm/rwire.h:34](../include/flashvm/rwire.h#L34) |
-| `fvm_rrequest_record_write` | function | [include/flashvm/rwire.h:21](../include/flashvm/rwire.h#L21) |
+| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../include/flashvm/rdispatch.h#L149) |
+| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../include/flashvm/rdispatch.h#L109) |
+| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../include/flashvm/rdispatch.h#L163) |
+| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:128](../include/flashvm/rdispatch.h#L128) |
+| `fvm_rdispatch_lookup` | function | [include/flashvm/rdispatch.h:133](../include/flashvm/rdispatch.h#L133) |
+| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:139](../include/flashvm/rdispatch.h#L139) |
+| `fvm_rdispatch_post_record` | function | [include/flashvm/rwire.h:33](../include/flashvm/rwire.h#L33) |
+| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:145](../include/flashvm/rdispatch.h#L145) |
+| `fvm_rdispatch_register` | function | [include/flashvm/rdispatch.h:115](../include/flashvm/rdispatch.h#L115) |
+| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:156](../include/flashvm/rdispatch.h#L156) |
+| `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:123](../include/flashvm/rdispatch.h#L123) |
+| `fvm_rreply_record_read` | function | [include/flashvm/rwire.h:48](../include/flashvm/rwire.h#L48) |
+| `fvm_rreply_record_write` | function | [include/flashvm/rwire.h:40](../include/flashvm/rwire.h#L40) |
+| `fvm_rrequest_record_write` | function | [include/flashvm/rwire.h:23](../include/flashvm/rwire.h#L23) |
 <!-- source-links:end -->

@@ -18,8 +18,8 @@ planned; this folder is a documented design placeholder, not a working plugin.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_object_set_prototype`](../../../include/flashvm/value.h#L66) | [PROTOTYPES.md](../../../doc/PROTOTYPES.md) — Связывание цепочки прототипов. |
+| [`fvm_object_get`](../../../include/flashvm/value.h#L102) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_object_set_prototype`](../../../include/flashvm/value.h#L90) | [PROTOTYPES.md](../../../doc/PROTOTYPES.md) — Связывание цепочки прототипов. |
 
 [Описание в общем каталоге](../../README.md#example-extending-prototypes).
 <!-- example-catalog-api:end -->
@@ -33,6 +33,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
-| `fvm_object_set_prototype` | function | [include/flashvm/value.h:66](../../../include/flashvm/value.h#L66) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../../../include/flashvm/value.h#L102) |
+| `fvm_object_set_prototype` | function | [include/flashvm/value.h:90](../../../include/flashvm/value.h#L90) |
 <!-- source-links:end -->

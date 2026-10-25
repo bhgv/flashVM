@@ -1,6 +1,6 @@
 # Captured scene controls — v0.634
 
-[Русский](SCENE_CONTROLS.ru.md). During [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125), authored SWF
+[Русский](SCENE_CONTROLS.ru.md). During [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160), authored SWF
 placement controls can invoke registered constructors. A constructor previously
 could replace a later list slot, change its scalar metadata, clear the list or
 append a new placement into the live traversal. The current frame now captures
@@ -9,7 +9,7 @@ its semantic control fields before its first placement is applied.
 Each frame list is a dense zero-based ordinal sequence, independent of insertion
 order, with at most [`FVM_MOVIECLIP_MAX_SCENE_CONTROLS`](../src/standard/movieclip_constants.h#L26) entries. Missing, null,
 nonobject or foreign-context control edges reject the local capture with
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) before any control in that list is applied. Semantic errors
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) before any control in that list is applied. Semantic errors
 inside a structurally valid control can still fail after earlier controls commit.
 The bound concerns control records, separately from frame action/initializer limits.
 
@@ -26,7 +26,7 @@ metadata-editing API or whole-movie immutable snapshot.
 Seek/loop reconstruction uses the same local capture per visited authored frame,
 then composes placements without executing skipped frame actions. Earlier display
 changes, constructor effects and background selections survive later failures.
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) during capture applies none of that local list, but does not
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) during capture applies none of that local list, but does not
 roll back earlier frames or change the existing timeline failure/retry policy.
 
 [GC:] The existing native scene/tick barrier retains copied managed values and
@@ -53,7 +53,7 @@ not establish original-Player lifecycle rules or foreign-platform/device accepta
 
 ## Scene work (v0.635)
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) now spans scene preparation and callbacks, inheriting
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) now spans scene preparation and callbacks, inheriting
 an outer AVM1/tick budget instead of resetting it per control or constructor.
 Incremental delivery charges one unit per captured control and one before each
 application. Capture failure changes no display control from that local list.
@@ -68,7 +68,7 @@ snapshots are bounded by [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/
 Depth sorting is not part of this revision. Private protocol/color/identity values
 are named in [scene_constants.h](../src/standard/scene_constants.h) separately from traversal limits.
 
-Numeric ceiling exhaustion returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) without incrementing beyond that
+Numeric ceiling exhaustion returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) without incrementing beyond that
 ceiling; saturated inherited counters fail without wrap. Zero numeric limit still
 polls cooperative worker cancellation. Native callback wall time, all map operations,
 resource copies and internal placement allocation sizes are not individually timed
@@ -84,7 +84,7 @@ between native-only control applications in `scene_controls_worker`.
 
 ## Graph validation and legacy depths (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L3089) validates same-context private state/table ownership
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L4004) validates same-context private state/table ownership
 and [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33) before normalizing any legacy depths.
 Its output pointer is published only on success. An unnormalized nonempty table
 charges one unit per child before migration; insufficient work leaves the old
@@ -92,8 +92,8 @@ indices and missing bias untouched. The existing migration builds its replacemen
 map before publishing bias and swapping slots. Normalized tables add no migration
 units. Outer traversal work remains shared; zero limit retains worker cancellation.
 The check also protects retained scene-input preparation, which uses this helper
-and propagates its work/stop error as [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) rather than converting it to
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+and propagates its work/stop error as [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) rather than converting it to
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 
 Reconstruction now validates *all* local old-child identities during the existing
 copy precharge: same-context native clip/state, no parent-as-child and no duplicate
@@ -136,12 +136,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:3089](../src/standard/movieclip.cpp#L3089) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:4004](../src/standard/movieclip.cpp#L4004) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

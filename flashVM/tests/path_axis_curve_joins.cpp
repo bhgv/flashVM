@@ -1,2 +1,38 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "axis_curve_fixture.hpp"
-int main() { for(unsigned d=2;d<=3;++d) for(unsigned c=0;c<3;++c) for(unsigned j=0;j<2;++j) { FVM_Path *p=ac_path(d),*line=hit_line(); assert(hit_add(p,FVM_PATH_QUADRATIC,14,10,14,14)==FVM_OK); assert(hit_add(line,FVM_PATH_LINE,14,14)==FVM_OK); assert(hit_add(p,FVM_PATH_CLOSE)==FVM_OK && hit_add(line,FVM_PATH_CLOSE)==FVM_OK); FVM_PathBounds a=stroke_bounds(p,c,j),b=stroke_bounds(line,c,j); bounds_equal(a,b.x_min,b.y_min,b.x_max,b.y_max); fvm_path_destroy(p); fvm_path_destroy(line); } return 0; }
+
+
+int main()
+{
+    for (unsigned d = 2; d <= 3; ++d)
+    {
+        for (unsigned c = 0; c < 3; ++c)
+        {
+            for (unsigned j = 0; j < 2; ++j)
+            {
+                FVM_Path *p = ac_path(d), *line = hit_line();
+                if (!(hit_add(p, FVM_PATH_QUADRATIC, 14, 10, 14, 14) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(hit_add(line, FVM_PATH_LINE, 14, 14) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(hit_add(p, FVM_PATH_CLOSE) == FVM_OK && hit_add(line, FVM_PATH_CLOSE) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                FVM_PathBounds a = stroke_bounds(p, c, j), b = stroke_bounds(line, c, j);
+                bounds_equal(a, b.x_min, b.y_min, b.x_max, b.y_max);
+                fvm_path_destroy(p);
+                fvm_path_destroy(line);
+            }
+        }
+    }
+    return 0;
+}

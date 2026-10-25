@@ -19,7 +19,7 @@ lease, exchange, режим FILE/LIVE, относительный Uint32 time_ms
 от agreed part_bytes; каждый слот занимает agreed slot_bytes. Это байты R/G/B/A,
 не native pixel words, не сжатая картинка и не видеокодек.
 
-[`fvm_scontrol_active`](../include/flashvm/scontrol.h#L108) копирует проверенные committed limits/boundary. Pending
+[`fvm_scontrol_active`](../include/flashvm/scontrol.h#L132) копирует проверенные committed limits/boundary. Pending
 не меняет exporter. До первого соглашения UNKNOWN, ошибка сохраняет выходы.
 Adapter не обязан читать изменяемые внутренние поля exchange. Exchange остаётся
 собственностью хоста, без транспорта и неявной аутентификации.
@@ -132,5 +132,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:108](../include/flashvm/scontrol.h#L108) |
+| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:132](../include/flashvm/scontrol.h#L132) |
 <!-- source-links:end -->

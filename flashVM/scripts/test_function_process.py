@@ -14,8 +14,13 @@ def read_uri(stream, lines):
 
 def exchange(program, server_arguments):
     """Reclaim four original calls with default or explicit listener/advertised addresses."""
-    owner = subprocess.Popen([program, "serve"] + server_arguments, stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    owner = subprocess.Popen(
+        [program, "serve"] + server_arguments,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     lines = queue.Queue()
     reader = threading.Thread(target=read_uri, args=(owner.stdout, lines), daemon=True)
     reader.start()
@@ -24,8 +29,7 @@ def exchange(program, server_arguments):
         reader.join(timeout=1)
         if not uri.startswith("fvm://"):
             raise RuntimeError("Authority did not publish a function capability")
-        client = subprocess.run([program, "call", uri], timeout=15,
-                                capture_output=True, text=True)
+        client = subprocess.run([program, "call", uri], timeout=15, capture_output=True, text=True)
         if client.returncode:
             raise RuntimeError("Remote client failed: " + client.stderr)
         if "remote result=42; counted exception; unsupported; error" not in client.stdout:
@@ -44,8 +48,12 @@ def main():
     """Exercise separate runtimes/threads, processes and LAN-ready listener configuration."""
     program = str(pathlib.Path(sys.argv[1]).resolve())
     for bad_port in ["", "-1", "-0", "+1", " 0", "0 ", "65536", "1x", "999999999999999999999999"]:
-        invalid = subprocess.run([program, "serve", "0.0.0.0", "127.0.0.1", bad_port],
-                                 capture_output=True, text=True, timeout=5)
+        invalid = subprocess.run(
+            [program, "serve", "0.0.0.0", "127.0.0.1", bad_port],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
         if invalid.returncode != 2 or "PORT" not in invalid.stderr:
             raise RuntimeError("Invalid listener port was not rejected before startup")
     exchange(program, [])

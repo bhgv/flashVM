@@ -7,25 +7,31 @@
 #include "flashvm/debug.h"
 #include "../../ports/channel_sync.h"
 #include <cstring>
+
 namespace
 {
 FVM_DebugResourceError errors[64];
 size_t total = 0;
+
 
 /* Copy the current value. */
 void copy(char *out, const char *s, size_t n)
 {
     std::memset(out, 0, n);
     if (s)
+    {
         std::strncpy(out, s, n - 1);
+    }
 }
 } // namespace
+
+
 /* Implement debug resource error for this subsystem. */
-void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *operation,
-                              const char *address)
+void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *operation, const char *address)
 {
     fvm_resource_fault(c, FVM_RESOURCE_FAILURE, id, operation, address);
     FVM_DebugResourceError event;
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memset(&event, 0, sizeof(event));
@@ -53,12 +59,15 @@ void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *oper
     fvm_port_registry_unlock();
 }
 
+
 /* Compute and return debug resource errors. */
-extern "C" FVM_Result fvm_debug_resource_errors(FVM_DebugResourceError *out, size_t capacity,
-                                                size_t *count, int clear)
+extern "C" FVM_Result fvm_debug_resource_errors(FVM_DebugResourceError *out, size_t capacity, size_t *count, int clear)
 {
     if (!count || (!out && capacity))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     fvm_port_registry_lock();
@@ -69,9 +78,13 @@ extern "C" FVM_Result fvm_debug_resource_errors(FVM_DebugResourceError *out, siz
         return FVM_NOT_FOUND;
     }
     if (total)
+    {
         std::memcpy(out, errors, total * sizeof(errors[0]));
+    }
     if (clear)
+    {
         total = 0;
+    }
     fvm_port_registry_unlock();
     return FVM_OK;
 }

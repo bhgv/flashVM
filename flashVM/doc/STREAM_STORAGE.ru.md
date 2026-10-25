@@ -4,7 +4,7 @@
 
 `fvm_swf_stream_sound_snapshot_open_pcm_bounded(context, stream, budget_bytes, out)`
 добавляет задаваемый вызывающим предел **пиковой владеемой памяти**. Поддерживаются
-те же PCM и целые ADPCM-пакеты, что у [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L88);
+те же PCM и целые ADPCM-пакеты, что у [`fvm_swf_stream_sound_snapshot_open_pcm`](../include/flashvm/swf_stream_sound.h#L110);
 новых кодеков здесь нет. Владелец контекста подготавливает снимок до публикации
 неизменяемых данных worker. Указатель результата сначала обнуляется. Ошибки
 контекста/индекса и null output сохраняют прежние статусы; корректный нулевой
@@ -22,7 +22,7 @@ OUT_OF_MEMORY с освобождением временных данных. У�
 нового явно задаваемого вызывающим предела.
 
 `fvm_swf_stream_sound_snapshot_storage_info(snapshot, out)` копирует
-[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L92):
+[`FVM_SWFStreamSoundStorageInfo`](../include/flashvm/swf_stream_sound.h#L115):
 
 | Поле | Смысл |
 | --- | --- |
@@ -129,9 +129,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../include/flashvm/swf_stream_sound.h#L72) |
-| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:88](../include/flashvm/swf_stream_sound.h#L88) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:103](../include/flashvm/swf_stream_sound.h#L103) |
-| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:124](../include/flashvm/swf_stream_sound.h#L124) |
-| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:92](../include/flashvm/swf_stream_sound.h#L92) |
+| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:92](../include/flashvm/swf_stream_sound.h#L92) |
+| `fvm_swf_stream_sound_snapshot_open_pcm` | function | [include/flashvm/swf_stream_sound.h:110](../include/flashvm/swf_stream_sound.h#L110) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:128](../include/flashvm/swf_stream_sound.h#L128) |
+| `fvm_swf_stream_sound_snapshot_storage_info` | function | [include/flashvm/swf_stream_sound.h:153](../include/flashvm/swf_stream_sound.h#L153) |
+| `FVM_SWFStreamSoundStorageInfo` | struct | [include/flashvm/swf_stream_sound.h:115](../include/flashvm/swf_stream_sound.h#L115) |
 <!-- source-links:end -->

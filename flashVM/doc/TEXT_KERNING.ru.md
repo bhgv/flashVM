@@ -4,9 +4,9 @@
 
 ## Нативное формирование (v0.820)
 
-[fvm_font_shape_configured](../include/flashvm/font.h#L97) добавляет flags к прежнему контракту владения native
+[fvm_font_shape_configured](../include/flashvm/font.h#L127) добавляет flags к прежнему контракту владения native
 run. Ноль сохраняет HarfBuzz defaults; [FVM_FONT_SHAPE_NO_KERNING](../include/flashvm/font.h#L9) отключает kern,
-сохраняя лигатуры и размещение marks. Старый [fvm_font_shape](../include/flashvm/font.h#L83) не меняется.
+сохраняя лигатуры и размещение marks. Старый [fvm_font_shape](../include/flashvm/font.h#L107) не меняется.
 Неизвестные flags дают INVALID_ARGUMENT и очищают выходной owner. В NO_FONTS
 корректные flags дают UNSUPPORTED. UTF-8, direction и владение font соответствуют
 прежнему API; font handle нельзя использовать конкурентно. Возвращённый run
@@ -15,8 +15,8 @@ run. Ноль сохраняет HarfBuzz defaults; [FVM_FONT_SHAPE_NO_KERNING](
 
 ## Размещение и переносы (v0.821)
 
-[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L89) принимает те же shaping flags без изменения
-[FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L29) и старого create. Все пробные строки и конечные script/bidi
+[fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L106) принимает те же shaping flags без изменения
+[FVM_TextLayoutOptions](../include/flashvm/text_layout.h#L33) и старого create. Все пробные строки и конечные script/bidi
 сегменты используют одинаковые features: ширина, выравнивание, позиции и пути
 согласованы. Результат владеет скопированными путями и переживает font; сам font
 остаётся однопоточным. Ошибки очищают результат, неизвестные flags дают
@@ -97,9 +97,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_shape` | function | [include/flashvm/font.h:83](../include/flashvm/font.h#L83) |
-| `fvm_font_shape_configured` | function | [include/flashvm/font.h:97](../include/flashvm/font.h#L97) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:107](../include/flashvm/font.h#L107) |
+| `fvm_font_shape_configured` | function | [include/flashvm/font.h:127](../include/flashvm/font.h#L127) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
-| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:29](../include/flashvm/text_layout.h#L29) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:106](../include/flashvm/text_layout.h#L106) |
+| `FVM_TextLayoutOptions` | struct | [include/flashvm/text_layout.h:33](../include/flashvm/text_layout.h#L33) |
 <!-- source-links:end -->

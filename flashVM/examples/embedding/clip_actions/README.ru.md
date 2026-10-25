@@ -40,17 +40,17 @@ scene KeyPress key: 1; marker: 168; redraw: 1
 
 | API | Назначение и владение |
 | --- | --- |
-| [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Инициализировать ABI host-конфигурации до создания runtime. |
-| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Скопировать конфигурацию и получить внешнего владельца; без worker/устройства. |
-| [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Создать managed heap; дальнейшие вызовы — в её потоке владельца. |
-| [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Установить классы/методы до создания загруженной сцены. |
-| [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L102) | Скопировать/проверить SWF и сохранить private handlers; root заимствован, scripts при загрузке не исполняются. |
-| [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Удержать root/actor/library между вызовами; pin примера освобождает context_destroy. |
-| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L125) | Выполнить tick, разместить actor и доставить EnterFrame; Load автоматически не доставляется. |
-| [fvm_object_get](../../../include/flashvm/value.h#L72) | Синхронно прочитать actor и scalar marker; borrowed object остаётся достижимым через root. |
-| [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L55) | Исполнить retained Load bytecode с receiver actor и key_code ноль; без выбора цели, native onX, продвижения кадра или показа. |
-| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Освободить граф/registration/pin после завершения вызовов; managed pointers недействительны. |
-| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Освободить внешнего владельца после контекста. |
+| [fvm_config_init](../../../include/flashvm/flashvm.h#L70) | Инициализировать ABI host-конфигурации до создания runtime. |
+| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L74) | Скопировать конфигурацию и получить внешнего владельца; без worker/устройства. |
+| [fvm_context_create](../../../include/flashvm/flashvm.h#L82) | Создать managed heap; дальнейшие вызовы — в её потоке владельца. |
+| [fvm_standard_install](../../../include/flashvm/standard.h#L22) | Установить классы/методы до создания загруженной сцены. |
+| [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L129) | Скопировать/проверить SWF и сохранить private handlers; root заимствован, scripts при загрузке не исполняются. |
+| [fvm_gc_pin](../../../include/flashvm/gc.h#L60) | Удержать root/actor/library между вызовами; pin примера освобождает context_destroy. |
+| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L160) | Выполнить tick, разместить actor и доставить EnterFrame; Load автоматически не доставляется. |
+| [fvm_object_get](../../../include/flashvm/value.h#L102) | Синхронно прочитать actor и scalar marker; borrowed object остаётся достижимым через root. |
+| [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L58) | Исполнить retained Load bytecode с receiver actor и key_code ноль; без выбора цели, native onX, продвижения кадра или показа. |
+| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L86) | Освободить граф/registration/pin после завершения вызовов; managed pointers недействительны. |
+| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L78) | Освободить внешнего владельца после контекста. |
 
 [FVM_CLIP_EVENT_LOAD](../../../include/flashvm/clip_actions.h#L5) выбирает raw authored event. Остальные flags и KeyPress selectors
 описаны в заголовке и руководстве. Проверяется одна выбранная запись, не планирование
@@ -67,14 +67,14 @@ listeners/drag policy, интеграция должна также вызват
 
 | API | Назначение, ошибки и владение |
 | --- | --- |
-| [`fvm_input_set_pointer`](../../../include/flashvm/input.h#L72) | Синхронно опубликовать координаты; не рассылает события и не выбирает цель. |
-| [`fvm_movieclip_dispatch_clip_input`](../../../include/flashvm/clip_actions.h#L71) | Обойти удерживаемое дерево и вызвать только записи MouseMove; частичные эффекты не откатываются. |
-| [`fvm_movieclip_dispatch_input`](../../../include/flashvm/clip_actions.h#L86) | С тем же pinned root вызвать записи и затем optional method; ошибки прекращают остаток batch. |
-| [`fvm_stage_take_update`](../../../include/flashvm/stage.h#L45) | Снять объединённый redraw flag; не рисует и не продвигает timeline. |
-| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Зарегистрировать native method на borrowed actor; здесь userdata/root равны нулю, временного capture нет. |
-| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Синхронно записать scalar marker; вернуть ошибку в наружную доставку, не откатывая предыдущую запись. |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Создать неменеджерный числовой scalar в локальном [FVM_Value](../../../include/flashvm/value.h#L24). |
-| [`fvm_call`](../../../include/flashvm/value.h#L138) | Синхронно вызвать updateAfterEvent в event scope; передать ошибку хосту, не выполнять показ. |
+| [`fvm_input_set_pointer`](../../../include/flashvm/input.h#L91) | Синхронно опубликовать координаты; не рассылает события и не выбирает цель. |
+| [`fvm_movieclip_dispatch_clip_input`](../../../include/flashvm/clip_actions.h#L76) | Обойти удерживаемое дерево и вызвать только записи MouseMove; частичные эффекты не откатываются. |
+| [`fvm_movieclip_dispatch_input`](../../../include/flashvm/clip_actions.h#L93) | С тем же pinned root вызвать записи и затем optional method; ошибки прекращают остаток batch. |
+| [`fvm_stage_take_update`](../../../include/flashvm/stage.h#L63) | Снять объединённый redraw flag; не рисует и не продвигает timeline. |
+| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L171) | Зарегистрировать native method на borrowed actor; здесь userdata/root равны нулю, временного capture нет. |
+| [`fvm_object_set`](../../../include/flashvm/value.h#L106) | Синхронно записать scalar marker; вернуть ошибку в наружную доставку, не откатывая предыдущую запись. |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L50) | Создать неменеджерный числовой scalar в локальном [FVM_Value](../../../include/flashvm/value.h#L26). |
+| [`fvm_call`](../../../include/flashvm/value.h#L204) | Синхронно вызвать updateAfterEvent в event scope; передать ошибку хосту, не выполнять показ. |
 
 
 Шаг v0.628 публикует копию удерживаемого Left transition, переводит virtual 37 в
@@ -84,10 +84,10 @@ record. [Контракт](../../../doc/CLIP_KEYPRESS.ru.md).
 
 | API | Назначение и владение |
 | --- | --- |
-| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L71) | Скопировать native snapshot в caller-owned struct точного размера; неверный ABI сохраняет поля. |
-| [`fvm_input_set_keyboard`](../../../include/flashvm/keyboard.h#L69) | Синхронно проверить и скопировать удерживаемое состояние без неявной доставки события. |
-| [`fvm_input_clip_key_code`](../../../include/flashvm/keyboard.h#L66) | Проверить и перевести неизменяемую копию key-down; ноль означает skip, ошибки сохраняют output selector. |
-| [`fvm_movieclip_dispatch_key_press`](../../../include/flashvm/clip_actions.h#L97) | Заимствовать pinned scene для точного selector; разрешить input redraw, сохранить выполненные эффекты при ошибке. |
+| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L77) | Скопировать native snapshot в caller-owned struct точного размера; неверный ABI сохраняет поля. |
+| [`fvm_input_set_keyboard`](../../../include/flashvm/keyboard.h#L73) | Синхронно проверить и скопировать удерживаемое состояние без неявной доставки события. |
+| [`fvm_input_clip_key_code`](../../../include/flashvm/keyboard.h#L68) | Проверить и перевести неизменяемую копию key-down; ноль означает skip, ошибки сохраняют output selector. |
+| [`fvm_movieclip_dispatch_key_press`](../../../include/flashvm/clip_actions.h#L106) | Заимствовать pinned scene для точного selector; разрешить input redraw, сохранить выполненные эффекты при ошибке. |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -98,29 +98,29 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../../../include/flashvm/value.h#L138) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../../../include/flashvm/value.h#L204) |
 | `FVM_CLIP_EVENT_LOAD` | macro / define | [include/flashvm/clip_actions.h:5](../../../include/flashvm/clip_actions.h#L5) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
-| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:66](../../../include/flashvm/keyboard.h#L66) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
-| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../../../include/flashvm/keyboard.h#L69) |
-| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../../../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../../../include/flashvm/clip_actions.h#L55) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../../../include/flashvm/clip_actions.h#L71) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../../../include/flashvm/clip_actions.h#L86) |
-| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../../../include/flashvm/clip_actions.h#L97) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../../../include/flashvm/movieclip.h#L102) |
-| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../../../include/flashvm/stage.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../../../include/flashvm/gc.h#L60) |
+| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:68](../../../include/flashvm/keyboard.h#L68) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:77](../../../include/flashvm/keyboard.h#L77) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:73](../../../include/flashvm/keyboard.h#L73) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:91](../../../include/flashvm/input.h#L91) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../../../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:58](../../../include/flashvm/clip_actions.h#L58) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:76](../../../include/flashvm/clip_actions.h#L76) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:93](../../../include/flashvm/clip_actions.h#L93) |
+| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:106](../../../include/flashvm/clip_actions.h#L106) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../../../include/flashvm/movieclip.h#L129) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:171](../../../include/flashvm/value.h#L171) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../../../include/flashvm/value.h#L102) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../../../include/flashvm/value.h#L106) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_stage_take_update` | function | [include/flashvm/stage.h:63](../../../include/flashvm/stage.h#L63) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../../../include/flashvm/value.h#L26) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 <!-- source-links:end -->

@@ -62,11 +62,11 @@ is caller code and cannot be preempted by the provider. The complete synchronous
 callback can therefore block beyond total_ms in DNS or a slow sink. A future
 asynchronous resolver/cancellation API is a separate task.
 
-[FVM_OK](../include/flashvm/flashvm.h#L42) means framing and resource delivery completed. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) means
+[FVM_OK](../include/flashvm/flashvm.h#L44) means framing and resource delivery completed. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) means
 bad input, limits, insufficient canonical output capacity or an excessive body.
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) rejects HTTPS when no TLS transport is built. [FVM_ERROR](../include/flashvm/flashvm.h#L43) covers
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) rejects HTTPS when no TLS transport is built. [FVM_ERROR](../include/flashvm/flashvm.h#L45) covers
 native connection, I/O, deadline, status and malformed response failures. An
-allocation failure in the platform socket constructor currently maps to [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+allocation failure in the platform socket constructor currently maps to [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 A sink error is returned exactly and ends delivery immediately. Some payload
 bytes may already have reached the sink before a later framing/network error;
 callers must discard their partial resource on any non-OK result. The player
@@ -146,14 +146,14 @@ OPENSSL_USE_STATIC_LIBS selects target static OpenSSL archives; it does not make
 the entire OS executable fully static. Set OPENSSL_ROOT_DIR and CMake's target
 find-root/sysroot for a foreign SDK. Never mix host OpenSSL with a cross target.
 With TLS OFF no OpenSSL headers/libraries are required; HTTPS returns
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
 
 [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) now includes ca_file, borrowed until fetch returns. Always
 initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36), which sets ca_file
 to null. Null selects OpenSSL default trust paths, including its standard
 SSL_CERT_FILE/SSL_CERT_DIR environment configuration. A nonnull filename selects
 only that PEM CA bundle for this request; missing/empty/unreadable/invalid trust
-or verification failure returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) before HTTP payload delivery. Trust
+or verification failure returns [FVM_ERROR](../include/flashvm/flashvm.h#L45) before HTTP payload delivery. Trust
 paths use the OpenSSL SDK path encoding, not SDL's UTF-8 file adapter. CA paths
 belong to the native host filesystem, not the movie URL base. Do not accept a
 trust override from untrusted movie content. No mutable global setter exists.
@@ -225,8 +225,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

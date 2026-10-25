@@ -7,8 +7,13 @@ import tempfile
 
 program = str(pathlib.Path(sys.argv[1]).resolve())
 with tempfile.TemporaryDirectory(prefix="flashvm-objects-network-") as directory:
-    receiver = subprocess.Popen([program, "network-receiver"], cwd=directory,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    receiver = subprocess.Popen(
+        [program, "network-receiver"],
+        cwd=directory,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     try:
         # The native receiver has a bounded channel wait; CTest bounds this driver too.
         uri = receiver.stdout.readline().strip()

@@ -2,6 +2,8 @@
  * Pure literals represent logical values, not observable allocator calls.
  * External/dynamic operations are conservative until a narrower contract exists. */
 #include "fir.h"
+
+
 unsigned fir_effects(FirOp op)
 {
     switch (op)

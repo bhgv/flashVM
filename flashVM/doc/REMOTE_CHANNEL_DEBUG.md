@@ -1,6 +1,6 @@
 # Remote channel debugging v0.70 / Сетевые каналы в отладчике
 
-[`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L114) и [`fvm_debug_channel_state`](../include/flashvm/debug.h#L118) поддерживают network
+[`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L144) и [`fvm_debug_channel_state`](../include/flashvm/debug.h#L150) поддерживают network
 proxy каналов, экспортированных совместимым FlashVM broker. Freeze изменяет
 состояние authority: local и remote readers останавливаются, writers продолжают
 отправку. Resume разрешает receive; ожидающий remote worker опрашивает сервер
@@ -69,7 +69,7 @@ do not exercise live network behavior. Stages 6 and 7 remain open.
 
 ## v0.70: indexed inspection / просмотр сообщения
 
-[`fvm_debug_channel_message`](../include/flashvm/debug.h#L125) поддерживает remote proxy: операция FVMC 9 принимает
+[`fvm_debug_channel_message`](../include/flashvm/debug.h#L159) поддерживает remote proxy: операция FVMC 9 принимает
 четырёхбайтный индекс Uint32 big endian и возвращает обычный FVMG graph record.
 Просмотр не извлекает сообщение и допускается при freeze. Queue authority
 удерживает packet на время копирования; primitive/string snapshots копируются,
@@ -126,7 +126,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../include/flashvm/debug.h#L114) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../include/flashvm/debug.h#L125) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../include/flashvm/debug.h#L118) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../include/flashvm/debug.h#L144) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../include/flashvm/debug.h#L159) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../include/flashvm/debug.h#L150) |
 <!-- source-links:end -->

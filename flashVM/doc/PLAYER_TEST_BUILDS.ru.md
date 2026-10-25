@@ -48,7 +48,7 @@ PCM8/PCM16/ADPCM и ограничения фигур: [учебник](../examp
 ## HostInput
 
 [player.c](../frontend/common/player.c) создаёт и закрепляет global HostInput;
-перед каждым [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) копирует в него снимок
+перед каждым [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) копирует в него снимок
 [SDL state](../frontend/common/sdl_window.c). Это расширение плеера, не полная
 реализация стандартных Flash Key/Mouse/broadcasters или button handlers.
 Все VM/input/render операции сериализованы SDL-потоком приложения. Root/Input
@@ -56,7 +56,7 @@ PCM8/PCM16/ADPCM и ограничения фигур: [учебник](../examp
 
 | Поле | Смысл |
 | --- | --- |
-| x, y | Последний основной указатель в authored world/stage pixels с учётом origin. SDL отображает координаты окна через logical viewport; в letterbox возможны координаты за сценой. Также передаются в [`fvm_input_set_pointer`](../include/flashvm/input.h#L72) для _xmouse/_ymouse. |
+| x, y | Последний основной указатель в authored world/stage pixels с учётом origin. SDL отображает координаты окна через logical viewport; в letterbox возможны координаты за сценой. Также передаются в [`fvm_input_set_pointer`](../include/flashvm/input.h#L91) для _xmouse/_ymouse. |
 | left, right, up, down, space | Удержание стрелок/Space, числа 0/1. |
 | buttons | Удержание основной/средней/второй кнопки, биты 1/2/4. Глобального эксклюзивного OS capture нет. |
 | keyCode | Последний transition: ASCII (буквы uppercase), стрелки 37..40; остальные не-ASCII клавиши дают 0. |
@@ -71,11 +71,11 @@ catch-up burst. Activity/Surface/native thread принадлежат SDLActivit
 
 ## Звук и владение в v0.582 (изменения v0.583 ниже)
 
-[audio.c](../frontend/common/audio.c) проверяет [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60). Для root
+[audio.c](../frontend/common/audio.c) проверяет [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L70). Для root
 событий без --mute создаёт SDL device 48000 Hz stereo, configured mixer на 32
 голоса и output producer block512/target2048 frames. Callback
-[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) доставляет ordinal до DoAction;
-[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L76) готовит голос либо применяет stop/no-multiple.
+[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L25) доставляет ordinal до DoAction;
+[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L95) готовит голос либо применяет stop/no-multiple.
 Ошибки декодирования/конверсии/устройства видимы и завершают воспроизведение.
 На итерацию не более четырёх pump, ожидание при наличии audio ограничено 5 ms.
 [Контракт очереди](SWF_SOUND_OUTPUT.ru.md). Это не realtime callback.
@@ -160,9 +160,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:76](../include/flashvm/swf_sound_mixer.h#L76) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:91](../include/flashvm/input.h#L91) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:70](../include/flashvm/swf_sound.h#L70) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:95](../include/flashvm/swf_sound_mixer.h#L95) |
 <!-- source-links:end -->

@@ -82,7 +82,7 @@ callback и выдача прав принадлежат хосту.
 | --- | --- |
 | [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L70) | Dispatcher, canonical path, per-slot capacity, выходы adapter/target. Fixed native cache и пять READ операций, заимствование dispatcher до destroy. Некорректные аргументы/capacity INVALID, слишком большой объём LIMIT, allocation NOMEM, ошибки регистрации передаются. Выходы только на OK; SDK/device/grant не запускает. |
 | [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L79) | Адаптер и borrowed frame. Проверяет format/reason/dimensions/counters/source/visible extents, копирует packed pixels в spare, публикует metadata, меняет latest. Без allocation. Неверный frame INVALID, capacity/sequence LIMIT; нет spare BUSY с ростом только dropped. Ошибки publish сохраняют прежний опубликованный кадр. Политику ошибок/пропуска выбирает хост. |
-| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L85) | Стандартный frame observer callback, userdata=adapter. OK/BUSY даёт [FVM_OK](../include/flashvm/flashvm.h#L42), при backpressure пропущен только экспорт. INVALID отображается в [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), прочее — [FVM_ERROR](../include/flashvm/flashvm.h#L43). Не удерживает source/pixel/VM указателей. Можно вместо него явно вызывать capture со своей политикой. |
+| [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L85) | Стандартный frame observer callback, userdata=adapter. OK/BUSY даёт [FVM_OK](../include/flashvm/flashvm.h#L44), при backpressure пропущен только экспорт. INVALID отображается в [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47), прочее — [FVM_ERROR](../include/flashvm/flashvm.h#L45). Не удерживает source/pixel/VM указателей. Можно вместо него явно вызывать capture со своей политикой. |
 | [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L89) | Декодирует один counted metadata payload без outer envelope. Проверяет полную schema, lease pair/range, packed geometry, flags, ненулевые sequence/presentations, reason, source length и точный конец. INVALID сохраняет native output. Результат принадлежит клиенту, без adapter/VM и allocation. |
 | [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L94) | Owner передаёт adapter и trusted session после остановки транспорта. Удаляет права ресурса, его watches и все pins сессии. Ошибка сохраняет pins; regrant старые поколения не возрождает. При полном disconnect также вызвать очистку сессии dispatcher. |
 | [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L100) | Owner останавливает capture/handlers/clients, unregister точного поколения и free native buffers, инвалидируя даже открытые pins. Running handler BUSY сохраняет pointer. OK обнуляет pointer; queued old jobs затем UNKNOWN и требуют take/disconnect. Dispatcher/client files/SDK принадлежат хосту. |
@@ -239,8 +239,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
 <!-- source-links:end -->

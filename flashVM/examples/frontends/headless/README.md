@@ -59,17 +59,17 @@ IME, audio or SWF scene; no native-device acceptance is claimed.
 
 | API | Purpose, ownership and blocking contract |
 | --- | --- |
-| [`fvm_raster_fill_polygon`](../../../include/flashvm/raster.h#L39) | Synchronously fill the borrowed pixel surface; no retained corners. [Raster API](../../../include/flashvm/raster.h). |
-| [`fvm_host_present`](../../../include/flashvm/host.h#L18) | Validate the actual byte span then call the borrowed synchronous consumer; no buffer transfer. [Contract](../../../doc/HOST_BACKENDS.md#frame-delivery). |
-| [`FVM_HostPresentCallback`](../../../include/flashvm/host.h#L11) | Read/copy/upload borrowed pixels before return on the caller thread. [Contract](../../../doc/HOST_BACKENDS.md#frame-delivery). |
-| [`fvm_host_pointer_to_world`](../../../include/flashvm/host.h#L26) | Convert one finite event using inverse affine; preserve outputs on error, no allocation. [Contract](../../../doc/HOST_BACKENDS.md#event-coordinates). |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration without acquiring a VM. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire a runtime, returned through caller storage; release after contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire isolated context input state owned by the runtime. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_input_dispatch_mouse`](../../../include/flashvm/mouse.h#L29) | Synchronously publish/deliver a world-coordinate contact transition on the VM owner. [Mouse](../../../doc/MOUSE.md#delivery). |
-| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L75) | Copy the latest context coordinates without OS queries or allocation. [Input](../../../include/flashvm/input.h). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release acquired VM state after callbacks finish, before runtime release. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after its context has been destroyed. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_raster_fill_polygon`](../../../include/flashvm/raster.h#L46) | Synchronously fill the borrowed pixel surface; no retained corners. [Raster API](../../../include/flashvm/raster.h). |
+| [`fvm_host_present`](../../../include/flashvm/host.h#L23) | Validate the actual byte span then call the borrowed synchronous consumer; no buffer transfer. [Contract](../../../doc/HOST_BACKENDS.md#frame-delivery). |
+| [`FVM_HostPresentCallback`](../../../include/flashvm/host.h#L14) | Read/copy/upload borrowed pixels before return on the caller thread. [Contract](../../../doc/HOST_BACKENDS.md#frame-delivery). |
+| [`fvm_host_pointer_to_world`](../../../include/flashvm/host.h#L33) | Convert one finite event using inverse affine; preserve outputs on error, no allocation. [Contract](../../../doc/HOST_BACKENDS.md#event-coordinates). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned configuration without acquiring a VM. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Acquire a runtime, returned through caller storage; release after contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Acquire isolated context input state owned by the runtime. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_input_dispatch_mouse`](../../../include/flashvm/mouse.h#L37) | Synchronously publish/deliver a world-coordinate contact transition on the VM owner. [Mouse](../../../doc/MOUSE.md#delivery). |
+| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L96) | Copy the latest context coordinates without OS queries or allocation. [Input](../../../include/flashvm/input.h). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Release acquired VM state after callbacks finish, before runtime release. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release the outer owner after its context has been destroyed. [Embedding](../../../doc/EMBEDDING_API.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -80,15 +80,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
-| `fvm_host_present` | function | [include/flashvm/host.h:18](../../../include/flashvm/host.h#L18) |
-| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../../../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../../../include/flashvm/mouse.h#L29) |
-| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../../include/flashvm/input.h#L75) |
-| `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:39](../../../include/flashvm/raster.h#L39) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:33](../../../include/flashvm/host.h#L33) |
+| `fvm_host_present` | function | [include/flashvm/host.h:23](../../../include/flashvm/host.h#L23) |
+| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:14](../../../include/flashvm/host.h#L14) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../../../include/flashvm/mouse.h#L37) |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:96](../../../include/flashvm/input.h#L96) |
+| `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:46](../../../include/flashvm/raster.h#L46) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
 <!-- source-links:end -->

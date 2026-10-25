@@ -14,7 +14,7 @@ fields does not invoke inherited setters. Final subclass.prototype assignment
 uses ordinary property dispatch, including its setter. Self-extension and
 noncallable class objects are accepted. Primitive prototype data, including
 counted strings with embedded NUL, is preserved without creating an object link.
-Host-only use retains the existing strict [`fvm_class_extend`](../src/standard/inheritance.cpp#L85) policy.
+Host-only use retains the existing strict [`fvm_class_extend`](../src/standard/inheritance.cpp#L104) policy.
 
 [GC:] Original operands, boxed receivers, getter results and the new prototype
 stay rooted through callbacks. Exceptions propagate with roots restored; user
@@ -45,6 +45,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_class_extend` | function | [src/standard/inheritance.cpp:85](../src/standard/inheritance.cpp#L85) |
-| `fvm_exec_extends` | function | [include/flashvm/execution.h:215](../include/flashvm/execution.h#L215) |
+| `fvm_class_extend` | function | [src/standard/inheritance.cpp:104](../src/standard/inheritance.cpp#L104) |
+| `fvm_exec_extends` | function | [include/flashvm/execution.h:291](../include/flashvm/execution.h#L291) |
 <!-- source-links:end -->

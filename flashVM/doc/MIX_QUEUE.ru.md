@@ -16,7 +16,7 @@ Optional queued-ID теперь охватывает pending и accepted stream/
 
 `fvm_swf_sound_mix_queue_create(mixer, backend, block_frames, out, adapted)`
 выделяет объект и два фиксированных массива, копирует геометрию и возвращает обычную
-[FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L16) table. Не вызывает устройство/pause/clear/VM и не создаёт поток.
+[FVM_AudioQueueBackend](../include/flashvm/swf_sound_output.h#L18) table. Не вызывает устройство/pause/clear/VM и не создаёт поток.
 Mixer заимствован для эксклюзивного rendering, submit сериализуется хостом. Выходы
 ненулевые и не перекрываются; *out обнуляется первым, adapted сохраняется при ошибке.
 Backend и adapted могут быть одним descriptor. Нулевой output/mixer, неверные ABI/
@@ -49,14 +49,14 @@ backend обязан соблюдать прежний атомарный кон
 
 `fvm_swf_sound_mix_queue_info(adapter, out)` копирует struct_size, capacity_frames,
 pending_frames без устройства/выделений/VM. Null/wrong-size/reentry дают
-INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L279) освобождает
+INVALID_ARGUMENT с неизменным output. [`fvm_swf_sound_mix_queue_close`](../include/flashvm/swf_sound_mix_queue.h#L338) освобождает
 только объект/массивы без callback, stop голосов и device close; null допустим.
 Вызывать после quiescence всех пользователей table. Нужна внешняя сериализация:
 busy-флаг защищает callback recursion, а не гонки потоков. Managed-указателей нет.
 
 ## Producer, отмена и хвосты
 
-Создать адаптер до [fvm_swf_stream_output_init](../include/flashvm/swf_stream_output.h#L52), передать producer полученную table.
+Создать адаптер до [fvm_swf_stream_output_init](../include/flashvm/swf_stream_output.h#L58), передать producer полученную table.
 Producer удерживает исходный stream retry PCM, адаптер — готовую смесь; при отказе
 обе ступени удерживают один логический блок. Часы очереди и frame gates остаются
 у producer; посторонние write/clear в реальном FIFO нарушают эксклюзивное владение.
@@ -118,10 +118,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
-| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:279](../include/flashvm/swf_sound_mix_queue.h#L279) |
-| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:215](../include/flashvm/swf_sound_mix_queue.h#L215) |
-| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:275](../include/flashvm/swf_sound_mix_queue.h#L275) |
+| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:18](../include/flashvm/swf_sound_output.h#L18) |
+| `fvm_swf_sound_mix_queue_close` | function | [include/flashvm/swf_sound_mix_queue.h:338](../include/flashvm/swf_sound_mix_queue.h#L338) |
+| `fvm_swf_sound_mix_queue_create` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
+| `fvm_swf_sound_mix_queue_info` | function | [include/flashvm/swf_sound_mix_queue.h:332](../include/flashvm/swf_sound_mix_queue.h#L332) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_BLOCK` | macro / define | [include/flashvm/swf_sound_output.h:11](../include/flashvm/swf_sound_output.h#L11) |
-| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:52](../include/flashvm/swf_stream_output.h#L52) |
+| `fvm_swf_stream_output_init` | function | [include/flashvm/swf_stream_output.h:58](../include/flashvm/swf_stream_output.h#L58) |
 <!-- source-links:end -->

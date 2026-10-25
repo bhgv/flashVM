@@ -12,7 +12,7 @@
 реализация, добавьте отдельную ссылку на неё. Переходы к руководству и к
 исходникам дополняют друг друга: ссылка на header не заменяет описание API.
 
-Примеры символов: [`fvm_crash_configure`](../include/flashvm/crash.h#L55), [`FVM_CrashFrame`](../include/flashvm/crash.h#L32), [`FVM_CRASH_DEBUGGER`](../include/flashvm/crash.h#L16),
+Примеры символов: [`fvm_crash_configure`](../include/flashvm/crash.h#L65), [`FVM_CrashFrame`](../include/flashvm/crash.h#L38), [`FVM_CRASH_DEBUGGER`](../include/flashvm/crash.h#L16),
 [`FVM_API`](../include/flashvm/flashvm.h#L16), [`FVM_ABI_VERSION`](../include/flashvm/flashvm.h#L25). Номера строк относятся к текущему checkout;
 в исторических заметках ссылка также ведёт к текущему определению.
 
@@ -121,8 +121,8 @@ Markdown-ссылки внутри `id`, `href` и `title` ломают якор
 ## Deterministic source table order / стабильный порядок
 
 Generated declaration rows sort by casefolded name and then original spelling.
-The second key distinguishes a macro such as [FVM_SWF_SOUND_EVENT_ENVELOPE](../include/flashvm/swf_sound.h#L33) from
-[fvm_swf_sound_event_envelope](../include/flashvm/swf_sound.h#L64) without depending on Python hash iteration order.
+The second key distinguishes a macro such as [FVM_SWF_SOUND_EVENT_ENVELOPE](../include/flashvm/swf_sound.h#L36) from
+[fvm_swf_sound_event_envelope](../include/flashvm/swf_sound.h#L78) without depending on Python hash iteration order.
 `scripts/test_documentation_source_links.py` checks six hash seeds and repeated
 refresh; it is registered in native CTest. The fixture stays in ignored build
 output on the source drive so Windows temporary-drive differences do not alter
@@ -144,9 +144,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ABI_VERSION` | macro / define | [include/flashvm/flashvm.h:25](../include/flashvm/flashvm.h#L25) |
 | `FVM_API` | macro / define | [include/flashvm/flashvm.h:16](../include/flashvm/flashvm.h#L16) |
-| `fvm_crash_configure` | function | [include/flashvm/crash.h:55](../include/flashvm/crash.h#L55) |
+| `fvm_crash_configure` | function | [include/flashvm/crash.h:65](../include/flashvm/crash.h#L65) |
 | `FVM_CRASH_DEBUGGER` | enum constant | [include/flashvm/crash.h:16](../include/flashvm/crash.h#L16) |
-| `FVM_CrashFrame` | struct | [include/flashvm/crash.h:32](../include/flashvm/crash.h#L32) |
-| `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:33](../include/flashvm/swf_sound.h#L33) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:64](../include/flashvm/swf_sound.h#L64) |
+| `FVM_CrashFrame` | struct | [include/flashvm/crash.h:38](../include/flashvm/crash.h#L38) |
+| `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:36](../include/flashvm/swf_sound.h#L36) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
 <!-- source-links:end -->

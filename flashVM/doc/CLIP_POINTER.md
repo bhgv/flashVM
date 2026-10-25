@@ -1,6 +1,6 @@
 # Clip-local pointer queries / Координаты указателя в клипе — v0.327
 
-C89 [fvm_exec_clip_pointer](../include/flashvm/execution.h#L286)(context, clip, &x, &y) snapshots the world pointer and
+C89 [fvm_exec_clip_pointer](../include/flashvm/execution.h#L389)(context, clip, &x, &y) snapshots the world pointer and
 projects it through the inverse physical native world matrix. It returns two
 Number values; distinct non-NULL outputs are required. Context ownership,
 instance type, singular/nonfinite transforms and output aliases are validated.
@@ -89,6 +89,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_pointer` | function | [include/flashvm/execution.h:286](../include/flashvm/execution.h#L286) |
+| `fvm_exec_clip_pointer` | function | [include/flashvm/execution.h:389](../include/flashvm/execution.h#L389) |
 | `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:112](../src/standard/movieclip_constants.h#L112) |
 <!-- source-links:end -->

@@ -41,7 +41,7 @@ shared resources or disconnects unrelated sessions.
 Every call is serialized externally. The server borrows one exclusive FS; do not
 use or destroy that FS independently while its descriptors belong to the server.
 No managed pointers, VM roots, implicit workers, clocks or callbacks are created.
-Owner execution still uses [fvm_rdispatch_pump](../include/flashvm/rdispatch.h#L119), or the debugger's existing owner
+Owner execution still uses [fvm_rdispatch_pump](../include/flashvm/rdispatch.h#L145), or the debugger's existing owner
 service loop. All output buffers require [FVM_R9P_MSIZE](../include/flashvm/r9p.h#L5) bytes even after a smaller
 msize negotiation. Input/output and count pointers must not overlap. Retain and
 send produced replies in order before later replies, including Rflush: the API
@@ -49,10 +49,10 @@ hands ownership of the produced copy to the transport, not delivery confirmation
 
 | Function | Contract |
 | --- | --- |
-| [`fvm_r9p_create`](../include/flashvm/r9p.h#L20) | Borrow FS and allocate one fixed native server; output only on OK, NOMEM preserves it. FS already carries authenticated session and native grants. One FS per connection; no socket, mount or authentication is started. |
-| [`fvm_r9p_request`](../include/flashvm/r9p.h#L28) | Server, input/count, output/capacity, used/consumed outputs. Processes one complete frame, leaving a concatenated next frame unconsumed. Capacity below MSIZE gives LIMIT before mutation. Incomplete input PENDING; bad framing INVALID/LIMIT; duplicate outstanding tag CONFLICT (host terminates a violating connection). These native errors preserve output/counts. Valid request returns OK and consumed frame length; used is reply length or zero when a Tread was retained. Protocol/service errors are complete Rerror replies. Never pumps VM callbacks. |
-| [`fvm_r9p_poll`](../include/flashvm/r9p.h#L34) | Server, MSIZE output buffer and used output. Checks retained reads round-robin and produces one ready reply, releasing its tag. PENDING leaves output/used unchanged. Also retries retired native closes after running callbacks finish. Read tags may complete out of order; route them by tag. Host retains produced bytes for partial-send retry. |
-| [`fvm_r9p_destroy`](../include/flashvm/r9p.h#L39) | Pointer to server after transport/owner callbacks quiesce. Closes fids and discards pending reads. BUSY keeps the server pointer but cleanup may have already closed earlier fids; retry after handler completion. OK frees server and nulls pointer. Destroy FS next, optionally disconnect its session on the owner, then destroy dispatcher after all other borrowers end. |
+| [`fvm_r9p_create`](../include/flashvm/r9p.h#L22) | Borrow FS and allocate one fixed native server; output only on OK, NOMEM preserves it. FS already carries authenticated session and native grants. One FS per connection; no socket, mount or authentication is started. |
+| [`fvm_r9p_request`](../include/flashvm/r9p.h#L32) | Server, input/count, output/capacity, used/consumed outputs. Processes one complete frame, leaving a concatenated next frame unconsumed. Capacity below MSIZE gives LIMIT before mutation. Incomplete input PENDING; bad framing INVALID/LIMIT; duplicate outstanding tag CONFLICT (host terminates a violating connection). These native errors preserve output/counts. Valid request returns OK and consumed frame length; used is reply length or zero when a Tread was retained. Protocol/service errors are complete Rerror replies. Never pumps VM callbacks. |
+| [`fvm_r9p_poll`](../include/flashvm/r9p.h#L40) | Server, MSIZE output buffer and used output. Checks retained reads round-robin and produces one ready reply, releasing its tag. PENDING leaves output/used unchanged. Also retries retired native closes after running callbacks finish. Read tags may complete out of order; route them by tag. Host retains produced bytes for partial-send retry. |
+| [`fvm_r9p_destroy`](../include/flashvm/r9p.h#L47) | Pointer to server after transport/owner callbacks quiesce. Closes fids and discards pending reads. BUSY keeps the server pointer but cleanup may have already closed earlier fids; retry after handler completion. OK frees server and nulls pointer. Destroy FS next, optionally disconnect its session on the owner, then destroy dispatcher after all other borrowers end. |
 
 Bounds: [FVM_R9P_FIDS](../include/flashvm/r9p.h#L7) wire fid slots and retained reads, [FVM_R9P_WELEM](../include/flashvm/r9p.h#L8) walk
 components, [FVM_R9P_MSIZE](../include/flashvm/r9p.h#L5) whole frames. A retired running-close slot remains
@@ -131,14 +131,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_r9p_create` | function | [include/flashvm/r9p.h:20](../include/flashvm/r9p.h#L20) |
-| `fvm_r9p_destroy` | function | [include/flashvm/r9p.h:39](../include/flashvm/r9p.h#L39) |
+| `fvm_r9p_create` | function | [include/flashvm/r9p.h:22](../include/flashvm/r9p.h#L22) |
+| `fvm_r9p_destroy` | function | [include/flashvm/r9p.h:47](../include/flashvm/r9p.h#L47) |
 | `FVM_R9P_FIDS` | macro / define | [include/flashvm/r9p.h:7](../include/flashvm/r9p.h#L7) |
 | `FVM_R9P_MIN_MSIZE` | macro / define | [include/flashvm/r9p.h:6](../include/flashvm/r9p.h#L6) |
 | `FVM_R9P_MSIZE` | macro / define | [include/flashvm/r9p.h:5](../include/flashvm/r9p.h#L5) |
-| `fvm_r9p_poll` | function | [include/flashvm/r9p.h:34](../include/flashvm/r9p.h#L34) |
-| `fvm_r9p_request` | function | [include/flashvm/r9p.h:28](../include/flashvm/r9p.h#L28) |
+| `fvm_r9p_poll` | function | [include/flashvm/r9p.h:40](../include/flashvm/r9p.h#L40) |
+| `fvm_r9p_request` | function | [include/flashvm/r9p.h:32](../include/flashvm/r9p.h#L32) |
 | `FVM_R9P_WELEM` | macro / define | [include/flashvm/r9p.h:8](../include/flashvm/r9p.h#L8) |
 | `FVM_R_BYTES` | macro / define | [include/flashvm/rdispatch.h:9](../include/flashvm/rdispatch.h#L9) |
-| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:119](../include/flashvm/rdispatch.h#L119) |
+| `fvm_rdispatch_pump` | function | [include/flashvm/rdispatch.h:145](../include/flashvm/rdispatch.h#L145) |
 <!-- source-links:end -->

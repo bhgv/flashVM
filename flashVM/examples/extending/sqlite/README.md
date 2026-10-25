@@ -17,10 +17,10 @@ This C89 example creates an in-memory SQLite database and queries it. It is buil
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_sqlite_close`](../../../include/flashvm/sqlite.h#L22) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
-| [`fvm_sqlite_exec`](../../../include/flashvm/sqlite.h#L18) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
-| [`fvm_sqlite_open`](../../../include/flashvm/sqlite.h#L16) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
-| [`fvm_sqlite_query_int`](../../../include/flashvm/sqlite.h#L20) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
+| [`fvm_sqlite_close`](../../../include/flashvm/sqlite.h#L30) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
+| [`fvm_sqlite_exec`](../../../include/flashvm/sqlite.h#L22) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
+| [`fvm_sqlite_open`](../../../include/flashvm/sqlite.h#L18) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
+| [`fvm_sqlite_query_int`](../../../include/flashvm/sqlite.h#L26) | [SQLITE_API.md](../../../doc/SQLITE_API.md) — SQLite adapter и запросы. |
 
 [Описание в общем каталоге](../../README.md#example-extending-sqlite).
 <!-- example-catalog-api:end -->
@@ -38,9 +38,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_sqlite_close` | function | [include/flashvm/sqlite.h:22](../../../include/flashvm/sqlite.h#L22) |
-| `fvm_sqlite_exec` | function | [include/flashvm/sqlite.h:18](../../../include/flashvm/sqlite.h#L18) |
-| `fvm_sqlite_open` | function | [include/flashvm/sqlite.h:16](../../../include/flashvm/sqlite.h#L16) |
-| `fvm_sqlite_query_int` | function | [include/flashvm/sqlite.h:20](../../../include/flashvm/sqlite.h#L20) |
+| `fvm_sqlite_close` | function | [include/flashvm/sqlite.h:30](../../../include/flashvm/sqlite.h#L30) |
+| `fvm_sqlite_exec` | function | [include/flashvm/sqlite.h:22](../../../include/flashvm/sqlite.h#L22) |
+| `fvm_sqlite_open` | function | [include/flashvm/sqlite.h:18](../../../include/flashvm/sqlite.h#L18) |
+| `fvm_sqlite_query_int` | function | [include/flashvm/sqlite.h:26](../../../include/flashvm/sqlite.h#L26) |
 | `SQLITE` | DEFS switch | [cmake/BuildDefinitions.cmake:10](../../../cmake/BuildDefinitions.cmake#L10) |
 <!-- source-links:end -->

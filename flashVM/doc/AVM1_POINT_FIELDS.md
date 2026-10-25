@@ -1,6 +1,6 @@
 # Loaded point fields / Поля точки в загруженном SWF
 
-v0.334 refines [fvm_exec_clip_point](../include/flashvm/execution.h#L65) and the two MovieClip point methods for loaded
+v0.334 refines [fvm_exec_clip_point](../include/flashvm/execution.h#L76) and the two MovieClip point methods for loaded
 SWF4–8. It reads stored own numeric x/y fields without getters, inherited lookup
 or numeric coercion. A primitive/missing point or an absent/nonnumeric field is
 an undefined-returning no-op, before geometry callbacks. A singular inverse
@@ -75,5 +75,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:76](../include/flashvm/execution.h#L76) |
 <!-- source-links:end -->

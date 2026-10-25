@@ -5,13 +5,17 @@
 /* C89: create an AVM1 object and expose it to scripts through globals. */
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/value.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
@@ -28,18 +32,24 @@ int main(void)
     if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &r) != FVM_OK ||
         /* Создаём отдельный контекст интерпретатора в среде выполнения. */
         fvm_context_create(r, &c) != FVM_OK)
+    { /* Begin scope: fvm_context_create(r, &c) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End scope: fvm_context_create(r, &c) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_object_create(c, &o) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_object_create(c, &o) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 2;
+    } /* End conditional branch: if (fvm_object_create(c, &o) != FVM_OK). */
     /* Записываем числовое значение и соответствующий тег типа. */
     fvm_value_number(&v, 123);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_object_set(c, o, "score", &v) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_object_set(c, o, "score", &v) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 3;
+    } /* End conditional branch: if (fvm_object_set(c, o, "score", &v) != FVM_OK). */
     /* Сбрасываем все поля значения в состояние undefined. */
     fvm_value_undefined(&v);
 
@@ -50,12 +60,16 @@ int main(void)
     v.object = o;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_set_global(c, "gameState", &v) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_set_global(c, "gameState", &v) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 4;
+    } /* End conditional branch: if (fvm_set_global(c, "gameState", &v) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_object_get(c, o, "score", &v) != FVM_OK || v.number != 123)
+    { /* Begin conditional branch: if (fvm_object_get(c, o, "score", &v) != FVM_OK || v.number != 123). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 5;
+    } /* End conditional branch: if (fvm_object_get(c, o, "score", &v) != FVM_OK || v.number != 123). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -69,4 +83,4 @@ int main(void)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

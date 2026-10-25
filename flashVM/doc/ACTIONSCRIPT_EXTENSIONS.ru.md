@@ -5,7 +5,7 @@
 Перед AVM1 вызвать `fvm_extensions_install(context)`. Он создаёт глобальные
 объекты `gc`, `thread`, `channel`, `metatable`, `mutex`, принадлежащие контексту. Повторная установка
 допустима, если все пять объекта сохранены. Конфликт или частичная замена
-глобальных имён возвращает [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), пользовательские значения
+глобальных имён возвращает [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), пользовательские значения
 не перезаписываются. Без установки поведение существующих контекстов прежнее.
 C89 ABI: `flashvm/extensions.h`; реализация C++98 без STL.
 
@@ -62,7 +62,7 @@ join/ret кэшируют декодированный объектный рез
 потока. Произвольный нативный callback нельзя принудительно прервать. Для предсказуемого времени
 очистки выполнять явный join. Self-join запрещён.
 
-Ошибка worker возвращается как [FVM_Result](../include/flashvm/flashvm.h#L40) из C-вызова или исполнения AVM1;
+Ошибка worker возвращается как [FVM_Result](../include/flashvm/flashvm.h#L42) из C-вызова или исполнения AVM1;
 объектов исключений ActionScript в этом подмножестве нет. Undefined в ret
 может означать и незавершённый worker, и реальный undefined-результат —
 проверять state. Multi-join проверяет все handle до старта и ждёт остальных
@@ -81,7 +81,7 @@ join/ret кэшируют декодированный объектный рез
 | `ch.capacity(n)` | Изменить ёмкость, сохранить уже поставленные сообщения |
 | `ch.close()` | Разбудить ожидающих; запретить отправку, разрешить чтение остатка |
 
-Пустой закрытый канал и отправка в закрытый возвращают [FVM_ERROR](../include/flashvm/flashvm.h#L43). При нескольких
+Пустой закрытый канал и отправка в закрытый возвращают [FVM_ERROR](../include/flashvm/flashvm.h#L45). При нескольких
 потребителях ready не гарантирует немедленный receive. Undefined-сообщение и
 пустой tryReceive выглядят одинаково; для различения использовать объект-конверт.
 
@@ -92,7 +92,7 @@ GC снимает её ссылку на канал. Последний нати
 
 ## Передача графов через C API
 
-`flashvm/transfer.h`: [fvm_channel_send_value](../include/flashvm/transfer.h#L22) / [fvm_channel_receive_value](../include/flashvm/transfer.h#L25).
+`flashvm/transfer.h`: [fvm_channel_send_value](../include/flashvm/transfer.h#L24) / [fvm_channel_receive_value](../include/flashvm/transfer.h#L29).
 Итеративно копируются именованные и индексированные свойства, прототипы и
 метатаблицы. Сохраняются циклы и повторные ссылки. После успешной отправки
 исходную VM можно собрать или уничтожить. Ограничения и поддержанные нативные кодеки описаны в
@@ -136,11 +136,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
-| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:21](../include/flashvm/extensions.h#L21) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:29](../include/flashvm/transfer.h#L29) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:24](../include/flashvm/transfer.h#L24) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:25](../include/flashvm/extensions.h#L25) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

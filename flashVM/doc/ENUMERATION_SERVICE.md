@@ -49,5 +49,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_enumerate` | function | [include/flashvm/execution.h:133](../include/flashvm/execution.h#L133) |
+| `fvm_exec_enumerate` | function | [include/flashvm/execution.h:164](../include/flashvm/execution.h#L164) |
 <!-- source-links:end -->

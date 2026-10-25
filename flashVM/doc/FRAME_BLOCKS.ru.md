@@ -1,12 +1,12 @@
 # Снимки действий кадра — v0.631
 
-[`fvm_exec_call_frame`](../include/flashvm/execution.h#L342) — публичный синхронный сервис ActionCall (0x9e) для потока
+[`fvm_exec_call_frame`](../include/flashvm/execution.h#L456) — публичный синхронный сервис ActionCall (0x9e) для потока
 владельца контекста. Он заимствует принадлежащий контексту scope receiver (для
-не-MovieClip используется `_root`) и допустимый операнд [`FVM_Value`](../include/flashvm/value.h#L24). Числовой
+не-MovieClip используется `_root`) и допустимый операнд [`FVM_Value`](../include/flashvm/value.h#L26). Числовой
 селектор приводится к Uint32, остальные — к строке по правилам AVM1. Counted-путь
 `clip:frame` разрешается до выбора действий. Отсутствующий target/кадр — no-op;
-неподдерживаемая slash-only форма даёт [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Внутренний
-[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3574) получает уже выбранный клип и число/строку.
+неподдерживаемая slash-only форма даёт [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). Внутренний
+[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L4689) получает уже выбранный клип и число/строку.
 Оба пути не перемещают playhead, не применяют scene controls, не вызывают onEnterFrame,
 не опрашивают таймеры и не двигают детей. Контекст и аргументы сохраняются до возврата.
 
@@ -22,15 +22,15 @@ DoAction, а tick имел собственный механизм копиро�
 вызов видит замену. Операндный стек и локальное исполнение каждого блока независимы.
 
 Null/чужой контейнер кадров, выбранная запись или объект сегментов, дырки/неверный
-диапазон ключей и превышение границы дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) до первого выбранного
+диапазон ключей и превышение границы дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) до первого выбранного
 действия. Код декодируется в момент исполнения блока: неверный тип, нечётный/неверный
 hex или некорректный AVM1 позже в списке могут дать ошибку после эффектов ранних блоков.
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), ошибки исполнения и исключения передаются вызывающему. Эффекты
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), ошибки исполнения и исключения передаются вызывающему. Эффекты
 coercion и уже исполненных действий сохраняются; tick до ошибки снимка также мог
 изменить playhead/display list и вызвать sound notification. Автоматического отката
 или повтора нет.
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) сохраняет общий внешний instruction/work budget для coercion
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) сохраняет общий внешний instruction/work budget для coercion
 операнда в публичном сервисе, разрешения target, подготовки кадра и вложенных блоков.
 Счётчик сбрасывается только при входе без активного execution/work scope. Сегментированный кадр списывает
 единицу за копируемый ordinal и единицу за вход в блок, плюс обычные checkpoints AVM1
@@ -77,7 +77,7 @@ Windows/macOS на физических устройствах или совме
 
 Контроль с точным movieclip.cpp из v0.630 воспроизводит обход лимита: при limit 10
 два блока по шесть инструкций завершаются с seen=2 и steps=6. Новый код возвращает
-[FVM_ERROR](../include/flashvm/flashvm.h#L43), сохраняя seen=1 и steps=11. Checkpoint AVM1 учитывает попытку инструкции
+[FVM_ERROR](../include/flashvm/flashvm.h#L45), сохраняя seen=1 и steps=11. Checkpoint AVM1 учитывает попытку инструкции
 до отклонения; native work отклоняется до увеличения счётчика на пределе.
 Это сравнение реализаций FlashVM, а не доказательство original Player semantics.
 Новый SDL/device/foreign-OS прогон и полная LeakSanitizer-приёмка не заявляются.
@@ -91,14 +91,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3574](../src/standard/movieclip.cpp#L3574) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_exec_call_frame` | function | [include/flashvm/execution.h:456](../include/flashvm/execution.h#L456) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:4689](../src/standard/movieclip.cpp#L4689) |
 | `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:30](../src/standard/movieclip_constants.h#L30) |
 | `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:24](../src/standard/movieclip_constants.h#L24) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

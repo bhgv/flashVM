@@ -41,7 +41,7 @@ colorTransform применяет восемь нативных каналов �
 error_allocation. Они проверяют независимость clone, dispose/GC, чтение/запись,
 цвета, отсечение, readonly-поля, знаковость getPixel32, перекрытие scroll,
 colorTransform, очередь/файл, повреждённый заголовок и отказы выделения памяти.
-Файловая проверка пропускается только при явном [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) профиля.
+Файловая проверка пропускается только при явном [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) профиля.
 
 Это частичная реализация, а не завершение BitmapData или этапа 4. Буфер пока
 хранит straight RGBA; точное округление premultiplied alpha Flash не подтверждено.
@@ -124,5 +124,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

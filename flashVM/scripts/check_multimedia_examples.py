@@ -36,7 +36,7 @@ def main():
         for path in folder.iterdir():
             if path.suffix not in EXTENSIONS:
                 continue
-            text = re.sub(r'/\*.*?\*/|//[^\n]*', ' ', path.read_text(), flags=re.S)
+            text = re.sub(r"/\*.*?\*/|//[^\n]*", " ", path.read_text(), flags=re.S)
             if re.search(r"\bassert\s*\(", text):
                 issues.append(f"{path.relative_to(ROOT)}: tutorial assertion")
             for name in set(re.findall(r"\b(fvm_\w+)\s*\(", text)) & api:
@@ -44,7 +44,9 @@ def main():
                     issues.append(f"{readme.relative_to(ROOT)}: missing demonstrated API {name}")
     if issues:
         raise SystemExit("\n".join(issues))
-    print(f"PASS {len(files)} multimedia/speech source and tutorial files: every-line comments, no tutorial assertions, README/API coverage")
+    print(
+        f"PASS {len(files)} multimedia/speech source and tutorial files: every-line comments, no tutorial assertions, README/API coverage"
+    )
 
 
 if __name__ == "__main__":

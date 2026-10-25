@@ -19,7 +19,7 @@ width * [FVM_DESKTOP_FRAME_PIXEL_BYTES](../frontend/common/frame.h#L7) байт.
 movie_ticks/presentations относятся к текущему корню, total_* — ко всему запуску.
 
 [FVM_DesktopFrameNotify](../frontend/common/frame.h#L44)(frame, userdata)` — callback владельца после успешного
-растра и native-показа, вне рендеринга VM. Возвращает [FVM_OK](../include/flashvm/flashvm.h#L42) для продолжения;
+растра и native-показа, вне рендеринга VM. Возвращает [FVM_OK](../include/flashvm/flashvm.h#L44) для продолжения;
 другая ошибка завершает playback после уже совершённых действий/рисования.
 Заимствованные frame/pixels/source действительны только до возврата. Не меняйте
 pixels, не сохраняйте указатели, не входите в VM/плеер повторно, не завершайте SDK,
@@ -35,8 +35,8 @@ null указателя, без выделения памяти и старта 
 
 [fvm_desktop_frame_copy](../frontend/common/frame.h#L65)(frame, destination, capacity, destination_stride)` копирует
 только видимые RGBA-байты строк. Память не выделяется, VM/SDL не запускаются.
-При [FVM_OK](../include/flashvm/flashvm.h#L42) источник не изменён, padding назначения остаётся прежним. Для ошибки
-возвращается [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) и никакие байты назначения не меняются.
+При [FVM_OK](../include/flashvm/flashvm.h#L44) источник не изменён, padding назначения остаётся прежним. Для ошибки
+возвращается [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) и никакие байты назначения не меняются.
 Проверяются указатели, точный struct_size, format, ненулевые ограниченные размеры,
 оба stride и обе доступные длины, включая переполнение (height-1)*stride+row_bytes.
 Последний padding источника не требуется: достаточно полного видимого последнего
@@ -112,6 +112,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

@@ -63,9 +63,7 @@ def main():
             compiler.write_text(
                 "#!" + sys.executable + "\nimport sys\nfrom pathlib import Path\n"
                 "out = Path(sys.argv[sys.argv.index('-o') + 1])\n"
-                "sym = out.with_suffix('.sbl')\n"
-                + compiler_body(module, debug, status)
-                + "\n"
+                "sym = out.with_suffix('.sbl')\n" + compiler_body(module, debug, status) + "\n"
             )
             compiler.chmod(0o700)
             output, symbols = root / "idecore.dis", root / "idecore.sbl"
@@ -86,13 +84,20 @@ def main():
                 timeout=15,
             )
             if accepted:
-                assert result.returncode == 0, (name, result.stderr)
-                assert output.read_bytes() == module, name
-                assert symbols.read_bytes() == debug, name
+                if not (result.returncode == 0):
+                    raise AssertionError((name, result.stderr))
+                if not (output.read_bytes() == module):
+                    raise AssertionError(name)
+                if not (symbols.read_bytes() == debug):
+                    raise AssertionError(name)
             else:
-                assert result.returncode != 0, name
-                assert not output.exists() and not symbols.exists(), name
-    print(str(len(cases)) + " compiler product-admission contracts passed; no bytecode validity claim")
+                if not (result.returncode != 0):
+                    raise AssertionError(name)
+                if not (not output.exists() and (not symbols.exists())):
+                    raise AssertionError(name)
+    print(
+        str(len(cases)) + " compiler product-admission contracts passed; no bytecode validity claim"
+    )
 
 
 if __name__ == "__main__":

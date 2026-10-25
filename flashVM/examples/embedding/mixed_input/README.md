@@ -39,19 +39,19 @@ See [Mouse listeners](../mouse_listeners/README.md) for rooted script receivers.
 
 | API | Parameters, result and ownership |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Writable `config`: initialize public defaults before acquiring a VM. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Borrow initialized config, return owned runtime through `out`; release after contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Live runtime, writable `out`: acquire independent VM/FIFO state on caller thread. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_input_enqueue_mouse`](../../../include/flashvm/input_queue.h#L25) | Context, DOWN/MOVE/UP, finite world x/y: copy a transition; no callback/publication until pump; capacity/allocation errors retain FIFO. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_enqueue_keyboard`](../../../include/flashvm/input_queue.h#L34) | Context, borrowed validated state, pressed=0/1, finite event-time world x/y: copy all native fields; producer may immediately reuse storage. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_pump`](../../../include/flashvm/input_queue.h#L45) | Context, max_events (zero means entry batch), optional processed: synchronously dispatch in order on owner thread; additions wait for next pump, errors consume current and retain later entries. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L71) | Context, writable state with exact struct_size: copy committed polling state without script/OS activity. [Keyboard](../../../doc/KEYBOARD.md). |
-| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L75) | Context, distinct writable world x/y: copy current committed pointer, no allocation. [Input](../../../include/flashvm/input.h). |
-| [`fvm_input_pending`](../../../include/flashvm/input_queue.h#L48) | Context, writable count: total pending entries across variants; invalid arguments preserve output. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_clear_queue`](../../../include/flashvm/input_queue.h#L39) | Context: cancel pending entries without callbacks/state reset; invalidates active entry batch if called during delivery. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_reset_keyboard`](../../../include/flashvm/keyboard.h#L73) | Context: clear held/latest/toggle polling state without synthesizing key callbacks. [Keyboard](../../../doc/KEYBOARD.md). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Acquired context: release FIFO and VM state after delivery stops; rejected during an active pump. [Embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Acquired runtime after context destruction: release outer owner; no callback may still use it. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Writable `config`: initialize public defaults before acquiring a VM. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Borrow initialized config, return owned runtime through `out`; release after contexts. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Live runtime, writable `out`: acquire independent VM/FIFO state on caller thread. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_input_enqueue_mouse`](../../../include/flashvm/input_queue.h#L29) | Context, DOWN/MOVE/UP, finite world x/y: copy a transition; no callback/publication until pump; capacity/allocation errors retain FIFO. [Queue](../../../doc/INPUT_QUEUE.md). |
+| [`fvm_input_enqueue_keyboard`](../../../include/flashvm/input_queue.h#L42) | Context, borrowed validated state, pressed=0/1, finite event-time world x/y: copy all native fields; producer may immediately reuse storage. [Queue](../../../doc/INPUT_QUEUE.md). |
+| [`fvm_input_pump`](../../../include/flashvm/input_queue.h#L57) | Context, max_events (zero means entry batch), optional processed: synchronously dispatch in order on owner thread; additions wait for next pump, errors consume current and retain later entries. [Queue](../../../doc/INPUT_QUEUE.md). |
+| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L77) | Context, writable state with exact struct_size: copy committed polling state without script/OS activity. [Keyboard](../../../doc/KEYBOARD.md). |
+| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L96) | Context, distinct writable world x/y: copy current committed pointer, no allocation. [Input](../../../include/flashvm/input.h). |
+| [`fvm_input_pending`](../../../include/flashvm/input_queue.h#L62) | Context, writable count: total pending entries across variants; invalid arguments preserve output. [Queue](../../../doc/INPUT_QUEUE.md). |
+| [`fvm_input_clear_queue`](../../../include/flashvm/input_queue.h#L49) | Context: cancel pending entries without callbacks/state reset; invalidates active entry batch if called during delivery. [Queue](../../../doc/INPUT_QUEUE.md). |
+| [`fvm_input_reset_keyboard`](../../../include/flashvm/keyboard.h#L81) | Context: clear held/latest/toggle polling state without synthesizing key callbacks. [Keyboard](../../../doc/KEYBOARD.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Acquired context: release FIFO and VM state after delivery stops; rejected during an active pump. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Acquired runtime after context destruction: release outer owner; no callback may still use it. [Embedding](../../../doc/EMBEDDING_API.md). |
 
 Before enqueue, SDL/Clutter adapters must map their own event coordinates once,
 select primary contact and suppress native duplicates. An OS worker must marshal
@@ -68,17 +68,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:39](../../../include/flashvm/input_queue.h#L39) |
-| `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:34](../../../include/flashvm/input_queue.h#L34) |
-| `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:25](../../../include/flashvm/input_queue.h#L25) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
-| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../../include/flashvm/input.h#L75) |
-| `fvm_input_pending` | function | [include/flashvm/input_queue.h:48](../../../include/flashvm/input_queue.h#L48) |
-| `fvm_input_pump` | function | [include/flashvm/input_queue.h:45](../../../include/flashvm/input_queue.h#L45) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:73](../../../include/flashvm/keyboard.h#L73) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:49](../../../include/flashvm/input_queue.h#L49) |
+| `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:42](../../../include/flashvm/input_queue.h#L42) |
+| `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:29](../../../include/flashvm/input_queue.h#L29) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:77](../../../include/flashvm/keyboard.h#L77) |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:96](../../../include/flashvm/input.h#L96) |
+| `fvm_input_pending` | function | [include/flashvm/input_queue.h:62](../../../include/flashvm/input_queue.h#L62) |
+| `fvm_input_pump` | function | [include/flashvm/input_queue.h:57](../../../include/flashvm/input_queue.h#L57) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:81](../../../include/flashvm/keyboard.h#L81) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
 <!-- source-links:end -->

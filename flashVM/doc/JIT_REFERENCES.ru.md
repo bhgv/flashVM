@@ -9,8 +9,8 @@ Delete и Delete2. Все генераторы машинного кода ис�
 
 Запись/объявление выбирают MovieClip либо глобальный объект, script-this и
 подготовленную activation по тем же правилам, что интерпретатор. Используются
-общие [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408), [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L428), [`fvm_exec_member`](../include/flashvm/execution.h#L206),
-[`fvm_exec_delete_member`](../include/flashvm/execution.h#L135), [`fvm_exec_delete_reference`](../include/flashvm/execution.h#L391).
+общие [`fvm_exec_variable_set`](../include/flashvm/execution.h#L542), [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L566), [`fvm_exec_member`](../include/flashvm/execution.h#L278),
+[`fvm_exec_delete_member`](../include/flashvm/execution.h#L168), [`fvm_exec_delete_reference`](../include/flashvm/execution.h#L521).
 
 Операнды остаются в корнях нативного вызова до завершения преобразований,
 getter/setter и удаления. Результаты заменяют существующие элементы стека без
@@ -54,9 +54,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:135](../include/flashvm/execution.h#L135) |
-| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:391](../include/flashvm/execution.h#L391) |
-| `fvm_exec_member` | function | [include/flashvm/execution.h:206](../include/flashvm/execution.h#L206) |
-| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:428](../include/flashvm/execution.h#L428) |
-| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:168](../include/flashvm/execution.h#L168) |
+| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:521](../include/flashvm/execution.h#L521) |
+| `fvm_exec_member` | function | [include/flashvm/execution.h:278](../include/flashvm/execution.h#L278) |
+| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:566](../include/flashvm/execution.h#L566) |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:542](../include/flashvm/execution.h#L542) |
 <!-- source-links:end -->

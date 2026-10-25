@@ -25,7 +25,7 @@ retain its object after the parent returns and its code is released.
 
 Parent handles own and recursively release child mappings. Both mappings remain
 active during child execution, so collecting/reentrant callbacks cannot release
-them. [`fvm_jit_code_size`](../include/flashvm/jit.h#L35) reports emitted bytes in the complete owned tree; automatic
+them. [`fvm_jit_code_size`](../include/flashvm/jit.h#L51) reports emitted bytes in the complete owned tree; automatic
 cache accounting and the compilation byte limit include those child bytes. The
 nesting limit is the interpreter's 64 With levels. Compilation failure leaves the
 caller's existing output handle unchanged and frees all prepared child mappings.
@@ -61,5 +61,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:51](../include/flashvm/jit.h#L51) |
 <!-- source-links:end -->

@@ -15,8 +15,13 @@ with tempfile.TemporaryDirectory(prefix="fir-syntax-backend-") as directory:
     for command, expected in (("syntax", 0), ("check", 1), ("object", 1)):
         output.write_bytes(b"keep-existing-output")
         args = [sys.argv[1], command, str(source)]
-        if command == "object": args.append(str(output))
+        if command == "object":
+            args.append(str(output))
         result = subprocess.run(args, capture_output=True, timeout=5)
-        assert result.returncode == expected, (command, result.stderr)
-        assert output.read_bytes() == b"keep-existing-output"
+        if not (result.returncode == expected):
+            raise AssertionError((command, result.stderr))
+        if not (output.read_bytes() == b"keep-existing-output"):
+            raise AssertionError(
+                "condition check failed: fir/v1/frontend/tests/backend_check.py:22"
+            )
 print("PASS structural acceptance cannot bypass the executable backend")

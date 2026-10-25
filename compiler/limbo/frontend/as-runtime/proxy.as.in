@@ -1,0 +1,166 @@
+// AS caller of a Dis module declared by the supplied Limbo .m interface.
+// send(request, reply) is an explicit checked host/channel capability, not direct UI access.
+
+
+// Construct one AS caller capability for the matching Dis interface.
+// Parameters: send(request, reply) is an explicit checked host/channel transport.
+// Returns a proxy; throws if send is not callable. Native marshaling is not invented here.
+function @P@_proxy(send)
+{
+    if (typeof send != "function")
+    {
+        throw "module transport required";
+    }
+
+    var entries = new Object(); // Private declaration-ID lookup; values borrow generated metadata.
+    for (var i = 0; i < @P@_contract.exports.length; i++)
+    {
+        var entry = @P@_contract.exports[i]; // Borrow one generated export descriptor.
+        entries["d" + entry.declaration] = entry;
+    }
+
+    var next_id = 0; // Last allocated ID, bounded below the signed i32 maximum.
+    var proxy = new Object(); // Own the caller capability and its closure state.
+    proxy.interface_id = @P@_contract.interface_id; // Identify the exact .m snapshot used by this proxy.
+    // Correlation IDs never wrap/recur within this proxy lifetime.
+
+
+    // Invoke one generated declaration using a fresh, nonwrapping call ID.
+    // Parameters: declaration is the integer export ID; args is an Array;
+    // done(value, error) consumes completion. Returns the ID, or throws before admission.
+    proxy.callById = function(declaration, args, done)
+    {
+        if (typeof declaration != "number" || declaration < 0 || declaration % 1 != 0)
+        {
+            throw "invalid export id";
+        }
+
+        var descriptor = entries["d" + declaration];
+        if (descriptor == null)
+        {
+            throw "unknown .m export";
+        }
+
+        if (!(args instanceof Array) || typeof done != "function")
+        {
+            throw "args/reply required";
+        }
+
+        if (!@P@_arguments(descriptor.signature, args))
+        {
+            throw "argument type/arity mismatch";
+        }
+
+        if (next_id >= 2147483647)
+        {
+            throw "module call identity exhausted";
+        }
+
+        next_id++;
+        var id = next_id; // Retain this request ID independently of later admissions.
+        var copied = []; // Copy the argument list container before handing it to transport.
+        for (var j = 0; j < args.length; j++)
+        {
+            copied[j] = args[j];
+        }
+
+        var finished = false; // One-shot completion latch for this call only.
+        // A late/foreign reply cannot resolve a different call. Duplicates are ignored.
+
+
+        // Resolve only this pending call and ignore late/foreign/duplicate replies.
+        // Parameters: response is the copied transport envelope. Returns nothing;
+        // accepted completion invokes done once after checking scalar result shape.
+        var receive = function(response)
+        {
+            if (finished || response == null || response.schema !== 1 || response.engine !== "dis" ||
+                response.interface_id !== @P@_contract.interface_id || response.id !== id ||
+                response.declaration !== declaration)
+            {
+                return;
+            }
+
+            if (response.status != "ok" && response.status != "error")
+            {
+                return;
+            }
+
+            finished = true;
+            if (response.status == "ok")
+            {
+                if (!@P@_scalar(descriptor.signature.result, response.value))
+                {
+                    done(null, "result type mismatch");
+                }
+
+                else
+                {
+                    done(response.value, null);
+                }
+            }
+
+            else
+            {
+                done(null, response.error);
+            }
+        };
+        try
+        {
+            send({
+                    schema : 1,
+                    engine : "dis",
+                    interface_id : @P@_contract.interface_id,
+                    id : id,
+                    declaration : declaration,
+                    module : descriptor.module,
+                    name : descriptor.name,
+                    args : copied
+            },
+                receive);
+        }
+
+        catch (error)
+        {
+            if (finished)
+            {
+                throw error;
+            }
+
+            finished = true;
+            done(null, String(error));
+        }
+
+        return id;
+    };
+    // Names come from .m. Ambiguous nested-module short names are rejected explicitly.
+
+
+    // Resolve a declared module/export name and delegate to callById.
+    // Parameters: module_name/export_name identify the entry; args and done are
+    // forwarded unchanged. Returns the call ID; unknown/ambiguous names throw.
+    proxy.call = function(module_name, export_name, args, done)
+    {
+        var found = null; // No name match has been selected yet.
+        for (var k = 0; k < @P@_contract.exports.length; k++)
+        {
+            var candidate = @P@_contract.exports[k]; // Inspect an immutable generated export entry.
+            if (candidate.module == module_name && candidate.name == export_name)
+            {
+                if (found != null)
+                {
+                    throw "ambiguous module/export; use callById";
+                }
+
+                found = candidate;
+            }
+        }
+
+        if (found == null)
+        {
+            throw "unknown module/export";
+        }
+
+        return proxy.callById(found.declaration, args, done);
+    };
+    return proxy;
+}

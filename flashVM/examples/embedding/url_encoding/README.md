@@ -23,15 +23,15 @@ roundtrip units: 8 (including NUL)
 
 | Function | Demonstrated contract |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration before creating its runtime. |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime; copies configuration and outlives the context. |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire the owning-thread heap for bindings and result strings. |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Publish standard objects and the two URL functions transactionally; preserves conflicts and reports errors. |
-| [`fvm_value_string_utf16`](../../../include/flashvm/value.h#L55) | Copy every supplied unit, including NUL, into a context-owned counted string. |
-| [`fvm_call`](../../../include/flashvm/value.h#L138) | Synchronously call `escape` or `unescape` with one rooted argument; conversion can allocate or execute user ToString but opens no network/device. |
-| [`fvm_value_get_utf16`](../../../include/flashvm/value.h#L60) | Copy decoded units into caller-owned bounded storage and return their counted length. |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release bindings/strings before any managed pointer is used again; invoked on partial failures too. |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after its context. |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned configuration before creating its runtime. |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Acquire the runtime; copies configuration and outlives the context. |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Acquire the owning-thread heap for bindings and result strings. |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Publish standard objects and the two URL functions transactionally; preserves conflicts and reports errors. |
+| [`fvm_value_string_utf16`](../../../include/flashvm/value.h#L73) | Copy every supplied unit, including NUL, into a context-owned counted string. |
+| [`fvm_call`](../../../include/flashvm/value.h#L204) | Synchronously call `escape` or `unescape` with one rooted argument; conversion can allocate or execute user ToString but opens no network/device. |
+| [`fvm_value_get_utf16`](../../../include/flashvm/value.h#L80) | Copy decoded units into caller-owned bounded storage and return their counted length. |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Release bindings/strings before any managed pointer is used again; invoked on partial failures too. |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release the outer owner after its context. |
 
 The annotated [main.c](main.c) explains every nonempty line. Local values are used
 without intervening collection; in traced-string mode, retained results require
@@ -49,13 +49,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../../../include/flashvm/value.h#L138) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_value_get_utf16` | function | [include/flashvm/value.h:60](../../../include/flashvm/value.h#L60) |
-| `fvm_value_string_utf16` | function | [include/flashvm/value.h:55](../../../include/flashvm/value.h#L55) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../../../include/flashvm/value.h#L204) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_value_get_utf16` | function | [include/flashvm/value.h:80](../../../include/flashvm/value.h#L80) |
+| `fvm_value_string_utf16` | function | [include/flashvm/value.h:73](../../../include/flashvm/value.h#L73) |
 <!-- source-links:end -->

@@ -4,8 +4,8 @@
 
 ## v0.783: учёт памяти и предел подготовки
 
-[`fvm_swf_sound_voice_open_bounded`](../include/flashvm/swf_sound.h#L97) сохраняет поведение PCM/ADPCM/MP3, диапазонов,
-повторов и огибающих [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L82). Дополнительный бюджет включает
+[`fvm_swf_sound_voice_open_bounded`](../include/flashvm/swf_sound.h#L119) сохраняет поведение PCM/ADPCM/MP3, диапазонов,
+повторов и огибающих [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L100). Дополнительный бюджет включает
 нативный объект, точный массив выбранного интервала S16 и копии точек огибающей.
 Сложения и умножения проверяются до выделения этих владельцев. Даже пустому
 голосу нужен объект; нулевой или недостаточный бюджет возвращает OUT_OF_MEMORY
@@ -14,7 +14,7 @@
 накладные расходы аллокатора, RSS и очереди устройства не учитываются.
 Бюджет ограничивает хранение, а не время вычислений.
 
-[`fvm_swf_sound_voice_storage_info`](../include/flashvm/swf_sound.h#L101) копирует точные размеры объекта/PCM/огибающей
+[`fvm_swf_sound_voice_storage_info`](../include/flashvm/swf_sound.h#L125) копирует точные размеры объекта/PCM/огибающей
 без аллокаций, callbacks и доступа к источнику. Передайте точный struct_size;
 ошибка аргументов сохраняет выход. Голос независим от reload, GC и уничтожения
 контекста. Доступ требует внешней сериализации; подготовка выполняется владельцем
@@ -27,7 +27,7 @@
 
 ## v0.784: повторное использование подготовленного PCM
 
-[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L111) создаёт независимую глубокую копию голоса вместе с
+[`fvm_swf_sound_voice_clone`](../include/flashvm/swf_sound.h#L137) создаёт независимую глубокую копию голоса вместе с
 текущей позицией, повтором, сегментом огибающей или EOF. Контекст и декодер не
 вызываются. Бюджет включает объект и точные массивы; ошибка сохраняет источник
 и обнуляет выход. Память выходного указателя не должна пересекаться с владением
@@ -43,7 +43,7 @@
 
 ## v0.785: позиционирование нативного голоса
 
-[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L123) выбирает повтор и кадр исходного PCM без аллокаций и
+[`fvm_swf_sound_voice_seek`](../include/flashvm/swf_sound.h#L153) выбирает повтор и кадр исходного PCM без аллокаций и
 декодирования. Для непустого голоса: play_index < play_count и frame <
 frames_per_play либо EOF (play_count,0). Пустой голос/ноль повторов принимает
 только (0,0), оставаясь завершённым. Ошибка сохраняет всю позицию. (0,0)
@@ -60,12 +60,12 @@ frames_per_play либо EOF (play_count,0). Пустой голос/ноль п
 
 ## v0.786: общий бюджет владения микшера
 
-[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L108) возвращает память объекта/рабочих массивов/
+[`fvm_swf_sound_mixer_storage_info`](../include/flashvm/swf_sound_mixer.h#L135) возвращает память объекта/рабочих массивов/
 слотов микшера, всех голосов и проверенную сумму. Хвосты release и голоса с
 lookahead конвертера учитываются до реального освобождения слота. Ошибка
 аргументов сохраняет результат. Нет обращения к VM, callbacks или аллокаций.
 
-[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L96) дополняет прежнюю передачу голоса
+[`fvm_swf_sound_mixer_submit_prepared_bounded`](../include/flashvm/swf_sound_mixer.h#L119) дополняет прежнюю передачу голоса
 общим пределом памяти объекта, слотов и голосов. Отказ по бюджету сохраняет
 указатель/позицию нового голоса и старые слоты. NoMultiple и завершённый голос
 потребляют ненужного владельца без увеличения памяти даже при нулевом бюджете.
@@ -73,7 +73,7 @@ lookahead конвертера учитываются до реального о
 накладные расходы аллокатора и внешние шаблоны не входят в сумму. Сериализуйте
 всех владельцев; callbacks, VM и аллокаций нет.
 
-[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L114) проверяет совпадающий ID среди голосов без
+[`fvm_swf_sound_mixer_sound_active`](../include/flashvm/swf_sound_mixer.h#L143) проверяет совпадающий ID среди голосов без
 release, как SyncNoMultiple. Допустимы ID 1..65535; ошибка сохраняет выход.
 Запрос ничего не резервирует: проверка повторяется при передаче под mutex.
 `swf_sound_mixer_storage` запрещает аллокации после teardown VM и проверяет
@@ -122,7 +122,7 @@ Linux/dummy не означает проверку аппаратуры, ThreadS
 
 ## v0.789: проверка фиксированной памяти до создания микшера
 
-[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L65) дополняет configured-создание пределом
+[`fvm_swf_sound_mixer_create_bounded`](../include/flashvm/swf_sound_mixer.h#L78) дополняет configured-создание пределом
 памяти объекта/рабочих массивов/слотов. Сначала проверяет конфигурацию, затем
 размеры и переполнение до обеих аллокаций. Нулевой/недостаточный бюджет даёт OOM
 и нулевой выход; прочие ошибки конфигурации сохраняются. Нет callbacks,
@@ -199,13 +199,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:65](../include/flashvm/swf_sound_mixer.h#L65) |
-| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:114](../include/flashvm/swf_sound_mixer.h#L114) |
-| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:108](../include/flashvm/swf_sound_mixer.h#L108) |
-| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:96](../include/flashvm/swf_sound_mixer.h#L96) |
-| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:111](../include/flashvm/swf_sound.h#L111) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
-| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:123](../include/flashvm/swf_sound.h#L123) |
-| `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:101](../include/flashvm/swf_sound.h#L101) |
+| `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
+| `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:143](../include/flashvm/swf_sound_mixer.h#L143) |
+| `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:135](../include/flashvm/swf_sound_mixer.h#L135) |
+| `fvm_swf_sound_mixer_submit_prepared_bounded` | function | [include/flashvm/swf_sound_mixer.h:119](../include/flashvm/swf_sound_mixer.h#L119) |
+| `fvm_swf_sound_voice_clone` | function | [include/flashvm/swf_sound.h:137](../include/flashvm/swf_sound.h#L137) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_voice_open_bounded` | function | [include/flashvm/swf_sound.h:119](../include/flashvm/swf_sound.h#L119) |
+| `fvm_swf_sound_voice_seek` | function | [include/flashvm/swf_sound.h:153](../include/flashvm/swf_sound.h#L153) |
+| `fvm_swf_sound_voice_storage_info` | function | [include/flashvm/swf_sound.h:125](../include/flashvm/swf_sound.h#L125) |
 <!-- source-links:end -->

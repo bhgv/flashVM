@@ -26,10 +26,10 @@ implicit time limits. AsBroadcaster retains its [own accounting](AS_BROADCASTER.
 
 ## Errors, publication and ownership
 
-Exhaustion or observed worker stop returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Add/remove precharge all
+Exhaustion or observed worker stop returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Add/remove precharge all
 movement before mutation: failure preserves registration identity/order/GC roots.
 Native remove also preserves `removed` on errors. Successful return/boolean
-contracts remain unchanged. Allocation failure remains [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44).
+contracts remain unchanged. Allocation failure remains [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46).
 
 Snapshot/publication preparation errors deliver nothing and preserve valid input
 and focus. Existing focus validation can still clear an already removed clip.
@@ -74,7 +74,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Explicit-base display deletion / Удаление по пути от заданного объекта
 
-v0.255 extends the existing C89 [`fvm_exec_delete_path`](../include/flashvm/execution.h#L371) service. If a slash occurs
+v0.255 extends the existing C89 [`fvm_exec_delete_path`](../include/flashvm/execution.h#L495) service. If a slash occurs
 before the final dot/colon separator, the preceding counted prefix uses the
 MovieClip path resolver. Resolution starts at the explicit base, follows children
 before dynamic properties and honors its existing absolute/parent/version rules.
@@ -43,5 +43,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:371](../include/flashvm/execution.h#L371) |
+| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:495](../include/flashvm/execution.h#L495) |
 <!-- source-links:end -->

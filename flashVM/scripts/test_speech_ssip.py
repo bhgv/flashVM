@@ -50,14 +50,21 @@ def exercise(program, mode, abstract=False):
                             if line.startswith(b".."):
                                 line = line[1:]
                             payload.append(line)
-                        if b"".join(payload).decode("utf-8") != transcript.replace("\n", "\r\n") + "\r\n":
-                            raise RuntimeError("Dot-stuffing/newline conversion corrupted speech or injected commands")
+                        if (
+                            b"".join(payload).decode("utf-8")
+                            != transcript.replace("\n", "\r\n") + "\r\n"
+                        ):
+                            raise RuntimeError(
+                                "Dot-stuffing/newline conversion corrupted speech or injected commands"
+                            )
                         connection.sendall(b"225-17\r\n225 OK MESSAGE QUEUED\r\n")
                         if mode == "disconnect":
                             return
                         for _ in range(2):
                             if reader.readline() != b"CANCEL SELF\r\n":
-                                raise RuntimeError("Cancellation was not scoped to this SSIP client")
+                                raise RuntimeError(
+                                    "Cancellation was not scoped to this SSIP client"
+                                )
                             connection.sendall(b"200 OK CANCELED\r\n")
             except BaseException as error:
                 errors.append(error)
@@ -66,9 +73,19 @@ def exercise(program, mode, abstract=False):
 
         worker = threading.Thread(target=serve, daemon=True)
         worker.start()
-        result = subprocess.run([str(program), "--abstract" if abstract else "--linux", name if abstract else path, transcript], input="\n",
-                                text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=20)
+        result = subprocess.run(
+            [
+                str(program),
+                "--abstract" if abstract else "--linux",
+                name if abstract else path,
+                transcript,
+            ],
+            input="\n",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=20,
+        )
         worker.join(12)
         if worker.is_alive():
             raise RuntimeError("SSIP fixture did not finish")
@@ -91,9 +108,13 @@ def main():
     except PermissionError as error:
         if error.errno not in (errno.EPERM, errno.EACCES):
             raise
-        print("SKIP explicit Unix-listener integration: runner denies AF_UNIX endpoint creation; socketpair transport tests remain separate")
+        print(
+            "SKIP explicit Unix-listener integration: runner denies AF_UNIX endpoint creation; socketpair transport tests remain separate"
+        )
         return 77
-    print("PASS real SSIP socket client: UTF-8/dot framing, multiline replies, client cancellation, rejection, disconnect/SIGPIPE safety; fixture only, no audible-output claim")
+    print(
+        "PASS real SSIP socket client: UTF-8/dot framing, multiline replies, client cancellation, rejection, disconnect/SIGPIPE safety; fixture only, no audible-output claim"
+    )
 
 
 if __name__ == "__main__":

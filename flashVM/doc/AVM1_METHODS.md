@@ -2,16 +2,16 @@
 
 ## English
 
-The public C89 ABI now exposes `[fvm_object_call](../include/flashvm/value.h#L126)(context, receiver, name,
+The public C89 ABI now exposes `[fvm_object_call](../include/flashvm/value.h#L184)(context, receiver, name,
 argc, argv, result)`. It looks up `name` in the context's native function
 registry and invokes the callback with `receiver` as `self`. The receiver must
 belong to the same context; arguments are validated and the callback result
-is returned to the caller. Errors are reported as [`FVM_Result`](../include/flashvm/flashvm.h#L40).
+is returned to the caller. Errors are reported as [`FVM_Result`](../include/flashvm/flashvm.h#L42).
 
 The interpreter implements AVM1 opcode `0x52` (`CallMethod`) for an object
 receiver and a string method name. Its stack order is arguments, argument
 count, receiver, method name (top). It returns the native callback's result.
-Missing native registrations return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). The interpreter also
+Missing native registrations return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48). The interpreter also
 supports resolving `this` to the current receiver for its limited global
 function execution; full AVM1 lexical `this` semantics are not implemented.
 
@@ -22,16 +22,16 @@ callbacks. The callback registry is context-wide, not per-object; check
 
 ## Русский
 
-Публичный C89 ABI содержит `[fvm_object_call](../include/flashvm/value.h#L126)(context, receiver, name,
+Публичный C89 ABI содержит `[fvm_object_call](../include/flashvm/value.h#L184)(context, receiver, name,
 argc, argv, result)`. Функция ищет `name` в реестре нативных C-функций
 контекста и вызывает обработчик, передавая `receiver` как `self`.
 Объект должен принадлежать тому же контексту. Аргументы проверяются,
-результат передаётся вызывающему коду, ошибки возвращаются через [`FVM_Result`](../include/flashvm/flashvm.h#L40).
+результат передаётся вызывающему коду, ошибки возвращаются через [`FVM_Result`](../include/flashvm/flashvm.h#L42).
 
 Интерпретатор поддерживает инструкцию AVM1 `0x52` (`CallMethod`) для
 объекта и строкового имени метода. Порядок стека: аргументы, их число,
 объект, имя метода (вершина). Результат C-функции возвращается в стек.
-Если нативная функция не зарегистрирована, возвращается [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
+Если нативная функция не зарегистрирована, возвращается [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48).
 Ограниченное разрешение `this` реализовано для глобальных функций;
 полная семантика областей видимости AVM1 пока отсутствует.
 
@@ -49,7 +49,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

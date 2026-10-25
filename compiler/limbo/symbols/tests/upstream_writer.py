@@ -77,8 +77,14 @@ int main(void) {
             for line in output.splitlines()
             if line.startswith("entry\t")
         ]
-        assert rows == [(i, *value) for i, value in enumerate(expected)]
-        assert "prefix\t" + str(len(prefix)) + "\n" in output
+        if not (rows == [(i, *value) for i, value in enumerate(expected)]):
+            raise AssertionError(
+                "condition check failed: compiler/limbo/symbols/tests/upstream_writer.py:80"
+            )
+        if not ("prefix\t" + str(len(prefix)) + "\n" in output):
+            raise AssertionError(
+                "condition check failed: compiler/limbo/symbols/tests/upstream_writer.py:81"
+            )
     print("PASS 4096 source spans emitted by the actual upstream sblsrcconv body")
     return 0
 

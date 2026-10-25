@@ -6,7 +6,7 @@ first visible binding in retained activation/With scopes, selected target and
 global fallback. It leaves a Boolean result. Qualified dot/colon paths explicitly
 remain unsupported in this checkpoint; this does not claim full Delete2 support.
 
-The C89 service [`fvm_exec_scope_delete`](../include/flashvm/execution.h#L363) accepts managed scope/target objects and a
+The C89 service [`fvm_exec_scope_delete`](../include/flashvm/execution.h#L485) accepts managed scope/target objects and a
 coercible name, without bytecode, stack or local-map arguments. Presence is checked
 without reading values or invoking getters. An inherited With/target member or
 nondeletable binding blocks deletion of an outer same-name variable. Activations
@@ -44,5 +44,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_scope_delete` | function | [include/flashvm/execution.h:363](../include/flashvm/execution.h#L363) |
+| `fvm_exec_scope_delete` | function | [include/flashvm/execution.h:485](../include/flashvm/execution.h#L485) |
 <!-- source-links:end -->

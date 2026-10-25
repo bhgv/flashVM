@@ -3,17 +3,17 @@
 ## Поддерживаемый путь
 
 Импортируются корневые DefineSound (14) и StartSound (15). Перед advance звукового
-кадра зарегистрируйте [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21). Callback типа
-[`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L18) получает `(context, clip, event_index, userdata)`
-при реальном входе в кадр. Нулевой индекс подходит для [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L62)
-и [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L76) того же загруженного SWF. Хост выбирает микшер,
+кадра зарегистрируйте [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L25). Callback типа
+[`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L20) получает `(context, clip, event_index, userdata)`
+при реальном входе в кадр. Нулевой индекс подходит для [`fvm_swf_sound_event_at`](../include/flashvm/swf_sound.h#L74)
+и [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L95) того же загруженного SWF. Хост выбирает микшер,
 геометрию PCM и очередь устройства. Скрытых устройств/потоков нет.
 [Микшер](SWF_SOUND_MIXER.ru.md), [исполняемый C89 пример](../examples/multimedia/swf_event_mixer/README.md).
 
 ## Загрузка и проверка источника
 
-Для SWF с этими тегами сначала вызовите [`fvm_load_memory`](../include/flashvm/flashvm.h#L72), затем
-[`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L102) с тем же файлом. Эквивалентные FWS/CWS сравниваются как
+Для SWF с этими тегами сначала вызовите [`fvm_load_memory`](../include/flashvm/flashvm.h#L90), затем
+[`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L129) с тем же файлом. Эквивалентные FWS/CWS сравниваются как
 canonical FWS. Отсутствующий/другой source даёт INVALID_ARGUMENT и null clip.
 Проверяются определения, разрешение ресурсов и SOUNDINFO, но импорт не декодирует
 и не играет PCM. Кодек может быть принят как метаданные, а затем отвергнут
@@ -47,8 +47,8 @@ context на его владеющем потоке возвращает OK. Nul
 Callback синхронный на VM-потоке под native-call GC barrier. Разрешены запросы
 метаданных и submit в host mixer. Нельзя менять граф кадров/клипа, исполнять script
 или уничтожать используемые runtime/host ресурсы. Context destroy уже блокируется
-native barrier. Рекурсивные [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125), смена callback и
-[`fvm_load_memory`](../include/flashvm/flashvm.h#L72) во время доставки возвращают INVALID_ARGUMENT. Userdata должно
+native barrier. Рекурсивные [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160), смена callback и
+[`fvm_load_memory`](../include/flashvm/flashvm.h#L90) во время доставки возвращают INVALID_ARGUMENT. Userdata должно
 жить до возврата. C++ bad_alloc преобразуется в OUT_OF_MEMORY, прочие исключения —
 ERROR, возвращённый статус передаётся без изменения. Busy снимается на любом выходе.
 
@@ -101,11 +101,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
-| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
-| `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:76](../include/flashvm/swf_sound_mixer.h#L76) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../include/flashvm/flashvm.h#L90) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
+| `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:20](../include/flashvm/movieclip.h#L20) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:74](../include/flashvm/swf_sound.h#L74) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:95](../include/flashvm/swf_sound_mixer.h#L95) |
 <!-- source-links:end -->

@@ -1,9 +1,9 @@
 # updateAfterEvent and coalesced redraw — v0.623
 
-[Русский](UPDATE_AFTER_EVENT.ru.md). [fvm_standard_install](../include/flashvm/standard.h#L20) now publishes
+[Русский](UPDATE_AFTER_EVENT.ru.md). [fvm_standard_install](../include/flashvm/standard.h#L22) now publishes
 `updateAfterEvent()` for host/SWF5–8, with stable native graph ID
 [FVM_STAGE_UPDATE_CALLBACK](../src/standard/stage_update_constants.h#L5). It returns undefined and ignores extra arguments
-without coercion. Calls below SWF5 return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), including installation
+without coercion. Calls below SWF5 return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48), including installation
 before loading an older SWF. Installation preserves conflicting own bindings
 under the active SWF case rules.
 
@@ -22,7 +22,7 @@ outer interval/input scope. A MovieClip that is both focus and a Key observer
 is eligible only for its focused-recipient invocation, not its later observer
 invocation. Full automatic ClipActions/hit-target fanout is not added here.
 
-[FVM_StageUpdateEventScope](../src/standard/stage_update.hpp#L9) restores the enclosing eligibility on successful return,
+[FVM_StageUpdateEventScope](../src/standard/stage_update.hpp#L12) restores the enclosing eligibility on successful return,
 errors, script exceptions and OOM. A request already made remains pending after a
 later callback failure. [GC:] These context booleans retain no managed pointers;
 GC during a script/native-body callback does not consume the request or end the
@@ -39,14 +39,14 @@ The setting is not a serialized movie property or cross-context display handle.
 
 All three operations belong on the context owner thread, allocate nothing and
 invoke no callbacks. They reject null context and destruction/collection/release
-phases with [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), preserving pending state and supplied outputs.
+phases with [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47), preserving pending state and supplied outputs.
 They do not require standard installation or an ActionScript event scope.
 
 | API | Contract |
 | --- | --- |
-| [fvm_stage_request_update](../include/flashvm/stage.h#L38) | Set the coalesced flag, including an explicit host request outside script events. No timeline/render/device work is performed. |
-| [fvm_stage_get_update](../include/flashvm/stage.h#L41) | Read the pending flag as 0/1 into a required `int *`; no consumption or ownership transfer. |
-| [fvm_stage_take_update](../include/flashvm/stage.h#L45) | Read and clear into a required `int *`. Consume before drawing, so a later request remains pending. If a failed presentation is retried, request again. |
+| [fvm_stage_request_update](../include/flashvm/stage.h#L52) | Set the coalesced flag, including an explicit host request outside script events. No timeline/render/device work is performed. |
+| [fvm_stage_get_update](../include/flashvm/stage.h#L57) | Read the pending flag as 0/1 into a required `int *`; no consumption or ownership transfer. |
+| [fvm_stage_take_update](../include/flashvm/stage.h#L63) | Read and clear into a required `int *`. Consume before drawing, so a later request remains pending. If a failed presentation is retried, request again. |
 
 A renderer owns presentation and its error policy. Reading/consuming the flag
 does not by itself prove that pixels reached a window. Standalone VM hosts may
@@ -56,7 +56,7 @@ Host requests are independent of the global's SWF version/event restrictions.
 ## Common desktop player
 
 The active loop consumes a request before rendering the current scene between
-frames. [clear_stage](../frontend/common/player.c#L73) and [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L138) feed the same presenter as normal
+frames. [clear_stage](../frontend/common/player.c#L73) and [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L179) feed the same presenter as normal
 frames; no timeline step, frame-script rerun or authored deadline increment occurs.
 A request coinciding with an ordinary frame is satisfied by that frame. A request
 made during presentation stays pending and prevents sleeping past another draw.
@@ -116,13 +116,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
-| `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../include/flashvm/stage.h#L41) |
-| `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../include/flashvm/stage.h#L38) |
-| `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
+| `fvm_stage_get_update` | function | [include/flashvm/stage.h:57](../include/flashvm/stage.h#L57) |
+| `fvm_stage_request_update` | function | [include/flashvm/stage.h:52](../include/flashvm/stage.h#L52) |
+| `fvm_stage_take_update` | function | [include/flashvm/stage.h:63](../include/flashvm/stage.h#L63) |
 | `FVM_STAGE_UPDATE_CALLBACK` | macro / define | [src/standard/stage_update_constants.h:5](../src/standard/stage_update_constants.h#L5) |
-| `FVM_StageUpdateEventScope` | class | [src/standard/stage_update.hpp:9](../src/standard/stage_update.hpp#L9) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_StageUpdateEventScope` | class | [src/standard/stage_update.hpp:12](../src/standard/stage_update.hpp#L12) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

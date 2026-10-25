@@ -74,19 +74,19 @@ Each function below is used in [main.c](main.c); detailed count/range semantics:
 
 | Function | Purpose, ownership and execution |
 | --- | --- |
-| [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Initialize caller configuration synchronously; no runtime owner yet |
-| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Allocate the source runtime on owner; release after native preparation |
-| [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Allocate a source context borrowing runtime; destroy before runtime |
-| [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Validate/copy the literal SWF into source context; may allocate, no playback loop |
-| [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../../../include/flashvm/swf_stream_sound.h#L137) | Owner-side bounded PCM preparation: legacy whole-packet policy, otherwise unique partial endpoint; ambiguous lengths UNSUPPORTED, malformed geometry INVALID_ARGUMENT, out cleared on error. Allocates before publication, retains no VM pointer; caller closes after readers stop. [EN](../../../doc/INFERRED_ADPCM.md) / [RU](../../../doc/INFERRED_ADPCM.ru.md). |
-| [fvm_swf_stream_sound_snapshot_open_adpcm_counted](../../../include/flashvm/swf_stream_sound.h#L118) | Decode exact per-block lengths under peak ceiling; publish independent immutable PCM, allocate on owner |
-| [fvm_swf_stream_sound_snapshot_open_bounded](../../../include/flashvm/swf_stream_sound.h#L72) | Copy encoded root ADPCM/index under peak ceiling without codec decoding; retain no VM pointer |
-| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release managed source after native ownership succeeds; no native snapshot invalidation |
-| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | End source runtime after its context; export continues with native storage only |
-| [fvm_swf_stream_pcm_reader_init](../../../include/flashvm/swf_stream_pcm.h#L40) | Initialize caller cursor borrowing normalized snapshot; no allocation/callback/VM |
-| [fvm_swf_stream_pcm_reader_next](../../../include/flashvm/swf_stream_pcm.h#L48) | Copy bounded native PCM and exact chunk metadata; written counts values, NOT_FOUND is EOF |
-| [fvm_swf_stream_sound_snapshot_read_adpcm](../../../include/flashvm/swf_stream_sound.h#L195) | Validate full encoded block, decode explicit range into caller buffer; no allocation/callback, repeated block-length work |
-| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L199) | Null-safe release after every reader/range call ends; no device close or source VM required |
+| [fvm_config_init](../../../include/flashvm/flashvm.h#L70) | Initialize caller configuration synchronously; no runtime owner yet |
+| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L74) | Allocate the source runtime on owner; release after native preparation |
+| [fvm_context_create](../../../include/flashvm/flashvm.h#L82) | Allocate a source context borrowing runtime; destroy before runtime |
+| [fvm_load_memory](../../../include/flashvm/flashvm.h#L90) | Validate/copy the literal SWF into source context; may allocate, no playback loop |
+| [`fvm_swf_stream_sound_snapshot_open_pcm_inferred`](../../../include/flashvm/swf_stream_sound.h#L167) | Owner-side bounded PCM preparation: legacy whole-packet policy, otherwise unique partial endpoint; ambiguous lengths UNSUPPORTED, malformed geometry INVALID_ARGUMENT, out cleared on error. Allocates before publication, retains no VM pointer; caller closes after readers stop. [EN](../../../doc/INFERRED_ADPCM.md) / [RU](../../../doc/INFERRED_ADPCM.ru.md). |
+| [fvm_swf_stream_sound_snapshot_open_adpcm_counted](../../../include/flashvm/swf_stream_sound.h#L145) | Decode exact per-block lengths under peak ceiling; publish independent immutable PCM, allocate on owner |
+| [fvm_swf_stream_sound_snapshot_open_bounded](../../../include/flashvm/swf_stream_sound.h#L92) | Copy encoded root ADPCM/index under peak ceiling without codec decoding; retain no VM pointer |
+| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L86) | Release managed source after native ownership succeeds; no native snapshot invalidation |
+| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L78) | End source runtime after its context; export continues with native storage only |
+| [fvm_swf_stream_pcm_reader_init](../../../include/flashvm/swf_stream_pcm.h#L44) | Initialize caller cursor borrowing normalized snapshot; no allocation/callback/VM |
+| [fvm_swf_stream_pcm_reader_next](../../../include/flashvm/swf_stream_pcm.h#L54) | Copy bounded native PCM and exact chunk metadata; written counts values, NOT_FOUND is EOF |
+| [fvm_swf_stream_sound_snapshot_read_adpcm](../../../include/flashvm/swf_stream_sound.h#L242) | Validate full encoded block, decode explicit range into caller buffer; no allocation/callback, repeated block-length work |
+| [fvm_swf_stream_sound_snapshot_close](../../../include/flashvm/swf_stream_sound.h#L248) | Null-safe release after every reader/range call ends; no device close or source VM required |
 
 ## Limits / Ограничения
 
@@ -119,17 +119,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
-| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../../../include/flashvm/swf_stream_sound.h#L199) |
-| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:118](../../../include/flashvm/swf_stream_sound.h#L118) |
-| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:72](../../../include/flashvm/swf_stream_sound.h#L72) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:137](../../../include/flashvm/swf_stream_sound.h#L137) |
-| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:195](../../../include/flashvm/swf_stream_sound.h#L195) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../../../include/flashvm/flashvm.h#L90) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:44](../../../include/flashvm/swf_stream_pcm.h#L44) |
+| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:54](../../../include/flashvm/swf_stream_pcm.h#L54) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:248](../../../include/flashvm/swf_stream_sound.h#L248) |
+| `fvm_swf_stream_sound_snapshot_open_adpcm_counted` | function | [include/flashvm/swf_stream_sound.h:145](../../../include/flashvm/swf_stream_sound.h#L145) |
+| `fvm_swf_stream_sound_snapshot_open_bounded` | function | [include/flashvm/swf_stream_sound.h:92](../../../include/flashvm/swf_stream_sound.h#L92) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:167](../../../include/flashvm/swf_stream_sound.h#L167) |
+| `fvm_swf_stream_sound_snapshot_read_adpcm` | function | [include/flashvm/swf_stream_sound.h:242](../../../include/flashvm/swf_stream_sound.h#L242) |
 <!-- source-links:end -->

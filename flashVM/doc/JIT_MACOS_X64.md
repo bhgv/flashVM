@@ -2,7 +2,7 @@
 
 ## Encoder / Генератор — v0.563
 
-The private [`FVM_JIT_TARGET_MACOS_X64`](../src/jit/backend.hpp#L17) target uses Darwin's ordinary C integer
+The private [`FVM_JIT_TARGET_MACOS_X64`](../src/jit/backend.hpp#L19) target uses Darwin's ordinary C integer
 calling convention: invocation pointer in RDI, unsigned operand in ESI, status
 in EAX. Helpers are ordinary fixed-signature C/C++ functions, not Swift, vector,
 variadic or aggregate-return callbacks. Full eight-byte function addresses are
@@ -27,7 +27,7 @@ is claimed. VM source maps/debugger ownership retain their existing contracts.
 регистра. Цепочка frame pointer помогает исследовать стек, но не заменяет
 регистрацию DWARF/compact-unwind и не гарантирует полный нативный crash trace.
 
-[`fvm_jit_encode`](../src/jit/backend.hpp#L30) reuses the bounded call-plan driver and rel32 fixups; malformed
+[`fvm_jit_encode`](../src/jit/backend.hpp#L38) reuses the bounded call-plan driver and rel32 fixups; malformed
 branch destinations leave the previous output unchanged. v0.563 supplied the offline encoder; v0.564 adds desktop macOS x64 selection
 and classic RW-to-RX publication. Full native macOS acceptance remains pending.
 
@@ -38,8 +38,8 @@ and classic RW-to-RX publication. Full native macOS acceptance remains pending.
 
 [`FVM_MAC_CODE_SUPPORTED`](../ports/mac/code_platform.h#L15) requires Apple/Mach, `TARGET_OS_OSX`, x86-64 and the
 ordinary 64-bit pointer ABI. It excludes Apple Silicon arm64/arm64e, iOS and other
-Apple targets. [`fvm_jit_host_target`](../src/jit/backend.cpp#L6) selects [`FVM_JIT_TARGET_MACOS_X64`](../src/jit/backend.hpp#L17) and
-[`fvm_jit_backend_name`](../include/flashvm/jit.h#L15) reports `macos-x64`. This selects the process ISA; a binary
+Apple targets. [`fvm_jit_host_target`](../src/jit/backend.cpp#L8) selects [`FVM_JIT_TARGET_MACOS_X64`](../src/jit/backend.hpp#L19) and
+[`fvm_jit_backend_name`](../include/flashvm/jit.h#L19) reports `macos-x64`. This selects the process ISA; a binary
 running through Rosetta has not been validated here. Availability describes the
 compiled ABI, not entitlement approval for an allocation.
 
@@ -67,7 +67,7 @@ UNSUPPORTED. A reported mmap ENOMEM returns OUT_OF_MEMORY, other allocation or
 protection errors return UNSUPPORTED. Errors preserve outputs; a failed protection
 change unmaps acquired storage. The `mapped` release cookie is the page-rounded
 allocation length, while public machine-code views/sizes exclude padding.
-[`fvm_port_code_release`](../ports/code_port.c#L75) unmaps an inactive allocation; null/zero needs no work.
+[`fvm_port_code_release`](../ports/code_port.c#L93) unmaps an inactive allocation; null/zero needs no work.
 No managed allocation, VM callback or GC occurs in these adapter operations.
 The host must exclude active execution, debugger reads and concurrent release.
 
@@ -180,11 +180,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
-| `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
-| `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
-| `FVM_JIT_TARGET_MACOS_X64` | enum constant | [src/jit/backend.hpp:17](../src/jit/backend.hpp#L17) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:19](../include/flashvm/jit.h#L19) |
+| `fvm_jit_encode` | function | [src/jit/backend.hpp:38](../src/jit/backend.hpp#L38) |
+| `fvm_jit_host_target` | function | [src/jit/backend.cpp:8](../src/jit/backend.cpp#L8) |
+| `FVM_JIT_TARGET_MACOS_X64` | enum constant | [src/jit/backend.hpp:19](../src/jit/backend.hpp#L19) |
 | `FVM_MAC_CODE_SUPPORTED` | macro / define | [ports/mac/code_platform.h:15](../ports/mac/code_platform.h#L15) |
-| `fvm_port_code_create` | function | [ports/code_port.c:32](../ports/code_port.c#L32) |
-| `fvm_port_code_release` | function | [ports/code_port.c:75](../ports/code_port.c#L75) |
+| `fvm_port_code_create` | function | [ports/code_port.c:40](../ports/code_port.c#L40) |
+| `fvm_port_code_release` | function | [ports/code_port.c:93](../ports/code_port.c#L93) |
 <!-- source-links:end -->

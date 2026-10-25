@@ -2,13 +2,13 @@
 
 ## Исправленное поведение
 
-Публичный [`fvm_path_hit_test`](../include/flashvm/path.h#L75) возводил малые длины касательных и радиусы в квадрат. Для линии (0,0)..(10s,0), ширины 2s и s=2^-600 точка (5s,2s) ошибочно считалась попавшей: квадрат расстояния и квадрат радиуса округлялись до нуля. Отдельный executable, связанный с v0.1504, воспроизводит assertion failure до исправления.
+Публичный [`fvm_path_hit_test`](../include/flashvm/path.h#L103) возводил малые длины касательных и радиусы в квадрат. Для линии (0,0)..(10s,0), ширины 2s и s=2^-600 точка (5s,2s) ошибочно считалась попавшей: квадрат расстояния и квадрат радиуса округлялись до нуля. Отдельный executable, связанный с v0.1504, воспроизводит assertion failure до исправления.
 
 Только публичные round-запросы с положительным радиусом, у которых квадрат нормы касательной или радиуса ниже DBL_MIN, теперь используют масштабированный расчёт. Касательная нормализуется по максимальной компоненте, продольное расстояние ограничивается конечным отрезком, остаточное расстояние сравнивается через ограниченные отношения к радиусу. Отсечение по компонентам выполняется до деления. Постоянный stroked segment сохраняет прежнюю семантику диска. Обычные normal-square запросы, fills, adaptive subdivision и private cap/join запросы сохраняют прежние пути.
 
 ## Контракт публичного API
 
-[`fvm_path_hit_test`](../include/flashvm/path.h#L75) заимствует неизменяемый native path и записывает целочисленный boolean в память вызывающей стороны. Координаты запроса конечны в пределах +/-2000000, width конечна в 0..1000000, even_odd равен 0 или 1, path/output ненулевые. Недопустимые аргументы возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); допустимый запрос — [FVM_OK](../include/flashvm/flashvm.h#L42). Нулевая ширина выбирает неявно замкнутые fills с документированным boundary tolerance; положительная — round strokes. Для кривых сохраняются adaptive chord tolerance 0.0001 и глубина до 20. Выделений, callbacks, VM execution, GC и передачи владения нет. Независимые paths допускают параллельные запросы; изменение запрашиваемого path требует синхронизации вызывающей стороны. Другие ошибки обхода передаются без публикации успешного результата.
+[`fvm_path_hit_test`](../include/flashvm/path.h#L103) заимствует неизменяемый native path и записывает целочисленный boolean в память вызывающей стороны. Координаты запроса конечны в пределах +/-2000000, width конечна в 0..1000000, even_odd равен 0 или 1, path/output ненулевые. Недопустимые аргументы возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); допустимый запрос — [FVM_OK](../include/flashvm/flashvm.h#L44). Нулевая ширина выбирает неявно замкнутые fills с документированным boundary tolerance; положительная — round strokes. Для кривых сохраняются adaptive chord tolerance 0.0001 и глубина до 20. Выделений, callbacks, VM execution, GC и передачи владения нет. Независимые paths допускают параллельные запросы; изменение запрашиваемого path требует синхронизации вызывающей стороны. Другие ошибки обхода передаются без публикации успешного результата.
 
 Существующий [пример C89 cubic](../examples/embedding/cubic_extrema/README.ru.md) демонстрирует владение native path и границы. Он не демонстрирует этот hit query; его численные регрессии проверяются отдельными fixtures ниже.
 
@@ -56,7 +56,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_hit_test` | function | [include/flashvm/path.h:103](../include/flashvm/path.h#L103) |
 <!-- source-links:end -->

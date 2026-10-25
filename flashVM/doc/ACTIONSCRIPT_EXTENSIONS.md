@@ -5,7 +5,7 @@
 Call `fvm_extensions_install(context)` before executing AVM1. It installs five
 context-owned global namespace objects: `gc`, `thread`, `channel`, `metatable`, `mutex`. Installation
 is idempotent when all five remain installed; conflicting or partially replaced
-globals return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), without overwriting user globals. Ordinary
+globals return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), without overwriting user globals. Ordinary
 contexts remain unchanged until installation. The C89 interface is declared in
 `flashvm/extensions.h`; the implementation is C++98 and uses internal containers.
 
@@ -63,7 +63,7 @@ instructions); builtin channel waits and sleeps also check it. Nested script-wor
 Arbitrary native callbacks cannot be forcibly interrupted. Explicitly
 join workers when predictable cleanup latency matters. Self-join is rejected.
 
-Worker errors propagate as [`FVM_Result`](../include/flashvm/flashvm.h#L40) from AVM1 execution / C method calls.
+Worker errors propagate as [`FVM_Result`](../include/flashvm/flashvm.h#L42) from AVM1 execution / C method calls.
 There is no ActionScript exception-object mechanism in this subset. Undefined
 as `ret` can mean either unfinished work or an actual undefined result; inspect
 state when the distinction matters. Multi-join validates all handles before
@@ -82,7 +82,7 @@ starting and joins remaining workers even when one reports an error.
 | `ch.capacity(n)` | Set capacity; existing messages retained |
 | `ch.close()` | Wake waiters; sends fail, queued messages remain drainable |
 
-Empty closed queues and sends to closed queues return [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Readiness
+Empty closed queues and sends to closed queues return [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Readiness
 cannot guarantee the next receive will complete immediately with multiple
 consumers. Undefined messages and empty `tryReceive` have the same return value;
 use an envelope object if that distinction matters.
@@ -94,8 +94,8 @@ Final native release must occur after all native users have stopped.
 
 ## Graph transfer C API
 
-`flashvm/transfer.h` exposes [`fvm_channel_send_value`](../include/flashvm/transfer.h#L22) and
-[`fvm_channel_receive_value`](../include/flashvm/transfer.h#L25). Named/indexed properties, prototypes and metatables
+`flashvm/transfer.h` exposes [`fvm_channel_send_value`](../include/flashvm/transfer.h#L24) and
+[`fvm_channel_receive_value`](../include/flashvm/transfer.h#L29). Named/indexed properties, prototypes and metatables
 are copied iteratively; cycles and repeated references survive. Source VM
 reclamation/destruction after a successful send is safe. Limits and the supported native codecs are described in
 [FILE_CHANNELS.md](FILE_CHANNELS.md). Since development 0.3 snapshots have a bounded,
@@ -139,11 +139,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
-| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:21](../include/flashvm/extensions.h#L21) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:29](../include/flashvm/transfer.h#L29) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:24](../include/flashvm/transfer.h#L24) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `fvm_extensions_wrap_channel` | function | [include/flashvm/extensions.h:25](../include/flashvm/extensions.h#L25) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

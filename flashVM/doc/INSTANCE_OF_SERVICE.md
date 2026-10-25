@@ -1,13 +1,13 @@
 # InstanceOf service / Общая проверка принадлежности — v0.283
 
-C89 [`fvm_exec_instance_of`](../include/flashvm/execution.h#L226) returns a Boolean through the ordinary value ABI.
+C89 [`fvm_exec_instance_of`](../include/flashvm/execution.h#L308) returns a Boolean through the ordinary value ABI.
 Loaded primitives return false without boxing the class operand. For an object,
 the class operand is boxed through the current global primitive class when
 needed. Only its own stored `prototype` data is read, without invoking an accessor
 or inheriting that field. The prototype value is then boxed if necessary. The
 prototype field spelling uses the SWF4–6 Flash case policy and exact SWF7–8 names.
 The class operand need not itself be callable. Host-only calls retain the strict
-existing [`fvm_value_instance_of`](../include/flashvm/standard.h#L34) class API policy.
+existing [`fvm_value_instance_of`](../include/flashvm/standard.h#L42) class API policy.
 
 Ordinary prototype links are walked separately from interface edges. Interface
 membership follows declared interface edges, not the ordinary prototype chains
@@ -64,6 +64,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_instance_of` | function | [include/flashvm/execution.h:226](../include/flashvm/execution.h#L226) |
-| `fvm_value_instance_of` | function | [include/flashvm/standard.h:34](../include/flashvm/standard.h#L34) |
+| `fvm_exec_instance_of` | function | [include/flashvm/execution.h:308](../include/flashvm/execution.h#L308) |
+| `fvm_value_instance_of` | function | [include/flashvm/standard.h:42](../include/flashvm/standard.h#L42) |
 <!-- source-links:end -->

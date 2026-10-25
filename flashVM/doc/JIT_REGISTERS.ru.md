@@ -21,7 +21,7 @@ ActionPush register и StoreRegister компилируются в прямые 
 За пределами диапазона загруженный код получает undefined при чтении и игнорирует
 запись; host-код возвращает INVALID_ARGUMENT. Пустой StoreRegister использует
 прежнюю политику undefined для SWF и строгую ошибку host. Общая запись строки
-вызывает [`fvm_exec_global_register`](../include/flashvm/execution.h#L461), сохраняет длину/метатаблицу и обеспечивает
+вызывает [`fvm_exec_global_register`](../include/flashvm/execution.h#L607), сохраняет длину/метатаблицу и обеспечивает
 владение текстом до публикации. Частные банки удерживаются activation, корневой
 host-банк явно включён в GC-корни нативного входа. Code handle не хранит банк.
 
@@ -65,5 +65,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_global_register` | function | [include/flashvm/execution.h:461](../include/flashvm/execution.h#L461) |
+| `fvm_exec_global_register` | function | [include/flashvm/execution.h:607](../include/flashvm/execution.h#L607) |
 <!-- source-links:end -->

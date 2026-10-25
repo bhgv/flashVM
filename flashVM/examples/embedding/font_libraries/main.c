@@ -7,17 +7,23 @@
  * Uses the CC0 geometric fixture so it runs without installed system fonts. */
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/font.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include "../../../tests/fixtures/font_data.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Подключаем объявления используемых типов и функций. */
 #include <string.h>
+
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Сохраняем вычисленное значение: FVM_Font *font. */
@@ -56,19 +62,25 @@ int main(void)
     source.pixels = image;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 32, &font) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 32, &font) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_font_read(fvm_test_font, sizeof(fvm_test_font), 0, 32, &font) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_font_shape(font, "AV fi", 5, FVM_TEXT_LTR, "en", &run) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_font_shape(font, "AV fi", 5, FVM_TEXT_LTR, "en", &run) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_font_shape(font, "AV fi", 5, FVM_TEXT_LTR, "en", &run) != FVM_OK). */
     /* Вызываем fvm_text_run_count: получаем число глифов в сформированном фрагменте.
      * run — сформированный фрагмент глифов. */
     count = fvm_text_run_count(run);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_text_run_path(font, run, &path, &advance_x, &advance_y) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_text_run_path(font, run, &path, &advance_x, &advance_y) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_text_run_path(font, run, &path, &advance_x, &advance_y) != FVM_OK). */
     /* The exported path owns its geometry after font/run destruction. */
     /* Вызываем fvm_font_destroy: освобождаем шрифтовой дескриптор.
      * font — шрифтовой дескриптор. */
@@ -82,20 +94,29 @@ int main(void)
     run = 0;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_path_transform(path, &placement) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_path_transform(path, &placement) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_path_transform(path, &placement) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_path_get(path, 0, &first) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_path_get(path, 0, &first) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_path_get(path, 0, &first) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_path_set_point(path, 0, 0, first.x[0] + 0.5, first.y[0]) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_path_set_point(path, 0, 0, first.x[0] + 0.5, first.y[0]) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_path_set_point(path, 0, 0, first.x[0] + 0.5, first.y[0]) != FVM_OK). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_path_bounds(path, &bounds) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_path_bounds(path, &bounds) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_path_bounds(path, &bounds) != FVM_OK). */
+
 
     /* Computation / Вычисление и обновление состояния. */
     /* Инициализируем область памяти заданным байтом. */
@@ -110,7 +131,7 @@ int main(void)
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result == FVM_UNSUPPORTED)
     /* Начинаем блок инструкций или описание объекта. */
-    {
+    { /* Begin scope: Начинаем блок инструкций или описание объекта. */
         /* Выводим строку с завершающим переводом строки. */
         puts("Vector export passed; raster backend disabled.");
         /* Сохраняем вычисленное значение: exit_code. */
@@ -118,17 +139,20 @@ int main(void)
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
         /* Завершаем текущий блок или описание объекта. */
-    }
+    } /* End scope: Начинаем блок инструкций или описание объекта. */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result != FVM_OK || fvm_path_draw(path, &surface, border, 1, 0) != FVM_OK)
+    { /* Begin conditional branch: if (result != FVM_OK || fvm_path_draw(path, &surface, border, 1, 0) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (result != FVM_OK || fvm_path_draw(path, &surface, border, 1, 0) != FVM_OK). */
     /* Организуем повторение операций до выполнения условия завершения. */
     for (y = 0; y < 64; ++y)
+    { /* Begin loop body: for (y = 0; y < 64; ++y). */
         /* Организуем повторение операций до выполнения условия завершения. */
         for (x = 0; x < 64; ++x)
         /* Начинаем блок инструкций или описание объекта. */
-        {
+        { /* Begin scope: Начинаем блок инструкций или описание объекта. */
             /* Сохраняем вычисленное значение: size_t i. */
             size_t i = ((size_t)y * 64 + x) * 4;
             /* Сохраняем вычисленное значение: image[i]. */
@@ -140,11 +164,14 @@ int main(void)
             /* Сохраняем вычисленное значение: image[i + 3]. */
             image[i + 3] = 255;
             /* Завершаем текущий блок или описание объекта. */
-        }
+        } /* End scope: Начинаем блок инструкций или описание объекта. */
+    } /* End loop body: for (y = 0; y < 64; ++y). */
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_path_mask(path, &surface, &source, 0) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_path_mask(path, &surface, &source, 0) != FVM_OK). */
         /* Переходим к общему обработчику завершения и очистки ресурсов. */
         goto done;
+    } /* End conditional branch: if (fvm_path_mask(path, &surface, &source, 0) != FVM_OK). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -169,4 +196,4 @@ done:
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return exit_code;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

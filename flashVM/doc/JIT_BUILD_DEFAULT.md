@@ -7,7 +7,7 @@ changes initial policy, not native instruction coverage or platform support.
 [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) preserves the previous [`FVM_EXECUTION_MANUAL`](../include/flashvm/execution_mode.h#L13) context default:
 explicit native body attachments work, otherwise source is interpreted.
 
-Both profiles include runtime mode switching. [`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L61)
+Both profiles include runtime mode switching. [`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L74)
 continues to select [`FVM_EXECUTION_INTERPRETER`](../include/flashvm/execution_mode.h#L14); passing initialized options
 therefore explicitly overrides the build default. Null options preserve current
 context policy. Changing one context never changes another. Graph transport
@@ -32,7 +32,7 @@ options. Real foreign CPU/OS runs and all nine roadmap stages remain open.
 подключённые native тела работают, остальные исполняются интерпретатором.
 
 API переключения доступен в обеих сборках. Инициализированные через
-[`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L61) опции по-прежнему явно выбирают интерпретатор;
+[`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L74) опции по-прежнему явно выбирают интерпретатор;
 нулевой указатель сохраняет текущую политику контекста. Контексты независимы,
 перенос графа не переносит режим отправителя и кеш машинного кода. Runtime-бит
 [`FVM_FEATURE_JIT`](../include/flashvm/flashvm.h#L27) остаётся неподдерживаемым. Профиль не расширяет инструкции
@@ -78,11 +78,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
 | `FVM_EXECUTION_INTERPRETER` | enum constant | [include/flashvm/execution_mode.h:14](../include/flashvm/execution_mode.h#L14) |
 | `FVM_EXECUTION_JIT` | enum constant | [include/flashvm/execution_mode.h:15](../include/flashvm/execution_mode.h#L15) |
 | `FVM_EXECUTION_MANUAL` | enum constant | [include/flashvm/execution_mode.h:13](../include/flashvm/execution_mode.h#L13) |
-| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:61](../include/flashvm/execution_mode.h#L61) |
+| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:74](../include/flashvm/execution_mode.h#L74) |
 | `FVM_FEATURE_JIT` | macro / define | [include/flashvm/flashvm.h:27](../include/flashvm/flashvm.h#L27) |
 | `INTERPRETER` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
 | `JIT` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |

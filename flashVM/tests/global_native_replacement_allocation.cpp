@@ -1,35 +1,53 @@
 /* Native registration replacement preserves old captures and cached identity on allocation failure. */
+#include <stdio.h>
+#include <stdlib.h>
 #include "flashvm/standard.h"
 #include "../src/core/string_internal.hpp"
-#include <cassert>
 #include <cstdlib>
 #include <new>
+
 static long allowance = -1;
+
+
 /* Inject a single allocation boundary through every VM new/new[] site. Both
  * allocation and deallocation use malloc/free so ASan can still observe them. */
 void *operator new(std::size_t size) throw(std::bad_alloc)
 {
     if (allowance == 0)
+    {
         throw std::bad_alloc();
+    }
     if (allowance > 0)
+    {
         --allowance;
+    }
     void *p = std::malloc(size ? size : 1);
     if (!p)
+    {
         throw std::bad_alloc();
+    }
     return p;
 }
+
+
 void operator delete(void *p) throw()
 {
     std::free(p);
 }
+
+
 void *operator new[](std::size_t size) throw(std::bad_alloc)
 {
     return ::operator new(size);
 }
+
+
 void operator delete[](void *p) throw()
 {
     ::operator delete(p);
 }
+
+
 void *operator new(std::size_t size, const std::nothrow_t &) throw()
 {
     try
@@ -41,10 +59,14 @@ void *operator new(std::size_t size, const std::nothrow_t &) throw()
         return 0;
     }
 }
+
+
 void operator delete(void *p, const std::nothrow_t &) throw()
 {
     ::operator delete(p);
 }
+
+
 void *operator new[](std::size_t size, const std::nothrow_t &) throw()
 {
     try
@@ -56,42 +78,120 @@ void *operator new[](std::size_t size, const std::nothrow_t &) throw()
         return 0;
     }
 }
+
+
 void operator delete[](void *p, const std::nothrow_t &) throw()
 {
     ::operator delete[](p);
 }
+
 #define main replacement_fixture_main
 #include "global_native_replacement.cpp"
+
 #undef main
+
+
 int main()
 {
-    FVM_Config config; FVM_Runtime *runtime = 0; assert(fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK);
-    for (unsigned version = 4; version <= 8; ++version) {
+    FVM_Config config;
+    FVM_Runtime *runtime = 0;
+    if (!(fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for (unsigned version = 4; version <= 8; ++version)
+    {
         bool failed = false, success = false;
-        for (long boundary = 0; boundary < 256 && !success; ++boundary) {
-            FVM_Context *c = 0; assert(fvm_context_create(runtime, &c) == FVM_OK);
-            unsigned char swf[] = {'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0}; swf[3] = (unsigned char)version;
-            assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK && fvm_standard_install(c) == FVM_OK);
+        for (long boundary = 0; boundary < 256 && !success; ++boundary)
+        {
+            FVM_Context *c = 0;
+            if (!(fvm_context_create(runtime, &c) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            unsigned char swf[] = {'F', 'W', 'S', 8, 16, 0, 0, 0, 8, 0, 0, 12, 1, 0, 0, 0};
+            swf[3] = (unsigned char)version;
+            if (!(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK && fvm_standard_install(c) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             const char *original = "NativeRegistrationWithALongCountedIdentity";
             const char *updated = version <= 6 ? "nATIVEREGISTRATIONwITHaLONGcOUNTEDiDENTITY" : original;
             FVM_Object *old_capture = replacement_capture(c, 1), *new_capture = replacement_capture(c, 2);
-            assert(fvm_gc_pin(c, new_capture) == FVM_OK);
+            if (!(fvm_gc_pin(c, new_capture) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             FVM_Value original_function, out;
-            assert(fvm_register_function_rooted(c, original, replacement_native, old_capture, old_capture) == FVM_OK && fvm_get_global(c, original, &original_function) == FVM_OK);
+            if (!(fvm_register_function_rooted(c, original, replacement_native, old_capture, old_capture) == FVM_OK &&
+                  fvm_get_global(c, original, &original_function) == FVM_OK))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
             size_t registered_count = c->functions.size();
             allowance = boundary;
             FVM_Result status = fvm_register_function_rooted(c, updated, replacement_native, new_capture, new_capture);
             allowance = -1;
-            if (status == FVM_OUT_OF_MEMORY) {
-                failed = true; assert(c->functions.size() == registered_count && fvm_get_global(c, original, &out) == FVM_OK && out.object == original_function.object);
-                assert(fvm_gc_collect(c, 0) == FVM_OK && replacement_alive(c, old_capture));
-                assert(fvm_register_function_rooted(c, updated, replacement_native, new_capture, new_capture) == FVM_OK);
-            } else { assert(status == FVM_OK); success = true; }
-            assert(c->functions.size() == registered_count && fvm_gc_unpin(c, new_capture) == FVM_OK && fvm_gc_collect(c, 0) == FVM_OK && !replacement_alive(c, old_capture) && replacement_alive(c, new_capture));
-            assert(fvm_get_global(c, original, &out) == FVM_OK && fvm_function_invoke(c, out.object, c->global, 0, 0, &out) == FVM_OK && out.number == 2);
-            assert(!c->gc_frames && !c->gc_native_depth); fvm_context_destroy(c);
+            if (status == FVM_OUT_OF_MEMORY)
+            {
+                failed = true;
+                if (!(c->functions.size() == registered_count && fvm_get_global(c, original, &out) == FVM_OK &&
+                      out.object == original_function.object))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(fvm_gc_collect(c, 0) == FVM_OK && replacement_alive(c, old_capture)))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                if (!(fvm_register_function_rooted(c, updated, replacement_native, new_capture, new_capture) == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+            }
+            else
+            {
+                if (!(status == FVM_OK))
+                {
+                    fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+                success = true;
+            }
+            if (!(c->functions.size() == registered_count && fvm_gc_unpin(c, new_capture) == FVM_OK &&
+                  fvm_gc_collect(c, 0) == FVM_OK && !replacement_alive(c, old_capture) &&
+                  replacement_alive(c, new_capture)))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(fvm_get_global(c, original, &out) == FVM_OK &&
+                  fvm_function_invoke(c, out.object, c->global, 0, 0, &out) == FVM_OK && out.number == 2))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            if (!(!c->gc_frames && !c->gc_native_depth))
+            {
+                fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            fvm_context_destroy(c);
         }
-        assert(failed && success);
+        if (!(failed && success))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
-    fvm_runtime_destroy(runtime); return 0;
+    fvm_runtime_destroy(runtime);
+    return 0;
 }

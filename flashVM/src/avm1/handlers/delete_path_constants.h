@@ -5,7 +5,6 @@
 #define FVM_DELETE_PATH_TEXT_ROOT 1U    /* Complete counted path, including any embedded NUL. */
 #define FVM_DELETE_PATH_NEXT_ROOT 2U    /* Getter result retained before the next traversal step. */
 #define FVM_DELETE_PATH_MEMBER_ROOT 3U  /* Counted final member slice retained through deletion. */
-#define FVM_DELETE_PATH_BASE_ROOT                                                                  \
-    4U /* Original base survives getters which detach the traversed graph. */
-#define FVM_DELETE_PATH_ROOT_COUNT 5U /* Traversal and final-deletion temporary roots. */
+#define FVM_DELETE_PATH_BASE_ROOT 4U    /* Original base survives getters which detach the traversed graph. */
+#define FVM_DELETE_PATH_ROOT_COUNT 5U   /* Traversal and final-deletion temporary roots. */
 #endif

@@ -8,11 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+
 /* Define FVM_PortSocket struct and its representation. */
 struct FVM_PortSocket
 {
     SOCKET fd;
 };
+
 
 /* Compute and return wsa ready. */
 static int fvm_wsa_ready(void)
@@ -20,6 +23,7 @@ static int fvm_wsa_ready(void)
     WSADATA data;
     return WSAStartup(MAKEWORD(2, 2), &data) == 0;
 }
+
 
 /* Compute and return bounded connect. */
 static int bounded_connect(SOCKET fd, const struct sockaddr *address, int length)
@@ -32,7 +36,9 @@ static int bounded_connect(SOCKET fd, const struct sockaddr *address, int length
     struct timeval timeout;
     mode = 1;
     if (ioctlsocket(fd, FIONBIO, &mode))
+    {
         return 0;
+    }
     result = connect(fd, address, length);
     if (result && WSAGetLastError() == WSAEWOULDBLOCK)
     {
@@ -43,19 +49,24 @@ static int bounded_connect(SOCKET fd, const struct sockaddr *address, int length
         result = select(0, NULL, &writable, NULL, &timeout);
         error = 0;
         error_size = sizeof(error);
-        if (result <= 0 || getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) ||
-            error)
+        if (result <= 0 || getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) || error)
+        {
             return 0;
+        }
     }
     else if (result)
+    {
         return 0;
+    }
     mode = 0;
     return ioctlsocket(fd, FIONBIO, &mode) == 0;
 }
 
+
 /* Compute and return port tcp connect. */
 FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
 {
+
 
     /* Initialization / Инициализация локального состояния. */
     struct addrinfo hints, *addresses, *it;
@@ -63,7 +74,10 @@ FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
     SOCKET fd = INVALID_SOCKET;
     FVM_PortSocket *result;
     if (!hostname || !port || !fvm_wsa_ready())
+    {
         return NULL;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     sprintf(service, "%u", (unsigned int)port);
@@ -79,9 +93,13 @@ FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
     {
         fd = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
         if (fd == INVALID_SOCKET)
+        {
             continue;
+        }
         if (bounded_connect(fd, it->ai_addr, (int)it->ai_addrlen))
+        {
             break;
+        }
         closesocket(fd);
         fd = INVALID_SOCKET;
     }
@@ -102,25 +120,32 @@ FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
     return result;
 }
 
+
 /* Send port socket. */
 long fvm_port_socket_send(FVM_PortSocket *s, const void *p, size_t n)
 {
     int r;
     if (!s || (!p && n))
+    {
         return -1;
+    }
     r = send(s->fd, (const char *)p, n > 2147483647U ? 2147483647 : (int)n, 0);
     return (long)r;
 }
+
 
 /* Compute and return port socket recv. */
 long fvm_port_socket_recv(FVM_PortSocket *s, void *p, size_t n)
 {
     int r;
     if (!s || (!p && n))
+    {
         return -1;
+    }
     r = recv(s->fd, (char *)p, n > 2147483647U ? 2147483647 : (int)n, 0);
     return (long)r;
 }
+
 
 /* Close port socket. */
 void fvm_port_socket_close(FVM_PortSocket *s)
@@ -133,9 +158,11 @@ void fvm_port_socket_close(FVM_PortSocket *s)
     }
 }
 
+
 /* Compute and return port tcp listen. */
 FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsigned short *actual)
 {
+
 
     /* Initialization / Инициализация локального состояния. */
     struct addrinfo hints, *addresses, *it;
@@ -146,7 +173,10 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
     SOCKET fd;
     int one;
     if (!host || !actual || !fvm_wsa_ready())
+    {
         return NULL;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     sprintf(service, "%u", (unsigned int)port);
@@ -166,10 +196,14 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
     {
         fd = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
         if (fd == INVALID_SOCKET)
+        {
             continue;
+        }
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
         if (!bind(fd, it->ai_addr, (int)it->ai_addrlen) && !listen(fd, 32))
+        {
             break;
+        }
         closesocket(fd);
         fd = INVALID_SOCKET;
     }
@@ -201,6 +235,7 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
     return result;
 }
 
+
 /* Compute and return port tcp accept. */
 FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
 {
@@ -211,7 +246,10 @@ FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
     SOCKET fd;
     FVM_PortSocket *result;
     if (!listener)
+    {
         return NULL;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     FD_ZERO(&readset);
@@ -219,9 +257,13 @@ FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
     timeout.tv_sec = (long)(ms / 1000);
     timeout.tv_usec = (long)(ms % 1000) * 1000;
     if (select(0, &readset, NULL, NULL, &timeout) <= 0)
+    {
         return NULL;
+    }
     if (!fvm_wsa_ready())
+    {
         return NULL;
+    }
     fd = accept(listener->fd, NULL, NULL);
     if (fd == INVALID_SOCKET)
     {
@@ -239,29 +281,36 @@ FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
     return result;
 }
 
+
 /* Compute and return port socket timeout. */
 int fvm_port_socket_timeout(FVM_PortSocket *s, unsigned long ms)
 {
     DWORD timeout = (DWORD)ms;
-    return s &&
-           !setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) &&
+    return s && !setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) &&
            !setsockopt(s->fd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
 }
+
 
 /* Compute and return port secure random. */
 int fvm_port_secure_random(unsigned char *bytes, size_t size)
 {
     HMODULE module;
+
+
     typedef BOOLEAN(WINAPI * RandomFunction)(void *, ULONG);
 
     /* Initialization / Инициализация локального состояния. */
     RandomFunction random_function;
     int result;
     if ((!bytes && size) || size > 0xffffffffUL)
+    {
         return 0;
+    }
     module = LoadLibraryA("advapi32.dll");
     if (!module)
+    {
         return 0;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     random_function = (RandomFunction)GetProcAddress(module, "SystemFunction036");

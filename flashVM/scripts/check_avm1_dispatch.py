@@ -17,8 +17,7 @@ CATALOG_REFERENCE = (
     "2372a4e148a67d68efd796f4477b3cddd4f880cd/swf/src/avm1/opcode.rs"
 )
 ACTION_DEFINE = re.compile(
-    r"^\s*#define\s+(FVM_AVM1_ACTION_\w+)\s+"
-    r"(0[xX][0-9a-fA-F]+|[0-9]+)[uU]?\s*$", re.MULTILINE
+    r"^\s*#define\s+(FVM_AVM1_ACTION_\w+)\s+" r"(0[xX][0-9a-fA-F]+|[0-9]+)[uU]?\s*$", re.MULTILINE
 )
 C_NONCODE = re.compile(
     r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|/\*.*?\*/|//[^\n]*',
@@ -78,10 +77,14 @@ def audit(root, catalog):
     entries = []
     for opcode, name in load_catalog(catalog):
         macro = macros.get(opcode)
-        entries.append({
-            "opcode": f"0x{opcode:02X}", "name": name, "macro": macro,
-            "dispatch_present": macro is not None and macro in references,
-        })
+        entries.append(
+            {
+                "opcode": f"0x{opcode:02X}",
+                "name": name,
+                "macro": macro,
+                "dispatch_present": macro is not None and macro in references,
+            }
+        )
     known = {int(row["opcode"], 16) for row in entries}
     return {
         "schema": REPORT_SCHEMA_VERSION,
@@ -100,8 +103,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--catalog", type=Path)
-    parser.add_argument("--require-all", action="store_true",
-                        help="return failure if any catalog entry lacks a dispatch reference")
+    parser.add_argument(
+        "--require-all",
+        action="store_true",
+        help="return failure if any catalog entry lacks a dispatch reference",
+    )
     args = parser.parse_args()
     try:
         report = audit(args.root, args.catalog or args.root / "doc/AVM1_DISPATCH_CATALOG.csv")

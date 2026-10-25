@@ -1,7 +1,7 @@
 # Adaptive event-only queue filling
 
 Fresh event-only audio may fill partial FIFO headroom instead of waiting for a
-whole render block. [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262) takes a live native
+whole render block. [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L315) takes a live native
 queue, a maximum block size, a positive target backlog and optional accepted count.
 The maximum cannot exceed the immutable queue capacity. The target may be smaller
 than the maximum. With active voices it renders min(maximum, target minus observed
@@ -10,7 +10,7 @@ backlog); a full queue or no voices returns NOT_FOUND without rendering.
 A failed write owns an indivisible TAIL retry. A smaller maximum or insufficient
 headroom returns NOT_FOUND; neither splits nor remixes it. A later call with enough
 room resends its original size and bytes, even if the maximum changed. Pending BASE
-input is INVALID_ARGUMENT. The original exact-size [`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L246)
+input is INVALID_ARGUMENT. The original exact-size [`fvm_swf_sound_mix_queue_pump_tail`](../include/flashvm/swf_sound_mix_queue.h#L297)
 keeps its existing behavior. accepted is cleared first, then receives actual accepted
 frames only on OK. Invalid arguments/reentry are INVALID_ARGUMENT; callback statuses
 propagate, exceptions are ERROR, and exact shared-clock overflow is UNSUPPORTED
@@ -56,7 +56,7 @@ v0.1008: Check all eight export modes including exact fourteen-frame headroom PC
 
 ## Paired and desktop scheduling
 
-[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) and [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) use
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L127) and [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) use
 adaptive tails while preserving their existing gate/observed-EOF preconditions.
 Short retained tails take priority over new base. The stream's base PCM pending
 field remains base-only; query mix pending for event retry ownership. Source cursor,
@@ -95,8 +95,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:246](../include/flashvm/swf_sound_mix_queue.h#L246) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
+| `fvm_swf_sound_mix_queue_pump_tail` | function | [include/flashvm/swf_sound_mix_queue.h:297](../include/flashvm/swf_sound_mix_queue.h#L297) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:127](../include/flashvm/swf_stream_output.h#L127) |
 <!-- source-links:end -->

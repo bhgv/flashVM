@@ -3,8 +3,11 @@
 #define FLASHVM_TIMERS_H /* Guard the C89 timer-poll API. */
 #include "flashvm.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
+
+
 /* Poll the existing monotonic context clock and attempt each due entry once in registration order.
  * Install setInterval/clearInterval (SWF6+) and setTimeout/clearTimeout (SWF8+) with standard.h.
  * No sleeping, system thread or automatic movie advancement; call on the context owner thread.
@@ -17,6 +20,8 @@ extern "C" {
  * OOM, execution-work cancellation/limit and clock errors propagate. No arbitrary C callback preemption.
  * See doc/TIMERS.md for bounded delay/argument/ID limits and unaccepted original-player behavior. */
 FVM_API FVM_Result fvm_timers_poll(FVM_Context *, unsigned int *delivered);
+
+
 /* Query the nearest pending deadline without delivering, allocating, sleeping or changing the queue.
  * max_wait_ms is the host's ceiling (including zero); wait_ms and pending are required outputs.
  * Empty queues return max_wait_ms and pending=0 without reading the clock. Otherwise pending=1 and
@@ -27,7 +32,7 @@ FVM_API FVM_Result fvm_timers_poll(FVM_Context *, unsigned int *delivered);
  * This is a hint: process host events, query again after queue changes, and call poll when awake.
  * [GC:] The query invokes no user code and retains no new values or borrowed pointers. */
 FVM_API FVM_Result fvm_timers_next_delay(FVM_Context *, unsigned long max_wait_ms,
-                                       unsigned long *wait_ms, int *pending);
+                                         unsigned long *wait_ms, int *pending);
 #ifdef __cplusplus
 }
 #endif

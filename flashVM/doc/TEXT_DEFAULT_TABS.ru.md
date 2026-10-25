@@ -1,12 +1,12 @@
 # Стандартная табуляция из метрик шрифта
 
-Функция [fvm_font_average_width](../include/flashvm/font.h#L65) читает положительный OS/2 xAvgCharWidth и масштабирует через FreeType до нехинтованных пикселей 26.6. Пробел, максимальная ширина и среднее по произвольной строке не подставляются. Живой шрифт заимствуется на время вызова; доступ к изменяемому face сериализует вызывающий. Выделений памяти, VM и корней GC нет. Обязательный out обнуляется при ошибке. Неверные указатели дают INVALID_ARGUMENT, отсутствующая/неположительная метрика — UNSUPPORTED; NO_FONTS с корректным out возвращает UNSUPPORTED. Структуры и прежний ABI не меняются.
+Функция [fvm_font_average_width](../include/flashvm/font.h#L82) читает положительный OS/2 xAvgCharWidth и масштабирует через FreeType до нехинтованных пикселей 26.6. Пробел, максимальная ширина и среднее по произвольной строке не подставляются. Живой шрифт заимствуется на время вызова; доступ к изменяемому face сериализует вызывающий. Выделений памяти, VM и корней GC нет. Обязательный out обнуляется при ошибке. Неверные указатели дают INVALID_ARGUMENT, отсутствующая/неположительная метрика — UNSUPPORTED; NO_FONTS с корректным out возвращает UNSUPPORTED. Структуры и прежний ABI не меняются.
 
 В тестовом шрифте независимо записаны 547 единиц при 1000 units/em: размер 40 даёт 21.875, размер 20 — 10.9375 пикселя. Первый коммит v0.915 добавлял только метрику; v0.917 ниже включает default-табуляции.
 
 Источник: [спецификация OS/2 OpenType](https://learn.microsoft.com/en-us/typography/opentype/spec/os2#xavgcharwidth). Эталонная приёмка Flash и устройств остаётся открытой.
 
-v0.916: [fvm_text_layout_create_periodic](../include/flashvm/text_layout.h#L155) принимает конечный положительный интервал до 1 000 000 пикселей. U+0009 переходит к положительному кратному строго правее пера с учётом indent и интервала букв. Позиции начинаются заново на каждой визуальной строке; таблица на 64 элемента и её выделение не нужны. Сохраняются пределы глифов/работы/геометрии, пустой контур табуляции, переносы, владение и статусы custom API. Нужны LTR с уровнями bidi 0 и выравнивание не JUSTIFY. Прежние API по-прежнему отклоняют табуляцию без таблицы. NO_FONTS проверяет интервал/флаги/spacing/indent, затем возвращает UNSUPPORTED без чтения font/text/options. NULL out и неверный интервал дают INVALID_ARGUMENT; выход обнуляется.
+v0.916: [fvm_text_layout_create_periodic](../include/flashvm/text_layout.h#L179) принимает конечный положительный интервал до 1 000 000 пикселей. U+0009 переходит к положительному кратному строго правее пера с учётом indent и интервала букв. Позиции начинаются заново на каждой визуальной строке; таблица на 64 элемента и её выделение не нужны. Сохраняются пределы глифов/работы/геометрии, пустой контур табуляции, переносы, владение и статусы custom API. Нужны LTR с уровнями bidi 0 и выравнивание не JUSTIFY. Прежние API по-прежнему отклоняют табуляцию без таблицы. NO_FONTS проверяет интервал/флаги/spacing/indent, затем возвращает UNSUPPORTED без чтения font/text/options. NULL out и неверный интервал дают INVALID_ARGUMENT; выход обнуляется.
 
 v0.917: TextField и TextFormat.getTextExtent при пустой собственной таблице и наличии U+0009 используют четыре средние ширины выбранного настоящего face и размера. Отсутствующая метрика даёт UNSUPPORTED. Без табуляций дополнительных требований к шрифту нет. Явная таблица имеет приоритет. Пустой Array включает default; null/undefined сохраняют прежний стиль. Текущий и будущий стили независимы; снимки default возвращают пустой Array. Правки заранее проверяют табуляции даже без autoSize: ошибка сохраняет текст/стиль/кэш/якоря. Новые поля снимка и wire-биты не нужны: интервал вычисляется из встроенного шрифта повторно. Bidi/justify с табуляцией не поддержаны. Эта ограниченная политика OS/2 ещё не сверена с бинарным Flash Player. Источник: [Adobe AS2 TextFormat](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html#tabStops).
 
@@ -35,6 +35,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_average_width` | function | [include/flashvm/font.h:65](../include/flashvm/font.h#L65) |
-| `fvm_text_layout_create_periodic` | function | [include/flashvm/text_layout.h:155](../include/flashvm/text_layout.h#L155) |
+| `fvm_font_average_width` | function | [include/flashvm/font.h:82](../include/flashvm/font.h#L82) |
+| `fvm_text_layout_create_periodic` | function | [include/flashvm/text_layout.h:179](../include/flashvm/text_layout.h#L179) |
 <!-- source-links:end -->

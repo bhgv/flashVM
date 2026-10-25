@@ -7,7 +7,7 @@ SWF DoAction допускает отсутствие ActionEnd ровно на �
 допустим, внутрь записи или за пределы блока — недопустим. Обрезанные payload и
 лишние байты после явного ActionEnd по-прежнему отклоняются.
 
-Публичный [fvm_avm1_inspect](../include/flashvm/avm1.h#L34) остаётся строгим: требует явного ActionEnd. Execute
+Публичный [fvm_avm1_inspect](../include/flashvm/avm1.h#L40) остаётся строгим: требует явного ActionEnd. Execute
 и execute_receiver допускают неявный конец в контексте с загруженным SWF.
 Сохранённые кадры используют структурную границу независимо от загрузки SWF
 в принимающем контексте; перенос MovieClip проверен через очередь и после GC.
@@ -55,5 +55,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_avm1_inspect` | function | [include/flashvm/avm1.h:34](../include/flashvm/avm1.h#L34) |
+| `fvm_avm1_inspect` | function | [include/flashvm/avm1.h:40](../include/flashvm/avm1.h#L40) |
 <!-- source-links:end -->

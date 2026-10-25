@@ -137,5 +137,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:137](../include/flashvm/swf_stream_sound.h#L137) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_inferred` | function | [include/flashvm/swf_stream_sound.h:167](../include/flashvm/swf_stream_sound.h#L167) |
 <!-- source-links:end -->

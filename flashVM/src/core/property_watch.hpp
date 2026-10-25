@@ -6,10 +6,12 @@
 /* Define FVM CORE PROPERTY WATCH HPP constant or compilation switch. */
 #define FVM_CORE_PROPERTY_WATCH_HPP
 #include "runtime.hpp"
+
+
 /* Implement property watchable for this subsystem. */
 bool fvm_property_watchable(FVM_Object *, const fvm_detail::string &);
 
 /* Implement property watch prepare for this subsystem. */
-FVM_Result fvm_property_watch_prepare(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value *,
-                                      FVM_Value *);
+FVM_Result
+fvm_property_watch_prepare(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value *, FVM_Value *);
 #endif

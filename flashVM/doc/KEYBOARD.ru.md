@@ -6,7 +6,7 @@
 
 ## Установка
 
-Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L20), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L103).
+Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L22), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L127).
 Последняя публикует глобальный объект `Key` с методами `getCode`, `getAscii`,
 `isDown`, `isToggled` и константами BACKSPACE, TAB, ENTER, SHIFT, CONTROL, CAPSLOCK,
 ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
@@ -14,16 +14,16 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 В v0.590 добавлены [слушатели и доставка](KEYBOARD_LISTENERS.ru.md).
 Конструктор, `isAccessible` и семантика доменов безопасности отсутствуют.
 
-[`FVM_OK`](../include/flashvm/flashvm.h#L42) возвращается после полной подготовки объекта. Конфликт с собственным
+[`FVM_OK`](../include/flashvm/flashvm.h#L44) возвращается после полной подготовки объекта. Конфликт с собственным
 глобальным значением/accessor/native/script/constructor-регистрацией даёт
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), сохраняя старую привязку. Повторная установка успешна,
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), сохраняя старую привязку. Повторная установка успешна,
 если native-методы остались исходными и не затенены. Она не восстанавливает
 изменённые скриптом константы/атрибуты. Замена или затенение метода отклоняется.
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) сохраняет глобальные значения; временный неопубликованный
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) сохраняет глобальные значения; временный неопубликованный
 объект может остаться обычным мусором до GC. Прочие C++ исключения превращаются
-в [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) и не пересекают ABI. Нужен живой контекст с установленной стандартной
+в [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) и не пересекают ABI. Нужен живой контекст с установленной стандартной
 библиотекой; повторный вход из GC/разрушения отклоняется. Основная функция
-[`fvm_standard_install`](../include/flashvm/standard.h#L20) не подключает это подмножество автоматически.
+[`fvm_standard_install`](../include/flashvm/standard.h#L22) не подключает это подмножество автоматически.
 
 ## API снимка
 
@@ -40,7 +40,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 
 `fvm_input_set_keyboard(context, state)` проверяет все поля до копирования.
 Нулевые указатели, неверный размер, ячейки, коды или переключатели дают
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), сохраняя старое состояние целиком. После успеха память
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), сохраняя старое состояние целиком. После успеха память
 хоста можно переиспользовать: указатель не сохраняется. Функция не выводит события
 из разницы снимков, не меняет указатель/очередь жестов, не выделяет память и
 не выполняет getter или callback.
@@ -51,10 +51,10 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 
 `fvm_input_reset_keyboard(context)` обнуляет удержания, последние коды и
 переключатели, сохраняя правильный размер. Неверный контекст даёт
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). Используйте при потере фокуса; после возвращения публикуйте
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Используйте при потере фокуса; после возвращения публикуйте
 действительное состояние системных переключателей. Вымышленные отпускания не
-доставляются. Set/get/reset не выделяют память, возвращают только [`FVM_OK`](../include/flashvm/flashvm.h#L42) или
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+доставляются. Set/get/reset не выделяют память, возвращают только [`FVM_OK`](../include/flashvm/flashvm.h#L44) или
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 
 Все три функции вызываются исключительно на потоке владельца VM, без внутренней
 синхронизации. Вход во время GC collection/release или разрушения отклоняется.
@@ -71,7 +71,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 | `Key.isDown(code)` | Boolean удержания выбранной виртуальной клавиши; несколько клавиш независимы. |
 | `Key.isToggled(code)` | Boolean Caps Lock либо Num Lock по числовому [`FVM_KEY_NUMLOCK`](../include/flashvm/keyboard.h#L44); для прочих кодов false. |
 
-Запросы преобразуют первый аргумент через [`fvm_value_to_number`](../include/flashvm/standard.h#L25); ошибки и
+Запросы преобразуют первый аргумент через [`fvm_value_to_number`](../include/flashvm/standard.h#L29); ошибки и
 исключения преобразования распространяются. Нет аргумента, NaN, бесконечность,
 отрицательное значение, число меньше 1 или >=256 дают false. Допустимая дробная
 часть отбрасывается к нулю. Преобразование может выполнить скрипт; состояние
@@ -82,7 +82,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 Методы используют вызывающий контекст, в том числе через второе имя объекта.
 [GC:] Глобальное значение удерживает Key; при его замене хост должен сам
 защитить сохранённый объект корнем/pin. Клавиатурное состояние не сериализуется;
-сериализация самого host-local native-объекта сейчас возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
+сериализация самого host-local native-объекта сейчас возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48).
 В другом контексте явно установите объект и опубликуйте отдельный снимок.
 Указатели и системное состояние в граф не переносятся.
 
@@ -122,16 +122,16 @@ IME, составной текст, точный перевод физическ
 Ограничения безопасности и key-события кнопок/клипов остаются работой роудмапа.
 
 
-Композиция со сценой v0.627: [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L97) публикует проверенный
+Композиция со сценой v0.627: [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L117) публикует проверенный
 снимок и вызывает зарегистрированных Key listeners без неявного focused-clip call.
-Прежний [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) сохранён. Перед рассылкой методов по сцене
+Прежний [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108) сохранён. Перед рассылкой методов по сцене
 новый API предотвращает дубль фокуса; явная регистрация listener независима.
 [Контракт](CLIP_INPUT_METHODS.ru.md).
 
 
-KeyPress v0.628: [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L66) проверяет копию transition и переводит
+KeyPress v0.628: [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L68) проверяет копию transition и переводит
 special/printable selectors без allocation/мутации. Отдельный
-[`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L97) рассылает точные retained selectors.
+[`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L106) рассылает точные retained selectors.
 [Контракт](CLIP_KEYPRESS.ru.md) / [EN](CLIP_KEYPRESS.md).
 
 <!-- source-links:start -->
@@ -143,23 +143,23 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:66](../include/flashvm/keyboard.h#L66) |
-| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:97](../include/flashvm/keyboard.h#L97) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:73](../include/flashvm/keyboard.h#L73) |
-| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../include/flashvm/keyboard.h#L69) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:68](../include/flashvm/keyboard.h#L68) |
+| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:117](../include/flashvm/keyboard.h#L117) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:77](../include/flashvm/keyboard.h#L77) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:81](../include/flashvm/keyboard.h#L81) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:73](../include/flashvm/keyboard.h#L73) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_KEY_NUMLOCK` | macro / define | [include/flashvm/keyboard.h:44](../include/flashvm/keyboard.h#L44) |
 | `FVM_KEYBOARD_ASCII_MAX` | macro / define | [include/flashvm/keyboard.h:9](../include/flashvm/keyboard.h#L9) |
 | `FVM_KEYBOARD_CODE_COUNT` | macro / define | [include/flashvm/keyboard.h:8](../include/flashvm/keyboard.h#L8) |
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
-| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../include/flashvm/clip_actions.h#L97) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:103](../include/flashvm/keyboard.h#L103) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
+| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:106](../include/flashvm/clip_actions.h#L106) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:127](../include/flashvm/keyboard.h#L127) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:29](../include/flashvm/standard.h#L29) |
 <!-- source-links:end -->

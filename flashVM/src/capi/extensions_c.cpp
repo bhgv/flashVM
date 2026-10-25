@@ -22,8 +22,9 @@
 #include <cstring>
 
 namespace
-{
-/* Define anonymous enum and its representation. */
+{ /* Define anonymous enum and its representation. */
+
+
 enum
 {
     CHANNEL = FVM_RESOURCE_CHANNEL,
@@ -32,6 +33,7 @@ enum
     THREAD_NAMESPACE = FVM_RESOURCE_THREAD_NAMESPACE,
     CHANNEL_NAMESPACE = FVM_RESOURCE_CHANNEL_NAMESPACE
 };
+
 
 /* Define ScriptTask struct and its representation. */
 struct ScriptTask
@@ -44,19 +46,23 @@ struct ScriptTask
     fvm_detail::vector<FVM_SourceLocation> locations;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> functions;
     FVM_Channel *shared, *input, *output;
+
+
     /* Initialize Script Task and its owned state. */
     ScriptTask()
-        : identity(fvm_sync_next_identity()), handle(0), broker(0), standard_library(false),
-          shared(0), input(0), output(0)
+        : identity(fvm_sync_next_identity()), handle(0), broker(0), standard_library(false), shared(0), input(0),
+          output(0)
     {
     }
 };
+
 
 /* Release channel. */
 static void release_channel(void *p)
 {
     fvm_channel_release((FVM_Channel *)p);
 }
+
 
 /* Release worker. */
 static void release_worker(void *p)
@@ -69,15 +75,24 @@ static void release_worker(void *p)
         fvm_worker_destroy(t->handle);
     }
     if (t->shared)
+    {
         fvm_channel_release(t->shared);
+    }
     if (t->input)
+    {
         fvm_channel_release(t->input);
+    }
     if (t->output)
+    {
         fvm_channel_release(t->output);
+    }
     if (t->broker)
+    {
         fvm_broker_release(t->broker);
+    }
     delete t;
 }
+
 
 /* Compute and return stopped. */
 static bool stopped(FVM_Context *c)
@@ -86,18 +101,21 @@ static bool stopped(FVM_Context *c)
     return c->worker && fvm_worker_stop_requested(c->worker, &value) == FVM_OK && value;
 }
 
+
 /* Compute and return integer arg. */
 static bool integer_arg(const FVM_Value &v, unsigned long max, unsigned long *out)
 {
     if (v.type != FVM_VALUE_NUMBER || !(v.number >= 0) || v.number >= (double)max)
+    {
         return false;
+    }
     *out = (unsigned long)v.number;
     return (double)*out == v.number;
 }
 
+
 /* Implement method for this subsystem. */
-static void method(FVM_Object *o, const char *name, FVM_NativeFunction cb, int op,
-                   bool collector = false)
+static void method(FVM_Object *o, const char *name, FVM_NativeFunction cb, int op, bool collector = false)
 {
     FVM_NativeEntry e;
 
@@ -110,6 +128,8 @@ static void method(FVM_Object *o, const char *name, FVM_NativeFunction cb, int o
 }
 /* Distinct wrappers below pass operation codes without pointer casts. */
 /* Compute and return gc op. */
+
+
 /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
 static FVM_Result gc_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out, int op)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -125,24 +145,25 @@ static FVM_Result gc_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (op == 0 || op == 1 || op == 3 || op == 4)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (n)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (op == 0)
-            /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
+        { /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
             r = fvm_gc_collect(c, &count);
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         else if (op == 1)
-            /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
+        { /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
             r = fvm_gc_step(c, &count);
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         else if (op == 3)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
+        { /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
             r = fvm_gc_state(c, &state);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             count = (unsigned long)state;
@@ -150,8 +171,9 @@ static FVM_Result gc_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_
         }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         else
-            /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
+        { /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
             r = fvm_gc_object_count(c, &count);
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_number(out, op == 3 ? (double)state : (double)count);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -162,8 +184,9 @@ static FVM_Result gc_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_
     if (n != 1 || a[0].type != FVM_VALUE_NUMBER || !(a[0].number >= -100) ||
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         a[0].number > FVM_GC_FULL || a[0].number != (int)a[0].number)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Работаем с выбранным режимом планирования сборки. */
     r = fvm_gc_mode(c, (int)a[0].number);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -173,10 +196,12 @@ static FVM_Result gc_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 #define GC_WRAPPER(name, op) /* [GC:] GC operation wrapper. */                                                                                    \
-    static FVM_Result name(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,                                                      \
-                           FVM_Value *out, void *)                                                                                                \
+    static FVM_Result name(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)                              \
     {                                                                                                                                             \
-        return gc_op(c, n, a, out, /* [GC:] GC operation wrapper. */                                                                              \
+        return gc_op(c,                                                                                                                           \
+                     n,                                                                                                                           \
+                     a,                                                                                                                           \
+                     out, /* [GC:] GC operation wrapper. */                                                                                       \
                      op); /* [GC:] Возвращаем результат операции сборщика или защиты корней. */ \
     }
 /* Dispatch the requested collector operation through the shared GC bridge. */
@@ -194,23 +219,33 @@ GC_WRAPPER(gc_state, 3)
 /* Dispatch the requested collector operation through the shared GC bridge. */
 /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
 GC_WRAPPER(gc_count, 4)
+
+
 /* Define ChannelWaitScope struct and its representation. */
 struct ChannelWaitScope
 {
     void *wait;
     FVM_Channel *channel;
     int sending;
+
+
     /* Wait for Channel Scope. */
     ChannelWaitScope() : wait(0), channel(0), sending(0)
     {
     }
+
+
     /* Release the resources owned by this ChannelWaitScope instance. */
     ~ChannelWaitScope()
     {
         if (channel)
+        {
             fvm_channel_poll_wait_end(channel, sending);
+        }
         fvm_debug_channel_wait_end(wait);
     }
+
+
     /* Compute and return record. */
     bool record(FVM_Context *c, FVM_Channel *ch, int sending)
     {
@@ -228,12 +263,15 @@ struct ChannelWaitScope
     }
 };
 
+
 /* Compute and return channel op. */
-static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a,
-                             FVM_Value *out, int op)
+static FVM_Result
+channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a, FVM_Value *out, int op)
 {
     if (self->resource_kind != CHANNEL || !self->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Channel *ch = (FVM_Channel *)self->resource;
@@ -246,22 +284,30 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
     if (op == 0 || op == 1)
     {
         if (n != 1)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         do
         {
             r = fvm_channel_send_value(c, ch, &a[0], 0);
             if (r == FVM_NOT_FOUND && op == 0 && !stopped(c))
             {
                 if (!wait.record(c, ch, 1))
+                {
                     return FVM_OUT_OF_MEMORY;
+                }
                 fvm_port_thread_sleep_us(1000);
             }
             else
+            {
                 break;
+            }
         } while (true);
         if (r == FVM_NOT_FOUND && stopped(c))
         {
-            fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, fvm_channel_identity(ch),
+            fvm_resource_fault(c,
+                               FVM_RESOURCE_CANCELLED,
+                               fvm_channel_identity(ch),
                                op < 2 ? "channel.send" : "channel.receive",
                                fvm_channel_remote_address(ch));
             return FVM_ERROR;
@@ -277,7 +323,9 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
     if (op == 2 || op == 3)
     {
         if (n)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         do
         {
             r = fvm_channel_receive_value(c, ch, &v, 0);
@@ -285,22 +333,27 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
             fvm_channel_is_file(ch, &file);
             if (r == FVM_NOT_FOUND && op == 2 && file)
             {
-                fvm_resource_fault(c, FVM_RESOURCE_IO, fvm_channel_identity(ch), "channel.receive",
-                                   0);
+                fvm_resource_fault(c, FVM_RESOURCE_IO, fvm_channel_identity(ch), "channel.receive", 0);
                 return FVM_ERROR;
             }
             if (r == FVM_NOT_FOUND && op == 2 && !stopped(c))
             {
                 if (!wait.record(c, ch, 0))
+                {
                     return FVM_OUT_OF_MEMORY;
+                }
                 fvm_port_thread_sleep_us(1000);
             }
             else
+            {
                 break;
+            }
         } while (true);
         if (r == FVM_NOT_FOUND && stopped(c))
         {
-            fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, fvm_channel_identity(ch),
+            fvm_resource_fault(c,
+                               FVM_RESOURCE_CANCELLED,
+                               fvm_channel_identity(ch),
                                op < 2 ? "channel.send" : "channel.receive",
                                fvm_channel_remote_address(ch));
             return FVM_ERROR;
@@ -311,14 +364,18 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
             return FVM_OK;
         }
         if (r != FVM_OK)
+        {
             return r;
+        }
         *out = v;
         return FVM_OK;
     }
     if (op == 4)
     {
         if (n)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         fvm_channel_close(ch);
         fvm_value_undefined(out);
         return FVM_OK;
@@ -326,7 +383,9 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
     if (op == 5)
     {
         if (n)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_channel_available(ch, &ready);
         fvm_value_boolean(out, ready);
         return r;
@@ -334,7 +393,9 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
     if (op == 6)
     {
         if (n)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_channel_pending(ch, &pending);
         fvm_value_number(out, (double)pending);
         return r;
@@ -344,28 +405,40 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
     {
         FVM_ChannelWaitState state;
         if (n)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_channel_wait_state(ch, &state);
         if (r != FVM_OK)
+        {
             return r;
+        }
         if (op == FVM_CHANNEL_OP_WAIT_SENDERS)
+        {
             fvm_value_number(out, (double)state.waiting_senders);
+        }
         else if (op == FVM_CHANNEL_OP_WAIT_RECEIVERS)
+        {
             fvm_value_number(out, (double)state.waiting_receivers);
+        }
         else
+        {
             fvm_value_number(out, (double)state.directions);
+        }
         return FVM_OK;
     }
     if (n != 1 || !integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_undefined(out);
     return fvm_channel_set_capacity(ch, (size_t)capacity);
 }
-#define CHANNEL_WRAPPER(name, op)                                                                  \
-    static FVM_Result name(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,      \
-                           FVM_Value *out, void *)                                                 \
-    {                                                                                              \
-        return channel_op(c, s, n, a, out, op);                                                    \
+
+#define CHANNEL_WRAPPER(name, op)                                                                                      \
+    static FVM_Result name(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)  \
+    {                                                                                                                  \
+        return channel_op(c, s, n, a, out, op);                                                                        \
     }
 /* Dispatch this channel method through the shared channel bridge. */
 CHANNEL_WRAPPER(ch_send, 0)
@@ -389,9 +462,11 @@ CHANNEL_WRAPPER(ch_wait_senders, FVM_CHANNEL_OP_WAIT_SENDERS)
 CHANNEL_WRAPPER(ch_wait_receivers, FVM_CHANNEL_OP_WAIT_RECEIVERS)
 /* Return SEND/RECEIVE bits; both may be present at the same time. */
 CHANNEL_WRAPPER(ch_wait_directions, FVM_CHANNEL_OP_WAIT_DIRECTIONS)
+
+
 /* Create channel. */
-static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                                 FVM_Value *out, void *)
+static FVM_Result
+create_channel(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -403,25 +478,34 @@ static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, c
     {
         if ((n != 2 && n != 3) || a[1].type != FVM_VALUE_STRING || !a[1].string ||
             (n == 3 && (a[2].type != FVM_VALUE_STRING || !a[2].string)))
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_channel_open_file(a[1].string, n == 3 ? a[2].string : 0, &ch);
     }
-    else if (n == 2 && a[0].type == FVM_VALUE_STRING && a[1].type == FVM_VALUE_STRING &&
-             a[0].string && a[1].string && !std::strcmp(a[0].string, "network"))
+    else if (n == 2 && a[0].type == FVM_VALUE_STRING && a[1].type == FVM_VALUE_STRING && a[0].string && a[1].string &&
+             !std::strcmp(a[0].string, "network"))
+    {
         r = fvm_channel_open_network(c, a[1].string, &ch);
+    }
     else
     {
-        if (n > 1 ||
-            (n && (!integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)))
+        if (n > 1 || (n && (!integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)))
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         r = fvm_channel_create(&ch);
     }
     if (r != FVM_OK)
+    {
         return r;
+    }
     int file = 0;
     fvm_channel_is_file(ch, &file);
     if (!file)
+    {
         fvm_channel_set_capacity(ch, (size_t)capacity);
+    }
     r = fvm_extensions_wrap_channel(c, ch, &o);
     fvm_channel_release(ch);
     if (r == FVM_OK)
@@ -434,29 +518,34 @@ static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, c
 }
 
 /* Returning the attached value lets script assignment preserve primitive metadata. */
+
+
 /* Compute and return meta attach. */
-static FVM_Result meta_attach(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                              FVM_Value *out, void *)
+static FVM_Result meta_attach(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
-    if (n != 2 || (a[1].type != FVM_VALUE_OBJECT && a[1].type != FVM_VALUE_NULL &&
-                   a[1].type != FVM_VALUE_UNDEFINED))
+    if (n != 2 || (a[1].type != FVM_VALUE_OBJECT && a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value value = a[0];
-    FVM_Result result =
-        fvm_value_set_metatable(c, &value, a[1].type == FVM_VALUE_OBJECT ? a[1].object : 0);
+    FVM_Result result = fvm_value_set_metatable(c, &value, a[1].type == FVM_VALUE_OBJECT ? a[1].object : 0);
     if (result == FVM_OK)
+    {
         *out = value;
+    }
     return result;
 }
 
+
 /* Read meta. */
-static FVM_Result meta_get(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                           FVM_Value *out, void *)
+static FVM_Result meta_get(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     if (n != 1)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *meta = 0;
@@ -470,11 +559,14 @@ static FVM_Result meta_get(FVM_Context *c, FVM_Object *, unsigned int n, const F
     return result;
 }
 
+
 /* Compute and return worker op. */
 static FVM_Result worker_op(FVM_Context *c, FVM_Object *s, unsigned int n, FVM_Value *out, int op)
 {
     if (n || s->resource_kind != WORKER || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Worker *w = ((ScriptTask *)s->resource)->handle;
@@ -517,7 +609,9 @@ static FVM_Result worker_op(FVM_Context *c, FVM_Object *s, unsigned int n, FVM_V
         return FVM_OK;
     }
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (s->resource_result_valid)
     {
         *out = s->resource_result;
@@ -526,7 +620,9 @@ static FVM_Result worker_op(FVM_Context *c, FVM_Object *s, unsigned int n, FVM_V
     ScriptTask *task = (ScriptTask *)s->resource;
     r = fvm_channel_receive_value(c, task->output, &v, 0);
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     s->resource_result = v;
@@ -534,11 +630,11 @@ static FVM_Result worker_op(FVM_Context *c, FVM_Object *s, unsigned int n, FVM_V
     *out = v;
     return FVM_OK;
 }
-#define WORKER_WRAPPER(name, op)                                                                   \
-    static FVM_Result name(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,       \
-                           FVM_Value *out, void *)                                                 \
-    {                                                                                              \
-        return worker_op(c, s, n, out, op);                                                        \
+
+#define WORKER_WRAPPER(name, op)                                                                                       \
+    static FVM_Result name(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)   \
+    {                                                                                                                  \
+        return worker_op(c, s, n, out, op);                                                                            \
     }
 /* Dispatch this worker method through the shared worker bridge. */
 WORKER_WRAPPER(w_start, 0)
@@ -550,25 +646,31 @@ WORKER_WRAPPER(w_state, 2)
 WORKER_WRAPPER(w_join, 3)
 /* Dispatch this worker method through the shared worker bridge. */
 WORKER_WRAPPER(w_ret, 4)
+
+
 /* Compute and return worker id. */
-static FVM_Result worker_id(FVM_Context *, FVM_Object *self, unsigned int n, const FVM_Value *,
-                            FVM_Value *out, void *)
+static FVM_Result worker_id(FVM_Context *, FVM_Object *self, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || self->resource_kind != WORKER || !self->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_number(out, (double)((ScriptTask *)self->resource)->identity);
     return FVM_OK;
 }
 
+
 /* Compute and return thread id. */
-static FVM_Result thread_id(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
-                            FVM_Value *out, void *)
+static FVM_Result thread_id(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_number(out, (double)c->identity);
     return FVM_OK;
 }
+
 
 /* Compute and return script worker. */
 static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *out, void *ud)
@@ -580,12 +682,16 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
     c->worker = t->handle;
     FVM_Result binding = fvm_context_set_broker(c, t->broker);
     if (binding != FVM_OK)
+    {
         return binding;
+    }
     if (t->standard_library)
     {
         FVM_Result r = fvm_standard_install(c);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
     try
     {
@@ -598,29 +704,39 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
     }
     FVM_Result r = fvm_extensions_install(c);
     if (r != FVM_OK)
+    {
         return r;
+    }
     if (t->shared)
     {
         FVM_Object *ch = 0;
         FVM_Value v;
         r = fvm_extensions_wrap_channel(c, t->shared, &ch);
         if (r != FVM_OK)
+        {
             return r;
+        }
         fvm_value_undefined(&v);
         v.type = FVM_VALUE_OBJECT;
         v.object = ch;
         r = fvm_set_global(c, "sharedChannel", &v);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
     (void)in;
     FVM_Value argument, result;
     r = fvm_channel_receive_value(c, t->input, &argument, 0);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_avm1_call(c, t->name.c_str(), 0, 1, &argument, &result);
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Output / Вывод и передача результата. */
     r = fvm_channel_send_value(c, t->output, &result, 0);
@@ -628,16 +744,22 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
     return r;
 }
 
+
 /* Run worker. */
-static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                             bool suspended)
+static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out, bool suspended)
 {
     if (n < 1 || n > 3 || a[0].type != FVM_VALUE_STRING)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (c->script_functions.find(a[0].string) == c->script_functions.end())
+    {
         return FVM_NOT_FOUND;
+    }
     if (n == 3 && (a[2].type != FVM_VALUE_OBJECT || a[2].object->resource_kind != CHANNEL))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     ScriptTask *t = 0;
     try
     {
@@ -679,12 +801,18 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
     fvm_value_undefined(&in);
     argument = in;
     if (n >= 2)
+    {
         argument = a[1];
+    }
     FVM_Result r = fvm_channel_create(&t->input);
     if (r == FVM_OK)
+    {
         r = fvm_channel_create(&t->output);
+    }
     if (r == FVM_OK)
+    {
         r = fvm_channel_send_value(c, t->input, &argument, 0);
+    }
     if (r != FVM_OK)
     {
         release_worker(t);
@@ -730,14 +858,18 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
         method(o, "ret", w_ret, 4);
         r = fvm_object_define_accessor_rooted(c, o, "id", worker_id, 0, 0, 0);
         if (r != FVM_OK)
+        {
             return r;
+        }
     }
     catch (...)
     {
         return FVM_OUT_OF_MEMORY;
     }
     if (!suspended)
+    {
         fvm_worker_start(t->handle);
+    }
     fvm_value_undefined(out);
 
     /* Computation / Вычисление и обновление состояния. */
@@ -746,37 +878,42 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
     return FVM_OK;
 }
 
+
 /* Run the current value. */
-static FVM_Result run(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                      FVM_Value *out, void *)
+static FVM_Result run(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     return run_worker(c, n, a, out, false);
 }
 
+
 /* Run suspended. */
-static FVM_Result run_suspended(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                                FVM_Value *out, void *)
+static FVM_Result
+run_suspended(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     return run_worker(c, n, a, out, true);
 }
 
+
 /* Compute and return stop requested. */
-static FVM_Result stop_requested(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
-                                 FVM_Value *out, void *)
+static FVM_Result
+stop_requested(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_boolean(out, stopped(c));
     return FVM_OK;
 }
 
+
 /* Sleep for op. */
-static FVM_Result sleep_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                           unsigned long scale)
+static FVM_Result sleep_op(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out, unsigned long scale)
 {
-    if (n != 1 || a[0].type != FVM_VALUE_NUMBER || !(a[0].number >= 0) ||
-        a[0].number >= (double)(ULONG_MAX / scale))
+    if (n != 1 || a[0].type != FVM_VALUE_NUMBER || !(a[0].number >= 0) || a[0].number >= (double)(ULONG_MAX / scale))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     unsigned long us = (unsigned long)(a[0].number * scale);
     while (us && !stopped(c))
     {
@@ -788,59 +925,75 @@ static FVM_Result sleep_op(FVM_Context *c, unsigned int n, const FVM_Value *a, F
     return stopped(c) ? FVM_ERROR : FVM_OK;
 }
 
+
 /* Sleep for the current value. */
-static FVM_Result sleep(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                        FVM_Value *out, void *)
+static FVM_Result sleep(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     return sleep_op(c, n, a, out, 1000000UL);
 }
 
+
 /* Compute and return sleepms. */
-static FVM_Result sleepms(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                          FVM_Value *out, void *)
+static FVM_Result sleepms(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     return sleep_op(c, n, a, out, 1000UL);
 }
 
+
 /* Compute and return sleepus. */
-static FVM_Result sleepus(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                          FVM_Value *out, void *)
+static FVM_Result sleepus(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     return sleep_op(c, n, a, out, 1UL);
 }
 
+
 /* Join the current value. */
-static FVM_Result join(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                       FVM_Value *out, void *)
+static FVM_Result join(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *)
 {
     if (!n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     for (unsigned int i = 0; i < n; ++i)
     {
         if (a[i].type != FVM_VALUE_OBJECT || a[i].object->resource_kind != WORKER)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         for (unsigned int j = 0; j < i; ++j)
+        {
             if (a[i].object == a[j].object)
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
+        }
     }
     if (n == 1)
+    {
         return worker_op(c, a[0].object, 0, out, 3);
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *results = 0;
     FVM_Result first = fvm_object_create(c, &results);
     if (first != FVM_OK)
+    {
         return first;
+    }
     for (unsigned int i = 0; i < n; ++i)
     {
         FVM_Value v;
         fvm_value_undefined(&v);
         FVM_Result r = worker_op(c, a[i].object, 0, &v, 3);
         if (first == FVM_OK && r != FVM_OK)
+        {
             first = r;
+        }
         r = fvm_table_set_index(c, results, i, &v);
         if (first == FVM_OK && r != FVM_OK)
+        {
             first = r;
+        }
     }
     fvm_value_undefined(out);
 
@@ -850,27 +1003,37 @@ static FVM_Result join(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
     return first;
 }
 } // namespace
+
+
 /* Compute and return extensions wrap channel. */
 extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *ch, FVM_Object **out)
 {
     if (!c || !ch || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     for (size_t i = 0; i < c->objects.size(); ++i)
+    {
         if (c->objects[i]->resource_kind == CHANNEL && c->objects[i]->resource == ch)
         {
             *out = c->objects[i];
             return FVM_OK;
         }
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *o = 0;
     FVM_Result r = fvm_object_create(c, &o);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_channel_retain(ch);
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     o->resource = ch;
@@ -883,7 +1046,9 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
     try
     {
         if (path)
+        {
             o->resource_path = path;
+        }
         method(o, "send", ch_send, 0);
         method(o, "trySend", ch_try_send, 1);
         method(o, "receive", ch_receive, 2);
@@ -903,56 +1068,78 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
     *out = o;
     return FVM_OK;
 }
+
 namespace
 {
+
+
 /* Release mutex. */
 void release_mutex(void *p)
 {
     fvm_mutex_release((FVM_Mutex *)p);
 }
 
+
 /* Compute and return mutex state. */
-FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
-                       FVM_Value *out, void *)
+FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     int state = 0;
     FVM_Result r = fvm_mutex_touch_context(c, (FVM_Mutex *)s->resource, &state);
     fvm_value_number(out, state);
     if (r == FVM_ERROR)
-        fvm_resource_fault(c, FVM_RESOURCE_CLOSED, fvm_mutex_identity((FVM_Mutex *)s->resource),
-                           "mutex.touch", fvm_mutex_remote_address((FVM_Mutex *)s->resource));
+    {
+        fvm_resource_fault(c,
+                           FVM_RESOURCE_CLOSED,
+                           fvm_mutex_identity((FVM_Mutex *)s->resource),
+                           "mutex.touch",
+                           fvm_mutex_remote_address((FVM_Mutex *)s->resource));
+    }
     if (r == FVM_ERROR)
-        fvm_debug_resource_error(c, fvm_mutex_identity((FVM_Mutex *)s->resource), "mutex.touch",
+    {
+        fvm_debug_resource_error(c,
+                                 fvm_mutex_identity((FVM_Mutex *)s->resource),
+                                 "mutex.touch",
                                  fvm_mutex_remote_address((FVM_Mutex *)s->resource));
+    }
     return r;
 }
 
+
 /* Compute and return mutex origin. */
-FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
-                        FVM_Value *out, void *)
+FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     const char *address = fvm_mutex_remote_address((FVM_Mutex *)s->resource);
     if (address)
+    {
         return fvm_value_string(out, address);
+    }
     unsigned long origin = fvm_mutex_origin((FVM_Mutex *)s->resource);
     if (origin == c->identity)
+    {
         return fvm_value_string(out, "this");
+    }
     fvm_value_number(out, (double)origin);
     return FVM_OK;
 }
 
+
 /* Update mutex. */
-FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
-                     FVM_Value *out, void *)
+FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Result r = fvm_mutex_set(c, (FVM_Mutex *)s->resource, 1);
@@ -960,12 +1147,14 @@ FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Va
     return r;
 }
 
+
 /* Reset mutex. */
-FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
-                       FVM_Value *out, void *)
+FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Result r = fvm_mutex_reset(c, (FVM_Mutex *)s->resource);
@@ -973,43 +1162,55 @@ FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_
     return r;
 }
 
+
 /* Close mutex. */
-FVM_Result mutex_close(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
-                       FVM_Value *out, void *)
+FVM_Result mutex_close(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Result r = fvm_mutex_close((FVM_Mutex *)s->resource);
     if (r == FVM_ERROR)
-        fvm_debug_resource_error(c, fvm_mutex_identity((FVM_Mutex *)s->resource), "mutex.close",
+    {
+        fvm_debug_resource_error(c,
+                                 fvm_mutex_identity((FVM_Mutex *)s->resource),
+                                 "mutex.close",
                                  fvm_mutex_remote_address((FVM_Mutex *)s->resource));
+    }
     fvm_value_undefined(out);
     return r;
 }
 
+
 /* Compute and return mutex touch. */
-FVM_Result mutex_touch(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
-                       FVM_Value *out, void *u)
+FVM_Result mutex_touch(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *out, void *u)
 {
     FVM_Result r = mutex_state(c, s, n, a, out, u);
     if (r == FVM_OK)
+    {
         fvm_value_boolean(out, out->number != 0);
+    }
     return r;
 }
 
+
 /* Create mutex. */
-FVM_Result mutex_new(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
-                     FVM_Value *out, void *)
+FVM_Result mutex_new(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Mutex *m = 0;
     FVM_Object *o = 0;
     FVM_Result r = fvm_mutex_create(c, &m);
     if (r == FVM_OK)
+    {
         r = fvm_extensions_wrap_mutex(c, m, &o);
+    }
     fvm_mutex_release(m);
     if (r == FVM_OK)
     {
@@ -1020,18 +1221,22 @@ FVM_Result mutex_new(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     return r;
 }
 
+
 /* Compute and return mutex list. */
-FVM_Result mutex_list(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
-                      FVM_Value *out, void *)
+FVM_Result mutex_list(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *, FVM_Value *out, void *)
 {
     if (n)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *list = 0;
     FVM_Result r = fvm_object_create(c, &list);
     if (r != FVM_OK)
+    {
         return r;
+    }
     try
     {
         unsigned long count = 0;
@@ -1061,28 +1266,38 @@ FVM_Result mutex_list(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Va
     }
 }
 } // namespace
+
+
 /* Compute and return extensions wrap mutex. */
 extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FVM_Object **out)
 {
     if (!c || !m || !out || c->destroying)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = 0;
     /* Repeated receipt in one interpreter preserves wrapper identity. */
     for (size_t i = 0; i < c->objects.size(); ++i)
+    {
         if (c->objects[i]->resource_kind == FVM_RESOURCE_MUTEX && c->objects[i]->resource == m)
         {
             *out = c->objects[i];
             return FVM_OK;
         }
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *o = 0;
     FVM_Result r = fvm_object_create(c, &o);
     if (r != FVM_OK)
+    {
         return r;
+    }
     r = fvm_mutex_retain(m);
     if (r != FVM_OK)
+    {
         return r;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     o->resource_kind = FVM_RESOURCE_MUTEX;
@@ -1096,26 +1311,31 @@ extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FV
         method(o, "close", mutex_close, 0);
         r = fvm_object_define_accessor_rooted(c, o, "state", mutex_state, 0, 0, 0);
         if (r == FVM_OK)
+        {
             r = fvm_object_define_accessor_rooted(c, o, "origin", mutex_origin, 0, 0, 0);
+        }
     }
     catch (...)
     {
         r = FVM_OUT_OF_MEMORY;
     }
     if (r == FVM_OK)
+    {
         *out = o;
+    }
     return r;
 }
+
 
 /* Compute and return extensions install. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || c->destroying)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1129,19 +1349,18 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (int i = 0; i < 5; ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (c->global->properties.find(names[i]) != c->global->properties.end())
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             v = c->global->properties.find(names[i])->second;
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (v.type != FVM_VALUE_OBJECT ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 v.object->resource_kind != (i == 4 ? 9 : (i == 3 ? 7 : GC_NAMESPACE + i)))
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             ++existing;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1150,22 +1369,22 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
     }
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (existing)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return existing == 5 ? FVM_OK : FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
+    { /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (int i = 0; i < 5; ++i)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result r = fvm_object_create(c, &objects[i]);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return r;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             objects[i]->resource_kind = i == 4 ? 9 : (i == 3 ? 7 : GC_NAMESPACE + i);
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1213,8 +1432,7 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (int i = 0; i < 5; ++i)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_value_undefined(&v);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             v.type = FVM_VALUE_OBJECT;
@@ -1231,8 +1449,7 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }

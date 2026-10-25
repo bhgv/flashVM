@@ -6,7 +6,7 @@
 ## C interface since v0.707
 
 `fvm_movieclip_content_info_init(out)` initializes caller-owned
-[`FVM_MovieClipContentInfo`](../include/flashvm/movieclip.h#L46) including its exact `struct_size`, EMPTY format and zero
+[`FVM_MovieClipContentInfo`](../include/flashvm/movieclip.h#L59) including its exact `struct_size`, EMPTY format and zero
 fields. Null is INVALID_ARGUMENT. It allocates nothing and needs no context.
 
 `fvm_movieclip_get_content_info(context, clip, out)` copies scalar metadata of the
@@ -25,7 +25,7 @@ valid after replacement, collection or destruction of the clip/context.
 | `decoded_bytes` | Complete canonical uncompressed SWF length, or original straight RGBA image payload length. |
 | `pixel_width`, `pixel_height` | Original decoded image dimensions, independent of current `_width`/`_height`, scaling, rotation or later drawing. Zero for SWF/EMPTY. |
 
-Counters fit [`FVM_MOVIECLIP_CONTENT_MAX_BYTES`](../include/flashvm/movieclip.h#L44); current image limits remain those
+Counters fit [`FVM_MOVIECLIP_CONTENT_MAX_BYTES`](../include/flashvm/movieclip.h#L55); current image limits remain those
 in the linked codec guide. RGBA payload size is width × height × four channels.
 These fields describe source payloads, not process memory or a live bitmap's
 current allocation. Duplicate imported clips retain the immutable source record;
@@ -106,8 +106,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_content_info_init` | function | [include/flashvm/movieclip.h:57](../include/flashvm/movieclip.h#L57) |
-| `FVM_MOVIECLIP_CONTENT_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:44](../include/flashvm/movieclip.h#L44) |
-| `fvm_movieclip_get_content_info` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `FVM_MovieClipContentInfo` | struct | [include/flashvm/movieclip.h:46](../include/flashvm/movieclip.h#L46) |
+| `fvm_movieclip_content_info_init` | function | [include/flashvm/movieclip.h:72](../include/flashvm/movieclip.h#L72) |
+| `FVM_MOVIECLIP_CONTENT_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:55](../include/flashvm/movieclip.h#L55) |
+| `fvm_movieclip_get_content_info` | function | [include/flashvm/movieclip.h:83](../include/flashvm/movieclip.h#L83) |
+| `FVM_MovieClipContentInfo` | struct | [include/flashvm/movieclip.h:59](../include/flashvm/movieclip.h#L59) |
 <!-- source-links:end -->

@@ -1,7 +1,7 @@
 # Common plain variable lookup / Общий поиск обычных имён
 
 v0.260 moves plain variable lookup and historical this-name matching out of the
-interpreter into [`fvm_exec_variable_lookup`](../include/flashvm/execution.h#L416). Explicit managed scope, target, this,
+interpreter into [`fvm_exec_variable_lookup`](../include/flashvm/execution.h#L552). Explicit managed scope, target, this,
 default callable receiver and a local-scope flag replace raw local-map access.
 The interpreter bridge selects its current display/default receivers and forwards
 the counted key. Qualified paths remain the separate shared variable-path phase.
@@ -16,8 +16,8 @@ GC and exported closures share the same lexical model. Existing named catch
 binding restoration is preserved here; complete loaded catch-assignment semantics
 remain open. Saved Try/catch/finally slots now use documented root macros.
 
-The existing [`fvm_exec_scope_lookup`](../include/flashvm/execution.h#L350) API delegates to the class-aware resolver,
-[`fvm_exec_scope_resolve`](../include/flashvm/execution.h#L356), without changing its signature.
+The existing [`fvm_exec_scope_lookup`](../include/flashvm/execution.h#L468) API delegates to the class-aware resolver,
+[`fvm_exec_scope_resolve`](../include/flashvm/execution.h#L476), without changing its signature.
 
 The binding's With classification is captured before invoking its getter. A
 getter may detach the scope chain and collect. The previous interpreter rescanned
@@ -64,7 +64,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_scope_lookup` | function | [include/flashvm/execution.h:350](../include/flashvm/execution.h#L350) |
-| `fvm_exec_scope_resolve` | function | [include/flashvm/execution.h:356](../include/flashvm/execution.h#L356) |
-| `fvm_exec_variable_lookup` | function | [include/flashvm/execution.h:416](../include/flashvm/execution.h#L416) |
+| `fvm_exec_scope_lookup` | function | [include/flashvm/execution.h:468](../include/flashvm/execution.h#L468) |
+| `fvm_exec_scope_resolve` | function | [include/flashvm/execution.h:476](../include/flashvm/execution.h#L476) |
+| `fvm_exec_variable_lookup` | function | [include/flashvm/execution.h:552](../include/flashvm/execution.h#L552) |
 <!-- source-links:end -->

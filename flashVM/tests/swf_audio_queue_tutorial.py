@@ -1,11 +1,13 @@
 """Run the real C89 queue tutorial: rejected-write retry, copied clock and CLI errors."""
+
 import subprocess
 import sys
 
 
 def run(executable, *arguments):
-    return subprocess.run([executable] + list(arguments), stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=10)
+    return subprocess.run(
+        [executable] + list(arguments), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+    )
 
 
 def main():
@@ -21,7 +23,9 @@ def main():
     for arguments in [("--bad",), ("--demo", "extra"), ("--sdl", "extra"), ("--finite", "extra")]:
         if run(executable, *arguments).returncode != 2:
             raise RuntimeError("malformed arguments must fail before opening devices")
-    print("queue tutorial finite drain, legacy retry, half-block clock and argument handling passed")
+    print(
+        "queue tutorial finite drain, legacy retry, half-block clock and argument handling passed"
+    )
 
 
 if __name__ == "__main__":

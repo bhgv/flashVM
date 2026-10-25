@@ -4,7 +4,7 @@
 #include "shape.hpp"
 #include "../core/runtime.hpp"
 
+
 /* [GC:] Build a definition whose owned paths/commands survive ordinary graph transport. */
-FVM_Result fvm_swf_shape_build(FVM_Context *, const FVM_SWFShape &, FVM_Object **,
-                               FVM_Object *bitmap_definitions = 0);
+FVM_Result fvm_swf_shape_build(FVM_Context *, const FVM_SWFShape &, FVM_Object **, FVM_Object *bitmap_definitions = 0);
 #endif

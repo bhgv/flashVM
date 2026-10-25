@@ -2,7 +2,7 @@
 
 Рабочий пример находится в `tests/meta_call.c` и собирается тестовой целью `flashvm_tests_meta_call`.
 
-Пример создаёт два объекта, назначает один метатаблицей другого, регистрирует `__call` как C-функцию и вызывает [`fvm_meta_call`](../../../include/flashvm/meta_call.h#L20) с двумя числами. В обработчик поступают объект-владелец, метатаблица и таблица аргументов с индексами 0 и 1. Результат — 42.
+Пример создаёт два объекта, назначает один метатаблицей другого, регистрирует `__call` как C-функцию и вызывает [`fvm_meta_call`](../../../include/flashvm/meta_call.h#L22) с двумя числами. В обработчик поступают объект-владелец, метатаблица и таблица аргументов с индексами 0 и 1. Результат — 42.
 
 Этот API пока не вызывается автоматически из AVM1 и не поддерживает AS-замыкания. Для безопасности нельзя передавать объекты между контекстами.
 
@@ -15,5 +15,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../../../include/flashvm/meta_call.h#L20) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](../../../include/flashvm/meta_call.h#L22) |
 <!-- source-links:end -->

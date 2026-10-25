@@ -1,6 +1,6 @@
 # Shared mutexes, channels and debugger (development v0.5)
 
-Install [`fvm_extensions_install`](../include/flashvm/extensions.h#L17) before executing AVM1. The opt-in namespaces
+Install [`fvm_extensions_install`](../include/flashvm/extensions.h#L19) before executing AVM1. The opt-in namespaces
 are `gc`, `thread`, `channel`, `metatable`, and `mutex`. See
 [ActionScript example](../examples/actionscript/shared_mutex.as) and
 [C89 embedding example](../examples/embedding/shared_mutex/main.c).
@@ -23,12 +23,12 @@ The `.as` example describes the API; FlashVM has no ActionScript source compiler
 
 IDs are process-local integers in 1..4294967295, exactly representable as
 ActionScript numbers. They are never reused. Native worker callbacks obtain the
-same context ID using [`fvm_context_identity`](../include/flashvm/mutex.h#L16). Host contexts also have distinct
+same context ID using [`fvm_context_identity`](../include/flashvm/mutex.h#L18). Host contexts also have distinct
 IDs. A VM must only be executed by one native thread at a time.
 
 Mutexes are nonrecursive. Reacquiring an owned mutex, releasing an unlocked
-mutex, or releasing another interpreter's mutex returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Native
-`fvm_mutex_set(context, mutex, 0)` returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) on contention.
+mutex, or releasing another interpreter's mutex returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Native
+`fvm_mutex_set(context, mutex, 0)` returns [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) on contention.
 Acquisition polls at 1 ms and observes a bound worker's cooperative stop request.
 No fairness or real-time scheduling guarantee is made. Holders must release in
 normal code; context teardown releases its remaining ownership after the worker
@@ -42,7 +42,7 @@ when that list is rooted. C local variables still need explicit GC roots/pins.
 
 ## Transfer and lifetime
 
-[`fvm_channel_send_value`](../include/flashvm/transfer.h#L22) and ActionScript channel methods transfer mutex/channel
+[`fvm_channel_send_value`](../include/flashvm/transfer.h#L24) and ActionScript channel methods transfer mutex/channel
 capabilities through in-process queues, including capabilities nested inside
 cyclic ordinary object graphs and repeated aliases. A packet retains native
 handles, not source VM objects. A destination VM creates its own canonical
@@ -54,16 +54,16 @@ metatables and replaced methods are local decorations and are not copied with
 that capability. Ordinary surrounding tables and their metadata still use graph
 serialization. Keep transferable application data in the surrounding table.
 
-Queue-owned channel capability cycles are rejected with [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46):
+Queue-owned channel capability cycles are rejected with [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48):
 sending a channel into itself, or closing a cycle of queues that retain one
 another, would otherwise create an uncollectable native reference cycle. The
 check also reserves edges during a pending send, so concurrent opposite sends
 cannot bypass it; a competing dequeue may make a rejected send safe to retry.
 Ordinary serialized table cycles are supported.
 
-Durable [`fvm_value_serialize`](../include/flashvm/serialization.h#L18), file channels and network streams cannot persist
+Durable [`fvm_value_serialize`](../include/flashvm/serialization.h#L20), file channels and network streams cannot persist
 live process handles. Sending such a capability through a file returns
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) before writing a record. Remote mutex proxies, Internet-address
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) before writing a record. Remote mutex proxies, Internet-address
 origins, distributed ownership and cross-process capability restoration remain
 unimplemented. No native addresses are written into a file.
 
@@ -74,20 +74,20 @@ process-wide registry lock and copy numeric state and fixed-size location string
 (no borrowed VM pointers). A row describes a mutex and a waiter, or has waiter=0
 when no interpreter is waiting. Source/function strings are truncated to 255 bytes.
 
-- [`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L87): ID, origin, owner, state, waiter, owner acquisition
+- [`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L108): ID, origin, owner, state, waiter, owner acquisition
   location, waiter location, and `deadlocked`. The flag is true for a waiter in
   an actual mutex wait-for cycle. An interpreter merely waiting behind that
   cycle is not itself marked as a cycle member.
-- [`fvm_debug_channel_wait_snapshot`](../include/flashvm/debug.h#L139): active blocking ActionScript send/receive
+- [`fvm_debug_channel_wait_snapshot`](../include/flashvm/debug.h#L178): active blocking ActionScript send/receive
   waits, channel ID, interpreter ID, operation, and script location. It reports
   waits, not proven channel or mixed channel/mutex deadlocks: channel producer
   and consumer obligations are not known to the runtime.
-- [`fvm_debug_channel_state`](../include/flashvm/debug.h#L118): coherent ID, queue length, capacity, closed and frozen
+- [`fvm_debug_channel_state`](../include/flashvm/debug.h#L150): coherent ID, queue length, capacity, closed and frozen
   flags for an in-process channel.
-- [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L114): stop dequeue, including primitive C receives;
+- [`fvm_debug_channel_freeze`](../include/flashvm/debug.h#L144): stop dequeue, including primitive C receives;
   producers may still enqueue. Resume explicitly with zero. A closed frozen
   queue remains frozen until resumed. It does not suspend the whole interpreter.
-- [`fvm_debug_channel_message`](../include/flashvm/debug.h#L125): inspect any currently queued message without
+- [`fvm_debug_channel_message`](../include/flashvm/debug.h#L159): inspect any currently queued message without
   dequeueing. Ordinary payloads are immutable serialized snapshots, decoded into
   the debugger's context. Capability handles remain live; separately capture
   their state with the mutex/channel snapshot APIs. Inspection does not grant
@@ -97,14 +97,14 @@ The head packet/string is retained/copied under the channel lock and decoded
 outside that lock. Concurrent resume, dequeue, or channel destruction after a
 properly retained operation cannot invalidate its inspection reference. Use a
 separate debugger context to avoid accessing a worker's live VM concurrently.
-Snapshot APIs with caller-provided arrays return [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) and the required
+Snapshot APIs with caller-provided arrays return [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) and the required
 count if capacity is insufficient; no partial snapshot is returned.
 
 AVM1 records action-block offsets and function names. An embedding compiler or
-SWF tooling supplies source maps through `[fvm_debug_map_action](../include/flashvm/debug.h#L63)(context,
+SWF tooling supplies source maps through `[fvm_debug_map_action](../include/flashvm/debug.h#L79)(context,
 function, offset, source, line)`; the nearest preceding entry in that function
 is used. Empty function names describe top-level action blocks. Script workers
-receive a copy of these mappings when launched. [`fvm_debug_set_location`](../include/flashvm/debug.h#L59) supplies
+receive a copy of these mappings when launched. [`fvm_debug_set_location`](../include/flashvm/debug.h#L73) supplies
 locations for native callbacks. No source compiler, automatic decompilation,
 interactive debugger UI, or complete call-stack reconstruction is claimed.
 Native primitive channel calls have no VM argument and therefore no script wait
@@ -138,19 +138,19 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
-| `fvm_context_identity` | function | [include/flashvm/mutex.h:16](../include/flashvm/mutex.h#L16) |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../include/flashvm/debug.h#L114) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../include/flashvm/debug.h#L125) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../include/flashvm/debug.h#L118) |
-| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:139](../include/flashvm/debug.h#L139) |
-| `fvm_debug_map_action` | function | [include/flashvm/debug.h:63](../include/flashvm/debug.h#L63) |
-| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:87](../include/flashvm/debug.h#L87) |
-| `fvm_debug_set_location` | function | [include/flashvm/debug.h:59](../include/flashvm/debug.h#L59) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
-| `fvm_mutex_set` | function | [include/flashvm/mutex.h:26](../include/flashvm/mutex.h#L26) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_value_serialize` | function | [include/flashvm/serialization.h:18](../include/flashvm/serialization.h#L18) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:24](../include/flashvm/transfer.h#L24) |
+| `fvm_context_identity` | function | [include/flashvm/mutex.h:18](../include/flashvm/mutex.h#L18) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../include/flashvm/debug.h#L144) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../include/flashvm/debug.h#L159) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../include/flashvm/debug.h#L150) |
+| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:178](../include/flashvm/debug.h#L178) |
+| `fvm_debug_map_action` | function | [include/flashvm/debug.h:79](../include/flashvm/debug.h#L79) |
+| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:108](../include/flashvm/debug.h#L108) |
+| `fvm_debug_set_location` | function | [include/flashvm/debug.h:73](../include/flashvm/debug.h#L73) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../include/flashvm/extensions.h#L19) |
+| `fvm_mutex_set` | function | [include/flashvm/mutex.h:36](../include/flashvm/mutex.h#L36) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `fvm_value_serialize` | function | [include/flashvm/serialization.h:20](../include/flashvm/serialization.h#L20) |
 <!-- source-links:end -->

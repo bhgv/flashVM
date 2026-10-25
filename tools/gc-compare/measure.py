@@ -9,21 +9,27 @@ import time
 # Peak RSS is process-wide, not an exact count of live managed-heap bytes.
 def main():
     start = time.perf_counter()
-    result = subprocess.run(sys.argv[1:], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            universal_newlines=True, timeout=120)
+    result = subprocess.run(
+        sys.argv[1:],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        timeout=120,
+    )
     elapsed = time.perf_counter() - start
     if result.returncode:
         raise RuntimeError(result.stderr or result.stdout)
     data = json.loads(result.stdout)
-    data['process_wall_seconds'] = elapsed
+    data["process_wall_seconds"] = elapsed
     try:
         import resource
+
         usage = resource.getrusage(resource.RUSAGE_CHILDREN)
-        data['peak_rss_bytes'] = int(usage.ru_maxrss * (1 if sys.platform == 'darwin' else 1024))
+        data["peak_rss_bytes"] = int(usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024))
     except (ImportError, AttributeError):
-        data['peak_rss_bytes'] = None
+        data["peak_rss_bytes"] = None
     print(json.dumps(data, sort_keys=True))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

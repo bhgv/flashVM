@@ -2,7 +2,7 @@
 
 ## v0.793: длительность готового голоса на выходной сетке
 
-[`fvm_swf_sound_voice_output_frames`](../include/flashvm/swf_sound_mixer.h#L44) считает точное число оставшихся выходных
+[`fvm_swf_sound_voice_output_frames`](../include/flashvm/swf_sound_mixer.h#L51) считает точное число оставшихся выходных
 кадров для голоса, передаваемого с ТЕКУЩЕЙ позиции исходного PCM и нулевой фазой
 конвертации. Учитывает оставшиеся повторы, округляет рациональную длительность
 вверх и возвращает ноль на EOF. Не читает PCM, не выделяет память, не вызывает
@@ -20,17 +20,17 @@ callbacks, не обращается к VM и не меняет позицию. 
 
 ## v0.794: необязательное фиксированное хранилище ID
 
-[`fvm_swf_sound_output_set_identity_tracking`](../include/flashvm/swf_sound_output.h#L61) включает/выключает фиксированную
+[`fvm_swf_sound_output_set_identity_tracking`](../include/flashvm/swf_sound_output.h#L69) включает/выключает фиксированную
 нативную таблицу OUTPUT_ID_SLOTS double-границ завершения (512 KiB на этом хосте).
 Настройка разрешена без голосов, принятых или pending PCM. Включение выделяет
 память транзакционно, выключение действительно освобождает таблицу. Ошибка
 состояния/аргументов — INVALID_ARGUMENT, аллокации — OOM с прежней таблицей.
 Backend/VM не вызываются; выход и микшер сериализуются вызывающим.
 
-[`fvm_swf_sound_output_storage_info`](../include/flashvm/swf_sound_output.h#L74) копирует точные размеры объекта, retry PCM,
+[`fvm_swf_sound_output_storage_info`](../include/flashvm/swf_sound_output.h#L86) копирует точные размеры объекта, retry PCM,
 history, таблицы ID и проверенную сумму. Заимствованные микшер/устройство, VM и
 накладные расходы аллокатора исключены. Неверные размер/null/reentry сохраняют
-выход. [`fvm_swf_sound_output_sound_active`](../include/flashvm/swf_sound_output.h#L81) опрашивает эксклюзивную FIFO и сравнивает
+выход. [`fvm_swf_sound_output_sound_active`](../include/flashvm/swf_sound_output.h#L95) опрашивает эксклюзивную FIFO и сравнивает
 границу ID с принятыми минус оставшимися в очереди кадрами. Выключенный учёт —
 UNSUPPORTED, неверный ID/reentry — INVALID_ARGUMENT. Ошибки/исключения backend
 сохраняют выход. Callback может блокировать по контракту backend; VM и новых
@@ -42,7 +42,7 @@ UNSUPPORTED, неверный ID/reentry — INVALID_ARGUMENT. Ошибки/ис
 
 ## v0.795: передача с SyncNoMultiple до конца очереди
 
-[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L114) опрашивает FIFO, затем передаёт
+[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L134) опрашивает FIFO, затем передаёт
 голос с позиции submitted+pending. Точная оставшаяся длительность на выходной
 сетке задаёт исключающую конечную границу ID. Обычные старты одного ID могут
 перекрываться, сохраняется максимальный конец. NoMultiple потребляет ненужного
@@ -66,7 +66,7 @@ UNSUPPORTED; ошибки микшера/backend передаются вызыв
 
 ## v0.796: владение при stop и clear
 
-[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L122) применяет immediate/DECLICK-политику будущего
+[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L144) применяет immediate/DECLICK-политику будущего
 микширования и снимает регистрацию NoMultiple этого ID. Отсутствующий ID — успех,
 неверный ID/null/reentry — INVALID_ARGUMENT, выключенный tracking — UNSUPPORTED.
 Аллокаций, callbacks и VM нет. Принятый и pending PCM неизменяем: команда не
@@ -145,7 +145,7 @@ oracle проверяет каждый S16 и ошибки CLI/выхода. Д�
 
 ## v0.802: скопированная диагностика границ ID
 
-[`fvm_swf_sound_output_identity_info`](../include/flashvm/swf_sound_output.h#L99) опрашивает FIFO и копирует ID, played-позицию
+[`fvm_swf_sound_output_identity_info`](../include/flashvm/swf_sound_output.h#L117) опрашивает FIFO и копирует ID, played-позицию
 epoch, последнюю исключающую конечную границу, время до неё и активность.
 Требуются точный struct_size и ID 1..65535. Ошибки null/размера/reentry —
 INVALID_ARGUMENT, выключенный tracking — UNSUPPORTED; статусы/исключения backend
@@ -195,11 +195,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:99](../include/flashvm/swf_sound_output.h#L99) |
-| `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
-| `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
-| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:122](../include/flashvm/swf_sound_output.h#L122) |
-| `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
-| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
-| `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |
+| `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:117](../include/flashvm/swf_sound_output.h#L117) |
+| `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:69](../include/flashvm/swf_sound_output.h#L69) |
+| `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:95](../include/flashvm/swf_sound_output.h#L95) |
+| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:144](../include/flashvm/swf_sound_output.h#L144) |
+| `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:86](../include/flashvm/swf_sound_output.h#L86) |
+| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:134](../include/flashvm/swf_sound_output.h#L134) |
+| `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:51](../include/flashvm/swf_sound_mixer.h#L51) |
 <!-- source-links:end -->

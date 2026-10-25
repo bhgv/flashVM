@@ -82,7 +82,7 @@ ASan+UBSan — по 7/7. Входы JIT проверены на Linux x64; NO_OS
 исходному объекту, как has_own_property в закреплённом script_object.rs. Запрос
 не читает приватные данные фасада и свойства родителя, сохраняет правила
 регистра версии SWF. Host-поведение прежнее. Цепочки вложенных/повреждённых
-фасадов обходятся итеративно с пределом; цикл возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+фасадов обходятся итеративно с пределом; цикл возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 
 object_super_membership воспроизвёл сбой v0.425. Проверены SWF5–8 и host, C API и
 заимствованный Object.hasOwnProperty.call, NUL в имени, регистр, наследуемые и
@@ -303,7 +303,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 закреплённый avm1/value.rs type_of проверяет as_function, а не общую вызываемость.
 
 object_super_typeof воспроизвёл прежний результат `function`, затем проверяет
-host/SWF5–8, запись C-helper в исходный [FVM_Value](../include/flashvm/value.h#L24), Function, экземпляры, GC и
+host/SWF5–8, запись C-helper в исходный [FVM_Value](../include/flashvm/value.h#L26), Function, экземпляры, GC и
 повтор, отсутствие вызова конструктора и сохранение прямого super.
 jit_object_super_typeof повторяет TypeOf в интерпретаторе и двух режимах JIT с
 настоящими нативными входами. Остальные рефлексия/преобразования super и все
@@ -357,7 +357,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 
 ## v0.444 — корни идентичности вызова без выделения памяти
 
-[FVM_CallScope](../src/core/call_scope.hpp#L8) удерживает сохранённые/активные constructor, function и owner
+[FVM_CallScope](../src/core/call_scope.hpp#L9) удерживает сохранённые/активные constructor, function и owner
 через шесть встроенных root-frame. Публикация полной цепочки и восстановление
 прежней идентичности больше не выделяют временный вектор. Вложенные вызовы и
 раскрутка исключения сохраняют начало корней вызывающей стороны. Это изменение
@@ -541,7 +541,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:9](../src/core/call_scope.hpp#L9) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

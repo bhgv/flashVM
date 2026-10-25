@@ -1,21 +1,21 @@
 # Host URL requests / Запросы URL приложению
 
 v0.109 adds a synchronous C89 host request bridge for ActionGetURL (0x83) and
-ActionGetURL2 (0x9a). [`fvm_avm1_set_url_rooted`](../include/flashvm/avm1.h#L60) registers a callback plus optional
+ActionGetURL2 (0x9a). [`fvm_avm1_set_url_rooted`](../include/flashvm/avm1.h#L72) registers a callback plus optional
 same-context capture. The callback receives the global receiver and three
 values: counted STRING URL, counted STRING target/FSCommand arguments, NUMBER
 raw flags. None/GET/POST use the low two bits; load-target/load-variables use
 64/128. Reserved bits and method 3 are rejected. GetURL passes zero flags and
 validates exactly two terminated payload strings. GetURL2 coerces target first,
 URL second. Callback status propagates and its result is ignored. Without a
-sink the actions return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), after required operand coercions.
+sink the actions return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48), after required operand coercions.
 
 [GC:] The registration roots its capture; a request root frame retains converted
 strings during later script coercion. Delivery uses the ordinary native collector
 barrier. Callback replacement affects subsequent requests; null callback,
 userdata and capture disable delivery. Borrowed strings must be copied if retained;
 do not destroy the context from its callback. C++ allocation exceptions become
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and other exceptions become [FVM_ERROR](../include/flashvm/flashvm.h#L43) at interpreter entry.
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) and other exceptions become [FVM_ERROR](../include/flashvm/flashvm.h#L45) at interpreter entry.
 
 This bridge performs no navigation, network access, FSCommand dispatch, movie
 loading or variable loading. The host decides how to handle the raw request.
@@ -47,8 +47,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_avm1_set_url_rooted` | function | [include/flashvm/avm1.h:60](../include/flashvm/avm1.h#L60) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_avm1_set_url_rooted` | function | [include/flashvm/avm1.h:72](../include/flashvm/avm1.h#L72) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

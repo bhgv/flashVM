@@ -4,7 +4,7 @@
 
 ## Cancellation since v0.680
 
-Original options/loader structures keep their ABI. [FVM_NetControl](../ports/network/socket.h#L21) in
+Original options/loader structures keep their ABI. [FVM_NetControl](../ports/network/socket.h#L23) in
 [socket.h](../ports/network/socket.h) contains cancelled and borrowed userdata.
 A null callback disables cancellation; nonzero requests it. Keep callback/state
 alive until return. It runs on the transfer thread: it must be short, thread-safe,
@@ -15,10 +15,10 @@ unchanged socket options and control. [fvm_desktop_socket_request_init](../front
 all fields without startup (1 success, 0 null).
 [fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L60) uses the ordinary fetch signature; userdata
 is null for defaults or points to this request. [fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L30)
-in [http.h](../frontend/common/http.h) instead accepts null or [FVM_NetControl](../ports/network/socket.h#L21).
+in [http.h](../frontend/common/http.h) instead accepts null or [FVM_NetControl](../ports/network/socket.h#L23).
 The original libcurl callback still rejects nonnull userdata.
 
-Cancellation returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) without publishing resolved. Sink errors retain
+Cancellation returns [FVM_ERROR](../include/flashvm/flashvm.h#L45) without publishing resolved. Sink errors retain
 their exact result; discard partial bytes on every failure. Native waits check
 cancellation in 50ms slices under the original total deadline. Buffered HTTP
 and TLS I/O also check it. Libcurl uses its own progress/sink cadence and can be
@@ -197,7 +197,7 @@ The budget includes provider work from launch, not just each socket operation.
 
 Expiry requests cooperative cancellation; it is checked by polling, sink writes,
 provider cancellation queries and final publication. A late successful provider
-cannot publish bytes. The terminal [FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) view has [FVM_ERROR](../include/flashvm/flashvm.h#L43),
+cannot publish bytes. The terminal [FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) view has [FVM_ERROR](../include/flashvm/flashvm.h#L45),
 no payload/provenance and retained received progress. First latched explicit
 cancel/deadline wins; completed views remain immutable. A pending view may persist
 past the budget while DNS/noncooperative code runs. Release always joins, so this
@@ -218,6 +218,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_NetControl` | struct | [ports/network/socket.h:21](../ports/network/socket.h#L21) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
 <!-- source-links:end -->

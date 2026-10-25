@@ -9,8 +9,8 @@ bytecode. Each invocation has independent parameter/local bindings and a
 64-level recursion limit. `GetVariable("this")` returns the current receiver
 when no local variable shadows it. `Return` propagates the top stack value.
 
-The host can create objects with [`fvm_object_create`](../include/flashvm/value.h#L62), set their properties with
-[`fvm_object_set`](../include/flashvm/value.h#L74), and expose them to bytecode via [`fvm_set_global`](../include/flashvm/value.h#L87). See
+The host can create objects with [`fvm_object_create`](../include/flashvm/value.h#L84), set their properties with
+[`fvm_object_set`](../include/flashvm/value.h#L106), and expose them to bytecode via [`fvm_set_global`](../include/flashvm/value.h#L129). See
 `examples/embedding/script_methods/` and `tests/avm1_script_method.c`.
 
 **Not implemented:** lookup of script-function values in object properties,
@@ -28,8 +28,8 @@ interpret this as complete ActionScript method semantics.
 `GetVariable("this")` возвращает текущий объект, если имя не перекрыто локальной
 переменной. `Return` возвращает верхнее значение стека.
 
-Приложение создаёт объекты через [`fvm_object_create`](../include/flashvm/value.h#L62), задаёт свойства через
-[`fvm_object_set`](../include/flashvm/value.h#L74) и публикует объект через [`fvm_set_global`](../include/flashvm/value.h#L87). Рабочий тест на
+Приложение создаёт объекты через [`fvm_object_create`](../include/flashvm/value.h#L84), задаёт свойства через
+[`fvm_object_set`](../include/flashvm/value.h#L106) и публикует объект через [`fvm_set_global`](../include/flashvm/value.h#L129). Рабочий тест на
 C89 находится в `tests/avm1_script_method.c`, пример AS — в
 `examples/embedding/script_methods/`.
 
@@ -48,7 +48,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_object_create` | function | [include/flashvm/value.h:62](../include/flashvm/value.h#L62) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
-| `fvm_set_global` | function | [include/flashvm/value.h:87](../include/flashvm/value.h#L87) |
+| `fvm_object_create` | function | [include/flashvm/value.h:84](../include/flashvm/value.h#L84) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../include/flashvm/value.h#L106) |
+| `fvm_set_global` | function | [include/flashvm/value.h:129](../include/flashvm/value.h#L129) |
 <!-- source-links:end -->

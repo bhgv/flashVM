@@ -1,8 +1,9 @@
 implement IdecoreTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Test bootstrap has no graphics context; it runs directly as an emulator init module.
 IdecoreTest: module
@@ -14,30 +15,36 @@ IdecoreTest: module
 nextid := 1;
 checks := 0;
 
+
 # Stop this explicitly selected test emulator; this host-only control is absent from idecore.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: cannot open test emulator halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: test emulator halt returned";
 }
 
+
 # Make failures visible even on runtimes that return success after a root-process exception.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
 
+
 # Correlate one synchronous command; callers own the reply rendezvous until completion.
 exchange(commands: chan of core->Request, operation, expected, first, last: int,
-         text: string): core->Reply
+text: string): core->Reply
 {
     reply := chan of core->Reply;
     id := nextid++;
@@ -46,6 +53,7 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int,
     require(result.id == id, "correlation ID");
     return result;
 }
+
 
 # Compare every observable field so rejected edits cannot silently change document state.
 state(reply: core->Reply, status, opened, revision, saved: int, text: string)
@@ -56,6 +64,7 @@ state(reply: core->Reply, status, opened, revision, saved: int, text: string)
     require(reply.saved == saved, "saved revision");
     require(reply.text == text, "text");
 }
+
 
 # Execute session, Unicode, invalid-operation, revision and request-backpressure contracts.
 init()

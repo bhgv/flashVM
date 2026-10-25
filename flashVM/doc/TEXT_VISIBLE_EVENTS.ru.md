@@ -26,7 +26,7 @@ SWF6–8 и unloaded host contexts поддерживают событие. Пр
 
 ## Учёт работы без вызова descriptors
 
-[fvm_textfield_observer_present](../src/standard/text_listeners.cpp#L73) — private C++98 helper потока владельца, не новый
+[fvm_textfield_observer_present](../src/standard/text_listeners.cpp#L116) — private C++98 helper потока владельца, не новый
 публичный C ABI. Он проверяет receiver/lifecycle/version; при status failure
 Boolean output остаётся false. До measurement проверяются private registration
 edge или потенциальные own/inherited onScroller descriptors и loaded __resolve
@@ -40,7 +40,7 @@ execution work. Проверяются context ownership и прежний proto
 Циклы, foreign graph segments, work exhaustion и periodic worker cancellation
 не публикуют edit.
 
-Поиск делит budget существующего [FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L28) с candidate preparation
+Поиск делит budget существующего [FVM_TextFieldScrollPlan](../src/standard/text_listeners.hpp#L37) с candidate preparation
 и dispatch, без сброса перед callbacks. Fixed lookup keys могут выделять память;
 действует прежний mapping allocation статуса публичного вызова. Считаются посещённые
 таблицы/записи, а не каждый байт имени или каждая операция font engine. Noncallable
@@ -92,6 +92,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_textfield_observer_present` | function | [src/standard/text_listeners.cpp:73](../src/standard/text_listeners.cpp#L73) |
-| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:28](../src/standard/text_listeners.hpp#L28) |
+| `fvm_textfield_observer_present` | function | [src/standard/text_listeners.cpp:116](../src/standard/text_listeners.cpp#L116) |
+| `FVM_TextFieldScrollPlan` | class | [src/standard/text_listeners.hpp:37](../src/standard/text_listeners.hpp#L37) |
 <!-- source-links:end -->

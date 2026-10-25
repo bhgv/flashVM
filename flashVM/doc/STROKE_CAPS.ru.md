@@ -10,24 +10,24 @@ DefineShape4 рисует одинаковые round, butt (без удлине�
 сочетая их с round/bevel-соединениями, для сплошных, линейных/фокусных градиентных
 и bitmap-обводок. NoClose сохраняет концы при совпадении начальной и конечной точки.
 Разные стили начала/конца, miter, pixel hinting и non-scaling возвращают
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Резервные коды и биты возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) раньше
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Резервные коды и биты возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) раньше
 проверки неподдержанных стилей. Усечённые поддержанные записи недопустимы; ошибка
 декодирования сохраняет прежний результат.
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L469) копирует оба селектора в собственное описание paint.
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) публикует необязательные скалярные lineCap и lineJoin;
+[fvm_swf_read_shape](../src/swf/shape.cpp#L600) копирует оба селектора в собственное описание paint.
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137) публикует необязательные скалярные lineCap и lineJoin;
 отсутствующие свойства старых графов означают round. Рендерер читает собственные
 целочисленные метаданные без getters. Неверные типы, дробные, бесконечные и
-внешние значения возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до записи пикселей этой
+внешние значения возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до записи пикселей этой
 обводки. Сцена в целом не является транзакцией.
 
-Внутренние селекторы вызова [fvm_path_draw_quality](../src/capi/path_c.cpp#L264),
-[fvm_path_mask_width_quality](../src/capi/path_c.cpp#L447), [fvm_path_gradient_focal_quality](../src/capi/gradient_c.cpp#L240) и
-[fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L155) передают одну геометрию в сплошной цвет, маски
+Внутренние селекторы вызова [fvm_path_draw_quality](../src/capi/path_c.cpp#L314),
+[fvm_path_mask_width_quality](../src/capi/path_c.cpp#L536), [fvm_path_gradient_focal_quality](../src/capi/gradient_c.cpp#L315) и
+[fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L210) передают одну геометрию в сплошной цвет, маски
 градиента/bitmap и покрытие BitmapData.draw. Аргументы заимствуются на время
 синхронного вызова, callbacks не вызываются, глобальный стиль/кеш не сохраняется.
 Селекторы проверяются до бэкенда; корректный NO_GRAPHICS возвращает
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Прежние контракты подготовки/OOM сохранены. Публичные C89
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Прежние контракты подготовки/OOM сохранены. Публичные C89
 функции/структуры сохраняют ABI и round по умолчанию.
 
 AGG использует butt_cap, round_cap, square_cap и bevel_join; Cairo — соответствующие
@@ -72,12 +72,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:155](../src/capi/bitmap_paint_c.cpp#L155) |
-| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:264](../src/capi/path_c.cpp#L264) |
-| `fvm_path_gradient_focal_quality` | function | [src/capi/gradient_c.cpp:240](../src/capi/gradient_c.cpp#L240) |
-| `fvm_path_mask_width_quality` | function | [src/capi/path_c.cpp:447](../src/capi/path_c.cpp#L447) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:210](../src/capi/bitmap_paint_c.cpp#L210) |
+| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:314](../src/capi/path_c.cpp#L314) |
+| `fvm_path_gradient_focal_quality` | function | [src/capi/gradient_c.cpp:315](../src/capi/gradient_c.cpp#L315) |
+| `fvm_path_mask_width_quality` | function | [src/capi/path_c.cpp:536](../src/capi/path_c.cpp#L536) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

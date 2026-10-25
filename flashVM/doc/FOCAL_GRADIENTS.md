@@ -5,9 +5,9 @@ Current extension v0.1225+: [round LINESTYLE2 strokes](SHAPE4_STROKES.md) with s
 Current file extension v0.1211+: [fill-only SWF8 DefineShape4](SHAPE4_FILLS.md) adds 15-stop modes and signed interior FIXED8 focal records. LINESTYLE2 and focal endpoints remain unsupported. Earlier blanket Shape4 exclusions below are historical. All nine stages remain open.
 
 
-C89 and SWF8 radial gradients support signed focal positions strictly inside the normalized unit circle, for fills and strokes, RGB/linearRGB and PAD/REFLECT/REPEAT. Zero retains the previous centered sampler exactly. The public [FVM_Gradient](../include/flashvm/gradient.h#L38) layout and existing callback identifiers remain unchanged. All nine roadmap stages remain open.
+C89 and SWF8 radial gradients support signed focal positions strictly inside the normalized unit circle, for fills and strokes, RGB/linearRGB and PAD/REFLECT/REPEAT. Zero retains the previous centered sampler exactly. The public [FVM_Gradient](../include/flashvm/gradient.h#L48) layout and existing callback identifiers remain unchanged. All nine roadmap stages remain open.
 
-This is an interior-focal checkpoint. Adobe's API describes endpoints -1/+1 and clamping out-of-range values to them. This implementation retains [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for those finite script inputs; it does not implement or silently approximate that endpoint policy. Full reference-player fixed-point/rounding acceptance remains open.
+This is an interior-focal checkpoint. Adobe's API describes endpoints -1/+1 and clamping out-of-range values to them. This implementation retains [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) for those finite script inputs; it does not implement or silently approximate that endpoint policy. Full reference-player fixed-point/rounding acceptance remains open.
 
 ## C89 calls
 
@@ -17,16 +17,16 @@ This is an interior-focal checkpoint. Adobe's API describes endpoints -1/+1 and 
 | --- | --- |
 | path | Non-null borrowed editable path with existing bounded finite raster coordinates. Commands are not changed or retained. |
 | surface | Non-null borrowed RGBA destination and pixel storage obeying existing dimensions/stride limits; the caller supplies exclusive access during painting. |
-| gradient | Non-null [FVM_Gradient](../include/flashvm/gradient.h#L38) with its unchanged invertible bounded finite matrix, 1–15 nondecreasing stops and existing color-transform limits. Nonzero focal requires [FVM_GRADIENT_RADIAL](../include/flashvm/gradient.h#L16). |
+| gradient | Non-null [FVM_Gradient](../include/flashvm/gradient.h#L48) with its unchanged invertible bounded finite matrix, 1–15 nondecreasing stops and existing color-transform limits. Nonzero focal requires [FVM_GRADIENT_RADIAL](../include/flashvm/gradient.h#L18). |
 | even_odd | Fill selector 0 or 1. The stroke entry uses existing backend stroke coverage. |
 | width | Stroke-only finite positive destination-pixel width, at most [FVM_GRADIENT_MAX_STROKE_WIDTH](../include/flashvm/gradient.h#L10). Zero is invalid; use an explicit width 1 for a one-pixel stroke. |
 | spread | Unsigned PAD=0, REFLECT=1 or REPEAT=2 selector. |
-| interpolation | Unsigned RGB=0 or LINEAR_RGB=1 selector from [FVM_GradientInterpolation](../include/flashvm/gradient.h#L26). |
+| interpolation | Unsigned RGB=0 or LINEAR_RGB=1 selector from [FVM_GradientInterpolation](../include/flashvm/gradient.h#L32). |
 | focal | Finite normalized X position with absolute value strictly below [FVM_GRADIENT_FOCAL_LIMIT](../include/flashvm/gradient.h#L9) (1). The normalized Y position is zero. Endpoints and outside values are invalid. |
 
-The result is [FVM_OK](../include/flashvm/flashvm.h#L42) for a successful paint. Invalid geometry, focal/type combination, selectors, width, stops or destination returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before painting. A valid request without a graphics backend returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Allocation failures preparing sampled colors or coverage return [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) with destination bytes intact. Atomicity covers one paint; previous successful scene paints are not rolled back when a later paint fails.
+The result is [FVM_OK](../include/flashvm/flashvm.h#L44) for a successful paint. Invalid geometry, focal/type combination, selectors, width, stops or destination returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before painting. A valid request without a graphics backend returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Allocation failures preparing sampled colors or coverage return [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) with destination bytes intact. Atomicity covers one paint; previous successful scene paints are not rolled back when a later paint fails.
 
-Existing gradient entries continue to use focal zero. The old no-selector fill remains PAD/RGB; spread and interpolation entries retain their previous defaults. New focal entries with focal=0 are compared byte-for-byte against the previous entries. [fvm_gradient_init](../include/flashvm/gradient.h#L48) and the public struct acquire no field.
+Existing gradient entries continue to use focal zero. The old no-selector fill remains PAD/RGB; spread and interpolation entries retain their previous defaults. New focal entries with focal=0 are compared byte-for-byte against the previous entries. [fvm_gradient_init](../include/flashvm/gradient.h#L60) and the public struct acquire no field.
 
 ## Geometry and numerical policy
 
@@ -42,11 +42,11 @@ Math uses doubles with the existing bounded matrix/surface limits and no integer
 
 ## AS2 and optional copied metadata
 
-The optional eighth argument of beginGradientFill/lineGradientStyle is coerced numerically only for radial gradients. Omitted/undefined or zero retains the center. Nonzero interior values require loaded SWF8; host contexts accept them. Older loaded profiles retain [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Linear gradients ignore the argument and do not invoke its coercion callback, preserving their earlier behavior. Existing lineGradientStyle visibility and the lineStyle prerequisite are unchanged.
+The optional eighth argument of beginGradientFill/lineGradientStyle is coerced numerically only for radial gradients. Omitted/undefined or zero retains the center. Nonzero interior values require loaded SWF8; host contexts accept them. Older loaded profiles retain [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Linear gradients ignore the argument and do not invoke its coercion callback, preserving their earlier behavior. Existing lineGradientStyle visibility and the lineStyle prerequisite are unchanged.
 
-Finite boundary/outside values return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without publishing a new style. Nonfinite radial coercion retains the existing successful no-op behavior. Script-side clamping to endpoint gradients remains unimplemented. Numeric coercion may invoke valueOf and have script side effects. VM/native errors and preparation allocation failures preserve the previous published style/active path unless script itself changes them; explicit effects and reentrant changes are not rolled back.
+Finite boundary/outside values return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) without publishing a new style. Nonfinite radial coercion retains the existing successful no-op behavior. Script-side clamping to endpoint gradients remains unimplemented. Numeric coercion may invoke valueOf and have script side effects. VM/native errors and preparation allocation failures preserve the previous published style/active path unless script itself changes them; explicit effects and reentrant changes are not rolled back.
 
-The immutable descriptor stores optional own numeric `focal` only for nonzero positions. Missing or explicit zero means centered. Restored non-number, nonfinite, boundary/outside values, or a nonzero focal paired with linear geometry, return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before one paint writes pixels. Rendering reads raw owned scalar metadata and never evaluates a focal getter or inherited property.
+The immutable descriptor stores optional own numeric `focal` only for nonzero positions. Missing or explicit zero means centered. Restored non-number, nonfinite, boundary/outside values, or a nonzero focal paired with linear geometry, return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before one paint writes pixels. Rendering reads raw owned scalar metadata and never evaluates a focal getter or inherited property.
 
 Caller stops/matrix/focal values are copied. duplicateMovieClip clones current and active-path aliases in one graph. Binary serialization and channels retain separate fill/stroke focal origins and color policies after sender destruction. No resource kind, wire format or callback ID is added. Receivers need the updated renderer; an older reader can ignore the optional scalar and render centered geometry instead.
 
@@ -67,7 +67,7 @@ Primary API reference: Adobe [MovieClip beginGradientFill and lineGradientStyle]
 
 ## v0.1210 verification
 
-Interior focal gradients v0.1197–v0.1210: additive C89 fill/stroke entries and SWF8 radial beginGradientFill/lineGradientStyle accept signed focal positions strictly inside (-1,1), with RGB/linearRGB and PAD/REFLECT/REPEAT. Zero preserves centered bytes; [FVM_Gradient](../include/flashvm/gradient.h#L38) layout, callback IDs and wire/resource types are unchanged. A cancellation-safe ray solver selects ratio before existing color/coverage composition. Finite endpoint/outside script inputs remain UNSUPPORTED; native inputs are INVALID_ARGUMENT. Validation passes 118 selected native gradient/raster/scene/graph/GC/quality/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent horizontal tables, 288 ray-contour samples and nearest-interior boundary samples pass. Real AVM1 tests cover 144 host/SWF8 interpreter/manual/automatic JIT configurations, each with success and atomic boundary rejection (288 calls), checking native counters. Four OS workers complete 128 isolated paint/GC epochs; 192 signed focal affine/alpha/quality renders pass. Copy/duplicate/current-active aliases, binary/channel sender teardown, mixed opposite origins, raw metadata/getter exclusion, numeric coercion effects and allocation fault sweeps are covered. SDK-free C89 admission/invalid-input checks pass; three graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable, without a separate detached build claim. Endpoints/clamping, Flash Fixed8/reference rounding, DefineShape4/LineStyle2, complete stroke semantics and device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](FOCAL_GRADIENTS.md).
+Interior focal gradients v0.1197–v0.1210: additive C89 fill/stroke entries and SWF8 radial beginGradientFill/lineGradientStyle accept signed focal positions strictly inside (-1,1), with RGB/linearRGB and PAD/REFLECT/REPEAT. Zero preserves centered bytes; [FVM_Gradient](../include/flashvm/gradient.h#L48) layout, callback IDs and wire/resource types are unchanged. A cancellation-safe ray solver selects ratio before existing color/coverage composition. Finite endpoint/outside script inputs remain UNSUPPORTED; native inputs are INVALID_ARGUMENT. Validation passes 118 selected native gradient/raster/scene/graph/GC/quality/tutorial checks, ten focused ASan/UBSan checks plus explicit no-throw/no-fault runs; LeakSanitizer is disabled. Independent horizontal tables, 288 ray-contour samples and nearest-interior boundary samples pass. Real AVM1 tests cover 144 host/SWF8 interpreter/manual/automatic JIT configurations, each with success and atomic boundary rejection (288 calls), checking native counters. Four OS workers complete 128 isolated paint/GC epochs; 192 signed focal affine/alpha/quality renders pass. Copy/duplicate/current-active aliases, binary/channel sender teardown, mixed opposite origins, raw metadata/getter exclusion, numeric coercion effects and allocation fault sweeps are covered. SDK-free C89 admission/invalid-input checks pass; three graphic tutorial checks explicitly skip. A renamed detached component configures and its copied checker passes against the native executable, without a separate detached build claim. Endpoints/clamping, Flash Fixed8/reference rounding, DefineShape4/LineStyle2, complete stroke semantics and device/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](FOCAL_GRADIENTS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -78,16 +78,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
 | `FVM_GRADIENT_FOCAL_LIMIT` | macro / define | [include/flashvm/gradient.h:9](../include/flashvm/gradient.h#L9) |
-| `fvm_gradient_init` | function | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:60](../include/flashvm/gradient.h#L60) |
 | `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:10](../include/flashvm/gradient.h#L10) |
-| `FVM_GRADIENT_RADIAL` | enum constant | [include/flashvm/gradient.h:16](../include/flashvm/gradient.h#L16) |
-| `FVM_GradientInterpolation` | enum | [include/flashvm/gradient.h:26](../include/flashvm/gradient.h#L26) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_draw_gradient_focal` | function | [include/flashvm/gradient.h:85](../include/flashvm/gradient.h#L85) |
-| `fvm_path_stroke_gradient_focal` | function | [include/flashvm/gradient.h:90](../include/flashvm/gradient.h#L90) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_GRADIENT_RADIAL` | enum constant | [include/flashvm/gradient.h:18](../include/flashvm/gradient.h#L18) |
+| `FVM_GradientInterpolation` | enum | [include/flashvm/gradient.h:32](../include/flashvm/gradient.h#L32) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_path_draw_gradient_focal` | function | [include/flashvm/gradient.h:111](../include/flashvm/gradient.h#L111) |
+| `fvm_path_stroke_gradient_focal` | function | [include/flashvm/gradient.h:118](../include/flashvm/gradient.h#L118) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

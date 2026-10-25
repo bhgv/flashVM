@@ -3,26 +3,34 @@
 #define FVM_FIXED32_HPP /* Private fixed-point helper guard. */
 #include "flashvm/fixed.h"
 #include "fixed32_constants.h"
+
 namespace fvm_fixed_detail
 {
+
+
 /* Reject out-of-representation inputs before arithmetic on 32-bit or wider long hosts. */
 inline bool valid(long value)
 {
     return value >= FVM_FIXED32_MIN && value <= FVM_FIXED32_MAX;
 }
+
+
 /* Validate the complete input matrix before any aliased output can be modified. */
 inline bool valid(const FVM_FixedMatrix *matrix)
 {
     return matrix && valid(matrix->a) && valid(matrix->b) && valid(matrix->c) && valid(matrix->d) &&
            valid(matrix->tx) && valid(matrix->ty);
 }
+
+
 /* Decode a low 32-bit word without unsigned-to-signed casts outside long's positive range. */
 inline long signed_word(unsigned long bits)
 {
     bits &= FVM_FIXED32_WORD_MASK;
-    return bits <= (unsigned long)FVM_FIXED32_MAX ? (long)bits
-                                                  : -1L - (long)(FVM_FIXED32_WORD_MASK - bits);
+    return bits <= (unsigned long)FVM_FIXED32_MAX ? (long)bits : -1L - (long)(FVM_FIXED32_WORD_MASK - bits);
 }
+
+
 /* Compute low32(floor(a*b/65536)) using signed-high/unsigned-low limb decomposition.
  * Word must be an unsigned type of at least 32 bits. Testing both uint and ulong exercises
  * native 32-bit modular intermediates even on a host where long is wider. */
@@ -35,15 +43,21 @@ template <class Word> inline unsigned long product_word(long a, long b)
     Word high_left = left >> FVM_FIXED16_FRACTION_BITS;
     Word high_right = right >> FVM_FIXED16_FRACTION_BITS;
     if (high_left & (Word)FVM_FIXED32_LIMB_SIGN)
+    {
         high_left |= (Word)FVM_FIXED32_EXTEND_MASK;
+    }
     if (high_right & (Word)FVM_FIXED32_LIMB_SIGN)
+    {
         high_right |= (Word)FVM_FIXED32_EXTEND_MASK;
+    }
     Word result = (low_left * low_right) >> FVM_FIXED16_FRACTION_BITS;
     result += high_left * low_right;
     result += high_right * low_left;
     result += ((high_left * high_right) & limb_mask) << FVM_FIXED16_FRACTION_BITS;
     return (unsigned long)(result & mask);
 }
+
+
 /* Apply one matrix row with separately truncated products and modular translation addition. */
 inline long row(long a, long b, long x, long y, long translation)
 {

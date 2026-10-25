@@ -131,8 +131,8 @@ fixture checks enable/hide/repeat/show via SDL_QUERY; no physical cursor is infe
 | API | Parameters, result and ownership |
 | --- | --- |
 | [SDL_ShowCursor](https://wiki.libsdl.org/SDL2/SDL_ShowCursor) | SDL_QUERY returns current global 0/1 without changing it; SDL_ENABLE/SDL_DISABLE apply requested visibility. Negative means failure with SDL_GetError; save original and restore only an acquired state. |
-| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L41) | Context, visible output: read logical requested 0/1 on owner thread, preserve first demo error. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L46) | Context, 0 at startup, mandatory previous output: request hidden without SDK/callback; applied later by native owner. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L53) | Context, visible output: read logical requested 0/1 on owner thread, preserve first demo error. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L60) | Context, 0 at startup, mandatory previous output: request hidden without SDK/callback; applied later by native owner. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
 
 Русский: с --hide-cursor скрывается системный SDL-курсор, а не маркер кадра.
 Исходная глобальная видимость восстанавливается при закрытии. Успех SDK не
@@ -151,6 +151,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../../include/flashvm/mouse.h#L46) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../../../include/flashvm/mouse.h#L53) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:60](../../../include/flashvm/mouse.h#L60) |
 <!-- source-links:end -->

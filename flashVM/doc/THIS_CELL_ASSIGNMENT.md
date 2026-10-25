@@ -29,7 +29,7 @@ Interpreter and generated-body scopes restore the caller on all exits.
 вызывающего независимо от actual receiver/preload. With/Catch копируют ячейку,
 Try/Finally используют родительскую. Состояние восстанавливается при любом выходе.
 
-The public ABI and graph format are unchanged. [FVM_ScriptFrame](../include/flashvm/function.h#L16).implicit_this is
+The public ABI and graph format are unchanged. [FVM_ScriptFrame](../include/flashvm/function.h#L18).implicit_this is
 an object-valued entry snapshot, null for primitive cells; live reads/writes use
 execution helpers. Active stack cells are not serialized; transported pure AVM1
 functions create destination-local cells. Super/preload values still derive from
@@ -75,5 +75,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:16](../include/flashvm/function.h#L16) |
+| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:18](../include/flashvm/function.h#L18) |
 <!-- source-links:end -->

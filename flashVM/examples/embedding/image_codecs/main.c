@@ -4,18 +4,24 @@
 
 /* Подключаем объявления используемых типов и функций. */
 #include "flashvm/svg.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include "png.h"
+
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
+
 /* Подключаем объявления используемых типов и функций. */
 #include <string.h>
 
+
 /* Initialize the example, run its API operations and release owned resources. */
+
+
 /* Точка входа: запускаем последовательность действий этого примера. */
 int main(void)
 /* Начинаем блок инструкций или описание объекта. */
-{
+{ /* Begin scope: Начинаем блок инструкций или описание объекта. */
 
     /* Initialization / Инициализация локального состояния. */
     /* Сохраняем вычисленное значение: const char *xml. */
@@ -32,8 +38,10 @@ int main(void)
     png_alloc_size_t size = sizeof(png);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_svg_read(xml, strlen(xml), &svg) != FVM_OK)
+    { /* Begin conditional branch: if (fvm_svg_read(xml, strlen(xml), &svg) != FVM_OK). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 1;
+    } /* End conditional branch: if (fvm_svg_read(xml, strlen(xml), &svg) != FVM_OK). */
 
     /* Computation / Вычисление и обновление состояния. */
     /* Сохраняем вычисленное значение: surface.pixels. */
@@ -45,17 +53,18 @@ int main(void)
     /* Проверяем условие перед выполнением следующей ветки. */
     if (fvm_svg_rasterize(svg, &surface) != FVM_OK)
     /* Начинаем блок инструкций или описание объекта. */
-    {
+    { /* Begin scope: Начинаем блок инструкций или описание объекта. */
         /* Вызываем fvm_svg_destroy: освобождаем документ SVG.
          * svg — ранее разобранный документ SVG. */
         fvm_svg_destroy(svg);
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 2;
         /* Завершаем текущий блок или описание объекта. */
-    }
+    } /* End scope: Начинаем блок инструкций или описание объекта. */
     /* Вызываем fvm_svg_destroy: освобождаем документ SVG.
      * svg — ранее разобранный документ SVG. */
     fvm_svg_destroy(svg);
+
 
     /* Computation / Вычисление и обновление состояния. */
     /* Инициализируем область памяти заданным байтом. */
@@ -68,8 +77,10 @@ int main(void)
     image.format = PNG_FORMAT_RGBA;
     /* Проверяем условие перед выполнением следующей ветки. */
     if (!png_image_write_to_memory(&image, png, &size, 0, rgba, 0, 0))
+    { /* Begin conditional branch: if (!png_image_write_to_memory(&image, png, &size, 0, rgba, 0, 0)). */
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return 3;
+    } /* End conditional branch: if (!png_image_write_to_memory(&image, png, &size, 0, rgba, 0, 0)). */
 
     /* Output / Вывод и передача результата. */
     /* Выводим результат в стандартный поток вывода. */
@@ -77,4 +88,4 @@ int main(void)
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
     /* Завершаем текущий блок или описание объекта. */
-}
+} /* End scope: Начинаем блок инструкций или описание объекта. */

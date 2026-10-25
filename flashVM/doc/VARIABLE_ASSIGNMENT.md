@@ -1,7 +1,7 @@
 # Common variable assignment / Общий обработчик присваивания
 
 v0.259 moves SetVariable destination selection and writing to the C89 value
-service [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408). Managed scope/target/this, a counted string name
+service [`fvm_exec_variable_set`](../include/flashvm/execution.h#L542). Managed scope/target/this, a counted string name
 and a value are explicit operands. The interpreter only validates/moves stack
 operands and chooses its existing timeline/global fallback. Script activation
 bindings are accessed through the managed chain rather than a raw local map.
@@ -57,5 +57,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:542](../include/flashvm/execution.h#L542) |
 <!-- source-links:end -->

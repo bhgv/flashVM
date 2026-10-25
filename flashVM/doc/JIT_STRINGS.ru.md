@@ -15,7 +15,7 @@ StringEquals, StringLess и StringGreater компилируются в прям
 перед правым. Ошибка передаётся через существующую безопасную границу без
 записи результата.
 
-Сохранены ограничения общих сервисов: SWF4–5 возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) для
+Сохранены ограничения общих сервисов: SWF4–5 возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) для
 не-ASCII в длине, извлечении и символьных операциях; создание символа из нуля
 даёт пустую строку, из суррогата — символ замены. MB и обычные варианты разделяют
 политику интерпретатора. Полная совместимость исторических многобайтовых кодировок
@@ -46,5 +46,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -27,7 +27,7 @@ An invalid MPEG span can therefore still produce successful prefix inspection.
 ### fvm_swf_stream_sound_mp3_block_at
 
 **Arguments:** owning context, zero-based segment ordinal, segment-relative block
-ordinal and a nonnull, exactly sized [`FVM_SWFStreamSoundMP3Block`](../include/flashvm/swf_stream_sound.h#L39) output.
+ordinal and a nonnull, exactly sized [`FVM_SWFStreamSoundMP3Block`](../include/flashvm/swf_stream_sound.h#L43) output.
 **Success:** OK publishes the copied prefix fields and borrowed MPEG span after
 validating the entire root timeline's existing structural/PCM controls.
 **Errors:** INVALID_ARGUMENT for null/wrong-size output, invalid/terminal context,
@@ -46,13 +46,13 @@ sized nonnull output. **Success:** OK publishes the indexed prefix/MPEG view.
 MP3 prefix shorter than four bytes; NOT_FOUND for an absent block; UNSUPPORTED
 for a selected non-MP3 codec. Output is unchanged on failure. There is no
 allocation, root rescan, VM access, callback or GC. The originating VM may already
-be destroyed. The span lasts until [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L199).
+be destroyed. The span lasts until [`fvm_swf_stream_sound_snapshot_close`](../include/flashvm/swf_stream_sound.h#L248).
 Concurrent immutable reads are possible while an external owner guarantees that
 close cannot race with them; the API supplies no locking or reference counting.
 
 ### Capture and ownership
 
-[`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L65) retains its two-pass preparation and budget:
+[`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L83) retains its two-pass preparation and budget:
 encoded payload bytes plus `block_count * sizeof(FVM_SWFStreamSoundEntry)` are
 bounded by runtime `memory_limit_bytes` or the default SWF limit. Small wrapper
 and allocator overhead remain outside that accounting. It clears `*out` on
@@ -79,7 +79,7 @@ no new codec, FFmpeg, device or OS dependencies.
 `read_pcm` для сжатого блока возвращает UNSUPPORTED даже при нулевом запросе
 или большом first; отсутствующий ordinal по-прежнему даёт NOT_FOUND.
 
-[`FVM_SWFStreamSoundMP3Block`](../include/flashvm/swf_stream_sound.h#L39) требует точный `struct_size`. Индексы и `frame`
+[`FVM_SWFStreamSoundMP3Block`](../include/flashvm/swf_stream_sound.h#L43) требует точный `struct_size`. Индексы и `frame`
 обозначают сегмент, блок и movie frame от единицы. `declared_samples` — UI16 из
 потока в sample frames/стереопарах, не доказанное число декодированных samples.
 `seek_samples` — следующий SI16 со знаком. Header `latency_seek` остаётся отдельным
@@ -146,11 +146,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../include/flashvm/swf_stream_sound.h#L51) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../include/flashvm/swf_stream_sound.h#L199) |
-| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:172](../include/flashvm/swf_stream_sound.h#L172) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
-| `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream_internal.hpp:7](../src/swf/sound_stream_internal.hpp#L7) |
-| `FVM_SWFStreamSoundMP3Block` | struct | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
-| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:15](../src/swf/sound_stream_internal.hpp#L15) |
+| `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:57](../include/flashvm/swf_stream_sound.h#L57) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:248](../include/flashvm/swf_stream_sound.h#L248) |
+| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:213](../include/flashvm/swf_stream_sound.h#L213) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:83](../include/flashvm/swf_stream_sound.h#L83) |
+| `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream_internal.hpp:9](../src/swf/sound_stream_internal.hpp#L9) |
+| `FVM_SWFStreamSoundMP3Block` | struct | [include/flashvm/swf_stream_sound.h:43](../include/flashvm/swf_stream_sound.h#L43) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:19](../src/swf/sound_stream_internal.hpp#L19) |
 <!-- source-links:end -->

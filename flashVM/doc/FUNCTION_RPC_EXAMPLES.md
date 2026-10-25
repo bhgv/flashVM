@@ -22,7 +22,7 @@ selected generator creates one; arguments are the same.
 ```
 
 The source runtime hands its context exclusively to the broker service thread.
-[`fvm_worker_run`](../include/flashvm/worker.h#L21) creates a second independent runtime and context on a worker
+[`fvm_worker_run`](../include/flashvm/worker.h#L25) creates a second independent runtime and context on a worker
 thread. Only a primitive URI string is copied into the worker. It imports the
 interface and invokes the original over TCP, even in one process. A VM object,
 function address or userdata pointer is never passed to the recipient VM.
@@ -93,5 +93,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:25](../include/flashvm/worker.h#L25) |
 <!-- source-links:end -->

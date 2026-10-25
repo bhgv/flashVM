@@ -13,7 +13,7 @@ NextFrame, PreviousFrame, Play, Stop, GotoFrame, GotoLabel and GotoFrame2 lower 
 native helpers using the shared intrinsic frame service, bypassing replaceable
 script methods. Fixed commands use the active display target. A missing selection
 inside an existing timeline is a no-op; execution without a native base timeline
-returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). A missing label is ignored, matching interpretation.
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). A missing label is ignored, matching interpretation.
 
 GotoFrame snapshots its zero-based UI16 request as a one-based numeric constant.
 GotoLabel validates the complete terminated record and copies its text into code
@@ -57,5 +57,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

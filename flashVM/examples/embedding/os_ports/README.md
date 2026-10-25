@@ -27,7 +27,7 @@ cmake --build build-examples --target flashvm_examples_embedding_os_ports_main -
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_port_mouse_poll`](../../../ports/android/input.c#L11) | [OS_PORTS.md](../../../doc/OS_PORTS.md) — Платформенный ввод и TCP; доступность backend. |
+| [`fvm_port_mouse_poll`](../../../ports/android/input.c#L14) | [OS_PORTS.md](../../../doc/OS_PORTS.md) — Платформенный ввод и TCP; доступность backend. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-os_ports).
 <!-- example-catalog-api:end -->
@@ -41,5 +41,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_port_mouse_poll` | function | [ports/android/input.c:11](../../../ports/android/input.c#L11) |
+| `fvm_port_mouse_poll` | function | [ports/android/input.c:14](../../../ports/android/input.c#L14) |
 <!-- source-links:end -->

@@ -8,7 +8,7 @@ touch-mouse wheels, active primary-touch wheels, background and foreign-window
 wheels are ignored. Invalid non-finite deltas and FIFO overflow latch an error.
 
 At delivery, saved logical pointer coordinates receive the authored stage origin,
-then [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36) publishes the pointer/drag state and calls
+then [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L46) publishes the pointer/drag state and calls
 onMouseWheel(delta). There is no fabricated MouseMove/Up ClipAction, hit target,
 focus change or automatic scrolling. The existing VM wheel contract does not make
 wheel callbacks updateAfterEvent-eligible. A handler failure consumes that entry;
@@ -81,5 +81,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:46](../include/flashvm/mouse.h#L46) |
 <!-- source-links:end -->

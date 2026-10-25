@@ -4,11 +4,11 @@
 
 ## Состояние
 
-На этом этапе реализован только вызов `__call` через [`fvm_meta_call`](../include/flashvm/meta_call.h#L20). Описанные ниже синтаксические расширения ActionScript и функции ОС **не реализованы**. Этот документ фиксирует контракт для последующих этапов.
+На этом этапе реализован только вызов `__call` через [`fvm_meta_call`](../include/flashvm/meta_call.h#L22). Описанные ниже синтаксические расширения ActionScript и функции ОС **не реализованы**. Этот документ фиксирует контракт для последующих этапов.
 
 ## Вызов `__call`
 
-Метаметод получает `(owner, defining_metatable, args_table)`; пользовательские аргументы помещаются в числовые слоты таблицы начиная с 0. Вызов доступен из C через [`fvm_meta_call`](../include/flashvm/meta_call.h#L20). Если `__call` — вызываемый C-объект, он вызывается через C stack bridge. Дополнительно поддерживается нативный обработчик, зарегистрированный [`fvm_meta_register`](../include/flashvm/metamethod.h#L20). Функции AS как значения пока не поддерживаются.
+Метаметод получает `(owner, defining_metatable, args_table)`; пользовательские аргументы помещаются в числовые слоты таблицы начиная с 0. Вызов доступен из C через [`fvm_meta_call`](../include/flashvm/meta_call.h#L22). Если `__call` — вызываемый C-объект, он вызывается через C stack bridge. Дополнительно поддерживается нативный обработчик, зарегистрированный [`fvm_meta_register`](../include/flashvm/metamethod.h#L22). Функции AS как значения пока не поддерживаются.
 
 ## Потоки
 
@@ -37,6 +37,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
-| `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](../include/flashvm/meta_call.h#L22) |
+| `fvm_meta_register` | function | [include/flashvm/metamethod.h:22](../include/flashvm/metamethod.h#L22) |
 <!-- source-links:end -->

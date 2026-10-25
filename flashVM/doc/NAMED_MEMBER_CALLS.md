@@ -1,6 +1,6 @@
 # Named member calls / Вызовы именованных членов — v0.281
 
-C89 [`fvm_exec_invoke_member`](../include/flashvm/execution.h#L211) accepts an explicit receiver, an already converted
+C89 [`fvm_exec_invoke_member`](../include/flashvm/execution.h#L285) accepts an explicit receiver, an already converted
 counted name and positional values. It reads the member once and invokes that
 value with the original receiver. Missing, scalar and noncallable values return
 undefined. Ordinary member lookup retains the selected defining prototype before
@@ -51,5 +51,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_invoke_member` | function | [include/flashvm/execution.h:211](../include/flashvm/execution.h#L211) |
+| `fvm_exec_invoke_member` | function | [include/flashvm/execution.h:285](../include/flashvm/execution.h#L285) |
 <!-- source-links:end -->

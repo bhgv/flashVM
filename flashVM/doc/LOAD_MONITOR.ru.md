@@ -64,7 +64,7 @@ I/O дедлайны провайдера остаются отдельными.
 
 Строки содержат id/kind/phase/received/result. Фазы 1..6: BEGIN, WAIT, FETCHED,
 FAILED, CANCELLED, TIMED_OUT; виды 1..3: ROOT, CHILD, VARIABLES. Result — знаковый
-[FVM_Result](../include/flashvm/flashvm.h#L40) (NOT_FOUND для BEGIN/WAIT). WAIT с прежним received повторно не печатается.
+[FVM_Result](../include/flashvm/flashvm.h#L42) (NOT_FOUND для BEGIN/WAIT). WAIT с прежним received повторно не печатается.
 Структурированные строки не содержат URL/тело ответа; обычные player diagnostics
 по-прежнему могут называть URL фильма. Help/version работают без устройств, включая
 корректные monitor options. Отдельной реализации сети/планировщика в CLI нет.
@@ -97,5 +97,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

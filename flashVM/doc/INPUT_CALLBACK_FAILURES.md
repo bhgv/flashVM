@@ -1,9 +1,9 @@
 # Input callback exception boundary / Исключения callbacks ввода — v0.324
 
-A C++ host callback could previously throw through [fvm_input_dispatch](../include/flashvm/input.h#L82). During a
+A C++ host callback could previously throw through [fvm_input_dispatch](../include/flashvm/input.h#L104). During a
 queued pump, unwinding bypassed the manual pumping_input reset, so every later
 pump returned invalid argument. Direct dispatch now contains callback exceptions:
-std::bad_alloc maps to [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44), all other C++ exceptions to [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+std::bad_alloc maps to [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46), all other C++ exceptions to [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 C callbacks and the synchronous callback signature are unchanged.
 
 The pump observes the returned error, releases its existing reentry flag and
@@ -23,7 +23,7 @@ Existing input validation, queue, dispatch and recognizer checks remain enabled.
 
 Исключение C++ из callback раньше выходило через C-интерфейс и оставляло очередь
 в состоянии pumping_input: дальнейшие pump отвергались. Теперь dispatch
-преобразует bad_alloc в [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44), остальные исключения — в [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+преобразует bad_alloc в [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46), остальные исключения — в [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 Очередь получает код ошибки и восстанавливает флаг; следующий вызов работает.
 
 Неудачное событие уже удалено, processed считает только успешные доставки.
@@ -41,7 +41,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_dispatch` | function | [include/flashvm/input.h:104](../include/flashvm/input.h#L104) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

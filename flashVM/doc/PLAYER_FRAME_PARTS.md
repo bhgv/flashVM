@@ -24,7 +24,7 @@ every encoded output occupies agreed slot_bytes. Padding and fragment metadata
 follow the existing S protocol. These are bytewise R/G/B/A values, not native
 pixel words, compressed images or encoded video.
 
-[`fvm_scontrol_active`](../include/flashvm/scontrol.h#L108) copies validated committed limits and boundary; pending
+[`fvm_scontrol_active`](../include/flashvm/scontrol.h#L132) copies validated committed limits and boundary; pending
 offers cannot silently change the exporter. It returns UNKNOWN before the first
 agreement and preserves both outputs on failure. Adapters need not inspect
 mutable exchange fields directly. The exchange remains caller-owned and
@@ -149,5 +149,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:108](../include/flashvm/scontrol.h#L108) |
+| `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:132](../include/flashvm/scontrol.h#L132) |
 <!-- source-links:end -->

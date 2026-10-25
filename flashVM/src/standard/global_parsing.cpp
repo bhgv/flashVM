@@ -15,8 +15,11 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+
 namespace
 {
+
+
 /* Compute and return numeric result. */
 FVM_Result numeric_result(FVM_Value *out, double value)
 {
@@ -24,13 +27,15 @@ FVM_Result numeric_result(FVM_Value *out, double value)
     return FVM_OK;
 }
 
+
 /* Compute and return space. */
 bool space(unsigned long cp)
 {
-    return cp == 9 || cp == 10 || cp == 11 || cp == 12 || cp == 13 || cp == 32 || cp == 0xa0 ||
-           cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200a) || cp == 0x2028 || cp == 0x2029 ||
-           cp == 0x202f || cp == 0x205f || cp == 0x3000 || cp == 0xfeff;
+    return cp == 9 || cp == 10 || cp == 11 || cp == 12 || cp == 13 || cp == 32 || cp == 0xa0 || cp == 0x1680 ||
+           (cp >= 0x2000 && cp <= 0x200a) || cp == 0x2028 || cp == 0x2029 || cp == 0x202f || cp == 0x205f ||
+           cp == 0x3000 || cp == 0xfeff;
 }
+
 
 /* Compute and return skip space. */
 const char *skip_space(const char *text, size_t size)
@@ -41,23 +46,33 @@ const char *skip_space(const char *text, size_t size)
         size_t next = offset;
         unsigned long cp = 0;
         if (fvm_utf8_read(text, size, &next, &cp) != FVM_UTF8_OK || !space(cp))
+        {
             break;
+        }
         offset = next;
     }
     return text + offset;
 }
 
+
 /* Compute and return digit. */
 int digit(unsigned char c)
 {
     if (c >= '0' && c <= '9')
+    {
         return c - '0';
+    }
     if (c >= 'a' && c <= 'z')
+    {
         return c - 'a' + FVM_PARSING_LETTER_DIGIT_FIRST;
+    }
     if (c >= 'A' && c <= 'Z')
+    {
         return c - 'A' + FVM_PARSING_LETTER_DIGIT_FIRST;
+    }
     return -1;
 }
+
 
 /* Compute and return input string. */
 FVM_Result input_string(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out)
@@ -69,20 +84,27 @@ FVM_Result input_string(FVM_Context *c, unsigned int count, const FVM_Value *arg
     return fvm_value_to_string(c, count ? args : &absent, out);
 }
 
+
 /* Compute and return integer radix. */
 double integer_radix(double value)
 {
     if (value != value || value == 0 || std::fabs(value) == std::numeric_limits<double>::infinity())
+    {
         return 0;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     /* ToInt32 without an out-of-range floating-to-integer cast. */
     double truncated = value < 0 ? -std::floor(-value) : std::floor(value);
     double wrapped = std::fmod(truncated, FVM_UINT32_MODULUS);
     if (wrapped < 0)
+    {
         wrapped += FVM_UINT32_MODULUS;
+    }
     return wrapped >= (-FVM_INT32_MIN_NUMBER) ? wrapped - FVM_UINT32_MODULUS : wrapped;
 }
+
+
 /* Recognize Flash's four-unit whitespace set before loaded numeric digits. */
 bool loaded_space(unsigned long byte)
 {
@@ -90,16 +112,18 @@ bool loaded_space(unsigned long byte)
            byte == FVM_PARSING_LOADED_SPACE_CR || byte == FVM_PARSING_LOADED_SPACE_ASCII;
 }
 
+
 /* Parse loaded AVM1 integers: radix callbacks precede text callbacks, and raw prefixes
  * are inspected before whitespace. Counted bytes preserve embedded NUL as a non-digit. */
-FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value *args,
-                            FVM_Value *out)
+FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out)
 {
     if (!count)
     {
         fvm_value_undefined(out);
         return FVM_OK;
     }
+
+
     FVM_ExecutionWorkScope work(c);
     unsigned int base = FVM_PARSING_RADIX_DECIMAL;
     if (count > 1)
@@ -107,16 +131,22 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
         double number = 0;
         FVM_Result status = fvm_avm1_number(c, args + 1, &number);
         if (status != FVM_OK)
+        {
             return status;
+        }
         number = integer_radix(number);
         if (number < FVM_PARSING_RADIX_MIN || number > FVM_PARSING_RADIX_MAX)
+        {
             return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+        }
         base = (unsigned int)number;
     }
     FVM_Value text;
     FVM_Result status = fvm_avm1_string(c, args[0], &text);
     if (status != FVM_OK)
+    {
         return status;
+    }
     const char *bytes = text.string;
     size_t size = fvm_string_size(text), at = 0;
     bool signed_prefix = size && (bytes[0] == '+' || bytes[0] == '-');
@@ -130,14 +160,18 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
         if (signed_prefix)
         {
             if (count < 2 || base < FVM_PARSING_SIGNED_HEX_MIN_RADIX)
+            {
                 return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+            }
             ignore_sign = true;
         }
         else
         {
             at = FVM_PARSING_HEX_PREFIX_BYTES;
             if (count < 2)
+            {
                 base = FVM_PARSING_RADIX_HEX;
+            }
         }
     }
     else if (zero_prefix && count < 2)
@@ -147,7 +181,9 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
         {
             status = work.step();
             if (status != FVM_OK)
+            {
                 return status;
+            }
             if (bytes[i] < '0' || bytes[i] > '7')
             {
                 octal = false;
@@ -155,96 +191,128 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
             }
         }
         if (octal)
+        {
             base = FVM_PARSING_RADIX_OCTAL;
+        }
     }
     while (at < size && loaded_space((unsigned char)bytes[at]))
     {
         status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         ++at;
     }
     bool negative = at < size && bytes[at] == '-' && !ignore_sign;
     if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
+    {
         ++at;
+    }
     bool any = false;
     double number = 0;
     for (; at < size; ++at)
     {
         status = work.step();
         if (status != FVM_OK)
+        {
             return status;
+        }
         int value = digit((unsigned char)bytes[at]);
         if (value < 0 || (unsigned int)value >= base)
+        {
             break;
+        }
         any = true;
         number = number * base + value;
     }
-    return numeric_result(out, any ? (negative ? -number : number)
-                                   : std::numeric_limits<double>::quiet_NaN());
+    return numeric_result(out, any ? (negative ? -number : number) : std::numeric_limits<double>::quiet_NaN());
 }
+
+
 /* Convert the loaded receiver once, then parse decimal text under the shared quota. */
-FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Value *args,
-                              FVM_Value *out)
+FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out)
 {
     if (!count)
     {
         fvm_value_undefined(out);
         return FVM_OK;
     }
+
+
     FVM_ExecutionWorkScope work(c);
     FVM_Value text;
     FVM_Result status = fvm_avm1_string(c, args[0], &text);
     if (status != FVM_OK)
+    {
         return status;
+    }
     double number = 0;
     status = fvm_avm1_decimal(text.string, fvm_string_size(text), false, &number, &work);
     return status == FVM_OK ? numeric_result(out, number) : status;
 }
 } // namespace
+
+
 /* Convert String(...) with loaded AVM1 rules or the unloaded host contract. */
-FVM_Result fvm_builtin_string(FVM_Context *c, FVM_Object *, unsigned int count,
-                              const FVM_Value *args, FVM_Value *out, void *)
+FVM_Result
+fvm_builtin_string(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *)
 {
     if (!count)
+    {
         return fvm_value_string(out, "");
-    return c->swf_loaded ? fvm_avm1_string(c, args[0], out)
-                         : fvm_value_to_string(c, args, out);
+    }
+    return c->swf_loaded ? fvm_avm1_string(c, args[0], out) : fvm_value_to_string(c, args, out);
 }
 
+
 /* Parse builtin int. */
-FVM_Result fvm_builtin_parse_int(FVM_Context *c, FVM_Object *, unsigned int count,
-                                 const FVM_Value *args, FVM_Value *out, void *)
+FVM_Result
+fvm_builtin_parse_int(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *)
 {
 
     if (c->swf_loaded)
+    {
         return loaded_parse_int(c, count, args, out);
+    }
     /* Initialization / Инициализация локального состояния. */
     FVM_Value text;
     FVM_Result result = input_string(c, count, args, &text);
     if (result != FVM_OK)
+    {
         return result;
+    }
     double radix = 0;
     if (count > 1)
     {
         result = fvm_value_to_number(c, &args[1], &radix);
         if (result != FVM_OK)
+        {
             return result;
+        }
         radix = integer_radix(radix);
     }
     if (radix && (radix < 2 || radix > 36))
+    {
         return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+    }
 
     /* Initialization / Инициализация локального состояния. */
     const char *p = skip_space(text.string, fvm_string_size(text));
     bool negative = *p == '-';
     if (*p == '+' || *p == '-')
+    {
         ++p;
+    }
     bool hex = p[0] == '0' && (p[1] == 'x' || p[1] == 'X');
     if (!radix)
+    {
         radix = hex ? 16 : *p == '0' ? 8 : 10;
+    }
     if (radix == 16 && hex)
+    {
         p += 2;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     bool any = false;
@@ -254,31 +322,39 @@ FVM_Result fvm_builtin_parse_int(FVM_Context *c, FVM_Object *, unsigned int coun
         any = true;
         value = value * radix + d;
     }
-    return numeric_result(out, any ? (negative ? -value : value)
-                                   : std::numeric_limits<double>::quiet_NaN());
+    return numeric_result(out, any ? (negative ? -value : value) : std::numeric_limits<double>::quiet_NaN());
 }
 
+
 /* Parse builtin float. */
-FVM_Result fvm_builtin_parse_float(FVM_Context *c, FVM_Object *, unsigned int count,
-                                   const FVM_Value *args, FVM_Value *out, void *)
+FVM_Result
+fvm_builtin_parse_float(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *)
 {
 
     if (c->swf_loaded)
+    {
         return loaded_parse_float(c, count, args, out);
+    }
     /* Initialization / Инициализация локального состояния. */
     FVM_Value text;
     FVM_Result result = input_string(c, count, args, &text);
     if (result != FVM_OK)
+    {
         return result;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     const char *start = skip_space(text.string, fvm_string_size(text)), *p = start;
     bool negative = *p == '-';
     if (*p == '+' || *p == '-')
+    {
         ++p;
+    }
     if (std::strncmp(p, "Infinity", 8) == 0)
-        return numeric_result(out, negative ? -std::numeric_limits<double>::infinity()
-                                            : std::numeric_limits<double>::infinity());
+    {
+        return numeric_result(
+            out, negative ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity());
+    }
     bool any = false;
     while (*p >= '0' && *p <= '9')
     {
@@ -295,20 +371,30 @@ FVM_Result fvm_builtin_parse_float(FVM_Context *c, FVM_Object *, unsigned int co
         }
     }
     if (!any)
+    {
         return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+    }
     if (*p == 'e' || *p == 'E')
     {
         const char *exponent = p++;
         if (*p == '+' || *p == '-')
+        {
             ++p;
+        }
         const char *digits = p;
         while (*p >= '0' && *p <= '9')
+        {
             ++p;
+        }
         if (p == digits)
+        {
             p = exponent; /* Incomplete exponent is trailing text. */
+        }
     }
 
     /* Initialization / Инициализация локального состояния. */
+
+
     /* Syntax is recognized here; reuse the locale-independent numeric bridge
      * on the accepted prefix. Its documented rounding limits still apply. */
     fvm_detail::string prefix(start, (size_t)(p - start));

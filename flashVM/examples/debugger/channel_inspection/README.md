@@ -41,14 +41,14 @@ NATURAL/FORCE — политика VM, независимая от CMake Release
 
 ## Используемые функции
 
-- [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) — декларация и контракт общего VM API.
-- [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) — декларация и контракт общего VM API.
-- [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) — декларация и контракт общего VM API.
-- [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) — декларация и контракт общего VM API.
+- [`fvm_channel_create`](../../../include/flashvm/channel.h#L56) — декларация и контракт общего VM API.
+- [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L100) — декларация и контракт общего VM API.
+- [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L29) — декларация и контракт общего VM API.
+- [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L24) — декларация и контракт общего VM API.
 - [`fvm_debug_channel_freeze`](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — подробный debugger/runtime-контракт.
 - [`fvm_debug_channel_message`](../../../doc/DEBUG_API.md#fvm_debug_channel_message) — подробный debugger/runtime-контракт.
 - [`fvm_debug_channel_state`](../../../doc/DEBUG_API.md#fvm_debug_channel_state) — подробный debugger/runtime-контракт.
-- [`fvm_value_number`](../../../include/flashvm/value.h#L42) — декларация и контракт общего VM API.
+- [`fvm_value_number`](../../../include/flashvm/value.h#L50) — декларация и контракт общего VM API.
 
 [Полный справочник EN](../../../doc/DEBUG_API.md) ·
 [Справочник RU](../../../doc/DEBUG_API.ru.md) ·
@@ -78,14 +78,14 @@ function links to its detailed reference or public ownership contract.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_channel_create`](../../../include/flashvm/channel.h#L46) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L72) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
-| [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
-| [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
-| [`fvm_debug_channel_freeze`](../../../include/flashvm/debug.h#L114) | [DEBUG_API.md#fvm_debug_channel_freeze](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_channel_message`](../../../include/flashvm/debug.h#L125) | [DEBUG_API.md#fvm_debug_channel_message](../../../doc/DEBUG_API.md#fvm_debug_channel_message) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_channel_state`](../../../include/flashvm/debug.h#L118) | [DEBUG_API.md#fvm_debug_channel_state](../../../doc/DEBUG_API.md#fvm_debug_channel_state) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L56) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L100) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L29) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
+| [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L24) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
+| [`fvm_debug_channel_freeze`](../../../include/flashvm/debug.h#L144) | [DEBUG_API.md#fvm_debug_channel_freeze](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_channel_message`](../../../include/flashvm/debug.h#L159) | [DEBUG_API.md#fvm_debug_channel_message](../../../doc/DEBUG_API.md#fvm_debug_channel_message) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_channel_state`](../../../include/flashvm/debug.h#L150) | [DEBUG_API.md#fvm_debug_channel_state](../../../doc/DEBUG_API.md#fvm_debug_channel_state) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-debugger-channel_inspection).
 <!-- example-catalog-api:end -->
@@ -99,12 +99,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_channel_create` | function | [include/flashvm/channel.h:46](../../../include/flashvm/channel.h#L46) |
-| `fvm_channel_destroy` | function | [include/flashvm/channel.h:72](../../../include/flashvm/channel.h#L72) |
-| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
-| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../../../include/flashvm/debug.h#L114) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../../../include/flashvm/debug.h#L125) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../../../include/flashvm/debug.h#L118) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:56](../../../include/flashvm/channel.h#L56) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:100](../../../include/flashvm/channel.h#L100) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:29](../../../include/flashvm/transfer.h#L29) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:24](../../../include/flashvm/transfer.h#L24) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../../../include/flashvm/debug.h#L144) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../../../include/flashvm/debug.h#L159) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../../../include/flashvm/debug.h#L150) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 <!-- source-links:end -->

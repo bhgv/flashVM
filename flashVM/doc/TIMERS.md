@@ -1,10 +1,10 @@
 # Explicitly polled AS1/AS2 timers — v0.621
 
-[Русский](TIMERS.ru.md). [fvm_standard_install](../include/flashvm/standard.h#L20) publishes `setInterval`,
+[Русский](TIMERS.ru.md). [fvm_standard_install](../include/flashvm/standard.h#L22) publishes `setInterval`,
 `clearInterval` (host/SWF6–8), `setTimeout`, `clearTimeout` (host/SWF8).
 Availability is checked on each call, including installation before SWF loading.
 These functions use the existing [context clock](GET_TIMER.md). The public
-[fvm_timers_poll](../include/flashvm/timers.h#L19) supplies explicit owning-thread delivery; the common desktop
+[fvm_timers_poll](../include/flashvm/timers.h#L22) supplies explicit owning-thread delivery; the common desktop
 player polls during active event-loop iterations, including between frames, and
 after timeline ticks before rendering. See [wakeup hints](TIMER_WAKEUP.md) (v0.622).
 
@@ -26,16 +26,16 @@ Named methods are resolved at delivery, so replacing the property changes the
 next callback; its receiver is the supplied object. Counted method names follow
 the existing member-call service, including active SWF case rules. Callable
 objects select the Function form. The object/method timeout form and coercible
-non-String method names are [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Missing required arguments and
-invalid/foreign targets are [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
+non-String method names are [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Missing required arguments and
+invalid/foreign targets are [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47).
 
 Delay uses AVM1 numeric coercion, which may call user code and collect. Supported
 finite delays are [FVM_TIMERS_MIN_DELAY](../src/standard/timer_constants.h#L6) through [FVM_TIMERS_MAX_DELAY](../src/standard/timer_constants.h#L7); fractions
 round down after range validation. Zero, negative, NaN, infinity, submillisecond
-and larger delays are explicitly [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). This is a bounded profile,
+and larger delays are explicitly [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). This is a bounded profile,
 not an assertion of original-player clamping. At most [FVM_TIMERS_MAX_ARGUMENTS](../src/standard/timer_constants.h#L5)
 extra values and [FVM_TIMERS_MAX_PENDING](../src/standard/timer_constants.h#L4) live entries are supported. Capacity or
-exhausted IDs return [FVM_ERROR](../include/flashvm/flashvm.h#L43); too many extra arguments return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
+exhausted IDs return [FVM_ERROR](../include/flashvm/flashvm.h#L45); too many extra arguments return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
 
 Arguments are shallow snapshots; referenced objects remain live shared objects.
 Borrowed strings, including counted NUL, are copied into context storage. The
@@ -58,17 +58,17 @@ the existing clock state before a later allocation/work failure.
 ## fvm_timers_poll contract
 
 Pass a live owning-thread context and non-null `unsigned int *delivered`.
-Reentry, destruction, collection and release phases return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45)
+Reentry, destruction, collection and release phases return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47)
 without changing the count. A valid call resets the count to zero; an empty queue
 returns immediately without reading the clock. Otherwise it samples the clock
-once and snapshots due IDs in registration order. Clock errors return [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+once and snapshots due IDs in registration order. Clock errors return [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 A timer is eligible when its unwrapped deadline is at or before that sample.
 
 Each captured ID is attempted at most once. Cancelled entries are skipped; new
 registrations wait for another poll, even if a callback advances the clock.
 Before invocation a timeout is deleted; an interval is rearmed at sample+delay.
 Late intervals coalesce into one delivery, with no catch-up burst. A deadline
-that cannot advance at floating-point precision is [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). The existing
+that cannot advance at floating-point precision is [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). The existing
 unsigned GetTime wrap does not wrap scheduler deadlines.
 
 The count includes a committed delivery whose invocation later fails, including
@@ -77,19 +77,19 @@ the batch; consumed timeouts, rearmed intervals, completed callbacks and explici
 user side effects remain committed. Before commitment, snapshot/allocation/work
 failures leave the corresponding pending entry unchanged. An interval remains
 pending after its callback fails unless user code cancelled it. Clear a pending
-exception with [fvm_exception_clear](../include/flashvm/exception.h#L65) before continuing after [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48).
+exception with [fvm_exception_clear](../include/flashvm/exception.h#L74) before continuing after [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50).
 
 [GC:] An active value-vector root is installed before deletion/rearming, so a
 callback may cancel itself, register/cancel other timers and collect safely.
-Recursive [fvm_timers_poll](../include/flashvm/timers.h#L19) is rejected; [fvm_context_destroy](../include/flashvm/flashvm.h#L70) during dispatch is
+Recursive [fvm_timers_poll](../include/flashvm/timers.h#L22) is rejected; [fvm_context_destroy](../include/flashvm/flashvm.h#L86) during dispatch is
 ignored, as for existing input dispatch. There is no sleeping, OS timer/thread,
-preemption of arbitrary native callbacks or implicit [fvm_advance](../include/flashvm/flashvm.h#L74) implementation.
+preemption of arbitrary native callbacks or implicit [fvm_advance](../include/flashvm/flashvm.h#L94) implementation.
 The host determines polling frequency. Desktop source integration is not foreign
 OS, visible playback or real-device acceptance.
 
 ## Work, graphs and evidence
 
-[FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L9) shares the caller's instruction budget and worker stop
+[FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L11) shares the caller's instruction budget and worker stop
 polling with registration, numeric coercion, queue scanning and callback work.
 Registration charges each extra argument, each retained string byte and publication;
 cancellation charges lookup and value/map removal; polling charges queue scan,
@@ -127,19 +127,19 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_advance` | function | [include/flashvm/flashvm.h:74](../include/flashvm/flashvm.h#L74) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../include/flashvm/exception.h#L65) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:94](../include/flashvm/flashvm.h#L94) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../include/flashvm/flashvm.h#L86) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `fvm_exception_clear` | function | [include/flashvm/exception.h:74](../include/flashvm/exception.h#L74) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
 | `FVM_TIMERS_MAX_ARGUMENTS` | macro / define | [src/standard/timer_constants.h:5](../src/standard/timer_constants.h#L5) |
 | `FVM_TIMERS_MAX_DELAY` | macro / define | [src/standard/timer_constants.h:7](../src/standard/timer_constants.h#L7) |
 | `FVM_TIMERS_MAX_ID` | macro / define | [src/standard/timer_constants.h:8](../src/standard/timer_constants.h#L8) |
 | `FVM_TIMERS_MAX_PENDING` | macro / define | [src/standard/timer_constants.h:4](../src/standard/timer_constants.h#L4) |
 | `FVM_TIMERS_MIN_DELAY` | macro / define | [src/standard/timer_constants.h:6](../src/standard/timer_constants.h#L6) |
-| `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_timers_poll` | function | [include/flashvm/timers.h:22](../include/flashvm/timers.h#L22) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

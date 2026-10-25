@@ -21,13 +21,13 @@ NAT traversal and network listeners are not implemented by the tutorial.
 
 | API | Contract and ownership |
 | --- | --- |
-| [`fvm_rheartbeat_accept`](../../../include/flashvm/rheartbeat.h#L92) | Accept already authenticated advice after epoch, sequence and permission checks. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_activity`](../../../include/flashvm/rheartbeat.h#L86) | Report actual successful send/receive on exactly one path; UDP never refreshes TCP. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_clear`](../../../include/flashvm/rheartbeat.h#L97) | Host declines reconnect advice; no liveness or network action is fabricated. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_due`](../../../include/flashvm/rheartbeat.h#L81) | Advance virtual monotonic time and suggest actions without acknowledging I/O. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_hint_write`](../../../include/flashvm/rheartbeat.h#L106) | Encode compact canonical fields and CRC into caller storage; no authentication is added. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_init`](../../../include/flashvm/rheartbeat.h#L76) | Copy caller-owned policy, establish the authenticated epoch and start independent ages. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
-| [`fvm_rheartbeat_next`](../../../include/flashvm/rheartbeat.h#L102) | Generate one outgoing nonwrapping hint identity; retain it for retry. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_accept`](../../../include/flashvm/rheartbeat.h#L104) | Accept already authenticated advice after epoch, sequence and permission checks. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_activity`](../../../include/flashvm/rheartbeat.h#L96) | Report actual successful send/receive on exactly one path; UDP never refreshes TCP. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_clear`](../../../include/flashvm/rheartbeat.h#L111) | Host declines reconnect advice; no liveness or network action is fabricated. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_due`](../../../include/flashvm/rheartbeat.h#L89) | Advance virtual monotonic time and suggest actions without acknowledging I/O. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_hint_write`](../../../include/flashvm/rheartbeat.h#L124) | Encode compact canonical fields and CRC into caller storage; no authentication is added. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_init`](../../../include/flashvm/rheartbeat.h#L82) | Copy caller-owned policy, establish the authenticated epoch and start independent ages. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
+| [`fvm_rheartbeat_next`](../../../include/flashvm/rheartbeat.h#L118) | Generate one outgoing nonwrapping hint identity; retain it for retry. [Contract](../../../doc/HYBRID_HEARTBEAT.md). |
 
 [Source](main.c), [guide](../../../doc/HYBRID_HEARTBEAT.md), [catalog](../../README.md#example-embedding-hybrid_heartbeat).
 
@@ -40,11 +40,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_rheartbeat_accept` | function | [include/flashvm/rheartbeat.h:92](../../../include/flashvm/rheartbeat.h#L92) |
-| `fvm_rheartbeat_activity` | function | [include/flashvm/rheartbeat.h:86](../../../include/flashvm/rheartbeat.h#L86) |
-| `fvm_rheartbeat_clear` | function | [include/flashvm/rheartbeat.h:97](../../../include/flashvm/rheartbeat.h#L97) |
-| `fvm_rheartbeat_due` | function | [include/flashvm/rheartbeat.h:81](../../../include/flashvm/rheartbeat.h#L81) |
-| `fvm_rheartbeat_hint_write` | function | [include/flashvm/rheartbeat.h:106](../../../include/flashvm/rheartbeat.h#L106) |
-| `fvm_rheartbeat_init` | function | [include/flashvm/rheartbeat.h:76](../../../include/flashvm/rheartbeat.h#L76) |
-| `fvm_rheartbeat_next` | function | [include/flashvm/rheartbeat.h:102](../../../include/flashvm/rheartbeat.h#L102) |
+| `fvm_rheartbeat_accept` | function | [include/flashvm/rheartbeat.h:104](../../../include/flashvm/rheartbeat.h#L104) |
+| `fvm_rheartbeat_activity` | function | [include/flashvm/rheartbeat.h:96](../../../include/flashvm/rheartbeat.h#L96) |
+| `fvm_rheartbeat_clear` | function | [include/flashvm/rheartbeat.h:111](../../../include/flashvm/rheartbeat.h#L111) |
+| `fvm_rheartbeat_due` | function | [include/flashvm/rheartbeat.h:89](../../../include/flashvm/rheartbeat.h#L89) |
+| `fvm_rheartbeat_hint_write` | function | [include/flashvm/rheartbeat.h:124](../../../include/flashvm/rheartbeat.h#L124) |
+| `fvm_rheartbeat_init` | function | [include/flashvm/rheartbeat.h:82](../../../include/flashvm/rheartbeat.h#L82) |
+| `fvm_rheartbeat_next` | function | [include/flashvm/rheartbeat.h:118](../../../include/flashvm/rheartbeat.h#L118) |
 <!-- source-links:end -->

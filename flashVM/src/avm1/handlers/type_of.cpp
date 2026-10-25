@@ -1,10 +1,14 @@
 /* FlashVM: shared existing AVM1 type-name projection independent of operand encoding. */
 #include "support.hpp"
+
+
 /* Classify validated values without allocation, coercion callbacks or collector entry. */
 extern "C" FVM_Result fvm_exec_type_of(FVM_Context *c, const FVM_Value *value, FVM_Value *out)
 {
     if (!c || !out || fvm_validate_value(c, value) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     const char *name = 0;
     switch (value->type)
     {

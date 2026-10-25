@@ -63,7 +63,16 @@ def _source_diagnostic(message, data, source):
         record = json.loads(message, object_pairs_hook=_unique_object)
         if not isinstance(record, dict) or type(record.get("schema")) is not int:
             return item
-        kinds = {"argument", "input", "encoding", "limit", "resource", "syntax", "semantic", "output"}
+        kinds = {
+            "argument",
+            "input",
+            "encoding",
+            "limit",
+            "resource",
+            "syntax",
+            "semantic",
+            "output",
+        }
         if record["schema"] != 1 or record.get("kind") not in kinds:
             return item
         if not isinstance(record.get("message"), str):
@@ -92,11 +101,18 @@ def _source_diagnostic(message, data, source):
         if (line, column) != (record["line"], record["column"]):
             return item
         item.update(
-            message=record["message"], kind=record["kind"], code=record["code"],
-            file=str(source), source_sha256=hashlib.sha256(data).hexdigest(),
-            byte_offset=start, byte_length=length, byte_column=column,
-            character_offset=len(prefix), character_length=len(selected),
-            line=line, column=len(prefix.rsplit("\n", 1)[-1]) + 1,
+            message=record["message"],
+            kind=record["kind"],
+            code=record["code"],
+            file=str(source),
+            source_sha256=hashlib.sha256(data).hexdigest(),
+            byte_offset=start,
+            byte_length=length,
+            byte_column=column,
+            character_offset=len(prefix),
+            character_length=len(selected),
+            line=line,
+            column=len(prefix.rsplit("\n", 1)[-1]) + 1,
             coordinate_units="unicode_characters",
         )
     except (ValueError, TypeError, UnicodeError, RecursionError):
@@ -117,9 +133,7 @@ def _run(stage, argv, cwd, timeout, result):
     """Wait for one direct child; kill and reap it on timeout or cancellation."""
     record = {"stage": stage, "argv": list(map(str, argv))}
     result["steps"].append(record)
-    with tempfile.TemporaryFile(dir=cwd) as stdout, tempfile.TemporaryFile(
-        dir=cwd
-    ) as stderr:
+    with tempfile.TemporaryFile(dir=cwd) as stdout, tempfile.TemporaryFile(dir=cwd) as stderr:
         process = subprocess.Popen(
             record["argv"],
             cwd=cwd,
@@ -198,9 +212,7 @@ def build(
         if raw_output.is_symlink():
             raise BuildFailure("output must not be a symbolic link")
         output = raw_output.resolve()
-        result.update(
-            source=str(source), output=str(output), language=language, module=module
-        )
+        result.update(source=str(source), output=str(output), language=language, module=module)
         if language not in LANGUAGES:
             raise BuildFailure("unknown source language")
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]{0,253}", module):
@@ -211,9 +223,7 @@ def build(
             raise BuildFailure("expected trace requires a runner")
         if not output.parent.is_dir():
             raise BuildFailure("output parent directory does not exist")
-        tools = [
-            Path(p).expanduser().resolve(strict=True) for p in (compiler, ir, linker)
-        ]
+        tools = [Path(p).expanduser().resolve(strict=True) for p in (compiler, ir, linker)]
         if runner is not None:
             runner = Path(runner).expanduser().resolve(strict=True)
             tools.append(runner)
@@ -226,15 +236,12 @@ def build(
             raise BuildFailure("source exceeds the numeric profile's 64 KiB limit")
         result["source_sha256"] = hashlib.sha256(data).hexdigest()
         # Stage beside the destination so the final replace stays on one filesystem.
-        with tempfile.TemporaryDirectory(
-            prefix=".ide-build-", dir=output.parent
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix=".ide-build-", dir=output.parent) as directory:
             work = Path(directory)
             snapshot = work / "input.src"
             snapshot.write_bytes(data)
             original, optimised, obj, movie = [
-                work / name
-                for name in ("source.fir", "optimised.fir", "module.swo", "movie.swf")
+                work / name for name in ("source.fir", "optimised.fir", "module.swo", "movie.swf")
             ]
             stage = "source"
             source_command = [tools[0], language, "--input", snapshot, original, "--module", module]
@@ -253,9 +260,7 @@ def build(
             selected = original
             if optimise:
                 stage = "optimise"
-                _run(
-                    stage, [tools[1], "opt", original, optimised], work, timeout, result
-                )
+                _run(stage, [tools[1], "opt", original, optimised], work, timeout, result)
                 _artifact(optimised)
                 stage = "verify_optimised"
                 _run(stage, [tools[1], "check", optimised], work, timeout, result)
@@ -268,10 +273,7 @@ def build(
             _artifact(movie, b"FWS\x08")
             with movie.open("rb") as stream:
                 header = stream.read(8)
-            if (
-                len(header) != 8
-                or int.from_bytes(header[4:8], "little") != movie.stat().st_size
-            ):
+            if len(header) != 8 or int.from_bytes(header[4:8], "little") != movie.stat().st_size:
                 raise BuildFailure("SWF declared length does not match the artifact")
             if runner is not None:
                 stage = "run"
@@ -313,8 +315,11 @@ def main(argv=None):
     parser.add_argument("--no-optimise", dest="optimise", action="store_false")
     parser.add_argument("--runner")
     parser.add_argument("--expect-trace")
-    parser.add_argument("--structured-diagnostics", action="store_true",
-                        help="Opt in to fir1_source schema-1 byte diagnostics")
+    parser.add_argument(
+        "--structured-diagnostics",
+        action="store_true",
+        help="Opt in to fir1_source schema-1 byte diagnostics",
+    )
     args = vars(parser.parse_args(argv))
     result = build(**args)
     print(json.dumps(result, ensure_ascii=False))

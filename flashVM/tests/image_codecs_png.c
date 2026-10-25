@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include "png.h"
 #include "image_codecs_memory.h"
-#include <assert.h>
 #include <stdlib.h>
+
 
 int main(void)
 {
@@ -10,7 +11,11 @@ int main(void)
     unsigned char *encoded;
     png_alloc_size_t size = 0;
     unsigned int i;
-    assert(strcmp(png_get_libpng_ver(0), "1.6.59") == 0);
+    if (!(strcmp(png_get_libpng_ver(0), "1.6.59") == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     for (i = 0; i < 64; ++i)
     {
         source[i * 4] = (unsigned char)(i * 3);
@@ -22,27 +27,71 @@ int main(void)
     image.version = PNG_IMAGE_VERSION;
     image.width = image.height = 8;
     image.format = PNG_FORMAT_RGBA;
-    assert(png_image_write_to_memory(&image, 0, &size, 0, source, 0, 0));
-    assert(size > 8 && size < 65536);
+    if (!(png_image_write_to_memory(&image, 0, &size, 0, source, 0, 0)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(size > 8 && size < 65536))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     encoded = (unsigned char *)malloc((size_t)size);
-    assert(encoded);
-    assert(png_image_write_to_memory(&image, encoded, &size, 0, source, 0, 0));
-    assert(memcmp(encoded, "\211PNG\r\n\032\n", 8) == 0);
+    if (!(encoded))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(png_image_write_to_memory(&image, encoded, &size, 0, source, 0, 0)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(memcmp(encoded, "\211PNG\r\n\032\n", 8) == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     memset(&image, 0, sizeof(image));
     image.version = PNG_IMAGE_VERSION;
-    assert(png_image_begin_read_from_memory(&image, encoded, (size_t)size));
-    assert(image.width == 8 && image.height == 8);
+    if (!(png_image_begin_read_from_memory(&image, encoded, (size_t)size)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(image.width == 8 && image.height == 8))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     image.format = PNG_FORMAT_RGBA;
-    assert(png_image_finish_read(&image, 0, decoded, 0, 0));
-    assert(memcmp(source, decoded, sizeof(source)) == 0);
+    if (!(png_image_finish_read(&image, 0, decoded, 0, 0)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(memcmp(source, decoded, sizeof(source)) == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     png_image_free(&image);
     memset(&image, 0, sizeof(image));
     image.version = PNG_IMAGE_VERSION;
-    assert(!png_image_begin_read_from_memory(&image, "bad", 3));
+    if (!(!png_image_begin_read_from_memory(&image, "bad", 3)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     png_image_free(&image);
     memset(&image, 0, sizeof(image));
     image.version = PNG_IMAGE_VERSION;
-    assert(!png_image_begin_read_from_memory(&image, encoded, 8));
+    if (!(!png_image_begin_read_from_memory(&image, encoded, 8)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     png_image_free(&image);
     free(encoded);
     return 0;

@@ -2,7 +2,7 @@
 
 [English](CLIP_ACTIONS.md). Загрузчик PlaceObject2 теперь сохраняет ClipActions
 экземпляра sprite вместо отказа на всём optional-поле. Код копируется и проверяется
-без исполнения. [fvm_movieclip_advance](../include/flashvm/movieclip.h#L125) доставляет EnterFrame после frame actions
+без исполнения. [fvm_movieclip_advance](../include/flashvm/movieclip.h#L160) доставляет EnterFrame после frame actions
 клипа, перед необязательным onEnterFrame. Остальные события доступны явным C89 API;
 плеер не выбирает и не планирует их автоматически.
 
@@ -28,14 +28,14 @@ marker не выходят за границу placement. Для KeyPress Action
 Ограничения одной таблицы: [FVM_SWF_CLIP_ACTION_MAX_RECORDS](../src/swf/clip_action_constants.h#L15) записей,
 [FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES](../src/standard/movieclip_constants.h#L22) байтов actions в записи и
 [FVM_SWF_CLIP_ACTION_MAX_BYTES](../src/swf/clip_action_constants.h#L16) байтов actions суммарно. Это границы реализации.
-Повреждённые/слишком большие записи дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); события вне профиля
-версии и ClipActions статической графики — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Отдельное поле clipDepth
+Повреждённые/слишком большие записи дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); события вне профиля
+версии и ClipActions статической графики — [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Отдельное поле clipDepth
 остаётся unsupported. PlaceObject3, DefineButton actions, выбор hit target и текстовый
 AS-компилятор не добавлены.
 
 ## Явная доставка C89
 
-Подключите `flashvm/clip_actions.h` и вызовите [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55):
+Подключите `flashvm/clip_actions.h` и вызовите [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L58):
 
 - context владельца и удерживаемый same-context MovieClip;
 - ровно один бит FVM_CLIP_EVENT_* из публичного заголовка, не комбинацию;
@@ -59,8 +59,8 @@ Native Mouse/Key/focus API сохраняют отдельные контрак�
 
 API синхронный, только для потока владельца. Клип заимствован: удерживайте pin либо
 родительскую сцену между вызовами. Null/чужой/nonclip, static art, lifecycle/sound
-reentry, неверный event/key дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до доставки. Валидное событие,
-недоступное в строгом source-профиле, даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
+reentry, неверный event/key дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до доставки. Валидное событие,
+недоступное в строгом source-профиле, даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
 
 ## Снимок, бюджет и ошибки
 
@@ -71,13 +71,13 @@ selectors, masks, границы и lowercase hex, фиксирует selectors 
 metadata более поздней записи из callback не меняют уже подготовленный пакет;
 следующая доставка увидит изменения.
 
-Подготовка, доставка и AVM1 делят [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L9) с внешним advance/script.
+Подготовка, доставка и AVM1 делят [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L11) с внешним advance/script.
 Внешний публичный dispatch дополнительно оплачивает вход, совпавшие records —
 единицу доставки. Native work проверяет worker stop на первой единице, затем через
 64 единицы. Числовой предел отключается отдельно от stop. Native callback internals
 и прочие helpers не становятся hard real-time preemptible.
 
-Budget/stop, [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44), ошибки реального callback и [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) пропускают
+Budget/stop, [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46), ошибки реального callback и [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50) пропускают
 остаток с сохранением выполненных эффектов. Ошибка байткода поздней записи может
 следовать за доставленной ранней. Нет rollback или resumable batch cursor.
 Обработайте/очистите script exception обычным exception API; не повторяйте ошибочный
@@ -88,8 +88,8 @@ EnterFrame и прочие события сами её не дают; разр�
 scope сохраняется. Scope восстанавливается при ошибке/exception/OOM; уже выставленный
 redraw остаётся pending. [Контракт перерисовки](UPDATE_AFTER_EVENT.ru.md).
 
-[GC:] Native barrier действует на весь вызов. Внутри callback [fvm_gc_collect](../include/flashvm/gc.h#L44) даёт
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), [fvm_gc_step](../include/flashvm/gc.h#L90) — [FVM_OK](../include/flashvm/flashvm.h#L42) без сборки. Собирать нужно на последующей
+[GC:] Native barrier действует на весь вызов. Внутри callback [fvm_gc_collect](../include/flashvm/gc.h#L54) даёт
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47), [fvm_gc_step](../include/flashvm/gc.h#L116) — [FVM_OK](../include/flashvm/flashvm.h#L44) без сборки. Собирать нужно на последующей
 host safe point. Captured code остаётся действительным после замены owner edge.
 Native userdata и active work scope в граф не записываются. Код — owned ASCII hex,
 а не заимствованный указатель в исходный файл.
@@ -144,18 +144,18 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_CLIP_EVENT_KEY_PRESS` | macro / define | [include/flashvm/clip_actions.h:22](../include/flashvm/clip_actions.h#L22) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
+| `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:58](../include/flashvm/clip_actions.h#L58) |
 | `FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES` | macro / define | [src/standard/movieclip_constants.h:22](../src/standard/movieclip_constants.h#L22) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_SWF_CLIP_ACTION_MAX_BYTES` | macro / define | [src/swf/clip_action_constants.h:16](../src/swf/clip_action_constants.h#L16) |
 | `FVM_SWF_CLIP_ACTION_MAX_KEY` | macro / define | [src/swf/clip_action_constants.h:18](../src/swf/clip_action_constants.h#L18) |
 | `FVM_SWF_CLIP_ACTION_MAX_RECORDS` | macro / define | [src/swf/clip_action_constants.h:15](../src/swf/clip_action_constants.h#L15) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -2,7 +2,7 @@
 
 v0.240 extracts the shared CallMethod/NewMethod operation into
 `src/avm1/handlers/call_method.cpp`. The interpreter retains operand decoding
-and stack movement. C89 callers use [`fvm_exec_call_method`](../include/flashvm/execution.h#L503) with owner/name values,
+and stack movement. C89 callers use [`fvm_exec_call_method`](../include/flashvm/execution.h#L667) with owner/name values,
 explicit anonymous receiver, ordered arguments and a construction flag. No
 instruction address, opcode or interpreter stack crosses this interface.
 
@@ -47,5 +47,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_call_method` | function | [include/flashvm/execution.h:503](../include/flashvm/execution.h#L503) |
+| `fvm_exec_call_method` | function | [include/flashvm/execution.h:667](../include/flashvm/execution.h#L667) |
 <!-- source-links:end -->

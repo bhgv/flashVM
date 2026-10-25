@@ -4,7 +4,7 @@ Current extension v0.1239+: [LINESTYLE2 bitmap strokes](BITMAP_STROKES.md). Earl
 
 Current extension v0.1225+: [round LINESTYLE2 strokes](SHAPE4_STROKES.md) with solid/gradient paints and NoClose. Earlier blanket LINESTYLE2 exclusions below are historical; other cap/join styles, hinting and special scaling flags remain open.
 
-The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L469) now accepts fill-only DefineShape4 (tag 83).
+The bounded decoder [fvm_swf_read_shape](../src/swf/shape.cpp#L600) now accepts fill-only DefineShape4 (tag 83).
 The scene loader gates it to SWF 8 and later. DefineShape/2/3 retain their original
 reserved-mode checks and limit of eight gradient stops.
 
@@ -12,19 +12,19 @@ The supported gradient records use 1–15 ordered RGBA stops, pad/reflect/repeat
 RGB/linearRGB, and linear, radial or focal radial fills. A focal value is decoded
 from signed little-endian FIXED8 without rounding through a script conversion.
 Only the strict interior (-1, 1) is supported; endpoints and values beyond them
-return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Reserved gradient modes and malformed/truncated records
-return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Equal ratios are permitted.
+return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Reserved gradient modes and malformed/truncated records
+return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Equal ratios are permitted.
 
 ShapeBounds and EdgeBounds are validated for ordering and coordinate bounds.
 The fill-only layout retains ShapeBounds. SWF 8 reserved header bits, including
 the winding-rule bit introduced in SWF 10, must be zero. The two stroke hint bits
 are accepted without changing fill rendering. Every nonempty LINESTYLE2 bank
-returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), including banks added by StateNewStyles. Caps, joins,
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48), including banks added by StateNewStyles. Caps, joins,
 stroke fills and scaling require a later implementation.
 
 Solid and bitmap fills reuse the existing shape paths and bitmap dictionary
 validation. Each gradient becomes an owned scalar-only managed descriptor through
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117), using optional spread/interpolation/focal properties.
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137), using optional spread/interpolation/focal properties.
 No backend pointer or source byte storage survives decoding. The loader's native
 barrier protects construction; normal graph edges retain stops and commands.
 Decoder failure leaves the caller's previous decoded shape intact.
@@ -73,8 +73,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

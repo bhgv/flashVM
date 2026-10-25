@@ -1,0 +1,82 @@
+// Grammar-level scalar guards. Native aliases/layouts/capabilities still require the host.
+
+
+// Validate the primitive subset without coercing another VM representation.
+// Parameters: kind is the descriptor spelling; value is the candidate AS value.
+// Returns a boolean for handled primitives; composite kinds still require host checks.
+function @P@_scalar(kind, value)
+{
+    if (kind == "void")
+    {
+        return value == null;
+    }
+
+    if (kind == "int")
+    {
+        return typeof value == "number" && value >= -2147483648 && value <= 2147483647 && value % 1 == 0;
+    }
+
+    if (kind == "byte")
+    {
+        return typeof value == "number" && value >= 0 && value <= 255 && value % 1 == 0;
+    }
+
+    if (kind == "real")
+    {
+        return typeof value == "number";
+    }
+
+    if (kind == "string")
+    {
+        return value == null || typeof value == "string";
+    }
+
+    // In particular, never coerce Limbo big through a lossy AS Number.
+    return true;
+}
+
+
+// Check expanded grouped arity and primitive values without guessing composite representations.
+
+
+// Check expanded arity and primitive arguments before dispatch or transport.
+// Parameters: signature is generated metadata; args is the borrowed argument Array.
+// Returns false for shape/arity/primitive mismatches, true for this local precheck.
+function @P@_arguments(signature, args)
+{
+    if (!(args instanceof Array))
+    {
+        return false;
+    }
+
+    if (signature == null)
+    {
+        return false;
+    }
+
+    if (signature.variadic)
+    {
+        if (args.length < signature.fixed_count)
+        {
+            return false;
+        }
+    }
+
+    else
+    {
+        if (args.length != signature.fixed_count)
+        {
+            return false;
+        }
+    }
+
+    for (var i = 0; i < signature.parameters.length; i++)
+    {
+        if (!@P@_scalar(signature.parameters[i].kind, args[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}

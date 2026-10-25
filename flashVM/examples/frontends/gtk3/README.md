@@ -89,7 +89,7 @@ Each row names individual arguments and the ownership/behavior used here.
 | [cairo_scale](https://www.cairographics.org/manual/cairo-Transformations.html#cairo-scale) | cr, width/320, height/200: same nonuniform logical scale inverted for pointer delivery. |
 | [cairo_paint](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-paint) | cr: paint opaque source inside existing GTK damage clip; synchronous pixel consumption. |
 | [cairo_restore](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-restore) | cr: restore the borrowed native state before returning to GTK. |
-| [cairo_status](https://www.cairographics.org/manual/cairo-Error-handling.html#cairo-status) | cr: check native paint status; map non-success to [FVM_ERROR](../../../include/flashvm/flashvm.h#L43). |
+| [cairo_status](https://www.cairographics.org/manual/cairo-Error-handling.html#cairo-status) | cr: check native paint status; map non-success to [FVM_ERROR](../../../include/flashvm/flashvm.h#L45). |
 | [GTK_CONTAINER](https://docs.gtk.org/gtk3/class.Container.html) | Checked SDK cast of window to its container interface; transfers no ownership. |
 | [G_CALLBACK](https://docs.gtk.org/gobject/callback.Callback.html) | Convert exact signal-handler signature to generic native callback type; retains no function owner. |
 ## SDK fixture / Проверка адаптера
@@ -138,8 +138,8 @@ acknowledgement. The marker remains visible as ordinary frame content.
 | [gtk_widget_get_display](https://docs.gtk.org/gtk3/method.Widget.get_display.html) | Drawing area: borrow its display for same-display cursor creation, no ownership transfer. |
 | [gdk_cursor_new_for_display](https://docs.gtk.org/gdk3/ctor.Cursor.new_for_display.html) | Borrowed display, GDK_BLANK_CURSOR: acquire one native blank cursor or fail; release owned reference after window teardown with g_object_unref. |
 | [gdk_window_set_cursor](https://docs.gtk.org/gdk3/method.Window.set_cursor.html) | Borrowed window, same-display blank descriptor or NULL: set local override/restore parent inheritance, retains native reference; void API does not confirm hardware state. |
-| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L41) | Context, int output: query logical request before painting, without script/GC/OS work. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L46) | Context, 0, previous output: request hidden at startup before native realization. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L53) | Context, int output: query logical request before painting, without script/GC/OS work. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L60) | Context, 0, previous output: request hidden at startup before native realization. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
 
 Русский: тест с настоящим GTK/Xvfb проверяет blank descriptor, повторное
 применение и возврат наследуемого курсора. Время жизни нативной ссылки отделено
@@ -158,7 +158,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../../include/flashvm/mouse.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../../../include/flashvm/flashvm.h#L45) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../../../include/flashvm/mouse.h#L53) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:60](../../../include/flashvm/mouse.h#L60) |
 <!-- source-links:end -->

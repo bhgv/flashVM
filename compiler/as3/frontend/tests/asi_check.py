@@ -6,24 +6,41 @@ import sys
 import tempfile
 
 accepted = [
-    "var x = 1", "var x = 1\nvar y = 2", "function f(){return 1}",
-    "function f(){return\n1}", "function f(){return /*\n*/ 1}",
-    "var x = 1\rvar y = 2", "x\n++y", "x /*\n*/ ++y",
-    "while (true) { break\nlabel; }", "while (true) { continue\nlabel; }",
-    "x = f\n(1)", "x = a\n[0]", "for(var i=0;i<2;i++){x=i}",
-    "var x=1 // comment at EOF", "if(x){y()}else{z()}",
+    "var x = 1",
+    "var x = 1\nvar y = 2",
+    "function f(){return 1}",
+    "function f(){return\n1}",
+    "function f(){return /*\n*/ 1}",
+    "var x = 1\rvar y = 2",
+    "x\n++y",
+    "x /*\n*/ ++y",
+    "while (true) { break\nlabel; }",
+    "while (true) { continue\nlabel; }",
+    "x = f\n(1)",
+    "x = a\n[0]",
+    "for(var i=0;i<2;i++){x=i}",
+    "var x=1 // comment at EOF",
+    "if(x){y()}else{z()}",
 ]
 rejected = [
-    "var x=1 var y=2", "throw\nvalue;", "throw /*\n*/ value;",
-    "for(var i=0\ni<2;i++){}", "for(var i=0;i<2\ni++){}",
-    "a b", "var x =", "throw;", "function f(){return 1 2}",
+    "var x=1 var y=2",
+    "throw\nvalue;",
+    "throw /*\n*/ value;",
+    "for(var i=0\ni<2;i++){}",
+    "for(var i=0;i<2\ni++){}",
+    "a b",
+    "var x =",
+    "throw;",
+    "function f(){return 1 2}",
 ]
 with tempfile.TemporaryDirectory() as directory:
     path = Path(directory) / "source.as"
     for valid, cases in ((True, accepted), (False, rejected)):
         for source in cases:
             path.write_text(source, encoding="utf-8")
-            result = subprocess.run([sys.argv[1], str(path)], capture_output=True,
-                                    text=True, timeout=5)
-            assert (result.returncode == 0) == valid, (valid, source, result.stderr)
+            result = subprocess.run(
+                [sys.argv[1], str(path)], capture_output=True, text=True, timeout=5
+            )
+            if not ((result.returncode == 0) == valid):
+                raise AssertionError((valid, source, result.stderr))
 print("PASS automatic semicolons and line-restricted productions")

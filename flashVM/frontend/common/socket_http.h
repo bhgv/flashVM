@@ -6,6 +6,7 @@
 #include "network.h"
 #include "transfer.h"
 #include "../../ports/network/socket.h"
+
 #define FVM_SOCKET_BUFFER 8192U          /* Native read and body-forwarding buffer bytes. */
 #define FVM_SOCKET_LINE 8192U            /* Maximum status/header/chunk line bytes. */
 #define FVM_SOCKET_HEADERS 32768U        /* Aggregate informational/header/trailer byte budget. */
@@ -24,59 +25,95 @@
 extern "C"
 {
 #endif
-    /* Caller-owned per-fetch limits; no pointer is retained after the synchronous call. */
-    typedef struct FVM_SocketHTTPOptions
-    {
-        unsigned long
-            connect_ms;         /* TCP budget; DNS itself remains a synchronous OS resolver call. */
-        unsigned long total_ms; /* One monotonic budget across connection, headers and body. */
-        const char *ca_file;    /* Borrowed PEM CA file for HTTPS; null selects OpenSSL defaults. */
-    } FVM_SocketHTTPOptions;
-    /* Initialize defaults without starting sockets; null returns zero. */
-    int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out);
-    /* FVM_DesktopFetch callback; userdata is null for defaults or points to options above.
+/* Caller-owned per-fetch limits; no pointer is retained after the synchronous call. */
+typedef struct FVM_SocketHTTPOptions
+{
+    unsigned long connect_ms; /* TCP budget; DNS itself remains a synchronous OS resolver call. */
+    unsigned long total_ms;   /* One monotonic budget across connection, headers and body. */
+    const char *ca_file;      /* Borrowed PEM CA file for HTTPS; null selects OpenSSL defaults. */
+} FVM_SocketHTTPOptions;
+
+
+/* Initialize defaults without starting sockets; null returns zero. */
+int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out);
+
+
+/* FVM_DesktopFetch callback; userdata is null for defaults or points to options above.
      * HTTP GET only, no proxy/redirect/auth/cookies/content decoding. HTTPS is unsupported
      * without a TLS build. Resolved is published only on success; sink may see partial bytes
      * before a later error, so discard partial input on any non-OK result. A failing sink's
      * exact result is returned and no more bytes are delivered. Same synchronous host-thread
      * restrictions as FVM_DesktopFetch. No VM objects or global networking registration. */
-    FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base,
-                                        FVM_DesktopWrite write, void *write_userdata,
-                                        char *resolved, size_t capacity, void *userdata);
-    /* Native provider build bits, without connection, DNS, trust file access or TLS startup. */
-    unsigned int fvm_desktop_socket_capabilities(void);
-    /* Additive controlled policy keeps the original options structure ABI unchanged. */
-    typedef struct FVM_SocketHTTPRequest
-    {
-        FVM_SocketHTTPOptions options; /* Initialized scalar deadlines and borrowed CA filename. */
-        FVM_NetControl
-            control; /* Copied cancellation callback; caller owns its thread-safe state. */
-    } FVM_SocketHTTPRequest;
-    /* Initialize the whole controlled request; null returns zero, no startup occurs. */
-    int fvm_desktop_socket_request_init(FVM_SocketHTTPRequest *out);
-    /* Same fetch/partial-data rules as socket_fetch. userdata is null for defaults or
+FVM_Result fvm_desktop_socket_fetch(const char *reference,
+                                    const char *base,
+                                    FVM_DesktopWrite write,
+                                    void *write_userdata,
+                                    char *resolved,
+                                    size_t capacity,
+                                    void *userdata);
+
+
+/* Native provider build bits, without connection, DNS, trust file access or TLS startup. */
+unsigned int fvm_desktop_socket_capabilities(void);
+
+
+/* Additive controlled policy keeps the original options structure ABI unchanged. */
+typedef struct FVM_SocketHTTPRequest
+{
+    FVM_SocketHTTPOptions options; /* Initialized scalar deadlines and borrowed CA filename. */
+    FVM_NetControl control;        /* Copied cancellation callback; caller owns its thread-safe state. */
+} FVM_SocketHTTPRequest;
+
+
+/* Initialize the whole controlled request; null returns zero, no startup occurs. */
+int fvm_desktop_socket_request_init(FVM_SocketHTTPRequest *out);
+
+
+/* Same fetch/partial-data rules as socket_fetch. userdata is null for defaults or
      * points to FVM_SocketHTTPRequest. Cancellation returns ERROR and never publishes
      * provenance; DNS/CA/sink code itself cannot be forcibly interrupted. */
-    FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char *base,
-                                                   FVM_DesktopWrite write, void *write_userdata,
-                                                   char *resolved, size_t capacity, void *userdata);
-    /* Worker-safe adapter for transfer_begin. Native userdata is optional socket options;
+FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference,
+                                               const char *base,
+                                               FVM_DesktopWrite write,
+                                               void *write_userdata,
+                                               char *resolved,
+                                               size_t capacity,
+                                               void *userdata);
+
+
+/* Worker-safe adapter for transfer_begin. Native userdata is optional socket options;
      * libcurl userdata must be null and requires a thread-safe libcurl global API. */
-    FVM_Result fvm_desktop_socket_transfer_fetch(const char *reference, const char *base,
-                                                 FVM_DesktopWrite write, void *write_userdata,
-                                                 char *resolved, size_t capacity,
-                                                 const FVM_NetControl *control, void *userdata);
-    /* Explicit redirect/deadline profile; userdata must point to an initialized HTTP policy.
+FVM_Result fvm_desktop_socket_transfer_fetch(const char *reference,
+                                             const char *base,
+                                             FVM_DesktopWrite write,
+                                             void *write_userdata,
+                                             char *resolved,
+                                             size_t capacity,
+                                             const FVM_NetControl *control,
+                                             void *userdata);
+
+
+/* Explicit redirect/deadline profile; userdata must point to an initialized HTTP policy.
      * GET 301/302/303/307/308 only, no HTTPS downgrade; redirect bodies never reach the sink.
      * Canonical final URL is published only after final successful body validation. */
-    FVM_Result fvm_desktop_socket_fetch_policy(const char *reference, const char *base,
-                                               FVM_DesktopWrite write, void *write_userdata,
-                                               char *resolved, size_t capacity, void *userdata);
-    /* Worker variant takes the same immutable policy plus the job cancellation callback. */
-    FVM_Result fvm_desktop_socket_transfer_policy(const char *reference, const char *base,
-                                                  FVM_DesktopWrite write, void *write_userdata,
-                                                  char *resolved, size_t capacity,
-                                                  const FVM_NetControl *control, void *userdata);
+FVM_Result fvm_desktop_socket_fetch_policy(const char *reference,
+                                           const char *base,
+                                           FVM_DesktopWrite write,
+                                           void *write_userdata,
+                                           char *resolved,
+                                           size_t capacity,
+                                           void *userdata);
+
+
+/* Worker variant takes the same immutable policy plus the job cancellation callback. */
+FVM_Result fvm_desktop_socket_transfer_policy(const char *reference,
+                                              const char *base,
+                                              FVM_DesktopWrite write,
+                                              void *write_userdata,
+                                              char *resolved,
+                                              size_t capacity,
+                                              const FVM_NetControl *control,
+                                              void *userdata);
 #ifdef __cplusplus
 }
 #endif

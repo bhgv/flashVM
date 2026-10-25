@@ -14,121 +14,177 @@
 
 namespace
 {
+
+
 /* Read a private metadata edge without invoking user-controlled accessors. */
 FVM_Result edge(FVM_Object *data, const char *key, FVM_Object **out)
 {
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = data->properties.find(key);
     if (it == data->properties.end())
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (it->second.type == FVM_VALUE_UNDEFINED)
     {
         *out = 0;
         return FVM_OK;
     }
     if (it->second.type != FVM_VALUE_OBJECT)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = it->second.object;
     return FVM_OK;
 }
+
+
 /* Resolve the live owner/parent chain and optionally snapshot the facade's numeric depth. */
-FVM_Result unpack(FVM_Context *c, FVM_Object *facade, FVM_Object **receiver, FVM_Object **owner,
-                  FVM_Object **start, unsigned int *captured_depth = 0)
+FVM_Result unpack(FVM_Context *c,
+                  FVM_Object *facade,
+                  FVM_Object **receiver,
+                  FVM_Object **owner,
+                  FVM_Object **start,
+                  unsigned int *captured_depth = 0)
 {
     if (!facade || facade->owner != c || facade->resource_kind != FVM_RESOURCE_SUPER ||
         !facade->resource_result_valid || facade->resource_result.type != FVM_VALUE_OBJECT)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Object *data = facade->resource_result.object;
     FVM_Result result = edge(data, "receiver", receiver);
     if (result != FVM_OK || !*receiver)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator depth = data->properties.find("depth");
     if (depth == data->properties.end() || depth->second.type != FVM_VALUE_NUMBER ||
         !(depth->second.number >= 0 && depth->second.number <= FVM_PROTOTYPE_MAX_DEPTH) ||
         depth->second.number != (unsigned int)depth->second.number)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (captured_depth)
+    {
         *captured_depth = (unsigned int)depth->second.number;
+    }
     *owner = *receiver;
     for (unsigned int i = 0; i < (unsigned int)depth->second.number && *owner; ++i)
+    {
         *owner = (*owner)->prototype;
+    }
     *start = *owner ? (*owner)->prototype : 0;
     return FVM_OK;
 }
+
+
 /* Invoke the live parent's constructor against the existing receiver. */
-FVM_Result invoke(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
-                  FVM_Value *out, void *userdata)
+FVM_Result
+invoke(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
     unsigned int captured_depth = 0;
     FVM_Result result = unpack(c, (FVM_Object *)userdata, &receiver, &owner, &start, &captured_depth);
     if (result != FVM_OK)
+    {
         return result;
+    }
     fvm_value_undefined(out);
     if (!owner)
+    {
         return FVM_OK;
+    }
     if (c->swf_loaded && captured_depth >= FVM_PROTOTYPE_MAX_DEPTH)
+    {
         return FVM_ERROR;
+    }
+
+
     /* [GC:] A constructor getter may disconnect both the base and its parent before
      * returning. Retain both pre-getter identities through lookup and invocation. */
     FVM_ObjectRootScope base_roots(c, owner);
+
+
     FVM_ObjectRootScope parent_roots(c, start);
     FVM_Value constructor;
     result = fvm_object_get_from(c, owner, owner, "__constructor__", &constructor, false);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (constructor.type != FVM_VALUE_OBJECT || !fvm_is_class_constructor(constructor.object))
+    {
         return FVM_OK;
+    }
+
+
     /* [GC:] The selected parent prototype and constructor remain rooted across the call. */
-    FVM_CallScope scope(c, constructor.object, constructor.object, start,
+    FVM_CallScope scope(c,
+                        constructor.object,
+                        constructor.object,
+                        start,
                         c->swf_loaded ? captured_depth + FVM_SUPER_CONSTRUCTOR_PARENT_OFFSET
                                       : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
     return fvm_function_invoke(c, constructor.object, receiver, count, args, out);
 }
+
+
 /* Recognize the function in a private script accessor descriptor. */
 bool accessor_contains(FVM_Object *descriptor, FVM_Object *function)
 {
     if (!descriptor)
+    {
         return false;
+    }
     const char *names[] = {"get", "set"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
     {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
-            descriptor->properties.find(names[i]);
-        if (it != descriptor->properties.end() && it->second.type == FVM_VALUE_OBJECT &&
-            it->second.object == function)
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = descriptor->properties.find(names[i]);
+        if (it != descriptor->properties.end() && it->second.type == FVM_VALUE_OBJECT && it->second.object == function)
+        {
             return true;
+        }
     }
     return false;
 }
+
+
 /* Locate the defining property owner for direct calls lacking an explicit call-site scope. */
 FVM_Result method_owner(FVM_Object *receiver, FVM_Object *function, FVM_Object **out)
 {
     for (unsigned int depth = 0; receiver && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
-        for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p =
-                 receiver->properties.begin();
-             p != receiver->properties.end(); ++p)
+        for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p = receiver->properties.begin();
+             p != receiver->properties.end();
+             ++p)
+        {
             if (p->second.type == FVM_VALUE_OBJECT && p->second.object == function)
             {
                 *out = receiver;
                 return FVM_OK;
             }
-        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator p =
-                 receiver->accessors.begin();
-             p != receiver->accessors.end(); ++p)
-            /* [GC:] Inspect the traced accessor capture to identify its owning prototype. */
+        }
+        for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator p = receiver->accessors.begin();
+             p != receiver->accessors.end();
+             ++p)
+        { /* [GC:] Inspect the traced accessor capture to identify its owning prototype. */
             if (accessor_contains(p->second.root, function))
             {
                 *out = receiver;
                 return FVM_OK;
             }
+        }
         receiver = receiver->prototype;
     }
     if (receiver)
+    {
         return FVM_ERROR;
+    }
     *out = 0;
     return FVM_OK;
 }
+
+
 /* Store an optional object edge in unpublished, private superclass metadata. */
 void store(FVM_Object *data, const char *name, FVM_Object *object)
 {
@@ -144,45 +200,56 @@ void store(FVM_Object *data, const char *name, FVM_Object *object)
 }
 } // namespace
 
+
 /* Return the stable native callback implementing callable superclass facades. */
 FVM_NativeFunction fvm_super_callback()
 {
     return invoke;
 }
 
+
 /* Build an activation's superclass reference from explicit depth or selected call ownership. */
-FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *receiver,
-                            FVM_Value *out)
+FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *receiver, FVM_Value *out)
 {
     fvm_value_undefined(out);
-    if (!callee || !receiver ||
-        (c->calling_function == callee && c->calling_this_undefined))
+    if (!callee || !receiver || (c->calling_function == callee && c->calling_this_undefined))
+    {
         return FVM_OK;
+    }
     try
     {
         unsigned int depth = 0;
-        if (c->calling_function == callee &&
-            c->calling_super_depth != FVM_CALL_SCOPE_INFER_SUPER_DEPTH)
+        if (c->calling_function == callee && c->calling_super_depth != FVM_CALL_SCOPE_INFER_SUPER_DEPTH)
         {
             depth = c->calling_super_depth;
             if (depth > FVM_PROTOTYPE_MAX_DEPTH)
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
         }
         else
         {
             FVM_Object *owner = 0;
             if (c->calling_constructor == callee)
+            {
                 owner = c->calling_owner ? c->calling_owner : receiver->prototype;
+            }
             else if (c->calling_function == callee)
+            {
                 owner = c->calling_owner;
+            }
             else
             {
                 FVM_Result result = method_owner(receiver, callee, &owner);
                 if (result != FVM_OK)
+                {
                     return result;
+                }
             }
             if (!owner)
+            {
                 return FVM_OK;
+            }
             FVM_Object *cursor = receiver;
             while (cursor && cursor != owner && depth < FVM_PROTOTYPE_MAX_DEPTH)
             {
@@ -190,12 +257,16 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
                 ++depth;
             }
             if (cursor != owner)
+            {
                 return FVM_OK;
+            }
         }
         FVM_Object *data = 0, *facade = 0;
         FVM_Result result = fvm_object_create(c, &data);
         if (result != FVM_OK)
+        {
             return result;
+        }
         /* Construction does not invoke user callbacks until every metadata edge is published. */
         data->prototype = 0;
         store(data, "receiver", receiver);
@@ -204,7 +275,9 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
         data->properties["depth"] = level;
         result = fvm_object_create(c, &facade);
         if (result != FVM_OK)
+        {
             return result;
+        }
         facade->prototype = 0;
         facade->resource_kind = FVM_RESOURCE_SUPER;
         facade->resource_result_valid = true;
@@ -214,8 +287,7 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
         facade->invocable.callback = invoke;
         facade->invocable.userdata = facade;
         /* [GC:] Retain the facade as the native callback's userdata capture. */
-        facade->invocable.root =
-            facade; /* [GC:] The callback capture is the same retained facade. */
+        facade->invocable.root = facade; /* [GC:] The callback capture is the same retained facade. */
         facade->invocable.collector_entry = true;
         out->type = FVM_VALUE_OBJECT;
         out->object = facade;
@@ -227,13 +299,16 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
     }
 }
 
+
 /* Read only the selected ancestor chain, preserving the original accessor receiver. */
 FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name, FVM_Value *out)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
     FVM_Result result = unpack(c, facade, &receiver, &owner, &start);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (!start)
     {
         fvm_value_undefined(out);
@@ -242,10 +317,9 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     /* Loaded super reads the selected ancestor's intrinsic proto slot. User
      * data/accessors still dispatch normally with the original receiver. This
      * does not implement the still-open ordinary raw __proto__ property model. */
-    if (c->swf_loaded &&
-        (name == fvm_detail::string("__proto__") ||
-         (c->swf_info.version < FVM_SWF_VERSION_7 &&
-          fvm_avm1_folded_name_equal(name, fvm_detail::string("__proto__")))))
+    if (c->swf_loaded && (name == fvm_detail::string("__proto__") ||
+                          (c->swf_info.version < FVM_SWF_VERSION_7 &&
+                           fvm_avm1_folded_name_equal(name, fvm_detail::string("__proto__")))))
     {
         FVM_Object *cursor = start;
         for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
@@ -257,7 +331,9 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
             }
             if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end() ||
                 fvm_property_find(c, cursor->methods, name) != cursor->methods.end())
+            {
                 break;
+            }
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator entry =
                 fvm_property_find(c, cursor->accessors, name);
             if (entry != cursor->accessors.end())
@@ -280,18 +356,29 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     return fvm_object_get_from(c, start, receiver, name, out, false);
 }
 
+
 /* Dispatch parent calls with distinct C/AVM1 absence policy and conversion resolver exclusion. */
-static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                            unsigned int count, const FVM_Value *args, FVM_Value *out, bool special, bool optional)
+static FVM_Result super_method_dispatch(FVM_Context *c,
+                                        FVM_Object *facade,
+                                        const fvm_detail::string &name,
+                                        unsigned int count,
+                                        const FVM_Value *args,
+                                        FVM_Value *out,
+                                        bool special,
+                                        bool optional)
 {
     fvm_value_undefined(out);
     FVM_Object *receiver = 0, *current = 0, *start = 0;
     unsigned int captured_depth = 0;
     FVM_Result result = unpack(c, facade, &receiver, &current, &start, &captured_depth);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (!start)
+    {
         return optional ? FVM_OK : FVM_UNSUPPORTED;
+    }
     FVM_Object *owner = start;
     unsigned int lookup_depth = 0;
     for (; owner && lookup_depth < FVM_PROTOTYPE_MAX_DEPTH; ++lookup_depth)
@@ -303,94 +390,129 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
         }
         if (fvm_property_own_write_data(c, owner, name) ||
             fvm_property_find(c, owner->accessors, name) != owner->accessors.end())
+        {
             break;
+        }
         owner = owner->prototype;
     }
+
+
     /* [GC:] A getter or resolver may detach the selected ancestor before returning its method. */
     FVM_ObjectRootScope owner_roots(c, owner);
     FVM_Value member;
     if (owner)
+    {
         result = fvm_object_get_from(c, start, receiver, name, &member, false, !special);
+    }
     else
     {
         if (special)
+        {
             return FVM_OK;
+        }
         bool handled = false;
         result = fvm_property_resolve(c, start, receiver, name, &member, &handled);
         if (result != FVM_OK)
+        {
             return result;
+        }
         if (!handled)
+        {
             return optional ? FVM_OK : FVM_UNSUPPORTED;
+        }
     }
     if (result != FVM_OK)
+    {
         return result;
-    if (member.type != FVM_VALUE_OBJECT ||
-        (optional && !member.object->invocable.callback))
+    }
+    if (member.type != FVM_VALUE_OBJECT || (optional && !member.object->invocable.callback))
+    {
         return optional ? FVM_OK : FVM_UNSUPPORTED;
+    }
     unsigned int invocation_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH;
     if (c->swf_loaded)
     {
         const unsigned int relative_depth = owner ? lookup_depth : 0;
-        if (captured_depth >= FVM_PROTOTYPE_MAX_DEPTH ||
-            relative_depth >= FVM_PROTOTYPE_MAX_DEPTH - captured_depth)
+        if (captured_depth >= FVM_PROTOTYPE_MAX_DEPTH || relative_depth >= FVM_PROTOTYPE_MAX_DEPTH - captured_depth)
+        {
             return FVM_ERROR;
+        }
         invocation_depth = captured_depth + relative_depth + FVM_SUPER_METHOD_PARENT_OFFSET;
     }
+
+
     /* [GC:] Preserve actual ownership separately from pre-getter lookup depth. Both stored
      * and resolver-returned methods retain their original facade-relative invocation depth. */
     FVM_CallScope scope(c, 0, member.object, owner, invocation_depth);
     return fvm_function_invoke(c, member.object, receiver, count, args, out);
 }
 
+
 /* Invoke an explicit parent method with the existing embedding error contract. */
-FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                            unsigned int count, const FVM_Value *args, FVM_Value *out)
+FVM_Result fvm_super_method(FVM_Context *c,
+                            FVM_Object *facade,
+                            const fvm_detail::string &name,
+                            unsigned int count,
+                            const FVM_Value *args,
+                            FVM_Value *out)
 {
     return super_method_dispatch(c, facade, name, count, args, out, false, false);
 }
 
+
 /* [GC:] Special conversions share parent receiver/owner roots without a resolver fallback. */
-FVM_Result fvm_super_special(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                             FVM_Value *out)
+FVM_Result fvm_super_special(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name, FVM_Value *out)
 {
     return super_method_dispatch(c, facade, name, 0, 0, out, true, true);
 }
 
+
 /* Invoke an AVM1 parent member; only missing/noncallable values become undefined. */
-FVM_Result fvm_super_invoke(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                            unsigned int count, const FVM_Value *args, FVM_Value *out)
+FVM_Result fvm_super_invoke(FVM_Context *c,
+                            FVM_Object *facade,
+                            const fvm_detail::string &name,
+                            unsigned int count,
+                            const FVM_Value *args,
+                            FVM_Value *out)
 {
     return super_method_dispatch(c, facade, name, count, args, out, false, true);
 }
 
+
 /* Assign a parent-visible property using the live ancestor setter and actual receiver. */
-FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                         const FVM_Value *value)
+FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name, const FVM_Value *value)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
     FVM_Result result = unpack(c, facade, &receiver, &owner, &start);
     if (result != FVM_OK)
+    {
         return result;
+    }
     unsigned long index;
     if (!c->swf_loaded && fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
+    {
         return FVM_UNSUPPORTED;
+    }
     return fvm_object_set_from(c, receiver, start, name, value, false, false, true);
 }
 
+
 /* Loaded super membership follows its actual receiver, not the parent lookup
  * chain or the private facade metadata. This path never executes a getter. */
-FVM_Result fvm_super_has_own(FVM_Context *c, FVM_Object *facade,
-                            const fvm_detail::string &name, int *out)
-{
-    /* Bound malformed/nested facade receiver graphs without recursive C++ calls. */
+FVM_Result fvm_super_has_own(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name, int *out)
+{ /* Bound malformed/nested facade receiver graphs without recursive C++ calls. */
     for (unsigned int depth = 0; depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
         FVM_Object *receiver = 0, *owner = 0, *start = 0;
         FVM_Result status = unpack(c, facade, &receiver, &owner, &start);
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (receiver->resource_kind != FVM_RESOURCE_SUPER)
+        {
             return fvm_object_has_own_bytes(c, receiver, name.data(), name.size(), out);
+        }
         facade = receiver;
     }
     return FVM_ERROR;

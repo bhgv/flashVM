@@ -18,10 +18,10 @@ This is a bounded implementation, not full lineStyle or SWF <= 8 acceptance.
 | thickness | Missing or explicit undefined disables the current stroke without coercing later arguments. Finite numbers clamp to 0..255; zero is hairline. Existing fractional widths are preserved. |
 | rgb | Missing/undefined defaults to black; finite numbers retain existing packed 24-bit conversion. |
 | alpha | Missing/undefined defaults to 100; finite values clamp to 0..100. |
-| pixelHinting | SWF8/host Boolean conversion; false/default supported, true returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
-| noScale | SWF8/host string conversion; normal/default supported, other modes return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
+| pixelHinting | SWF8/host Boolean conversion; false/default supported, true returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
+| noScale | SWF8/host string conversion; normal/default supported, other modes return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
 | capsStyle | SWF8/host string conversion; round/default, none and square supported. |
-| jointStyle | SWF8/host string conversion; round/default and bevel supported; miter/unknown values return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). |
+| jointStyle | SWF8/host string conversion; round/default and bevel supported; miter/unknown values return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). |
 | miterLimit | Ignored for supported non-miter joins; no conversion is performed. Miter is rejected before this argument is used. |
 
 Loaded SWF1-7 retain existing basic-method visibility and ignore all additional
@@ -30,7 +30,7 @@ latest supported options. This does not establish correct pre-SWF6 visibility.
 Optional undefined color/alpha/options retain defaults. Other option values use
 counted string conversion: an embedded-NUL suffix does not match a valid keyword.
 Unsupported keywords are explicit errors rather than silent round substitution.
-Non-finite thickness/color/alpha inputs return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); conversion failures retain
+Non-finite thickness/color/alpha inputs return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); conversion failures retain
 their original status. Unknown/coercion/non-finite Flash edge behavior remains
 separate reference acceptance.
 
@@ -112,6 +112,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

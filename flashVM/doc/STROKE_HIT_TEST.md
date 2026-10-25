@@ -11,7 +11,7 @@ query. Bounds/object hit testing is unchanged.
 
 ## Geometry contract
 
-The private [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L482) uses destination-space coordinates and a
+The private [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L633) uses destination-space coordinates and a
 positive stroke width. Each nonzero straight segment contributes its finite
 rectangular body. Butt caps add no extension, square caps extend by half the
 width, and round caps add circular endpoints. Joins add only the outside bevel
@@ -27,10 +27,10 @@ every boundary, cusp or extreme scale. The private query allocates no temporary
 geometry; managed path construction and graph copies can still allocate.
 
 Width zero delegates to the existing fill algorithm and its even-odd/nonzero
-rule. The public C89 [fvm_path_hit_test](../include/flashvm/path.h#L75) retains its legacy round-distance behavior,
+rule. The public C89 [fvm_path_hit_test](../include/flashvm/path.h#L103) retains its legacy round-distance behavior,
 including its degenerate segment policy. Public ABI and wire formats do not
 change. Private selectors outside their supported ranges and invalid coordinates,
-width, fill rule or output pointer return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before output is
+width, fill rule or output pointer return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before output is
 written. Valid coordinates remain bounded to +/-2,000,000 and widths to 1,000,000.
 
 ## Managed metadata and lifetime
@@ -103,7 +103,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:482](../src/capi/path_hit_c.cpp#L482) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_path_hit_test` | function | [include/flashvm/path.h:103](../include/flashvm/path.h#L103) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:633](../src/capi/path_hit_c.cpp#L633) |
 <!-- source-links:end -->

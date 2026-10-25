@@ -1,8 +1,8 @@
 # Initializer progress and work — v0.632
 
 Root DoInitAction remains the deferred SWF6–8 policy described in
-[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L102) validates/retains
-code without executing it; [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) attempts library initializers
+[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L129) validates/retains
+code without executing it; [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) attempts library initializers
 on the source root before scene/frame work, including when a shared descendant
 is advanced first. ActionCall still executes only selected frame actions and does
 not start initialization. Full Player preload/sprite-ID timing remains open.
@@ -19,14 +19,14 @@ from the ordinary frame action bound. Validate same-context library/table/source
 root edges before preparation, even when the cursor is already complete. For a
 captured table size N and monotonic cursor P < N, copy ordinals P..N-1 into a native
 value vector before attempting code. Missing pending ordinals reject the entire
-new suffix with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); insertion order is irrelevant. Consumed
+new suffix with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47); insertion order is irrelevant. Consumed
 prefix entries are neither copied nor revalidated. A cursor at/beyond the current
 size is complete; changing private metadata never automatically rewinds it.
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) charges one unit per copied pending ordinal, then one
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) charges one unit per copied pending ordinal, then one
 before each attempted block, plus existing AVM1 checkpoints (including End).
 The attempt cursor is committed before hex decoding/execution, retaining the
-existing at-most-once failure policy. A decode error, [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), exception
+existing at-most-once failure policy. A decode error, [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), exception
 or instruction failure may skip a partly/unexecuted attempted block next time;
 its earlier side effects cannot be rolled back. After clearing an exception, the
 host may advance again to process the unattempted suffix. Capture failure or failure
@@ -50,9 +50,9 @@ a whole-timeline reentry lock. The flag restores on success, error and allocatio
 failure. Library progress/flags are private runtime state and remain absent from
 graph serialization: receiving contexts initialize their transferred library afresh.
 
-[GC:] The existing outer tick [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L9) retains captured code and source
+[GC:] The existing outer tick [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L11) retains captured code and source
 identity through table mutation. Explicit collection during native tick callbacks
-returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); actual collection outside the call remains supported.
+returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47); actual collection outside the call remains supported.
 No captured native identity escapes the call, no callback pointer crosses transport,
 and the host re-registers its own callbacks in the receiving context. This does not
 introduce concurrent access, public cursor editing or a new wire/C ABI.
@@ -106,11 +106,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:102](../include/flashvm/movieclip.h#L102) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
 | `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:28](../src/standard/movieclip_constants.h#L28) |
-| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:11](../src/core/native_call_guard.hpp#L11) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

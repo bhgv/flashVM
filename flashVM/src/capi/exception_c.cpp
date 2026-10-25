@@ -10,18 +10,23 @@
 #include "../../ports/channel_sync.h"
 #include <cstring>
 #include <new>
+
 namespace
 {
 FVM_ExceptionInfo events[64];
 size_t event_count = 0;
+
 
 /* Copy the current value. */
 void copy(char *dst, size_t size, const char *src)
 {
     std::memset(dst, 0, size);
     if (src)
+    {
         std::strncpy(dst, src, size - 1);
+    }
 }
+
 
 /* Compute and return message. */
 const char *message(unsigned long code)
@@ -49,6 +54,7 @@ const char *message(unsigned long code)
     }
 }
 
+
 /* Implement record for this subsystem. */
 void record(const FVM_ExceptionInfo &info)
 {
@@ -64,6 +70,7 @@ void record(const FVM_ExceptionInfo &info)
     fvm_port_registry_unlock();
 }
 
+
 /* Compute and return number. */
 FVM_Result number(FVM_Context *c, FVM_Object *o, const char *key, unsigned long n)
 {
@@ -73,6 +80,7 @@ FVM_Result number(FVM_Context *c, FVM_Object *o, const char *key, unsigned long 
     fvm_value_number(&v, (double)n);
     return fvm_object_set(c, o, key, &v);
 }
+
 
 /* Initialize string and its owned state. */
 FVM_Result string(FVM_Context *c, FVM_Object *o, const char *key, const char *text)
@@ -84,21 +92,27 @@ FVM_Result string(FVM_Context *c, FVM_Object *o, const char *key, const char *te
     return fvm_object_set(c, o, key, &v);
 }
 } // namespace
+
+
 /* Implement resource fault begin for this subsystem. */
 void fvm_resource_fault_begin(FVM_Context *c)
-{
-    /* Preserve an explicit pending throw; fresh calls cannot reuse old raw faults. */
+{ /* Preserve an explicit pending throw; fresh calls cannot reuse old raw faults. */
     if (c && !c->exception_pending)
+    {
         c->fault_pending = false;
+    }
 }
 
+
 /* Implement resource fault for this subsystem. */
-void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, const char *op,
-                        const char *address)
+void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, const char *op, const char *address)
 {
     if (!c || c->destroying || c->exception_pending || c->fault_pending)
+    {
         return;
+    }
     FVM_ExceptionInfo &info = c->fault;
+
 
     /* Computation / Вычисление и обновление состояния. */
     std::memset(&info, 0, sizeof(info));
@@ -112,9 +126,13 @@ void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, co
     copy(info.address, sizeof(info.address), address);
     copy(info.path, sizeof(info.path), c->resource_receive_path.c_str());
     if (info.address[0])
+    {
         info.flags |= FVM_EXCEPTION_NETWORK;
+    }
     if (info.path[0])
+    {
         info.flags |= FVM_EXCEPTION_FILE;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     copy(info.source, sizeof(info.source), c->debug_source.c_str());
@@ -122,18 +140,23 @@ void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, co
     c->fault_pending = true;
 }
 
+
 /* Compute and return exception raise. */
 extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value)
 {
     if (!c || c->destroying || fvm_validate_value(c, value) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     FVM_Value owned = *value;
     if (value->type == FVM_VALUE_STRING)
     {
         size_t size = fvm_string_size(*value) + 1;
         char *text = new (std::nothrow) char[size];
         if (!text)
+        {
             return FVM_OUT_OF_MEMORY;
+        }
         std::memcpy(text, value->string, size - 1);
         text[size - 1] = 0;
         try
@@ -157,11 +180,14 @@ extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value
     return FVM_EXCEPTION;
 }
 
+
 /* Read exception. */
 extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
 {
     if (!c || !out || c->destroying)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_undefined(out);
     if (c->exception_pending)
     {
@@ -169,13 +195,17 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
         return FVM_OK;
     }
     if (!c->fault_pending)
+    {
         return FVM_NOT_FOUND;
+    }
     try
     {
         FVM_Object *error = 0, *context = 0;
         FVM_Result r = fvm_object_create(c, &error);
         if (r != FVM_OK)
+        {
             return r;
+        }
         /* Root the first allocation before creating/filling the context object. */
         fvm_value_undefined(&c->exception_value);
         c->exception_value.type = FVM_VALUE_OBJECT;
@@ -187,10 +217,12 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
         v.type = FVM_VALUE_OBJECT;
         v.object = context;
         if (r == FVM_OK)
+        {
             r = fvm_object_set(c, error, "context", &v);
+        }
         const FVM_ExceptionInfo &f = c->fault;
-#define PUT(call)                                                                                  \
-    if (r == FVM_OK)                                                                               \
+#define PUT(call)                                                                                                      \
+    if (r == FVM_OK)                                                                                                   \
     r = (call)
         PUT(number(c, error, "code", f.code));
         PUT(string(c, error, "message", f.message));
@@ -207,7 +239,9 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
         PUT(string(c, context, "address", f.address));
         PUT(string(c, context, "source", f.source));
         PUT(string(c, context, "function", f.function));
-        PUT(string(c, context, "transport",
+        PUT(string(c,
+                   context,
+                   "transport",
                    f.flags & FVM_EXCEPTION_FILE      ? "file"
                    : f.flags & FVM_EXCEPTION_NETWORK ? "network"
                    : f.flags & FVM_EXCEPTION_THREAD  ? "thread"
@@ -234,30 +268,37 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
         return FVM_OK;
     }
     catch (...)
-    {
-        /* Keep the raw fault available for a retry after allocation failure. */
+    { /* Keep the raw fault available for a retry after allocation failure. */
         c->exception_pending = false;
         fvm_value_undefined(&c->exception_value);
         return FVM_OUT_OF_MEMORY;
     }
 }
 
+
 /* Compute and return exception info. */
 extern "C" FVM_Result fvm_exception_info(FVM_Context *c, FVM_ExceptionInfo *out)
 {
     if (!c || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->fault_pending)
+    {
         return FVM_NOT_FOUND;
+    }
     *out = c->fault;
     return FVM_OK;
 }
+
 
 /* Clear exception. */
 extern "C" FVM_Result fvm_exception_clear(FVM_Context *c)
 {
     if (!c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     c->exception_pending = false;
@@ -267,12 +308,14 @@ extern "C" FVM_Result fvm_exception_clear(FVM_Context *c)
     return FVM_OK;
 }
 
+
 /* Implement resource fault resource for this subsystem. */
-void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handle,
-                                 unsigned long origin)
+void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handle, unsigned long origin)
 {
     if (!c || !c->fault_pending || c->exception_pending || c->fault.kind[0])
+    {
         return;
+    }
     FVM_ExceptionInfo &f = c->fault;
     copy(f.kind, sizeof(f.kind), kind == 8 ? "mutex" : "channel");
     if (kind == 8 && handle)
@@ -283,7 +326,9 @@ void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handl
     else
     {
         if (handle)
+        {
             f.resource = fvm_channel_identity((FVM_Channel *)handle);
+        }
         f.origin_thread = origin;
         /* Preserve a carrier path if present; otherwise identify the failed native file resource.
          */
@@ -295,17 +340,25 @@ void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handl
         }
     }
     if (f.origin_thread && f.origin_thread != c->identity)
+    {
         f.flags |= FVM_EXCEPTION_THREAD;
+    }
 }
+
 
 /* Compute and return exception complete. */
 FVM_Result fvm_exception_complete(FVM_Context *c, FVM_Object *self, FVM_Result result)
 {
     if (result != FVM_ERROR && result != FVM_EXCEPTION)
+    {
         return result;
+    }
     if (!c->fault_pending && !c->exception_pending)
+    {
         return result;
-    if (self && self->resource && (self->resource_kind == FVM_RESOURCE_CHANNEL || self->resource_kind == FVM_RESOURCE_MUTEX) &&
+    }
+    if (self && self->resource &&
+        (self->resource_kind == FVM_RESOURCE_CHANNEL || self->resource_kind == FVM_RESOURCE_MUTEX) &&
         c->fault_pending && !c->exception_pending)
     {
         FVM_ExceptionInfo &f = c->fault;
@@ -323,12 +376,15 @@ FVM_Result fvm_exception_complete(FVM_Context *c, FVM_Object *self, FVM_Result r
     return r == FVM_OK ? FVM_EXCEPTION : r;
 }
 
+
 /* Compute and return debug exception events. */
-extern "C" FVM_Result fvm_debug_exception_events(FVM_ExceptionInfo *out, size_t capacity,
-                                                 size_t *count, int clear)
+extern "C" FVM_Result fvm_debug_exception_events(FVM_ExceptionInfo *out, size_t capacity, size_t *count, int clear)
 {
     if (!count || (!out && capacity))
+    {
         return FVM_INVALID_ARGUMENT;
+    }
+
 
     /* Computation / Вычисление и обновление состояния. */
     fvm_port_registry_lock();
@@ -339,9 +395,13 @@ extern "C" FVM_Result fvm_debug_exception_events(FVM_ExceptionInfo *out, size_t 
         return FVM_NOT_FOUND;
     }
     if (event_count)
+    {
         std::memcpy(out, events, event_count * sizeof(events[0]));
+    }
     if (clear)
+    {
         event_count = 0;
+    }
     fvm_port_registry_unlock();
     return FVM_OK;
 }

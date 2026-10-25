@@ -1,47 +1,50 @@
 /* FlashVM: explicit owner-thread delivery of retained SWF PlaceObject2 ClipActions. */
 #ifndef FLASHVM_CLIP_ACTIONS_H
-#define FLASHVM_CLIP_ACTIONS_H /* Public ClipActions constants and C89 ABI guard. */
+#define FLASHVM_CLIP_ACTIONS_H                   /* Public ClipActions constants and C89 ABI guard. */
 #include "value.h"
-#define FVM_CLIP_EVENT_LOAD 0x00001UL /* Clip loading notification, explicitly driven by the host. */
-#define FVM_CLIP_EVENT_ENTER_FRAME 0x00002UL /* Timeline tick; also delivered by movieclip_advance. */
-#define FVM_CLIP_EVENT_UNLOAD 0x00004UL /* Explicit notification; does not detach or destroy a clip. */
-#define FVM_CLIP_EVENT_MOUSE_MOVE 0x00008UL /* Selected clip pointer movement, without hit testing. */
-#define FVM_CLIP_EVENT_MOUSE_DOWN 0x00010UL /* Selected clip primary-button press. */
-#define FVM_CLIP_EVENT_MOUSE_UP 0x00020UL /* Selected clip primary-button release. */
-#define FVM_CLIP_EVENT_KEY_DOWN 0x00040UL /* Selected clip key transition; Key state is not updated. */
-#define FVM_CLIP_EVENT_KEY_UP 0x00080UL /* Selected clip key release; Key state is not updated. */
-#define FVM_CLIP_EVENT_DATA 0x00100UL /* Explicit data notification; no loader or network operation. */
-#define FVM_CLIP_EVENT_INITIALIZE 0x00200UL /* SWF6+ explicit initialization notification. */
-#define FVM_CLIP_EVENT_PRESS 0x00400UL /* SWF6+ selected button-like clip press. */
-#define FVM_CLIP_EVENT_RELEASE 0x00800UL /* SWF6+ selected button-like clip release inside. */
+#define FVM_CLIP_EVENT_LOAD 0x00001UL            /* Clip loading notification, explicitly driven by the host. */
+#define FVM_CLIP_EVENT_ENTER_FRAME 0x00002UL     /* Timeline tick; also delivered by movieclip_advance. */
+#define FVM_CLIP_EVENT_UNLOAD 0x00004UL          /* Explicit notification; does not detach or destroy a clip. */
+#define FVM_CLIP_EVENT_MOUSE_MOVE 0x00008UL      /* Selected clip pointer movement, without hit testing. */
+#define FVM_CLIP_EVENT_MOUSE_DOWN 0x00010UL      /* Selected clip primary-button press. */
+#define FVM_CLIP_EVENT_MOUSE_UP 0x00020UL        /* Selected clip primary-button release. */
+#define FVM_CLIP_EVENT_KEY_DOWN 0x00040UL        /* Selected clip key transition; Key state is not updated. */
+#define FVM_CLIP_EVENT_KEY_UP 0x00080UL          /* Selected clip key release; Key state is not updated. */
+#define FVM_CLIP_EVENT_DATA 0x00100UL            /* Explicit data notification; no loader or network operation. */
+#define FVM_CLIP_EVENT_INITIALIZE 0x00200UL      /* SWF6+ explicit initialization notification. */
+#define FVM_CLIP_EVENT_PRESS 0x00400UL           /* SWF6+ selected button-like clip press. */
+#define FVM_CLIP_EVENT_RELEASE 0x00800UL         /* SWF6+ selected button-like clip release inside. */
 #define FVM_CLIP_EVENT_RELEASE_OUTSIDE 0x01000UL /* SWF6+ release outside a host-selected clip. */
-#define FVM_CLIP_EVENT_ROLL_OVER 0x02000UL /* SWF6+ selected pointer entry. */
-#define FVM_CLIP_EVENT_ROLL_OUT 0x04000UL /* SWF6+ selected pointer exit. */
-#define FVM_CLIP_EVENT_DRAG_OVER 0x08000UL /* SWF6+ selected held-pointer entry. */
-#define FVM_CLIP_EVENT_DRAG_OUT 0x10000UL /* SWF6+ selected held-pointer exit. */
-#define FVM_CLIP_EVENT_KEY_PRESS 0x20000UL /* SWF6+ exact raw SWF key-code match. */
-#define FVM_CLIP_EVENT_CONSTRUCT 0x40000UL /* SWF7+ explicit construction notification. */
-#define FVM_CLIP_KEY_NONE 0U /* No translated KeyPress event; explicit raw dispatch may still select byte zero. */
-#define FVM_CLIP_KEY_LEFT 1U /* SWF special key code, distinct from Key.LEFT virtual code 37. */
-#define FVM_CLIP_KEY_RIGHT 2U /* Right arrow. */
-#define FVM_CLIP_KEY_HOME 3U /* Home. */
-#define FVM_CLIP_KEY_END 4U /* End. */
-#define FVM_CLIP_KEY_INSERT 5U /* Insert. */
-#define FVM_CLIP_KEY_DELETE 6U /* Delete. */
-#define FVM_CLIP_KEY_BACKSPACE 8U /* Backspace. */
-#define FVM_CLIP_KEY_ENTER 13U /* Return/Enter. */
-#define FVM_CLIP_KEY_UP 14U /* Up arrow. */
-#define FVM_CLIP_KEY_DOWN 15U /* Down arrow. */
-#define FVM_CLIP_KEY_PGUP 16U /* Page Up. */
-#define FVM_CLIP_KEY_PGDN 17U /* Page Down. */
-#define FVM_CLIP_KEY_TAB 18U /* Tab. */
-#define FVM_CLIP_KEY_ESCAPE 19U /* Escape; desktop hosts may reserve it for closing. */
-#define FVM_CLIP_KEY_ASCII_FIRST 32U /* First printable ASCII KeyPress selector. */
-#define FVM_CLIP_KEY_ASCII_LAST 126U /* Last printable ASCII KeyPress selector; no IME/Unicode mapping. */
-#define FVM_CLIP_KEY_MAX 255U /* Largest raw UI8 selector accepted by explicit tree delivery. */
+#define FVM_CLIP_EVENT_ROLL_OVER 0x02000UL       /* SWF6+ selected pointer entry. */
+#define FVM_CLIP_EVENT_ROLL_OUT 0x04000UL        /* SWF6+ selected pointer exit. */
+#define FVM_CLIP_EVENT_DRAG_OVER 0x08000UL       /* SWF6+ selected held-pointer entry. */
+#define FVM_CLIP_EVENT_DRAG_OUT 0x10000UL        /* SWF6+ selected held-pointer exit. */
+#define FVM_CLIP_EVENT_KEY_PRESS 0x20000UL       /* SWF6+ exact raw SWF key-code match. */
+#define FVM_CLIP_EVENT_CONSTRUCT 0x40000UL       /* SWF7+ explicit construction notification. */
+#define FVM_CLIP_KEY_NONE 0U                     /* No translated KeyPress event; explicit raw dispatch may still select byte zero. */
+#define FVM_CLIP_KEY_LEFT 1U                     /* SWF special key code, distinct from Key.LEFT virtual code 37. */
+#define FVM_CLIP_KEY_RIGHT 2U                    /* Right arrow. */
+#define FVM_CLIP_KEY_HOME 3U                     /* Home. */
+#define FVM_CLIP_KEY_END 4U                      /* End. */
+#define FVM_CLIP_KEY_INSERT 5U                   /* Insert. */
+#define FVM_CLIP_KEY_DELETE 6U                   /* Delete. */
+#define FVM_CLIP_KEY_BACKSPACE 8U                /* Backspace. */
+#define FVM_CLIP_KEY_ENTER 13U                   /* Return/Enter. */
+#define FVM_CLIP_KEY_UP 14U                      /* Up arrow. */
+#define FVM_CLIP_KEY_DOWN 15U                    /* Down arrow. */
+#define FVM_CLIP_KEY_PGUP 16U                    /* Page Up. */
+#define FVM_CLIP_KEY_PGDN 17U                    /* Page Down. */
+#define FVM_CLIP_KEY_TAB 18U                     /* Tab. */
+#define FVM_CLIP_KEY_ESCAPE 19U                  /* Escape; desktop hosts may reserve it for closing. */
+#define FVM_CLIP_KEY_ASCII_FIRST 32U             /* First printable ASCII KeyPress selector. */
+#define FVM_CLIP_KEY_ASCII_LAST 126U             /* Last printable ASCII KeyPress selector; no IME/Unicode mapping. */
+#define FVM_CLIP_KEY_MAX 255U                    /* Largest raw UI8 selector accepted by explicit tree delivery. */
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
+
+
 /* Execute matching retained bytecode records in source order for exactly one event bit.
  * key_code is 0..255 for KEY_PRESS and must be zero otherwise. No native onX method,
  * input-state update, hit test, automatic load/unload, timeline advance or render occurs.
@@ -54,6 +57,8 @@ extern "C" {
  * Calling again is a new delivery, not continuation or replay of a stored dispatch cursor. */
 FVM_API FVM_Result fvm_movieclip_dispatch_clip_actions(FVM_Context *, FVM_Object *,
                                                        unsigned long event, unsigned int key_code);
+
+
 /* Broadcast one global retained input event through a selected root's native descendants.
  * Accept only MOUSE_MOVE/DOWN/UP or KEY_DOWN/UP. No key selector or native onX delivery.
  * Host publishes pointer/keyboard state separately before calling; visibility and focus do not
@@ -69,7 +74,9 @@ FVM_API FVM_Result fvm_movieclip_dispatch_clip_actions(FVM_Context *, FVM_Object
  * preparation before callbacks. Later errors preserve completed callbacks and input state.
  * The context-local reentry flag and active recipient batch are not serialized. */
 FVM_API FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *, FVM_Object *root,
-                                                    unsigned long event);
+                                                     unsigned long event);
+
+
 /* Broadcast the same five global input events, including optional MovieClip methods.
  * Uses the retained-only API's topology, work, lifetime, phase and error contract.
  * For each receiver: run retained ClipActions, recheck captured ancestry/removal, then
@@ -84,7 +91,9 @@ FVM_API FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *, FVM_Object *
  * namespace listeners, input-state publication, targeted events or lifecycle are added.
  * Retained-only callers keep fvm_movieclip_dispatch_clip_input instead. */
 FVM_API FVM_Result fvm_movieclip_dispatch_input(FVM_Context *, FVM_Object *root,
-                                               unsigned long event);
+                                                unsigned long event);
+
+
 /* Broadcast one raw UI8 KeyPress selector through the same prepared native subtree.
  * Source SWF1–5 nodes are traversed without KeyPress delivery; source SWF6–8/host zero
  * use matching retained records only, with no onKeyPress method or state publication.
@@ -95,7 +104,7 @@ FVM_API FVM_Result fvm_movieclip_dispatch_input(FVM_Context *, FVM_Object *root,
  * Explicit raw zero/reserved bytes are matched literally; native translation returns
  * NONE for unmapped input, which a host should skip instead of dispatching. */
 FVM_API FVM_Result fvm_movieclip_dispatch_key_press(FVM_Context *, FVM_Object *root,
-                                                   unsigned int key_code);
+                                                    unsigned int key_code);
 #ifdef __cplusplus
 }
 #endif

@@ -4,26 +4,26 @@
 
 Текущее расширение v0.1225+: [круглые LINESTYLE2-обводки](SHAPE4_STROKES.ru.md) со сплошным цветом, градиентом и NoClose. Прежний общий запрет LINESTYLE2 ниже исторический; другие концы/соединения, hinting и специальные scaling-флаги остаются открытыми.
 
-Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L469) принимает DefineShape4 (тег 83) без
+Ограниченный декодер [fvm_swf_read_shape](../src/swf/shape.cpp#L600) принимает DefineShape4 (тег 83) без
 обводок. Загрузчик сцены разрешает тег начиная с SWF 8. Проверки резервных битов
 и ограничение в восемь точек для DefineShape/2/3 сохранены.
 
 Поддержаны 1–15 упорядоченных RGBA-точек, pad/reflect/repeat, RGB/linearRGB,
 линейные, радиальные и фокусные радиальные градиенты. Фокус читается как знаковый
 little-endian FIXED8 без преобразования через скриптовое число. Поддержан только
-строгий интервал (-1, 1); границы и внешние значения возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
-Резервные режимы, повреждённые и усечённые записи возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
+строгий интервал (-1, 1); границы и внешние значения возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
+Резервные режимы, повреждённые и усечённые записи возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47).
 Совпадающие позиции точек допустимы.
 
 ShapeBounds и EdgeBounds проверяются на порядок и пределы координат. Для
 размещения заливок сохраняется ShapeBounds. Резервные биты заголовка SWF 8,
 включая добавленный в SWF 10 winding-rule, должны быть нулевыми. Два флага-подсказки
 обводок принимаются без влияния на заливку. Любой непустой банк LINESTYLE2,
-включая добавленный StateNewStyles, возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Концы, соединения,
+включая добавленный StateNewStyles, возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Концы, соединения,
 заливки и масштабирование обводок требуют отдельной реализации.
 
 Сплошные и bitmap-заливки используют существующие пути и проверку словаря.
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) создаёт собственный управляемый дескриптор градиента с
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137) создаёт собственный управляемый дескриптор градиента с
 необязательными скалярными свойствами spread/interpolation/focal. Указатели
 бэкенда и исходные байты не сохраняются. Нативный барьер защищает построение,
 рёбра графа удерживают точки и команды. Ошибка декодирования сохраняет прежний
@@ -72,8 +72,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

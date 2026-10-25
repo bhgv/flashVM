@@ -2,7 +2,7 @@
 
 # Thread and channel API design (NOT implemented)
 
-This document describes proposed ActionScript extensions, not existing runtime features. The only implemented feature in this step is [`fvm_meta_call`](../include/flashvm/meta_call.h#L20), which calls a native `__call` handler with `(owner, defining_metatable, indexed_argument_table)`. User arguments start at index zero.
+This document describes proposed ActionScript extensions, not existing runtime features. The only implemented feature in this step is [`fvm_meta_call`](../include/flashvm/meta_call.h#L22), which calls a native `__call` handler with `(owner, defining_metatable, indexed_argument_table)`. User arguments start at index zero.
 
 Proposed thread API: `thread.run`, `thread.run_suspended`, `thread.join`, `thread.sleep`, `thread.sleepms`, `thread.sleepus`. A thread handle would expose `start`, cooperative `stop`, `state`, and `ret`. Each worker must have its own VM context. Data is deep-copied on transfer, except explicitly shared channel handles. Non-transferable native userdata and closures must be rejected unless a transfer policy exists.
 
@@ -21,5 +21,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](../include/flashvm/meta_call.h#L22) |
 <!-- source-links:end -->

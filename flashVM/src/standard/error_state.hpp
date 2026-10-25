@@ -10,22 +10,30 @@
 
 /* Error has no opaque native state: ordinary properties and prototype edges
  * remain editable, GC-traced and transferable as a graph. */
+
+
 /* Build constructor and prototype for error. */
-FVM_Result fvm_error_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
+FVM_Result fvm_error_stage(FVM_Context *,
+                           fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                            fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
                            fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions);
+
 
 /* Prepare canonical host method flags for loaded SWF without mutating live objects. */
 void fvm_error_prepare_loaded(FVM_Context *, FVM_MethodAttributeActivation &);
 
+
 /* Validate error. */
 FVM_Result fvm_error_validate(FVM_Context *);
+
 
 /* Implement error attach for this subsystem. */
 void fvm_error_attach(FVM_Context *, FVM_Object *);
 
+
 /* Map a native error callback to its stable serialization identifier. */
 unsigned long fvm_error_callback_id(FVM_NativeFunction);
+
 
 /* Restore a native error callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_error_callback_from_id(unsigned long);

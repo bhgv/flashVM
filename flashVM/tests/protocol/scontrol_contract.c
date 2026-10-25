@@ -4,15 +4,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define CHECK(x)                                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if (!(x))                                                                                  \
-        {                                                                                          \
-            fprintf(stderr, "media-control:%d %s\n", __LINE__, #x);                                \
-            return 1;                                                                              \
-        }                                                                                          \
+
+#define CHECK(x)                                                                                                       \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+        {                                                                                                              \
+            fprintf(stderr, "media-control:%d %s\n", __LINE__, #x);                                                    \
+            return 1;                                                                                                  \
+        }                                                                                                              \
     } while (0)
+
+
 /* No protocol value below is serialized by storing a C structure. */
 int main(void)
 {
@@ -40,8 +43,7 @@ int main(void)
     CHECK(copied.tag == copied.record_limit && copied_boundary.stream == copied_boundary.object);
 
     CHECK(fvm_scontrol_propose(&sender, 1, &ceiling, &offer) == FVM_S_OK && !sender.active_id);
-    CHECK(fvm_scontrol_write(&offer, control, sizeof(control), &used) == FVM_S_OK &&
-          used < sizeof(control));
+    CHECK(fvm_scontrol_write(&offer, control, sizeof(control), &used) == FVM_S_OK && used < sizeof(control));
     CHECK(fvm_scontrol_read(control, used, &decoded, &count) == FVM_S_OK && count == used);
     CHECK(fvm_scontrol_respond(&receiver, &decoded, &ack) == FVM_S_OK && !receiver.active_id);
     CHECK(ack.limits.slot_bytes == 4096 && ack.limits.part_bytes == 4000);
@@ -50,13 +52,12 @@ int main(void)
     CHECK(fvm_scontrol_read(control, used, &decoded, &count) == FVM_S_OK);
     CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_OK && sender.active_id == 1);
     CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_OK);
-    CHECK(fvm_scontrol_active(&sender, &copied, &copied_boundary) == FVM_S_OK &&
-          copied.slot_bytes == 4096 && copied.part_bytes == 4000 && !copied_boundary.stream);
+    CHECK(fvm_scontrol_active(&sender, &copied, &copied_boundary) == FVM_S_OK && copied.slot_bytes == 4096 &&
+          copied.part_bytes == 4000 && !copied_boundary.stream);
 
     before = sender;
     decoded.limits.tag = 20;
-    CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_CONFLICT &&
-          !memcmp(&before, &sender, sizeof(sender)));
+    CHECK(fvm_scontrol_commit(&sender, &decoded) == FVM_S_CONFLICT && !memcmp(&before, &sender, sizeof(sender)));
     CHECK(fvm_scontrol_propose(&sender, 2, &local, &offer) == FVM_S_OK);
     CHECK(fvm_scontrol_cancel(&sender) == FVM_S_OK && sender.active_id == 1);
     CHECK(fvm_scontrol_propose(&sender, 2, &local, &offer) == FVM_S_CONFLICT);
@@ -67,28 +68,27 @@ int main(void)
     destination = (unsigned char *)malloc((size_t)info.total);
     CHECK(slot && source && destination);
     for (i = 0; i < (size_t)FVM_SSLOT_MAX_BYTES; ++i)
+    {
         source[i] = (unsigned char)(i % 251U);
-    CHECK(fvm_smedia_receiver_init_profile(&media, &profile, 19, &info, destination,
-                                           (size_t)info.total) == FVM_S_OK);
+    }
+    CHECK(fvm_smedia_receiver_init_profile(&media, &profile, 19, &info, destination, (size_t)info.total) == FVM_S_OK);
     for (part = 0; part < 3; ++part)
     {
         count = part == 2 ? 17 : 4000;
-        CHECK(fvm_smedia_write_profile(&profile, 19, &info, part, source + part * 4000, count, slot,
-                                       profile.slot_bytes, &used) == FVM_S_OK &&
+        CHECK(fvm_smedia_write_profile(
+                  &profile, 19, &info, part, source + part * 4000, count, slot, profile.slot_bytes, &used) ==
+                  FVM_S_OK &&
               used == profile.slot_bytes);
-        CHECK(fvm_smedia_read_profile(&profile, slot, used, 19, &piece) == FVM_S_OK &&
-              piece.part == part);
+        CHECK(fvm_smedia_read_profile(&profile, slot, used, 19, &piece) == FVM_S_OK && piece.part == part);
         CHECK(fvm_smedia_accept(&media, slot, used, &complete) == FVM_S_OK);
-        CHECK(fvm_smedia_accept(&media, slot, used, &complete) == FVM_S_OK &&
-              media.received == part + 1);
+        CHECK(fvm_smedia_accept(&media, slot, used, &complete) == FVM_S_OK && media.received == part + 1);
     }
     CHECK(complete && !memcmp(source, destination, (size_t)info.total));
     CHECK(fvm_smedia_missing(&media, 0, holes, 4, &count) == FVM_S_OK && !count);
     /* Large agreed slots do not require a slot-sized local stack frame in the library. */
-    CHECK(fvm_sslot_write_sized(19, source, 60000, (size_t)FVM_SSLOT_MAX_BYTES, slot,
-                                (size_t)FVM_SSLOT_MAX_BYTES, &used) == FVM_S_OK);
-    CHECK(fvm_sslot_read_sized(slot, used, used, &record, &count) == FVM_S_OK &&
-          record.size == 60000);
+    CHECK(fvm_sslot_write_sized(
+              19, source, 60000, (size_t)FVM_SSLOT_MAX_BYTES, slot, (size_t)FVM_SSLOT_MAX_BYTES, &used) == FVM_S_OK);
+    CHECK(fvm_sslot_read_sized(slot, used, used, &record, &count) == FVM_S_OK && record.size == 60000);
     CHECK(!memcmp(record.payload, source, record.size));
     /* Compact mode has no padding and remains a distinct agreed state. */
     local.record_limit = 63;
@@ -113,11 +113,10 @@ int main(void)
         CHECK(fvm_scontrol_commit(&receiver, &ack) == FVM_S_OK);
         CHECK(fvm_scontrol_commit(&sender, &ack) == FVM_S_OK);
         info.object = boundary.object;
-        CHECK(fvm_smedia_receiver_init_agreed(&media, &sender, &info, destination,
-                                              (size_t)info.total) == FVM_S_OK);
+        CHECK(fvm_smedia_receiver_init_agreed(&media, &sender, &info, destination, (size_t)info.total) == FVM_S_OK);
         --info.object;
-        CHECK(fvm_smedia_receiver_init_agreed(&media, &sender, &info, destination,
-                                              (size_t)info.total) == FVM_S_CONFLICT);
+        CHECK(fvm_smedia_receiver_init_agreed(&media, &sender, &info, destination, (size_t)info.total) ==
+              FVM_S_CONFLICT);
         ++info.object;
         profile.slot_bytes = (size_t)sender.active.slot_bytes;
         profile.part_bytes = sender.active.part_bytes;
@@ -125,10 +124,18 @@ int main(void)
         {
             count = (size_t)(info.total - part * profile.part_bytes);
             if (count > profile.part_bytes)
+            {
                 count = (size_t)profile.part_bytes;
-            CHECK(fvm_smedia_write_profile(&profile, 19, &info, part,
-                                           source + part * profile.part_bytes, count, slot,
-                                           profile.slot_bytes, &used) == FVM_S_OK);
+            }
+            CHECK(fvm_smedia_write_profile(&profile,
+                                           19,
+                                           &info,
+                                           part,
+                                           source + part * profile.part_bytes,
+                                           count,
+                                           slot,
+                                           profile.slot_bytes,
+                                           &used) == FVM_S_OK);
             CHECK(fvm_smedia_accept(&media, slot, used, &complete) == FVM_S_OK);
         }
         CHECK(complete && !memcmp(source, destination, (size_t)info.total));

@@ -4,7 +4,7 @@ The existing native removeMovieClip implementation and forced scene removal now
 prepare replacement maps before changing the live graph. Child-table removal,
 current-name binding cleanup, clearing the parent edge and stopping playback
 are published only after every allocation succeeds. Allocation errors return
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and preserve both sides of ownership. Root chains are unchanged.
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) and preserve both sides of ownership. Root chains are unchanged.
 
 [GC:] Source maps retain all managed edges during preparation. Publication uses
 only nonallocating swaps; no script or collection occurs after its first swap.
@@ -90,5 +90,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

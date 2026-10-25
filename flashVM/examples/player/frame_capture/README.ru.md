@@ -167,15 +167,15 @@ endpoint управления и GUI-ФС не создаются. HTTP исхо
 
 | C API | Назначение и владение |
 | --- | --- |
-| [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L95) | Создать ограниченную native-очередь одного владельца, без startup VM/SDK. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L109) | Создать ограниченную native-очередь одного владельца, без startup VM/SDK. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L29) | Зарегистрировать CONTROL endpoint; заимствование adapter в Capture живёт до unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L108) | Выдать CONTROL лишь доверенной локальной сессии, не произвольному remote client. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L115) | Скопировать пустой STOP request; принятие не равно исполнению. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L128) | Выдать CONTROL лишь доверенной локальной сессии, не произвольному remote client. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L139) | Скопировать пустой STOP request; принятие не равно исполнению. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L39) | Доставить команду у владельца, вернуть intent без сохранения VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L126) | Скопировать/подтвердить reply доставки, освободить identity/capacity. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L121) | На ошибке отменить queued STOP до take сохранённого результата. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L105) | После runner снять регистрацию до освобождения Capture. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L131) | Освободить native dispatcher после подтверждения всех принятых запросов. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L156) | Скопировать/подтвердить reply доставки, освободить identity/capacity. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L149) | На ошибке отменить queued STOP до take сохранённого результата. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L123) | После runner снять регистрацию до освобождения Capture. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L163) | Освободить native dispatcher после подтверждения всех принятых запросов. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 ## Состояние через ресурсы v0.734
 
 При `--resource-control` owner notify копирует состояние в `/timeline/state`,
@@ -190,8 +190,8 @@ state adapter, затем control registration и dispatcher. Сетевого �
 | [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L50) | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
 | [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L55) | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
 | [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L53) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
-| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L65) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
+| [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L63) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
+| [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L79) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 ## Экспорт кадров v0.736
 
 Опция `--resource-frames` вместо `--resource-control` включает также native
@@ -226,13 +226,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:121](../../../include/flashvm/rdispatch.h#L121) |
-| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:95](../../../include/flashvm/rdispatch.h#L95) |
-| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:131](../../../include/flashvm/rdispatch.h#L131) |
-| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:65](../../../include/flashvm/revents.h#L65) |
-| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:108](../../../include/flashvm/rdispatch.h#L108) |
-| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:115](../../../include/flashvm/rdispatch.h#L115) |
-| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:53](../../../include/flashvm/revents.h#L53) |
-| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:126](../../../include/flashvm/rdispatch.h#L126) |
-| `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:105](../../../include/flashvm/rdispatch.h#L105) |
+| `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../../../include/flashvm/rdispatch.h#L149) |
+| `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../../../include/flashvm/rdispatch.h#L109) |
+| `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../../../include/flashvm/rdispatch.h#L163) |
+| `fvm_rdispatch_event_take` | function | [include/flashvm/revents.h:79](../../../include/flashvm/revents.h#L79) |
+| `fvm_rdispatch_grant` | function | [include/flashvm/rdispatch.h:128](../../../include/flashvm/rdispatch.h#L128) |
+| `fvm_rdispatch_post` | function | [include/flashvm/rdispatch.h:139](../../../include/flashvm/rdispatch.h#L139) |
+| `fvm_rdispatch_subscribe` | function | [include/flashvm/revents.h:63](../../../include/flashvm/revents.h#L63) |
+| `fvm_rdispatch_take` | function | [include/flashvm/rdispatch.h:156](../../../include/flashvm/rdispatch.h#L156) |
+| `fvm_rdispatch_unregister` | function | [include/flashvm/rdispatch.h:123](../../../include/flashvm/rdispatch.h#L123) |
 <!-- source-links:end -->

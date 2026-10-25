@@ -1,17 +1,17 @@
 # Raster depth snapshots — v0.630
 
-[`fvm_movieclip_render`](../include/flashvm/movieclip.h#L135) and [`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L138) draw the selected MovieClip
+[`fvm_movieclip_render`](../include/flashvm/movieclip.h#L174) and [`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L179) draw the selected MovieClip
 synchronously on its context owner thread. They do not advance timelines, poll timers
 or dispatch input. The caller retains the context, selected clip and writable
 [`FVM_RasterSurface`](../include/flashvm/raster.h#L16) storage for the entire call. The viewport variant copies a finite
-[`FVM_Affine`](../include/flashvm/path.h#L33) before script getters and applies it once to each world-space node.
+[`FVM_Affine`](../include/flashvm/path.h#L39) before script getters and applies it once to each world-space node.
 The same child traversal serves BitmapData.draw's MovieClip source and coverage pass.
 
 After drawing a node's own geometry, capture that node's child identities and depth
 keys. Validate the complete local snapshot before invoking any child getter. Draw
 children in ascending signed public depth, recursively, independent of insertion
 order. [`fvm_depth_order::sort`](../src/core/depth_order.hpp#L29) now replaces raster insertion sorting with heapsort:
-O(n log n) sorting and O(n) scratch. It uses a disabled [`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9), so
+O(n log n) sorting and O(n) scratch. It uses a disabled [`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11), so
 sorting neither resets nor consumes the enclosing instruction counter. Script getters
 retain their ordinary execution/error behavior. This is not a new raster work budget.
 
@@ -27,12 +27,12 @@ Bounds are independent from tick bounds: [`FVM_MOVIECLIP_RENDER_MAX_DEPTH`](../s
 64 descendant levels; [`FVM_MOVIECLIP_RENDER_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L36) permits 65536 child slots
 per node. Reject null, non-MovieClip, foreign-owner, self-child and duplicate-identity
 slots before the first child getter. Null/foreign private paths/children/state edges
-are also invalid. [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) reports malformed graphs or bound violations;
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) reports allocation failure. Getter errors propagate and geometry
-may return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) without a raster backend. Earlier pixels and getter
+are also invalid. [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) reports malformed graphs or bound violations;
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) reports allocation failure. Getter errors propagate and geometry
+may return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) without a raster backend. Earlier pixels and getter
 side effects remain committed: failure is not an image transaction or automatic retry.
 
-[GC:] The enclosing [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L9) keeps captured native identities alive
+[GC:] The enclosing [`FVM_NativeCallGuard`](../src/core/native_call_guard.hpp#L11) keeps captured native identities alive
 through removal/replacement; scratch containers release on every return/exception.
 No raw identity is retained beyond the call. Context teardown/collection must follow
 ordinary native-call restrictions. This is not a concurrent renderer or a claim of
@@ -85,15 +85,15 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:135](../include/flashvm/movieclip.h#L135) |
+| `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:174](../include/flashvm/movieclip.h#L174) |
 | `FVM_MOVIECLIP_RENDER_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:36](../src/standard/movieclip_constants.h#L36) |
 | `FVM_MOVIECLIP_RENDER_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:35](../src/standard/movieclip_constants.h#L35) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
-| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
+| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:11](../src/core/native_call_guard.hpp#L11) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

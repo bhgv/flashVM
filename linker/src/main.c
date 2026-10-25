@@ -3,24 +3,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define INPUT_LIMIT (64u * 1024u * 1024u)
+
+
 static int publish(void *user, const unsigned char *data, size_t size)
 {
     FILE *out = fopen((const char *)user, "wb");
     int ok;
     if (!out)
+    {
         return 0;
+    }
     ok = fwrite(data, 1, size, out) == size;
     if (fclose(out))
+    {
         ok = 0;
+    }
     return ok;
 }
+
+
 static unsigned char *read_file(const char *path, size_t *size)
 {
     FILE *in = fopen(path, "rb");
     unsigned char *data;
     if (!in)
+    {
         return NULL;
+    }
     data = (unsigned char *)malloc(INPUT_LIMIT + 1);
     if (!data)
     {
@@ -41,13 +52,16 @@ static unsigned char *read_file(const char *path, size_t *size)
     }
     return data;
 }
+
+
 /* Console formatting is policy; validation and visitation stay in swl_core. */
 static int describe_module(void *user, const SwlModuleInfo *module)
 {
     FILE *out = (FILE *)user;
-    return fprintf(out, "module %s code %zu requirements %u\n", module->name, module->code_size,
-                   module->requirements) >= 0;
+    return fprintf(
+               out, "module %s code %zu requirements %u\n", module->name, module->code_size, module->requirements) >= 0;
 }
+
 
 /* Inspect one file without creating or overwriting any output artifact. */
 static int inspect_file(const char *path)
@@ -77,25 +91,33 @@ static int inspect_file(const char *path)
     return 0;
 }
 
+
 /* Parse an unsigned decimal without overflow or locale-dependent conversion. */
 static int decimal(const char *text, unsigned maximum, unsigned *value)
 {
     unsigned result = 0;
     if (!*text)
+    {
         return 0;
+    }
     for (; *text; ++text)
     {
         unsigned digit;
         if (*text < '0' || *text > '9')
+        {
             return 0;
+        }
         digit = (unsigned)(*text - '0');
         if (result > maximum / 10 || (result == maximum / 10 && digit > maximum % 10))
+        {
             return 0;
+        }
         result = result * 10 + digit;
     }
     *value = result;
     return 1;
 }
+
 
 /* Resolve output policy before opening inputs. Skip operand slots so a resource
  * name such as --extensions is never interpreted as an authorization flag. */
@@ -106,37 +128,51 @@ static int configure(int argc, char **argv, int archive, SwlOptions *options)
     {
         int operands = 0;
         if (archive)
+        {
             continue;
+        }
         if (!strcmp(argv[i], "--size"))
         {
             if (argc - i <= 2 || !decimal(argv[i + 1], 3276, &options->width) ||
-                !decimal(argv[i + 2], 3276, &options->height) || !options->width ||
-                !options->height)
+                !decimal(argv[i + 2], 3276, &options->height) || !options->width || !options->height)
+            {
                 return 0;
+            }
             operands = 2;
         }
         else if (!strcmp(argv[i], "--fps"))
         {
-            if (argc - i <= 1 || !decimal(argv[i + 1], 255, &options->frames_per_second) ||
-                !options->frames_per_second)
+            if (argc - i <= 1 || !decimal(argv[i + 1], 255, &options->frames_per_second) || !options->frames_per_second)
+            {
                 return 0;
+            }
             operands = 1;
         }
         else if (!strcmp(argv[i], "--extensions"))
+        {
             options->allow_flashvm_extensions = 1;
-        else if (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") ||
-                 !strcmp(argv[i], "--wav"))
+        }
+        else if (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav"))
+        {
             operands = 2;
+        }
         else if (!strcmp(argv[i], "--place"))
+        {
             operands = 4;
+        }
         else if (!strcmp(argv[i], "--play"))
+        {
             operands = 1;
+        }
         if (argc - i <= operands)
+        {
             return 0;
+        }
         i += operands;
     }
     return 1;
 }
+
 
 int main(int argc, char **argv)
 {
@@ -167,9 +203,13 @@ int main(int argc, char **argv)
         return 0;
     }
     if (argc >= 2 && !strcmp(argv[1], "inspect"))
+    {
         return argc == 3 ? inspect_file(argv[2]) : 2;
+    }
     if (argc < 4 || (strcmp(argv[1], "link") && strcmp(argv[1], "archive")))
+    {
         return 2;
+    }
     archive = !strcmp(argv[1], "archive");
     if (!configure(argc, argv, archive, &options))
     {
@@ -178,12 +218,16 @@ int main(int argc, char **argv)
     }
     c = swl_create(&options);
     if (!c)
+    {
         return 1;
+    }
     if (archive)
     {
         objects = (SwlObject *)calloc((size_t)argc, sizeof(*objects));
         if (!objects)
+        {
             ok = 0;
+        }
     }
     for (i = 3; ok && i < argc; ++i)
     {
@@ -200,9 +244,10 @@ int main(int argc, char **argv)
             continue;
         }
         if (!strcmp(argv[i], "--extensions") && !archive)
+        {
             continue;
-        if (!archive &&
-            (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav")))
+        }
+        if (!archive && (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav")))
         {
             const char *kind = argv[i], *name;
             if (i + 2 >= argc)
@@ -238,7 +283,9 @@ int main(int argc, char **argv)
             {
                 const char *text = argv[++i];
                 if (!*text)
+                {
                     ok = 0;
+                }
                 for (; *text; ++text)
                 {
                     if (*text < '0' || *text > '9' || numbers[j] > 65535 / 10 ||
@@ -251,7 +298,9 @@ int main(int argc, char **argv)
                 }
             }
             if (ok)
+            {
                 ok = swl_place(c, name, numbers[0], numbers[1], numbers[2], error, sizeof(error));
+            }
             continue;
         }
         if (!archive && !strcmp(argv[i], "--play"))
@@ -277,20 +326,25 @@ int main(int argc, char **argv)
         }
         else
         {
-            ok = n >= 4 && !memcmp(data, "SWA1", 4)
-                     ? swl_add_archive(c, data, n, error, sizeof(error))
-                     : swl_add_object(c, data, n, error, sizeof(error));
+            ok = n >= 4 && !memcmp(data, "SWA1", 4) ? swl_add_archive(c, data, n, error, sizeof(error))
+                                                    : swl_add_object(c, data, n, error, sizeof(error));
             free(data);
         }
     }
     if (ok)
+    {
         ok = archive ? swl_archive(objects, count, publish, argv[2], error, sizeof(error))
                      : swl_emit(c, publish, argv[2], error, sizeof(error));
+    }
     while (count)
+    {
         free((void *)objects[--count].data);
+    }
     free(objects);
     swl_destroy(c);
     if (!ok)
+    {
         fprintf(stderr, "swl: %s\n", error);
+    }
     return ok ? 0 : 1;
 }

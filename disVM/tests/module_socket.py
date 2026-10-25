@@ -12,7 +12,7 @@ def serve(listener, errors):
         connection, _ = listener.accept()
         with connection:
             connection.settimeout(5)
-            for part in [b'\xc0', b'\x0c\x80', b'\x30\x00\xff\x2a', b'end']:
+            for part in [b"\xc0", b"\x0c\x80", b"\x30\x00\xff\x2a", b"end"]:
                 connection.sendall(part)
     except Exception as error:
         errors.append(error)
@@ -22,7 +22,7 @@ def serve(listener, errors):
 def main():
     errors = []
     with socket.socket() as listener:
-        listener.bind(('127.0.0.1', 0))
+        listener.bind(("127.0.0.1", 0))
         listener.listen(1)
         listener.settimeout(8)
         worker = threading.Thread(target=serve, args=(listener, errors))
@@ -32,10 +32,10 @@ def main():
         finally:
             worker.join(timeout=10)
         if worker.is_alive() or errors:
-            raise RuntimeError('loopback server failed: ' + repr(errors))
+            raise RuntimeError("loopback server failed: " + repr(errors))
         if result.returncode:
-            raise RuntimeError('socket client failed: ' + str(result.returncode))
+            raise RuntimeError("socket client failed: " + str(result.returncode))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

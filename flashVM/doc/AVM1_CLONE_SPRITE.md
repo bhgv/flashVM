@@ -3,7 +3,7 @@
 The AVM1 dispatcher recognizes CloneSprite (0x24), consumes source/name/depth
 and pushes no result. Loaded missing operands are padded below existing values;
 unloaded host execution remains strict. The adapter selects an explicit start
-and calls [fvm_exec_duplicate_target](../include/flashvm/execution.h#L294)(context, start, source, name, depth, out).
+and calls [fvm_exec_duplicate_target](../include/flashvm/execution.h#L398)(context, start, source, name, depth, out).
 The shared C89 service accepts values, not bytecode or an interpreter stack.
 Its successful result is a native duplicate or undefined when no duplicate is
 created; the Action adapter discards that result.
@@ -18,7 +18,7 @@ The operation bypasses replaced duplicateMovieClip methods.
 Negative or above-historical-limit clone depths create nothing, after coercion
 and source resolution. Missing targets and parentless roots also create nothing.
 Within Flash's historical absolute range, depths outside the currently supported
-native public range return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) rather than claim a successful clone.
+native public range return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) rather than claim a successful clone.
 The maximum historical bound is documented by its own macro. Full Flash depth
 storage, non-MovieClip display objects, removed-source ancestry, unload/event
 ordering, counted-NUL names and complete duplicate semantics remain open.
@@ -56,7 +56,7 @@ CloneSprite подключён к общему C-сервису явного з�
 Пропущенные операнды загруженного SWF дополняются undefined; host остаётся
 строгим. Отрицательные/слишком большие глубины и отсутствующие цели дают пустой
 результат. Глубины в диапазоне Flash, ещё не поддержанные моделью, явно дают
-[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Проверки охватывают host/SWF4–8, байткод, прямые C-вызовы,
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Проверки охватывают host/SWF4–8, байткод, прямые C-вызовы,
 GC, порядок преобразований, исключения и отказы памяти. Полная совместимость
 сцены, типов display list и глубин остаётся открытой; все стадии открыты.
 
@@ -69,7 +69,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_duplicate_target` | function | [include/flashvm/execution.h:294](../include/flashvm/execution.h#L294) |
+| `fvm_exec_duplicate_target` | function | [include/flashvm/execution.h:398](../include/flashvm/execution.h#L398) |
 | `FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS` | macro / define | [src/standard/movieclip_constants.h:108](../src/standard/movieclip_constants.h#L108) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

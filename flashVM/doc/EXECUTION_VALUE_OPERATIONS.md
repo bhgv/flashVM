@@ -5,16 +5,16 @@ operations into separate handler files. Each logical service includes its
 supported Flash-version variants. Public C89 callers pass semantic operation
 identifiers and values, without Action IDs, bytecode or operand stacks.
 
-[`fvm_exec_legacy_compare`](../include/flashvm/execution.h#L124) preserves right-before-left number conversion for
+[`fvm_exec_legacy_compare`](../include/flashvm/execution.h#L151) preserves right-before-left number conversion for
 legacy equality and left-before-right conversion for legacy ordering. Existing
 comparison metamethod lookup/result projection remains unchanged. This service
 is distinct from dynamic Equals2/Less2 and their primitive/string rules.
 
-[`fvm_exec_logical`](../include/flashvm/execution.h#L127) supplies NOT/AND/OR. String truth follows the loaded SWF policy;
+[`fvm_exec_logical`](../include/flashvm/execution.h#L156) supplies NOT/AND/OR. String truth follows the loaded SWF policy;
 both binary operands are converted left to right. Unary NOT accepts a NULL right
 operand. All successful operations return Boolean values.
 
-[`fvm_exec_delete_member`](../include/flashvm/execution.h#L135) converts the property name, deletes own members subject
+[`fvm_exec_delete_member`](../include/flashvm/execution.h#L168) converts the property name, deletes own members subject
 to property flags and reports false for absent/inherited properties and super.
 It preserves the interpreter's existing primitive-owner policy. Delete2/scoped
 variable deletion and full historical casing remain open work.
@@ -45,7 +45,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:135](../include/flashvm/execution.h#L135) |
-| `fvm_exec_legacy_compare` | function | [include/flashvm/execution.h:124](../include/flashvm/execution.h#L124) |
-| `fvm_exec_logical` | function | [include/flashvm/execution.h:127](../include/flashvm/execution.h#L127) |
+| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:168](../include/flashvm/execution.h#L168) |
+| `fvm_exec_legacy_compare` | function | [include/flashvm/execution.h:151](../include/flashvm/execution.h#L151) |
+| `fvm_exec_logical` | function | [include/flashvm/execution.h:156](../include/flashvm/execution.h#L156) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Primitive boxing / Упаковка примитивов — v0.279
 
-C89 [`fvm_exec_to_object`](../include/flashvm/execution.h#L474) accepts a value and returns the same object, a primitive
+C89 [`fvm_exec_to_object`](../include/flashvm/execution.h#L628) accepts a value and returns the same object, a primitive
 wrapper, or undefined for null/undefined. Loaded execution resolves the current
 global String/Number/Boolean class and uses the common construction service.
 Missing or nonconstructable loaded classes yield undefined rather than falling
@@ -73,5 +73,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_to_object` | function | [include/flashvm/execution.h:474](../include/flashvm/execution.h#L474) |
+| `fvm_exec_to_object` | function | [include/flashvm/execution.h:628](../include/flashvm/execution.h#L628) |
 <!-- source-links:end -->

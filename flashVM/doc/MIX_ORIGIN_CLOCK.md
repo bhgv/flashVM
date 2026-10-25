@@ -1,6 +1,6 @@
 # Mixed queue BASE/TAIL dequeue accounting
 
-[`fvm_swf_sound_mix_queue_storage_required_for_modes`](../include/flashvm/swf_sound_mix_queue.h#L60) predicts requested native owner/PCM memory with optional ID tracking and a fixed BASE/TAIL FIFO bitmap. Both flags are Boolean; invalid geometry/flags return INVALID_ARGUMENT preserving out, checked size overflow OUT_OF_MEMORY. No allocation/callback/VM/GC occurs. Origin storage adds 32768 bytes for the maximum 262144-frame queue; mixer, voice, backend, allocator and VM storage are excluded.
+[`fvm_swf_sound_mix_queue_storage_required_for_modes`](../include/flashvm/swf_sound_mix_queue.h#L75) predicts requested native owner/PCM memory with optional ID tracking and a fixed BASE/TAIL FIFO bitmap. Both flags are Boolean; invalid geometry/flags return INVALID_ARGUMENT preserving out, checked size overflow OUT_OF_MEMORY. No allocation/callback/VM/GC occurs. Origin storage adds 32768 bytes for the maximum 262144-frame queue; mixer, voice, backend, allocator and VM storage are excluded.
 
 v0.1038: Add exact mode-aware native storage prediction for optional accepted-frame origin accounting without changing legacy predictor meaning.
 
@@ -37,7 +37,7 @@ v0.1048: Add a tenth export mode with budgeted origin tracking, exact gated PCM,
 
 ## Origin mode and epoch ownership
 
-[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L84) enables a fixed bitmap during an
+[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L103) enables a fixed bitmap during an
 active zero shared clock with no pending retry. Future mixer voices may already
 exist; accepted history may not. Disable only after valid observed FIFO drain and
 no retry. Repeated mode selection is an allocation-free no-op. Enable compares
@@ -60,7 +60,7 @@ mixer and exclusive backend through calls; no VM or GC pointers are retained.
 | BASE | Every accepted adapted.write frame, including zero base and mixed event contributions | Those BASE positions have left the software FIFO |
 | TAIL | Every accepted explicit event-only tail frame, including chosen padding or release endpoints | Those TAIL positions have left the software FIFO |
 
-[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L91) requires exact-size output and enabled mode.
+[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L112) requires exact-size output and enabled mode.
 It performs one validated FIFO observation and copies BASE/TAIL submitted, played
 and queued counts. Disabled mode is UNSUPPORTED; invalid/reentry INVALID_ARGUMENT;
 backend/clock failures propagate and exceptions ERROR. Errors preserve caller out.
@@ -70,7 +70,7 @@ Rendered but rejected retry is excluded until acknowledged; its original BASE/TA
 classification survives gate changes, voice stop and retry through a different
 compatible tail variant. PCM values are never used to guess category.
 
-The fixed ring represents up to [FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES](../include/flashvm/swf_sound_mix_queue.h#L54) accepted FIFO positions. Tracked
+The fixed ring represents up to [FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES](../include/flashvm/swf_sound_mix_queue.h#L67) accepted FIFO positions. Tracked
 writes observe dequeue before rendering, then return NOT_FOUND on insufficient
 ring room without advancing voices or changing pending bytes. Successful writes
 record bits/counters without a fallible post-write callback. Invalid growth or
@@ -110,7 +110,7 @@ or huge-PCM device runs. Shared-owner access still requires external serializati
 v0.1049: Specify origin mode budgets, accepted versus pending ownership, exact dequeue categories, desktop diagnostics and independent ten-mode PCM evidence.
 
 
-[`FVM_SWFSoundMixQueueOriginInfo`](../include/flashvm/swf_sound_mix_queue.h#L64) is an owned-value snapshot: submitted/played fields are exact integer-valued doubles and queued fields are complete native output frames. Retain the queue rather than any borrowed result pointer.
+[`FVM_SWFSoundMixQueueOriginInfo`](../include/flashvm/swf_sound_mix_queue.h#L81) is an owned-value snapshot: submitted/played fields are exact integer-valued doubles and queued fields are complete native output frames. Retain the queue rather than any borrowed result pointer.
 
 
 ## v0.1050 verification / Проверка
@@ -129,10 +129,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:54](../include/flashvm/swf_sound_mix_queue.h#L54) |
-| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../include/flashvm/swf_sound_mix_queue.h#L91) |
-| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../include/flashvm/swf_sound_mix_queue.h#L84) |
-| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
+| `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:67](../include/flashvm/swf_sound_mix_queue.h#L67) |
+| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:112](../include/flashvm/swf_sound_mix_queue.h#L112) |
+| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:103](../include/flashvm/swf_sound_mix_queue.h#L103) |
+| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:75](../include/flashvm/swf_sound_mix_queue.h#L75) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
-| `FVM_SWFSoundMixQueueOriginInfo` | struct | [include/flashvm/swf_sound_mix_queue.h:64](../include/flashvm/swf_sound_mix_queue.h#L64) |
+| `FVM_SWFSoundMixQueueOriginInfo` | struct | [include/flashvm/swf_sound_mix_queue.h:81](../include/flashvm/swf_sound_mix_queue.h#L81) |
 <!-- source-links:end -->

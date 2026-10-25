@@ -5,9 +5,11 @@
 extern "C"
 {
 #endif
-    /* Return nonzero and finite nonnegative milliseconds on success; do not modify output on
+
+
+/* Return nonzero and finite nonnegative milliseconds on success; do not modify output on
      * failure. */
-    int fvm_port_monotonic_ms(double *output);
+int fvm_port_monotonic_ms(double *output);
 #ifdef __cplusplus
 }
 #endif

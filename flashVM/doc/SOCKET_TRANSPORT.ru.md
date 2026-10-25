@@ -56,10 +56,10 @@ cleartext-соединений задаётся приложением.
 Поэтому callback целиком может занять больше total_ms при DNS или медленном sink.
 Асинхронный resolver/cancel — отдельная работа.
 
-[FVM_OK](../include/flashvm/flashvm.h#L42) означает завершение framing и доставки. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) — неверные
-аргументы/лимиты, малая capacity или превышение тела. [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) — HTTPS без
-TLS-сборки. [FVM_ERROR](../include/flashvm/flashvm.h#L43) — ошибка TCP/I/O/deadline/status/framing; отказ malloc
-в конструкторе платформенного сокета также пока отображается в [FVM_ERROR](../include/flashvm/flashvm.h#L43).
+[FVM_OK](../include/flashvm/flashvm.h#L44) означает завершение framing и доставки. [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) — неверные
+аргументы/лимиты, малая capacity или превышение тела. [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) — HTTPS без
+TLS-сборки. [FVM_ERROR](../include/flashvm/flashvm.h#L45) — ошибка TCP/I/O/deadline/status/framing; отказ malloc
+в конструкторе платформенного сокета также пока отображается в [FVM_ERROR](../include/flashvm/flashvm.h#L45).
 Ошибка sink возвращается без изменения, новые callback после неё не вызываются.
 Перед поздней ошибкой sink мог получить часть тела: её надо отбросить при любом
 не-OK. Аккумулятор плеера уже делает это. resolved при ошибке не изменяется.
@@ -130,14 +130,14 @@ cmake --build build-socket --target flashvm_player flashvm_example_socket_loadin
 OPENSSL_USE_STATIC_LIBS выбирает статические архивы целевого OpenSSL, но не делает
 весь executable полностью статическим. Для cross-build задайте OPENSSL_ROOT_DIR,
 целевые find-root/sysroot CMake. Нельзя подключать host OpenSSL к другой платформе.
-При TLS OFF OpenSSL не нужен; HTTPS даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) до DNS/TCP. TLS ON без
+При TLS OFF OpenSSL не нужен; HTTPS даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) до DNS/TCP. TLS ON без
 SOCKET_HTTP — ошибка конфигурации.
 
 В [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) добавлен ca_file, заимствованный до возврата fetch.
 Всегда используйте [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36): он записывает null.
 Null выбирает default trust OpenSSL, включая SSL_CERT_FILE/SSL_CERT_DIR.
 Ненулевой путь выбирает только указанный PEM CA bundle для данного запроса.
-Ошибочный/пустой/нечитаемый CA и отказ проверки дают [FVM_ERROR](../include/flashvm/flashvm.h#L43) до HTTP payload.
+Ошибочный/пустой/нечитаемый CA и отказ проверки дают [FVM_ERROR](../include/flashvm/flashvm.h#L45) до HTTP payload.
 Кодировка пути определяется SDK OpenSSL, а не SDL UTF-8 adapter. CA относится
 к файловой системе хоста, не к URL фильма. Не принимайте CA override от
 недоверенного SWF. Глобального setter нет. Windows/Android-приложению может
@@ -203,8 +203,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

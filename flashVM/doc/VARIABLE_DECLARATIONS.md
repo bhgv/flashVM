@@ -1,6 +1,6 @@
 # Shared local declarations / Общий обработчик локальных объявлений
 
-v0.262 adds C89 [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L428) with explicit managed scope, activation,
+v0.262 adds C89 [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L566) with explicit managed scope, activation,
 target, this, initialization mode, coercible name and optional value. DefineLocal,
 DefineLocal2 and named function publication use the same handler. The interpreter
 retains operand movement, target selection and mapping its current frame root to
@@ -94,5 +94,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:428](../include/flashvm/execution.h#L428) |
+| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:566](../include/flashvm/execution.h#L566) |
 <!-- source-links:end -->

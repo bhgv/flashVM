@@ -1,9 +1,9 @@
 /* FlashVM: MovieClip timeline, geometry, display units and stable callback constants. */
 #ifndef FVM_MOVIECLIP_CONSTANTS_H
-#define FVM_MOVIECLIP_CONSTANTS_H       /* Private MovieClip-state guard. */
+#define FVM_MOVIECLIP_CONSTANTS_H                      /* Private MovieClip-state guard. */
 #define FVM_MOVIECLIP_NAVIGATION_KEY "host_navigation" /* Private optional explicit-seek token. */
-#define FVM_MOVIECLIP_PLAYBACK_STOPPED 0.0 /* Detached clips stop native timeline playback. */
-#define FVM_MOVIECLIP_DEFAULT_FRAMES 1U /* Empty native MovieClips expose one initial frame. */
+#define FVM_MOVIECLIP_PLAYBACK_STOPPED 0.0             /* Detached clips stop native timeline playback. */
+#define FVM_MOVIECLIP_DEFAULT_FRAMES 1U                /* Empty native MovieClips expose one initial frame. */
 /* UI16 timeline frame count accepted by native construction and frame metadata. */
 #define FVM_MOVIECLIP_MAX_FRAMES 65535UL
 /* Signed public depth range currently accepted by the native MovieClip model.
@@ -62,20 +62,20 @@
 /* Stable native _lockroot getter and setter IDs; existing callbacks are never renumbered. */
 #define FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET 1006UL
 #define FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET 1007UL
-#define FVM_MOVIECLIP_CALLBACK_XMOUSE_GET 1008UL /* Context-local pointer X getter; stable graph ID. */
-#define FVM_MOVIECLIP_CALLBACK_YMOUSE_GET 1009UL /* Context-local pointer Y getter; stable graph ID. */
-#define FVM_MOVIECLIP_CALLBACK_QUALITY_GET 1200UL /* Stable quality accessor identity. */
-#define FVM_MOVIECLIP_CALLBACK_QUALITY_SET 1201UL /* Stable quality accessor identity. */
+#define FVM_MOVIECLIP_CALLBACK_XMOUSE_GET 1008UL      /* Context-local pointer X getter; stable graph ID. */
+#define FVM_MOVIECLIP_CALLBACK_YMOUSE_GET 1009UL      /* Context-local pointer Y getter; stable graph ID. */
+#define FVM_MOVIECLIP_CALLBACK_QUALITY_GET 1200UL     /* Stable quality accessor identity. */
+#define FVM_MOVIECLIP_CALLBACK_QUALITY_SET 1201UL     /* Stable quality accessor identity. */
 #define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET 1202UL /* Stable quality accessor identity. */
 #define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET 1203UL /* Stable quality accessor identity. */
 /* Ordered method callbacks occupy consecutive IDs beginning here. */
-#define FVM_MOVIECLIP_CALLBACK_WIDTH_GET 1210UL /* Stable named width getter. */
-#define FVM_MOVIECLIP_CALLBACK_WIDTH_SET 1211UL /* Stable named width setter. */
+#define FVM_MOVIECLIP_CALLBACK_WIDTH_GET 1210UL  /* Stable named width getter. */
+#define FVM_MOVIECLIP_CALLBACK_WIDTH_SET 1211UL  /* Stable named width setter. */
 #define FVM_MOVIECLIP_CALLBACK_HEIGHT_GET 1212UL /* Stable named height getter. */
 #define FVM_MOVIECLIP_CALLBACK_HEIGHT_SET 1213UL /* Stable named height setter. */
-#define FVM_MOVIECLIP_CALLBACK_URL_GET 1214UL /* Stable readonly content source getter. */
+#define FVM_MOVIECLIP_CALLBACK_URL_GET 1214UL    /* Stable readonly content source getter. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
-#define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \
+#define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                                              \
     "$classPrototype" /* Private Boolean marking the builtin prototype, not a live display         \
                          instance. */
 /* Native instance has not undergone a detach/replacement transaction. */
@@ -100,10 +100,10 @@
 #define FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH 64U /* Maximum recursive native bounds/paint descent. */
 /* Native sibling construction uses separate roles from hit-test operands. */
 #define FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS 2U /* Name and public depth are required. */
-#define FVM_MOVIECLIP_DUPLICATE_NAME_INDEX 0U /* Coercible instance name. */
-#define FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX 1U /* Coercible native public depth. */
-#define FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX 2U /* Optional initialization value. */
-#define FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY 3U /* Complete native adapter operand array. */
+#define FVM_MOVIECLIP_DUPLICATE_NAME_INDEX 0U         /* Coercible instance name. */
+#define FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX 1U        /* Coercible native public depth. */
+#define FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX 2U      /* Optional initialization value. */
+#define FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY 3U  /* Complete native adapter operand array. */
 /* Absolute AVM1 clone depths use a separate bias from SWF placement depth encoding. */
 #define FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS 16384L
 /* Historical clone upper bound: 2^31 minus 16777220, matching AVM_MAX_DEPTH. */

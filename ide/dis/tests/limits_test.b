@@ -1,8 +1,9 @@
 implement LimitsTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Direct emulator bootstrap for boundary and multi-client behavior, without graphics modules.
 LimitsTest: module
@@ -13,35 +14,42 @@ LimitsTest: module
 # A local assertion counter is printed only after every service has acknowledged shutdown.
 checks := 0;
 
+
 # Terminate the isolated test emulator; this operation is never part of the product module.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: halt returned";
 }
 
+
 # Report a test failure before stopping, so process exit status alone cannot hide it.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
 
+
 # Make one typed request and retain its response channel through the rendezvous.
 exchange(commands: chan of core->Request, id, operation, expected, first, last: int,
-         text: string): core->Reply
+text: string): core->Reply
 {
     response := chan of core->Reply;
     commands <-= core->Request(id, operation, expected, first, last, text, "", response);
     return <-response;
 }
+
 
 # Competing producers use the same expected revision; exactly one edit can commit.
 contender(commands: chan of core->Request, id: int, text: string, done: chan of core->Reply)
@@ -49,6 +57,7 @@ contender(commands: chan of core->Request, id: int, text: string, done: chan of 
     result := exchange(commands, id, core->Replace, 1, 0, 1, text);
     done <-= result;
 }
+
 
 # Exercise exact character bounds, immutable channel values and serial conflict resolution.
 init()
@@ -59,20 +68,22 @@ init()
     commands := core->start();
     huge := "中";
     while(len huge < core->MaxCharacters)
+    {
         huge += huge;
+    }
     require(len huge == core->MaxCharacters, "Unicode character limit fixture");
     result := exchange(commands, 1, core->Open, 0, 0, 0, huge + "x");
     require(result.status == core->TooLarge && !result.opened && result.revision == 0,
-            "oversize open preserves closed state");
+    "oversize open preserves closed state");
     result = exchange(commands, 2, core->Open, 0, 0, 0, huge);
     require(result.status == core->Ok && len result.text == core->MaxCharacters,
-            "exact limit accepted");
+    "exact limit accepted");
     result = exchange(commands, 3, core->Replace, 1, 0, 0, "x");
     require(result.status == core->TooLarge && result.revision == 1 && result.text == huge,
-            "oversize insertion preserves content/revision");
+    "oversize insertion preserves content/revision");
     result = exchange(commands, 4, core->Replace, 1, 0, 1, "x");
     require(result.status == core->Ok && result.revision == 2 && len result.text == core->MaxCharacters,
-            "replacement at limit uses surviving length");
+    "replacement at limit uses surviving length");
     result = exchange(commands, 5, core->Close, 2, 0, 0, "");
     require(result.status == core->Ok && result.revision == 3 && result.text == "", "close limit document");
     result = exchange(commands, 6, core->Shutdown, 3, 0, 0, "");
@@ -86,11 +97,12 @@ init()
     # [GC:] The sent ADT is a channel value, not a shared mutable request reference.
     request.text = "changed after send";
     request.reply = nil;
-    alt {
+    alt
+    {
         commands <-= request =>
-            require(0, "owner must wait for its first reply rendezvous");
+        require(0, "owner must wait for its first reply rendezvous");
         * =>
-            require(1, "reply backpressure prevents another receive");
+        require(1, "reply backpressure prevents another receive");
     }
     result = <-response;
     require(result.id == 10 && result.text == "A😀B", "sent value retained original fields");
@@ -115,10 +127,10 @@ init()
     second := <-done;
     require(first.id != second.id, "independent callers correlate their results");
     require((first.status == core->Ok && second.status == core->Conflict) ||
-            (second.status == core->Ok && first.status == core->Conflict), "one commit and one conflict");
+    (second.status == core->Ok && first.status == core->Conflict), "one commit and one conflict");
     require(first.revision == 2 && second.revision == 2, "both replies observe committed revision");
     require(first.text == second.text && (first.text == "left" || first.text == "right"),
-            "no lost update or mixed document");
+    "no lost update or mixed document");
     result = exchange(commands, 23, core->Shutdown, 2, 0, 0, "");
     require(result.status == core->Ok, "stop contested owner");
     sys->print("PASS idecore limits %d checks\n", checks);

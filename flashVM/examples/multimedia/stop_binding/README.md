@@ -31,15 +31,15 @@ callback запрещены. Сам пример не сохраняет managed
 
 | Demonstrated API | Individual behavior and contract |
 | --- | --- |
-| [`fvm_audio_stop_binding_create`](../../../include/flashvm/audio_stop.h#L14) | Allocate/register a borrowed host callback; no invocation or ownership of userdata. [Create](../../../doc/AUDIO_STOP_BINDINGS.md#create). |
-| [`fvm_audio_stop_binding_close`](../../../include/flashvm/audio_stop.h#L17) | Detach without callback/allocation; invalidate the handle, null allowed. [Close](../../../doc/AUDIO_STOP_BINDINGS.md#close). |
-| [`fvm_call_bytes`](../../../include/flashvm/value.h#L98) | Synchronously invoke the real stopAllSounds global with no arguments. [API index](../../../doc/API_INDEX.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install standard globals before invoking stopAllSounds. [API index](../../../doc/API_INDEX.md). |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize supported runtime configuration without acquiring a VM. [Embedding](../../../doc/API_INDEX.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Own the native runtime until every child context is destroyed. [Embedding](../../../doc/API_INDEX.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Create one isolated VM owning its stop registrations. [Embedding](../../../doc/API_INDEX.md). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Attempt remaining controls, invalidate context-owned handles; userdata must still live. [Teardown](../../../doc/AUDIO_STOP_BINDINGS.md#ownership-gc-threading-and-transport). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the outer native runtime after context cleanup. [Embedding](../../../doc/API_INDEX.md). |
+| [`fvm_audio_stop_binding_create`](../../../include/flashvm/audio_stop.h#L19) | Allocate/register a borrowed host callback; no invocation or ownership of userdata. [Create](../../../doc/AUDIO_STOP_BINDINGS.md#create). |
+| [`fvm_audio_stop_binding_close`](../../../include/flashvm/audio_stop.h#L24) | Detach without callback/allocation; invalidate the handle, null allowed. [Close](../../../doc/AUDIO_STOP_BINDINGS.md#close). |
+| [`fvm_call_bytes`](../../../include/flashvm/value.h#L148) | Synchronously invoke the real stopAllSounds global with no arguments. [API index](../../../doc/API_INDEX.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Install standard globals before invoking stopAllSounds. [API index](../../../doc/API_INDEX.md). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize supported runtime configuration without acquiring a VM. [Embedding](../../../doc/API_INDEX.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Own the native runtime until every child context is destroyed. [Embedding](../../../doc/API_INDEX.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Create one isolated VM owning its stop registrations. [Embedding](../../../doc/API_INDEX.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Attempt remaining controls, invalidate context-owned handles; userdata must still live. [Teardown](../../../doc/AUDIO_STOP_BINDINGS.md#ownership-gc-threading-and-transport). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release the outer native runtime after context cleanup. [Embedding](../../../doc/API_INDEX.md). |
 
 [RU contracts](../../../doc/AUDIO_STOP_BINDINGS.ru.md) /
 [Catalog](../../README.md#example-multimedia-stop_binding).
@@ -53,13 +53,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_stop_binding_close` | function | [include/flashvm/audio_stop.h:17](../../../include/flashvm/audio_stop.h#L17) |
-| `fvm_audio_stop_binding_create` | function | [include/flashvm/audio_stop.h:14](../../../include/flashvm/audio_stop.h#L14) |
-| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../../../include/flashvm/value.h#L98) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
+| `fvm_audio_stop_binding_close` | function | [include/flashvm/audio_stop.h:24](../../../include/flashvm/audio_stop.h#L24) |
+| `fvm_audio_stop_binding_create` | function | [include/flashvm/audio_stop.h:19](../../../include/flashvm/audio_stop.h#L19) |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:148](../../../include/flashvm/value.h#L148) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
 <!-- source-links:end -->

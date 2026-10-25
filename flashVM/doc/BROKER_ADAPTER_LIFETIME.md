@@ -20,7 +20,7 @@ Mutex set/reset сохраняют stable peer context identity: owned locks д�
 не означает bounded total service RSS при неограниченном числе distinct clients/
 exports. Request graph work всё ещё ограничивается существующими record budgets.
 
-[fvm_broker_stats](../include/flashvm/capability.h#L34) возвращает coherent lock snapshot peer_contexts, exported_resources,
+[fvm_broker_stats](../include/flashvm/capability.h#L42) возвращает coherent lock snapshot peer_contexts, exported_resources,
 adapter_contexts и saturating adapter_requests. Это counts, не byte accounting;
 запрос не читает меняющиеся VM heaps, не выделяет память и не выполняет RPC.
 После stopped возвращается ERROR без изменения output; invalid arguments также
@@ -48,7 +48,7 @@ canonical exported native handles remain until stop. Repeated export reuses entr
 This is not an ownership-lease protocol or bounded total RSS across unlimited
 clients/exports; those lifetimes remain separate acceptance work.
 
-[fvm_broker_stats](../include/flashvm/capability.h#L34) copies synchronized peer/export/active-adapter counts and a
+[fvm_broker_stats](../include/flashvm/capability.h#L42) copies synchronized peer/export/active-adapter counts and a
 saturating adapter creation counter without allocation, RPC or concurrent VM-heap
 inspection. Stopped/invalid queries preserve caller output; callers must hold a
 live broker reference. Counters are not memory byte totals.
@@ -73,5 +73,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_broker_stats` | function | [include/flashvm/capability.h:34](../include/flashvm/capability.h#L34) |
+| `fvm_broker_stats` | function | [include/flashvm/capability.h:42](../include/flashvm/capability.h#L42) |
 <!-- source-links:end -->

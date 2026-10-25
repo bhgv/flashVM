@@ -12,7 +12,7 @@ or later executable-memory allocation succeeds. Compiled audio support guarantee
 neither a driver, decoder, endpoint nor streaming-sound playback.
 
 For C hosts, `fvm_desktop_build_info` fills `FVM_DesktopBuildInfo` without allocation;
-null out returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). The version string is static and must not
+null out returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). The version string is static and must not
 be freed. This is an internal host interface in frontend/common/player.h, not a
 new stable VM library ABI. Its extern C guards support C++98; a separate test
 actually links a C++ host to the C89 player and invokes both interfaces with
@@ -65,5 +65,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

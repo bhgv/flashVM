@@ -1,6 +1,9 @@
 /* Reject malformed/ambiguous/sprite sound controls; FWS/CWS use the same canonical source. */
 #define FVM_MOVIECLIP_SOUND_FIXTURE_ONLY
+#include <stdio.h>
+#include <stdlib.h>
 #include "movieclip_sound.cpp"
+
 
 static Bytes definition()
 {
@@ -13,22 +16,34 @@ static Bytes definition()
     return data;
 }
 
+
 int main()
 {
     FVM_Config cfg;
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
-    assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &runtime) == FVM_OK);
-    assert(fvm_context_create(runtime, &context) == FVM_OK &&
-           fvm_standard_install(context) == FVM_OK);
+    if (!(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &runtime) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(runtime, &context) == FVM_OK && fvm_standard_install(context) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     for (unsigned scenario = 0; scenario < 5; ++scenario)
     {
         Bytes tags, empty;
         tag(tags, 14, definition());
         if (scenario == 0)
+        {
             sound_event(tags, 192);
+        }
         if (scenario == 1)
+        {
             tag(tags, 14, definition());
+        }
         if (scenario == 2)
         {
             Bytes placement;
@@ -59,28 +74,66 @@ int main()
         tag(tags, 1, empty);
         tag(tags, 0, empty);
         Bytes swf = movie(tags, 1);
-        assert(fvm_load_memory(context, swf.begin(), swf.size()) == FVM_OK);
+        if (!(fvm_load_memory(context, swf.begin(), swf.size()) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         FVM_Object *clip = (FVM_Object *)1;
         FVM_Result result = fvm_movieclip_load_swf(context, swf.begin(), swf.size(), "root", &clip);
-        assert(result == (scenario >= 3 ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT) && !clip);
+        if (!(result == (scenario >= 3 ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT) && !clip))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
     }
     Bytes swf = sound_movie(), cws;
     for (size_t i = 0; i < 8; ++i)
+    {
         cws.push_back(swf[i]);
+    }
     cws[0] = 'C';
     uLongf bound = compressBound((uLong)swf.size() - 8);
     cws.resize(8 + bound);
-    assert(compress2(cws.begin() + 8, &bound, swf.begin() + 8, (uLong)swf.size() - 8, 9) == Z_OK);
+    if (!(compress2(cws.begin() + 8, &bound, swf.begin() + 8, (uLong)swf.size() - 8, 9) == Z_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     cws.resize(8 + bound);
-    assert(fvm_load_memory(context, cws.begin(), cws.size()) == FVM_OK);
+    if (!(fvm_load_memory(context, cws.begin(), cws.size()) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     FVM_Object *clip = 0;
-    assert(fvm_movieclip_load_swf(context, swf.begin(), swf.size(), "root", &clip) == FVM_OK);
-    assert(fvm_gc_pin(context, clip) == FVM_OK);
+    if (!(fvm_movieclip_load_swf(context, swf.begin(), swf.size(), "root", &clip) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_gc_pin(context, clip) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     Delivery state;
     state.source = &swf;
-    assert(fvm_swf_sound_mixer_create(44100, 1, 4, &state.mixer) == FVM_OK);
-    assert(fvm_movieclip_set_sound_callback(context, receive, &state) == FVM_OK);
-    assert(fvm_movieclip_advance(context, clip, 1) == FVM_OK && state.ordinals.size() == 2);
+    if (!(fvm_swf_sound_mixer_create(44100, 1, 4, &state.mixer) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_movieclip_set_sound_callback(context, receive, &state) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_movieclip_advance(context, clip, 1) == FVM_OK && state.ordinals.size() == 2))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     fvm_gc_unpin(context, clip);
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);

@@ -47,33 +47,32 @@
 #define FVM_JIT_MEMBER_READ 0U  /* Read owner/key and leave the resolved value. */
 #define FVM_JIT_MEMBER_WRITE 1U /* Assign owner/key/value and consume all three. */
 /* Unary semantic helper selectors, independent of Action byte identifiers. */
-#define FVM_JIT_UNARY_INTEGER 0U   /* Versioned Int32 conversion. */
-#define FVM_JIT_UNARY_NUMBER 1U    /* Versioned numeric conversion. */
-#define FVM_JIT_UNARY_STRING 2U    /* Counted managed string conversion. */
-#define FVM_JIT_UNARY_TYPE 3U      /* Versioned typeof name. */
-#define FVM_JIT_UNARY_INCREMENT 4U /* Numeric increment with coercion. */
-#define FVM_JIT_UNARY_DECREMENT 5U /* Numeric decrement with coercion. */
-#define FVM_JIT_UNARY_NOT 6U       /* Versioned logical negation. */
-#define FVM_JIT_BINARY_VALUES 2U       /* Operand count for arithmetic, comparisons and swaps. */
-#define FVM_JIT_UNARY_VALUES 1U        /* Operand count for return, truth and duplication. */
-#define FVM_JIT_ENDBR_0 0xf3U          /* ENDBR64 supports CET indirect branch tracking entry. */
-#define FVM_JIT_ENDBR_1 0x0fU          /* ENDBR64 second byte. */
-#define FVM_JIT_ENDBR_2 0x1eU          /* ENDBR64 third byte. */
-#define FVM_JIT_ENDBR_3 0xfaU          /* ENDBR64 fourth byte. */
-#define FVM_JIT_CACHE_ENTRIES 32U      /* Bound positive and negative automatic cache entries. */
-#define FVM_JIT_CACHE_BYTES 33554432UL /* Bound total emitted bytes retained by a context. */
-#define FVM_JIT_REPLAY_EXCEPTION_ROOT                                                              \
-    0U /* [GC:] Original thrown value while retry clears pending state. */
-#define FVM_JIT_REPLAY_ROOT_COUNT 1U /* [GC:] Complete replay preservation layout. */
-#define FVM_JIT_LOG_LABEL_BYTES 256U /* Maximum default diagnostic label output. */
+#define FVM_JIT_UNARY_INTEGER 0U         /* Versioned Int32 conversion. */
+#define FVM_JIT_UNARY_NUMBER 1U          /* Versioned numeric conversion. */
+#define FVM_JIT_UNARY_STRING 2U          /* Counted managed string conversion. */
+#define FVM_JIT_UNARY_TYPE 3U            /* Versioned typeof name. */
+#define FVM_JIT_UNARY_INCREMENT 4U       /* Numeric increment with coercion. */
+#define FVM_JIT_UNARY_DECREMENT 5U       /* Numeric decrement with coercion. */
+#define FVM_JIT_UNARY_NOT 6U             /* Versioned logical negation. */
+#define FVM_JIT_BINARY_VALUES 2U         /* Operand count for arithmetic, comparisons and swaps. */
+#define FVM_JIT_UNARY_VALUES 1U          /* Operand count for return, truth and duplication. */
+#define FVM_JIT_ENDBR_0 0xf3U            /* ENDBR64 supports CET indirect branch tracking entry. */
+#define FVM_JIT_ENDBR_1 0x0fU            /* ENDBR64 second byte. */
+#define FVM_JIT_ENDBR_2 0x1eU            /* ENDBR64 third byte. */
+#define FVM_JIT_ENDBR_3 0xfaU            /* ENDBR64 fourth byte. */
+#define FVM_JIT_CACHE_ENTRIES 32U        /* Bound positive and negative automatic cache entries. */
+#define FVM_JIT_CACHE_BYTES 33554432UL   /* Bound total emitted bytes retained by a context. */
+#define FVM_JIT_REPLAY_EXCEPTION_ROOT 0U /* [GC:] Original thrown value while retry clears pending state. */
+#define FVM_JIT_REPLAY_ROOT_COUNT 1U     /* [GC:] Complete replay preservation layout. */
+#define FVM_JIT_LOG_LABEL_BYTES 256U     /* Maximum default diagnostic label output. */
 /* Architecture widths, PC rules and long-branch relocation fields. */
-#define FVM_JIT_ARM_MIN_ARCH 7U      /* A32 MOVW/MOVT and BLX backend minimum architecture. */
-#define FVM_JIT_POINTER32_BITS 32U   /* Linux ILP32 address width. */
-#define FVM_JIT_POINTER64_BITS 64U   /* Linux LP64 address width. */
-#define FVM_JIT_POINTER32_BYTES 4U   /* ILP32 address encoding size. */
-#define FVM_JIT_POINTER64_BYTES 8U   /* LP64 address encoding size. */
-#define FVM_JIT_ARM_PC_BIAS 8U       /* A32 branch PC points two instructions ahead. */
-#define FVM_JIT_INSTRUCTION_SHIFT 2U /* Aligned instructions occupy four bytes. */
+#define FVM_JIT_ARM_MIN_ARCH 7U                /* A32 MOVW/MOVT and BLX backend minimum architecture. */
+#define FVM_JIT_POINTER32_BITS 32U             /* Linux ILP32 address width. */
+#define FVM_JIT_POINTER64_BITS 64U             /* Linux LP64 address width. */
+#define FVM_JIT_POINTER32_BYTES 4U             /* ILP32 address encoding size. */
+#define FVM_JIT_POINTER64_BYTES 8U             /* LP64 address encoding size. */
+#define FVM_JIT_ARM_PC_BIAS 8U                 /* A32 branch PC points two instructions ahead. */
+#define FVM_JIT_INSTRUCTION_SHIFT 2U           /* Aligned instructions occupy four bytes. */
 #define FVM_JIT_ARM_BRANCH_MASK 0x00ffffffUL   /* A32 signed imm24 field. */
 #define FVM_JIT_ARM64_BRANCH_MASK 0x03ffffffUL /* A64 signed imm26 field. */
 #define FVM_JIT_U32_MASK 0xffffffffUL          /* Restrict relocations to modulo 2^32. */

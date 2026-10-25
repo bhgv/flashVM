@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /* Do not use assert: these checks must execute in Release builds too. */
 static void require(int ok, const char *message)
 {
@@ -13,9 +14,10 @@ static void require(int ok, const char *message)
     }
 }
 
+
 /* Own private streams per call, verify rollback and return a copied diagnostic. */
-static FirSourceDiagnostic rejected(const char *text, size_t length, FirLanguage language,
-                                     FirSourceDiagnosticKind kind, size_t capacity)
+static FirSourceDiagnostic
+rejected(const char *text, size_t length, FirLanguage language, FirSourceDiagnosticKind kind, size_t capacity)
 {
     FILE *input = fir_temporary(), *output = fir_temporary();
     FirSourceDiagnostic diagnostic;
@@ -25,8 +27,8 @@ static FirSourceDiagnostic rejected(const char *text, size_t length, FirLanguage
     rewind(input);
     fputs("original", output);
     memset(&diagnostic, 0xff, sizeof(diagnostic));
-    require(!fir_source_ex(input, output, language, NULL,
-                            capacity ? error : NULL, capacity, &diagnostic), "must reject");
+    require(!fir_source_ex(input, output, language, NULL, capacity ? error : NULL, capacity, &diagnostic),
+            "must reject");
     require(diagnostic.kind == kind, "failure kind");
     require(ftell(output) == 8, "rejected translation writes no output");
     rewind(output);
@@ -36,12 +38,15 @@ static FirSourceDiagnostic rejected(const char *text, size_t length, FirLanguage
     return diagnostic;
 }
 
+
 /* Compare exact original-byte locations, independent of scanner tab columns. */
 static void span(FirSourceDiagnostic d, size_t offset, size_t length, size_t line, size_t column)
 {
-    require(d.has_location && d.byte_offset == offset && d.byte_length == length &&
-            d.line == line && d.column == column, "original UTF-8 byte span");
+    require(d.has_location && d.byte_offset == offset && d.byte_length == length && d.line == line &&
+                d.column == column,
+            "original UTF-8 byte span");
 }
+
 
 /* Interleave failures and successes to expose stale parser/diagnostic roots. */
 int main(void)

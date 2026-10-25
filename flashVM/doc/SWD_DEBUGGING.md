@@ -15,7 +15,7 @@ with FWD versions 6–8. Records: SCRIPT (0: module/bitmap/name/text), OFFSET
 REGISTERS (5), explicit end (0xffffffff). Integers are little-endian; names and
 source contents are terminated byte strings. Line records may precede modules.
 
-[`fvm_debug_load_swd`](../include/flashvm/source_debug.h#L22) validates the matching root DebugID, complete framing,
+[`fvm_debug_load_swd`](../include/flashvm/source_debug.h#L24) validates the matching root DebugID, complete framing,
 unique module IDs, valid module/line references and conflicting line offsets
 before atomically replacing the prior bundle. It rejects unknown records and
 unsupported versions. Breakpoint records are validated but not automatically
@@ -96,5 +96,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_debug_load_swd` | function | [include/flashvm/source_debug.h:22](../include/flashvm/source_debug.h#L22) |
+| `fvm_debug_load_swd` | function | [include/flashvm/source_debug.h:24](../include/flashvm/source_debug.h#L24) |
 <!-- source-links:end -->

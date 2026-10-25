@@ -1,7 +1,7 @@
 # Named call counts / Число аргументов именованных вызовов
 
 v0.244 connects CallFunction and loaded NewObject to the same value-based
-[`fvm_exec_argument_count`](../include/flashvm/execution.h#L482) service already used by CallMethod/NewMethod. Loaded
+[`fvm_exec_argument_count`](../include/flashvm/execution.h#L640) service already used by CallMethod/NewMethod. Loaded
 SWF4–8 calls convert text/object/numeric counts, truncate/wrap to unsigned 32 bits,
 and consume at most available values. The actual vector remains resource bounded.
 
@@ -37,5 +37,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:482](../include/flashvm/execution.h#L482) |
+| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:640](../include/flashvm/execution.h#L640) |
 <!-- source-links:end -->

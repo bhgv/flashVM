@@ -4,7 +4,7 @@
 
 The opt-in standard library now installs String constructor/prototype metadata.
 The existing String(value) function still returns a primitive string; new String
-through [`fvm_construct`](../include/flashvm/value.h#L158) or AVM1 NewObject creates a wrapper. No argument produces
+through [`fvm_construct`](../include/flashvm/value.h#L232) or AVM1 NewObject creates a wrapper. No argument produces
 an empty string; explicit undefined produces "undefined". The internal string
 slot is independent of editable ordinary properties. Input must be valid UTF-8.
 
@@ -33,7 +33,7 @@ older-player byte indexing and SWF-version-dependent coercion remain pending.
 **Current representation limit:** the C ABI stores NUL-terminated UTF-8 scalar
 strings. Embedded NUL and isolated UTF-16 surrogates cannot be represented.
 fromCharCode producing either, charAt selecting a single surrogate, or a range
-cutting a pair returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without replacement or truncation.
+cutting a pair returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) without replacement or truncation.
 charCodeAt still reports those units. A full length-aware UTF-16 string model is
 required before declaring String complete.
 
@@ -62,7 +62,7 @@ authentication. Import does not register a new global constructor.
 Allocation injection covers atomic installation, Error/Number/String creation,
 String methods and length lookup. Native method and property-read bridges now
 catch allocation failure in lookup/accessor/callback execution and return
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) with undefined output instead of escaping a C++ exception.
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) with undefined output instead of escaping a C++ exception.
 
 Tests: standard_string.c, standard_string_avm1.cpp, string_edges.c, string_wire.c,
 error_allocation.cpp and the extended error_transfer_process.c. See
@@ -83,7 +83,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_construct` | function | [include/flashvm/value.h:232](../include/flashvm/value.h#L232) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

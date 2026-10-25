@@ -1,7 +1,7 @@
 # RemoveSprite native dispatch / Удаление клипа через RemoveSprite — v0.314
 
 The interpreter now dispatches RemoveSprite to a common C89 service:
-[fvm_exec_remove_target](../include/flashvm/execution.h#L328)(context, start, target). All inputs are explicit values;
+[fvm_exec_remove_target](../include/flashvm/execution.h#L438)(context, start, target). All inputs are explicit values;
 the service reads no bytecode, operand stack or activation-selected target.
 Native MovieClip values bypass conversion. Other values stringify once using the
 loaded version policy and resolve through the existing native display path
@@ -76,5 +76,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_remove_target` | function | [include/flashvm/execution.h:328](../include/flashvm/execution.h#L328) |
+| `fvm_exec_remove_target` | function | [include/flashvm/execution.h:438](../include/flashvm/execution.h#L438) |
 <!-- source-links:end -->

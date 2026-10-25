@@ -1,7 +1,7 @@
 # Script setter collection / GC в скриптовом setter
 
 v0.253 extends trusted addProperty bridge entry to setters. The bridge omits only
-its own native barrier; the existing [FVM_SetterScope](../src/core/setter_scope.hpp#L6) retains receiver, lookup
+its own native barrier; the existing [FVM_SetterScope](../src/core/setter_scope.hpp#L8) retains receiver, lookup
 owner and snapshotted descriptor plus an immutable key. Script invocation retains
 the copied incoming argument. Arbitrary native setters and enclosing host-native
 calls keep their collector barriers; they are never suspended.
@@ -39,5 +39,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_SetterScope` | class | [src/core/setter_scope.hpp:6](../src/core/setter_scope.hpp#L6) |
+| `FVM_SetterScope` | class | [src/core/setter_scope.hpp:8](../src/core/setter_scope.hpp#L8) |
 <!-- source-links:end -->

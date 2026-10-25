@@ -1,4 +1,5 @@
 """Execute the actual source-built mk in private build directories."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -13,21 +14,22 @@ def main():
         root = Path(directory)
         (root / "input.c").write_text("input\n")
         (root / "mkfile").write_text(
-            "all:V: input.out\n\n"
-            "%.out: %.c\n\tcp $prereq $target\n\n"
-            "failure:V:\n\texit 7\n"
+            "all:V: input.out\n\n" "%.out: %.c\n\tcp $prereq $target\n\n" "failure:V:\n\texit 7\n"
         )
         subprocess.run([executable, "all"], cwd=root, check=True)
         output = root / "input.out"
-        assert output.read_text() == "input\n"
+        if not (output.read_text() == "input\n"):
+            raise AssertionError("condition check failed: tools/mk/tests/smoke.py:21")
         # Upstream mk compares whole seconds and rebuilds equal timestamps.
         # Give the prerequisite an explicitly older timestamp, without sleeping.
         os.utime(root / "input.c", (1, 1))
         stamp = output.stat().st_mtime_ns
         subprocess.run([executable, "all"], cwd=root, check=True)
-        assert output.stat().st_mtime_ns == stamp
+        if not (output.stat().st_mtime_ns == stamp):
+            raise AssertionError("condition check failed: tools/mk/tests/smoke.py:27")
         failed = subprocess.run([executable, "failure"], cwd=root, capture_output=True)
-        assert failed.returncode != 0
+        if not (failed.returncode != 0):
+            raise AssertionError("condition check failed: tools/mk/tests/smoke.py:29")
     print("PASS Inferno mk: real recipes, pattern targets, freshness and failed child status")
 
 

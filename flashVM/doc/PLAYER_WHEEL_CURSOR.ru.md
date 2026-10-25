@@ -8,7 +8,7 @@ preciseY, прежние SDK — y. Нулевая вертикаль, вклю�
 события и события чужого окна. Неконечная дельта и переполнение сохраняют ошибку.
 
 Сохранённые логические координаты получают начало авторской сцены; затем
-[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36) публикует указатель/drag и вызывает
+[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L46) публикует указатель/drag и вызывает
 onMouseWheel(delta). Не создаются ложные MouseMove/Up ClipActions, hit target,
 фокус и автоматическая прокрутка. Прежний контракт VM не делает wheel callback
 допустимым источником updateAfterEvent. Ошибка обработчика поглощает текущую
@@ -81,5 +81,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:46](../include/flashvm/mouse.h#L46) |
 <!-- source-links:end -->

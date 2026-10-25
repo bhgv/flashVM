@@ -30,13 +30,13 @@ Each style is validated for integer bounds and exact flag/payload consistency
 before its own font registration; native attachment happens after both styles.
 Already admitted context font sources follow the existing graph-import lifetime. Cached layouts are rebuilt, never shared.
 
-Use [fvm_object_set](../include/flashvm/value.h#L74) on a TextFormat to store values, then [fvm_object_call](../include/flashvm/value.h#L126) with
+Use [fvm_object_set](../include/flashvm/value.h#L106) on a TextFormat to store values, then [fvm_object_call](../include/flashvm/value.h#L184) with
 setTextFormat or setNewTextFormat to apply them. These borrowed context-owned
 objects must belong to the same context. The returned getTextFormat/getNewTextFormat
 objects are managed snapshots; retain them with ordinary roots/pins across GC.
 Calls run on the context owner thread and may allocate; OUT_OF_MEMORY leaves the
-field's text, style and geometry unchanged. [fvm_textfield_path](../include/flashvm/standard_text.h#L77) returns an independent
-owned local path, destroyed with [fvm_path_destroy](../include/flashvm/path.h#L52) and allowed to outlive the context.
+field's text, style and geometry unchanged. [fvm_textfield_path](../include/flashvm/standard_text.h#L91) returns an independent
+owned local path, destroyed with [fvm_path_destroy](../include/flashvm/path.h#L64) and allowed to outlive the context.
 No new C API is introduced. Native context concurrency still requires separate owners.
 
 [Adobe TextFormat reference](https://open-flash.github.io/mirrors/as2-language-reference/TextFormat.html)
@@ -54,9 +54,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
-| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../include/flashvm/path.h#L52) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../include/flashvm/value.h#L106) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:64](../include/flashvm/path.h#L64) |
 | `FVM_TEXT_STYLE_HAS_INSETS` | macro / define | [src/standard/text_constants.h:22](../src/standard/text_constants.h#L22) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../include/flashvm/standard_text.h#L77) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:91](../include/flashvm/standard_text.h#L91) |
 <!-- source-links:end -->

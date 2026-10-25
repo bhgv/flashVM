@@ -14,7 +14,7 @@ source: a million-element logical array with two stored entries and no removal
 needs two units for source staging. Rejected overloads retain their previous
 behavior; unloaded native staging remains unmetered by this loaded-SWF scope.
 
-Instruction exhaustion or worker stop during staging returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) before
+Instruction exhaustion or worker stop during staging returns [FVM_ERROR](../include/flashvm/flashvm.h#L45) before
 publishing the staged index table. The temporary removed array is rooted through
 staging and released on failure. Native call/frame/execution depth is restored;
 GC reclaims unpublished objects and retry with sufficient budget succeeds.
@@ -52,5 +52,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

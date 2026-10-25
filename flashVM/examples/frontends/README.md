@@ -79,19 +79,19 @@ return/ownership and links to the detailed contract and real declarations.
 
 | API | Parameters, behavior and lifetime |
 | --- | --- |
-| [fvm_config_init](../../include/flashvm/flashvm.h#L62) | `config`: writable native configuration storage; initialize ABI defaults before runtime creation; returns status, acquires no runtime. [Embedding](../../doc/EMBEDDING_API.md). |
-| [fvm_runtime_create](../../include/flashvm/flashvm.h#L64) | `config`: initialized borrowed settings; `out`: writable runtime owner; allocates outer VM; release only after its contexts. [Embedding](../../doc/EMBEDDING_API.md). |
-| [fvm_context_create](../../include/flashvm/flashvm.h#L68) | `runtime`: live owner; `out`: writable context pointer; allocates independent pointer/script state, borrows runtime lifetime. [Embedding](../../doc/EMBEDDING_API.md). |
-| [fvm_input_set_pointer](../../include/flashvm/input.h#L72) | `context`, finite world `x,y`: silently publish initial center, no callback/OS query; invalid input preserves state. [Input](../../include/flashvm/input.h). |
-| [fvm_host_pointer_to_world](../../include/flashvm/host.h#L26) | borrowed world→event affine, finite event `x,y`, distinct writable world outputs: inverse conversion, no allocation; invalid/singular input preserves outputs. [Host coordinates](../../doc/HOST_BACKENDS.md#event-coordinates). |
-| [fvm_input_dispatch_mouse](../../include/flashvm/mouse.h#L29) | live `context`, DOWN/MOVE/UP `type`, finite world `x,y`: publish coordinates and synchronously deliver existing Mouse listeners/drag; returns real VM status. No listener is needed to publish position. [Mouse](../../doc/MOUSE.md#delivery). |
-| [`fvm_input_dispatch_mouse_wheel`](../../include/flashvm/mouse.h#L36) | Live owner-thread context, finite signed scroll-line delta and world x/y: snapshot/GC-safe onMouseWheel(delta), pointer/drag publication; invalid input or preparation OOM preserves state, callback errors retain committed effects. [Wheel contract](../../doc/MOUSE.md#wheel-events). |
-| [fvm_input_get_pointer](../../include/flashvm/input.h#L75) | `context`, distinct writable `x,y`: copy latest world pixels without OS call/allocation. [Input](../../include/flashvm/input.h). |
-| [fvm_raster_fill_polygon](../../include/flashvm/raster.h#L39) | borrowed writable `surface`, finite `points`, vertex `count`, straight-alpha `color`: synchronous nonzero fill clipped to image; retains nothing, unsupported without graphics. [Raster](../../include/flashvm/raster.h). |
-| [fvm_host_present](../../include/flashvm/host.h#L18) | borrowed `surface`, actual available `byte_count`, synchronous `callback`, borrowed `userdata`: validate span/stride then call once; return real consumer status; no retained frame. [Frame contract](../../doc/HOST_BACKENDS.md#frame-delivery). |
-| [FVM_HostPresentCallback](../../include/flashvm/host.h#L11) | receives copied descriptor and borrowed pixels plus unchanged userdata; upload/copy before return, report [FVM_Result](../../include/flashvm/flashvm.h#L40); do not retain source or destroy its owner. [Frame contract](../../doc/HOST_BACKENDS.md#frame-delivery). |
-| [fvm_context_destroy](../../include/flashvm/flashvm.h#L70) | live acquired `context`: release VM state after callbacks stop; pointer invalid afterward. [Embedding](../../doc/EMBEDDING_API.md). |
-| [fvm_runtime_destroy](../../include/flashvm/flashvm.h#L66) | acquired `runtime`: release outer owner after context destruction; pointer invalid afterward. [Embedding](../../doc/EMBEDDING_API.md). |
+| [fvm_config_init](../../include/flashvm/flashvm.h#L70) | `config`: writable native configuration storage; initialize ABI defaults before runtime creation; returns status, acquires no runtime. [Embedding](../../doc/EMBEDDING_API.md). |
+| [fvm_runtime_create](../../include/flashvm/flashvm.h#L74) | `config`: initialized borrowed settings; `out`: writable runtime owner; allocates outer VM; release only after its contexts. [Embedding](../../doc/EMBEDDING_API.md). |
+| [fvm_context_create](../../include/flashvm/flashvm.h#L82) | `runtime`: live owner; `out`: writable context pointer; allocates independent pointer/script state, borrows runtime lifetime. [Embedding](../../doc/EMBEDDING_API.md). |
+| [fvm_input_set_pointer](../../include/flashvm/input.h#L91) | `context`, finite world `x,y`: silently publish initial center, no callback/OS query; invalid input preserves state. [Input](../../include/flashvm/input.h). |
+| [fvm_host_pointer_to_world](../../include/flashvm/host.h#L33) | borrowed world→event affine, finite event `x,y`, distinct writable world outputs: inverse conversion, no allocation; invalid/singular input preserves outputs. [Host coordinates](../../doc/HOST_BACKENDS.md#event-coordinates). |
+| [fvm_input_dispatch_mouse](../../include/flashvm/mouse.h#L37) | live `context`, DOWN/MOVE/UP `type`, finite world `x,y`: publish coordinates and synchronously deliver existing Mouse listeners/drag; returns real VM status. No listener is needed to publish position. [Mouse](../../doc/MOUSE.md#delivery). |
+| [`fvm_input_dispatch_mouse_wheel`](../../include/flashvm/mouse.h#L46) | Live owner-thread context, finite signed scroll-line delta and world x/y: snapshot/GC-safe onMouseWheel(delta), pointer/drag publication; invalid input or preparation OOM preserves state, callback errors retain committed effects. [Wheel contract](../../doc/MOUSE.md#wheel-events). |
+| [fvm_input_get_pointer](../../include/flashvm/input.h#L96) | `context`, distinct writable `x,y`: copy latest world pixels without OS call/allocation. [Input](../../include/flashvm/input.h). |
+| [fvm_raster_fill_polygon](../../include/flashvm/raster.h#L46) | borrowed writable `surface`, finite `points`, vertex `count`, straight-alpha `color`: synchronous nonzero fill clipped to image; retains nothing, unsupported without graphics. [Raster](../../include/flashvm/raster.h). |
+| [fvm_host_present](../../include/flashvm/host.h#L23) | borrowed `surface`, actual available `byte_count`, synchronous `callback`, borrowed `userdata`: validate span/stride then call once; return real consumer status; no retained frame. [Frame contract](../../doc/HOST_BACKENDS.md#frame-delivery). |
+| [FVM_HostPresentCallback](../../include/flashvm/host.h#L14) | receives copied descriptor and borrowed pixels plus unchanged userdata; upload/copy before return, report [FVM_Result](../../include/flashvm/flashvm.h#L42); do not retain source or destroy its owner. [Frame contract](../../doc/HOST_BACKENDS.md#frame-delivery). |
+| [fvm_context_destroy](../../include/flashvm/flashvm.h#L86) | live acquired `context`: release VM state after callbacks stop; pointer invalid afterward. [Embedding](../../doc/EMBEDDING_API.md). |
+| [fvm_runtime_destroy](../../include/flashvm/flashvm.h#L78) | acquired `runtime`: release outer owner after context destruction; pointer invalid afterward. [Embedding](../../doc/EMBEDDING_API.md). |
 
 These tutorials do not install Mouse script namespaces or register receivers.
 For that next integration step use [mouse_listeners](../embedding/mouse_listeners/README.md).
@@ -153,8 +153,8 @@ stays visible when the native cursor is hidden, like a custom cursor MovieClip.
 
 | API | Parameters, lifetime and meaning |
 | --- | --- |
-| [`fvm_input_get_cursor_visible`](../../include/flashvm/mouse.h#L41) | Live owner-thread context, mandatory writable int: copy requested 0/1, no allocation/GC/SDK call; preserve output on invalid input. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../include/flashvm/mouse.h#L46) | Context, visible=0/1, mandatory previous int: atomically request and return old logical 0/1; no native acknowledgement. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_get_cursor_visible`](../../include/flashvm/mouse.h#L53) | Live owner-thread context, mandatory writable int: copy requested 0/1, no allocation/GC/SDK call; preserve output on invalid input. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../include/flashvm/mouse.h#L60) | Context, visible=0/1, mandatory previous int: atomically request and return old logical 0/1; no native acknowledgement. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
 
 SDL_ShowCursor is global to SDL: this standalone one-window tutorial saves it
 before applying and restores it before SDK shutdown, including failure exits.
@@ -191,20 +191,20 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../include/flashvm/flashvm.h#L70) |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../include/flashvm/host.h#L26) |
-| `fvm_host_present` | function | [include/flashvm/host.h:18](../../include/flashvm/host.h#L18) |
-| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../../include/flashvm/mouse.h#L29) |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../../include/flashvm/mouse.h#L36) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../include/flashvm/mouse.h#L41) |
-| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../include/flashvm/input.h#L75) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../include/flashvm/mouse.h#L46) |
-| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../include/flashvm/input.h#L72) |
-| `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:39](../../include/flashvm/raster.h#L39) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../../include/flashvm/flashvm.h#L40) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../include/flashvm/flashvm.h#L66) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../include/flashvm/flashvm.h#L86) |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:33](../../include/flashvm/host.h#L33) |
+| `fvm_host_present` | function | [include/flashvm/host.h:23](../../include/flashvm/host.h#L23) |
+| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:14](../../include/flashvm/host.h#L14) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../../include/flashvm/mouse.h#L37) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:46](../../include/flashvm/mouse.h#L46) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:53](../../include/flashvm/mouse.h#L53) |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:96](../../include/flashvm/input.h#L96) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:60](../../include/flashvm/mouse.h#L60) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:91](../../include/flashvm/input.h#L91) |
+| `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:46](../../include/flashvm/raster.h#L46) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../../include/flashvm/flashvm.h#L42) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../include/flashvm/flashvm.h#L78) |
 <!-- source-links:end -->

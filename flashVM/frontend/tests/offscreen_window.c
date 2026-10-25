@@ -4,15 +4,18 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <string.h>
-#define CHECK(x)                                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if (!(x))                                                                                  \
-        {                                                                                          \
-            fprintf(stderr, "offscreen line %d: %s (%s)\n", __LINE__, #x, SDL_GetError());         \
-            return 1;                                                                              \
-        }                                                                                          \
+
+#define CHECK(x)                                                                                                       \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+        {                                                                                                              \
+            fprintf(stderr, "offscreen line %d: %s (%s)\n", __LINE__, #x, SDL_GetError());                             \
+            return 1;                                                                                                  \
+        }                                                                                                              \
     } while (0)
+
+
 /* Assert independently owned SDL references survive failed and successful sessions. */
 int main(void)
 {

@@ -38,13 +38,13 @@ Mixed 6 frames; expected six native S16 frames, no audible playback.
 ```
 
 С ключом `--jit` первая строка — `StopSounds execution: native`; с
-`--interpreter` — `interpreter`. Без ключа пример выбирает режим по [fvm_jit_available](../../../include/flashvm/jit.h#L13), создаёт обычную AVM1 функцию `{StopSounds, End}` и
+`--interpreter` — `interpreter`. Без ключа пример выбирает режим по [fvm_jit_available](../../../include/flashvm/jit.h#L15), создаёт обычную AVM1 функцию `{StopSounds, End}` и
 вызывает её после последнего блока. StopSounds закрывает настоящий FILE через
 зарегистрированный callback. Native path дополнительно требует ровно один
 native_entries: скрытый fallback считается ошибкой. Для проверки этого пути
 можно собрать с `cmake/profiles/minimal-jit.defs` и передать `--jit`.
 Профиль INTERPRETER задаёт начальную политику, а не обязательно отсутствие
-явного compiler API: доступность проверяется через [fvm_jit_available](../../../include/flashvm/jit.h#L13). Ни стандартные
+явного compiler API: доступность проверяется через [fvm_jit_available](../../../include/flashvm/jit.h#L15). Ни стандартные
 AS объекты, ни отдельный аудиопоток для этого не требуются.
 
 [GC:] Function handle используется до первого вызова без intervening collecting
@@ -76,23 +76,23 @@ teardown закрывает такой ресурс. Runtime освобожда�
 
 ## Демонстрируемые API
 
-- [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L131) — точная сумма, silence padding, лимиты/alias/ошибки:
+- [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L179) — точная сумма, silence padding, лимиты/alias/ошибки:
   [AUDIO_MIXING.md](../../../doc/AUDIO_MIXING.md#fvm_audio_mix_s16).
-- [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L114),
-  [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L126), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L128) — ownership,
+- [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L100), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L142),
+  [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L158), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L162) — ownership,
   progression, EOF and cleanup: [SWF_SOUND_VOICES.md](../../../doc/SWF_SOUND_VOICES.md).
-- [`fvm_jit_available`](../../../include/flashvm/jit.h#L13), [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64),
-  [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71), [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52), [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) —
+- [`fvm_jit_available`](../../../include/flashvm/jit.h#L15), [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L79),
+  [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L92), [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L62), [`fvm_function_invoke`](../../../include/flashvm/function.h#L79) —
   выбор interpreter/automatic JIT, обычная активация StopSounds и проверка
   фактического native entry: [JIT_SOUND.md](../../../doc/JIT_SOUND.md),
   [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84)
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L100), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L104)
   — copied host callbacks, actual synchronous output, retryable stop:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md).
-- [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical input before native preparation:
+- [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L90) — canonical input before native preparation:
   [SWF_SOUND_RESOURCES.md](../../../doc/SWF_SOUND_RESOURCES.md#scope--область-реализации).
-- [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68),
-  [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — dependency-ordered VM lifetime:
+- [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82),
+  [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) — dependency-ordered VM lifetime:
   [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context),
   [terminal cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
@@ -105,11 +105,11 @@ longer voice repeats independently. The output is exactly six frames
 [-256, 0, -256, 32512, 0, -32768], stored in native byte order.
 
 The final stop is an ordinary AVM1 function containing StopSounds and End.
-The tutorial selects automatic JIT when [fvm_jit_available](../../../include/flashvm/jit.h#L13) reports a working
+The tutorial selects automatic JIT when [fvm_jit_available](../../../include/flashvm/jit.h#L15) reports a working
 backend, otherwise interpreter mode. Pass `--interpreter` or `--jit` after the
 output path to select a specific path; unavailable JIT or an unknown switch is
 rejected before VM/file creation. A native run requires exactly one actual
-native entry from [fvm_execution_get_stats](../../../include/flashvm/execution_mode.h#L71); fallback fails the tutorial. Both
+native entry from [fvm_execution_get_stats](../../../include/flashvm/execution_mode.h#L92); fallback fails the tutorial. Both
 paths close the real FILE through the same guarded registered stop callback.
 Build with minimal-jit.defs and pass `--jit` to exercise native execution.
 An INTERPRETER build sets the initial policy; it need not disable explicit
@@ -149,22 +149,22 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../../../include/flashvm/multimedia.h#L84) |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../../../include/flashvm/multimedia.h#L131) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../../../include/flashvm/execution_mode.h#L71) |
-| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
-| `fvm_function_create_avm1` | function | [include/flashvm/function.h:52](../../../include/flashvm/function.h#L52) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../../../include/flashvm/function.h#L65) |
-| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../../../include/flashvm/jit.h#L13) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:128](../../../include/flashvm/swf_sound.h#L128) |
-| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:114](../../../include/flashvm/swf_sound.h#L114) |
-| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:82](../../../include/flashvm/swf_sound.h#L82) |
-| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:126](../../../include/flashvm/swf_sound.h#L126) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:100](../../../include/flashvm/multimedia.h#L100) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:104](../../../include/flashvm/multimedia.h#L104) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:179](../../../include/flashvm/multimedia.h#L179) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:92](../../../include/flashvm/execution_mode.h#L92) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:79](../../../include/flashvm/execution_mode.h#L79) |
+| `fvm_function_create_avm1` | function | [include/flashvm/function.h:62](../../../include/flashvm/function.h#L62) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../../../include/flashvm/function.h#L79) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:15](../../../include/flashvm/jit.h#L15) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../../../include/flashvm/flashvm.h#L90) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:162](../../../include/flashvm/swf_sound.h#L162) |
+| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:142](../../../include/flashvm/swf_sound.h#L142) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:100](../../../include/flashvm/swf_sound.h#L100) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:158](../../../include/flashvm/swf_sound.h#L158) |
 <!-- source-links:end -->

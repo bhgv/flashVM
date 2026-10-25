@@ -6,11 +6,11 @@ A small curve translated close to a large coordinate lost significant derivative
 
 The shared `curve_bounds` helper includes the endpoint first. When the start is nonzero and all active controls have the same sign and magnitudes between half and twice its magnitude, Sterbenz subtraction supplies exact local coordinates under ordinary IEEE binary arithmetic with gradual underflow. Derivatives and Bernstein evaluation use those coordinates, and the origin is restored once per extremum. Other control configurations retain the previous arithmetic. Tiny derivative discriminants still use the previous binary exponent scaling.
 
-This affects public [`fvm_path_bounds`](../include/flashvm/path.h#L71) and private round/round stroke bounds. It allocates no storage and retains no state. Public headers, ownership, return statuses, callback identities and wire formats are unchanged. Cubics remain native paths; this does not add cubic MovieClip commands or change JIT emission.
+This affects public [`fvm_path_bounds`](../include/flashvm/path.h#L97) and private round/round stroke bounds. It allocates no storage and retains no state. Public headers, ownership, return statuses, callback identities and wire formats are unchanged. Cubics remain native paths; this does not add cubic MovieClip commands or change JIT emission.
 
 ## API contract and example
 
-[`fvm_path_bounds`](../include/flashvm/path.h#L71) borrows an immutable non-null path and writes four owned scalar coordinates to a non-null output. It returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) for null inputs and [FVM_OK](../include/flashvm/flashvm.h#L42) for an accepted measurement, including an empty zero box. It neither transfers ownership nor invokes the VM, GC or host callbacks. Concurrent independent paths are permitted; mutation of the same path during measurement needs caller synchronization. Coordinate admission and the existing treatment of move-only contours are unchanged. Native path allocation and edits can still fail through their own APIs.
+[`fvm_path_bounds`](../include/flashvm/path.h#L97) borrows an immutable non-null path and writes four owned scalar coordinates to a non-null output. It returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) for null inputs and [FVM_OK](../include/flashvm/flashvm.h#L44) for an accepted measurement, including an empty zero box. It neither transfers ownership nor invokes the VM, GC or host callbacks. Concurrent independent paths are permitted; mutation of the same path during measurement needs caller synchronization. Coordinate admission and the existing treatment of move-only contours are unchanged. Native path allocation and edits can still fail through their own APIs.
 
 The existing executable [C89 cubic example](../examples/embedding/cubic_extrema/README.md) remains applicable and is rerun in every selected profile. No new public function is introduced.
 
@@ -59,7 +59,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../include/flashvm/path.h#L97) |
 <!-- source-links:end -->

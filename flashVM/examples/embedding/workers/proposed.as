@@ -1,6 +1,6 @@
 /* FlashVM: Embedding/ActionScript tutorial: proposed.
- * File: examples/embedding/workers/proposed.as.
- */
+* File: examples/embedding/workers/proposed.as.
+*/
 
 // DESIGN EXAMPLE ONLY / ТОЛЬКО ПЛАНИРУЕМЫЙ СИНТАКСИС
 // Not supported by the current AVM1 interpreter.

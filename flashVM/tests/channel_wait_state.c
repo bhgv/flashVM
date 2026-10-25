@@ -5,10 +5,21 @@
 #include "../ports/thread_port.h"
 #include <stdio.h>
 #include <string.h>
-#define CHECK(test) do { if (!(test)) { fprintf(stderr, "failed line %d: %s\n", __LINE__, #test); return 1; } } while (0)
+
+#define CHECK(test)                                                                                                    \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(test))                                                                                                   \
+        {                                                                                                              \
+            fprintf(stderr, "failed line %d: %s\n", __LINE__, #test);                                                  \
+            return 1;                                                                                                  \
+        }                                                                                                              \
+    } while (0)
+
 
 /* Main observes result only after join; channel lifetime extends through both threads. */
-typedef struct Call {
+typedef struct Call
+{
     FVM_Channel *channel;
     FVM_Result result;
     FVM_Value value;
@@ -16,6 +27,7 @@ typedef struct Call {
     int borrowed;
     int script;
 } Call;
+
 
 /* Use actual native OS threads; no polling enters a VM or accesses its heap. */
 static void invoke(void *user)
@@ -29,25 +41,44 @@ static void invoke(void *user)
         FVM_Object *wrapper = 0;
         call->result = fvm_config_init(&config);
         if (call->result == FVM_OK)
+        {
             call->result = fvm_runtime_create(&config, &runtime);
+        }
         if (call->result == FVM_OK)
+        {
             call->result = fvm_context_create(runtime, &context);
+        }
         if (call->result == FVM_OK)
+        {
             call->result = fvm_extensions_wrap_channel(context, call->channel, &wrapper);
+        }
         if (call->result == FVM_OK)
+        {
             call->result = fvm_object_call(context, wrapper, "receive", 0, 0, &call->value);
+        }
         if (context)
+        {
             fvm_context_destroy(context);
+        }
         if (runtime)
+        {
             fvm_runtime_destroy(runtime);
+        }
     }
     else if (call->sending)
+    {
         call->result = fvm_channel_send(call->channel, &call->value);
+    }
     else if (call->borrowed)
+    {
         call->result = fvm_channel_receive(call->channel, &call->value);
+    }
     else
+    {
         call->result = fvm_channel_receive_owned(call->channel, &call->value, 1);
+    }
 }
+
 
 /* Bounded observation avoids assuming scheduling speed or sleeping for a fixed race. */
 static int wait_for(FVM_Channel *channel, unsigned int direction, size_t pending)
@@ -57,13 +88,18 @@ static int wait_for(FVM_Channel *channel, unsigned int direction, size_t pending
     for (attempt = 0; attempt < 5000; attempt++)
     {
         if (fvm_channel_wait_state(channel, &state) != FVM_OK)
+        {
             return 0;
+        }
         if ((state.directions & direction) == direction && state.pending == pending)
+        {
             return 1;
+        }
         fvm_port_thread_sleep_us(1000);
     }
     return 0;
 }
+
 
 /* Check sender-first, receiver-first, closed offers and buffered backpressure. */
 int main(void)
@@ -97,7 +133,8 @@ int main(void)
     CHECK(fvm_extensions_wrap_channel(context, channel, &wrapper) == FVM_OK);
     CHECK(fvm_object_call(context, wrapper, "waitingSenders", 0, 0, &value) == FVM_OK && value.number == 1);
     CHECK(fvm_object_call(context, wrapper, "waitingReceivers", 0, 0, &value) == FVM_OK && value.number == 0);
-    CHECK(fvm_object_call(context, wrapper, "waitDirections", 0, 0, &value) == FVM_OK && value.number == FVM_CHANNEL_WAIT_SEND);
+    CHECK(fvm_object_call(context, wrapper, "waitDirections", 0, 0, &value) == FVM_OK &&
+          value.number == FVM_CHANNEL_WAIT_SEND);
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);
     CHECK(fvm_channel_available(channel, &available) == FVM_OK && available);

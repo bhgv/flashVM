@@ -4,7 +4,7 @@
 
 ## Native CRC foundation (v0.813)
 
-The private [fvm_swf_mp3_verify_crc](../src/swf/sound_mp3.cpp#L58) checks one exact MPEG packet without allocation,
+The private [fvm_swf_mp3_verify_crc](../src/swf/sound_mp3.cpp#L75) checks one exact MPEG packet without allocation,
 VM access, decoder mutation or callbacks. The MPEG protection bit selects CRC
 validation: the last sixteen header bits and version/channel-dependent side
 information feed the MPEG CRC-16 register. The transmitted checksum is big-endian.
@@ -104,5 +104,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_mp3_verify_crc` | function | [src/swf/sound_mp3.cpp:58](../src/swf/sound_mp3.cpp#L58) |
+| `fvm_swf_mp3_verify_crc` | function | [src/swf/sound_mp3.cpp:75](../src/swf/sound_mp3.cpp#L75) |
 <!-- source-links:end -->

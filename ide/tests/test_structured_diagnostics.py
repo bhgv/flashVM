@@ -1,4 +1,5 @@
 """Admit locations only when compiler records match the exact captured snapshot."""
+
 import hashlib
 import json
 
@@ -9,9 +10,17 @@ from support import BuildCase, driver
 class TestStructuredDiagnostics(BuildCase):
     # Create the canonical record for an identifier after a Unicode comment/tab.
     def record(self, **updates):
-        result = dict(schema=1, kind="semantic", code=0, has_location=True,
-                      byte_offset=14, byte_length=7, line=1, column=15,
-                      message="unknown name")
+        result = dict(
+            schema=1,
+            kind="semantic",
+            code=0,
+            has_location=True,
+            byte_offset=14,
+            byte_length=7,
+            line=1,
+            column=15,
+            message="unknown name",
+        )
         result.update(updates)
         return result
 
@@ -33,6 +42,7 @@ class TestStructuredDiagnostics(BuildCase):
     # A live source edit during compilation must not rewrite snapshot provenance.
     def test_live_source_change_does_not_relabel_snapshot(self):
         from unittest.mock import patch
+
         original = "/*中*/\ttrace(missing);".encode()
         self.source.write_bytes(original)
 
@@ -52,17 +62,35 @@ class TestStructuredDiagnostics(BuildCase):
     # Invalid records remain useful raw logs, but must never fabricate navigation.
     def test_malformed_coordinates_stay_unlocated(self):
         data = "/*中*/\ttrace(missing);".encode()
-        variants = [self.record(schema=True), self.record(schema=2), self.record(kind="foreign"),
-                    self.record(code=True), self.record(code=3), self.record(byte_offset=-1),
-                    self.record(byte_offset=999), self.record(byte_length=999),
-                    self.record(byte_offset=3), self.record(byte_offset=4, byte_length=1),
-                    self.record(line=2), self.record(column=13), self.record(has_location=1),
-                    self.record(message=None), self.record(message="\ud800"), self.record(has_location=False),
-                    self.record(byte_offset=2147483648)]
-        messages = [json.dumps(v) for v in variants] + ["source:3:7: opaque", "{}", "[]", "null",
-                    '{"schema":1,"schema":1}',
-                    json.dumps(self.record()).replace('"schema": 1', '"schema": 2, "schema": 1'),
-                    json.dumps(self.record()) + "noise", "[" * 2000 + "0" + "]" * 2000]
+        variants = [
+            self.record(schema=True),
+            self.record(schema=2),
+            self.record(kind="foreign"),
+            self.record(code=True),
+            self.record(code=3),
+            self.record(byte_offset=-1),
+            self.record(byte_offset=999),
+            self.record(byte_length=999),
+            self.record(byte_offset=3),
+            self.record(byte_offset=4, byte_length=1),
+            self.record(line=2),
+            self.record(column=13),
+            self.record(has_location=1),
+            self.record(message=None),
+            self.record(message="\ud800"),
+            self.record(has_location=False),
+            self.record(byte_offset=2147483648),
+        ]
+        messages = [json.dumps(v) for v in variants] + [
+            "source:3:7: opaque",
+            "{}",
+            "[]",
+            "null",
+            '{"schema":1,"schema":1}',
+            json.dumps(self.record()).replace('"schema": 1', '"schema": 2, "schema": 1'),
+            json.dumps(self.record()) + "noise",
+            "[" * 2000 + "0" + "]" * 2000,
+        ]
         for message in messages:
             with self.subTest(message=message):
                 item = driver._source_diagnostic(message, data, self.source)
@@ -75,8 +103,9 @@ class TestStructuredDiagnostics(BuildCase):
     # EOF spans and physical LF/CRLF/tab coordinates retain exact character units.
     def test_eof_and_multiline(self):
         data = "中\r\n\t😀".encode()
-        record = self.record(kind="syntax", code=45, byte_offset=len(data), byte_length=0,
-                             line=2, column=6)
+        record = self.record(
+            kind="syntax", code=45, byte_offset=len(data), byte_length=0, line=2, column=6
+        )
         item = driver._source_diagnostic(json.dumps(record), data, self.source)
         self.assertEqual((item["character_offset"], item["character_length"]), (5, 0))
         self.assertEqual((item["line"], item["column"]), (2, 3))

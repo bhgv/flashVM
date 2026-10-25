@@ -1,18 +1,250 @@
 #define FVM_BITMAP_FIXTURE_ONLY
+#include <stdio.h>
+#include <stdlib.h>
 #include "standard_bitmap.cpp"
-static FVM_Object *rect(FVM_Context *c,double x,double y,double w,double h){double v[]={x,y,w,h};return make(c,"flash.geom.Rectangle",4,v);}
-static FVM_Object *point(FVM_Context *c,double x,double y){double v[]={x,y};return make(c,"flash.geom.Point",2,v);}
-static void copy(FVM_Context *c,FVM_Object *dest,FVM_Object *source,FVM_Object *area,FVM_Object *at,FVM_Object *alpha=0,FVM_Object *alpha_at=0,bool merge=false){FVM_Value args[6]={ref(source),ref(area),ref(at)};fvm_value_undefined(args+3);args[3].type=FVM_VALUE_NULL;if(alpha)args[3]=ref(alpha);fvm_value_undefined(args+4);args[4].type=FVM_VALUE_NULL;if(alpha_at)args[4]=ref(alpha_at);fvm_value_boolean(args+5,merge);call(c,dest,"copyPixels",6,args);}
-int main(){FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0,*other=0;assert(fvm_config_init(&cfg)==FVM_OK);assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);assert(fvm_context_create(rt,&c)==FVM_OK);assert(fvm_context_create(rt,&other)==FVM_OK);assert(fvm_standard_install(c)==FVM_OK);
-FVM_Object *area=rect(c,0,0,1,1),*origin=point(c,0,0),*input=bitmap(c,3,1,true,0x80c86432UL),*dest=bitmap(c,3,1,true,0xff0000ffUL),*alpha=bitmap(c,3,1,true,0x80000000UL);
-copy(c,dest,input,area,origin);assert(read(c,dest,0,0)==0x80c86432UL);assert(read(c,dest,1,0)==0xff0000ffUL);
-write(c,dest,0,0,0xff0000ffUL);copy(c,dest,input,area,origin,0,0,true);assert(read(c,dest,0,0)==0xff643298UL);
-copy(c,dest,input,area,origin,alpha);assert(read(c,dest,0,0)==0x40c86432UL);
-FVM_Object *opaque=bitmap(c,1,1,false,0);copy(c,opaque,input,area,origin);assert(read(c,opaque,0,0)==0xff643219UL);
-FVM_Object *self=bitmap(c,3,1,true,0xff000000UL);write(c,self,0,0,0xff110000UL);write(c,self,1,0,0xff220000UL);copy(c,self,self,rect(c,0,0,2,1),point(c,1,0));assert(read(c,self,1,0)==0xff110000UL);assert(read(c,self,2,0)==0xff220000UL);
-FVM_Object *clip=bitmap(c,3,1,true,0);copy(c,clip,input,rect(c,-1,0,3,1),origin);assert(read(c,clip,0,0)==0);assert(read(c,clip,1,0)==0x80c86432UL);assert(read(c,clip,2,0)==0x80c86432UL);
-FVM_Object *small_mask=bitmap(c,1,1,true,0xff000000UL);copy(c,clip,input,rect(c,0,0,3,1),origin,small_mask,point(c,-1,0));assert(read(c,clip,0,0)==0);assert(read(c,clip,1,0)==0x80c86432UL);
-FVM_Object *shared_mask=bitmap(c,3,1,true,0x10000000UL);write(c,shared_mask,1,0,0x80000000UL);FVM_Object *red=bitmap(c,3,1,true,0xffff0000UL);copy(c,shared_mask,red,rect(c,0,0,2,1),point(c,1,0),shared_mask,origin);assert(read(c,shared_mask,1,0)==0x10ff0000UL);assert(read(c,shared_mask,2,0)==0x80ff0000UL);
-FVM_Channel *channel=0;FVM_Value packet=ref(dest),out;assert(fvm_channel_create(&channel)==FVM_OK);assert(fvm_channel_send_value(c,channel,&packet,0)==FVM_OK);assert(fvm_channel_receive_value(other,channel,&out,0)==FVM_OK);assert(fvm_gc_pin(other,out.object)==FVM_OK);FVM_Object *received=out.object;FVM_Value bounds;assert(fvm_object_get(other,received,"rectangle",&bounds)==FVM_OK);FVM_Object *at=0;assert(fvm_object_create(other,&at)==FVM_OK);FVM_Value zero;fvm_value_number(&zero,0);assert(fvm_object_set(other,at,"x",&zero)==FVM_OK);assert(fvm_object_set(other,at,"y",&zero)==FVM_OK);FVM_Value clone=call(other,received,"clone");assert(fvm_gc_pin(other,clone.object)==FVM_OK);write(other,clone.object,0,0,0);copy(other,clone.object,received,bounds.object,at);assert(read(other,clone.object,0,0)==0x40c86432UL);assert(fvm_gc_collect(other,0)==FVM_OK);assert(read(other,clone.object,0,0)==0x40c86432UL);fvm_channel_destroy(channel);
-call(c,input,"dispose");FVM_Value invalid[3]={ref(input),ref(area),ref(origin)};assert(call(c,dest,"copyPixels",3,invalid).number==-1);
-fvm_context_destroy(other);fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;}
+
+
+static FVM_Object *rect(FVM_Context *c, double x, double y, double w, double h)
+{
+    double v[] = {x, y, w, h};
+    return make(c, "flash.geom.Rectangle", 4, v);
+}
+
+
+static FVM_Object *point(FVM_Context *c, double x, double y)
+{
+    double v[] = {x, y};
+    return make(c, "flash.geom.Point", 2, v);
+}
+
+
+static void copy(FVM_Context *c,
+                 FVM_Object *dest,
+                 FVM_Object *source,
+                 FVM_Object *area,
+                 FVM_Object *at,
+                 FVM_Object *alpha = 0,
+                 FVM_Object *alpha_at = 0,
+                 bool merge = false)
+{
+    FVM_Value args[6] = {ref(source), ref(area), ref(at)};
+    fvm_value_undefined(args + 3);
+    args[3].type = FVM_VALUE_NULL;
+    if (alpha)
+    {
+        args[3] = ref(alpha);
+    }
+    fvm_value_undefined(args + 4);
+    args[4].type = FVM_VALUE_NULL;
+    if (alpha_at)
+    {
+        args[4] = ref(alpha_at);
+    }
+    fvm_value_boolean(args + 5, merge);
+    call(c, dest, "copyPixels", 6, args);
+}
+
+
+int main()
+{
+    FVM_Config cfg;
+    FVM_Runtime *rt = 0;
+    FVM_Context *c = 0, *other = 0;
+    if (!(fvm_config_init(&cfg) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_runtime_create(&cfg, &rt) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(rt, &c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_context_create(rt, &other) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_standard_install(c) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *area = rect(c, 0, 0, 1, 1), *origin = point(c, 0, 0), *input = bitmap(c, 3, 1, true, 0x80c86432UL),
+               *dest = bitmap(c, 3, 1, true, 0xff0000ffUL), *alpha = bitmap(c, 3, 1, true, 0x80000000UL);
+    copy(c, dest, input, area, origin);
+    if (!(read(c, dest, 0, 0) == 0x80c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, dest, 1, 0) == 0xff0000ffUL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    write(c, dest, 0, 0, 0xff0000ffUL);
+    copy(c, dest, input, area, origin, 0, 0, true);
+    if (!(read(c, dest, 0, 0) == 0xff643298UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    copy(c, dest, input, area, origin, alpha);
+    if (!(read(c, dest, 0, 0) == 0x40c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *opaque = bitmap(c, 1, 1, false, 0);
+    copy(c, opaque, input, area, origin);
+    if (!(read(c, opaque, 0, 0) == 0xff643219UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *self = bitmap(c, 3, 1, true, 0xff000000UL);
+    write(c, self, 0, 0, 0xff110000UL);
+    write(c, self, 1, 0, 0xff220000UL);
+    copy(c, self, self, rect(c, 0, 0, 2, 1), point(c, 1, 0));
+    if (!(read(c, self, 1, 0) == 0xff110000UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, self, 2, 0) == 0xff220000UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *clip = bitmap(c, 3, 1, true, 0);
+    copy(c, clip, input, rect(c, -1, 0, 3, 1), origin);
+    if (!(read(c, clip, 0, 0) == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, clip, 1, 0) == 0x80c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, clip, 2, 0) == 0x80c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *small_mask = bitmap(c, 1, 1, true, 0xff000000UL);
+    copy(c, clip, input, rect(c, 0, 0, 3, 1), origin, small_mask, point(c, -1, 0));
+    if (!(read(c, clip, 0, 0) == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, clip, 1, 0) == 0x80c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *shared_mask = bitmap(c, 3, 1, true, 0x10000000UL);
+    write(c, shared_mask, 1, 0, 0x80000000UL);
+    FVM_Object *red = bitmap(c, 3, 1, true, 0xffff0000UL);
+    copy(c, shared_mask, red, rect(c, 0, 0, 2, 1), point(c, 1, 0), shared_mask, origin);
+    if (!(read(c, shared_mask, 1, 0) == 0x10ff0000UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(c, shared_mask, 2, 0) == 0x80ff0000UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Channel *channel = 0;
+    FVM_Value packet = ref(dest), out;
+    if (!(fvm_channel_create(&channel) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_channel_send_value(c, channel, &packet, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_channel_receive_value(other, channel, &out, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_gc_pin(other, out.object) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *received = out.object;
+    FVM_Value bounds;
+    if (!(fvm_object_get(other, received, "rectangle", &bounds) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Object *at = 0;
+    if (!(fvm_object_create(other, &at) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Value zero;
+    fvm_value_number(&zero, 0);
+    if (!(fvm_object_set(other, at, "x", &zero) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_object_set(other, at, "y", &zero) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    FVM_Value clone = call(other, received, "clone");
+    if (!(fvm_gc_pin(other, clone.object) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    write(other, clone.object, 0, 0, 0);
+    copy(other, clone.object, received, bounds.object, at);
+    if (!(read(other, clone.object, 0, 0) == 0x40c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(fvm_gc_collect(other, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(read(other, clone.object, 0, 0) == 0x40c86432UL))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_channel_destroy(channel);
+    call(c, input, "dispose");
+    FVM_Value invalid[3] = {ref(input), ref(area), ref(origin)};
+    if (!(call(c, dest, "copyPixels", 3, invalid).number == -1))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_context_destroy(other);
+    fvm_context_destroy(c);
+    fvm_runtime_destroy(rt);
+    return 0;
+}

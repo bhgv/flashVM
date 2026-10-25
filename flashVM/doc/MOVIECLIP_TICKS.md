@@ -1,6 +1,6 @@
 # MovieClip ticks and optional handlers — v0.624
 
-[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L125) drives synchronous owner-thread
+[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L160) drives synchronous owner-thread
 MovieClip ticks. It advances eligible timelines, runs retained initializers and frame
 scripts, delivers onEnterFrame, then visits a depth-ordered child snapshot. Stopped
 and single-frame clips still receive the handler. No timer poll, rendering or device
@@ -14,11 +14,11 @@ exact two-unit policy remains; child-bearing ticks now also charge sorting/query
 
 ## Shared work and partial completion
 
-The complete call now enters [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L9) once. Multiple ticks, descendants,
+The complete call now enters [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L11) once. Multiple ticks, descendants,
 nested advance calls and AVM1 callbacks share the current outer instruction budget.
-Only an outer host call resets the counter. [FVM_Config](../include/flashvm/flashvm.h#L51).instruction_limit equal to zero
+Only an outer host call resets the counter. [FVM_Config](../include/flashvm/flashvm.h#L55).instruction_limit equal to zero
 disables the numeric bound, while cooperative worker cancellation remains enabled.
-Exhaustion or a polled worker stop returns [FVM_ERROR](../include/flashvm/flashvm.h#L43); it is not a script exception.
+Exhaustion or a polled worker stop returns [FVM_ERROR](../include/flashvm/flashvm.h#L45); it is not a script exception.
 
 Charged native work consists of one node entry (including static art), one optional
 handler delivery, each entry staged into an initializer/action-segment/child snapshot,
@@ -27,7 +27,7 @@ existing accounting. Child snapshot entries are charged before its allocation. A
 single-frame clip with no scripts or children consumes two units per tick even when
 its handler is absent. Zero ticks does no work and invokes no callback. The maximum
 requested ticks and descendant depth are [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L40) and
-[FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L32); exceeding them returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
+[FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L32); exceeding them returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47).
 
 This is an accounting/cancellation boundary, not hard real-time preemption. Scene
 placement/resource helpers, native callback internals, property lookup, allocation,
@@ -36,14 +36,14 @@ callbacks must cooperate themselves. Worker stops are observed on the first char
 unit and then every 64 units using the existing execution-work polling policy.
 
 Failures do not roll back completed effects. A playhead may already have changed or
-an action/initializer/handler may have executed before later [FVM_ERROR](../include/flashvm/flashvm.h#L43),
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) or [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48). Remaining handlers/children/ticks are skipped.
+an action/initializer/handler may have executed before later [FVM_ERROR](../include/flashvm/flashvm.h#L45),
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) or [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50). Remaining handlers/children/ticks are skipped.
 The next call continues current committed state; it does not resume a hidden cursor
 through the failed batch. Do not blindly replay a batch after an error.
 
 ## Optional method lookup and scene mutation
 
-onEnterFrame now uses [fvm_object_call_optional](../src/capi/value_c.cpp#L1368), like other explicit event routes.
+onEnterFrame now uses [fvm_object_call_optional](../src/capi/value_c.cpp#L1623), like other explicit event routes.
 Own/inherited Function properties, getters and native method registrations execute
 with the original clip receiver. Defining-owner and superclass metadata survive
 lookup; a getter executes once. Missing or noncallable members are ignored; errors
@@ -66,12 +66,12 @@ automatic input hit-target fanout remain outside this work.
 The public API borrows a same-context clip; pin or otherwise retain it across host
 calls. Use only the context owner thread. Null/foreign clips, destroying/collecting/
 releasing phases, existing sound-callback reentry and excessive tick count return
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before work is entered. Zero ticks still validates these inputs.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before work is entered. Zero ticks still validates these inputs.
 A depth error is discovered during traversal and can follow committed earlier work.
 
-[GC:] The enclosing [FVM_NativeCallGuard](../src/core/native_call_guard.hpp#L9) remains active throughout advance, including
-callbacks. Inside that barrier [fvm_gc_collect](../include/flashvm/gc.h#L44) returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); [fvm_gc_step](../include/flashvm/gc.h#L90)
-returns [FVM_OK](../include/flashvm/flashvm.h#L42) with no collection. Collect explicitly at a later safe host boundary.
+[GC:] The enclosing [FVM_NativeCallGuard](../src/core/native_call_guard.hpp#L11) remains active throughout advance, including
+callbacks. Inside that barrier [fvm_gc_collect](../include/flashvm/gc.h#L54) returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); [fvm_gc_step](../include/flashvm/gc.h#L116)
+returns [FVM_OK](../include/flashvm/flashvm.h#L44) with no collection. Collect explicitly at a later safe host boundary.
 This revision does not permit collecting raw scene snapshots during callback
 execution. Root/owner/work scopes unwind on normal results, errors and OOM. Host
 callback userdata is borrowed and must outlive its registration/context. Function
@@ -116,18 +116,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
+| `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:40](../src/standard/movieclip_constants.h#L40) |
-| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
-| `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1368](../src/capi/value_c.cpp#L1368) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:11](../src/core/native_call_guard.hpp#L11) |
+| `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1623](../src/capi/value_c.cpp#L1623) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

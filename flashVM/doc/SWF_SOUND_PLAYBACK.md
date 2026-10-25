@@ -2,8 +2,8 @@
 
 ## Scope
 
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L152) connects one root StartSound control to a dedicated
-[`FVM_AudioChannel`](../src/multimedia/audio/channel.hpp#L6). It renders supported PCM/ADPCM, source boundaries, repetitions
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L196) connects one root StartSound control to a dedicated
+[`FVM_AudioChannel`](../src/multimedia/audio/channel.hpp#L7). It renders supported PCM/ADPCM, source boundaries, repetitions
 and linear envelopes, then calls the real registered output once. Stop and
 no-multiple inspect all same-ID bound voices in the owning context. This is an explicit
 single-voice building block: hosts select events and channels, schedule time and
@@ -19,7 +19,7 @@ canonical loaded SWF; live channel owned by that context. The channel must be
 dedicated to this resource. An unbound channel must be inactive. A successful
 nonempty event write binds its sound ID until the channel is closed; stopping
 or reloading SWF does not erase this binding. A different sound ID is rejected
-on this channel, including by [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155). Plain host writes remain
+on this channel, including by [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L201). Plain host writes remain
 available; the host must use them only for this dedicated resource. Closing and
 re-registering permits a new identity. There are no managed objects or GC roots
 in the binding, and it is not serialized across contexts.
@@ -34,7 +34,7 @@ userdata must outlive the channel/context cleanup.
 Processing order:
 
 1. Validate the complete root event stream and resolve the selected unique
-   DefineSound using [fvm_swf_sound_event_at](../include/flashvm/swf_sound.h#L62). Preserve missing/malformed errors.
+   DefineSound using [fvm_swf_sound_event_at](../include/flashvm/swf_sound.h#L74). Preserve missing/malformed errors.
 2. Validate resource/channel identity. If SyncStop is set, stop every active
    bound same-ID voice in this context; stop wins over no-multiple and rendering
    styles. Attempt all matches in registration order, preserving the first host
@@ -55,7 +55,7 @@ The callback receives native interleaved S16 at the source's nominal rate and
 channel count. `samples` includes every repetition. `seconds` is zero with a
 valid timestamp: it is the new voice's elapsed origin, not the SWF frame clock
 or the source in-point. Native copied data remain valid through a successful
-[fvm_load_memory](../include/flashvm/flashvm.h#L72) inside the output callback. Normal audio callback barriers block
+[fvm_load_memory](../include/flashvm/flashvm.h#L90) inside the output callback. Normal audio callback barriers block
 GC, nested audio mutation and context destruction. The buffer is freed after
 return; a backend that needs it later must copy it. There is no hidden retry.
 
@@ -73,7 +73,7 @@ explicit stop/close/StopSounds, even if physical playback has already completed.
 
 ## Rendering policy and limits
 
-InPoint/OutPoint use [FVM_SWF_SOUND_CONTROL_RATE](../include/flashvm/swf_sound.h#L28), a fixed 44100 Hz control clock. Each converts to a source
+InPoint/OutPoint use [FVM_SWF_SOUND_CONTROL_RATE](../include/flashvm/swf_sound.h#L31), a fixed 44100 Hz control clock. Each converts to a source
 frame by floor(position * nominal_rate / 44100), using overflow-safe integer
 arithmetic. The source interval begins at the converted InPoint or zero. With
 explicit OutPoint the final included frame is its converted position; otherwise the end is the sound's declared length.
@@ -89,10 +89,10 @@ inspection still preserves unordered/duplicate points). No points means unity.
 Before the first point its gain is held; between points gains interpolate
 linearly; after the last point its gain is held. Envelope time starts at elapsed
 voice frame zero and continues across repeats. It is not reset for each loop or
-advanced by the in-point. Its fixed clock is [FVM_SWF_SOUND_ENVELOPE_RATE](../include/flashvm/swf_sound.h#L29); mapping
+advanced by the in-point. Its fixed clock is [FVM_SWF_SOUND_ENVELOPE_RATE](../include/flashvm/swf_sound.h#L32); mapping
 uses the nominal source rate, including 5512 Hz for rate code zero. Stereo uses
 independent gains; mono averages the two gains before multiplication. Division
-by [FVM_SWF_SOUND_ENVELOPE_UNITY](../include/flashvm/swf_sound.h#L27) produces signed-S16 values truncated toward zero,
+by [FVM_SWF_SOUND_ENVELOPE_UNITY](../include/flashvm/swf_sound.h#L30) produces signed-S16 values truncated toward zero,
 with defensive saturation. There is no dithering or sample-rate conversion.
 Fixed-clock controls and zero-loop semantics were cross-checked with
 [pinned Ruffle EventSoundStream](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/backend/audio/mixer.rs#L796).
@@ -100,12 +100,12 @@ These explicit rendering policies are fixture-tested; original Flash Player
 volume/loop/envelope equivalence has not been certified, particularly at 5.5 kHz.
 
 Temporary storage includes the decoded source interval, the full repeated output
-and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L49) records. Their combined payload must fit
+and copied [FVM_SWFSoundEnvelope](../include/flashvm/swf_sound.h#L56) records. Their combined payload must fit
 memory_limit_bytes, or the default [FVM_SWF_DEFAULT_LIMIT](../include/flashvm/swf.h#L15) when unset. Arithmetic
 is checked before products/allocation. Allocator bookkeeping, channel wrappers,
 canonical input and the host's output copy are separate. Allocation occurs
 outside managed GC. Large/long events can return OUT_OF_MEMORY even though raw
-[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155) can export the source in smaller chunks. No persistent
+[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L201) can export the source in smaller chunks. No persistent
 cache, streaming decoder or automatic mixing buffer is added.
 
 ## Русский контракт
@@ -116,7 +116,7 @@ StartSound к явно выбранному голосовому каналу: P
 GC/destruction/audio callback. ordinal начинается с нуля и относится к текущему
 canonical FWS/CWS. Первый успешный непустой event write закрепляет sound ID за
 каналом до close. Другой ID на этом канале — INVALID_ARGUMENT, включая обычный
-[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L155). Stop/reload привязку не снимают; незакреплённый active-канал
+[fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L201). Stop/reload привязку не снимают; незакреплённый active-канал
 нельзя присвоить событию. Пользовательские write остаются доступны под
 ответственность host: этот канал должен обслуживать только выделенный ресурс.
 
@@ -172,12 +172,12 @@ chunks. See the [resource/metadata contracts](SWF_SOUND_RESOURCES.md),
 [swf_polyphony](../examples/multimedia/swf_polyphony/README.md) demonstrates
 two overlapping resource voices, global no-multiple, stop-by-ID and preservation
 of a different resource through real independent stdio outputs.
-Implementation is split between [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L152) (guarded native
-output) and [`fvm_swf_sound_render`](../src/swf/sound_render.cpp#L10) (bounded preparation).
+Implementation is split between [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L196) (guarded native
+output) and [`fvm_swf_sound_render`](../src/swf/sound_render.cpp#L11) (bounded preparation).
 
 ## Incremental alternative
 
-For long repetition counts, use an independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L11) snapshot:
+For long repetition counts, use an independent [`FVM_SWFSoundVoice`](../src/swf/sound_voice.cpp#L12) snapshot:
 [SWF_SOUND_VOICES.md](SWF_SOUND_VOICES.md). It retains one source interval and
 produces bounded caller buffers with identical gain/loop arithmetic. Snapshot
 reads do not apply channel synchronization; hosts drive their own output and
@@ -188,7 +188,7 @@ is unchanged.
 порциями. Полный event_submit сохраняет прежний бюджет/один callback. Snapshot
 не исполняет stop/no-multiple и не включает автоматический MovieClip clock.
 
-The separate caller-driven [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L131) block helper is now available:
+The separate caller-driven [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L179) block helper is now available:
 [AUDIO_MIXING.md](AUDIO_MIXING.md). It does not connect this event API to an
 automatic MovieClip clock or mix bound channels implicitly.
 
@@ -201,17 +201,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
-| `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:179](../include/flashvm/multimedia.h#L179) |
+| `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:7](../src/multimedia/audio/channel.hpp#L7) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../include/flashvm/flashvm.h#L90) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `FVM_SWF_SOUND_CONTROL_RATE` | macro / define | [include/flashvm/swf_sound.h:28](../include/flashvm/swf_sound.h#L28) |
-| `FVM_SWF_SOUND_ENVELOPE_RATE` | macro / define | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
-| `FVM_SWF_SOUND_ENVELOPE_UNITY` | macro / define | [include/flashvm/swf_sound.h:27](../include/flashvm/swf_sound.h#L27) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:62](../include/flashvm/swf_sound.h#L62) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:152](../include/flashvm/swf_sound.h#L152) |
-| `fvm_swf_sound_render` | function | [src/swf/sound_render.cpp:10](../src/swf/sound_render.cpp#L10) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:155](../include/flashvm/swf_sound.h#L155) |
-| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:49](../include/flashvm/swf_sound.h#L49) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
+| `FVM_SWF_SOUND_CONTROL_RATE` | macro / define | [include/flashvm/swf_sound.h:31](../include/flashvm/swf_sound.h#L31) |
+| `FVM_SWF_SOUND_ENVELOPE_RATE` | macro / define | [include/flashvm/swf_sound.h:32](../include/flashvm/swf_sound.h#L32) |
+| `FVM_SWF_SOUND_ENVELOPE_UNITY` | macro / define | [include/flashvm/swf_sound.h:30](../include/flashvm/swf_sound.h#L30) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:74](../include/flashvm/swf_sound.h#L74) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:196](../include/flashvm/swf_sound.h#L196) |
+| `fvm_swf_sound_render` | function | [src/swf/sound_render.cpp:11](../src/swf/sound_render.cpp#L11) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:201](../include/flashvm/swf_sound.h#L201) |
+| `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:56](../include/flashvm/swf_sound.h#L56) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:12](../src/swf/sound_voice.cpp#L12) |
 <!-- source-links:end -->

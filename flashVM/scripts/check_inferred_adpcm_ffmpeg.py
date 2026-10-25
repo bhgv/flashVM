@@ -38,28 +38,42 @@ def unique_packet(width, channels, first):
 
 def main():
     exporter = str(pathlib.Path(sys.argv[1]).resolve())
-    with tempfile.TemporaryDirectory(prefix='flashvm-inferred-ffmpeg-') as directory:
+    with tempfile.TemporaryDirectory(prefix="flashvm-inferred-ffmpeg-") as directory:
         root = pathlib.Path(directory)
         for width in range(2, 6):
             for channels in (1, 2):
                 selected = [unique_packet(width, channels, n) for n in (1, 17, 4097, 8193)]
-                selected.insert(1, (0, b''))
+                selected.insert(1, (0, b""))
                 selected.append((0, bytes([(width - 2) << 6])))
-                expected = b''.join(oracle(root, data, channels, n) for n, data in selected if n)
-                tags = tag(18, bytes([0x0e, 0x1e | (channels - 1)]) + struct.pack('<H', 65535))
-                tags += b''.join(tag(19, data) + tag(1) for _, data in selected) + tag(0)
-                body = b'\x08\x00' + struct.pack('<HH', 12 * 256, len(selected)) + tags
+                expected = b"".join(oracle(root, data, channels, n) for n, data in selected if n)
+                tags = tag(18, bytes([0x0E, 0x1E | (channels - 1)]) + struct.pack("<H", 65535))
+                tags += b"".join(tag(19, data) + tag(1) for _, data in selected) + tag(0)
+                body = b"\x08\x00" + struct.pack("<HH", 12 * 256, len(selected)) + tags
                 for compressed in (False, True):
-                    source = root / 'source.swf'
-                    source.write_bytes((b'CWS' if compressed else b'FWS') + b'\x08' + struct.pack('<I', len(body) + 8) + (zlib.compress(body) if compressed else body))
-                    output = root / 'actual.pcm'
-                    subprocess.run([exporter, str(source), str(output)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    source = root / "source.swf"
+                    source.write_bytes(
+                        (b"CWS" if compressed else b"FWS")
+                        + b"\x08"
+                        + struct.pack("<I", len(body) + 8)
+                        + (zlib.compress(body) if compressed else body)
+                    )
+                    output = root / "actual.pcm"
+                    subprocess.run(
+                        [exporter, str(source), str(output)],
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
                     actual = output.read_bytes()
-                    if sys.byteorder != 'little':
-                        actual = b''.join(actual[i:i+2][::-1] for i in range(0, len(actual), 2))
-                    assert actual == expected, (width, channels, compressed)
-                print('PASS inferred ADPCM width=%d channels=%d: independent FFmpeg PCM, FWS/CWS and post-VM export' % (width, channels))
+                    if sys.byteorder != "little":
+                        actual = b"".join(actual[i : i + 2][::-1] for i in range(0, len(actual), 2))
+                    if not (actual == expected):
+                        raise AssertionError((width, channels, compressed))
+                print(
+                    "PASS inferred ADPCM width=%d channels=%d: independent FFmpeg PCM, FWS/CWS and post-VM export"
+                    % (width, channels)
+                )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

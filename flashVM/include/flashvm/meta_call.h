@@ -10,15 +10,17 @@
 extern "C"
 {
 #endif
-    /* Invoke the owner's __call metamethod. Callback arguments are:
+/* Invoke the owner's __call metamethod. Callback arguments are:
      * 0: owner object, 1: defining metatable, 2: fresh indexed argument table.
      * Index 0 holds the first user argument. The argument table belongs to the
      * context. Native callbacks may use fvm_table_get_index to inspect it.
      * No implicit bytecode invocation or script closure dispatch is provided.
      */
-    /* Call meta. */
-    FVM_API FVM_Result fvm_meta_call(FVM_Context *, FVM_Object *, unsigned int argc,
-                                     const FVM_Value *argv, FVM_Value *result);
+
+
+/* Call meta. */
+FVM_API FVM_Result fvm_meta_call(FVM_Context *, FVM_Object *, unsigned int argc,
+                                 const FVM_Value *argv, FVM_Value *result);
 #ifdef __cplusplus
 }
 #endif

@@ -21,8 +21,14 @@ def row(a, b, x, y, t=0):
 def compose(left, right):
     a, b, c, d, tx, ty = left
     e, f, g, h, ux, uy = right
-    return (row(a, c, e, f), row(b, d, e, f), row(a, c, g, h),
-            row(b, d, g, h), row(a, c, ux, uy, tx), row(b, d, ux, uy, ty))
+    return (
+        row(a, c, e, f),
+        row(b, d, e, f),
+        row(a, c, g, h),
+        row(b, d, g, h),
+        row(a, c, ux, uy, tx),
+        row(b, d, ux, uy, ty),
+    )
 
 
 def literal(value):
@@ -35,24 +41,46 @@ def matrix(value):
 
 def render():
     rng = random.Random(337)
-    edges = [-(1 << 31), -(1 << 31) + 1, -65537, -65536, -65535, -1,
-             0, 1, 32768, 65535, 65536, 65537, (1 << 31) - 1]
+    edges = [
+        -(1 << 31),
+        -(1 << 31) + 1,
+        -65537,
+        -65536,
+        -65535,
+        -1,
+        0,
+        1,
+        32768,
+        65535,
+        65536,
+        65537,
+        (1 << 31) - 1,
+    ]
     pairs = [(a, b) for a in edges for b in edges]
-    pairs += [(rng.randint(-(1 << 31), (1 << 31) - 1),
-               rng.randint(-(1 << 31), (1 << 31) - 1)) for _ in range(128)]
-    lines = ["/* Independent arbitrary-precision fixtures; regenerate with scripts/generate_fixed_matrix_vectors.py. */",
-             "struct FixedProductCase { long a,b,result; };",
-             "static const struct FixedProductCase fixed_products[] = {"]
+    pairs += [
+        (rng.randint(-(1 << 31), (1 << 31) - 1), rng.randint(-(1 << 31), (1 << 31) - 1))
+        for _ in range(128)
+    ]
+    lines = [
+        "/* Independent arbitrary-precision fixtures; regenerate with scripts/generate_fixed_matrix_vectors.py. */",
+        "struct FixedProductCase { long a,b,result; };",
+        "static const struct FixedProductCase fixed_products[] = {",
+    ]
     lines += [" {" + ",".join(map(literal, (a, b, product(a, b)))) + "}," for a, b in pairs]
-    lines += ["};", "struct FixedMatrixCase { FVM_FixedMatrix left,right,result; };",
-              "static const struct FixedMatrixCase fixed_matrices[] = {"]
+    lines += [
+        "};",
+        "struct FixedMatrixCase { FVM_FixedMatrix left,right,result; };",
+        "static const struct FixedMatrixCase fixed_matrices[] = {",
+    ]
     identity = (65536, 0, 0, 65536, 0, 0)
-    matrices = [(identity, (32768, -32768, 65537, -65537, -1, 1)),
-                ((32768, 32768, -32768, -32768, (1 << 31) - 1, -(1 << 31)),
-                 (1, -1, 1, -1, 1, 1))]
+    matrices = [
+        (identity, (32768, -32768, 65537, -65537, -1, 1)),
+        ((32768, 32768, -32768, -32768, (1 << 31) - 1, -(1 << 31)), (1, -1, 1, -1, 1, 1)),
+    ]
     for _ in range(24):
-        matrices.append(tuple(tuple(rng.randint(-(1 << 31), (1 << 31) - 1)
-                                    for _ in range(6)) for _ in range(2)))
+        matrices.append(
+            tuple(tuple(rng.randint(-(1 << 31), (1 << 31) - 1) for _ in range(6)) for _ in range(2))
+        )
     lines += [" {" + ",".join(map(matrix, (a, b, compose(a, b)))) + "}," for a, b in matrices]
     lines += ["};", ""]
     return "\n".join(lines)

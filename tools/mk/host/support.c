@@ -2,6 +2,7 @@
 #include "lib9.h"
 #include <stdio.h>
 
+
 /* Return a native caller address for optional lib9 allocation diagnostics. */
 uintptr getcallerpc(void *unused)
 {
@@ -12,6 +13,7 @@ uintptr getcallerpc(void *unused)
     return 0;
 #endif
 }
+
 
 /* Report a failed lib9 invariant before terminating this build-tool process. */
 void _assert(char *message)

@@ -8,7 +8,7 @@ output only on success.
 
 The declared decoded length is checked before allocation. Inspection and
 contexts with no configured limit use [FVM_SWF_DEFAULT_LIMIT](../include/flashvm/swf.h#L15) (64 MiB).
-A nonzero [FVM_Config](../include/flashvm/flashvm.h#L51).memory_limit_bytes bounds the decoded movie buffer; this
+A nonzero [FVM_Config](../include/flashvm/flashvm.h#L55).memory_limit_bytes bounds the decoded movie buffer; this
 is **not yet a global VM allocation accounting mechanism**. Oversized movies
 return OUT_OF_MEMORY. A CWS must contain exactly one complete zlib stream,
 consume all compressed input and produce exactly FileLength-8 bytes. Truncated,
@@ -16,11 +16,11 @@ corrupt, excess-output and trailing-input streams are rejected. RECT must
 have nonzero bit width. End must be empty and terminate the file; ShowFrame
 must be empty. Tag payload bounds and extended lengths are checked.
 
-[`fvm_swf_execute_actions`](../include/flashvm/avm1.h#L73) reads top-level DoAction tags from normalized FWS,
+[`fvm_swf_execute_actions`](../include/flashvm/avm1.h#L93) reads top-level DoAction tags from normalized FWS,
 including movies loaded as CWS. It is not a timeline player: sprites, display
 objects, events, shape decoding and unsupported tags are not implemented by
 this function. Unknown tags can be structurally valid but unimplemented.
-[`fvm_advance`](../include/flashvm/flashvm.h#L74) still returns UNSUPPORTED.
+[`fvm_advance`](../include/flashvm/flashvm.h#L94) still returns UNSUPPORTED.
 
 ## AVM1 value transport
 
@@ -56,8 +56,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_advance` | function | [include/flashvm/flashvm.h:74](../include/flashvm/flashvm.h#L74) |
-| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:94](../include/flashvm/flashvm.h#L94) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:55](../include/flashvm/flashvm.h#L55) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](../include/flashvm/avm1.h#L73) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:93](../include/flashvm/avm1.h#L93) |
 <!-- source-links:end -->

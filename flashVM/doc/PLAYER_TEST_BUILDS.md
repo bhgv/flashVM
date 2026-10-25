@@ -53,14 +53,14 @@ S16 stereo and ADPCM tones are supplied, with no external copyrighted media.
 
 The C89 host [player.c](../frontend/common/player.c) creates a pinned object bound
 as global HostInput and copies [SDL state](../frontend/common/sdl_window.c) into
-its scalar fields immediately before each [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125). All VM/input/
+its scalar fields immediately before each [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160). All VM/input/
 render calls stay serialized on the SDL application thread. Managed root/input
 objects are pinned, then unpinned before context destruction. Native event queues
 and PCM ownership remain outside GC.
 
 | Field | Units and behavior |
 | --- | --- |
-| x, y | Latest primary pointer in authored world/stage pixels, including stage-origin restoration. SDL maps window events through the logical viewport; letterbox positions may be outside the authored stage. Also supplied to [`fvm_input_set_pointer`](../include/flashvm/input.h#L72) for ordinary _xmouse/_ymouse semantics. |
+| x, y | Latest primary pointer in authored world/stage pixels, including stage-origin restoration. SDL maps window events through the logical viewport; letterbox positions may be outside the authored stage. Also supplied to [`fvm_input_set_pointer`](../include/flashvm/input.h#L91) for ordinary _xmouse/_ymouse semantics. |
 | left, right, up, down, space | Held arrow/Space states, numeric 0/1. |
 | buttons | Held primary/middle/secondary pointer bits 1/2/4. No exclusive global OS capture. |
 | keyCode | Latest transition code: uppercase ASCII letters, digits/control ASCII, arrows 37..40; unsupported non-ASCII keys give zero. |
@@ -77,12 +77,12 @@ The API is per-frame state: a down/up between frames may only change counters.
 
 ## Audio ownership and scheduling (v0.582; see v0.583 correction below)
 
-[audio.c](../frontend/common/audio.c) queries [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L60). With root
+[audio.c](../frontend/common/audio.c) queries [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L70). With root
 controls and no --mute it opens a real 48000 Hz stereo SDL device, a 32-voice
 configured mixer and a 512-frame producer with a 2048-frame FIFO target. Registers
-[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); each actual entry submits its ordinal to
-[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L76). Decode/conversion errors fail visibly.
-At most four [`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L124) calls per loop visit; waits are capped at five milliseconds
+[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L25); each actual entry submits its ordinal to
+[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L95). Decode/conversion errors fail visibly.
+At most four [`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L148) calls per loop visit; waits are capped at five milliseconds
 while output exists. Queue copying and playback run through the real
 [SDL bridge](SWF_SOUND_OUTPUT.md). Producer work is not realtime callback work.
 
@@ -184,10 +184,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:76](../include/flashvm/swf_sound_mixer.h#L76) |
-| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:124](../include/flashvm/swf_sound_output.h#L124) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:91](../include/flashvm/input.h#L91) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:70](../include/flashvm/swf_sound.h#L70) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:95](../include/flashvm/swf_sound_mixer.h#L95) |
+| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:148](../include/flashvm/swf_sound_output.h#L148) |
 <!-- source-links:end -->

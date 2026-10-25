@@ -21,7 +21,7 @@ The prepared activation remains authoritative for register selection:
 Loaded out-of-range reads produce undefined and writes do nothing. Host private
 out-of-range access returns INVALID_ARGUMENT. Missing StoreRegister operands use
 the ordinary loaded undefined/strict-host policy. Global string stores use
-[`fvm_exec_global_register`](../include/flashvm/execution.h#L461), retaining counted bytes/metatables and owning the
+[`fvm_exec_global_register`](../include/flashvm/execution.h#L607), retaining counted bytes/metatables and owning the
 stored text before publication. Private banks are already rooted by the prepared
 function activation; host root banks are now explicitly rooted in the native
 root entry. No mutable bank is retained by immutable code handles.
@@ -69,5 +69,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_global_register` | function | [include/flashvm/execution.h:461](../include/flashvm/execution.h#L461) |
+| `fvm_exec_global_register` | function | [include/flashvm/execution.h:607](../include/flashvm/execution.h#L607) |
 <!-- source-links:end -->

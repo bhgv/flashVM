@@ -59,7 +59,7 @@ One execution budget spans descriptor detection, preparation and dispatch.
 ## Ownership, GC and transfer
 
 No public C ABI layout or native callback selector is added. The existing
-[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L68) and path/capture operations remain no-script; they never
+[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L80) and path/capture operations remain no-script; they never
 synthesize observer events. Layouts are independently owned and destroyed on
 failure. Fields without observers can keep a lazy cache; measured candidate caches
 are retained after successful geometry publication.
@@ -95,5 +95,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../include/flashvm/standard_text.h#L68) |
+| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:80](../include/flashvm/standard_text.h#L80) |
 <!-- source-links:end -->

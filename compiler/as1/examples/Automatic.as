@@ -1,5 +1,9 @@
 // Syntax example: automatic semicolons and classic Flash authoring wrappers.
 var total = 0 // A line break ends this variable declaration.
+
+
+// Add one untyped input to the shared total.
+// Parameters: value is the amount added. Returns the updated total.
 function accumulate(value) { // Untyped AS1/AS2 function accepted by both syntax profiles.
     total += value // A line break separates assignment from return.
     return total // A closing brace also permits an omitted semicolon.

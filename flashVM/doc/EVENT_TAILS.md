@@ -1,6 +1,6 @@
 # Finite event-only audio output
 
-The opt-in [`fvm_swf_sound_output_pump_finite`](../include/flashvm/swf_sound_output.h#L133) stops fresh PCM at the live mixer horizon, preserving every pending retry, including legacy or stop_release bytes. It does not remove silent-valued source frames or release endpoints. accepted clears first; empty future voices return NOT_FOUND without silent priming. Same owner lifetime, serialized backend callbacks, clock bounds and exception/status contract as the original pump; no allocation, VM or GC. The original pump retains continuous silence behavior. NOT_FOUND is not queue drain or physical audibility.
+The opt-in [`fvm_swf_sound_output_pump_finite`](../include/flashvm/swf_sound_output.h#L159) stops fresh PCM at the live mixer horizon, preserving every pending retry, including legacy or stop_release bytes. It does not remove silent-valued source frames or release endpoints. accepted clears first; empty future voices return NOT_FOUND without silent priming. Same owner lifetime, serialized backend callbacks, clock bounds and exception/status contract as the original pump; no allocation, VM or GC. The original pump retains continuous silence behavior. NOT_FOUND is not queue drain or physical audibility.
 
 v0.1025: Add opt-in finite output pumping with exact final frames and unchanged legacy, release and pending retry ownership.
 
@@ -37,7 +37,7 @@ v0.1035: Extend the queue tutorial with explicit finite exhaustion, retained leg
 
 ## Pending work and native controls
 
-[`fvm_swf_sound_output_pending`](../include/flashvm/swf_sound_output.h#L142) queries live future voices, retained retry and fresh
+[`fvm_swf_sound_output_pending`](../include/flashvm/swf_sound_output.h#L170) queries live future voices, retained retry and fresh
 accepted FIFO under one output callback barrier. It refreshes the validated dequeue
 clock but does not render, seek or consume source PCM. Required live serialized
 output/out; paused owners still report work. Invalid/reentry is INVALID_ARGUMENT;
@@ -116,6 +116,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:142](../include/flashvm/swf_sound_output.h#L142) |
-| `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:133](../include/flashvm/swf_sound_output.h#L133) |
+| `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:170](../include/flashvm/swf_sound_output.h#L170) |
+| `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:159](../include/flashvm/swf_sound_output.h#L159) |
 <!-- source-links:end -->

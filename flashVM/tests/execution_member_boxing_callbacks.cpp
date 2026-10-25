@@ -1,15 +1,203 @@
 /* Boxed primitive writes dispatch prototype script setters with GC-safe arguments. */
 #define FVM_VALUE_CALLBACKS_FIXTURE_ONLY
+#include <stdio.h>
+#include <stdlib.h>
 #include "execution_value_callbacks.cpp"
-static unsigned writes,constructions;
+
+static unsigned writes, constructions;
 static bool thrown;
-static FVM_Result put(FVM_Context *c,const FVM_ScriptFrame *frame,FVM_Value *out,void *)
-{FVM_Value v;assert(fvm_gc_collect(c,0)==FVM_OK && frame->argc==1 && frame->argv[0].type==FVM_VALUE_OBJECT && fvm_object_get(c,frame->argv[0].object,"alive",&v)==FVM_OK && v.number==17 && fvm_object_call(c,frame->receiver,"valueOf",0,0,&v)==FVM_OK && v.number==42);++writes;fvm_value_undefined(out);return FVM_OK;}
-static FVM_Result get(FVM_Context *c,const FVM_ScriptFrame *,FVM_Value *out,void *)
-{assert(fvm_gc_collect(c,0)==FVM_OK);fvm_value_number(out,73);return FVM_OK;}
-static FVM_Result ctor(FVM_Context *c,const FVM_ScriptFrame *frame,FVM_Value *out,void *)
-{assert(fvm_gc_collect(c,0)==FVM_OK && frame->argc==1 && frame->argv[0].type==FVM_VALUE_NUMBER && frame->argv[0].number==42);++constructions;if(thrown){fvm_value_number(out,77);return fvm_exception_raise(c,out);}fvm_value_undefined(out);return fvm_object_set(c,frame->receiver,"boxed",frame->argv);}
-static FVM_Result key_name(FVM_Context *c,const FVM_ScriptFrame *,FVM_Value *out,void *)
-{FVM_Value replacement;assert(fvm_gc_collect(c,0)==FVM_OK && fvm_get_global(c,"replacement",&replacement)==FVM_OK && fvm_set_global(c,"Number",&replacement)==FVM_OK);return fvm_value_string(out,"boxed");}
-int main(){FVM_Config cfg;FVM_Runtime *rt=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK);for(unsigned version=4;version<=8;++version){FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};swf[3]=(unsigned char)version;assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK && fvm_standard_install(c)==FVM_OK);FVM_Value number,proto,args[3],key,owner,value,out;assert(fvm_get_global(c,"Number",&number)==FVM_OK && fvm_object_get(c,number.object,"prototype",&proto)==FVM_OK);FVM_Object *reader=0,*writer=0,*assigned=0,*custom=0;const unsigned char code[]={0};assert(fvm_function_create_avm1(c,code,sizeof(code),0,0,0,&reader)==FVM_OK && fvm_function_set_body(c,reader,get,0,0)==FVM_OK && fvm_function_create_avm1(c,code,sizeof(code),0,0,0,&writer)==FVM_OK && fvm_function_set_body(c,writer,put,0,0)==FVM_OK);fvm_value_string(args,"cell");fvm_value_undefined(args+1);args[1].type=FVM_VALUE_OBJECT;args[1].object=reader;fvm_value_undefined(args+2);args[2].type=FVM_VALUE_OBJECT;args[2].object=writer;assert(fvm_object_call(c,proto.object,"addProperty",3,args,&out)==FVM_OK && out.boolean);assert(fvm_object_create(c,&assigned)==FVM_OK);fvm_value_number(&value,17);assert(fvm_object_set(c,assigned,"alive",&value)==FVM_OK);value.type=FVM_VALUE_OBJECT;value.object=assigned;fvm_value_number(&owner,42);fvm_value_string(&key,"cell");assert(fvm_exec_member(c,1,&owner,&key,&value,&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED && fvm_exec_member(c,0,&owner,&key,0,&out)==FVM_OK && out.number==73);
- assert(fvm_function_create_avm1(c,code,sizeof(code),0,0,0,&custom)==FVM_OK && fvm_function_set_body(c,custom,ctor,0,0)==FVM_OK);fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=custom;assert(fvm_set_global(c,"Number",&value)==FVM_OK && fvm_exec_to_object(c,&owner,&out)==FVM_OK && out.type==FVM_VALUE_OBJECT && fvm_object_get(c,out.object,"boxed",&value)==FVM_OK && value.number==42);thrown=true;fvm_value_number(&out,99);assert(fvm_exec_to_object(c,&owner,&out)==FVM_EXCEPTION && out.type==FVM_VALUE_NUMBER && out.number==99 && fvm_exception_clear(c)==FVM_OK);thrown=false;FVM_Object *key_object=0;fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=custom;assert(fvm_set_global(c,"replacement",&value)==FVM_OK);fvm_value_undefined(&value);assert(fvm_set_global(c,"Number",&value)==FVM_OK && fvm_object_create(c,&key_object)==FVM_OK);attach(c,key_object,"toString",key_name,0);fvm_value_undefined(&key);key.type=FVM_VALUE_OBJECT;key.object=key_object;assert(fvm_exec_member(c,0,&owner,&key,0,&out)==FVM_OK && out.number==42);fvm_context_destroy(c);}assert(writes==5 && constructions==15);fvm_runtime_destroy(rt);return 0;}
+
+
+static FVM_Result put(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out, void *)
+{
+    FVM_Value v;
+    if (!(fvm_gc_collect(c, 0) == FVM_OK && frame->argc == 1 && frame->argv[0].type == FVM_VALUE_OBJECT &&
+          fvm_object_get(c, frame->argv[0].object, "alive", &v) == FVM_OK && v.number == 17 &&
+          fvm_object_call(c, frame->receiver, "valueOf", 0, 0, &v) == FVM_OK && v.number == 42))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    ++writes;
+    fvm_value_undefined(out);
+    return FVM_OK;
+}
+
+
+static FVM_Result get(FVM_Context *c, const FVM_ScriptFrame *, FVM_Value *out, void *)
+{
+    if (!(fvm_gc_collect(c, 0) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_value_number(out, 73);
+    return FVM_OK;
+}
+
+
+static FVM_Result ctor(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out, void *)
+{
+    if (!(fvm_gc_collect(c, 0) == FVM_OK && frame->argc == 1 && frame->argv[0].type == FVM_VALUE_NUMBER &&
+          frame->argv[0].number == 42))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    ++constructions;
+    if (thrown)
+    {
+        fvm_value_number(out, 77);
+        return fvm_exception_raise(c, out);
+    }
+    fvm_value_undefined(out);
+    return fvm_object_set(c, frame->receiver, "boxed", frame->argv);
+}
+
+
+static FVM_Result key_name(FVM_Context *c, const FVM_ScriptFrame *, FVM_Value *out, void *)
+{
+    FVM_Value replacement;
+    if (!(fvm_gc_collect(c, 0) == FVM_OK && fvm_get_global(c, "replacement", &replacement) == FVM_OK &&
+          fvm_set_global(c, "Number", &replacement) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    return fvm_value_string(out, "boxed");
+}
+
+
+int main()
+{
+    FVM_Config cfg;
+    FVM_Runtime *rt = 0;
+    if (!(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for (unsigned version = 4; version <= 8; ++version)
+    {
+        FVM_Context *c = 0;
+        if (!(fvm_context_create(rt, &c) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        unsigned char swf[] = {'F', 'W', 'S', 8, 16, 0, 0, 0, 8, 0, 0, 12, 1, 0, 0, 0};
+        swf[3] = (unsigned char)version;
+        if (!(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK && fvm_standard_install(c) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        FVM_Value number, proto, args[3], key, owner, value, out;
+        if (!(fvm_get_global(c, "Number", &number) == FVM_OK &&
+              fvm_object_get(c, number.object, "prototype", &proto) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        FVM_Object *reader = 0, *writer = 0, *assigned = 0, *custom = 0;
+        const unsigned char code[] = {0};
+        if (!(fvm_function_create_avm1(c, code, sizeof(code), 0, 0, 0, &reader) == FVM_OK &&
+              fvm_function_set_body(c, reader, get, 0, 0) == FVM_OK &&
+              fvm_function_create_avm1(c, code, sizeof(code), 0, 0, 0, &writer) == FVM_OK &&
+              fvm_function_set_body(c, writer, put, 0, 0) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        fvm_value_string(args, "cell");
+        fvm_value_undefined(args + 1);
+        args[1].type = FVM_VALUE_OBJECT;
+        args[1].object = reader;
+        fvm_value_undefined(args + 2);
+        args[2].type = FVM_VALUE_OBJECT;
+        args[2].object = writer;
+        if (!(fvm_object_call(c, proto.object, "addProperty", 3, args, &out) == FVM_OK && out.boolean))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_object_create(c, &assigned) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        fvm_value_number(&value, 17);
+        if (!(fvm_object_set(c, assigned, "alive", &value) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        value.type = FVM_VALUE_OBJECT;
+        value.object = assigned;
+        fvm_value_number(&owner, 42);
+        fvm_value_string(&key, "cell");
+        if (!(fvm_exec_member(c, 1, &owner, &key, &value, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED &&
+              fvm_exec_member(c, 0, &owner, &key, 0, &out) == FVM_OK && out.number == 73))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        if (!(fvm_function_create_avm1(c, code, sizeof(code), 0, 0, 0, &custom) == FVM_OK &&
+              fvm_function_set_body(c, custom, ctor, 0, 0) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = custom;
+        if (!(fvm_set_global(c, "Number", &value) == FVM_OK && fvm_exec_to_object(c, &owner, &out) == FVM_OK &&
+              out.type == FVM_VALUE_OBJECT && fvm_object_get(c, out.object, "boxed", &value) == FVM_OK &&
+              value.number == 42))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        thrown = true;
+        fvm_value_number(&out, 99);
+        if (!(fvm_exec_to_object(c, &owner, &out) == FVM_EXCEPTION && out.type == FVM_VALUE_NUMBER &&
+              out.number == 99 && fvm_exception_clear(c) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        thrown = false;
+        FVM_Object *key_object = 0;
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = custom;
+        if (!(fvm_set_global(c, "replacement", &value) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        fvm_value_undefined(&value);
+        if (!(fvm_set_global(c, "Number", &value) == FVM_OK && fvm_object_create(c, &key_object) == FVM_OK))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        attach(c, key_object, "toString", key_name, 0);
+        fvm_value_undefined(&key);
+        key.type = FVM_VALUE_OBJECT;
+        key.object = key_object;
+        if (!(fvm_exec_member(c, 0, &owner, &key, 0, &out) == FVM_OK && out.number == 42))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+        fvm_context_destroy(c);
+    }
+    if (!(writes == 5 && constructions == 15))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    fvm_runtime_destroy(rt);
+    return 0;
+}

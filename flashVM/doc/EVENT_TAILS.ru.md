@@ -1,6 +1,6 @@
 # Конечный событийный звук без stream
 
-[`fvm_swf_sound_output_pump_finite`](../include/flashvm/swf_sound_output.h#L133) ограничивает свежий PCM живым остатком микшера; pending retry всех режимов, включая stop_release, сохраняется целиком. Нулевые source-отсчёты и release endpoint не удаляются. accepted сначала обнуляется; отсутствие будущих голосов даёт NOT_FOUND без синтеза тишины. Владение, сериализация backend, часы и статусы/исключения совпадают с прежним pump; аллокаций, VM и GC нет. Старый pump продолжает silent priming. NOT_FOUND не означает FIFO drain или физическую слышимость.
+[`fvm_swf_sound_output_pump_finite`](../include/flashvm/swf_sound_output.h#L159) ограничивает свежий PCM живым остатком микшера; pending retry всех режимов, включая stop_release, сохраняется целиком. Нулевые source-отсчёты и release endpoint не удаляются. accepted сначала обнуляется; отсутствие будущих голосов даёт NOT_FOUND без синтеза тишины. Владение, сериализация backend, часы и статусы/исключения совпадают с прежним pump; аллокаций, VM и GC нет. Старый pump продолжает silent priming. NOT_FOUND не означает FIFO drain или физическую слышимость.
 
 v0.1025: Добавлен конечный event-only pump с точными последними кадрами и сохранением legacy/release/pending retry.
 
@@ -37,7 +37,7 @@ v0.1035: C89-пример показывает конечное исчерпан
 
 ## Pending и нативное управление
 
-[`fvm_swf_sound_output_pending`](../include/flashvm/swf_sound_output.h#L142) наблюдает будущие голоса, retained retry и свежий
+[`fvm_swf_sound_output_pending`](../include/flashvm/swf_sound_output.h#L170) наблюдает будущие голоса, retained retry и свежий
 принятый FIFO под одним callback-барьером output. Обновляются проверенные dequeue
 часы, без render/seek/чтения source PCM. Требуются живые сериализованные output/out;
 paused output тоже сообщает работу. Неверные параметры/reentry — INVALID_ARGUMENT;
@@ -108,6 +108,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:142](../include/flashvm/swf_sound_output.h#L142) |
-| `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:133](../include/flashvm/swf_sound_output.h#L133) |
+| `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:170](../include/flashvm/swf_sound_output.h#L170) |
+| `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:159](../include/flashvm/swf_sound_output.h#L159) |
 <!-- source-links:end -->

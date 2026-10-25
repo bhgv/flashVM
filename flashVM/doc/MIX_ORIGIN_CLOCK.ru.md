@@ -1,6 +1,6 @@
 # Раздельный dequeue-учёт BASE/TAIL
 
-[`fvm_swf_sound_mix_queue_storage_required_for_modes`](../include/flashvm/swf_sound_mix_queue.h#L60) рассчитывает native owner/PCM и опциональные ID/BASE-TAIL bitmap. Оба флага Boolean; неверные флаги/геометрия дают INVALID_ARGUMENT с сохранением out, переполнение размера — OUT_OF_MEMORY. Аллокаций/callback/VM/GC нет. Bitmap добавляет 32768 байт для FIFO до 262144 кадров; mixer/voice/backend/allocator/VM исключены.
+[`fvm_swf_sound_mix_queue_storage_required_for_modes`](../include/flashvm/swf_sound_mix_queue.h#L75) рассчитывает native owner/PCM и опциональные ID/BASE-TAIL bitmap. Оба флага Boolean; неверные флаги/геометрия дают INVALID_ARGUMENT с сохранением out, переполнение размера — OUT_OF_MEMORY. Аллокаций/callback/VM/GC нет. Bitmap добавляет 32768 байт для FIFO до 262144 кадров; mixer/voice/backend/allocator/VM исключены.
 
 v0.1038: Добавлен точный расчёт памяти BASE/TAIL origin-учёта без изменения смысла прежних predictors.
 
@@ -37,7 +37,7 @@ v0.1048: Десятый C89-режим показывает bounded origin track
 
 ## Режим и владение эпохой
 
-[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L84) выделяет фиксированный bitmap при
+[`fvm_swf_sound_mix_queue_set_origin_tracking`](../include/flashvm/swf_sound_mix_queue.h#L103) выделяет фиксированный bitmap при
 активных нулевых общих часах без pending retry. Будущие голоса уже могут существовать,
 принятой истории быть не должно. Отключение — после проверенного FIFO drain без
 retry. Повторный выбор режима не выделяет память. Enable сравнивает budget с
@@ -60,7 +60,7 @@ Null/busy/неверный Boolean/state дают INVALID_ARGUMENT, ошибки
 | BASE | Все принятые adapted.write кадры, включая нулевую base и примешанные события | Эти BASE-позиции покинули software FIFO |
 | TAIL | Все принятые explicit event-only кадры, включая выбранный padding/release endpoint | Эти TAIL-позиции покинули software FIFO |
 
-[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L91) требует точный sizeof(out) и включённый режим.
+[`fvm_swf_sound_mix_queue_origin_info`](../include/flashvm/swf_sound_mix_queue.h#L112) требует точный sizeof(out) и включённый режим.
 Один проверенный FIFO-опрос копирует BASE/TAIL submitted/played/queued. Выключенный
 режим — UNSUPPORTED, неверный/reentry — INVALID_ARGUMENT, backend/clock ошибки
 передаются, исключения — ERROR. При ошибке out сохраняется. Аллокаций, render и
@@ -69,7 +69,7 @@ source advancement нет. Суммы категорий равны общим a
 его BASE/TAIL сохраняется при gate/stop/retry через совместимый tail API. Категория
 определяется операцией подачи, не значениями PCM.
 
-Кольцо хранит до [FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES](../include/flashvm/swf_sound_mix_queue.h#L54) принятых FIFO-позиций. Tracked write наблюдает
+Кольцо хранит до [FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES](../include/flashvm/swf_sound_mix_queue.h#L67) принятых FIFO-позиций. Tracked write наблюдает
 dequeue до render; недостаток места даёт NOT_FOUND без продвижения голосов и
 изменения pending. После OK запись bits/counters не вызывает ошибочный callback.
 Неверный рост/регрессия отклоняются до retirement журнала. Парный stream-снимок
@@ -105,7 +105,7 @@ seek, дочерние словари/таймлайны, полная codec/ref
 v0.1049: Уточнены origin budget, accepted/pending ownership, точные dequeue категории, desktop diagnostics и десять PCM-режимов.
 
 
-[`FVM_SWFSoundMixQueueOriginInfo`](../include/flashvm/swf_sound_mix_queue.h#L64) — копируемый снимок: submitted/played хранят точные integer-valued doubles, queued — полные native output кадры. Результат принадлежит вызывающему, заимствованного указателя нет.
+[`FVM_SWFSoundMixQueueOriginInfo`](../include/flashvm/swf_sound_mix_queue.h#L81) — копируемый снимок: submitted/played хранят точные integer-valued doubles, queued — полные native output кадры. Результат принадлежит вызывающему, заимствованного указателя нет.
 
 
 ## v0.1050 verification / Проверка
@@ -124,10 +124,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:54](../include/flashvm/swf_sound_mix_queue.h#L54) |
-| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:91](../include/flashvm/swf_sound_mix_queue.h#L91) |
-| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:84](../include/flashvm/swf_sound_mix_queue.h#L84) |
-| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:60](../include/flashvm/swf_sound_mix_queue.h#L60) |
+| `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:67](../include/flashvm/swf_sound_mix_queue.h#L67) |
+| `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:112](../include/flashvm/swf_sound_mix_queue.h#L112) |
+| `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:103](../include/flashvm/swf_sound_mix_queue.h#L103) |
+| `fvm_swf_sound_mix_queue_storage_required_for_modes` | function | [include/flashvm/swf_sound_mix_queue.h:75](../include/flashvm/swf_sound_mix_queue.h#L75) |
 | `FVM_SWF_SOUND_OUTPUT_MAX_CLOCK` | macro / define | [include/flashvm/swf_sound_output.h:14](../include/flashvm/swf_sound_output.h#L14) |
-| `FVM_SWFSoundMixQueueOriginInfo` | struct | [include/flashvm/swf_sound_mix_queue.h:64](../include/flashvm/swf_sound_mix_queue.h#L64) |
+| `FVM_SWFSoundMixQueueOriginInfo` | struct | [include/flashvm/swf_sound_mix_queue.h:81](../include/flashvm/swf_sound_mix_queue.h#L81) |
 <!-- source-links:end -->

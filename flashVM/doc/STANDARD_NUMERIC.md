@@ -18,7 +18,7 @@ read-only/non-enumerable property attributes remain outstanding.
 Math methods: abs, acos, asin, atan, atan2, ceil, cos, exp, floor, log,
 max, min, pow, random, round, sin, sqrt, tan.
 Math constants: E, LN10, LN2, LOG10E, LOG2E, PI, SQRT1_2, SQRT2.
-Methods work through [fvm_object_call](../include/flashvm/value.h#L126) and AVM1 ActionCallMethod. Missing arguments
+Methods work through [fvm_object_call](../include/flashvm/value.h#L184) and AVM1 ActionCallMethod. Missing arguments
 convert to NaN; extra arguments are ignored by fixed-arity methods. min/max
 accept any count, return +/-Infinity for no arguments, propagate NaN, and select
 the appropriate signed zero. round breaks ties toward +Infinity and preserves
@@ -31,7 +31,7 @@ Each new context starts with seed 1, so sequences are intentionally reproducible
 Workers have independent state; no global libc rand state is shared. This is not
 cryptographic randomness or a replica of Flash Player's PRNG.
 
-[`fvm_value_to_number`](../include/flashvm/standard.h#L25) converts undefined to NaN, null to +0, boolean to 0/1,
+[`fvm_value_to_number`](../include/flashvm/standard.h#L29) converts undefined to NaN, null to +0, boolean to 0/1,
 and preserves numbers. String conversion is independent of locale: ASCII
 whitespace, signed decimal/fraction/exponent, unsigned 0x hexadecimal, Infinity
 and empty-string zero. Invalid syntax yields NaN. Negative zero is preserved.
@@ -66,7 +66,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:29](../include/flashvm/standard.h#L29) |
 <!-- source-links:end -->

@@ -1,6 +1,8 @@
 /* CLI translates paths/options to the same public syntax API used by an IDE. */
 #include "frontend.h"
 #include <string.h>
+
+
 int main(int argc, char **argv)
 {
     FILE *input;
@@ -20,7 +22,9 @@ int main(int argc, char **argv)
         return 0;
     }
     if (argc != 2)
+    {
         return 2;
+    }
     input = fopen(argv[1], "rb");
     if (!input)
     {
@@ -29,9 +33,19 @@ int main(int argc, char **argv)
     }
     ok = as2_read(input, &diagnostic);
     if (fclose(input))
+    {
         return 2;
+    }
     if (!ok)
-        fprintf(stderr, "%s:%d:%d: %s E%d (byte %ld)\n", argv[1], diagnostic.line,
-                diagnostic.column, diagnostic.message, diagnostic.code, diagnostic.offset);
+    {
+        fprintf(stderr,
+                "%s:%d:%d: %s E%d (byte %ld)\n",
+                argv[1],
+                diagnostic.line,
+                diagnostic.column,
+                diagnostic.message,
+                diagnostic.code,
+                diagnostic.offset);
+    }
     return ok ? 0 : 1;
 }

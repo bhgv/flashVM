@@ -2,12 +2,15 @@
 #include "internal.hpp"
 #include "../avm1/operand_stack.hpp"
 
+
 /* [GC:] Keep the original input on the rooted vector through every collecting coercion. */
 FVM_Result fvm_jit_unary(FVM_JitInvocation *s, unsigned int operation)
 {
     FVM_Result status = fvm_avm1_require_value(s->context->swf_loaded, *s->stack);
     if (status != FVM_OK)
+    {
         return status;
+    }
     FVM_Value result;
     const FVM_Value *input = &s->stack->back();
     switch (operation)
@@ -33,6 +36,8 @@ FVM_Result fvm_jit_unary(FVM_JitInvocation *s, unsigned int operation)
         return FVM_INVALID_ARGUMENT;
     }
     if (status == FVM_OK)
+    {
         s->stack->back() = result;
+    }
     return status;
 }

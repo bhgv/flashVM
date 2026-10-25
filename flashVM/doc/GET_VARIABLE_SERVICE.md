@@ -1,6 +1,6 @@
 # GetVariable service / Общий GetVariable — v0.268
 
-[`fvm_exec_get_variable`](../include/flashvm/execution.h#L446) accepts explicit managed scope, target and this inputs,
+[`fvm_exec_get_variable`](../include/flashvm/execution.h#L588) accepts explicit managed scope, target and this inputs,
 a local-scope indicator and a value name. Loaded names undergo string coercion;
 already-string names retain their complete count. Unloaded host names must be
 strings. Qualified/slash and plain phases reuse the existing common services.
@@ -62,5 +62,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_get_variable` | function | [include/flashvm/execution.h:446](../include/flashvm/execution.h#L446) |
+| `fvm_exec_get_variable` | function | [include/flashvm/execution.h:588](../include/flashvm/execution.h#L588) |
 <!-- source-links:end -->

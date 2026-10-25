@@ -2,11 +2,15 @@
 #include "support.hpp"
 #include "to_object_constants.h"
 #include "flashvm/standard.h"
+
+
 /* Return objects unchanged, undefined for nullish/unavailable loaded constructors, or a wrapper. */
 extern "C" FVM_Result fvm_exec_to_object(FVM_Context *c, const FVM_Value *input, FVM_Value *out)
 {
     if (!c || !out || fvm_validate_value(c, input) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (input->type == FVM_VALUE_OBJECT)
     {
         *out = *input;
@@ -19,6 +23,8 @@ extern "C" FVM_Result fvm_exec_to_object(FVM_Context *c, const FVM_Value *input,
     }
     try
     {
+
+
         FVM_ExecutionRoots roots(c, FVM_TO_OBJECT_ROOT_COUNT);
         roots.values[FVM_TO_OBJECT_INPUT_ROOT] = *input;
         const char *name = input->type == FVM_VALUE_STRING   ? "String"
@@ -31,15 +37,23 @@ extern "C" FVM_Result fvm_exec_to_object(FVM_Context *c, const FVM_Value *input,
             FVM_Value &key = roots.values[FVM_TO_OBJECT_NAME_ROOT];
             status = fvm_value_string(&key, name);
             if (status == FVM_OK)
-                status =
-                    fvm_exec_new_object(c, 0, c->global, 0, 0, &key, FVM_TO_OBJECT_ARGUMENT_COUNT,
-                                        &roots.values[FVM_TO_OBJECT_INPUT_ROOT], &result);
+            {
+                status = fvm_exec_new_object(c,
+                                             0,
+                                             c->global,
+                                             0,
+                                             0,
+                                             &key,
+                                             FVM_TO_OBJECT_ARGUMENT_COUNT,
+                                             &roots.values[FVM_TO_OBJECT_INPUT_ROOT],
+                                             &result);
+            }
         }
         else
         {
             FVM_Object *boxed = 0;
-            status = fvm_construct(c, name, FVM_TO_OBJECT_ARGUMENT_COUNT,
-                                   &roots.values[FVM_TO_OBJECT_INPUT_ROOT], &boxed);
+            status =
+                fvm_construct(c, name, FVM_TO_OBJECT_ARGUMENT_COUNT, &roots.values[FVM_TO_OBJECT_INPUT_ROOT], &boxed);
             if (status == FVM_OK)
             {
                 result.type = FVM_VALUE_OBJECT;
@@ -51,7 +65,9 @@ extern "C" FVM_Result fvm_exec_to_object(FVM_Context *c, const FVM_Value *input,
             /* Boxing accepts only object results, even when NewObject legitimately
              * returned a primitive from a native constructor. */
             if (result.type != FVM_VALUE_OBJECT)
+            {
                 fvm_value_undefined(&result);
+            }
             *out = result;
         }
         return status;

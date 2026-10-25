@@ -1,4 +1,5 @@
 """Regenerate the actual Inferno Limbo parser with the source-built iyacc."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -16,9 +17,12 @@ def main():
         root = Path(directory)
         (root / "limbo.y").write_bytes(grammar.read_bytes())
         subprocess.run([str(executable), "-d", "limbo.y"], cwd=root, env=environment, check=True)
-        assert (root / "y.tab.c").stat().st_size > 1000
-        assert (root / "y.tab.h").read_bytes() == expected_header.read_bytes()
-        assert not list(root.glob("y.tmp.*")) and not list(root.glob("y.acts.*"))
+        if not ((root / "y.tab.c").stat().st_size > 1000):
+            raise AssertionError("condition check failed: tools/iyacc/tests/smoke.py:20")
+        if not ((root / "y.tab.h").read_bytes() == expected_header.read_bytes()):
+            raise AssertionError("condition check failed: tools/iyacc/tests/smoke.py:21")
+        if not (not list(root.glob("y.tmp.*")) and (not list(root.glob("y.acts.*")))):
+            raise AssertionError("condition check failed: tools/iyacc/tests/smoke.py:22")
     print("PASS Inferno iyacc: real limbo.y generation and exact token-header compatibility")
 
 

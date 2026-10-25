@@ -1,8 +1,8 @@
 # Intrinsic hit geometry / Общая геометрия hitTest — v0.320
 
-C89 callers and generated bodies can invoke [fvm_exec_clip_hit_object](../include/flashvm/execution.h#L311)(context,
+C89 callers and generated bodies can invoke [fvm_exec_clip_hit_object](../include/flashvm/execution.h#L417)(context,
 clip, target, out) to compare stroked native world bounds, or
-[fvm_exec_clip_hit_point](../include/flashvm/execution.h#L313)(context, clip, world_x, world_y, shape, out) to test an
+[fvm_exec_clip_hit_point](../include/flashvm/execution.h#L421)(context, clip, world_x, world_y, shape, out) to test an
 explicit world-space point against bounds or painted geometry. Each service has
 its own implementation file under src/avm1/handlers. Neither accepts bytecode,
 operand stacks, activation scopes or script method names. The output is a
@@ -61,7 +61,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_hit_object` | function | [include/flashvm/execution.h:311](../include/flashvm/execution.h#L311) |
-| `fvm_exec_clip_hit_point` | function | [include/flashvm/execution.h:313](../include/flashvm/execution.h#L313) |
+| `fvm_exec_clip_hit_object` | function | [include/flashvm/execution.h:417](../include/flashvm/execution.h#L417) |
+| `fvm_exec_clip_hit_point` | function | [include/flashvm/execution.h:421](../include/flashvm/execution.h#L421) |
 | `FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:100](../src/standard/movieclip_constants.h#L100) |
 <!-- source-links:end -->

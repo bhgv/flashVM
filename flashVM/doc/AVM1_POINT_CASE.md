@@ -9,7 +9,7 @@ names with an embedded NUL/suffix do not match one-unit coordinate names.
 Writes preserve the selected own field spelling, avoiding a second lowercase
 slot. Both names are copied before geometry callbacks can invalidate property-map
 iterators. Root scopes, native barriers, ordered x/y setters and loaded input
-normalization remain shared through [fvm_exec_clip_point](../include/flashvm/execution.h#L65). Native callback IDs and
+normalization remain shared through [fvm_exec_clip_point](../include/flashvm/execution.h#L76). Native callback IDs and
 wire schema do not change. Input names and counted field length use documented
 macros in clip_point_constants.h.
 
@@ -63,5 +63,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:76](../include/flashvm/execution.h#L76) |
 <!-- source-links:end -->

@@ -10,7 +10,7 @@ receiver и аргументов: вложенные callbacks использу�
 Split оплачивает позицию обхода, сравнение unit разделителя и каждый выдаваемый
 UTF-16 unit. При кодировании supplementary-символа оплачиваются оба unit.
 Поиск оплачивает кандидатную позицию и каждый сравниваемый unit, включая длинные
-неполные префиксы. Исчерпание лимита или насыщение счётчика даёт [FVM_ERROR](../include/flashvm/flashvm.h#L43);
+неполные префиксы. Исчерпание лимита или насыщение счётчика даёт [FVM_ERROR](../include/flashvm/flashvm.h#L45);
 нулевой лимит остаётся неограниченным. Проверка остановки worker использует
 прежнюю периодическую политику общего scope. Host-учёт не меняется.
 
@@ -92,5 +92,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

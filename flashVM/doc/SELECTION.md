@@ -8,18 +8,18 @@ This is a bounded implementation, not complete Flash Selection compatibility.
 ## Installation
 
 `fvm_standard_selection_install(context)` requires a borrowed non-null live
-context with standard objects already installed by [`fvm_standard_install`](../include/flashvm/standard.h#L20).
+context with standard objects already installed by [`fvm_standard_install`](../include/flashvm/standard.h#L22).
 Use the VM-owning thread, outside context teardown or GC collection/release.
 It synchronously prepares a namespace containing getFocus, setFocus, addListener, removeListener and a read-only
 _listeners snapshot accessor,
 then publishes the complete global Selection binding. It executes no script,
 changes no focus and opens no devices. Key installation is independent.
 
-Returns [`FVM_OK`](../include/flashvm/flashvm.h#L42) for successful publication or an intact existing installation;
-[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) for invalid context/state, missing standard library or a
-conflicting namespace/callable/global descriptor; [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) for a loaded
-SWF below [`FVM_SELECTION_MIN_SWF_VERSION`](../include/flashvm/keyboard.h#L5) (6); [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) for allocation
-failure; [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) for an unexpected contained C++ exception. Every preparation
+Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) for successful publication or an intact existing installation;
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) for invalid context/state, missing standard library or a
+conflicting namespace/callable/global descriptor; [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) for a loaded
+SWF below [`FVM_SELECTION_MIN_SWF_VERSION`](../include/flashvm/keyboard.h#L5) (6); [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) for allocation
+failure; [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) for an unexpected contained C++ exception. Every preparation
 failure preserves globals and the old focus. Temporary unpublished allocations
 remain ordinary context-owned garbage. Idempotency checks native identities,
 trusted bridge flags and property shadowing, not arbitrary script attributes.
@@ -29,7 +29,7 @@ case-sensitive. A conflicting `selection` therefore blocks installation only
 under SWF6. Intact methods are non-enumerable. Standard installation alone does
 not opt into this subset. The SDL player installs it for SWF6–8 and keeps older
 movies playable without this namespace. If a host installs before loading and
-later loads SWF1–5, all namespace entries return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), preserving focus;
+later loads SWF1–5, all namespace entries return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48), preserving focus;
 the historical text-field-only Selection contract is not implemented here.
 
 ## setFocus
@@ -61,7 +61,7 @@ attachment is checked before eligibility and again before publication, since a
 getter may remove the candidate. [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L88) bounds that
 native walk; path traversal keeps its own existing bounds. Malformed state or real
 path/getter/resolver errors propagate as VM statuses rather than being fabricated
-as an eligibility result. Allocation failure returns [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44).
+as an eligibility result. Allocation failure returns [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46).
 
 The candidate, receiver and argument graphs are rooted throughout nested script.
 Trusted Selection entries permit collection in script getters; enclosing ordinary
@@ -70,7 +70,7 @@ remove clips or throw. Those side effects remain committed even if outer selecti
 fails. A nested successful selection is overwritten if the outer attempt later
 succeeds; there is no rollback or focus-change event queue. Successful transitions use the
 synchronous notifications described below. Selected clips receive subsequent
-keyboard transitions through [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90), before independent
+keyboard transitions through [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108), before independent
 Key listeners, according to the shared host policy.
 
 ## Focus notifications
@@ -95,7 +95,7 @@ A real getter/handler error, including allocation failure, stops further deliver
 and propagates its original status. Already published focus and handler side
 effects remain committed. Thus an out-of-memory failure before publication keeps
 the previous selection; one during notification keeps the published selection
-unless a callback changed it. Even [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) from a real callback is
+unless a callback changed it. Even [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) from a real callback is
 an error, not the Boolean false used for an ineligible candidate. Removing a
 snapshot endpoint during a callback does not cancel its pending notification;
 subsequent getFocus applies the ordinary lazy detachment check. These are explicit
@@ -106,9 +106,9 @@ subset ordering rules; original-player edge-case acceptance remains open.
 Since v0.594, `Selection.addListener(object)` returns undefined and retains one
 same-context object identity; duplicate additions leave registration order intact.
 No arguments, null, undefined or primitive values are ignored. Callback argument
-validation rejects foreign-context values with [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before entry.
-Registration may return [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) without adding an identity; reaching
-[FVM_SELECTION_MAX_LISTENERS](../src/standard/selection_listeners.hpp#L6) (4096) returns [FVM_ERROR](../include/flashvm/flashvm.h#L43). No callbacks or devices run
+validation rejects foreign-context values with [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before entry.
+Registration may return [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) without adding an identity; reaching
+[FVM_SELECTION_MAX_LISTENERS](../src/standard/selection_listeners.hpp#L7) (4096) returns [FVM_ERROR](../include/flashvm/flashvm.h#L45). No callbacks or devices run
 during registration. `Selection.removeListener(object)` returns true only for a
 removed identity, false for absent/invalid script inputs; removal itself allocates
 no memory, though the enclosing method call may allocate its argument snapshot.
@@ -165,7 +165,7 @@ bypasses script eligibility; getFocus still describes that host-selected clip.
 State persists until explicit clearing/replacement, lazy detachment checking or
 context destruction, including across movie load and namespace replacement.
 It is unsynchronized, host-local and not serialized; namespace methods have no
-portable serialization callback IDs and graph transfer returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
+portable serialization callback IDs and graph transfer returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48).
 
 TextField/caret/range methods, Button objects, focus rectangles, automatic mouse/Tab navigation, IME,
 security origins, SWF ClipActions and original-player edge/order conformance
@@ -200,7 +200,7 @@ The original rules are described by Adobe's AS2 reference
 Host/runtime fixtures and cross-builds are distinct from physical keyboard/device
 acceptance. See [current roadmap status](ROADMAP_STATUS.md).
 
-Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L128), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L178)
+Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L166), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L241)
 in [src/standard/selection.cpp](../src/standard/selection.cpp).
 
 
@@ -219,17 +219,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:88](../src/standard/movieclip_constants.h#L88) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:178](../src/standard/selection.cpp#L178) |
-| `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:6](../src/standard/selection_listeners.hpp#L6) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:241](../src/standard/selection.cpp#L241) |
+| `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:7](../src/standard/selection_listeners.hpp#L7) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:128](../src/standard/selection.cpp#L128) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:166](../src/standard/selection.cpp#L166) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../include/flashvm/standard.h#L22) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:123](../include/flashvm/keyboard.h#L123) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

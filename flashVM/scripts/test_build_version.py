@@ -33,11 +33,13 @@ def main():
         version = source / "VERSION.txt"
         version.write_text("1.2.3\n", encoding="utf-8")
         (source / "CMakeLists.txt").write_text(
-            'cmake_minimum_required(VERSION 3.10)\n'
+            "cmake_minimum_required(VERSION 3.10)\n"
             f'include("{module}")\n'
             'project(VersionRefresh VERSION "${FVM_VERSION}" LANGUAGES NONE)\n'
             'file(WRITE "${CMAKE_BINARY_DIR}/observed-version.txt" "${PROJECT_VERSION}\\n")\n'
-            'add_custom_target(version_probe)\n', encoding="utf-8")
+            "add_custom_target(version_probe)\n",
+            encoding="utf-8",
+        )
         build.mkdir()
         command = [cmake]
         if args.generator:
@@ -50,8 +52,15 @@ def main():
             command += ["-T", args.toolset]
         command.append(str(source))
         run(command, cwd=build)
-        ordinary_build = [cmake, "--build", str(build), "--config", "Release",
-                          "--target", "version_probe"]
+        ordinary_build = [
+            cmake,
+            "--build",
+            str(build),
+            "--config",
+            "Release",
+            "--target",
+            "version_probe",
+        ]
         run(ordinary_build)
         observed = build / "observed-version.txt"
         if observed.read_text(encoding="utf-8").strip() != "1.2.3":

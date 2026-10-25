@@ -1,8 +1,9 @@
 implement CoordinatesTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Test-only bootstrap owns its emulator; production imports no Sys or UI modules.
 CoordinatesTest: module
@@ -13,26 +14,32 @@ CoordinatesTest: module
 # Count assertions only after actual channel responses, never from a host model.
 checks := 0;
 
+
 # Stop only the private emulator selected by the regression runner.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing test halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: test halt returned";
 }
 
+
 # Emit a visible failure because some reference emulators return zero after traps.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
+
 
 # Complete one rendezvous with a private response channel and echoed correlation ID.
 exchange(commands: chan of core->Request, operation, expected, first, last: int): core->Reply
@@ -44,13 +51,15 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int)
     return result;
 }
 
+
 # Errors and noncoordinate operations must not accidentally expose stale coordinates.
 absent(result: core->Reply, status: int)
 {
     require(result.status == status, "error status");
     require(result.offset == -1 && result.line == -1 && result.column == -1,
-            "coordinate sentinel");
+    "coordinate sentinel");
 }
+
 
 # Every character boundary, including EOF and LF, has an exact inverse mapping.
 roundtrip(text: string)
@@ -61,21 +70,27 @@ roundtrip(text: string)
     absent(<-reply, core->Ok);
     line := 1;
     column := 0;
-    for(offset := 0; offset <= len text; offset++){
+    for(offset := 0; offset <= len text; offset++)
+    {
         located := exchange(commands, core->Locate, 1, offset, 999);
         require(located.status == core->Ok && located.offset == offset &&
-                located.line == line && located.column == column, "authored coordinate");
+        located.line == line && located.column == column, "authored coordinate");
         require(located.opened && located.revision == 1 && located.saved == 1 &&
-                located.text == text, "query preserves snapshot");
+        located.text == text, "query preserves snapshot");
         converted := exchange(commands, core->Offset, 1, line, column);
         require(converted.status == core->Ok && converted.offset == offset &&
-                converted.line == line && converted.column == column, "inverse coordinate");
-        if(offset < len text){
-            if(text[offset] == '\n'){
+        converted.line == line && converted.column == column, "inverse coordinate");
+        if(offset < len text)
+        {
+            if(text[offset] == '\n')
+            {
                 line++;
                 column = 0;
-            }else
+            }
+            else
+            {
                 column++;
+            }
         }
     }
     absent(exchange(commands, core->Locate, 0, 0, 0), core->Conflict);
@@ -93,6 +108,7 @@ roundtrip(text: string)
     absent(exchange(commands, core->Offset, 2, 1, 0), core->Closed);
     absent(exchange(commands, core->Shutdown, 2, 0, 0), core->Ok);
 }
+
 
 # Cover Unicode character units, empty/trailing lines and unnormalized CRLF text.
 init()

@@ -31,7 +31,7 @@ The callback argument count remains a separate contract from root/operand sizes.
 The With fixture embeds an observable nested assignment, verifies it is skipped
 for the missing undefined value, and confirms outer execution continues with no
 lexical scope left behind. Malformed With payloads and invalid GetURL2 method
-flags still return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before semantic dispatch. Public C service
+flags still return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before semantic dispatch. Public C service
 signatures and Action encodings are unchanged.
 
 Primary comparison: Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd,
@@ -68,5 +68,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

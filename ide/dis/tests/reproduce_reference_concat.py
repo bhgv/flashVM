@@ -4,6 +4,7 @@ Reproduce self-concatenation after the bulk-render allocation workload. Always
 record both emulator modes, including failures. No retries, expected-failure
 conversion, source edits, upstream updates or production output replacement.
 """
+
 import argparse
 from pathlib import Path
 import subprocess
@@ -27,26 +28,50 @@ def main():
     prefix = source[:first]
     # Keep the exact ordinary workload, then stop BEFORE sending the huge string
     # to the owner: a crash here is outside ReplaceAll admission/rendering.
-    probe = prefix + '''    huge := "x";
+    probe = (
+        prefix
+        + """    huge := "x";
     while(len huge < core->MaxCharacters)
         huge += huge;
     sys->print("CONSTRUCTED %d characters\\n", len huge);
     halt();
 }
-'''
+"""
+    )
     probe_path = root / "concat_probe.b"
     probe_path.write_text(probe, encoding="utf-8")
     for name in ("dev", "chan", "prog", "fd", "net", "net.alt", "env"):
         (root / name).mkdir()
-    for source_path, output in [(source_root / "idecore.b", "idecore.dis"),
-                                (probe_path, "concat_probe.dis")]:
-        subprocess.run([str(args.limbo.resolve()), "-I", str(source_root),
-                        "-I", str(args.module_dir.resolve()), "-o", str(root / output),
-                        str(source_path)], check=True)
+    for source_path, output in [
+        (source_root / "idecore.b", "idecore.dis"),
+        (probe_path, "concat_probe.dis"),
+    ]:
+        subprocess.run(
+            [
+                str(args.limbo.resolve()),
+                "-I",
+                str(source_root),
+                "-I",
+                str(args.module_dir.resolve()),
+                "-o",
+                str(root / output),
+                str(source_path),
+            ],
+            check=True,
+        )
     for mode in (0, 1):
-        result = subprocess.run([str(args.emu.resolve()), "-c" + str(mode),
-                                 "-r" + str(root), "-d", "/concat_probe.dis"],
-                                capture_output=True, timeout=30, cwd=root)
+        result = subprocess.run(
+            [
+                str(args.emu.resolve()),
+                "-c" + str(mode),
+                "-r" + str(root),
+                "-d",
+                "/concat_probe.dis",
+            ],
+            capture_output=True,
+            timeout=30,
+            cwd=root,
+        )
         stdout = result.stdout.decode("utf-8", errors="replace")
         stderr = result.stderr.decode("utf-8", errors="replace")
         (root / ("mode-%d.stdout" % mode)).write_text(stdout, encoding="utf-8")

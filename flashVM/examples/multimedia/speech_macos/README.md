@@ -64,13 +64,13 @@ main или автоматически протестированный app. Н�
 
 | Function (source declarations linked below) | Detailed guide file and section |
 | --- | --- |
-| [`fvm_stt_open`](../../../include/flashvm/speech.h#L100) | [SPEECH_BRIDGES.md — fvm_stt_open](../../../doc/SPEECH_BRIDGES.md#fvm_stt_open) |
-| [`fvm_stt_system_backend`](../../../include/flashvm/speech.h#L83) | [SPEECH_BRIDGES.md — fvm_stt_system_backend](../../../doc/SPEECH_BRIDGES.md#fvm_stt_system_backend) |
-| [`fvm_tts_open`](../../../include/flashvm/speech.h#L92) | [SPEECH_BRIDGES.md — fvm_tts_open](../../../doc/SPEECH_BRIDGES.md#fvm_tts_open) |
-| [`fvm_tts_system_backend`](../../../include/flashvm/speech.h#L78) | [SPEECH_BRIDGES.md — fvm_tts_system_backend](../../../doc/SPEECH_BRIDGES.md#fvm_tts_system_backend) |
+| [`fvm_stt_open`](../../../include/flashvm/speech.h#L119) | [SPEECH_BRIDGES.md — fvm_stt_open](../../../doc/SPEECH_BRIDGES.md#fvm_stt_open) |
+| [`fvm_stt_system_backend`](../../../include/flashvm/speech.h#L92) | [SPEECH_BRIDGES.md — fvm_stt_system_backend](../../../doc/SPEECH_BRIDGES.md#fvm_stt_system_backend) |
+| [`fvm_tts_open`](../../../include/flashvm/speech.h#L103) | [SPEECH_BRIDGES.md — fvm_tts_open](../../../doc/SPEECH_BRIDGES.md#fvm_tts_open) |
+| [`fvm_tts_system_backend`](../../../include/flashvm/speech.h#L87) | [SPEECH_BRIDGES.md — fvm_tts_system_backend](../../../doc/SPEECH_BRIDGES.md#fvm_tts_system_backend) |
 
-Структуры [FVM_TtsBackend](../../../include/flashvm/speech.h#L13), [FVM_SttBackend](../../../include/flashvm/speech.h#L24), [FVM_AndroidSpeechConfig](../../../include/flashvm/speech.h#L60),
-[FVM_LinuxSttConfig](../../../include/flashvm/speech.h#L49) и ownership/status contracts:
+Структуры [FVM_TtsBackend](../../../include/flashvm/speech.h#L14), [FVM_SttBackend](../../../include/flashvm/speech.h#L26), [FVM_AndroidSpeechConfig](../../../include/flashvm/speech.h#L68),
+[FVM_LinuxSttConfig](../../../include/flashvm/speech.h#L55) и ownership/status contracts:
 [SPEECH_BRIDGES.md](../../../doc/SPEECH_BRIDGES.md),
 [public speech.h](../../../include/flashvm/speech.h).
 Все примеры различают real native operations, deterministic fixtures и пока
@@ -85,13 +85,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:60](../../../include/flashvm/speech.h#L60) |
-| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:49](../../../include/flashvm/speech.h#L49) |
-| `fvm_stt_open` | function | [include/flashvm/speech.h:100](../../../include/flashvm/speech.h#L100) |
-| `fvm_stt_poll` | function | [include/flashvm/speech.h:102](../../../include/flashvm/speech.h#L102) |
-| `fvm_stt_system_backend` | function | [include/flashvm/speech.h:83](../../../include/flashvm/speech.h#L83) |
-| `FVM_SttBackend` | struct | [include/flashvm/speech.h:24](../../../include/flashvm/speech.h#L24) |
-| `fvm_tts_open` | function | [include/flashvm/speech.h:92](../../../include/flashvm/speech.h#L92) |
-| `fvm_tts_system_backend` | function | [include/flashvm/speech.h:78](../../../include/flashvm/speech.h#L78) |
-| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:13](../../../include/flashvm/speech.h#L13) |
+| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:68](../../../include/flashvm/speech.h#L68) |
+| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:55](../../../include/flashvm/speech.h#L55) |
+| `fvm_stt_open` | function | [include/flashvm/speech.h:119](../../../include/flashvm/speech.h#L119) |
+| `fvm_stt_poll` | function | [include/flashvm/speech.h:123](../../../include/flashvm/speech.h#L123) |
+| `fvm_stt_system_backend` | function | [include/flashvm/speech.h:92](../../../include/flashvm/speech.h#L92) |
+| `FVM_SttBackend` | struct | [include/flashvm/speech.h:26](../../../include/flashvm/speech.h#L26) |
+| `fvm_tts_open` | function | [include/flashvm/speech.h:103](../../../include/flashvm/speech.h#L103) |
+| `fvm_tts_system_backend` | function | [include/flashvm/speech.h:87](../../../include/flashvm/speech.h#L87) |
+| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:14](../../../include/flashvm/speech.h#L14) |
 <!-- source-links:end -->

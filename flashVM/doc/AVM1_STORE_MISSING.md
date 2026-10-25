@@ -7,7 +7,7 @@ loaded stores remain ignored. Host-only empty stacks remain errors. Payload
 validation precedes preparation and bank writes. The one-byte register selector
 width is documented by [FVM_AVM1_STORE_REGISTER_BYTES](../src/avm1/encoding_constants.h#L135) in encoding_constants.h.
 
-The shared C89 [fvm_exec_global_register](../include/flashvm/execution.h#L461) service is unchanged: callers supply
+The shared C89 [fvm_exec_global_register](../include/flashvm/execution.h#L607) service is unchanged: callers supply
 explicit values, with no interpreter or Action dependency. Register-bank sizes,
 private/global selection, persistent string ownership and the public ABI are
 unchanged. Undefined publication itself invokes no callbacks and allocates no
@@ -47,5 +47,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AVM1_STORE_REGISTER_BYTES` | macro / define | [src/avm1/encoding_constants.h:135](../src/avm1/encoding_constants.h#L135) |
-| `fvm_exec_global_register` | function | [include/flashvm/execution.h:461](../include/flashvm/execution.h#L461) |
+| `fvm_exec_global_register` | function | [include/flashvm/execution.h:607](../include/flashvm/execution.h#L607) |
 <!-- source-links:end -->

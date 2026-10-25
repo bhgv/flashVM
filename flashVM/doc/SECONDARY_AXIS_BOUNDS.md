@@ -6,7 +6,7 @@ The underflow regression fails on v0.1445 before this correction. Admitted large
 
 ## Contract and validation limits
 
-[`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L107) accepts finite affine matrices under its existing checks and updates clip-owned state; the clip belongs to its context. Measurements through [`fvm_object_call`](../include/flashvm/value.h#L126) borrow the clip and coordinate-space object in that context; `getBounds` returns a managed object which must be rooted across later VM calls. Fixtures copy its four numbers immediately before any later calls. `getRect` retains stroke-free extents. Dimensions and non-shape hitTest share the corrected bounds branch. Shape hits already used the stable norm and are checked for consistency.
+[`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L138) accepts finite affine matrices under its existing checks and updates clip-owned state; the clip belongs to its context. Measurements through [`fvm_object_call`](../include/flashvm/value.h#L184) borrow the clip and coordinate-space object in that context; `getBounds` returns a managed object which must be rooted across later VM calls. Fixtures copy its four numbers immediately before any later calls. `getRect` retains stroke-free extents. Dimensions and non-shape hitTest share the corrected bounds branch. Shape hits already used the stable norm and are checked for consistency.
 
 Fixtures use a separate identity clip as their target space. Singular source transforms are admitted, but rejection of noninvertible target transforms is unchanged. Existing allocation, callback, thread and GC restrictions remain; fixtures explicitly retain and release managed roots. Four workers use separate runtimes/contexts, without concurrent mutation of one clip.
 
@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:107](../include/flashvm/movieclip.h#L107) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
+| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../include/flashvm/value.h#L184) |
 <!-- source-links:end -->

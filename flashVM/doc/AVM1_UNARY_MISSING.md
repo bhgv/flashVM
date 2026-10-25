@@ -2,7 +2,7 @@
 
 Loaded AVM1 bytecode now supplies undefined when an audited unary operation reads
 an empty operand stack. The existing versioned C execution service then performs
-the operation. Previously these dispatch branches returned [FVM_ERROR](../include/flashvm/flashvm.h#L43) before
+the operation. Previously these dispatch branches returned [FVM_ERROR](../include/flashvm/flashvm.h#L45) before
 reaching that service. Host-only execution without a loaded SWF retains its
 strict missing-operand error; explicit C service input pointers remain mandatory.
 
@@ -66,5 +66,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 <!-- source-links:end -->

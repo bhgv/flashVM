@@ -3,27 +3,40 @@
 #include "firsynp.h"
 #include <stdlib.h>
 #include <string.h>
+
 extern Error_Func Custom_Error;
+
+
 extern int firsyn_parser_run(unsigned char *, int);
+
+
 extern int firsyn_parser_limit_hit(void);
 static FirSyntaxDiagnostic *active; /* Borrowed only during one serialized parser invocation. */
 /* Generated token/production messages belong to this parser namespace. */
 static const char *const messages[] = {
 #include "firsyne.h"
+
 };
+
+
 /* Retain the first syntax error without printing or allocating. */
 static void report(int code, int line, int column, long offset)
 {
     if (!active || active->message[0])
+    {
         return;
+    }
     active->code = code;
     active->line = line;
     active->column = column;
     active->offset = offset;
-    snprintf(active->message, sizeof(active->message), "%s",
-             code >= 0 && (size_t)code < sizeof(messages) / sizeof(messages[0]) ? messages[code]
-                                                                                : "syntax error");
+    snprintf(active->message,
+             sizeof(active->message),
+             "%s",
+             code >= 0 && (size_t)code < sizeof(messages) / sizeof(messages[0]) ? messages[code] : "syntax error");
 }
+
+
 /* Reject malformed UTF-8 and embedded NUL before the byte-oriented generated scanner. */
 static int valid_utf8(const unsigned char *text, size_t n)
 {
@@ -36,17 +49,25 @@ static int valid_utf8(const unsigned char *text, size_t n)
         if (remaining)
         {
             if (c < low || c > high)
+            {
                 return 0;
+            }
             --remaining;
             low = 0x80;
             high = 0xbf;
         }
         else if (!c)
+        {
             return 0;
+        }
         else if (c < 0x80)
+        {
             continue;
+        }
         else if (c >= 0xc2 && c <= 0xdf)
+        {
             remaining = 1;
+        }
         else if (c >= 0xe0 && c <= 0xef)
         {
             remaining = 2;
@@ -60,10 +81,13 @@ static int valid_utf8(const unsigned char *text, size_t n)
             high = c == 0xf4 ? 0x8f : 0xbf;
         }
         else
+        {
             return 0;
+        }
     }
     return !remaining;
 }
+
 
 /* Parse borrowed bytes synchronously; reset generated state on every invocation. */
 int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
@@ -71,20 +95,19 @@ int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
     FirSyntaxDiagnostic local;
     int ok;
     if (!diagnostic)
+    {
         diagnostic = &local;
+    }
     memset(diagnostic, 0, sizeof(*diagnostic));
-    if ((!data && size) || size > FIR_SYN_INPUT_LIMIT ||
-        !valid_utf8((const unsigned char *)data, size))
+    if ((!data && size) || size > FIR_SYN_INPUT_LIMIT || !valid_utf8((const unsigned char *)data, size))
     {
         diagnostic->code = -1;
-        snprintf(diagnostic->message, sizeof(diagnostic->message),
-                 "invalid UTF-8/NUL or input exceeds 2 MiB");
+        snprintf(diagnostic->message, sizeof(diagnostic->message), "invalid UTF-8/NUL or input exceeds 2 MiB");
         return 0;
     }
     if (size < 8 || memcmp(data, "FIR 1.0", 7) ||
         (((const unsigned char *)data)[7] != 10 &&
-         !(((const unsigned char *)data)[7] == 13 && size > 8 &&
-           ((const unsigned char *)data)[8] == 10)))
+         !(((const unsigned char *)data)[7] == 13 && size > 8 && ((const unsigned char *)data)[8] == 10)))
     {
         diagnostic->code = 1401;
         snprintf(diagnostic->message, sizeof(diagnostic->message), "first line must be FIR 1.0");
@@ -97,7 +120,9 @@ int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
     {
         int limit = firsyn_parser_limit_hit();
         diagnostic->code = limit ? limit == 1 ? -3 : -4 : -2;
-        snprintf(diagnostic->message, sizeof(diagnostic->message), "%s",
+        snprintf(diagnostic->message,
+                 sizeof(diagnostic->message),
+                 "%s",
                  limit ? limit == 1 ? "parser nesting limit exceeded" : "parser work limit exceeded"
                        : "scanner allocation failure");
     }
@@ -106,6 +131,8 @@ int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
     active = NULL;
     return ok;
 }
+
+
 /* Read from the current stream position; neither rewind nor close caller storage. */
 int firsyn_read(FILE *input, FirSyntaxDiagnostic *diagnostic)
 {
@@ -113,10 +140,14 @@ int firsyn_read(FILE *input, FirSyntaxDiagnostic *diagnostic)
     size_t n;
     int ok;
     if (!input)
+    {
         return firsyn_check(NULL, 1, diagnostic);
+    }
     data = (unsigned char *)malloc(FIR_SYN_INPUT_LIMIT + 1);
     if (!data)
+    {
         return firsyn_check(NULL, 1, diagnostic);
+    }
     n = fread(data, 1, FIR_SYN_INPUT_LIMIT + 1, input);
     ok = !ferror(input) ? firsyn_check(data, n, diagnostic) : firsyn_check(NULL, 1, diagnostic);
     free(data);

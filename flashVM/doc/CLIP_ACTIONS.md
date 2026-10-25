@@ -3,7 +3,7 @@
 [Русский](CLIP_ACTIONS.ru.md). PlaceObject2 can now retain placement-specific
 ClipActions on sprite instances instead of rejecting that entire optional field.
 The loader copies and inspects action blocks without executing them. A normal
-[fvm_movieclip_advance](../include/flashvm/movieclip.h#L125) delivers matching EnterFrame records, after the clip's frame
+[fvm_movieclip_advance](../include/flashvm/movieclip.h#L160) delivers matching EnterFrame records, after the clip's frame
 actions and before its optional onEnterFrame method. Other events have an explicit
 owner-thread C89 entry point; they are not automatically selected by the player.
 
@@ -31,14 +31,14 @@ implicit ActionEnd at the exact bounded end. Unsupported AVM1 remains unsupporte
 One placement accepts at most [FVM_SWF_CLIP_ACTION_MAX_RECORDS](../src/swf/clip_action_constants.h#L15) records,
 [FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES](../src/standard/movieclip_constants.h#L22) action bytes per record and
 [FVM_SWF_CLIP_ACTION_MAX_BYTES](../src/swf/clip_action_constants.h#L16) action bytes in total. These are implementation bounds.
-Oversized or malformed records return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); events outside the strict
-source-version profile and ClipActions on static artwork return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
+Oversized or malformed records return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); events outside the strict
+source-version profile and ClipActions on static artwork return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
 The separate clipDepth field remains unsupported. This does not add PlaceObject3,
 DefineButton actions, event hit-target selection or a textual AS compiler.
 
 ## C89 selected-event delivery
 
-Include `flashvm/clip_actions.h`. Call [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55) with:
+Include `flashvm/clip_actions.h`. Call [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L58) with:
 
 - The owning context and its retained MovieClip instance.
 - Exactly one FVM_CLIP_EVENT_* bit from the public header, not an event combination.
@@ -64,8 +64,8 @@ their separate contracts.
 All calls are synchronous on the context owner thread. The API borrows the clip;
 pin it or retain its enclosing scene across host calls. Null, foreign or nonclip
 arguments, static art, lifecycle/sound-callback reentry phases, invalid event bits
-and invalid key arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before delivery. A valid
-event unavailable in the clip's strict SWF profile returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
+and invalid key arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before delivery. A valid
+event unavailable in the clip's strict SWF profile returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48).
 
 ## Snapshots, work and errors
 
@@ -76,13 +76,13 @@ block executor. Allocation failure or invalid preparation metadata executes no
 handler. A callback can replace the live table or mutate later record metadata;
 this batch still uses its captured selectors/code. Future deliveries see the change.
 
-Delivery, preparation and AVM1 share [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L9) with an enclosing
+Delivery, preparation and AVM1 share [FVM_ExecutionWorkScope](../src/core/execution_work_scope.hpp#L11) with an enclosing
 advance or script call. A public outer dispatch also charges one entry unit; matching
 records charge a delivery unit. Native work polls worker cancellation on its normal
 first/every-64-unit policy. The numeric limit can be disabled independently of stop.
 Native callback internals and other helpers are not made hard real-time preemptible.
 
-Budget/stop, [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44), real handler errors and [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) skip the rest
+Budget/stop, [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46), real handler errors and [FVM_EXCEPTION](../include/flashvm/flashvm.h#L50) skip the rest
 of the batch and preserve completed effects. A later selected bytecode error may
 follow earlier delivered records. There is no transaction rollback or resumable
 batch cursor. Clear/handle script exceptions with the existing exception API before
@@ -93,8 +93,8 @@ EnterFrame and other routes do not grant it. An eligible enclosing interval/inpu
 chain remains eligible. Scope restoration occurs on every error/exception/OOM path;
 a committed redraw request remains pending. [Redraw contracts](UPDATE_AFTER_EVENT.md).
 
-[GC:] The full native barrier remains active. [fvm_gc_collect](../include/flashvm/gc.h#L44) from a callback returns
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); [fvm_gc_step](../include/flashvm/gc.h#L90) returns [FVM_OK](../include/flashvm/flashvm.h#L42) without collection. Collect at a
+[GC:] The full native barrier remains active. [fvm_gc_collect](../include/flashvm/gc.h#L54) from a callback returns
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); [fvm_gc_step](../include/flashvm/gc.h#L116) returns [FVM_OK](../include/flashvm/flashvm.h#L44) without collection. Collect at a
 later host safe point. Captured code remains valid even if its managed owner edge
 is replaced during delivery. No native userdata or active execution scope is stored
 in the handler graph. Retained code is owned ASCII hex, not a borrowed file pointer.
@@ -153,18 +153,18 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_CLIP_EVENT_KEY_PRESS` | macro / define | [include/flashvm/clip_actions.h:22](../include/flashvm/clip_actions.h#L22) |
-| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:50](../include/flashvm/flashvm.h#L50) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
+| `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:58](../include/flashvm/clip_actions.h#L58) |
 | `FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES` | macro / define | [src/standard/movieclip_constants.h:22](../src/standard/movieclip_constants.h#L22) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_SWF_CLIP_ACTION_MAX_BYTES` | macro / define | [src/swf/clip_action_constants.h:16](../src/swf/clip_action_constants.h#L16) |
 | `FVM_SWF_CLIP_ACTION_MAX_KEY` | macro / define | [src/swf/clip_action_constants.h:18](../src/swf/clip_action_constants.h#L18) |
 | `FVM_SWF_CLIP_ACTION_MAX_RECORDS` | macro / define | [src/swf/clip_action_constants.h:15](../src/swf/clip_action_constants.h#L15) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

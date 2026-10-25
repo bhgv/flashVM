@@ -2,9 +2,9 @@
 
 ## English
 
-AVM1 StopSounds (0x09) now lowers to the direct [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) semantic
-helper. [fvm_jit_decode](../src/jit/decode.cpp#L148) emits a normal source checkpoint followed by a fixed
-helper call. It invokes [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) exactly as the interpreter does;
+AVM1 StopSounds (0x09) now lowers to the direct [fvm_jit_stop_sounds](../src/jit/effects.cpp#L9) semantic
+helper. [fvm_jit_decode](../src/jit/decode.cpp#L195) emits a normal source checkpoint followed by a fixed
+helper call. It invokes [fvm_audio_stop_all](../include/flashvm/multimedia.h#L120) exactly as the interpreter does;
 it does not dispatch bytecode from machine code. There are no operands, no
 pushed result and no new public ABI. Lower stack values remain intact.
 
@@ -13,18 +13,18 @@ callbacks. Active registrations are visited in registration order. Every active
 output receives one stop attempt even if an earlier callback fails. Return the
 first failure; successful channels become inactive and failed channels remain
 active for a later explicit retry. Other contexts and unregistered standalone
-outputs or [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) snapshots are untouched. The action does not close
+outputs or [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L12) snapshots are untouched. The action does not close
 channel registrations, free userdata, resample/mix audio or advance MovieClip.
 Actual playback/discard remains the host output's responsibility.
 
-[GC:] [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) holds [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L27) across the complete stable
+[GC:] [fvm_audio_stop_all](../include/flashvm/multimedia.h#L120) holds [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L34) across the complete stable
 registry. GC collection, context destruction and nested channel mutation are
 blocked during callbacks. Metadata queries can inspect previous acknowledged
 active state. Host userdata remains owned by the host until channel/context
 cleanup completes. Callbacks must obey the C ABI and return normally; no C++
 exception or cross-thread access is permitted. The helper itself allocates no
 memory. Compilation and ordinary function activation can still return
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44); delivered host side effects are never rolled back.
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46); delivered host side effects are never rolled back.
 
 A host failure propagates through ordinary native unwinding. Existing opt-in
 exception replay policy still applies to actual script exceptions: it is not a
@@ -34,8 +34,8 @@ handling use the shared JIT path before the stop callback.
 
 ## Русский
 
-StopSounds (0x09) компилируется в прямой вызов [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) после обычного
-source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92), как интерпретатор; нет
+StopSounds (0x09) компилируется в прямой вызов [fvm_jit_stop_sounds](../src/jit/effects.cpp#L9) после обычного
+source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flashvm/multimedia.h#L120), как интерпретатор; нет
 вложенного bytecode dispatch, новых публичных функций, аргументов или результата
 на стеке. Нижние операнды сохраняются.
 
@@ -43,15 +43,15 @@ source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flash
 выхода выполняется одна попытка stop в порядке регистрации, включая выходы
 после первого отказа. Возвращается первая ошибка. Успешные каналы становятся
 inactive; неудачные остаются active для явного повторения. Другие контексты,
-незарегистрированные outputs и [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L11) snapshots не затрагиваются.
+незарегистрированные outputs и [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L12) snapshots не затрагиваются.
 Регистрации и userdata остаются живы; MovieClip clock и mixer не запускаются.
 
-[GC:] [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L27) удерживает registry стабильным и запрещает сборку,
+[GC:] [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L34) удерживает registry стабильным и запрещает сборку,
 уничтожение context и повторные create/write/stop/close во время callback.
 Запрос active разрешён и видит ранее подтверждённое состояние. Userdata —
 собственность host до завершения cleanup. Callback выполняется синхронно на
 VM thread, должен нормально вернуть C ABI status. Helper не выделяет память;
-компиляция/активация могут завершиться [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). Доставленный host stop
+компиляция/активация могут завершиться [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46). Доставленный host stop
 не откатывается при последующей ошибке. Opt-in diagnostic exception replay
 также не является транзакцией; по умолчанию он отключён.
 
@@ -59,8 +59,8 @@ VM thread, должен нормально вернуть C ABI status. Helper �
 
 [swf_mix](../examples/multimedia/swf_mix/README.md) prepares two independent
 snapshots, mixes blocks into a real stdio FILE and stops it with a normal AVM1
-function. The tutorial selects automatic JIT only if [fvm_jit_available](../include/flashvm/jit.h#L13) succeeds
-and requires exactly one actual native entry using [fvm_execution_get_stats](../include/flashvm/execution_mode.h#L71).
+function. The tutorial selects automatic JIT only if [fvm_jit_available](../include/flashvm/jit.h#L15) succeeds
+and requires exactly one actual native entry using [fvm_execution_get_stats](../include/flashvm/execution_mode.h#L92).
 Otherwise it runs the same action in interpreter mode. Optional tutorial
 `--interpreter` / `--jit` arguments explicitly select the path; invalid or
 unavailable selections fail before VM/file creation. INTERPRETER profiles select
@@ -98,12 +98,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
-| `FVM_AudioCallbackGuard` | class | [src/multimedia/audio/channel.hpp:27](../src/multimedia/audio/channel.hpp#L27) |
-| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../include/flashvm/execution_mode.h#L71) |
-| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
-| `fvm_jit_decode` | function | [src/jit/decode.cpp:148](../src/jit/decode.cpp#L148) |
-| `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:7](../src/jit/effects.cpp#L7) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:11](../src/swf/sound_voice.cpp#L11) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:120](../include/flashvm/multimedia.h#L120) |
+| `FVM_AudioCallbackGuard` | class | [src/multimedia/audio/channel.hpp:34](../src/multimedia/audio/channel.hpp#L34) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:92](../include/flashvm/execution_mode.h#L92) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
+| `fvm_jit_decode` | function | [src/jit/decode.cpp:195](../src/jit/decode.cpp#L195) |
+| `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:9](../src/jit/effects.cpp#L9) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:12](../src/swf/sound_voice.cpp#L12) |
 <!-- source-links:end -->

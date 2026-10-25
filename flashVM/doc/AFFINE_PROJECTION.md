@@ -1,13 +1,13 @@
 # Double inverse projection / Обратная double-проекция
 
-v0.341 adds `flashvm/affine.h` and [`fvm_affine_inverse_point`](../include/flashvm/affine.h#L19). The C89 API
-accepts an [`FVM_Affine`](../include/flashvm/path.h#L33), a point or vector mode, two numbers and two distinct
+v0.341 adds `flashvm/affine.h` and [`fvm_affine_inverse_point`](../include/flashvm/affine.h#L22). The C89 API
+accepts an [`FVM_Affine`](../include/flashvm/path.h#L39), a point or vector mode, two numbers and two distinct
 output pointers. It has no VM context, managed values, bytecode, allocations,
 callbacks or GC dependencies. Generated code may call the same symbol as hosts.
 
 Point mode subtracts the matrix translation; vector mode ignores it. Both
 evaluate the inverse linear transform in double precision. Zero/nonfinite
-determinants and nonfinite results return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), preserving
+determinants and nonfinite results return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), preserving
 both outputs. Output pointers may alias matrix fields: results are staged
 before either write. Nonfinite translations are ignored in vector mode.
 The operation follows the current default floating-point environment; it does
@@ -21,7 +21,7 @@ still uses the existing double policy: this extraction does not establish
 exact Flash drag rounding or complete Stage/device scaling.
 
 В v0.341 обратное преобразование точки/смещения вынесено в общий C-интерфейс
-[`fvm_affine_inverse_point`](../include/flashvm/affine.h#L19). Он принимает только матрицу и числовые данные,
+[`fvm_affine_inverse_point`](../include/flashvm/affine.h#L22). Он принимает только матрицу и числовые данные,
 не использует VM, GC, байткод, callbacks и выделение памяти. Обработчики
 перетаскивания и мыши host-контекста используют одну функцию; её также может
 вызывать будущий JIT. Режим точки учитывает перенос, режим вектора игнорирует.
@@ -37,7 +37,7 @@ GC roots, cancellation/replacement, constraints and allocation failures.
 
 ## v0.342: raw affine operations / Базовые affine-операции
 
-[`fvm_affine_invert`](../include/flashvm/affine.h#L31) and [`fvm_affine_transform_point`](../include/flashvm/affine.h#L25) now supply the unloaded-host
+[`fvm_affine_invert`](../include/flashvm/affine.h#L38) and [`fvm_affine_transform_point`](../include/flashvm/affine.h#L30) now supply the unloaded-host
 `localToGlobal`/`globalToLocal` adapter. They preserve its existing evaluation
 order: inverse coefficients, inverse translation, then point application.
 Unlike strict inverse-point projection, raw algebra propagates IEEE nonfinite
@@ -68,9 +68,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `fvm_affine_inverse_point` | function | [include/flashvm/affine.h:19](../include/flashvm/affine.h#L19) |
-| `fvm_affine_invert` | function | [include/flashvm/affine.h:31](../include/flashvm/affine.h#L31) |
-| `fvm_affine_transform_point` | function | [include/flashvm/affine.h:25](../include/flashvm/affine.h#L25) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `fvm_affine_inverse_point` | function | [include/flashvm/affine.h:22](../include/flashvm/affine.h#L22) |
+| `fvm_affine_invert` | function | [include/flashvm/affine.h:38](../include/flashvm/affine.h#L38) |
+| `fvm_affine_transform_point` | function | [include/flashvm/affine.h:30](../include/flashvm/affine.h#L30) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

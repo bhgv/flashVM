@@ -26,8 +26,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
-| `fvm_gc_roots_add` | function | [include/flashvm/gc_roots.h:30](../include/flashvm/gc_roots.h#L30) |
-| `fvm_gc_roots_begin` | function | [include/flashvm/gc_roots.h:27](../include/flashvm/gc_roots.h#L27) |
-| `fvm_gc_roots_end` | function | [include/flashvm/gc_roots.h:33](../include/flashvm/gc_roots.h#L33) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
+| `fvm_gc_roots_add` | function | [include/flashvm/gc_roots.h:34](../include/flashvm/gc_roots.h#L34) |
+| `fvm_gc_roots_begin` | function | [include/flashvm/gc_roots.h:29](../include/flashvm/gc_roots.h#L29) |
+| `fvm_gc_roots_end` | function | [include/flashvm/gc_roots.h:39](../include/flashvm/gc_roots.h#L39) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Finite mixed event tails
 
-[`fvm_swf_sound_mixer_active_frames`](../include/flashvm/swf_sound_mixer.h#L54) queries a bounded remaining output horizon on the current mixer grid, including fractional lookahead, repeats and release. It does not consume PCM or infer physical audibility. All owners require external serialization; no allocation, callback, VM or GC occurs. maximum is 1..[FVM_SWF_SOUND_MIXER_MAX_HORIZON](../include/flashvm/swf_sound_mixer.h#L46); null/invalid input returns INVALID_ARGUMENT preserving out. Empty mixer returns OK with zero. The result is clamped to maximum and silent-valued source samples still count.
+[`fvm_swf_sound_mixer_active_frames`](../include/flashvm/swf_sound_mixer.h#L63) queries a bounded remaining output horizon on the current mixer grid, including fractional lookahead, repeats and release. It does not consume PCM or infer physical audibility. All owners require external serialization; no allocation, callback, VM or GC occurs. maximum is 1..[FVM_SWF_SOUND_MIXER_MAX_HORIZON](../include/flashvm/swf_sound_mixer.h#L53); null/invalid input returns INVALID_ARGUMENT preserving out. Empty mixer returns OK with zero. The result is clamped to maximum and silent-valued source samples still count.
 
 v0.1012: Add allocation-free active frame horizons including fractional lookahead, repeats and release without consuming PCM.
 
@@ -37,8 +37,8 @@ v0.1022: Extend the rational PCM checker to all nine modes and assert exact fini
 
 ## Finite native producers
 
-[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L271) uses the adaptive FIFO contract of
-[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262), additionally limiting fresh zero-base
+[`fvm_swf_sound_mix_queue_pump_tail_finite`](../include/flashvm/swf_sound_mix_queue.h#L326) uses the adaptive FIFO contract of
+[`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L315), additionally limiting fresh zero-base
 work to the live mixer horizon. maximum is 1..queue capacity; target is positive
 and bounded by SOUND_OUTPUT_MAX_QUEUE. accepted is optional and cleared first.
 No voices/full FIFO/insufficient retry room returns NOT_FOUND; null/busy/invalid
@@ -49,7 +49,7 @@ were stopped after rejection. Retry its original size and bytes; acknowledged
 clear is the cancellation boundary. New silent-valued source/release frames still
 count. This trims synthetic block padding, not authored silence or release endpoints.
 
-[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L121) adds the same policy to the existing
+[`fvm_swf_stream_output_pump_mix_finite_until`](../include/flashvm/swf_stream_output.h#L141) adds the same policy to the existing
 paired stream scheduler. It validates the exact adapted backend and common epoch,
 accepts a retained TAIL before newly permitted base, holds BASE when its frame gate
 is closed and preserves source phase during event-only output. Base conversion is
@@ -107,9 +107,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:271](../include/flashvm/swf_sound_mix_queue.h#L271) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:54](../include/flashvm/swf_sound_mixer.h#L54) |
-| `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:46](../include/flashvm/swf_sound_mixer.h#L46) |
-| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:121](../include/flashvm/swf_stream_output.h#L121) |
+| `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:326](../include/flashvm/swf_sound_mix_queue.h#L326) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
+| `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:63](../include/flashvm/swf_sound_mixer.h#L63) |
+| `FVM_SWF_SOUND_MIXER_MAX_HORIZON` | macro / define | [include/flashvm/swf_sound_mixer.h:53](../include/flashvm/swf_sound_mixer.h#L53) |
+| `fvm_swf_stream_output_pump_mix_finite_until` | function | [include/flashvm/swf_stream_output.h:141](../include/flashvm/swf_stream_output.h#L141) |
 <!-- source-links:end -->

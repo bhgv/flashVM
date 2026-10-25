@@ -24,17 +24,17 @@ PNG/GIF89a и progressive JPEG требуют исходного SWF8, baseline 
 Native C-клипы без SWF-профиля принимают поддержанные изображения. Старый контракт
 декодера embedded JPEG не меняется. Формат определяется сигнатурой, не расширением
 или HTTP MIME. Неподдержанный формат/профиль/сборка, GIF87a, animated/partial-canvas
-GIF и неподдержанное цветовое пространство JPEG дают [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
-Повреждённый распознанный поток и неверные аргументы дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45),
-отказ памяти — [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), прочие ошибки реализации — [`FVM_ERROR`](../include/flashvm/flashvm.h#L43).
+GIF и неподдержанное цветовое пространство JPEG дают [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48).
+Повреждённый распознанный поток и неверные аргументы дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47),
+отказ памяти — [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), прочие ошибки реализации — [`FVM_ERROR`](../include/flashvm/flashvm.h#L45).
 
 Вход и отдельный RGBA payload ограничены [`FVM_SWF_DEFAULT_LIMIT`](../include/flashvm/swf.h#L15), размеры —
 2880 × 2880. Непустой counted source не содержит NUL и не превышает
-[`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L154). Несколько временных копий увеличивают пиковую память;
+[`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L197). Несколько временных копий увеличивают пиковую память;
 это не общий process memory quota. Память C-декодера освобождается и при C++ exception.
 
-[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L188) выбирает SWF или изображение по сигнатуре;
-повреждённый SWF не переходит в image fallback. [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L173) остаётся
+[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L241) выбирает SWF или изображение по сигнатуре;
+повреждённый SWF не переходит в image fallback. [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L222) остаётся
 только для SWF. Публичные структуры и callbacks не менялись. Интеграция с очередью
 плеера описана ниже.
 
@@ -96,13 +96,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:154](../include/flashvm/movieclip.h#L154) |
-| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:184](../include/flashvm/movieclip.h#L184) |
-| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:188](../include/flashvm/movieclip.h#L188) |
-| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:173](../include/flashvm/movieclip.h#L173) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:197](../include/flashvm/movieclip.h#L197) |
+| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:235](../include/flashvm/movieclip.h#L235) |
+| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:241](../include/flashvm/movieclip.h#L241) |
+| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:222](../include/flashvm/movieclip.h#L222) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

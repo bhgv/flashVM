@@ -1,6 +1,6 @@
 # Dynamic clip removal service / Удаление динамического клипа — v0.313
 
-The C89 [fvm_exec_remove_dynamic_clip](../include/flashvm/execution.h#L251)(context, clip) applies an intrinsic native
+The C89 [fvm_exec_remove_dynamic_clip](../include/flashvm/execution.h#L342)(context, clip) applies an intrinsic native
 eligibility policy before the existing atomic detach transaction. It accepts a
 native instance, reads its private public depth, and leaves negative-depth or
 parentless instances unchanged. It also walks the native parent chain: a detached
@@ -11,13 +11,13 @@ The native model currently limits public depths to [-16384,1048575]. All of its
 nonnegative supported depths lie inside the pinned reference's removable range;
 this service does not widen native depth storage to the much larger historical
 AVM range. Separate uppercase macros document minimum dynamic depth, ancestry
-bound and the service's GC root layout. Forced [fvm_exec_detach_clip](../include/flashvm/execution.h#L237) retains its
+bound and the service's GC root layout. Forced [fvm_exec_detach_clip](../include/flashvm/execution.h#L323) retains its
 broader host policy, including authored negative-depth detachment.
 
 [GC:] The explicit clip root retains native state and ancestry through eligibility
 checks and copied-map preparation. Successful removal uses the existing atomic
 parent/playback/detachment-marker publication; failures preserve ownership and
-marker state. Eligibility preparation can allocate and report [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44),
+marker state. Eligibility preparation can allocate and report [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46),
 even when the policy would ultimately ignore removal.
 
 execution_remove_dynamic_clip is a C89 host/SWF4–8 fixture covering native minimum
@@ -56,7 +56,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:237](../include/flashvm/execution.h#L237) |
-| `fvm_exec_remove_dynamic_clip` | function | [include/flashvm/execution.h:251](../include/flashvm/execution.h#L251) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:323](../include/flashvm/execution.h#L323) |
+| `fvm_exec_remove_dynamic_clip` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -5,7 +5,7 @@ including qualified CallFunction names. The selected this receiver is preserved;
 property storage no longer supplies method lookup depth. The C global function
 fallback uses the same rule after lookup, including getters/resolvers which
 remove bindings. Native registration priority, construction, named CallMethod
-and unloaded host inference are unchanged. Public direct [fvm_function_invoke](../include/flashvm/function.h#L65)
+and unloaded host inference are unchanged. Public direct [fvm_function_invoke](../include/flashvm/function.h#L79)
 retains its existing embedding contract.
 
 [GC:] Qualified lookup owners remain in caller root scopes independently of
@@ -58,5 +58,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
 <!-- source-links:end -->

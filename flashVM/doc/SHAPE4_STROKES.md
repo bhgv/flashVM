@@ -4,7 +4,7 @@ Current extension v0.1253+: [symmetric butt/square caps and bevel joins](STROKE_
 
 Current extension v0.1239+: [LINESTYLE2 bitmap strokes](BITMAP_STROKES.md). Earlier blanket bitmap-stroke exclusions below are historical; other stroke limitations remain open.
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L469) accepts DefineShape4 LINESTYLE2 records with round start/end
+[fvm_swf_read_shape](../src/swf/shape.cpp#L600) accepts DefineShape4 LINESTYLE2 records with round start/end
 caps and round joins, ordinary width scaling, and optional NoClose. Width remains
 an unsigned twip value; zero selects the renderer's one-pixel hairline.
 Both direct RGBA colors and solid/linear/radial/focal FillType records are
@@ -12,9 +12,9 @@ accepted. Gradient fills reuse the same bounded decoder as fill banks: 1–15
 ordered RGBA stops, pad/reflect/repeat, RGB/linearRGB and signed interior FIXED8.
 
 The five reserved bits and reserved cap/join discriminator 3 return
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Other cap/join styles, NoHScale, NoVScale, PixelHinting and
-bitmap stroke fills return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Focal endpoints remain unsupported.
-Truncated supported records return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Unsupported style
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Other cap/join styles, NoHScale, NoVScale, PixelHinting and
+bitmap stroke fills return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Focal endpoints remain unsupported.
+Truncated supported records return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Unsupported style
 headers can return before their remaining payload is inspected.
 
 NoClose suppresses the automatic CLOSE command when an authored stroke returns
@@ -22,7 +22,7 @@ to its first point, leaving the ends capped. Explicit moves and style breaks
 still start separate contours. The flag is compiled into owned path commands;
 no extra managed flag is necessary. It does not affect fill contours.
 
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) binds gradient strokes to lineGradient instead of gradient,
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137) binds gradient strokes to lineGradient instead of gradient,
 keeping fill and stroke descriptors separate. The graph owns every stop and
 command. Raw file bytes and backend pointers are never retained. Existing native
 barriers protect construction; serialization/channel/GC use ordinary graph edges.
@@ -55,8 +55,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

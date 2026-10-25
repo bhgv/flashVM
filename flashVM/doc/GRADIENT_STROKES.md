@@ -12,7 +12,7 @@ FlashVM adds destination-space gradient strokes and a bounded Flash 8 `MovieClip
 
 ## C89 stroke entry
 
-`fvm_path_stroke_gradient(path, surface, gradient, width, spread)` samples the existing [`FVM_Gradient`](../include/flashvm/gradient.h#L38) and composites it through a prepared backend stroke mask. The struct layout is unchanged. [`fvm_path_draw_gradient`](../include/flashvm/gradient.h#L52) and [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L57) keep their fill semantics and standalone antialiasing defaults.
+`fvm_path_stroke_gradient(path, surface, gradient, width, spread)` samples the existing [`FVM_Gradient`](../include/flashvm/gradient.h#L48) and composites it through a prepared backend stroke mask. The struct layout is unchanged. [`fvm_path_draw_gradient`](../include/flashvm/gradient.h#L66) and [`fvm_path_draw_gradient_spread`](../include/flashvm/gradient.h#L73) keep their fill semantics and standalone antialiasing defaults.
 
 | Argument | Contract |
 | --- | --- |
@@ -20,11 +20,11 @@ FlashVM adds destination-space gradient strokes and a bounded Flash 8 `MovieClip
 | surface | Non-null borrowed destination RGBA surface and pixel storage, satisfying raster dimensions/stride limits. The caller retains storage and supplies exclusive access for the call. |
 | gradient | Non-null borrowed description with an invertible bounded finite matrix and 1–15 nondecreasing stops. The stop array remains valid until return. Color multipliers/additions follow the existing gradient limits. |
 | width | Finite positive width in destination pixels, at most [`FVM_GRADIENT_MAX_STROKE_WIDTH`](../include/flashvm/gradient.h#L10) (4096). Zero does not request a hairline: use width 1 explicitly. |
-| spread | Unsigned PAD=0, REFLECT=1 or REPEAT=2 selector from [`FVM_GradientSpread`](../include/flashvm/gradient.h#L19). Other unsigned values, including UINT_MAX, are rejected. |
+| spread | Unsigned PAD=0, REFLECT=1 or REPEAT=2 selector from [`FVM_GradientSpread`](../include/flashvm/gradient.h#L23). Other unsigned values, including UINT_MAX, are rejected. |
 
 RGB and alpha interpolate as straight channels. Spread normalizes the ratio before interpolation; inherited color multiplication/addition follows interpolation. Backend coverage then multiplies alpha before source-over composition. Existing caps/joins and backend-specific raster rounding are inherited from the ordinary solid stroke implementation. Sampling is at destination pixel centers; this is not a reference-player byte-for-byte guarantee.
 
-The result is [FVM_OK](../include/flashvm/flashvm.h#L42) on successful painting. Invalid width, selector, geometry, stops, matrix or destination returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before painting. A valid request without a graphics backend returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Source or coverage preparation failure returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and preserves destination pixels. Source samples and the complete coverage mask are prepared before composition. One stroke call is transactional; an entire scene may already contain earlier successful paints when a later paint fails.
+The result is [FVM_OK](../include/flashvm/flashvm.h#L44) on successful painting. Invalid width, selector, geometry, stops, matrix or destination returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before painting. A valid request without a graphics backend returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Source or coverage preparation failure returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) and preserves destination pixels. Source samples and the complete coverage mask are prepared before composition. One stroke call is transactional; an entire scene may already contain earlier successful paints when a later paint fails.
 
 This synchronous C89 call retains no VM, GC root, callback or device. It invokes no script and performs no device I/O. Independent owned paths/descriptions/destinations can be used on separate threads; the caller must avoid concurrent mutation of borrowed inputs and simultaneous writes to the same destination.
 
@@ -32,7 +32,7 @@ This synchronous C89 call retains no VM, GC root, callback or device. It invokes
 
 The Flash 8 method is installed as a nonenumerable versioned MovieClip method. Loaded SWF1–7 property lookup does not expose it; unloaded host contexts do. Its callback is appended to the stable method table without renumbering existing callbacks. Updated receivers are required to restore graphs containing the new native callback.
 
-Call `lineStyle` first to enable a stroke and establish its width. `lineGradientStyle` never enables a missing/disabled stroke. It accepts the existing beginGradientFill argument model: fill type, color/alpha/ratio arrays, copied box or affine matrix, optional pad/reflect/repeat, ordinary RGB interpolation, and zero focal position for radial ramps. Counted option strings must match completely. Unsupported spread/interpolation and nonzero radial focal options return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Existing malformed-array/matrix/type no-op behavior is retained. No arguments or undefined type leaves the stroke style unchanged.
+Call `lineStyle` first to enable a stroke and establish its width. `lineGradientStyle` never enables a missing/disabled stroke. It accepts the existing beginGradientFill argument model: fill type, color/alpha/ratio arrays, copied box or affine matrix, optional pad/reflect/repeat, ordinary RGB interpolation, and zero focal position for radial ramps. Counted option strings must match completely. Unsupported spread/interpolation and nonzero radial focal options return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48). Existing malformed-array/matrix/type no-op behavior is retained. No arguments or undefined type leaves the stroke style unchanged.
 
 The gradient supplies stroke colors and per-stop alpha; the earlier lineStyle color/alpha do not multiply them. MovieClip/ancestor color transforms still apply. Width, fill/bitmap state and completed path descriptors are retained. Future path records retain a separate `lineGradient` edge. Style changes start a fresh path at the current drawing position using the existing path-segmentation policy. `endFill` disables only the fill and retains the selected stroke ramp. A later lineStyle replaces the current stroke ramp with a solid/disabled style. `clear` drops paths, disables strokes and releases the current descriptor.
 
@@ -61,7 +61,7 @@ Primary API reference: Adobe's [AS2 MovieClip reference, lineGradientStyle](http
 
 ## v0.1182 verification
 
-Gradient strokes v0.1169–v0.1182: additive C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L64) and SWF8 lineGradientStyle support linear/centered-radial PAD/REFLECT/REPEAT ordinary-RGB ramps. Existing [FVM_Gradient](../include/flashvm/gradient.h#L38) layout and callback IDs are retained; the new method callback is appended. Copied current/active stroke aliases, solid/clear/endFill transitions, duplicate and binary/channel ownership are covered. Validation: 91 selected native gradient/raster/scene/graph/GC/quality/tutorial tests pass, plus the independent mixed fill/stroke binary-transfer fixture. Ten focused ASan/UBSan checks and explicit no-throw/no-fault runs pass with LeakSanitizer disabled. Real AVM1 exercises 72 host/SWF8 interpreter/manual/automatic JIT combinations with native entry counts; four OS workers complete 128 isolated paint/GC epochs. Quality/affine/alpha tests cover 48 renders. SDK-free C89 validation passes and the graphic tutorial explicitly skips. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Preparation fault sweeps preserve the old style/active path or destination pixels, without rolling back coercion side effects. DefineShape4/LineStyle2, linearRGB, nonzero focal, complete line caps/joins/scaling/mid-path fill semantics, original-player and physical/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](GRADIENT_STROKES.md).
+Gradient strokes v0.1169–v0.1182: additive C89 [fvm_path_stroke_gradient](../include/flashvm/gradient.h#L82) and SWF8 lineGradientStyle support linear/centered-radial PAD/REFLECT/REPEAT ordinary-RGB ramps. Existing [FVM_Gradient](../include/flashvm/gradient.h#L48) layout and callback IDs are retained; the new method callback is appended. Copied current/active stroke aliases, solid/clear/endFill transitions, duplicate and binary/channel ownership are covered. Validation: 91 selected native gradient/raster/scene/graph/GC/quality/tutorial tests pass, plus the independent mixed fill/stroke binary-transfer fixture. Ten focused ASan/UBSan checks and explicit no-throw/no-fault runs pass with LeakSanitizer disabled. Real AVM1 exercises 72 host/SWF8 interpreter/manual/automatic JIT combinations with native entry counts; four OS workers complete 128 isolated paint/GC epochs. Quality/affine/alpha tests cover 48 renders. SDK-free C89 validation passes and the graphic tutorial explicitly skips. A renamed detached component configures and its copied checker passes against the native executable; no separate detached build is claimed. Preparation fault sweeps preserve the old style/active path or destination pixels, without rolling back coercion side effects. DefineShape4/LineStyle2, linearRGB, nonzero focal, complete line caps/joins/scaling/mid-path fill semantics, original-player and physical/foreign-platform acceptance remain open. All nine roadmap stages remain open. [Contract](GRADIENT_STROKES.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -72,14 +72,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Gradient` | struct | [include/flashvm/gradient.h:38](../include/flashvm/gradient.h#L38) |
+| `FVM_Gradient` | struct | [include/flashvm/gradient.h:48](../include/flashvm/gradient.h#L48) |
 | `FVM_GRADIENT_MAX_STROKE_WIDTH` | macro / define | [include/flashvm/gradient.h:10](../include/flashvm/gradient.h#L10) |
-| `FVM_GradientSpread` | enum | [include/flashvm/gradient.h:19](../include/flashvm/gradient.h#L19) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:52](../include/flashvm/gradient.h#L52) |
-| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:57](../include/flashvm/gradient.h#L57) |
-| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:64](../include/flashvm/gradient.h#L64) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_GradientSpread` | enum | [include/flashvm/gradient.h:23](../include/flashvm/gradient.h#L23) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:66](../include/flashvm/gradient.h#L66) |
+| `fvm_path_draw_gradient_spread` | function | [include/flashvm/gradient.h:73](../include/flashvm/gradient.h#L73) |
+| `fvm_path_stroke_gradient` | function | [include/flashvm/gradient.h:82](../include/flashvm/gradient.h#L82) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

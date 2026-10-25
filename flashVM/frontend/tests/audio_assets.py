@@ -4,6 +4,7 @@ This oracle never imports the fixture encoder or calls the VM decoder. The
 analytic source waveform exposes quantizer overload even when two implementations
 would otherwise agree on the same audible defect.
 """
+
 import math
 from pathlib import Path
 import struct
@@ -11,14 +12,95 @@ import struct
 
 # Standard four-bit IMA/SWF decoder tables, independent of the fixture generator.
 STEPS = (
-    7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31,
-    34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130,
-    143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449,
-    494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411,
-    1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660,
-    4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493,
-    10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385,
-    24623, 27086, 29794, 32767,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    16,
+    17,
+    19,
+    21,
+    23,
+    25,
+    28,
+    31,
+    34,
+    37,
+    41,
+    45,
+    50,
+    55,
+    60,
+    66,
+    73,
+    80,
+    88,
+    97,
+    107,
+    118,
+    130,
+    143,
+    157,
+    173,
+    190,
+    209,
+    230,
+    253,
+    279,
+    307,
+    337,
+    371,
+    408,
+    449,
+    494,
+    544,
+    598,
+    658,
+    724,
+    796,
+    876,
+    963,
+    1060,
+    1166,
+    1282,
+    1411,
+    1552,
+    1707,
+    1878,
+    2066,
+    2272,
+    2499,
+    2749,
+    3024,
+    3327,
+    3660,
+    4026,
+    4428,
+    4871,
+    5358,
+    5894,
+    6484,
+    7132,
+    7845,
+    8630,
+    9493,
+    10442,
+    11487,
+    12635,
+    13899,
+    15289,
+    16818,
+    18500,
+    20350,
+    22385,
+    24623,
+    27086,
+    29794,
+    32767,
 )
 INDEX = (-1, -1, -1, -1, 2, 4, 6, 8)
 
@@ -32,7 +114,10 @@ class Bits:
 
     def read(self, count):
         """Consume exactly count bits, including non-byte-aligned block headers."""
-        assert self.position + count <= len(self.data) * 8
+        if not (self.position + count <= len(self.data) * 8):
+            raise AssertionError(
+                "condition check failed: flashVM/frontend/tests/audio_assets.py:117"
+            )
         result = 0
         for _ in range(count):
             byte, bit = divmod(self.position, 8)
@@ -43,30 +128,42 @@ class Bits:
 
 def sound_payload(movie):
     """Locate resource nine in an uncompressed SWF8 without using its authoring code."""
-    assert movie[:4] == b'FWS\x08'
-    assert struct.unpack_from('<I', movie, 4)[0] == len(movie)
+    if not (movie[:4] == b"FWS\x08"):
+        raise AssertionError("condition check failed: flashVM/frontend/tests/audio_assets.py:128")
+    if not (struct.unpack_from("<I", movie, 4)[0] == len(movie)):
+        raise AssertionError("condition check failed: flashVM/frontend/tests/audio_assets.py:129")
     position = 8 + (5 + 4 * (movie[8] >> 3) + 7) // 8 + 4
     while position < len(movie):
-        header = struct.unpack_from('<H', movie, position)[0]
+        header = struct.unpack_from("<H", movie, position)[0]
         position += 2
         size = header & 63
         if size == 63:
-            size = struct.unpack_from('<I', movie, position)[0]
+            size = struct.unpack_from("<I", movie, position)[0]
             position += 4
-        payload = movie[position:position + size]
-        assert len(payload) == size
+        payload = movie[position : position + size]
+        if not (len(payload) == size):
+            raise AssertionError(
+                "condition check failed: flashVM/frontend/tests/audio_assets.py:139"
+            )
         position += size
-        if header >> 6 == 14 and struct.unpack_from('<H', payload)[0] == 9:
-            assert payload[2] == 0x1e  # Mono, 44.1 kHz, 16-bit ADPCM.
-            assert struct.unpack_from('<I', payload, 3)[0] == 11025
+        if header >> 6 == 14 and struct.unpack_from("<H", payload)[0] == 9:
+            if not (payload[2] == 30):
+                raise AssertionError(
+                    "condition check failed: flashVM/frontend/tests/audio_assets.py:142"
+                )  # Mono, 44.1 kHz, 16-bit ADPCM.
+            if not (struct.unpack_from("<I", payload, 3)[0] == 11025):
+                raise AssertionError(
+                    "condition check failed: flashVM/frontend/tests/audio_assets.py:143"
+                )
             return payload[7:]
-    raise AssertionError('Missing ADPCM tone')
+    raise AssertionError("Missing ADPCM tone")
 
 
 def decode(payload):
     """Decode real 4096-frame SWF blocks, including each absolute first sample."""
     bits = Bits(payload)
-    assert bits.read(2) + 2 == 4
+    if not (bits.read(2) + 2 == 4):
+        raise AssertionError("condition check failed: flashVM/frontend/tests/audio_assets.py:151")
     output = []
     for frame in range(11025):
         if frame % 4096 == 0:
@@ -90,22 +187,27 @@ def decode(payload):
 
 def main():
     """Catch full-level restart overload in all three shipped playback fixtures."""
-    folder = Path(__file__).resolve().parents[2] / 'examples/player/animation_audio'
-    paths = sorted(folder.glob('*.swf'))
-    assert len(paths) == 3, paths
+    folder = Path(__file__).resolve().parents[2] / "examples/player/animation_audio"
+    paths = sorted(folder.glob("*.swf"))
+    if not (len(paths) == 3):
+        raise AssertionError(paths)
     for path in paths:
         samples = decode(sound_payload(path.read_bytes()))
         for boundary in (4096, 8192):
             window = range(boundary - 16, boundary + 64)
-            error = max(abs(samples[i] - round(5000 * math.sin(2 * math.pi * 880 * i / 44100)))
-                        for i in window)
+            error = max(
+                abs(samples[i] - round(5000 * math.sin(2 * math.pi * 880 * i / 44100)))
+                for i in window
+            )
             jump = max(abs(samples[i] - samples[i - 1]) for i in window)
             # The intended sinusoid changes by at most 627 per source frame.
             # Quantization has a margin; the old index-zero restart exceeds both bounds.
-            assert error < 250, (path.name, boundary, error)
-            assert jump < 900, (path.name, boundary, jump)
-            print(path.name, 'boundary', boundary, 'error', error, 'step', jump)
+            if not (error < 250):
+                raise AssertionError((path.name, boundary, error))
+            if not (jump < 900):
+                raise AssertionError((path.name, boundary, jump))
+            print(path.name, "boundary", boundary, "error", error, "step", jump)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

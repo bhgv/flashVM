@@ -8,9 +8,11 @@
 extern "C"
 {
 #endif
-    /* Return 1 and publish a monotonic sample, or 0 with output unchanged. No networking startup.
+
+
+/* Return 1 and publish a monotonic sample, or 0 with output unchanged. No networking startup.
      * Compute elapsed with (now-start)&MASK; callers bound durations below half one tick period. */
-    int fvm_net_clock(unsigned long *out);
+int fvm_net_clock(unsigned long *out);
 #ifdef __cplusplus
 }
 #endif

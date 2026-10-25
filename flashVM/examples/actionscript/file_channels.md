@@ -1,6 +1,6 @@
 # file_channels.as
 
-Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../../include/flashvm/extensions.h#L17).
+Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../../include/flashvm/extensions.h#L19).
 
 ## Запуск и особенности
 
@@ -28,5 +28,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../../include/flashvm/extensions.h#L17) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:19](../../include/flashvm/extensions.h#L19) |
 <!-- source-links:end -->

@@ -1,16 +1,16 @@
 # Необязательные лигатуры и трекинг
 
-v0.861 добавляет [FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES](../include/flashvm/font.h#L10) в [fvm_font_shape_configured](../include/flashvm/font.h#L97).
+v0.861 добавляет [FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES](../include/flashvm/font.h#L10) в [fvm_font_shape_configured](../include/flashvm/font.h#L127).
 Флаг отключает OpenType liga и clig во всём входном run. Обязательные rlig,
 соединение букв и позиционирование диакритики сохраняют настройки по умолчанию.
 [FVM_FONT_SHAPE_NO_KERNING](../include/flashvm/font.h#L9) независим; побитовое OR выбирает обе политики.
-Нулевые флаги и [fvm_font_shape](../include/flashvm/font.h#L83) сохраняют прежнюю раскладку. Флаги действуют на
+Нулевые флаги и [fvm_font_shape](../include/flashvm/font.h#L107) сохраняют прежнюю раскладку. Флаги действуют на
 один вызов и не меняют постоянное состояние шрифта. Это управление OpenType,
 а не обещание разделить любой кластер письма или любую технологию шрифтов.
 
 API заимствует font/text/language только на время вызова, возвращает принадлежащий
-вызывающему [FVM_TextRun](../src/capi/font_c.cpp#L76); освобождение — [fvm_text_run_destroy](../include/flashvm/font.h#L101). Для экспорта через
-[fvm_text_run_path](../include/flashvm/font.h#L105) нужен тот же шрифт/размер. Изменяемый font handle требует
+вызывающему [FVM_TextRun](../src/capi/font_c.cpp#L102); освобождение — [fvm_text_run_destroy](../include/flashvm/font.h#L133). Для экспорта через
+[fvm_text_run_path](../include/flashvm/font.h#L139) нужен тот же шрифт/размер. Изменяемый font handle требует
 сериализации вызывающим; независимые handles допускают разные потоки. VM, GC,
 callbacks и устройства не используются. Неизвестные флаги, неверные UTF-8,
 direction/input дают INVALID_ARGUMENT и очищают допустимый выходной указатель.
@@ -28,10 +28,10 @@ AV=44.8px с кернингом и 48px без него. Проверяются 
 
 ## Политика трекинга — v0.862
 
-[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L103) автоматически добавляет флаг отключения необязательных
+[fvm_text_layout_create_spaced](../include/flashvm/text_layout.h#L122) автоматически добавляет флаг отключения необязательных
 лигатур при ненулевом интервале. Одинаковые эффективные флаги применяются при
 пробных переносах и окончательной раскладке, экспорте контуров и подчёркивания.
-Нулевой интервал точно сохраняет флаги вызывающего. [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L89)
+Нулевой интервал точно сохраняет флаги вызывающего. [fvm_text_layout_create_configured](../include/flashvm/text_layout.h#L106)
 принимает новый флаг и без трекинга. Прежние контракты text_layout.h об очистке
 выхода, заимствовании, независимом владении layout, сериализации потоков и ошибках
 INVALID_ARGUMENT/OUT_OF_MEMORY/UNSUPPORTED сохраняются.
@@ -80,13 +80,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_font_shape` | function | [include/flashvm/font.h:83](../include/flashvm/font.h#L83) |
-| `fvm_font_shape_configured` | function | [include/flashvm/font.h:97](../include/flashvm/font.h#L97) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:107](../include/flashvm/font.h#L107) |
+| `fvm_font_shape_configured` | function | [include/flashvm/font.h:127](../include/flashvm/font.h#L127) |
 | `FVM_FONT_SHAPE_NO_KERNING` | macro / define | [include/flashvm/font.h:9](../include/flashvm/font.h#L9) |
 | `FVM_FONT_SHAPE_NO_OPTIONAL_LIGATURES` | macro / define | [include/flashvm/font.h:10](../include/flashvm/font.h#L10) |
-| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:89](../include/flashvm/text_layout.h#L89) |
-| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:103](../include/flashvm/text_layout.h#L103) |
-| `fvm_text_run_destroy` | function | [include/flashvm/font.h:101](../include/flashvm/font.h#L101) |
-| `fvm_text_run_path` | function | [include/flashvm/font.h:105](../include/flashvm/font.h#L105) |
-| `FVM_TextRun` | struct | [src/capi/font_c.cpp:76](../src/capi/font_c.cpp#L76) |
+| `fvm_text_layout_create_configured` | function | [include/flashvm/text_layout.h:106](../include/flashvm/text_layout.h#L106) |
+| `fvm_text_layout_create_spaced` | function | [include/flashvm/text_layout.h:122](../include/flashvm/text_layout.h#L122) |
+| `fvm_text_run_destroy` | function | [include/flashvm/font.h:133](../include/flashvm/font.h#L133) |
+| `fvm_text_run_path` | function | [include/flashvm/font.h:139](../include/flashvm/font.h#L139) |
+| `FVM_TextRun` | struct | [src/capi/font_c.cpp:102](../src/capi/font_c.cpp#L102) |
 <!-- source-links:end -->

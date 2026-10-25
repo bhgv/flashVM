@@ -35,8 +35,9 @@
 #include <cstring>
 
 namespace
-{
-/* Define anonymous enum and its representation. */
+{ /* Define anonymous enum and its representation. */
+
+
 enum
 {
     BOOLEAN_OBJECT = FVM_RESOURCE_BOOLEAN,
@@ -44,11 +45,13 @@ enum
     GENERIC_PRIMITIVE_PROTOTYPE = FVM_RESOURCE_OBJECT /* Existing ordinary Object graph kind. */
 };
 
+
 /* Construct a quiet not-a-number value using the portable numeric helper. */
 double nan_value()
 {
     return std::numeric_limits<double>::quiet_NaN();
 }
+
 
 /* Construct signed infinity using the portable numeric helper. */
 double infinity()
@@ -56,52 +59,65 @@ double infinity()
     return std::numeric_limits<double>::infinity();
 }
 
+
 /* Stable graph callback identifiers following the existing numeric function range. */
 enum
 {
-    GLOBAL_NAN_GET = 158, /* Versioned NaN getter. */
+    GLOBAL_NAN_GET = 158,      /* Versioned NaN getter. */
     GLOBAL_INFINITY_GET = 159, /* Versioned Infinity getter. */
-    GLOBAL_CONSTANT_SET = 160 /* Mutable host state before a SWF is loaded. */
+    GLOBAL_CONSTANT_SET = 160  /* Mutable host state before a SWF is loaded. */
 };
+
 
 /* [GC:] Read the captured host value or the constant selected by the current SWF version. */
 FVM_Result global_constant_get(FVM_Context *c, bool is_nan, FVM_Value *out, void *data)
 {
     FVM_Object *state = (FVM_Object *)data;
     if (!state || state->owner != c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (!c->swf_loaded)
+    {
         return fvm_object_get(c, state, "value", out);
+    }
     fvm_value_undefined(out);
     if (c->swf_info.version > FVM_SWF_VERSION_4)
+    {
         fvm_value_number(out, is_nan ? nan_value() : infinity());
+    }
     return FVM_OK;
 }
 
+
 /* Read NaN through the current loaded version, without evaluating the receiver. */
-FVM_Result global_nan_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
-                          FVM_Value *out, void *data)
+FVM_Result global_nan_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *data)
 {
     return global_constant_get(c, true, out, data);
 }
 
+
 /* Read Infinity through the current loaded version, without evaluating the receiver. */
-FVM_Result global_infinity_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
-                               FVM_Value *out, void *data)
+FVM_Result
+global_infinity_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *data)
 {
     return global_constant_get(c, false, out, data);
 }
 
+
 /* [GC:] Preserve mutable unloaded host values in captured state; loaded constants ignore writes. */
-FVM_Result global_constant_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                               FVM_Value *out, void *data)
+FVM_Result
+global_constant_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *out, void *data)
 {
     FVM_Object *state = (FVM_Object *)data;
     if (n != 1 || !state || state->owner != c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_undefined(out);
     return c->swf_loaded ? FVM_OK : fvm_object_set(c, state, "value", a);
 }
+
 
 /* Recognize the whitespace accepted by numeric string conversion. */
 bool whitespace(unsigned char c)
@@ -109,27 +125,41 @@ bool whitespace(unsigned char c)
     return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f';
 }
 
+
 /* Decode an ASCII hexadecimal digit, or report an invalid character. */
 int hex_digit(unsigned char c)
 {
     if (c >= '0' && c <= '9')
+    {
         return c - '0';
+    }
     if (c >= 'a' && c <= 'f')
+    {
         return c - 'a' + 10;
+    }
     if (c >= 'A' && c <= 'F')
+    {
         return c - 'A' + 10;
+    }
     return -1;
 }
+
 /* This bounded parser accepts decimal/hexadecimal primitive numeric strings.
  * It deliberately does not delegate syntax or decimal separators to locale. */
+
+
 /* Parse number. */
 double parse_number(const char *text)
 {
     const unsigned char *p = (const unsigned char *)text;
     while (whitespace(*p))
+    {
         ++p;
+    }
     if (!*p)
+    {
         return 0;
+    }
     bool negative = false, sign = false;
     if (*p == '+' || *p == '-')
     {
@@ -141,7 +171,9 @@ double parse_number(const char *text)
     {
         p += 8;
         while (whitespace(*p))
+        {
             ++p;
+        }
         return *p ? nan_value() : (negative ? -infinity() : infinity());
     }
     if (!sign && p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
@@ -155,7 +187,9 @@ double parse_number(const char *text)
             ++digits;
         }
         while (whitespace(*p))
+        {
             ++p;
+        }
         return !digits || *p ? nan_value() : value;
     }
 
@@ -174,20 +208,28 @@ double parse_number(const char *text)
         }
         digits = true;
         if (dot && fraction < 100000)
+        {
             ++fraction;
+        }
         unsigned int digit = *p++ - '0';
         if (!significant && digit == 0)
+        {
             continue;
+        }
         if (significant < 19)
         {
             value = value * 10 + digit;
             ++significant;
         }
         else if (dropped < 100000)
+        {
             ++dropped;
+        }
     }
     if (!digits)
+    {
         return nan_value();
+    }
     long exponent = 0;
     if (*p == 'e' || *p == 'E')
     {
@@ -199,32 +241,47 @@ double parse_number(const char *text)
             ++p;
         }
         if (*p < '0' || *p > '9')
+        {
             return nan_value();
+        }
         while (*p >= '0' && *p <= '9')
         {
             if (exponent < 100000)
+            {
                 exponent = exponent * 10 + (*p - '0');
+            }
             if (exponent > 100000)
+            {
                 exponent = 100000;
+            }
             ++p;
         }
         if (minus)
+        {
             exponent = -exponent;
+        }
     }
     while (whitespace(*p))
+    {
         ++p;
+    }
     if (*p)
+    {
         return nan_value();
+    }
     exponent += dropped - fraction;
     if (value != 0)
     {
         if (exponent > 1000)
-            value = infinity();
-        else if (exponent < -1000)
-            value = 0;
-        else
         {
-            /* Split scaling so pow itself cannot underflow before multiplication. */
+            value = infinity();
+        }
+        else if (exponent < -1000)
+        {
+            value = 0;
+        }
+        else
+        { /* Split scaling so pow itself cannot underflow before multiplication. */
             while (exponent > 300)
             {
                 value *= 1e300;
@@ -241,15 +298,16 @@ double parse_number(const char *text)
     return negative ? -value : value;
 }
 
+
 /* Detect a zero with the IEEE negative sign bit. */
 bool negative_zero(double value)
 {
     return value == 0 && 1.0 / value < 0;
 }
 
+
 /* Read a Math numeric argument; missing loaded arguments use versioned undefined. */
-FVM_Result math_argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
-                    double *out)
+FVM_Result math_argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index, double *out)
 {
     if (index >= count)
     {
@@ -265,9 +323,9 @@ FVM_Result math_argument(FVM_Context *c, unsigned int count, const FVM_Value *ar
     return fvm_avm1_number(c, &args[index], out);
 }
 
+
 /* Read a global predicate argument with AVM1 coercion; missing operands stay NaN. */
-FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
-                    double *out)
+FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index, double *out)
 {
     if (index >= count)
     {
@@ -276,6 +334,7 @@ FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, u
     }
     return fvm_avm1_number(c, &args[index], out);
 }
+
 
 /* Define Operation enum and its representation. */
 enum Operation
@@ -300,22 +359,24 @@ enum Operation
     TAN
 };
 
+
 /* Coerce arguments and execute the selected built-in Math operation. */
-FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out,
-                          Operation op)
+FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out, Operation op)
 {
     double x = 0, y = 0, result = 0;
     FVM_Result status = FVM_OK;
     if (c->swf_loaded)
-    {
-        /* Flash evaluates the first two operands even for unary/random methods. */
+    { /* Flash evaluates the first two operands even for unary/random methods. */
         status = math_argument(c, count, args, 0, &x);
         if (status == FVM_OK)
+        {
             status = math_argument(c, count, args, 1, &y);
+        }
         if (status != FVM_OK)
+        {
             return status;
-        if (c->swf_info.version <= FVM_SWF_VERSION_6 && op != RANDOM &&
-            !((op == MIN || op == MAX) && !count) &&
+        }
+        if (c->swf_info.version <= FVM_SWF_VERSION_6 && op != RANDOM && !((op == MIN || op == MAX) && !count) &&
             !(op == POW && count == 1 && x == 1) &&
             (!count || ((op == MIN || op == MAX || op == POW || op == ATAN2) && count < 2)))
         {
@@ -324,25 +385,36 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
         }
     }
     if (op == RANDOM)
-    {
-        /* Context-local 32-bit LCG; no shared libc rand state between workers. */
+    { /* Context-local 32-bit LCG; no shared libc rand state between workers. */
         fvm_value_number(out, (double)fvm_random_next(c) / FVM_UINT32_MODULUS);
         return FVM_OK;
     }
     if (!c->swf_loaded)
+    {
         status = math_argument(c, count, args, 0, &x);
+    }
     if (status != FVM_OK)
+    {
         return status;
+    }
     if ((op == MAX || op == MIN) && c->swf_loaded)
     {
         if (!count)
+        {
             result = op == MAX ? -infinity() : infinity();
+        }
         else if (x != x || y != y)
+        {
             result = nan_value();
+        }
         else if (op == MAX)
+        {
             result = x > y || (x == 0 && y == 0 && !negative_zero(x)) ? x : y;
+        }
         else
+        {
             result = x < y || (x == 0 && y == 0 && negative_zero(x)) ? x : y;
+        }
     }
     else if (op == MAX || op == MIN)
     {
@@ -351,7 +423,9 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
         {
             status = math_argument(c, count, args, i, &x);
             if (status != FVM_OK)
+            {
                 return status;
+            }
             if (x != x)
             {
                 result = x;
@@ -359,23 +433,37 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
             }
             if ((op == MAX && x > result) || (op == MIN && x < result) ||
                 (x == 0 && result == 0 && (op == MAX ? !negative_zero(x) : negative_zero(x))))
+            {
                 result = x;
+            }
         }
     }
     else if (op == POW || op == ATAN2)
     {
         if (!c->swf_loaded)
+        {
             status = math_argument(c, count, args, 1, &y);
+        }
         if (status != FVM_OK)
+        {
             return status;
+        }
         if (op == ATAN2)
+        {
             result = std::atan2(x, y);
+        }
         else if (y == 0)
+        {
             result = 1;
+        }
         else if (std::fabs(x) == 1 && std::fabs(y) == infinity())
+        {
             result = nan_value();
+        }
         else
+        {
             result = std::pow(x, y);
+        }
     }
     else
     {
@@ -410,11 +498,17 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
             break;
         case ROUND:
             if (x != x || std::fabs(x) >= 4503599627370496.0 || x == 0)
+            {
                 result = x;
+            }
             else if (x < 0 && x >= -0.5)
+            {
                 result = -0.0;
+            }
             else
+            {
                 result = std::floor(x) + ((x - std::floor(x)) >= 0.5 ? 1.0 : 0.0);
+            }
             break;
         case SIN:
             result = std::sin(x);
@@ -432,11 +526,11 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
     fvm_value_number(out, result);
     return FVM_OK;
 }
-#define MATH_WRAPPER(name, operation)                                                              \
-    FVM_Result name(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,              \
-                    FVM_Value *o, void *)                                                          \
-    {                                                                                              \
-        return math_operation(c, n, a, o, operation);                                              \
+
+#define MATH_WRAPPER(name, operation)                                                                                  \
+    FVM_Result name(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *o, void *)            \
+    {                                                                                                                  \
+        return math_operation(c, n, a, o, operation);                                                                  \
     }
 /* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_abs, ABS)
@@ -475,68 +569,105 @@ MATH_WRAPPER(math_sqrt, SQRT)
 /* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_tan, TAN)
 #undef MATH_WRAPPER
+
+
 /* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
     FVM_NativeFunction callback;
 };
-const Method math_methods[] = {{"abs", math_abs},   {"acos", math_acos},     {"asin", math_asin},
-                               {"atan", math_atan}, {"atan2", math_atan2},   {"ceil", math_ceil},
-                               {"cos", math_cos},   {"exp", math_exp},       {"floor", math_floor},
-                               {"log", math_log},   {"max", math_max},       {"min", math_min},
-                               {"pow", math_pow},   {"random", math_random}, {"round", math_round},
-                               {"sin", math_sin},   {"sqrt", math_sqrt},     {"tan", math_tan}};
+
+const Method math_methods[] = {{"abs", math_abs},
+                               {"acos", math_acos},
+                               {"asin", math_asin},
+                               {"atan", math_atan},
+                               {"atan2", math_atan2},
+                               {"ceil", math_ceil},
+                               {"cos", math_cos},
+                               {"exp", math_exp},
+                               {"floor", math_floor},
+                               {"log", math_log},
+                               {"max", math_max},
+                               {"min", math_min},
+                               {"pow", math_pow},
+                               {"random", math_random},
+                               {"round", math_round},
+                               {"sin", math_sin},
+                               {"sqrt", math_sqrt},
+                               {"tan", math_tan}};
 
 /* Native Math constant names shared by installation and first-load activation. */
 const char *const math_constant_names[FVM_MATH_CONSTANT_COUNT] = {
     "E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"};
 
+
 /* Compute the existing host-derived values without changing numeric compatibility policy. */
 void math_constant_values(double *out)
 {
-    const double values[FVM_MATH_CONSTANT_COUNT] = {
-        std::exp(1.0), std::log(10.0), std::log(2.0),
-        1 / std::log(10.0), 1 / std::log(2.0), std::acos(-1.0),
-        std::sqrt(0.5), std::sqrt(2.0)};
+    const double values[FVM_MATH_CONSTANT_COUNT] = {std::exp(1.0),
+                                                    std::log(10.0),
+                                                    std::log(2.0),
+                                                    1 / std::log(10.0),
+                                                    1 / std::log(2.0),
+                                                    std::acos(-1.0),
+                                                    std::sqrt(0.5),
+                                                    std::sqrt(2.0)};
     for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
+    {
         out[i] = values[i];
+    }
 }
+
 
 /* Select fixed loaded constants while keeping the historical host-only values. */
 void math_loaded_constant_values(double *out)
 {
-    const double values[FVM_MATH_CONSTANT_COUNT] = {
-        FVM_MATH_CONSTANT_E, FVM_MATH_CONSTANT_LN10, FVM_MATH_CONSTANT_LN2,
-        FVM_MATH_CONSTANT_LOG10E, FVM_MATH_CONSTANT_LOG2E, FVM_MATH_CONSTANT_PI,
-        FVM_MATH_CONSTANT_SQRT1_2, FVM_MATH_CONSTANT_SQRT2};
+    const double values[FVM_MATH_CONSTANT_COUNT] = {FVM_MATH_CONSTANT_E,
+                                                    FVM_MATH_CONSTANT_LN10,
+                                                    FVM_MATH_CONSTANT_LN2,
+                                                    FVM_MATH_CONSTANT_LOG10E,
+                                                    FVM_MATH_CONSTANT_LOG2E,
+                                                    FVM_MATH_CONSTANT_PI,
+                                                    FVM_MATH_CONSTANT_SQRT1_2,
+                                                    FVM_MATH_CONSTANT_SQRT2};
     for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
+    {
         out[i] = values[i];
+    }
 }
+
 
 /* Transactional namespace state prepared before any loaded layout is committed. */
 struct MathActivation
 {
-    FVM_MethodAttributeActivation attributes; /* Namespace and prepared flags. */
+    FVM_MethodAttributeActivation attributes;                  /* Namespace and prepared flags. */
     fvm_detail::map<fvm_detail::string, FVM_Value> properties; /* Copied data slots. */
 };
+
 
 /* Prepare first-load defaults only; replaced globals/slots and custom metadata stay intact. */
 void math_prepare_loaded(FVM_Context *c, MathActivation &state)
 {
     if (c->swf_loaded || c->global->accessors.find("Math") != c->global->accessors.end())
+    {
         return;
+    }
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator global = c->global->properties.find("Math");
     if (global == c->global->properties.end() || global->second.type != FVM_VALUE_OBJECT ||
         global->second.object->resource_kind != FVM_RESOURCE_MATH_NAMESPACE)
+    {
         return;
+    }
     FVM_Object *math = global->second.object;
     FVM_MethodAttributeActivation &out = state.attributes;
     out.attributes = math->attributes;
     state.properties = math->properties;
     for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
-        fvm_stage_default_method_flags(math, math_methods[i].name, math_methods[i].callback,
-                                      FVM_MATH_LOADED_PROPERTY_FLAGS, out.attributes);
+    {
+        fvm_stage_default_method_flags(
+            math, math_methods[i].name, math_methods[i].callback, FVM_MATH_LOADED_PROPERTY_FLAGS, out.attributes);
+    }
     double values[FVM_MATH_CONSTANT_COUNT];
     math_constant_values(values);
     double loaded_values[FVM_MATH_CONSTANT_COUNT];
@@ -548,8 +679,7 @@ void math_prepare_loaded(FVM_Context *c, MathActivation &state)
         fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.attributes.find(name);
         if (value != math->properties.end() && value->second.type == FVM_VALUE_NUMBER &&
             value->second.number == values[i] && !value->second.metatable &&
-            (flags == out.attributes.end() || !flags->second) &&
-            math->accessors.find(name) == math->accessors.end() &&
+            (flags == out.attributes.end() || !flags->second) && math->accessors.find(name) == math->accessors.end() &&
             math->methods.find(name) == math->methods.end())
         {
             out.attributes[name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
@@ -560,22 +690,24 @@ void math_prepare_loaded(FVM_Context *c, MathActivation &state)
     out.prototype = math;
 }
 
+
 /* Convert Number() arguments with AVM1 rules, retaining unloaded host behavior. */
-FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                       FVM_Value *o, void *)
+FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *o, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double number = 0;
     FVM_Result result = n ? fvm_avm1_number(c, &a[0], &number) : FVM_OK;
     if (result == FVM_OK)
+    {
         fvm_value_number(o, number);
+    }
     return result;
 }
 
+
 /* Implement the Boolean() global conversion call. */
-FVM_Result boolean_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                        FVM_Value *o, void *)
+FVM_Result boolean_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *o, void *)
 {
     if (!n && c->swf_loaded)
     {
@@ -585,37 +717,46 @@ FVM_Result boolean_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_
     bool truth = false;
     FVM_Result result = n ? fvm_avm1_boolean(c, a[0], &truth) : FVM_OK;
     if (result == FVM_OK)
+    {
         fvm_value_boolean(o, truth);
+    }
     return result;
 }
 
+
 /* Unbox Boolean data; loaded non-Boolean receivers return undefined without coercion. */
-FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
-                         FVM_Value *out, void *)
+FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     if (!self || self->owner != c)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (self->resource_kind != BOOLEAN_OBJECT)
     {
         fvm_value_undefined(out);
         return c->swf_loaded ? FVM_OK : FVM_INVALID_ARGUMENT;
     }
     if (!self->resource_result_valid || self->resource_result.type != FVM_VALUE_BOOLEAN)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     *out = self->resource_result;
     return FVM_OK;
 }
 
+
 /* Format a Boolean receiver as the strings true or false. */
-FVM_Result boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
-                          FVM_Value *out, void *)
+FVM_Result
+boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args, FVM_Value *out, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value value;
     FVM_Result result = boolean_value(c, self, n, args, &value, 0);
     if (result != FVM_OK)
+    {
         return result;
+    }
     if (value.type == FVM_VALUE_UNDEFINED)
     {
         *out = value;
@@ -624,9 +765,10 @@ FVM_Result boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, cons
     return fvm_value_string(out, value.boolean ? "true" : "false");
 }
 
+
 /* Create a boxed Boolean instance with its native value state. */
-FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
-                               FVM_Value *out, void *userdata)
+FVM_Result
+boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args, FVM_Value *out, void *userdata)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -638,29 +780,41 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     {
         result = fvm_function_allocate_instance(c, klass, BOOLEAN_OBJECT, &object);
         if (result != FVM_OK)
+        {
             return result;
+        }
     }
     else
     {
         result = fvm_object_get(c, klass, "prototype", &prototype);
         if (result != FVM_OK)
+        {
             return result;
+        }
         if (prototype.type != FVM_VALUE_OBJECT)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
     }
+
+
     /* [GC:] Retain the prepared receiver throughout versioned Boolean conversion. */
     FVM_ObjectRootScope object_root(c, object);
     /* A missing constructor argument stores false, unlike the global function. */
     bool truth = false;
     result = n ? fvm_avm1_boolean(c, args[0], &truth) : FVM_OK;
     if (result != FVM_OK)
+    {
         return result;
+    }
     fvm_value_boolean(&value, truth);
     if (!c->swf_loaded)
     {
         result = fvm_object_create(c, &object);
         if (result != FVM_OK)
+        {
             return result;
+        }
         object->resource_kind = BOOLEAN_OBJECT;
         object->prototype = prototype.object;
     }
@@ -675,44 +829,56 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     return FVM_OK;
 }
 
+
 /* Coerce the argument to Number and test whether it is NaN. */
-FVM_Result isnan_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                      FVM_Value *o, void *)
+FVM_Result isnan_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *o, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double number;
     FVM_Result result = argument(c, n, a, 0, &number);
     if (result == FVM_OK)
+    {
         fvm_value_boolean(o, number != number);
+    }
     return result;
 }
+
 
 /* Coerce the argument to Number and test whether it is finite. */
-FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                         FVM_Value *o, void *)
+FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a, FVM_Value *o, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double number;
     FVM_Result result = argument(c, n, a, 0, &number);
     if (result == FVM_OK)
+    {
         fvm_value_boolean(o, number == number && std::fabs(number) != infinity());
+    }
     return result;
 }
+
+
 /* Read the existing context clock without converting or evaluating unused arguments. */
-FVM_Result get_timer_call(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
-                          FVM_Value *out, void *)
+FVM_Result get_timer_call(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *out, void *)
 {
     if (!out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     fvm_value_undefined(out);
     if (!c || c->destroying || c->gc_collecting || c->gc_releasing)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (c->swf_loaded && c->swf_info.version < FVM_TIME_MIN_SWF_VERSION)
+    {
         return FVM_UNSUPPORTED;
+    }
     return fvm_exec_get_time(c, out);
 }
+
 /* Keep the seven legacy entries in order; appended callbacks use explicit graph IDs. */
 const Method global_functions[] = {{"Number", number_call},
                                    {"Boolean", boolean_call},
@@ -730,6 +896,8 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"clearTimeout", fvm_builtin_clear_timeout},
                                    {"updateAfterEvent", fvm_builtin_update_after_event}};
 } // namespace
+
+
 /* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
 FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
@@ -737,7 +905,9 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
     /* Loaded contexts keep their live builtin state when another movie replaces
      * the SWF bytes. Host-layout activation belongs only to the first load. */
     if (!c->standard_library || c->swf_loaded)
+    {
         return FVM_OK;
+    }
     try
     {
         MathActivation math_attributes;
@@ -766,11 +936,15 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
                 if (proto->resource_kind == BOOLEAN_OBJECT && proto->resource_result_valid &&
                     proto->resource_result.type == FVM_VALUE_BOOLEAN && !proto->resource_result.boolean)
                 {
-                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value = proto->methods.find("valueOf");
-                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text = proto->methods.find("toString");
+                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value =
+                        proto->methods.find("valueOf");
+                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text =
+                        proto->methods.find("toString");
                     if (value != proto->methods.end() && value->second.callback == boolean_value &&
                         text != proto->methods.end() && text->second.callback == boolean_string)
+                    {
                         boolean = proto;
+                    }
                 }
             }
         }
@@ -784,16 +958,22 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
                 if (flags != boolean_attributes.end() && flags->second == 1 &&
                     boolean->properties.find(names[i]) == boolean->properties.end() &&
                     boolean->accessors.find(names[i]) == boolean->accessors.end())
+                {
                     flags->second = 3;
+                }
             }
         }
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
+        {
             return result;
+        }
         /* [GC:] Only numeric slots change; the live namespace retains every other edge.
          * Both swaps allocate nothing after the final fallible activation. */
         if (math_attributes.attributes.prototype)
+        {
             math_attributes.attributes.prototype->properties.swap(math_attributes.properties);
+        }
         fvm_commit_method_attributes(math_attributes.attributes);
         fvm_commit_method_attributes(string_class_attributes);
         fvm_commit_method_attributes(function_attributes);
@@ -816,92 +996,167 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
     }
 }
 
+
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
     if (callback == fvm_builtin_update_after_event)
+    {
         return FVM_STAGE_UPDATE_CALLBACK;
+    }
     if (callback == fvm_builtin_set_interval)
+    {
         return FVM_TIMERS_SET_INTERVAL_CALLBACK;
+    }
     if (callback == fvm_builtin_clear_interval)
+    {
         return FVM_TIMERS_CLEAR_INTERVAL_CALLBACK;
+    }
     if (callback == fvm_builtin_set_timeout)
+    {
         return FVM_TIMERS_SET_TIMEOUT_CALLBACK;
+    }
     if (callback == fvm_builtin_clear_timeout)
+    {
         return FVM_TIMERS_CLEAR_TIMEOUT_CALLBACK;
+    }
     if (callback == get_timer_call)
+    {
         return FVM_TIME_GET_TIMER_CALLBACK;
+    }
     if (callback == fvm_builtin_escape)
+    {
         return FVM_URL_ESCAPE_CALLBACK;
+    }
     if (callback == fvm_builtin_unescape)
+    {
         return FVM_URL_UNESCAPE_CALLBACK;
+    }
     if (callback == global_nan_get)
+    {
         return GLOBAL_NAN_GET;
+    }
     if (callback == global_infinity_get)
+    {
         return GLOBAL_INFINITY_GET;
+    }
     if (callback == global_constant_set)
+    {
         return GLOBAL_CONSTANT_SET;
+    }
     if (callback == boolean_value)
+    {
         return 1;
+    }
     if (callback == boolean_string)
+    {
         return 2;
+    }
     for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
+    {
         if (callback == math_methods[i].callback)
+        {
             return 100 + (unsigned long)i;
+        }
+    }
     if (callback == boolean_constructor)
+    {
         return 3;
+    }
     for (size_t i = 0; i < FVM_NUMERIC_LEGACY_GLOBAL_COUNT; ++i)
+    {
         if (callback == global_functions[i].callback)
+        {
             return FVM_NUMERIC_GLOBAL_CALLBACK_BASE + (unsigned long)i;
+        }
+    }
     return 0;
 }
+
 
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
     if (id == FVM_STAGE_UPDATE_CALLBACK)
+    {
         return fvm_builtin_update_after_event;
+    }
     if (id == FVM_TIMERS_SET_INTERVAL_CALLBACK)
+    {
         return fvm_builtin_set_interval;
+    }
     if (id == FVM_TIMERS_CLEAR_INTERVAL_CALLBACK)
+    {
         return fvm_builtin_clear_interval;
+    }
     if (id == FVM_TIMERS_SET_TIMEOUT_CALLBACK)
+    {
         return fvm_builtin_set_timeout;
+    }
     if (id == FVM_TIMERS_CLEAR_TIMEOUT_CALLBACK)
+    {
         return fvm_builtin_clear_timeout;
+    }
     if (id == FVM_TIME_GET_TIMER_CALLBACK)
+    {
         return get_timer_call;
+    }
     if (id == FVM_URL_ESCAPE_CALLBACK)
+    {
         return fvm_builtin_escape;
+    }
     if (id == FVM_URL_UNESCAPE_CALLBACK)
+    {
         return fvm_builtin_unescape;
+    }
     if (id == GLOBAL_NAN_GET)
+    {
         return global_nan_get;
+    }
     if (id == GLOBAL_INFINITY_GET)
+    {
         return global_infinity_get;
+    }
     if (id == GLOBAL_CONSTANT_SET)
+    {
         return global_constant_set;
+    }
     if (id == 3)
+    {
         return boolean_constructor;
+    }
     if (id >= FVM_NUMERIC_GLOBAL_CALLBACK_BASE &&
         id < FVM_NUMERIC_GLOBAL_CALLBACK_BASE + FVM_NUMERIC_LEGACY_GLOBAL_COUNT)
+    {
         return global_functions[id - FVM_NUMERIC_GLOBAL_CALLBACK_BASE].callback;
+    }
     if (id == 1)
+    {
         return boolean_value;
+    }
     if (id == 2)
+    {
         return boolean_string;
+    }
     if (id >= 100 && id < 100 + sizeof(math_methods) / sizeof(math_methods[0]))
+    {
         return math_methods[id - 100].callback;
+    }
     return 0;
 }
+
 
 /* Coerce an ActionScript value to Number using its primitive representation. */
 extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value, double *out)
 {
     if (!c || !value || !out)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     if (fvm_validate_value(c, value) != FVM_OK)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     switch (value->type)
     {
     case FVM_VALUE_UNDEFINED:
@@ -918,16 +1173,22 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
         return FVM_OK;
     case FVM_VALUE_STRING:
         if (!value->string)
+        {
             return FVM_INVALID_ARGUMENT;
+        }
         /* Number consumes the entire string; an embedded NUL is not a terminator. */
         {
             size_t n = fvm_string_size(*value);
             if (std::memchr(value->string, 0, n))
+            {
                 *out = nan_value();
+            }
             else
             {
                 try
                 {
+
+
                     fvm_detail::string terminated(value->string, n);
                     *out = parse_number(terminated.c_str());
                 }
@@ -949,12 +1210,14 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
     }
 }
 
+
 /* Install the supported standard constructors and global numeric functions. */
 extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
-{
-    /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
+{ /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
     if (!c || c->destroying || c->gc_collecting)
+    {
         return FVM_INVALID_ARGUMENT;
+    }
     try
     {
         const char *names[] = {"Math",
@@ -991,8 +1254,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "flash.display.BitmapData"};
         if (c->standard_library)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value math;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result result = fvm_get_global(c, "Math", &math);
@@ -1000,13 +1262,13 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             if (result != FVM_OK || math.type != FVM_VALUE_OBJECT ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 math.object->resource_kind != FVM_RESOURCE_MATH_NAMESPACE)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            }
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     math.object->methods.find(math_methods[i].name);
@@ -1014,22 +1276,23 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 if (it == math.object->methods.end() ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     it->second.callback != math_methods[i].callback)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+                { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_INVALID_ARGUMENT;
+                }
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     c->functions.find(global_functions[i].name);
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (it == c->functions.end() || it->second.callback != global_functions[i].callback)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+                { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_INVALID_ARGUMENT;
+                }
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1045,9 +1308,11 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 prototype.type != FVM_VALUE_OBJECT ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                (prototype.object->resource_kind != BOOLEAN_OBJECT && prototype.object->resource_kind != GENERIC_PRIMITIVE_PROTOTYPE))
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+                (prototype.object->resource_kind != BOOLEAN_OBJECT &&
+                 prototype.object->resource_kind != GENERIC_PRIMITIVE_PROTOTYPE))
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1056,8 +1321,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             if (ctor == c->constructors.end() || ctor->second.callback != boolean_constructor ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 ctor->second.root != boolean_class.object)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_NativeEntry method;
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -1068,56 +1334,70 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 method.callback != boolean_string)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result error_result = fvm_error_validate(c);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_number_validate(c);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_string_validate(c);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_base_validate(c);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_date_validate(c);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_function_validate(c);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             if (error_result == FVM_OK)
+            {
                 error_result = fvm_movieclip_validate(c);
+            }
             return error_result == FVM_OK ? fvm_geometry_validate(c) : error_result;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* Preserve existing own bindings using the active SWF's case rules, without getters. */
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            if (fvm_property_find(c, c->global->properties, fvm_detail::string(names[i])) != c->global->properties.end() ||
-                fvm_property_find(c, c->global->accessors, fvm_detail::string(names[i])) != c->global->accessors.end() ||
+        {
+            if (fvm_property_find(c, c->global->properties, fvm_detail::string(names[i])) !=
+                    c->global->properties.end() ||
+                fvm_property_find(c, c->global->accessors, fvm_detail::string(names[i])) !=
+                    c->global->accessors.end() ||
                 fvm_property_find(c, c->global->methods, fvm_detail::string(names[i])) != c->global->methods.end() ||
                 fvm_property_find(c, c->constructors, fvm_detail::string(names[i])) != c->constructors.end() ||
                 fvm_property_find(c, c->functions, fvm_detail::string(names[i])) != c->functions.end() ||
                 fvm_property_find(c, c->stack_functions, fvm_detail::string(names[i])) != c->stack_functions.end() ||
                 fvm_property_find(c, c->script_functions, fvm_detail::string(names[i])) != c->script_functions.end())
+            {
                 return FVM_INVALID_ARGUMENT;
+            }
+        }
         /* Build staged maps before publishing, so allocation errors cannot leave
          * partially installed globals and function registrations. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
@@ -1130,7 +1410,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         FVM_Object *math = 0;
         FVM_Result result = fvm_object_create(c, &math);
         if (result != FVM_OK)
+        {
             return result;
+        }
         math->resource_kind = FVM_RESOURCE_MATH_NAMESPACE;
         for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
         {
@@ -1138,20 +1420,28 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             entry.callback = math_methods[i].callback;
             math->methods[math_methods[i].name] = entry;
             if (c->swf_loaded)
+            {
                 math->attributes[math_methods[i].name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
+            }
         }
         double values[FVM_MATH_CONSTANT_COUNT];
         if (c->swf_loaded)
+        {
             math_loaded_constant_values(values);
+        }
         else
+        {
             math_constant_values(values);
+        }
         for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
         {
             FVM_Value value;
             fvm_value_number(&value, values[i]);
             math->properties[math_constant_names[i]] = value;
             if (c->swf_loaded)
+            {
                 math->attributes[math_constant_names[i]] = FVM_MATH_LOADED_PROPERTY_FLAGS;
+            }
         }
         FVM_Value value;
         fvm_value_undefined(&value);
@@ -1164,7 +1454,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             FVM_Object *state = 0;
             result = fvm_object_create(c, &state);
             if (result != FVM_OK)
+            {
                 return result;
+            }
             fvm_value_number(&value, i ? infinity() : nan_value());
             state->properties["value"] = value;
             FVM_AccessorEntry entry;
@@ -1182,23 +1474,33 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             entry.callback = global_functions[i].callback;
             /* [GC:] URL/timer coercion may call script and collect with rooted arguments/captures. */
             if (fvm_url_collector_callback(entry.callback) || fvm_timers_collector_callback(entry.callback))
+            {
                 entry.collector_entry = true;
+            }
             functions[global_functions[i].name] = entry;
         }
         FVM_Object *boolean_class = 0, *prototype = 0;
         result = fvm_object_create(c, &boolean_class);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_object_create(c, &prototype);
         if (result != FVM_OK)
+        {
             return result;
+        }
         boolean_class->resource_kind = BOOLEAN_CLASS;
         prototype->resource_kind = c->swf_loaded ? GENERIC_PRIMITIVE_PROTOTYPE : BOOLEAN_OBJECT;
         prototype->resource_result_valid = !c->swf_loaded;
         if (c->swf_loaded)
+        {
             fvm_value_undefined(&prototype->resource_result);
+        }
         else
+        {
             fvm_value_boolean(&prototype->resource_result, 0);
+        }
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;
         value.object = prototype;
@@ -1215,51 +1517,74 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         method.callback = boolean_value;
         prototype->methods["valueOf"] = method;
         if (c->swf_loaded)
+        {
             prototype->attributes["valueOf"] = 3;
+        }
         method.callback = boolean_string;
         prototype->methods["toString"] = method;
         if (c->swf_loaded)
+        {
             prototype->attributes["toString"] = 3;
+        }
         result = fvm_error_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_number_stage(c, globals, constructors);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_string_stage(c, globals, constructors);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_date_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_function_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_movieclip_stage(c, globals, constructors);
         if (result != FVM_OK)
+        {
             return result;
+        }
         result = fvm_base_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
+        {
             return result;
+        }
         /* [GC:] Stage geometry namespace/captures before standard globals are published. */
         result = fvm_geometry_stage(c, globals, constructors);
         if (result != FVM_OK)
+        {
             return result;
+        }
         FVM_Object *function_proto = globals["Function"].object->properties["prototype"].object;
         /* Function.call/apply retain their actual boxing classes in the graph.
          * A restored function can therefore box this without global installation. */
         FVM_Object *boxing = 0;
         result = fvm_object_create(c, &boxing);
         if (result != FVM_OK)
+        {
             return result;
+        }
         const char *box_names[] = {"Number", "Boolean", "String"};
         for (size_t i = 0; i < 3; ++i)
+        {
             boxing->properties[box_names[i]] = globals[box_names[i]];
+        }
         const char *call_names[] = {"call", "apply"};
         for (size_t i = 0; i < 2; ++i)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_NativeEntry &entry = function_proto->methods.find(call_names[i])->second;
             /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
             entry.root = boxing;
@@ -1268,17 +1593,15 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
 
-        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
-                 constructors.begin();
-             i != constructors.end(); ++i)
-            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (i->second.root &&
-                (i->first == "Object" || i->first == "Array" || i->first == "Boolean" ||
-                 i->first == "Number" || i->first == "String" || i->first == "Error" ||
-                 i->first == "Date" || i->first == "Function" || i->first == "MovieClip"))
+        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = constructors.begin();
+             i != constructors.end();
+             ++i)
+        { /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+            if (i->second.root && (i->first == "Object" || i->first == "Array" || i->first == "Boolean" ||
+                                   i->first == "Number" || i->first == "String" || i->first == "Error" ||
+                                   i->first == "Date" || i->first == "Function" || i->first == "MovieClip"))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Object *klass = i->second.root;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 klass->constructable = i->second;
@@ -1288,16 +1611,17 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 klass->prototype = function_proto;
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
-        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = functions.begin();
-             i != functions.end(); ++i)
+        }
+        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = functions.begin(); i != functions.end();
+             ++i)
         {
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator g = globals.find(i->first);
-            if ((i->first == "Number" || i->first == "Boolean" || i->first == "String" ||
-                 i->first == "Object" || i->first == "Array" || i->first == "Date" ||
-                 i->first == "Error" || i->first == "Function") &&
-                g != globals.end() && g->second.type == FVM_VALUE_OBJECT &&
-                g->second.object->constructable.callback)
+            if ((i->first == "Number" || i->first == "Boolean" || i->first == "String" || i->first == "Object" ||
+                 i->first == "Array" || i->first == "Date" || i->first == "Error" || i->first == "Function") &&
+                g != globals.end() && g->second.type == FVM_VALUE_OBJECT && g->second.object->constructable.callback)
+            {
                 g->second.object->invocable = i->second;
+            }
         }
         /* Prepare all lookups before publication: map key construction may
          * allocate. Post-publication links below are pointer assignments only. */
@@ -1309,17 +1633,17 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             constructors.find("Object")->second.root->properties.find("prototype")->second.object;
         for (size_t i = 0; i < 2; ++i)
         {
-            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator text =
-                globals.find(text_names[i]);
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator text = globals.find(text_names[i]);
             if (text != globals.end() && text->second.type == FVM_VALUE_OBJECT &&
                 text->second.object->resource_kind == (i == 0 ? 1003 : 1004))
             {
                 text_classes[i] = text->second.object;
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator prototype =
                     text_classes[i]->properties.find("prototype");
-                if (prototype != text_classes[i]->properties.end() &&
-                    prototype->second.type == FVM_VALUE_OBJECT)
+                if (prototype != text_classes[i]->properties.end() && prototype->second.type == FVM_VALUE_OBJECT)
+                {
                     text_prototypes[i] = prototype->second.object;
+                }
             }
         }
         /* [GC:] Capture the staged builtin prototype before publishing; no callback or allocation follows. */
@@ -1337,9 +1661,13 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         for (size_t i = 0; i < 2; ++i)
         {
             if (text_classes[i] && !text_classes[i]->prototype)
+            {
                 text_classes[i]->prototype = function_proto;
+            }
             if (text_prototypes[i] && !text_prototypes[i]->prototype)
+            {
                 text_prototypes[i]->prototype = object_proto;
+            }
         }
         return FVM_OK;
     }

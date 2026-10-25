@@ -27,27 +27,27 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 
 | Функция | Назначение и документация |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration defaults before runtime creation; no VM ownership is transferred. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_construct`](../../../include/flashvm/value.h#L158) | Invoke TextFormat construction on the context owner; returned format is VM-owned and must be rooted before later GC-capable calls. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Create an independent VM context owned by the caller; keep its runtime alive and destroy the context first. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release the context and managed fields/formats after all borrows end; exported native paths remain independent. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Synchronously invoke setNewTextFormat, replaceText or getTextFormat with borrowed rooted receiver/arguments; inspect status and copy results before reuse. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read field text, autoSize or dimensions through native accessors on the context owner; result views are borrowed and may be overwritten. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Apply field text, formatting, wrap policy or autoSize; automatic geometry is measured before publication and failed writes preserve field state. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | Release an owned exported path after use; null is accepted and VM destruction does not release this independent path. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Create caller-owned runtime state from borrowed initialized config; keep it alive until every context is destroyed. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release runtime resources after context destruction; do not retain runtime/context borrows afterwards. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Publish a copied value as a context global so the VM traces the managed format/field; borrowed strings are not host-owned objects. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install ordinary Object/Array and related builtins on the owner context for `--tabs`; may allocate and returns errors before the text tutorial starts. No device acquisition; repeated intact installation is idempotent. [Contract](../../../doc/STANDARD_OBJECTS.md). [Declaration](../../../include/flashvm/standard.h). |
-| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L21) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L25) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_standard_text_register_font_variant`](../../../include/flashvm/standard_text.h#L35) | Borrow context/family, style bits, counted font bytes and face index; synchronously validate/copy a real face into one slot. Context owns the copy. Owner-thread only, no GC/teardown calls; duplicate/unknown flags are INVALID_ARGUMENT, missing face use is NOT_FOUND, budget/profile is UNSUPPORTED, allocation is OUT_OF_MEMORY. No system lookup or synthetic fallback. [EN](../../../doc/TEXT_FONT_VARIANTS.md) / [RU](../../../doc/TEXT_FONT_VARIANTS.ru.md). |
-| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L41) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L77) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Write a normalized local Boolean value without allocation; true/false select left/none for autoSize. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Write a local numeric value without allocation for dimensions, sizes or UTF-16 edit indices; field setters validate their own bounds. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_value_string`](../../../include/flashvm/value.h#L46) | Create a counted VM-compatible string value from the supplied zero-terminated text; check status before assigning it to a field. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
-| [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize or reset a local value without allocation before explicitly constructing an object argument. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned configuration defaults before runtime creation; no VM ownership is transferred. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_construct`](../../../include/flashvm/value.h#L232) | Invoke TextFormat construction on the context owner; returned format is VM-owned and must be rooted before later GC-capable calls. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Create an independent VM context owned by the caller; keep its runtime alive and destroy the context first. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Release the context and managed fields/formats after all borrows end; exported native paths remain independent. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_call`](../../../include/flashvm/value.h#L184) | Synchronously invoke setNewTextFormat, replaceText or getTextFormat with borrowed rooted receiver/arguments; inspect status and copy results before reuse. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_get`](../../../include/flashvm/value.h#L102) | Read field text, autoSize or dimensions through native accessors on the context owner; result views are borrowed and may be overwritten. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_object_set`](../../../include/flashvm/value.h#L106) | Apply field text, formatting, wrap policy or autoSize; automatic geometry is measured before publication and failed writes preserve field state. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h#L64) | Release an owned exported path after use; null is accepted and VM destruction does not release this independent path. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Create caller-owned runtime state from borrowed initialized config; keep it alive until every context is destroyed. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release runtime resources after context destruction; do not retain runtime/context borrows afterwards. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_set_global`](../../../include/flashvm/value.h#L129) | Publish a copied value as a context global so the VM traces the managed format/field; borrowed strings are not host-owned objects. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Install ordinary Object/Array and related builtins on the owner context for `--tabs`; may allocate and returns errors before the text tutorial starts. No device acquisition; repeated intact installation is idempotent. [Contract](../../../doc/STANDARD_OBJECTS.md). [Declaration](../../../include/flashvm/standard.h). |
+| [`fvm_standard_text_install`](../../../include/flashvm/standard_text.h#L23) | Install the bounded TextFormat/TextField library on the owner context; check status before using constructors or fields. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L29) | Copy the supplied embedded font bytes into the context under Geometry; caller retains original fixture storage and duplicate conflicts are errors. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_standard_text_register_font_variant`](../../../include/flashvm/standard_text.h#L41) | Borrow context/family, style bits, counted font bytes and face index; synchronously validate/copy a real face into one slot. Context owns the copy. Owner-thread only, no GC/teardown calls; duplicate/unknown flags are INVALID_ARGUMENT, missing face use is NOT_FOUND, budget/profile is UNSUPPORTED, allocation is OUT_OF_MEMORY. No system lookup or synthetic fallback. [EN](../../../doc/TEXT_FONT_VARIANTS.md) / [RU](../../../doc/TEXT_FONT_VARIANTS.ru.md). |
+| [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L49) | Create a VM-owned native field with explicit font and outer dimensions; root it through the caption global before later GC-capable operations. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L91) | Copy glyph/underline outlines into an independently owned native path; failures clear output and the caller destroys a successful path after VM teardown. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_boolean`](../../../include/flashvm/value.h#L54) | Write a normalized local Boolean value without allocation; true/false select left/none for autoSize. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_number`](../../../include/flashvm/value.h#L50) | Write a local numeric value without allocation for dimensions, sizes or UTF-16 edit indices; field setters validate their own bounds. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_string`](../../../include/flashvm/value.h#L58) | Create a counted VM-compatible string value from the supplied zero-terminated text; check status before assigning it to a field. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
+| [`fvm_value_undefined`](../../../include/flashvm/value.h#L46) | Initialize or reset a local value without allocation before explicitly constructing an object argument. [EN](../../../doc/TEXT_AUTOSIZE.md) / [RU](../../../doc/TEXT_AUTOSIZE.ru.md). |
 
 [Описание в общем каталоге](../../README.md#example-embedding-standard_text).
 <!-- example-catalog-api:end -->
@@ -178,8 +178,8 @@ applies _x/_y once. HTML/listener/SWF display-list/device acceptance remains ope
 
 | API | Purpose and ownership |
 | --- | --- |
-| [fvm_textfield_scroll_info](../../../include/flashvm/standard_text.h#L68) | Copy effective offsets, limits and inner clipping rectangle; may allocate layout on owner thread, preserves output on failure, retains no managed reference. [Contract](../../../doc/TEXT_SCROLL.md). |
-| [fvm_path_bounds](../../../include/flashvm/path.h#L71) | Read actual translated bounds from a borrowed independently owned path; no VM access or ownership transfer. [Declaration](../../../include/flashvm/path.h). |
+| [fvm_textfield_scroll_info](../../../include/flashvm/standard_text.h#L80) | Copy effective offsets, limits and inner clipping rectangle; may allocate layout on owner thread, preserves output on failure, retains no managed reference. [Contract](../../../doc/TEXT_SCROLL.md). |
+| [fvm_path_bounds](../../../include/flashvm/path.h#L97) | Read actual translated bounds from a borrowed independently owned path; no VM access or ownership transfer. [Declaration](../../../include/flashvm/path.h). |
 
 
 ## Scroll observer mode
@@ -200,9 +200,9 @@ roots retain fields/listeners independently. Dimension and layout-policy notific
 
 | API | Individual contract |
 | --- | --- |
-| [fvm_object_define_method_rooted](../../../include/flashvm/value.h#L115) | Install the native onScroller method and retain the source field as a traced capture; host userdata must outlive callbacks/context teardown. |
-| [fvm_object_create](../../../include/flashvm/value.h#L62) | Create a managed listener owned by the context; registration supplies its strong graph edge. |
-| [fvm_object_call](../../../include/flashvm/value.h#L126) | Invoke addListener/removeListener and inspect their Boolean result; replaceText publishes owned text and setTextFormat applies current metrics before synchronous observers. Errors propagate; use the [edit contract](../../../doc/TEXT_EDIT_EVENTS.md). |
+| [fvm_object_define_method_rooted](../../../include/flashvm/value.h#L171) | Install the native onScroller method and retain the source field as a traced capture; host userdata must outlive callbacks/context teardown. |
+| [fvm_object_create](../../../include/flashvm/value.h#L84) | Create a managed listener owned by the context; registration supplies its strong graph edge. |
+| [fvm_object_call](../../../include/flashvm/value.h#L184) | Invoke addListener/removeListener and inspect their Boolean result; replaceText publishes owned text and setTextFormat applies current metrics before synchronous observers. Errors propagate; use the [edit contract](../../../doc/TEXT_EDIT_EVENTS.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -213,29 +213,29 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_construct` | function | [include/flashvm/value.h:158](../../../include/flashvm/value.h#L158) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
-| `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
-| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
-| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
-| `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../../../include/flashvm/path.h#L71) |
-| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_set_global` | function | [include/flashvm/value.h:87](../../../include/flashvm/value.h#L87) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:21](../../../include/flashvm/standard_text.h#L21) |
-| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../../../include/flashvm/standard_text.h#L25) |
-| `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:35](../../../include/flashvm/standard_text.h#L35) |
-| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:41](../../../include/flashvm/standard_text.h#L41) |
-| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:77](../../../include/flashvm/standard_text.h#L77) |
-| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../../../include/flashvm/standard_text.h#L68) |
-| `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
-| `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
-| `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
-| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_construct` | function | [include/flashvm/value.h:232](../../../include/flashvm/value.h#L232) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_object_call` | function | [include/flashvm/value.h:184](../../../include/flashvm/value.h#L184) |
+| `fvm_object_create` | function | [include/flashvm/value.h:84](../../../include/flashvm/value.h#L84) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:171](../../../include/flashvm/value.h#L171) |
+| `fvm_object_get` | function | [include/flashvm/value.h:102](../../../include/flashvm/value.h#L102) |
+| `fvm_object_set` | function | [include/flashvm/value.h:106](../../../include/flashvm/value.h#L106) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../../../include/flashvm/path.h#L97) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:64](../../../include/flashvm/path.h#L64) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_set_global` | function | [include/flashvm/value.h:129](../../../include/flashvm/value.h#L129) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:23](../../../include/flashvm/standard_text.h#L23) |
+| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:29](../../../include/flashvm/standard_text.h#L29) |
+| `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:41](../../../include/flashvm/standard_text.h#L41) |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:49](../../../include/flashvm/standard_text.h#L49) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:91](../../../include/flashvm/standard_text.h#L91) |
+| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:80](../../../include/flashvm/standard_text.h#L80) |
+| `fvm_value_boolean` | function | [include/flashvm/value.h:54](../../../include/flashvm/value.h#L54) |
+| `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
+| `fvm_value_string` | function | [include/flashvm/value.h:58](../../../include/flashvm/value.h#L58) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

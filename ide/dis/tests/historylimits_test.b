@@ -1,8 +1,9 @@
 implement HistoryLimitsTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Test-only headers reduce budgets; unchanged production source executes all guards.
 HistoryLimitsTest: module
@@ -11,35 +12,42 @@ HistoryLimitsTest: module
 };
 checks := 0;
 
+
 # Halt only the test emulator's namespace.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: halt returned";
 }
 
+
 # Require a test invariant before proceeding to the next serialized exchange.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
 
+
 # Replace the entire current text or travel using one expected revision.
 exchange(commands: chan of core->Request, operation: int, previous: core->Reply,
-         text: string): core->Reply
+text: string): core->Reply
 {
     reply := chan of core->Reply;
     commands <-= core->Request(1, operation, previous.revision, 0, len previous.text, text, "", reply);
     return <-reply;
 }
+
 
 # Check status/text; successful history operations must advance monotonically.
 state(result: core->Reply, status, revision: int, text: string)
@@ -49,13 +57,14 @@ state(result: core->Reply, status, revision: int, text: string)
     require(result.text == text, "text");
 }
 
+
 # Exercise both exact budgets, source-first eviction, empty and oversized snapshots.
 init()
 {
     sys = load Sys Sys->PATH;
     core = load Idecore Idecore->PATH;
     require(core != nil && core->MaxHistoryEntries == 3 && core->MaxHistoryCharacters == 6,
-            "reduced history fixture");
+    "reduced history fixture");
     commands := core->start();
     empty := core->Reply(0, 0, 0, 0, 0, "", -1, -1, -1, -1, -1);
     r := exchange(commands, core->Open, empty, "a");

@@ -30,7 +30,7 @@ Win32 surface code is not a FlashVM screen adapter and is not enabled here.
 
 With [`GRAPHICS_CAIRO`](../cmake/BuildDefinitions.cmake#L7), CMake compiles bundled Cairo and Pixman and the FlashVM
 raster API uses Cairo. With [`GRAPHICS_AGG`](../cmake/BuildDefinitions.cmake#L7), it compiles bundled AGG. [`NO_GRAPHICS`](../cmake/BuildDefinitions.cmake#L7)
-builds no FlashVM raster backend and returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) from valid raster calls.
+builds no FlashVM raster backend and returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) from valid raster calls.
 IMAGE_CODECS independently builds PNG/GIF/JPEG and Cairo/NanoSVG for SVG.
 See [image APIs and limits](IMAGE_CODECS.md).
 zlib and mini_regex remain enabled in all profiles. [`SQLITE`](../cmake/BuildDefinitions.cmake#L10) compiles the bundled
@@ -86,7 +86,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `AUTO_PLATFORM` | DEFS switch | [cmake/BuildDefinitions.cmake:8](../cmake/BuildDefinitions.cmake#L8) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 | `GRAPHICS_AGG` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
 | `GRAPHICS_CAIRO` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
 | `HEADLESS` | DEFS switch | [cmake/BuildDefinitions.cmake:9](../cmake/BuildDefinitions.cmake#L9) |

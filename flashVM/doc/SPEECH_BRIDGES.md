@@ -53,28 +53,28 @@ If a custom provider retains managed values, the host must use real VM roots and
 obey VM-thread restrictions. Neither userdata nor a device-thread callback is a
 GC root. Closing a context does not close independently owned speech sessions.
 
-[FVM_OK](../include/flashvm/flashvm.h#L42): accepted/completed operation (for TTS, not completion of speaking).
-[FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47): asynchronous initialization pending or no transcript yet.
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45): invalid ABI/arguments/Unicode/text limit, or insufficient
-STT destination capacity with `required` preserved. [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46): missing
+[FVM_OK](../include/flashvm/flashvm.h#L44): accepted/completed operation (for TTS, not completion of speaking).
+[FVM_NOT_FOUND](../include/flashvm/flashvm.h#L49): asynchronous initialization pending or no transcript yet.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47): invalid ABI/arguments/Unicode/text limit, or insufficient
+STT destination capacity with `required` preserved. [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48): missing
 provider/SDK/voice authorization or an unsupported factory target.
-[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44): identified allocation failure. [FVM_ERROR](../include/flashvm/flashvm.h#L43): native
-service/device/inference/protocol failure. SDK errors can share [FVM_ERROR](../include/flashvm/flashvm.h#L43); this
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46): identified allocation failure. [FVM_ERROR](../include/flashvm/flashvm.h#L45): native
+service/device/inference/protocol failure. SDK errors can share [FVM_ERROR](../include/flashvm/flashvm.h#L45); this
 revision does not expose every native error number. Void close cannot return
 cleanup errors; call explicit stop first when cancellation status is needed.
 
 ## Форматы и callbacks / Data and callback contracts
 
-[FVM_TtsBackend](../include/flashvm/speech.h#L13) contains struct_size, [FVM_SPEECH_ABI_VERSION](../include/flashvm/speech.h#L9), stable os_name,
+[FVM_TtsBackend](../include/flashvm/speech.h#L14) contains struct_size, [FVM_SPEECH_ABI_VERSION](../include/flashvm/speech.h#L9), stable os_name,
 borrowed userdata and required open/speak/stop/close. Open creates a non-null owned
 native state. Speak borrows validated, nonempty NUL-terminated **scalar UTF-8**,
 maximum [FVM_SPEECH_TEXT_LIMIT](../include/flashvm/speech.h#L10) payload bytes; common code validates with
-[fvm_utf8_validate](../include/flashvm/utf8.h#L24). The provider copies/consumes text before returning. Stop is
+[fvm_utf8_validate](../include/flashvm/utf8.h#L27). The provider copies/consumes text before returning. Stop is
 session-scoped; close cancels/releases its native state. Native language/voice
 selection currently follows system settings; a custom provider can put explicit
 voice policy in its userdata. There is no speech-completion or word-boundary API. Windows/Android queue submitted text; macOS SpeakCFString replaces current speech when called while busy, and the SSIP daemon owns its queue/priority policy.
 
-[FVM_SttBackend](../include/flashvm/speech.h#L24) contains the same ABI/configuration fields and required
+[FVM_SttBackend](../include/flashvm/speech.h#L26) contains the same ABI/configuration fields and required
 open/poll/close. Poll returns actual plain UTF-8 and paired final=0/1. Capacity and
 required include trailing NUL. Zero capacity queries without consuming. A
 successful query must retain **that exact transcript** even if a newer partial
@@ -119,7 +119,7 @@ source is not evidence that SAPI was run.
 TTS: install/configure a real Speech Dispatcher service and an audible output
 module according to your distribution. Start it using the distribution's own
 service procedure, determine its actual Unix socket, check access as the same
-user, and pass that explicit path to [fvm_tts_linux_backend](../include/flashvm/speech.h#L88). There is no assumed
+user, and pass that explicit path to [fvm_tts_linux_backend](../include/flashvm/speech.h#L97). There is no assumed
 socket, TCP fallback or spawned command. Endpoint strings are configuration,
 not shell input. The connection identifies its client, sends SPEAK, normalizes
 newlines/dot-stuffs text and checks actual 230/225 protocol replies. CANCEL SELF
@@ -132,7 +132,7 @@ microphone and pass an explicit device name/model configuration.
 [Exact optional SDK layout](../external/speech/README.md) and
 [manual STT example](../examples/multimedia/speech_stt/README.md). No model is
 chosen/downloaded automatically. Native S16 mono capture is configured at 16 kHz,
-at most [FVM_VOSK_CAPTURE_FRAMES](../src/multimedia/speech/stt/linux_vosk.hpp#L15) frames per poll. Empty captures/hypotheses give
+at most [FVM_VOSK_CAPTURE_FRAMES](../src/multimedia/speech/stt/linux_vosk.hpp#L18) frames per poll. Empty captures/hypotheses give
 NOT_FOUND; overrun/device/inference errors give ERROR, so host decides whether to
 close/reopen. Vosk's configured single-field JSON is parsed into plain actual
 text, including JSON Unicode escapes and surrogate pairs; no JSON envelope is
@@ -147,7 +147,7 @@ by addrlen** form the name; embedded and trailing NUL bytes are significant.
 Abstract addresses are not filesystem paths and are not C strings. A leading
 `@` is a display convention in some tools, not the native namespace marker.
 
-[FVM_SpeechUnixEndpoint](../include/flashvm/speech.h#L38) represents namespace plus a byte pointer and explicit
+[FVM_SpeechUnixEndpoint](../include/flashvm/speech.h#L42) represents namespace plus a byte pointer and explicit
 length. For ABSTRACT, caller bytes **exclude the first namespace NUL**, which
 the adapter inserts. No extra terminating NUL or structure padding is counted.
 For FILESYSTEM, input excludes a terminator, embedded NUL is rejected, and the
@@ -156,10 +156,10 @@ actual target sockaddr_un capacity. Native length is
 `offsetof(sockaddr_un, sun_path) + 1 + endpoint.length`: the extra byte means
 namespace marker for abstract, terminator for filesystem.
 
-Use [fvm_tts_unix_backend](../include/flashvm/speech.h#L47) for either namespace on Linux/Android and an actual
+Use [fvm_tts_unix_backend](../include/flashvm/speech.h#L52) for either namespace on Linux/Android and an actual
 installed **SSIP-speaking service**. It does not turn arbitrary LocalSockets or
 the Android TTS Binder service into SSIP. Standard Android TextToSpeech remains
-the Java/JNI backend. The older [fvm_tts_linux_backend](../include/flashvm/speech.h#L88) is explicitly the Linux
+the Java/JNI backend. The older [fvm_tts_linux_backend](../include/flashvm/speech.h#L97) is explicitly the Linux
 filesystem-path convenience API. The CLI TTS tutorial accepts `--abstract name
 text` for printable names; native callers can supply binary names with interior
 or trailing NUL using an explicit byte count. Java SocketNames.java demonstrates
@@ -215,7 +215,7 @@ is not guaranteed by this adapter.
 Use an Android API 23+ host app with a real main Looper, packaged
 `org.flashvm.multimedia.FlashVMTts` and `FlashVMStt` helper sources, and a JNI
 shared target linking this static FlashVM build. Keep class/package names or
-supply the corresponding real class reference through [FVM_AndroidSpeechConfig](../include/flashvm/speech.h#L60).
+supply the corresponding real class reference through [FVM_AndroidSpeechConfig](../include/flashvm/speech.h#L68).
 No Activity is retained: use getApplicationContext(), host-owned JNI **global**
 references for Context/helper class, and the actual JavaVM pointer. Resolve app
 classes from a Java-originated call with its class loader, not an arbitrary
@@ -263,7 +263,7 @@ All functions below obey the shared ownership/thread/result rules above.
 
 ### fvm_tts_system_backend
 
-Argument: writable [FVM_TtsBackend](../include/flashvm/speech.h#L13); no prior initialization required. Clears it,
+Argument: writable [FVM_TtsBackend](../include/flashvm/speech.h#L14); no prior initialization required. Clears it,
 then fills actual current-target callbacks. Null gives INVALID_ARGUMENT.
 Windows/macOS give OK when their native adapter is compiled; real voice creation
 is deferred. Linux/Android give UNSUPPORTED because an explicit socket/app Context
@@ -271,7 +271,7 @@ is needed. No resources are opened and the table itself needs no cleanup.
 
 ### fvm_stt_system_backend
 
-Argument: writable [FVM_SttBackend](../include/flashvm/speech.h#L24). Clears it and binds actual Windows SAPI or
+Argument: writable [FVM_SttBackend](../include/flashvm/speech.h#L26). Clears it and binds actual Windows SAPI or
 compiled macOS Speech callbacks. Null gives INVALID_ARGUMENT; unsupported target
 or disabled Apple adapter gives UNSUPPORTED. Factory setup never activates a
 microphone or asks permission. Use the explicit Linux/Android factories when
@@ -288,7 +288,7 @@ by this factory. Open can fail with ERROR for socket/daemon/protocol setup.
 
 ### fvm_tts_unix_backend
 
-Arguments: exact-size [FVM_SpeechUnixEndpoint](../include/flashvm/speech.h#L38), writable TTS table. Requires an
+Arguments: exact-size [FVM_SpeechUnixEndpoint](../include/flashvm/speech.h#L42), writable TTS table. Requires an
 explicit FILESYSTEM/ABSTRACT namespace, non-null name bytes and nonzero length
 fitting native sun_path minus its marker/terminator. Filesystem embedded NUL is
 INVALID_ARGUMENT; abstract interior/trailing NUL is preserved exactly. Factory
@@ -301,7 +301,7 @@ preparation are detailed above.
 
 ### fvm_stt_linux_backend
 
-Arguments: exact-size [FVM_LinuxSttConfig](../include/flashvm/speech.h#L49) with nonempty model_path and alsa_device,
+Arguments: exact-size [FVM_LinuxSttConfig](../include/flashvm/speech.h#L55) with nonempty model_path and alsa_device,
 writable backend. Clears table; malformed configuration gives INVALID_ARGUMENT.
 Actual Linux static SDK selection gives OK; absent SDK/other OS gives UNSUPPORTED.
 Borrow config/strings through sessions. Explicit open loads actual offline model,
@@ -311,7 +311,7 @@ There is no auto-download, alternate device or fake-recognition fallback.
 
 ### fvm_tts_android_backend
 
-Arguments: exact-size [FVM_AndroidSpeechConfig](../include/flashvm/speech.h#L60), writable TTS table. Require actual
+Arguments: exact-size [FVM_AndroidSpeechConfig](../include/flashvm/speech.h#L68), writable TTS table. Require actual
 non-null JavaVM, global application Context and global helper class references;
 invalid configuration gives INVALID_ARGUMENT. Android binds JNI callbacks and
 gives OK; other targets give UNSUPPORTED without dereferencing JNI objects.
@@ -320,7 +320,7 @@ permission/service and JNI failures during open give ERROR.
 
 ### fvm_stt_android_backend
 
-Same configuration/ownership/error rules as [fvm_tts_android_backend](../include/flashvm/speech.h#L69), with the
+Same configuration/ownership/error rules as [fvm_tts_android_backend](../include/flashvm/speech.h#L78), with the
 real FlashVMStt helper class. Explicit open checks already-granted microphone
 permission, packages the real recognition service and schedules listening on the
 main Looper. Constructor failure is ERROR, never an invented transcript. A final
@@ -438,33 +438,33 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:60](../include/flashvm/speech.h#L60) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:49](../include/flashvm/speech.h#L49) |
-| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
-| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:68](../include/flashvm/speech.h#L68) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:55](../include/flashvm/speech.h#L55) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_SPEECH_ABI_VERSION` | macro / define | [include/flashvm/speech.h:9](../include/flashvm/speech.h#L9) |
 | `FVM_SPEECH_TEXT_LIMIT` | macro / define | [include/flashvm/speech.h:10](../include/flashvm/speech.h#L10) |
-| `FVM_SpeechUnixEndpoint` | struct | [include/flashvm/speech.h:38](../include/flashvm/speech.h#L38) |
-| `fvm_stt_android_backend` | function | [include/flashvm/speech.h:74](../include/flashvm/speech.h#L74) |
-| `fvm_stt_close` | function | [include/flashvm/speech.h:106](../include/flashvm/speech.h#L106) |
-| `fvm_stt_linux_backend` | function | [include/flashvm/speech.h:57](../include/flashvm/speech.h#L57) |
-| `fvm_stt_open` | function | [include/flashvm/speech.h:100](../include/flashvm/speech.h#L100) |
-| `fvm_stt_poll` | function | [include/flashvm/speech.h:102](../include/flashvm/speech.h#L102) |
-| `fvm_stt_system_backend` | function | [include/flashvm/speech.h:83](../include/flashvm/speech.h#L83) |
-| `FVM_SttBackend` | struct | [include/flashvm/speech.h:24](../include/flashvm/speech.h#L24) |
-| `fvm_tts_android_backend` | function | [include/flashvm/speech.h:69](../include/flashvm/speech.h#L69) |
-| `fvm_tts_close` | function | [include/flashvm/speech.h:98](../include/flashvm/speech.h#L98) |
-| `fvm_tts_linux_backend` | function | [include/flashvm/speech.h:88](../include/flashvm/speech.h#L88) |
-| `fvm_tts_open` | function | [include/flashvm/speech.h:92](../include/flashvm/speech.h#L92) |
-| `fvm_tts_speak` | function | [include/flashvm/speech.h:94](../include/flashvm/speech.h#L94) |
-| `fvm_tts_stop` | function | [include/flashvm/speech.h:96](../include/flashvm/speech.h#L96) |
-| `fvm_tts_system_backend` | function | [include/flashvm/speech.h:78](../include/flashvm/speech.h#L78) |
-| `fvm_tts_unix_backend` | function | [include/flashvm/speech.h:47](../include/flashvm/speech.h#L47) |
-| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:13](../include/flashvm/speech.h#L13) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_utf8_validate` | function | [include/flashvm/utf8.h:24](../include/flashvm/utf8.h#L24) |
-| `FVM_VOSK_CAPTURE_FRAMES` | macro / define | [src/multimedia/speech/stt/linux_vosk.hpp:15](../src/multimedia/speech/stt/linux_vosk.hpp#L15) |
+| `FVM_SpeechUnixEndpoint` | struct | [include/flashvm/speech.h:42](../include/flashvm/speech.h#L42) |
+| `fvm_stt_android_backend` | function | [include/flashvm/speech.h:83](../include/flashvm/speech.h#L83) |
+| `fvm_stt_close` | function | [include/flashvm/speech.h:129](../include/flashvm/speech.h#L129) |
+| `fvm_stt_linux_backend` | function | [include/flashvm/speech.h:64](../include/flashvm/speech.h#L64) |
+| `fvm_stt_open` | function | [include/flashvm/speech.h:119](../include/flashvm/speech.h#L119) |
+| `fvm_stt_poll` | function | [include/flashvm/speech.h:123](../include/flashvm/speech.h#L123) |
+| `fvm_stt_system_backend` | function | [include/flashvm/speech.h:92](../include/flashvm/speech.h#L92) |
+| `FVM_SttBackend` | struct | [include/flashvm/speech.h:26](../include/flashvm/speech.h#L26) |
+| `fvm_tts_android_backend` | function | [include/flashvm/speech.h:78](../include/flashvm/speech.h#L78) |
+| `fvm_tts_close` | function | [include/flashvm/speech.h:115](../include/flashvm/speech.h#L115) |
+| `fvm_tts_linux_backend` | function | [include/flashvm/speech.h:97](../include/flashvm/speech.h#L97) |
+| `fvm_tts_open` | function | [include/flashvm/speech.h:103](../include/flashvm/speech.h#L103) |
+| `fvm_tts_speak` | function | [include/flashvm/speech.h:107](../include/flashvm/speech.h#L107) |
+| `fvm_tts_stop` | function | [include/flashvm/speech.h:111](../include/flashvm/speech.h#L111) |
+| `fvm_tts_system_backend` | function | [include/flashvm/speech.h:87](../include/flashvm/speech.h#L87) |
+| `fvm_tts_unix_backend` | function | [include/flashvm/speech.h:52](../include/flashvm/speech.h#L52) |
+| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:14](../include/flashvm/speech.h#L14) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `fvm_utf8_validate` | function | [include/flashvm/utf8.h:27](../include/flashvm/utf8.h#L27) |
+| `FVM_VOSK_CAPTURE_FRAMES` | macro / define | [src/multimedia/speech/stt/linux_vosk.hpp:18](../src/multimedia/speech/stt/linux_vosk.hpp#L18) |
 <!-- source-links:end -->

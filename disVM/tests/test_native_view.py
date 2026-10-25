@@ -1,9 +1,12 @@
 """Check that the experimental build view preserves process snapshot fields."""
+
 import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('native_view', Path(__file__).resolve().parents[1] / 'host/prepare_native_registers.py')
+spec = importlib.util.spec_from_file_location(
+    "native_view", Path(__file__).resolve().parents[1] / "host/prepare_native_registers.py"
+)
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)
 
@@ -12,23 +15,27 @@ spec.loader.exec_module(view)
 class NativeViewTests(unittest.TestCase):
     def test_qualified_members_and_literals(self):
         """Only the active interpreter register file is redirected to TLS."""
-        source = 'R.s = p->R.s; snapshot.R = R; /* R */ x="R"; y=\'R\';\n'
-        self.assertEqual(view.transform(source), 'DVM_R.s = p->R.s; snapshot.R = DVM_R; /* R */ x="R"; y=\'R\';\n')
+        source = "R.s = p->R.s; snapshot.R = R; /* R */ x=\"R\"; y='R';\n"
+        self.assertEqual(
+            view.transform(source),
+            "DVM_R.s = p->R.s; snapshot.R = DVM_R; /* R */ x=\"R\"; y='R';\n",
+        )
 
     def test_comments_between_member_tokens(self):
         """Comments do not turn a qualified process register into a global one."""
-        self.assertEqual(view.transform('p -> /* note */ R.d = R.d;'),
-                         'p -> /* note */ R.d = DVM_R.d;')
+        self.assertEqual(
+            view.transform("p -> /* note */ R.d = R.d;"), "p -> /* note */ R.d = DVM_R.d;"
+        )
 
     def test_dispatch_boundary_requires_review(self):
         """A changed upstream dispatch loop must not silently omit the safepoint."""
-        source = '\telse do {\n\t\t/* A C-translated step consumes one instruction. */'
+        source = "\telse do {\n\t\t/* A C-translated step consumes one instruction. */"
         output = view.dispatch_safepoint(source)
-        self.assertIn('dvm_native_context_poll()', output)
-        self.assertLess(output.index('dvm_native_context_poll'), output.index('C-translated'))
+        self.assertIn("dvm_native_context_poll()", output)
+        self.assertLess(output.index("dvm_native_context_poll"), output.index("C-translated"))
         with self.assertRaises(ValueError):
-            view.dispatch_safepoint('unrecognized upstream dispatch')
+            view.dispatch_safepoint("unrecognized upstream dispatch")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

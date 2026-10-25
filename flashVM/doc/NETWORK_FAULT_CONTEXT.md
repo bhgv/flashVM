@@ -12,7 +12,7 @@ Native resource errors получают файл failed file channel из его
 optional record, сохраняя status-only reply. Все данные копируются до удаления
 scoped adapter context. Flags bit 8 [FVM_EXCEPTION_REMOTE_CONTEXT](../include/flashvm/exception.h#L38) обозначает,
 что resource/origin/path относятся к удалённой стороне, а не local proxy handle.
-Existing [FVM_ExceptionInfo](../include/flashvm/exception.h#L41) layout не меняется.
+Existing [FVM_ExceptionInfo](../include/flashvm/exception.h#L43) layout не меняется.
 
 Клиент проверяет полный размер/magic/version/flags, termination каждого string и
 known resource kind до изменения metadata. Некорректный/неизвестный optional record
@@ -75,5 +75,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_EXCEPTION_REMOTE_CONTEXT` | macro / define | [include/flashvm/exception.h:38](../include/flashvm/exception.h#L38) |
-| `FVM_ExceptionInfo` | struct | [include/flashvm/exception.h:41](../include/flashvm/exception.h#L41) |
+| `FVM_ExceptionInfo` | struct | [include/flashvm/exception.h:43](../include/flashvm/exception.h#L43) |
 <!-- source-links:end -->

@@ -9,12 +9,12 @@ RGBA-прозрачность, композиция матриц и качест
 команды пути, что сплошные и градиентные обводки. Другие концы/соединения,
 pixel hinting и non-scaling-флаги пока не поддержаны.
 
-[fvm_swf_read_shape](../src/swf/shape.cpp#L469) проверяет стиль и владеет результатом. Загрузчик требует ранее
+[fvm_swf_read_shape](../src/swf/shape.cpp#L600) проверяет стиль и владеет результатом. Загрузчик требует ранее
 определённый bitmap-ресурс. Отсутствующие/нулевые ID, неверные матрицы, усечение
-и старые версии SWF возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Ошибка декодирования
+и старые версии SWF возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Ошибка декодирования
 сохраняет прежний результат; ошибка загрузки не публикует root.
 
-[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L117) связывает изображение обводки через lineBitmap, заливки —
+[fvm_swf_shape_build](../src/swf/shape_graph.cpp#L137) связывает изображение обводки через lineBitmap, заливки —
 через bitmap, сохраняя BitmapData из словаря. Дескриптор содержит собственные
 скалярные матрицу/флаги и отслеживаемое ребро на источник, без указателя бэкенда.
 Сериализация и каналы сохраняют bitmap-ресурсы и общую идентичность ссылок.
@@ -22,20 +22,20 @@ pixel hinting и non-scaling-флаги пока не поддержаны.
 контекста сохраняются. Публичный C89 ABI, номера callbacks и wire/resource-типы
 не изменены.
 
-[fvm_movieclip_bitmap_draw](../src/standard/bitmap_fill.cpp#L156) выбирает lineBitmap при положительной ширине обводки.
+[fvm_movieclip_bitmap_draw](../src/standard/bitmap_fill.cpp#L194) выбирает lineBitmap при положительной ширине обводки.
 После dispose изображение не добавляет пикселей; живые изменения видны при
 следующем рендеринге. Повреждённые собственные метаданные возвращают
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) до записи в выходную поверхность.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до записи в выходную поверхность.
 
-Внутренний [fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L155) принимает нулевую ширину для заливки или
-конечную положительную ширину до [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L57) для круглой обводки.
+Внутренний [fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L210) принимает нулевую ширину для заливки или
+конечную положительную ширину до [FVM_BITMAP_STROKE_MAX_WIDTH](../src/render/quality_internal.hpp#L91) для круглой обводки.
 Путь, поверхности и стиль заимствуются только на время синхронного вызова;
 скрипты и host callbacks не вызываются. Проверки предшествуют выбору бэкенда:
-корректный вызов NO_GRAPHICS возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), неверный —
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Все отсчёты и маска подготавливаются до композиции, поэтому
-источник может совпадать с выходной поверхностью. [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) сохраняет
+корректный вызов NO_GRAPHICS возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48), неверный —
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Все отсчёты и маска подготавливаются до композиции, поэтому
+источник может совпадать с выходной поверхностью. [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46) сохраняет
 назначение одного paint; вся сцена не является общей транзакцией. Публичный
-[fvm_path_draw_bitmap](../include/flashvm/bitmap_paint.h#L26) сохраняет нулевую ширину, прежние ABI и пиксели.
+[fvm_path_draw_bitmap](../include/flashvm/bitmap_paint.h#L30) сохраняет нулевую ширину, прежние ABI и пиксели.
 
 ## Проверки и оставшаяся приёмка
 
@@ -72,13 +72,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:57](../src/render/quality_internal.hpp#L57) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_bitmap_draw` | function | [src/standard/bitmap_fill.cpp:156](../src/standard/bitmap_fill.cpp#L156) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:155](../src/capi/bitmap_paint_c.cpp#L155) |
-| `fvm_path_draw_bitmap` | function | [include/flashvm/bitmap_paint.h:26](../include/flashvm/bitmap_paint.h#L26) |
-| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:469](../src/swf/shape.cpp#L469) |
-| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:117](../src/swf/shape_graph.cpp#L117) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_BITMAP_STROKE_MAX_WIDTH` | macro / define | [src/render/quality_internal.hpp:91](../src/render/quality_internal.hpp#L91) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_bitmap_draw` | function | [src/standard/bitmap_fill.cpp:194](../src/standard/bitmap_fill.cpp#L194) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:210](../src/capi/bitmap_paint_c.cpp#L210) |
+| `fvm_path_draw_bitmap` | function | [include/flashvm/bitmap_paint.h:30](../include/flashvm/bitmap_paint.h#L30) |
+| `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
+| `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

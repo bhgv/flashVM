@@ -1,8 +1,9 @@
 implement FindTest;
 include "sys.m";
-    sys: Sys;
+sys: Sys;
 include "idecore.m";
-    core: Idecore;
+core: Idecore;
+
 
 # Test-only bootstrap owns its emulator; production imports no Sys or UI modules.
 FindTest: module
@@ -13,26 +14,32 @@ FindTest: module
 # Count assertions only after actual channel responses, never from a host model.
 checks := 0;
 
+
 # Stop only the private emulator selected by the regression runner.
 halt()
 {
     control := sys->open("/dev/sysctl", Sys->OWRITE);
     if(control == nil)
+    {
         raise "fail: missing test halt control";
+    }
     data := array of byte "halt";
     sys->write(control, data, len data);
     raise "fail: test halt returned";
 }
 
+
 # Emit a visible failure because some reference emulators return zero after traps.
 require(ok: int, message: string)
 {
-    if(!ok){
+    if(!ok)
+    {
         sys->print("FAIL %s\n", message);
         halt();
     }
     checks++;
 }
+
 
 # Complete one rendezvous with a private response channel and echoed correlation ID.
 exchange(commands: chan of core->Request, operation, expected, first, last: int, text: string): core->Reply
@@ -44,6 +51,7 @@ exchange(commands: chan of core->Request, operation, expected, first, last: int,
     return result;
 }
 
+
 # Compare the complete state and first exact candidate against explicit expectations.
 search(text, needle: string, first, last, status, offset, line, column: int)
 {
@@ -52,12 +60,13 @@ search(text, needle: string, first, last, status, offset, line, column: int)
     require(result.status == core->Ok, "open");
     result = exchange(commands, core->Find, 1, first, last, needle);
     require(result.status == status && result.offset == offset &&
-            result.line == line && result.column == column, "search result");
+    result.line == line && result.column == column, "search result");
     require(result.text == text && result.revision == 1 && result.saved == 1 &&
-            result.opened, "unchanged snapshot");
+    result.opened, "unchanged snapshot");
     result = exchange(commands, core->Shutdown, 1, 0, 0, "");
     require(result.status == core->Ok, "shutdown");
 }
+
 
 # Execute first-match, bounded-range, Unicode and adversarial prefix-fallback cases.
 init()
@@ -85,12 +94,16 @@ init()
     # an unrelated addc allocator fault with shared, long concatenated operands.
     data := array[32769] of byte;
     for(index := 0; index < len data; index++)
+    {
         data[index] = byte 'a';
+    }
     data[len data - 1] = byte 'b';
     longtext := string data;
     needledata := array[16385] of byte;
     for(index = 0; index < len needledata; index++)
+    {
         needledata[index] = byte 'a';
+    }
     needledata[len needledata - 1] = byte 'b';
     longneedle := string needledata;
     search(longtext, longneedle, 0, 32769, core->Ok, 16384, 1, 16384);
@@ -102,10 +115,10 @@ init()
     result = exchange(commands, core->Replace, 1, 0, 1, "x");
     result = exchange(commands, core->Find, 1, 0, 3, "x");
     require(result.status == core->Conflict && result.revision == 2 && result.text == "xbc" &&
-            result.offset == -1, "stale search after edit");
+    result.offset == -1, "stale search after edit");
     result = exchange(commands, core->Find, 2, 0, 3, "x");
     require(result.status == core->Ok && result.offset == 0 && result.saved == 1,
-            "find preserves dirty state");
+    "find preserves dirty state");
     result = exchange(commands, core->Shutdown, 2, 0, 0, "");
     require(result.status == core->Ok, "stop edited owner");
     sys->print("PASS idecore find %d checks\n", checks);

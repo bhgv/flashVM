@@ -7,8 +7,8 @@ v0.986, где event-only работа разрешалась лишь посл�
 
 ## Native scheduler
 
-[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) согласует один шаг stream и его точного
-[`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L13). Нужны живые владельцы с общей adapted-таблицей, геометрией,
+[`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L127) согласует один шаг stream и его точного
+[`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L14). Нужны живые владельцы с общей adapted-таблицей, геометрией,
 активным clock и равным accepted-счётчиком. Unsigned movie frame разрешает base;
 ноль удерживает все base-кадры, но допускает события. Tick не превращается в
 movie/device-время автоматически. Вызывающий сериализует stream, converter,
@@ -23,9 +23,9 @@ snapshot, mixer, mix queue и exclusive backend. Передачи владени
 
 | API | Результаты и выходные данные |
 | --- | --- |
-| [`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L111) | Optional accepted обнуляется сразу. OK принимает один блок либо нулевой marker источника. Неверный stream/reentry/backend/эпоха: INVALID_ARGUMENT. Нет общего clock/headroom/голосов или удержан BASE: NOT_FOUND; для EOF нужны producer/mix pending, одного статуса недостаточно. Прочие native/backend статусы передаются; исключения callbacks: ERROR. Без выделений, VM, GC, неявных pause/clear и автоматического A/V retiming. |
-| [`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L31) | Без callbacks показывает владение BASE/TAIL. Failed event-only блок хранится здесь отдельно от base PCM producer. |
-| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L126) | Свежие accepted/dequeued включают успешные base и event-only блоки. Source chunk/EOF и base pending сохраняют прежний смысл. Сериализация со всеми scheduling/controls; ошибка сохраняет выход. |
+| [`fvm_swf_stream_output_pump_mix_until`](../include/flashvm/swf_stream_output.h#L127) | Optional accepted обнуляется сразу. OK принимает один блок либо нулевой marker источника. Неверный stream/reentry/backend/эпоха: INVALID_ARGUMENT. Нет общего clock/headroom/голосов или удержан BASE: NOT_FOUND; для EOF нужны producer/mix pending, одного статуса недостаточно. Прочие native/backend статусы передаются; исключения callbacks: ERROR. Без выделений, VM, GC, неявных pause/clear и автоматического A/V retiming. |
+| [`fvm_swf_sound_mix_queue_pending`](../include/flashvm/swf_sound_mix_queue.h#L38) | Без callbacks показывает владение BASE/TAIL. Failed event-only блок хранится здесь отдельно от base PCM producer. |
+| [`fvm_swf_stream_output_info`](../include/flashvm/swf_stream_output.h#L148) | Свежие accepted/dequeued включают успешные base и event-only блоки. Source chunk/EOF и base pending сохраняют прежний смысл. Сериализация со всеми scheduling/controls; ошибка сохраняет выход. |
 
 Нулевая база использует прежние block/target и оба точных счётчика, не меняя
 позицию, фазу, chunk и EOF источника. Финальный padding — настоящий принятый output,
@@ -34,7 +34,7 @@ snapshot, mixer, mix queue и exclusive backend. Передачи владени
 точный микс и не увеличивает accepted; допустимый poll может обновить played.
 После отказа нужно продолжать этим scheduler либо отменять подтверждённым seek/clear.
 Посторонние прямые writes/mix-tail нарушают exclusive accounting.
-Прежний [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L92) всё ещё требует наблюдённый EOF.
+Прежний [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) всё ещё требует наблюдённый EOF.
 
 ## Desktop frame/pause policy
 
@@ -114,7 +114,7 @@ v0.998: Завершены C89/API и desktop-контракты authored Stop, 
 
 ## Неполный остаток FIFO с v0.1000
 
-Парные gate/EOF операции используют [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L262): новые
+Парные gate/EOF операции используют [`fvm_swf_sound_mix_queue_pump_tail_up_to`](../include/flashvm/swf_sound_mix_queue.h#L315): новые
 event-only блоки заполняют свободный остаток до настроенного block. Короткий TAIL
 неделим и остаётся раньше вновь разрешённого BASE. Обе копии часов используют
 наблюдение, разрешившее успешный write, без ошибочного опроса после принятия.
@@ -129,10 +129,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:31](../include/flashvm/swf_sound_mix_queue.h#L31) |
-| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:262](../include/flashvm/swf_sound_mix_queue.h#L262) |
-| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:126](../include/flashvm/swf_stream_output.h#L126) |
-| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:92](../include/flashvm/swf_stream_output.h#L92) |
-| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:111](../include/flashvm/swf_stream_output.h#L111) |
-| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:13](../src/swf/sound_mix_queue.cpp#L13) |
+| `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
+| `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
+| `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:148](../include/flashvm/swf_stream_output.h#L148) |
+| `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |
+| `fvm_swf_stream_output_pump_mix_until` | function | [include/flashvm/swf_stream_output.h:127](../include/flashvm/swf_stream_output.h#L127) |
+| `FVM_SWFSoundMixQueue` | struct | [src/swf/sound_mix_queue.cpp:14](../src/swf/sound_mix_queue.cpp#L14) |
 <!-- source-links:end -->

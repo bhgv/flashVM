@@ -8,8 +8,12 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+
+
 extern int fir_utf8(const unsigned char *, size_t);
 #define INPUT_LIMIT (2u * 1024u * 1024u)
+
+
 typedef struct
 {
     FirModule *module;
@@ -18,33 +22,50 @@ typedef struct
     char *error;
     size_t capacity;
 } Builder;
+
 static Builder *active;
 extern Error_Func Custom_Error;
+
+
 extern int fir_parser_run(unsigned char *, int);
+
+
 /* Keep the first semantic failure; later recovery actions cannot overwrite it. */
 void fir_build_error(const char *message, int line)
 {
     if (!active->failed)
+    {
         snprintf(active->error, active->capacity, "line %d: %s", line, message);
+    }
     active->failed = 1;
 }
+
+
 /* Translate the generated parser callback into the same bounded diagnostic. */
 static void syntax_error(int code, int line, int column, long offset)
 {
     (void)column;
     (void)offset;
     if (!active->failed)
+    {
         snprintf(active->error, active->capacity, "line %d: FIR syntax error E%d", line, code);
+    }
     active->failed = 1;
 }
+
+
 /* Insert forward references now; the verifier later requires definitions. */
 static int symbol(const char *text, int block)
 {
     FirModule *m = active->module;
     int i, n = block ? m->block_count : m->value_count;
     for (i = 0; i < n; ++i)
+    {
         if (!strcmp(text, block ? m->blocks[i].name : m->values[i].name))
+        {
             return i;
+        }
+    }
     if (n >= (block ? FIR_BLOCKS : FIR_LIMIT))
     {
         fir_build_error("symbol limit exceeded", active->instruction.line);
@@ -63,6 +84,8 @@ static int symbol(const char *text, int block)
     }
     return n;
 }
+
+
 /* Reset the next instruction before any of its semantic actions execute. */
 void fir_build_begin(int line)
 {
@@ -72,12 +95,16 @@ void fir_build_begin(int line)
     in->block = active->block;
     in->line = line;
 }
+
+
 /* Commit a complete instruction only while semantic construction is valid. */
 void fir_build_end(void)
 {
     FirModule *m = active->module;
     if (active->failed)
+    {
         return;
+    }
     if (m->count >= FIR_LIMIT)
     {
         fir_build_error("instruction limit exceeded", active->instruction.line);
@@ -85,16 +112,22 @@ void fir_build_end(void)
     }
     m->instructions[m->count++] = active->instruction;
 }
+
+
 /* Record the exact opcode selected by the grammar alternative. */
 void fir_build_op(FirOp op)
 {
     active->instruction.op = op;
 }
+
+
 /* Record the explicit requirement for the existing FlashVM channel extension. */
 void fir_build_channels(void)
 {
     active->module->channels = 1;
 }
+
+
 /* Decimal parsing is independent of host long width. String escapes are
  * decoded after Coco/R has recognised a complete, bounded quoted token. */
 static void literal(const char *text, int line)
@@ -112,35 +145,51 @@ static void literal(const char *text, int line)
             {
                 c = text[++i];
                 if (c == 'n')
+                {
                     c = '\n';
+                }
                 else if (c == 'r')
+                {
                     c = '\r';
+                }
                 else if (c == 't')
+                {
                     c = '\t';
+                }
             }
             in->text[n++] = c;
         }
         in->text[n] = 0;
     }
     else if (in->op == O_BOOL)
+    {
         in->integer = !strcmp(text, "true");
+    }
     else if (in->op == O_I32)
     {
         const char *digits = text + (*text == '-' || *text == '+');
         int base = digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X') ? 16 : 10;
         long value = strtol(text, &end, base);
         if (*end || errno || value < INT32_MIN || value > INT32_MAX)
+        {
             fir_build_error("invalid i32 literal", line);
+        }
         else
+        {
             in->integer = (int32_t)value;
+        }
     }
     else
     {
         in->real = strtod(text, &end);
         if (*end || errno || !isfinite(in->real))
+        {
             fir_build_error("expected finite f64 literal", line);
+        }
     }
 }
+
+
 /* Dispatch a captured grammar token by its semantic role. */
 void fir_build_token(int role, const char *text, int line)
 {
@@ -149,17 +198,23 @@ void fir_build_token(int role, const char *text, int line)
     static const char *const types[] = {"void", "i32", "f64", "bool", "string", "any", "channel"};
     int index;
     if (active->failed)
+    {
         return;
+    }
     if (role == B_VERSION)
     {
         if (strcmp(text, "1.0"))
+        {
             fir_build_error("unsupported FIR version", line);
+        }
         return;
     }
     if (role == B_FUNCTION)
     {
         if (strcmp(text, "@main"))
+        {
             fir_build_error("only @main is supported in FIR 1.0", line);
+        }
         return;
     }
     if (role == B_MODULE)
@@ -188,8 +243,12 @@ void fir_build_token(int role, const char *text, int line)
     if (role == B_TYPE)
     {
         for (index = T_I32; index <= T_CHANNEL; ++index)
+        {
             if (!strcmp(types[index], text))
+            {
                 break;
+            }
+        }
         if (index > T_CHANNEL || in->result < 0)
         {
             fir_build_error("invalid type", line);
@@ -200,12 +259,16 @@ void fir_build_token(int role, const char *text, int line)
     }
     index = symbol(text, role == B_BLOCK || role == B_YES || role == B_NO);
     if (index < 0)
+    {
         return;
+    }
     switch (role)
     {
     case B_RESULT:
         if (m->values[index].definition >= 0)
+        {
             fir_build_error("duplicate SSA definition", line);
+        }
         else
         {
             in->result = index;
@@ -214,7 +277,9 @@ void fir_build_token(int role, const char *text, int line)
         break;
     case B_BLOCK:
         if (m->blocks[index].defined)
+        {
             fir_build_error("duplicate block", line);
+        }
         else
         {
             m->blocks[index].defined = 1;
@@ -238,6 +303,8 @@ void fir_build_token(int role, const char *text, int line)
         break;
     }
 }
+
+
 /* Read and validate bounded input before invoking the generated Coco/R parser. */
 int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
 {
@@ -257,8 +324,7 @@ int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
         free(text);
         return 0;
     }
-    if (length < 8 ||
-        (memcmp(text, "FIR 1.0\n", 8) && (length < 9 || memcmp(text, "FIR 1.0\r\n", 9))))
+    if (length < 8 || (memcmp(text, "FIR 1.0\n", 8) && (length < 9 || memcmp(text, "FIR 1.0\r\n", 9))))
     {
         snprintf(error, capacity, "first line must be FIR 1.0");
         free(text);
@@ -274,7 +340,9 @@ int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
     Custom_Error = syntax_error;
     ok = fir_parser_run(text, (int)length);
     if (!ok)
+    {
         snprintf(error, capacity, "scanner allocation failure");
+    }
     ok = ok && Successful() && !builder.failed;
     Custom_Error = 0;
     active = 0;

@@ -85,17 +85,17 @@ main или автоматически протестированный app. Н�
 
 | Function (source declarations linked below) | Detailed guide file and section |
 | --- | --- |
-| [`fvm_stt_android_backend`](../../../include/flashvm/speech.h#L74) | [SPEECH_BRIDGES.md — fvm_stt_android_backend](../../../doc/SPEECH_BRIDGES.md#fvm_stt_android_backend) |
-| [`fvm_stt_close`](../../../include/flashvm/speech.h#L106) | [SPEECH_BRIDGES.md — fvm_stt_close](../../../doc/SPEECH_BRIDGES.md#fvm_stt_close) |
-| [`fvm_stt_open`](../../../include/flashvm/speech.h#L100) | [SPEECH_BRIDGES.md — fvm_stt_open](../../../doc/SPEECH_BRIDGES.md#fvm_stt_open) |
-| [`fvm_stt_poll`](../../../include/flashvm/speech.h#L102) | [SPEECH_BRIDGES.md — fvm_stt_poll](../../../doc/SPEECH_BRIDGES.md#fvm_stt_poll) |
-| [`fvm_tts_android_backend`](../../../include/flashvm/speech.h#L69) | [SPEECH_BRIDGES.md — fvm_tts_android_backend](../../../doc/SPEECH_BRIDGES.md#fvm_tts_android_backend) |
-| [`fvm_tts_close`](../../../include/flashvm/speech.h#L98) | [SPEECH_BRIDGES.md — fvm_tts_close](../../../doc/SPEECH_BRIDGES.md#fvm_tts_close) |
-| [`fvm_tts_open`](../../../include/flashvm/speech.h#L92) | [SPEECH_BRIDGES.md — fvm_tts_open](../../../doc/SPEECH_BRIDGES.md#fvm_tts_open) |
-| [`fvm_tts_speak`](../../../include/flashvm/speech.h#L94) | [SPEECH_BRIDGES.md — fvm_tts_speak](../../../doc/SPEECH_BRIDGES.md#fvm_tts_speak) |
+| [`fvm_stt_android_backend`](../../../include/flashvm/speech.h#L83) | [SPEECH_BRIDGES.md — fvm_stt_android_backend](../../../doc/SPEECH_BRIDGES.md#fvm_stt_android_backend) |
+| [`fvm_stt_close`](../../../include/flashvm/speech.h#L129) | [SPEECH_BRIDGES.md — fvm_stt_close](../../../doc/SPEECH_BRIDGES.md#fvm_stt_close) |
+| [`fvm_stt_open`](../../../include/flashvm/speech.h#L119) | [SPEECH_BRIDGES.md — fvm_stt_open](../../../doc/SPEECH_BRIDGES.md#fvm_stt_open) |
+| [`fvm_stt_poll`](../../../include/flashvm/speech.h#L123) | [SPEECH_BRIDGES.md — fvm_stt_poll](../../../doc/SPEECH_BRIDGES.md#fvm_stt_poll) |
+| [`fvm_tts_android_backend`](../../../include/flashvm/speech.h#L78) | [SPEECH_BRIDGES.md — fvm_tts_android_backend](../../../doc/SPEECH_BRIDGES.md#fvm_tts_android_backend) |
+| [`fvm_tts_close`](../../../include/flashvm/speech.h#L115) | [SPEECH_BRIDGES.md — fvm_tts_close](../../../doc/SPEECH_BRIDGES.md#fvm_tts_close) |
+| [`fvm_tts_open`](../../../include/flashvm/speech.h#L103) | [SPEECH_BRIDGES.md — fvm_tts_open](../../../doc/SPEECH_BRIDGES.md#fvm_tts_open) |
+| [`fvm_tts_speak`](../../../include/flashvm/speech.h#L107) | [SPEECH_BRIDGES.md — fvm_tts_speak](../../../doc/SPEECH_BRIDGES.md#fvm_tts_speak) |
 
-Структуры [FVM_TtsBackend](../../../include/flashvm/speech.h#L13), [FVM_SttBackend](../../../include/flashvm/speech.h#L24), [FVM_AndroidSpeechConfig](../../../include/flashvm/speech.h#L60),
-[FVM_LinuxSttConfig](../../../include/flashvm/speech.h#L49) и ownership/status contracts:
+Структуры [FVM_TtsBackend](../../../include/flashvm/speech.h#L14), [FVM_SttBackend](../../../include/flashvm/speech.h#L26), [FVM_AndroidSpeechConfig](../../../include/flashvm/speech.h#L68),
+[FVM_LinuxSttConfig](../../../include/flashvm/speech.h#L55) и ownership/status contracts:
 [SPEECH_BRIDGES.md](../../../doc/SPEECH_BRIDGES.md),
 [public speech.h](../../../include/flashvm/speech.h).
 Все примеры различают real native operations, deterministic fixtures и пока
@@ -106,7 +106,7 @@ main или автоматически протестированный app. Н�
 с явными Namespace.ABSTRACT и FILESYSTEM; возвращённый connected socket закрывает
 caller. Java abstract name не нужно начинать с NUL: Android добавляет native marker.
 Это отдельный transport preparation пример, он не имитирует speech protocol/service.
-Для native binary names и SSIP см. [FVM_SpeechUnixEndpoint](../../../include/flashvm/speech.h#L38) и [fvm_tts_unix_backend](../../../include/flashvm/speech.h#L47) в
+Для native binary names и SSIP см. [FVM_SpeechUnixEndpoint](../../../include/flashvm/speech.h#L42) и [fvm_tts_unix_backend](../../../include/flashvm/speech.h#L52) в
 [руководстве](../../../doc/SPEECH_BRIDGES.md#fvm_tts_unix_backend). Наличие socket
 namespace не означает наличие Speech Dispatcher на Android.
 
@@ -119,18 +119,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:60](../../../include/flashvm/speech.h#L60) |
-| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:49](../../../include/flashvm/speech.h#L49) |
-| `FVM_SpeechUnixEndpoint` | struct | [include/flashvm/speech.h:38](../../../include/flashvm/speech.h#L38) |
-| `fvm_stt_android_backend` | function | [include/flashvm/speech.h:74](../../../include/flashvm/speech.h#L74) |
-| `fvm_stt_close` | function | [include/flashvm/speech.h:106](../../../include/flashvm/speech.h#L106) |
-| `fvm_stt_open` | function | [include/flashvm/speech.h:100](../../../include/flashvm/speech.h#L100) |
-| `fvm_stt_poll` | function | [include/flashvm/speech.h:102](../../../include/flashvm/speech.h#L102) |
-| `FVM_SttBackend` | struct | [include/flashvm/speech.h:24](../../../include/flashvm/speech.h#L24) |
-| `fvm_tts_android_backend` | function | [include/flashvm/speech.h:69](../../../include/flashvm/speech.h#L69) |
-| `fvm_tts_close` | function | [include/flashvm/speech.h:98](../../../include/flashvm/speech.h#L98) |
-| `fvm_tts_open` | function | [include/flashvm/speech.h:92](../../../include/flashvm/speech.h#L92) |
-| `fvm_tts_speak` | function | [include/flashvm/speech.h:94](../../../include/flashvm/speech.h#L94) |
-| `fvm_tts_unix_backend` | function | [include/flashvm/speech.h:47](../../../include/flashvm/speech.h#L47) |
-| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:13](../../../include/flashvm/speech.h#L13) |
+| `FVM_AndroidSpeechConfig` | struct | [include/flashvm/speech.h:68](../../../include/flashvm/speech.h#L68) |
+| `FVM_LinuxSttConfig` | struct | [include/flashvm/speech.h:55](../../../include/flashvm/speech.h#L55) |
+| `FVM_SpeechUnixEndpoint` | struct | [include/flashvm/speech.h:42](../../../include/flashvm/speech.h#L42) |
+| `fvm_stt_android_backend` | function | [include/flashvm/speech.h:83](../../../include/flashvm/speech.h#L83) |
+| `fvm_stt_close` | function | [include/flashvm/speech.h:129](../../../include/flashvm/speech.h#L129) |
+| `fvm_stt_open` | function | [include/flashvm/speech.h:119](../../../include/flashvm/speech.h#L119) |
+| `fvm_stt_poll` | function | [include/flashvm/speech.h:123](../../../include/flashvm/speech.h#L123) |
+| `FVM_SttBackend` | struct | [include/flashvm/speech.h:26](../../../include/flashvm/speech.h#L26) |
+| `fvm_tts_android_backend` | function | [include/flashvm/speech.h:78](../../../include/flashvm/speech.h#L78) |
+| `fvm_tts_close` | function | [include/flashvm/speech.h:115](../../../include/flashvm/speech.h#L115) |
+| `fvm_tts_open` | function | [include/flashvm/speech.h:103](../../../include/flashvm/speech.h#L103) |
+| `fvm_tts_speak` | function | [include/flashvm/speech.h:107](../../../include/flashvm/speech.h#L107) |
+| `fvm_tts_unix_backend` | function | [include/flashvm/speech.h:52](../../../include/flashvm/speech.h#L52) |
+| `FVM_TtsBackend` | struct | [include/flashvm/speech.h:14](../../../include/flashvm/speech.h#L14) |
 <!-- source-links:end -->

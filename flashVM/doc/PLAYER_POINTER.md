@@ -26,7 +26,7 @@ coordinates for its viewport/letterboxing. The adapter multiplies those values
 by the fixed logical stage extent once. Mouse events already contain SDL logical
 pixels. During delivery the host adds the authored SWF stage origin; it does not
 rewrite script MovieClip matrices. Invalid nonfinite/out-of-range contact
-coordinates or missing logical dimensions latch [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before
+coordinates or missing logical dimensions latch [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before
 changing host contact/position. This is one primary contact, not gesture or full
 multitouch recognition. SDL's own viewport edge clamping remains in force.
 
@@ -36,14 +36,14 @@ FVM_DESKTOP_PENDING_EVENTS bounds the copied key/pointer FIFO to 128 events.
 There are no managed VM pointers or borrowed event buffers in it. Each event
 retains the pointer position at that transition, plus its relevant key snapshot
 or pointer type. Repeated motion is not silently coalesced. Overflow latches
-[FVM_ERROR](../include/flashvm/flashvm.h#L43), and the player reports failure rather than claiming delivery.
+[FVM_ERROR](../include/flashvm/flashvm.h#L45), and the player reports failure rather than claiming delivery.
 
 `fvm_desktop_window_pump_input(view, context, origin_x, origin_y)` borrows the
 window/context on their common owner thread and synchronously processes the
 entry batch before a movie tick. Null owners, nonfinite origin or recursive
-pumping return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before consumption. Key callbacks see that
+pumping return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) before consumption. Key callbacks see that
 key's saved pointer position and keyboard snapshot; pointer events use
-[fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L29), including native drag update before handlers.
+[fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L37), including native drag update before handlers.
 No separate keyboard-first/pointer-first reordering occurs. HostInput/final
 polling state is published afterwards using the existing player loop.
 
@@ -76,7 +76,7 @@ security-origin policy remain open. Core-only builds still need no SDL.
 
 v0.597 fixes a player integration gap found while running the delivered sound
 movies: --mute previously omitted both the device and the root StartSound callback,
-so the timeline reported [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) at its first sound event. The player now
+so the timeline reported [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) at its first sound event. The player now
 installs an explicit muted_sound callback for --mute. It acknowledges only those
 validated root sound notifications without decoding/queueing PCM, starting a
 worker or opening an audio device. Normal non-muted device/error behavior is unchanged.
@@ -124,8 +124,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

@@ -2,7 +2,7 @@
 
 ## v0.793: prepared duration on the output grid
 
-[`fvm_swf_sound_voice_output_frames`](../include/flashvm/swf_sound_mixer.h#L44) counts exact remaining output frames for a
+[`fvm_swf_sound_voice_output_frames`](../include/flashvm/swf_sound_mixer.h#L51) counts exact remaining output frames for a
 prepared native voice adopted at its CURRENT source cursor with conversion phase
 zero. It includes remaining repetitions, rounds up the rational source/output
 ratio and returns zero at EOF. It does not read PCM, allocate, call a callback,
@@ -20,17 +20,17 @@ Flash timeline or physical-device acceptance.
 
 ## v0.794: optional fixed identity storage
 
-[`fvm_swf_sound_output_set_identity_tracking`](../include/flashvm/swf_sound_output.h#L61) enables/disables a fixed native table
+[`fvm_swf_sound_output_set_identity_tracking`](../include/flashvm/swf_sound_output.h#L69) enables/disables a fixed native table
 of OUTPUT_ID_SLOTS double deadlines (512 KiB on this host). Configure only with
 no mixer voices, accepted or pending PCM; enabling allocates transactionally,
 disabling actually frees storage. Invalid state/arguments return INVALID_ARGUMENT;
 allocation failure returns OOM and preserves the old table. No backend/VM is
 called. All mutations require external output/mixer serialization.
 
-[`fvm_swf_sound_output_storage_info`](../include/flashvm/swf_sound_output.h#L74) copies exact output object, retry PCM,
+[`fvm_swf_sound_output_storage_info`](../include/flashvm/swf_sound_output.h#L86) copies exact output object, retry PCM,
 optional history, optional deadline and checked total byte charges. Borrowed
 mixer/device, VM and allocator overhead are excluded. Invalid size/null/reentry
-preserves output. [`fvm_swf_sound_output_sound_active`](../include/flashvm/swf_sound_output.h#L81) observes the exclusive FIFO
+preserves output. [`fvm_swf_sound_output_sound_active`](../include/flashvm/swf_sound_output.h#L95) observes the exclusive FIFO
 and compares one ID's deadline with accepted-minus-queued progress. Disabled
 tracking returns UNSUPPORTED; invalid ID/reentry returns INVALID_ARGUMENT;
 backend errors/exceptions preserve query output. These callbacks may block under
@@ -42,7 +42,7 @@ real freeing on disable, empty/played-state restrictions and query failures.
 
 ## v0.795: queued SyncNoMultiple adoption
 
-[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L114) observes FIFO progress, then adopts
+[`fvm_swf_sound_output_submit_prepared_bounded`](../include/flashvm/swf_sound_output.h#L134) observes FIFO progress, then adopts
 a caller-owned native voice at submitted+pending frames. Its exact remaining
 converted duration defines an exclusive per-ID endpoint. Ordinary same-ID starts
 may overlap; their maximum endpoint stays active. NoMultiple consumes an unused
@@ -66,7 +66,7 @@ queue-observation ownership preservation after VM destruction.
 
 ## v0.796: stop and clear ownership
 
-[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L122) applies the borrowed mixer's immediate/DECLICK
+[`fvm_swf_sound_output_stop_id`](../include/flashvm/swf_sound_output.h#L144) applies the borrowed mixer's immediate/DECLICK
 future-composition policy and releases that ID's NoMultiple registration. Missing
 IDs succeed; invalid IDs/null/reentry return INVALID_ARGUMENT; disabled tracking
 returns UNSUPPORTED. It allocates nothing and invokes no callback or VM. Accepted
@@ -147,7 +147,7 @@ Each native owner/budget and every nonempty C/header line is documented.
 
 ## v0.802: copied native deadline diagnostics
 
-[`fvm_swf_sound_output_identity_info`](../include/flashvm/swf_sound_output.h#L99) observes the FIFO and copies requested ID,
+[`fvm_swf_sound_output_identity_info`](../include/flashvm/swf_sound_output.h#L117) observes the FIFO and copies requested ID,
 played epoch cursor, last registered exclusive end, time until that end and active
 state. Exact struct_size and ID 1..65535 are required. Invalid/null/reentry is
 INVALID_ARGUMENT, disabled tracking UNSUPPORTED; backend statuses propagate and
@@ -197,11 +197,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:99](../include/flashvm/swf_sound_output.h#L99) |
-| `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
-| `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
-| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:122](../include/flashvm/swf_sound_output.h#L122) |
-| `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:74](../include/flashvm/swf_sound_output.h#L74) |
-| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:114](../include/flashvm/swf_sound_output.h#L114) |
-| `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:44](../include/flashvm/swf_sound_mixer.h#L44) |
+| `fvm_swf_sound_output_identity_info` | function | [include/flashvm/swf_sound_output.h:117](../include/flashvm/swf_sound_output.h#L117) |
+| `fvm_swf_sound_output_set_identity_tracking` | function | [include/flashvm/swf_sound_output.h:69](../include/flashvm/swf_sound_output.h#L69) |
+| `fvm_swf_sound_output_sound_active` | function | [include/flashvm/swf_sound_output.h:95](../include/flashvm/swf_sound_output.h#L95) |
+| `fvm_swf_sound_output_stop_id` | function | [include/flashvm/swf_sound_output.h:144](../include/flashvm/swf_sound_output.h#L144) |
+| `fvm_swf_sound_output_storage_info` | function | [include/flashvm/swf_sound_output.h:86](../include/flashvm/swf_sound_output.h#L86) |
+| `fvm_swf_sound_output_submit_prepared_bounded` | function | [include/flashvm/swf_sound_output.h:134](../include/flashvm/swf_sound_output.h#L134) |
+| `fvm_swf_sound_voice_output_frames` | function | [include/flashvm/swf_sound_mixer.h:51](../include/flashvm/swf_sound_mixer.h#L51) |
 <!-- source-links:end -->

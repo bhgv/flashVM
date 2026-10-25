@@ -1,6 +1,6 @@
 # Снимки управляющих записей сцены — v0.634
 
-[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L125) размещение символа SWF
+[English](SCENE_CONTROLS.md). При [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L160) размещение символа SWF
 может вызвать зарегистрированный конструктор. Раньше он мог заменить будущий
 элемент списка, изменить его скалярные поля, очистить список или добавить новое
 размещение прямо в текущий обход. Теперь значимые поля управляющих записей кадра
@@ -8,7 +8,7 @@
 
 Список кадра — плотная последовательность индексов от нуля, независимо от порядка
 вставки, не более [`FVM_MOVIECLIP_MAX_SCENE_CONTROLS`](../src/standard/movieclip_constants.h#L26) элементов. Пропуск, null,
-значение не Object или ссылка на чужой контекст дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45)
+значение не Object или ссылка на чужой контекст дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47)
 до применения любой записи этого локального списка. Семантическая ошибка внутри
 структурно допустимой записи может возникнуть после уже применённых записей.
 Лимит независим от числа блоков действий кадра и инициализаторов.
@@ -25,7 +25,7 @@ matrix/color/clip_actions этот поверхностный снимок не 
 Восстановление при seek/loop использует тот же локальный снимок каждого посещённого
 кадра и не исполняет пропущенные frame actions. Ранее выполненные размещения,
 эффекты конструкторов и выбор фона сохраняются при последующей ошибке.
-[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) при копировании не применяет этот список, но не откатывает
+[`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46) при копировании не применяет этот список, но не откатывает
 ранние кадры и не меняет существующую политику повторного запуска после ошибки.
 
 [GC:] Действующий native barrier сцены/tick удерживает значения и строки после
@@ -46,7 +46,7 @@ matrix/color/clip_actions этот поверхностный снимок не 
 
 ## Бюджет сцены (v0.635)
 
-[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) охватывает подготовку сцены и callbacks, наследуя общий
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L11) охватывает подготовку сцены и callbacks, наследуя общий
 бюджет AVM1/tick вместо сброса на каждом control или конструкторе. Прямой переход
 расходует по единице за копирование записи и перед её применением. Сбой capture
 не применяет ни одной записи локального списка. Отсутствующий/пустой список прямого
@@ -61,7 +61,7 @@ F+2K+2M+D без вложенных конструкторов и прочей �
 Сортировка глубин в эту версию не входит. Протокольные флаги, цвета и идентификаторы
 именованы в [scene_constants.h](../src/standard/scene_constants.h) отдельно от лимитов обхода.
 
-Исчерпание лимита даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) без превышения счётчика; насыщенный унаследованный
+Исчерпание лимита даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) без превышения счётчика; насыщенный унаследованный
 счётчик не обнуляется и не переполняется. Нулевой числовой лимит сохраняет проверку
 кооперативной остановки worker. Время native callback, все map operations, копии
 ресурсов и размеры внутренних allocations размещения отдельно не измеряются и
@@ -77,7 +77,7 @@ children/пропусков/вложенности/насыщения. Два н
 
 ## Граф сцены и старые глубины (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L3089) проверяет владельца private state/таблицы и лимит
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L4004) проверяет владельца private state/таблицы и лимит
 [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33) до нормализации старых глубин. Выходной указатель
 публикуется только при успехе. Непустая ненормализованная таблица предварительно
 расходует единицу на child; исчерпание бюджета сохраняет прежние индексы и отсутствие
@@ -85,7 +85,7 @@ bias. Существующая миграция готовит новую map д
 Нормализованная таблица не добавляет работы миграции. Общий внешний бюджет сохраняется,
 а нулевой лимит не отключает остановку worker. Этот helper также используется
 подготовкой retained scene input; ошибка бюджета/остановки сохраняется как
-[`FVM_ERROR`](../include/flashvm/flashvm.h#L43), а не преобразуется в [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L45), а не преобразуется в [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47).
 
 Восстановление проверяет все локальные старые children в ходе прежней предоплаты
 копирования: native clip/state из того же контекста, отсутствие самого parent и
@@ -127,12 +127,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:3089](../src/standard/movieclip.cpp#L3089) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:4004](../src/standard/movieclip.cpp#L4004) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

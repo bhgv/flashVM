@@ -1,7 +1,7 @@
 # Результаты нативных вызовов v0.76 / Native dispatch results
 
 Проверки обнаружили пропуски snapshot после native callback в Function.invoke,
-прямом [fvm_call](../include/flashvm/value.h#L138), registered stack functions, callable objects и Lua-style callbacks.
+прямом [fvm_call](../include/flashvm/value.h#L204), registered stack functions, callable objects и Lua-style callbacks.
 Возвращённый string view мог зависеть от userdata-owner, уже недостижимого после
 возврата. Внутри native barriers и function/capture root frames теперь выполняется
 общая нормализация результата. Counted NUL/WTF-8 bytes сохраняются, context-owned
@@ -11,7 +11,7 @@ buffers переиспользуются без дополнительной к�
 Для stack/Lua callback нормализуется только единственный выбранный результат.
 Lua callback сначала выбирает zero/one result по count; normal callback должен
 оставить zero/one value. Невалидное число результатов отклоняется прежним правилом.
-Обычный [fvm_stack_push](../include/flashvm/stack.h#L29) копирует [FVM_Value](../include/flashvm/value.h#L24), а не внешний buffer: host string view
+Обычный [fvm_stack_push](../include/flashvm/stack.h#L41) копирует [FVM_Value](../include/flashvm/value.h#L26), а не внешний buffer: host string view
 остаётся borrowed и должен жить, пока используется stack. Snapshot относится к
 успешной границе возвращения native callback, не ко всем pushes.
 
@@ -41,7 +41,7 @@ inside native barriers and capture/function root lifetimes. Foreign counted
 strings are atomically copied into context storage; existing context buffers are
 reused and embedded NUL/WTF-8 counts are preserved. Snapshot OOM leaves ownership
 indexes consistent. Stack/Lua dispatch normalizes the one selected result after
-count processing; ordinary stack_push still copies a borrowed [FVM_Value](../include/flashvm/value.h#L24) rather
+count processing; ordinary stack_push still copies a borrowed [FVM_Value](../include/flashvm/value.h#L26) rather
 than arbitrary external string storage.
 
 All successful native value types are validated before reading their enum tag:
@@ -66,7 +66,7 @@ Linux profiles only; complete stage 7 remains open.
 
 ## v0.457 — snapshot direct global-call arguments
 
-[fvm_call_bytes](../include/flashvm/value.h#L98) copies arguments into a rooted vector before clearing the output
+[fvm_call_bytes](../include/flashvm/value.h#L148) copies arguments into a rooted vector before clearing the output
 or resolving a global Function. A result may alias an argument, and callbacks
 may mutate the caller's value array without changing the active invocation.
 Caller-owned external string buffers must still remain valid for the call.
@@ -117,7 +117,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.460 — root named-constructor arguments before global lookup
 
-[fvm_construct_bytes](../include/flashvm/value.h#L155) snapshots and roots caller arguments before resolving a
+[fvm_construct_bytes](../include/flashvm/value.h#L227) snapshots and roots caller arguments before resolving a
 constructor name. Global getters/resolvers can collect or mutate the caller's
 array before Function construction; registered C factories also receive the
 stable snapshot. The ordinary native barrier remains. Constructor output is
@@ -134,7 +134,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.462 — direct Function construction snapshots arguments
 
-[fvm_function_construct](../include/flashvm/function.h#L69) retains an unpinned input Function and snapshots/roots
+[fvm_function_construct](../include/flashvm/function.h#L85) retains an unpinned input Function and snapshots/roots
 arguments before native factory dispatch or script prototype access. A prototype
 getter may collect or mutate the caller's array before constructor invocation.
 External borrowed string buffers remain caller-owned for the complete call;
@@ -168,7 +168,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.464 — invoke the retained Function argument snapshot
 
-Direct [fvm_function_invoke](../include/flashvm/function.h#L65) now passes its retained copy to the callback, rather
+Direct [fvm_function_invoke](../include/flashvm/function.h#L79) now passes its retained copy to the callback, rather
 than the caller's mutable array. The output is cleared after copying, so it may
 alias any argument. Validation/OOM errors still clear the output; external string
 buffers remain caller-owned. Existing single-frame root layout and native barrier
@@ -193,11 +193,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
-| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
-| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
-| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
-| `fvm_stack_push` | function | [include/flashvm/stack.h:29](../include/flashvm/stack.h#L29) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../include/flashvm/value.h#L204) |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:148](../include/flashvm/value.h#L148) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:227](../include/flashvm/value.h#L227) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:85](../include/flashvm/function.h#L85) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:79](../include/flashvm/function.h#L79) |
+| `fvm_stack_push` | function | [include/flashvm/stack.h:41](../include/flashvm/stack.h#L41) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

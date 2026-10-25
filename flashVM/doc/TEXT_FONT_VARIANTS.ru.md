@@ -1,11 +1,11 @@
 # Явные начертания встроенных шрифтов
 
-v0.869 добавляет [fvm_standard_text_register_font_variant](../include/flashvm/standard_text.h#L35)(context, family, variant,
+v0.869 добавляет [fvm_standard_text_register_font_variant](../include/flashvm/standard_text.h#L41)(context, family, variant,
 bytes, size, face_index). Функция проверяет и копирует настоящее лицо шрифта в слот
 семейства: [FVM_TEXT_FONT_REGULAR](../include/flashvm/standard_text.h#L10) (ноль), [FVM_TEXT_FONT_BOLD](../include/flashvm/standard_text.h#L11), [FVM_TEXT_FONT_ITALIC](../include/flashvm/standard_text.h#L12)
 или их побитовое объединение. Нужное лицо передаёт хост; флаги выбирают слот,
 не синтезируют контуры и не угадывают начертание по метаданным. Прежняя
-[fvm_standard_text_register_font](../include/flashvm/standard_text.h#L25) регистрирует regular без изменения контракта.
+[fvm_standard_text_register_font](../include/flashvm/standard_text.h#L29) регистрирует regular без изменения контракта.
 
 Нужны живой контекст в потоке-владельце, непустое terminated-имя семейства до 255
 байтов, допустимые флаги и читаемые данные/index лица. Байты заимствуются на время
@@ -91,8 +91,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:25](../include/flashvm/standard_text.h#L25) |
-| `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:35](../include/flashvm/standard_text.h#L35) |
+| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:29](../include/flashvm/standard_text.h#L29) |
+| `fvm_standard_text_register_font_variant` | function | [include/flashvm/standard_text.h:41](../include/flashvm/standard_text.h#L41) |
 | `FVM_TEXT_FONT_BOLD` | macro / define | [include/flashvm/standard_text.h:11](../include/flashvm/standard_text.h#L11) |
 | `FVM_TEXT_FONT_ITALIC` | macro / define | [include/flashvm/standard_text.h:12](../include/flashvm/standard_text.h#L12) |
 | `FVM_TEXT_FONT_REGULAR` | macro / define | [include/flashvm/standard_text.h:10](../include/flashvm/standard_text.h#L10) |

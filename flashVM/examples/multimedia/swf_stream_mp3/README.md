@@ -70,18 +70,18 @@ no owner is destroyed twice. `print_block` only reads scalar metadata.
 
 | Function | Behavior demonstrated and manual |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initializes configuration/ABI before runtime creation; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquires the source runtime owner; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquires the source movie context; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) | Loads canonical native SWF storage; successful reload would end live views; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_swf_stream_sound_mp3_block_at`](../../../include/flashvm/swf_stream_sound.h#L51) | Validates selected live prefix and borrows MPEG span without allocation; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#fvm_swf_stream_sound_mp3_block_at) |
-| [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L65) | Allocates/copies one encoded segment under the native budget; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#capture-and-ownership) |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Ends source context/live views before reading the snapshot; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Releases the source runtime; snapshot retains no VM owner; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
-| [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L166) | Copies header latency independently of block seek; [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm) |
-| [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L168) | Reads the prepared index without movie rescanning; [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm) |
-| [`fvm_swf_stream_sound_snapshot_mp3_block_at`](../../../include/flashvm/swf_stream_sound.h#L172) | Borrows MPEG span and copied prefix after source VM teardown; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#fvm_swf_stream_sound_snapshot_mp3_block_at) |
-| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L199) | Frees native storage and ends all snapshot views; accepts null; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#capture-and-ownership) |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initializes configuration/ABI before runtime creation; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Acquires the source runtime owner; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Acquires the source movie context; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L90) | Loads canonical native SWF storage; successful reload would end live views; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_swf_stream_sound_mp3_block_at`](../../../include/flashvm/swf_stream_sound.h#L57) | Validates selected live prefix and borrows MPEG span without allocation; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#fvm_swf_stream_sound_mp3_block_at) |
+| [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L83) | Allocates/copies one encoded segment under the native budget; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#capture-and-ownership) |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Ends source context/live views before reading the snapshot; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Releases the source runtime; snapshot retains no VM owner; [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context) |
+| [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L201) | Copies header latency independently of block seek; [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm) |
+| [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L205) | Reads the prepared index without movie rescanning; [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm) |
+| [`fvm_swf_stream_sound_snapshot_mp3_block_at`](../../../include/flashvm/swf_stream_sound.h#L213) | Borrows MPEG span and copied prefix after source VM teardown; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#fvm_swf_stream_sound_snapshot_mp3_block_at) |
+| [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L248) | Frees native storage and ends all snapshot views; accepts null; [SWF_STREAM_MP3.md](../../../doc/SWF_STREAM_MP3.md#capture-and-ownership) |
 
 Каталог: [examples/README.md](../../README.md#example-multimedia-swf_stream_mp3).
 
@@ -108,9 +108,9 @@ VM/runtime и пишет native-endian interleaved S16. Выход заменя�
 
 | API | Contract / Контракт |
 | --- | --- |
-| [`fvm_swf_stream_sound_snapshot_open_pcm_bounded`](../../../include/flashvm/swf_stream_sound.h#L103) | Validate and normalize the complete first segment on the VM owner thread, outside GC; errors publish no owner. Caller closes the independent snapshot. Peak limit includes transient encoded and PCM storage. [EN](../../../doc/STREAM_STORAGE.md) / [RU](../../../doc/STREAM_STORAGE.ru.md). |
-| [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L40) | Borrow a prepared immutable PCM snapshot without allocation; caller cursor lives independently after VM teardown and cannot outlive the snapshot. Errors preserve cursor. [Contract](../../../doc/STREAM_PCM_READER.md). |
-| [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L48) | Fill bounded caller S16 storage and block/frame metadata without VM, allocation or I/O; zero markers advance and EOF preserves outputs. Cursor has one serial owner. [Contract](../../../doc/STREAM_PCM_READER.md). |
+| [`fvm_swf_stream_sound_snapshot_open_pcm_bounded`](../../../include/flashvm/swf_stream_sound.h#L128) | Validate and normalize the complete first segment on the VM owner thread, outside GC; errors publish no owner. Caller closes the independent snapshot. Peak limit includes transient encoded and PCM storage. [EN](../../../doc/STREAM_STORAGE.md) / [RU](../../../doc/STREAM_STORAGE.ru.md). |
+| [`fvm_swf_stream_pcm_reader_init`](../../../include/flashvm/swf_stream_pcm.h#L44) | Borrow a prepared immutable PCM snapshot without allocation; caller cursor lives independently after VM teardown and cannot outlive the snapshot. Errors preserve cursor. [Contract](../../../doc/STREAM_PCM_READER.md). |
+| [`fvm_swf_stream_pcm_reader_next`](../../../include/flashvm/swf_stream_pcm.h#L54) | Fill bounded caller S16 storage and block/frame metadata without VM, allocation or I/O; zero markers advance and EOF preserves outputs. Cursor has one serial owner. [Contract](../../../doc/STREAM_PCM_READER.md). |
 
 
 ## Verify without an output file / Проверка без выходного файла (v0.818)
@@ -148,8 +148,8 @@ may leave a partial destination. Full A/V/reference/player acceptance remains op
 
 | API | Individual purpose and ownership contract |
 | --- | --- |
-| [fvm_swf_stream_sound_snapshot_seek_point](../../../include/flashvm/swf_stream_sound.h#L162) | Copy a checked authored MP3 position without allocation/VM/callback; snapshot remains borrowed during the call. [Guide](../../../doc/MP3_FRAME_SEEK.md). |
-| [fvm_swf_stream_pcm_reader_seek](../../../include/flashvm/swf_stream_pcm.h#L54) | Reset the native reader to the resolved block/sample offset; reader borrows snapshot until reading ends. [Guide](../../../doc/STREAM_PCM_READER.md). |
+| [fvm_swf_stream_sound_snapshot_seek_point](../../../include/flashvm/swf_stream_sound.h#L196) | Copy a checked authored MP3 position without allocation/VM/callback; snapshot remains borrowed during the call. [Guide](../../../doc/MP3_FRAME_SEEK.md). |
+| [fvm_swf_stream_pcm_reader_seek](../../../include/flashvm/swf_stream_pcm.h#L62) | Reset the native reader to the resolved block/sample offset; reader borrows snapshot until reading ends. [Guide](../../../doc/STREAM_PCM_READER.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -160,21 +160,21 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../../../include/flashvm/swf_stream_pcm.h#L40) |
-| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../../../include/flashvm/swf_stream_pcm.h#L48) |
-| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../../../include/flashvm/swf_stream_pcm.h#L54) |
-| `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../../../include/flashvm/swf_stream_sound.h#L51) |
-| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:168](../../../include/flashvm/swf_stream_sound.h#L168) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:199](../../../include/flashvm/swf_stream_sound.h#L199) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:166](../../../include/flashvm/swf_stream_sound.h#L166) |
-| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:172](../../../include/flashvm/swf_stream_sound.h#L172) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
-| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:103](../../../include/flashvm/swf_stream_sound.h#L103) |
-| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:162](../../../include/flashvm/swf_stream_sound.h#L162) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../../../include/flashvm/flashvm.h#L90) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:44](../../../include/flashvm/swf_stream_pcm.h#L44) |
+| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:54](../../../include/flashvm/swf_stream_pcm.h#L54) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:62](../../../include/flashvm/swf_stream_pcm.h#L62) |
+| `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:57](../../../include/flashvm/swf_stream_sound.h#L57) |
+| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:205](../../../include/flashvm/swf_stream_sound.h#L205) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:248](../../../include/flashvm/swf_stream_sound.h#L248) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:201](../../../include/flashvm/swf_stream_sound.h#L201) |
+| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:213](../../../include/flashvm/swf_stream_sound.h#L213) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:83](../../../include/flashvm/swf_stream_sound.h#L83) |
+| `fvm_swf_stream_sound_snapshot_open_pcm_bounded` | function | [include/flashvm/swf_stream_sound.h:128](../../../include/flashvm/swf_stream_sound.h#L128) |
+| `fvm_swf_stream_sound_snapshot_seek_point` | function | [include/flashvm/swf_stream_sound.h:196](../../../include/flashvm/swf_stream_sound.h#L196) |
 <!-- source-links:end -->

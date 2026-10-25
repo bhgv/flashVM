@@ -2,7 +2,7 @@
 
 ## Scope / Область реализации
 
-v0.568 adds the private offline target [`FVM_JIT_TARGET_MACOS_ARM64`](../src/jit/backend.hpp#L18). It lowers
+v0.568 adds the private offline target [`FVM_JIT_TARGET_MACOS_ARM64`](../src/jit/backend.hpp#L20). It lowers
 the existing decoded helper-call plan; it does not directly compile arbitrary
 C/C++, Swift, floating-point/variadic calls or arm64e authenticated pointers.
 There is no new public C ABI. v0.568 was offline-only; the v0.569 runtime
@@ -17,15 +17,15 @@ publication section below describes the separate opt-in and its native acceptanc
 
 Apple's [ARM64 ABI documentation](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms)
 reserves X18 and requires a valid frame record through X29. The separate
-[`fvm_jit_machine_macos_arm64`](../src/jit/machine.hpp#L32) prologue preserves X19/X20, saves X29/LR at SP+16
+[`fvm_jit_machine_macos_arm64`](../src/jit/machine.hpp#L49) prologue preserves X19/X20, saves X29/LR at SP+16
 inside a 32-byte aligned frame and links X29 to that record before calling a
 helper. The epilogue restores the entire frame on normal and error exits.
 X18 is never used. The emitter neither consumes nor stores red-zone data.
 
 X19 retains the invocation pointer across helper calls. Each shared
-[`fvm_jit_machine_arm64`](../src/jit/arm64.cpp#L17) call sequence reinstalls X0 and a zero-extended unsigned
+[`fvm_jit_machine_arm64`](../src/jit/arm64.cpp#L26) call sequence reinstalls X0 and a zero-extended unsigned
 32-bit operand in W1, loads the full helper address into X16, then executes BLR.
-The shared [`fvm_jit_encode`](../src/jit/backend.hpp#L30) relocation path patches AArch64 B instructions,
+The shared [`fvm_jit_encode`](../src/jit/backend.hpp#L38) relocation path patches AArch64 B instructions,
 including backwards branches and conditional branches beyond the CBZ range.
 These fixed two-argument helpers do not require stack arguments or variadic rules.
 No unwind-table registration or pointer authentication is provided.
@@ -111,7 +111,7 @@ needs a separately coordinated host policy and is not provided here.
 
 Apple's [JIT porting guide](https://developer.apple.com/documentation/apple-silicon/porting-just-in-time-compilers-to-apple-silicon)
 limits a Hardened Runtime application with allow-jit to one MAP_JIT region.
-[`fvm_mac_arm64_code_create`](../ports/mac/code_arm64.cpp#L159) therefore lazily reserves one process-lifetime
+[`fvm_mac_arm64_code_create`](../ports/mac/code_arm64.cpp#L193) therefore lazily reserves one process-lifetime
 [`FVM_MAC_JIT_ARENA_BYTES`](../ports/mac/code_arm64_constants.h#L5) region (64 MiB), then assigns aligned non-overlapping
 slots of [`FVM_MAC_JIT_SLOT_ALIGNMENT`](../ports/mac/code_arm64_constants.h#L7) bytes (16-byte alignment). Out-of-band
 metadata and a pthread mutex protect allocation, splitting, coalescing and
@@ -120,9 +120,9 @@ The virtual reservation remains until process exit; no library shutdown/remap
 protocol or cross-library MAP_JIT pool negotiation is provided. Another library
 may already own the OS-permitted region; mmap can then fail.
 
-[`fvm_mac_arm64_code_release`](../ports/mac/code_arm64.cpp#L182) returns an inactive slot and merges neighbouring free
+[`fvm_mac_arm64_code_release`](../ports/mac/code_arm64.cpp#L222) returns an inactive slot and merges neighbouring free
 slots. Other live bodies retain their addresses and bytes. A fragmented/full
-pool returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44). The shared reservation, slot padding and native
+pool returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L46). The shared reservation, slot padding and native
 metadata are not counted as per-context retained instruction bytes; the existing
 JIT source/code budgets remain separate. No managed objects or GC roots live in
 the arena metadata. Caller ownership must exclude release while any thread could
@@ -245,14 +245,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
-| `fvm_jit_machine_arm64` | function | [src/jit/arm64.cpp:17](../src/jit/arm64.cpp#L17) |
-| `fvm_jit_machine_macos_arm64` | function | [src/jit/machine.hpp:32](../src/jit/machine.hpp#L32) |
-| `FVM_JIT_TARGET_MACOS_ARM64` | enum constant | [src/jit/backend.hpp:18](../src/jit/backend.hpp#L18) |
-| `fvm_mac_arm64_code_create` | function | [ports/mac/code_arm64.cpp:159](../ports/mac/code_arm64.cpp#L159) |
-| `fvm_mac_arm64_code_release` | function | [ports/mac/code_arm64.cpp:182](../ports/mac/code_arm64.cpp#L182) |
-| `fvm_mac_arm64_code_supported` | function | [ports/mac/code_arm64.cpp:149](../ports/mac/code_arm64.cpp#L149) |
+| `fvm_jit_encode` | function | [src/jit/backend.hpp:38](../src/jit/backend.hpp#L38) |
+| `fvm_jit_machine_arm64` | function | [src/jit/arm64.cpp:26](../src/jit/arm64.cpp#L26) |
+| `fvm_jit_machine_macos_arm64` | function | [src/jit/machine.hpp:49](../src/jit/machine.hpp#L49) |
+| `FVM_JIT_TARGET_MACOS_ARM64` | enum constant | [src/jit/backend.hpp:20](../src/jit/backend.hpp#L20) |
+| `fvm_mac_arm64_code_create` | function | [ports/mac/code_arm64.cpp:193](../ports/mac/code_arm64.cpp#L193) |
+| `fvm_mac_arm64_code_release` | function | [ports/mac/code_arm64.cpp:222](../ports/mac/code_arm64.cpp#L222) |
+| `fvm_mac_arm64_code_supported` | function | [ports/mac/code_arm64.cpp:182](../ports/mac/code_arm64.cpp#L182) |
 | `FVM_MAC_JIT_ARENA_BYTES` | macro / define | [ports/mac/code_arm64_constants.h:5](../ports/mac/code_arm64_constants.h#L5) |
 | `FVM_MAC_JIT_SLOT_ALIGNMENT` | macro / define | [ports/mac/code_arm64_constants.h:7](../ports/mac/code_arm64_constants.h#L7) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

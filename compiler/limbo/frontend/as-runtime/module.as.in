@@ -1,0 +1,122 @@
+// External non-Dis AS implementation of the supplied Limbo .m interface.
+// The native host must check the full descriptor and marshal types before delivery.
+
+
+// Construct one checked AS-side external-module dispatch capability.
+// Parameters: handlers maps declaration IDs to callbacks; null selects generated stubs.
+// Returns an AS-owned module object; native registration/heap marshaling remains host work.
+function @P@_module(handlers)
+{
+    if (handlers == null)
+    {
+        handlers = @P@_defaults;
+    }
+
+    var entries = new Object(); // Private declaration-ID lookup; values borrow generated metadata.
+    for (var i = 0; i < @P@_contract.exports.length; i++)
+    {
+        var entry = @P@_contract.exports[i]; // Borrow one generated export descriptor.
+        entries["d" + entry.declaration] = entry;
+    }
+
+    var module = new Object(); // Own the external dispatch capability in this AS heap.
+    module.interface_id = @P@_contract.interface_id; // Expose this exact generated interface identity.
+    // Exactly one reply per dispatch. Replay/deduplication is a host responsibility.
+
+
+    // Dispatch one external call and send at most one reply value.
+    // Parameters: request is borrowed envelope data; reply consumes the reply envelope.
+    // Returns no result; malformed requests and callback failures produce error replies.
+    module.dispatch = function(request, reply)
+    {
+        if (typeof reply != "function")
+        {
+            throw "reply callback required";
+        }
+
+        var id = -1; // Use an invalid correlation ID until the envelope is inspected.
+        var declaration = -1; // Use an invalid export ID until the envelope is inspected.
+        if (request != null)
+        {
+            id = request.id;
+            declaration = request.declaration;
+        }
+
+        var answered = false; // Per-dispatch completion latch; never a cross-thread native lock.
+
+
+        // Complete this dispatch exactly once, retaining its correlation identity.
+        // Parameters: status is ok/error; value is the result; error is a diagnostic value.
+        // Returns nothing; a second completion attempt is ignored.
+        var finish = function(status, value, error)
+        {
+            if (answered)
+            {
+                return;
+            }
+
+            answered = true;
+            reply({
+                    schema : 1,
+                    engine : "as",
+                    interface_id : @P@_contract.interface_id,
+                    id : id,
+                    declaration : declaration,
+                    status : status,
+                    value : value,
+                    error : error
+            });
+        };
+        if (request == null || request.schema !== 1 || request.engine !== "as" ||
+            request.interface_id !== @P@_contract.interface_id || typeof id != "number" || id < 1 ||
+            id > 2147483647 || id % 1 != 0)
+        {
+            finish("error", null, "invalid external module request");
+            return;
+        }
+
+        var descriptor = entries["d" + declaration];
+        if (typeof declaration != "number" || declaration < 0 || declaration % 1 != 0 || descriptor == null ||
+            request.module !== descriptor.module || request.name !== descriptor.name ||
+            !(request.args instanceof Array))
+        {
+            finish("error", null, "interface/export mismatch");
+            return;
+        }
+
+        if (!@P@_arguments(descriptor.signature, request.args))
+        {
+            finish("error", null, "argument type/arity mismatch");
+            return;
+        }
+
+        var handler = handlers["d" + declaration];
+        if (typeof handler != "function")
+        {
+            finish("error", null, "external callback is not implemented");
+            return;
+        }
+
+        try
+        {
+            var value = handler(request.args, request);
+            if (!@P@_scalar(descriptor.signature.result, value))
+            {
+                throw "result type mismatch";
+            }
+
+            finish("ok", value, null);
+        }
+
+        catch (error)
+        {
+            if (answered)
+            {
+                throw error;
+            }
+
+            finish("error", null, String(error));
+        }
+    };
+    return module;
+}

@@ -1,7 +1,7 @@
 # Named call names / Имена именованных вызовов
 
 v0.245 converts loaded CallFunction and NewObject names using the version-aware
-C89 service [`fvm_exec_to_string`](../include/flashvm/execution.h#L478). Conversion runs before the argument-count
+C89 service [`fvm_exec_to_string`](../include/flashvm/execution.h#L634). Conversion runs before the argument-count
 callback, and the resulting text replaces the rooted stack operand before count
 conversion can collect. Numeric and object names now participate in ordinary
 counted name lookup. Unloaded hosts retain their string-only action contract.
@@ -44,5 +44,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_to_string` | function | [include/flashvm/execution.h:478](../include/flashvm/execution.h#L478) |
+| `fvm_exec_to_string` | function | [include/flashvm/execution.h:634](../include/flashvm/execution.h#L634) |
 <!-- source-links:end -->

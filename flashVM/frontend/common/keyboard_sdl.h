@@ -5,17 +5,26 @@
 #include <SDL.h>
 #include <string.h>
 
+
 /* Translate supported SDL key symbols to Flash/Windows-style virtual-key slots. */
 static unsigned int fvm_desktop_key_code(SDL_Keycode key)
 {
     if (key >= SDLK_a && key <= SDLK_z)
+    {
         return FVM_KEY_LETTER_A + (unsigned int)(key - SDLK_a);
+    }
     if (key >= SDLK_0 && key <= SDLK_9)
+    {
         return FVM_KEY_DIGIT0 + (unsigned int)(key - SDLK_0);
+    }
     if (key >= SDLK_F1 && key <= SDLK_F12)
+    {
         return FVM_KEY_F1 + (unsigned int)(key - SDLK_F1);
+    }
     if (key >= SDLK_KP_1 && key <= SDLK_KP_9)
+    {
         return FVM_KEY_NUMPAD0 + (unsigned int)(key - SDLK_KP_1) + 1;
+    }
     switch (key)
     {
     case SDLK_KP_0:
@@ -91,25 +100,32 @@ static unsigned int fvm_desktop_key_code(SDL_Keycode key)
     }
 }
 
+
 /* Derive English ASCII for polling; SDL text input/IME composition is deliberately separate. */
 static unsigned int fvm_desktop_key_ascii(SDL_Keycode key, SDL_Keymod mods)
 {
     int shift = (mods & KMOD_SHIFT) != 0;
     if (key >= SDLK_a && key <= SDLK_z)
+    {
         return (unsigned int)((shift != ((mods & KMOD_CAPS) != 0)) ? key - SDLK_a + 'A' : key);
+    }
     if (key >= SDLK_0 && key <= SDLK_9 && shift)
+    {
         return (unsigned int)")!@#$%^&*("[key - SDLK_0];
+    }
     if (shift)
     {
         const char *plain = "`;=,-./[\\]'";
         const char *shifted = "~:+<_>?{|}\"";
-        const char *found =
-            key > 0 && (unsigned int)key <= FVM_KEYBOARD_ASCII_MAX ? strchr(plain, (int)key) : 0;
+        const char *found = key > 0 && (unsigned int)key <= FVM_KEYBOARD_ASCII_MAX ? strchr(plain, (int)key) : 0;
         if (found)
+        {
             return (unsigned int)shifted[found - plain];
+        }
     }
     return key > 0 && (unsigned int)key <= FVM_KEYBOARD_ASCII_MAX ? (unsigned int)key : 0;
 }
+
 
 /* Apply one main-thread transition; repeats update codes but do not create extra held keys. */
 static void fvm_desktop_keyboard_event(FVM_KeyboardState *state, const SDL_KeyboardEvent *event)
@@ -122,7 +138,9 @@ static void fvm_desktop_keyboard_event(FVM_KeyboardState *state, const SDL_Keybo
     {
         state->down[code] = (unsigned char)down;
         if (down)
+        {
             state->last_code = code;
+        }
     }
     state->last_ascii = fvm_desktop_key_ascii(event->keysym.sym, mods);
     state->caps_lock = (mods & KMOD_CAPS) != 0;

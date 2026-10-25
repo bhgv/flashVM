@@ -6,10 +6,10 @@
 запись снимается при успехе, отмене worker, закрытии или ошибке до освобождения
 этой ссылки. Nonblocking contention не оставляет записи после возвращения.
 
-[`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L87) теперь показывает такие ожидания. Новый
-[`fvm_debug_mutex_detail_snapshot`](../include/flashvm/debug.h#L98) дополнительно возвращает признак remote и
+[`fvm_debug_mutex_snapshot`](../include/flashvm/debug.h#L108) теперь показывает такие ожидания. Новый
+[`fvm_debug_mutex_detail_snapshot`](../include/flashvm/debug.h#L123) дополнительно возвращает признак remote и
 скопированный capability URI (512 bytes). Оба API копируют coherent registry
-snapshot под lock без RPC; размер существующего [FVM_DebugMutex](../include/flashvm/debug.h#L67) не изменён.
+snapshot под lock без RPC; размер существующего [FVM_DebugMutex](../include/flashvm/debug.h#L85) не изменён.
 При нехватке capacity возвращается NOT_FOUND и требуемое число строк; буфер
 строк не изменяется. Запрос count с capacity=0 разрешён. Повторный вызов требует
 учитывать изменение числа потоков между запросами.
@@ -36,9 +36,9 @@ offset and retains a native reference until success, cancellation, closure or
 failure removes the entry. Nonblocking calls leave no persistent wait row.
 
 The existing snapshot includes remote requests. The new endpoint-aware
-[`fvm_debug_mutex_detail_snapshot`](../include/flashvm/debug.h#L98) also copies the remote flag and 512-byte URI.
+[`fvm_debug_mutex_detail_snapshot`](../include/flashvm/debug.h#L123) also copies the remote flag and 512-byte URI.
 Both snapshots hold only the local registry lock and perform no network requests.
-The existing [FVM_DebugMutex](../include/flashvm/debug.h#L67) ABI is unchanged. Insufficient capacity returns
+The existing [FVM_DebugMutex](../include/flashvm/debug.h#L85) ABI is unchanged. Insufficient capacity returns
 NOT_FOUND and required count without changing row buffers; capacity-zero count
 queries are supported. Counts may change before the next snapshot call.
 
@@ -95,7 +95,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:98](../include/flashvm/debug.h#L98) |
-| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:87](../include/flashvm/debug.h#L87) |
-| `FVM_DebugMutex` | struct | [include/flashvm/debug.h:67](../include/flashvm/debug.h#L67) |
+| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:123](../include/flashvm/debug.h#L123) |
+| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:108](../include/flashvm/debug.h#L108) |
+| `FVM_DebugMutex` | struct | [include/flashvm/debug.h:85](../include/flashvm/debug.h#L85) |
 <!-- source-links:end -->

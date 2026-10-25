@@ -7,8 +7,8 @@
 
 ## Владение и результат
 
-Снимок готовит владелец VM через [`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L65), затем
-инициализирует собственный [FVM_SWFStreamPCMReader](../include/flashvm/swf_stream_pcm.h#L27). Снимок владеет копией encoded
+Снимок готовит владелец VM через [`fvm_swf_stream_sound_snapshot_open`](../include/flashvm/swf_stream_sound.h#L83), затем
+инициализирует собственный [FVM_SWFStreamPCMReader](../include/flashvm/swf_stream_pcm.h#L29). Снимок владеет копией encoded
 байтов и индекса; reader заимствует его без allocation. Исходные context/runtime
 можно уничтожить. Снимок должен жить до завершения всех читателей, после чего
 его закрывают один раз. Деструктор reader не нужен. Один курсор используется
@@ -34,9 +34,9 @@ audio clock и A/V sync не добавляются. Немутое root stream 
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_swf_stream_pcm_reader_init`](../include/flashvm/swf_stream_pcm.h#L40) | Заимствует готовый PCM snapshot, копирует header/count и начинает с 0/0. INVALID_ARGUMENT при null, UNSUPPORTED при другом codec/short representation. Без allocation, ошибка сохраняет reader. |
-| [`fvm_swf_stream_pcm_reader_next`](../include/flashvm/swf_stream_pcm.h#L48) | Читает ограниченный chunk, публикует metadata/written только при OK. Нужны точный chunk.struct_size, положительный max_frames, ёмкость в значениях каналов и PCM pointer для непустого результата. INVALID_ARGUMENT при неверных descriptor/capacity/range, NOT_FOUND на EOF. Ошибка сохраняет cursor, PCM, metadata и written. Успех всегда продвигается, включая пустые/end markers. |
-| [`fvm_swf_stream_pcm_reader_seek`](../include/flashvm/swf_stream_pcm.h#L54) | Задаёт block и first <= sample_count; block_count/0 — явный EOF. Позиция на конце даёт нулевой END marker; EMPTY добавляется лишь для действительно пустого блока. Ошибка сохраняет cursor. Нет decoding/allocation/output side effects. |
+| [`fvm_swf_stream_pcm_reader_init`](../include/flashvm/swf_stream_pcm.h#L44) | Заимствует готовый PCM snapshot, копирует header/count и начинает с 0/0. INVALID_ARGUMENT при null, UNSUPPORTED при другом codec/short representation. Без allocation, ошибка сохраняет reader. |
+| [`fvm_swf_stream_pcm_reader_next`](../include/flashvm/swf_stream_pcm.h#L54) | Читает ограниченный chunk, публикует metadata/written только при OK. Нужны точный chunk.struct_size, положительный max_frames, ёмкость в значениях каналов и PCM pointer для непустого результата. INVALID_ARGUMENT при неверных descriptor/capacity/range, NOT_FOUND на EOF. Ошибка сохраняет cursor, PCM, metadata и written. Успех всегда продвигается, включая пустые/end markers. |
+| [`fvm_swf_stream_pcm_reader_seek`](../include/flashvm/swf_stream_pcm.h#L62) | Задаёт block и first <= sample_count; block_count/0 — явный EOF. Позиция на конце даёт нулевой END marker; EMPTY добавляется лишь для действительно пустого блока. Ошибка сохраняет cursor. Нет decoding/allocation/output side effects. |
 
 Reader можно копировать как native снимок позиции с тем же требованием к
 времени жизни source. Seek меняет только курсор: уже отправленный или сыгранный
@@ -88,10 +88,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:40](../include/flashvm/swf_stream_pcm.h#L40) |
-| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:48](../include/flashvm/swf_stream_pcm.h#L48) |
-| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
-| `FVM_SWFStreamPCMReader` | struct | [include/flashvm/swf_stream_pcm.h:27](../include/flashvm/swf_stream_pcm.h#L27) |
-| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:15](../src/swf/sound_stream_internal.hpp#L15) |
+| `fvm_swf_stream_pcm_reader_init` | function | [include/flashvm/swf_stream_pcm.h:44](../include/flashvm/swf_stream_pcm.h#L44) |
+| `fvm_swf_stream_pcm_reader_next` | function | [include/flashvm/swf_stream_pcm.h:54](../include/flashvm/swf_stream_pcm.h#L54) |
+| `fvm_swf_stream_pcm_reader_seek` | function | [include/flashvm/swf_stream_pcm.h:62](../include/flashvm/swf_stream_pcm.h#L62) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:83](../include/flashvm/swf_stream_sound.h#L83) |
+| `FVM_SWFStreamPCMReader` | struct | [include/flashvm/swf_stream_pcm.h:29](../include/flashvm/swf_stream_pcm.h#L29) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream_internal.hpp:19](../src/swf/sound_stream_internal.hpp#L19) |
 <!-- source-links:end -->

@@ -4,12 +4,16 @@
 
 #include "../input_port.h"
 #include <windows.h>
+
+
 /* Poll port mouse. */
 int fvm_port_mouse_poll(FVM_PortMouseState *state)
 {
     POINT p;
     if (!state || !GetCursorPos(&p))
+    {
         return 0;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     state->x = p.x;
@@ -19,6 +23,7 @@ int fvm_port_mouse_poll(FVM_PortMouseState *state)
                      ((GetAsyncKeyState(VK_MBUTTON) & 0x8000) ? 4U : 0U);
     return 1;
 }
+
 
 /* Poll port android touch. */
 int fvm_port_android_touch_poll(void *queue, unsigned int *fingers, float *x, float *y, int *action)

@@ -1,6 +1,6 @@
 # Frame availability / Проверка доступности кадра — v0.293
 
-WaitForFrame and WaitForFrame2 now call C89 [`fvm_exec_frame_loaded`](../include/flashvm/execution.h#L161) with semantic
+WaitForFrame and WaitForFrame2 now call C89 [`fvm_exec_frame_loaded`](../include/flashvm/execution.h#L203) with semantic
 DIRECT or VALUE policies. The service accepts values and returns Boolean without
 bytecode or an interpreter stack. The interpreter decodes the direct frame/skip
 fields and skips complete Action records when the result is false. Variable-size
@@ -53,5 +53,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_exec_frame_loaded` | function | [include/flashvm/execution.h:161](../include/flashvm/execution.h#L161) |
+| `fvm_exec_frame_loaded` | function | [include/flashvm/execution.h:203](../include/flashvm/execution.h#L203) |
 <!-- source-links:end -->

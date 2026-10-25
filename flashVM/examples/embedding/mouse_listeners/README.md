@@ -47,22 +47,22 @@ GC. Очистка учитывает частичный успех и сохр�
 
 | Function | Purpose, ownership and contract |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime before its context; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent VM state; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install ordinary constructors, without opting into Mouse; [Mouse](../../../doc/MOUSE.md#installation). |
-| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L50) | Atomically publish the explicit script namespace; no OS access or callback; [Mouse](../../../doc/MOUSE.md#installation). |
-| [`fvm_object_create`](../../../include/flashvm/value.h#L62) | Create a borrowed context-owned receiver before pinning; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Acquire the temporary construction root; [GC](../../../doc/GARBAGE_COLLECTION.md). |
-| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Register native handlers with borrowed code/userdata and no capture root; [delivery](../../../doc/MOUSE.md#delivery). |
-| [`fvm_input_add_mouse_listener`](../../../include/flashvm/mouse.h#L22) | Retain an identity once, without callbacks or devices; [native contract](../../../doc/MOUSE.md#native-host-contract). |
-| [`fvm_input_dispatch_mouse`](../../../include/flashvm/mouse.h#L29) | Synchronously deliver one contact transition using finite world pixels; [delivery](../../../doc/MOUSE.md#delivery). |
-| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L75) | Copy callback-visible coordinates without allocation; [native contract](../../../doc/MOUSE.md#native-host-contract). |
-| [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize the ignored event return value; [delivery](../../../doc/MOUSE.md#delivery). |
-| [`fvm_input_remove_mouse_listener`](../../../include/flashvm/mouse.h#L24) | Release a registration without allocation; an active snapshot stays rooted; [native contract](../../../doc/MOUSE.md#native-host-contract). |
-| [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | Release the construction pin after the final borrowed access; [GC](../../../doc/GARBAGE_COLLECTION.md). |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release remaining registrations and managed objects; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after context cleanup; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | Initialize caller-owned configuration; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L74) | Acquire the runtime before its context; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L82) | Acquire independent VM state; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Install ordinary constructors, without opting into Mouse; [Mouse](../../../doc/MOUSE.md#installation). |
+| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L66) | Atomically publish the explicit script namespace; no OS access or callback; [Mouse](../../../doc/MOUSE.md#installation). |
+| [`fvm_object_create`](../../../include/flashvm/value.h#L84) | Create a borrowed context-owned receiver before pinning; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_gc_pin`](../../../include/flashvm/gc.h#L60) | Acquire the temporary construction root; [GC](../../../doc/GARBAGE_COLLECTION.md). |
+| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L171) | Register native handlers with borrowed code/userdata and no capture root; [delivery](../../../doc/MOUSE.md#delivery). |
+| [`fvm_input_add_mouse_listener`](../../../include/flashvm/mouse.h#L26) | Retain an identity once, without callbacks or devices; [native contract](../../../doc/MOUSE.md#native-host-contract). |
+| [`fvm_input_dispatch_mouse`](../../../include/flashvm/mouse.h#L37) | Synchronously deliver one contact transition using finite world pixels; [delivery](../../../doc/MOUSE.md#delivery). |
+| [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L96) | Copy callback-visible coordinates without allocation; [native contract](../../../doc/MOUSE.md#native-host-contract). |
+| [`fvm_value_undefined`](../../../include/flashvm/value.h#L46) | Initialize the ignored event return value; [delivery](../../../doc/MOUSE.md#delivery). |
+| [`fvm_input_remove_mouse_listener`](../../../include/flashvm/mouse.h#L30) | Release a registration without allocation; an active snapshot stays rooted; [native contract](../../../doc/MOUSE.md#native-host-contract). |
+| [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L70) | Release the construction pin after the final borrowed access; [GC](../../../doc/GARBAGE_COLLECTION.md). |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L86) | Release remaining registrations and managed objects; [embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | Release the outer owner after context cleanup; [embedding](../../../doc/EMBEDDING_API.md). |
 
 ## Limits / Ограничения
 
@@ -86,20 +86,20 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
-| `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:22](../../../include/flashvm/mouse.h#L22) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../../../include/flashvm/mouse.h#L29) |
-| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../../include/flashvm/input.h#L75) |
-| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:24](../../../include/flashvm/mouse.h#L24) |
-| `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
-| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../../../include/flashvm/mouse.h#L50) |
-| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:60](../../../include/flashvm/gc.h#L60) |
+| `fvm_gc_unpin` | function | [include/flashvm/gc.h:70](../../../include/flashvm/gc.h#L70) |
+| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:26](../../../include/flashvm/mouse.h#L26) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../../../include/flashvm/mouse.h#L37) |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:96](../../../include/flashvm/input.h#L96) |
+| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:30](../../../include/flashvm/mouse.h#L30) |
+| `fvm_object_create` | function | [include/flashvm/value.h:84](../../../include/flashvm/value.h#L84) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:171](../../../include/flashvm/value.h#L171) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:66](../../../include/flashvm/mouse.h#L66) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

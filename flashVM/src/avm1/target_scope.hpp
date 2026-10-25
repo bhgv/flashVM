@@ -2,24 +2,28 @@
 #ifndef FVM_AVM1_TARGET_SCOPE_HPP
 #define FVM_AVM1_TARGET_SCOPE_HPP /* Guard for the private display-target activation scope. */
 #include "../core/runtime.hpp"
+
+
 /* [GC:] Publish one activation's target state and restore suspended state on every exit. */
 class FVM_AVM1TargetScope
 {
-    FVM_Context *context_; /* Context whose active display-target state is temporarily replaced. */
-    bool active_; /* Whether the suspended caller had an active AVM1 target scope. */
-    FVM_Object *base_; /* [GC:] Suspended caller's base clip, also retained in roots_. */
-    FVM_Object *target_; /* [GC:] Suspended caller's selected target, also retained in roots_. */
-    FVM_GCRootFrame frame_; /* [GC:] Root-chain entry retaining both suspended and new state. */
+    FVM_Context *context_;                /* Context whose active display-target state is temporarily replaced. */
+    bool active_;                         /* Whether the suspended caller had an active AVM1 target scope. */
+    FVM_Object *base_;                    /* [GC:] Suspended caller's base clip, also retained in roots_. */
+    FVM_Object *target_;                  /* [GC:] Suspended caller's selected target, also retained in roots_. */
+    FVM_GCRootFrame frame_;               /* [GC:] Root-chain entry retaining both suspended and new state. */
     fvm_detail::vector<FVM_Value> roots_; /* [GC:] Old base/target and new base/target snapshots. */
     /* Keep root-frame ownership unique. */
     FVM_AVM1TargetScope(const FVM_AVM1TargetScope &);
     /* Keep root-frame ownership unique. */
     FVM_AVM1TargetScope &operator=(const FVM_AVM1TargetScope &);
+
   public:
+
+
     /* [GC:] Prepare roots before publishing inherited block state or a fresh script target. */
     FVM_AVM1TargetScope(FVM_Context *c, FVM_Object *receiver, bool inherit)
-        : context_(c), active_(c->avm1_target_active), base_(c->avm1_base_clip),
-          target_(c->avm1_target_clip), roots_(4)
+        : context_(c), active_(c->avm1_target_active), base_(c->avm1_base_clip), target_(c->avm1_target_clip), roots_(4)
     {
         FVM_Object *base = base_, *target = target_;
         if (!inherit || !active_)
@@ -27,11 +31,12 @@ class FVM_AVM1TargetScope
             base = receiver && receiver->resource_kind == FVM_RESOURCE_MOVIECLIP ? receiver : active_ ? base_ : 0;
             if (!base)
             {
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root =
-                    c->global->properties.find("_root");
+                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root = c->global->properties.find("_root");
                 if (root != c->global->properties.end() && root->second.type == FVM_VALUE_OBJECT &&
                     root->second.object && root->second.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
+                {
                     base = root->second.object;
+                }
             }
             target = base;
         }
@@ -54,6 +59,8 @@ class FVM_AVM1TargetScope
         c->avm1_base_clip = base;
         c->avm1_target_clip = target;
     }
+
+
     /* [GC:] Restore caller metadata before removing the roots that preserve it. */
     ~FVM_AVM1TargetScope()
     {

@@ -11,10 +11,10 @@ Player binary oracle. HTML/mixed-font fields, reflow outside native setters, inp
 SWF display-list text integration and physical platform acceptance remain open.
 All nine roadmap stages remain open.
 
-[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L68) copies geometry on the owning context thread. Set exact
-[FVM_TextFieldScrollInfo](../include/flashvm/standard_text.h#L44).struct_size and retain the managed object. It may build a
+[fvm_textfield_scroll_info](../include/flashvm/standard_text.h#L80) copies geometry on the owning context thread. Set exact
+[FVM_TextFieldScrollInfo](../include/flashvm/standard_text.h#L54).struct_size and retain the managed object. It may build a
 cached layout; no script, callback or device executes. Invalid descriptors return
-[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); layout/font/extent and allocation statuses propagate.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47); layout/font/extent and allocation statuses propagate.
 Failure preserves output and scroll offsets; a successfully built cache may remain.
 Serialize field/context changes and GC. No pointer/root is retained in the result.
 
@@ -45,7 +45,7 @@ new selectors are appended and only rootless retired native stubs are upgraded.
 
 ## Binary and channel ownership
 
-Nondefault scroll positions add the [FVM_TEXT_STATE_HAS_SCROLL](../src/standard/text_constants.h#L49) policy bit and two
+Nondefault scroll positions add the [FVM_TEXT_STATE_HAS_SCROLL](../src/standard/text_constants.h#L52) policy bit and two
 numeric values after optional position values. Default offsets omit these bytes;
 older payloads restore scroll=1/hscroll=0. Snapshot charges include the optional
 26 wire bytes. Capture measures/clamps active positions before copying; default
@@ -83,8 +83,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_TEXT_STATE_HAS_SCROLL` | macro / define | [src/standard/text_constants.h:49](../src/standard/text_constants.h#L49) |
-| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:68](../include/flashvm/standard_text.h#L68) |
-| `FVM_TextFieldScrollInfo` | struct | [include/flashvm/standard_text.h:44](../include/flashvm/standard_text.h#L44) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_TEXT_STATE_HAS_SCROLL` | macro / define | [src/standard/text_constants.h:52](../src/standard/text_constants.h#L52) |
+| `fvm_textfield_scroll_info` | function | [include/flashvm/standard_text.h:80](../include/flashvm/standard_text.h#L80) |
+| `FVM_TextFieldScrollInfo` | struct | [include/flashvm/standard_text.h:54](../include/flashvm/standard_text.h#L54) |
 <!-- source-links:end -->

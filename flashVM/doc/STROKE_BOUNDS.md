@@ -18,16 +18,16 @@ paint alpha and bitmap pixels are not read to calculate geometric bounds.
 
 ## Private geometry contract
 
-[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L564) borrows an immutable path, a positive finite width
+[fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L733) borrows an immutable path, a positive finite width
 up to 1,000,000 destination units, supported cap/join selectors and two required
 caller-owned output pointers. The path's existing coordinate limits still apply.
 It allocates no temporary geometry, needs no context or graphics backend and
 must not race path mutation. Output bounds and has_segments are written together
-only after a successful walk. Invalid arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45);
-quadratic or cubic commands return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) and leave both outputs intact.
+only after a successful walk. Invalid arguments return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47);
+quadratic or cubic commands return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) and leave both outputs intact.
 An empty path or only zero-length edges succeeds with zero bounds and no segments.
 
-The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L482). It
+The walker shares contour/tangent handling with [fvm_path_hit_test_style](../src/capi/path_hit_c.cpp#L633). It
 unions finite rectangular bodies, open-end cap extrema and outer round sectors.
 Only cardinal directions inside a round sector can add an axis extremum beyond
 its endpoints. Bevel vertices already belong to the adjacent bodies. Closed
@@ -37,7 +37,7 @@ Move does not enlarge a stroke's bounds.
 
 For supported straight contours these are geometric extents subject to floating
 point arithmetic, not the pixel rectangle of antialias coverage. Public C89 ABI,
-public [fvm_path_bounds](../include/flashvm/path.h#L71), path drawing and point-hit behavior are unchanged. No
+public [fvm_path_bounds](../include/flashvm/path.h#L97), path drawing and point-hit behavior are unchanged. No
 new serialization field, callback or resource identity is needed.
 
 ## Managed integration and explicit fallback
@@ -111,9 +111,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
-| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:482](../src/capi/path_hit_c.cpp#L482) |
-| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:564](../src/capi/path_hit_c.cpp#L564) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:97](../include/flashvm/path.h#L97) |
+| `fvm_path_hit_test_style` | function | [src/capi/path_hit_c.cpp:633](../src/capi/path_hit_c.cpp#L633) |
+| `fvm_path_stroke_bounds_style` | function | [src/capi/path_hit_c.cpp:733](../src/capi/path_hit_c.cpp#L733) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

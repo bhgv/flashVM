@@ -1,30 +1,40 @@
 /* Exactly the adapter's native allocation fails; no VM hook or resource is partially published. */
 #include "flashvm/rdebug.h"
 #include <stdio.h>
-#define CHECK(x)                                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if (!(x))                                                                                  \
-        {                                                                                          \
-            fprintf(stderr, "adapter allocation line %d\n", __LINE__);                             \
-            return 1;                                                                              \
-        }                                                                                          \
+
+#define CHECK(x)                                                                                                       \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+        {                                                                                                              \
+            fprintf(stderr, "adapter allocation line %d\n", __LINE__);                                                 \
+            return 1;                                                                                                  \
+        }                                                                                                              \
     } while (0)
 #include <stdlib.h>
+
 static int fail;
+
+
 static void *allocate(size_t count, size_t size)
 {
     return fail ? 0 : calloc(count, size);
 }
+
 #define calloc allocate
 #include "../../src/capi/rdebug.c"
+
 #undef calloc
+
+
 static FVM_Result service(FVM_RDebug *d, void *raw)
 {
     (void)d;
     (void)raw;
     return FVM_ERROR;
 }
+
+
 int main(void)
 {
     FVM_Config config;
@@ -38,12 +48,10 @@ int main(void)
           fvm_context_create(runtime, &context) == FVM_OK);
     CHECK(fvm_rdispatch_create(0, &dispatch) == FVM_R_OK);
     fail = 1;
-    CHECK(fvm_rdebug_create(context, dispatch, "/debug/ctl", service, 0, &debug, &handle) ==
-          FVM_R_NOMEM);
+    CHECK(fvm_rdebug_create(context, dispatch, "/debug/ctl", service, 0, &debug, &handle) == FVM_R_NOMEM);
     CHECK(debug == (FVM_RDebug *)1 && handle.id == 77 && handle.generation == 88);
     fail = 0;
-    CHECK(fvm_rdebug_create(context, dispatch, "/../bad", service, 0, &debug, &handle) ==
-          FVM_R_INVALID);
+    CHECK(fvm_rdebug_create(context, dispatch, "/../bad", service, 0, &debug, &handle) == FVM_R_INVALID);
     CHECK(debug == (FVM_RDebug *)1 && handle.id == 77 && handle.generation == 88);
     CHECK(fvm_rdispatch_resources(dispatch, 1, 0, 0, &count) == FVM_R_OK && count == 0);
     CHECK(fvm_rdispatch_destroy(&dispatch) == FVM_R_OK);

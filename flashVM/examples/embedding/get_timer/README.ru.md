@@ -20,13 +20,13 @@ cmake --build build --target flashvm_examples_embedding_get_timer_main
 
 | Функция | Назначение в примере |
 | --- | --- |
-| [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Инициализировать принадлежащую вызывающему конфигурацию ABI. |
-| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Скопировать конфигурацию и получить внешний runtime. |
-| [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Получить heap на потоке владельца и независимое начало отсчёта. |
-| [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Опубликовать getTimer и стандартные объекты; сохранить конфликтующие имена. |
-| [fvm_call](../../../include/flashvm/value.h#L138) | Синхронно прочитать Number через getTimer без ожидания и callback; сообщить ошибку часов/памяти. |
-| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Освободить heap и стандартные объекты до уничтожения runtime. |
-| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Освободить внешнего владельца после всех его контекстов. |
+| [fvm_config_init](../../../include/flashvm/flashvm.h#L70) | Инициализировать принадлежащую вызывающему конфигурацию ABI. |
+| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L74) | Скопировать конфигурацию и получить внешний runtime. |
+| [fvm_context_create](../../../include/flashvm/flashvm.h#L82) | Получить heap на потоке владельца и независимое начало отсчёта. |
+| [fvm_standard_install](../../../include/flashvm/standard.h#L22) | Опубликовать getTimer и стандартные объекты; сохранить конфликтующие имена. |
+| [fvm_call](../../../include/flashvm/value.h#L204) | Синхронно прочитать Number через getTimer без ожидания и callback; сообщить ошибку часов/памяти. |
+| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L86) | Освободить heap и стандартные объекты до уничтожения runtime. |
+| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L78) | Освободить внешнего владельца после всех его контекстов. |
 
 Числовой результат не владеет буфером. Все вызовы — на потоке владельца.
 Установка и обвязка вызова могут выделять память; callback часов не выделяет
@@ -44,11 +44,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call` | function | [include/flashvm/value.h:138](../../../include/flashvm/value.h#L138) |
-| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
-| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
-| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
-| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
+| `fvm_call` | function | [include/flashvm/value.h:204](../../../include/flashvm/value.h#L204) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:82](../../../include/flashvm/flashvm.h#L82) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:86](../../../include/flashvm/flashvm.h#L86) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
 <!-- source-links:end -->

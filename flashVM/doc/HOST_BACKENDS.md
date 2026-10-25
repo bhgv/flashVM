@@ -14,21 +14,21 @@ arithmetic and available bytes before entering the backend. `byte_count` is the
 actual accessible allocation span from `surface->pixels`, supplied by the owner;
 the function cannot discover whether an arbitrary pointer is valid. Padding
 between rows is accepted; final-row trailing padding is not required.
-[`FVM_HOST_RGBA_BYTES`](../include/flashvm/host.h#L8) is four. Channel order is RGBA, alpha is straight,
+[`FVM_HOST_RGBA_BYTES`](../include/flashvm/host.h#L9) is four. Channel order is RGBA, alpha is straight,
 coordinates start at the top-left, and stride is in bytes. Conversion to
 premultiplied alpha, BGRA or another row orientation belongs to the backend.
 
-The [`FVM_HostPresentCallback`](../include/flashvm/host.h#L11) receives a copied descriptor and borrowed pixels,
+The [`FVM_HostPresentCallback`](../include/flashvm/host.h#L14) receives a copied descriptor and borrowed pixels,
 synchronously on the caller's thread. It must copy/upload the bytes before
 returning, or make its own owned copy for asynchronous submission. The caller
 keeps descriptor/storage alive and stable during the call. No buffer ownership
 is transferred and the API retains nothing. `userdata` is passed unchanged,
 including NULL. GPU/window resources remain host-owned.
 
-Validation failure returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) and invokes no callback.
+Validation failure returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) and invokes no callback.
 Otherwise the callback is called exactly once and its status is returned;
-[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) is not converted into success. A C++ `std::bad_alloc` is
-contained as [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), other C++ exceptions as [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Hardware
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L48) is not converted into success. A C++ `std::bad_alloc` is
+contained as [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46), other C++ exceptions as [`FVM_ERROR`](../include/flashvm/flashvm.h#L45). Hardware
 faults, longjmp and dangling buffers are outside this contract. There is no VM
 context or GC activity; obey the backend's main-thread/graphics-context rules.
 The SDL adapter additionally rejects frame dimensions different from its
@@ -37,7 +37,7 @@ texture and strides exceeding the SDL signed pitch range before upload.
 ## Event coordinates
 
 `fvm_host_pointer_to_world(world_to_host, host_x, host_y, world_x, world_y)`
-inverts the supplied [`FVM_Affine`](../include/flashvm/path.h#L33) into world pixels. Pass the transform from
+inverts the supplied [`FVM_Affine`](../include/flashvm/path.h#L39) into world pixels. Pass the transform from
 SWF world coordinates to the coordinate space of the actual event. Compose
 stage origin, actor transform, letterboxing and device scale exactly once.
 For example a scale of two with translation (100,50) maps event (120,90) to
@@ -46,15 +46,15 @@ coordinates remain valid: this function does not clip or decide hit testing.
 
 All arguments and coefficients must be finite; the matrix must be nonsingular.
 NULL or identical output pointers, unrepresentable arithmetic and nonfinite
-results return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), preserving both outputs. Linear
+results return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), preserving both outputs. Linear
 coefficients are normalized before determinant evaluation to handle large
 uniform scales; numerically collapsed determinants are rejected. This is host
 double arithmetic, not SWF binary32 matrix emulation. No allocation, VM call,
 callback, event dispatch or GC occurs, so independent storage may be used on
 independent threads. Do not mutate the same arguments concurrently.
 
-Feed successful results to [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L29) on the VM owner thread;
-use [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) for complete key snapshots. Hosts own first
+Feed successful results to [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L37) on the VM owner thread;
+use [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L108) for complete key snapshots. Hosts own first
 contact selection, cancellation, synthesized-event suppression, focus reset
 and event ordering. Do not enter the VM from a platform input worker: copy
 native events and drain them on its owner thread. SDL already normalizes
@@ -98,7 +98,7 @@ the implementation is C++98. See the current stage report for executed runs.
 [Headless C89 host](../examples/frontends/headless/README.md) renders a
 real raster square, validates/consumes its borrowed RGBA frame, converts a
 scaled/translated event, and dispatches down/up into a context without SDL.
-The SDL FIFO now uses [fvm_host_pointer_to_world](../include/flashvm/host.h#L26) for each saved event as well;
+The SDL FIFO now uses [fvm_host_pointer_to_world](../include/flashvm/host.h#L33) for each saved event as well;
 SDL has already normalized its coordinates, so its remaining matrix restores
 only the authored stage origin. Event batching/error/focus-reset rules stay
 the same. The example needs a raster backend and explicitly skips without one.
@@ -112,16 +112,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../include/flashvm/host.h#L26) |
-| `fvm_host_present` | function | [include/flashvm/host.h:18](../include/flashvm/host.h#L18) |
-| `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:8](../include/flashvm/host.h#L8) |
-| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
-| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:33](../include/flashvm/host.h#L33) |
+| `fvm_host_present` | function | [include/flashvm/host.h:23](../include/flashvm/host.h#L23) |
+| `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:9](../include/flashvm/host.h#L9) |
+| `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:14](../include/flashvm/host.h#L14) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |
-| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

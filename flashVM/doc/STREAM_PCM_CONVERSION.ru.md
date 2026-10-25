@@ -40,9 +40,9 @@ block position; EOF — NOT_FOUND с сохранением выходов.
 
 | API | Контракт |
 | --- | --- |
-| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L48) | Проверяет output rate/channels, заимствует native PCM snapshot, копирует source metadata/count. INVALID_ARGUMENT при неверных args, UNSUPPORTED при другом codec/host representation. Без allocation, ошибка сохраняет state. |
-| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L67) | Положительный max_frames, точный chunk.struct_size, ёмкость в значениях каналов и PCM pointer для непустого результата. Ограниченный planning проверяет capacity до записи. EOF/ошибка сохраняют PCM/chunk/written/state. Нет VM, I/O, allocation, callbacks и неявных повторов. |
-| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L73) | Задаёт block/source offset <= sample_count; block_count/0 — EOF. Новая сетка начинается с phase zero. Ошибка сохраняет state. Уже сыгранный/отправленный output не перематывается. |
+| [`fvm_swf_stream_converter_init`](../include/flashvm/swf_stream_convert.h#L52) | Проверяет output rate/channels, заимствует native PCM snapshot, копирует source metadata/count. INVALID_ARGUMENT при неверных args, UNSUPPORTED при другом codec/host representation. Без allocation, ошибка сохраняет state. |
+| [`fvm_swf_stream_converter_next`](../include/flashvm/swf_stream_convert.h#L75) | Положительный max_frames, точный chunk.struct_size, ёмкость в значениях каналов и PCM pointer для непустого результата. Ограниченный planning проверяет capacity до записи. EOF/ошибка сохраняют PCM/chunk/written/state. Нет VM, I/O, allocation, callbacks и неявных повторов. |
+| [`fvm_swf_stream_converter_seek`](../include/flashvm/swf_stream_convert.h#L83) | Задаёт block/source offset <= sample_count; block_count/0 — EOF. Новая сетка начинается с phase zero. Ошибка сохраняет state. Уже сыгранный/отправленный output не перематывается. |
 
 Хост владеет snapshot до завершения всех converter/reader. Исходные runtime/context
 после подготовки можно уничтожить. Один converter используется последовательно;
@@ -97,7 +97,7 @@ python3 flashVM/scripts/check_swf_stream_example.py ./build-stream/flashvm_examp
 
 ## Непрерывная интерполяция сегмента (v0.803)
 
-[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L56) принимает те же аргументы и статусы,
+[`fvm_swf_stream_converter_init_continuous`](../include/flashvm/swf_stream_convert.h#L62) принимает те же аргументы и статусы,
 заимствует снимок на тех же условиях времени жизни и единственного владельца, что init.
 Правый отсчёт берётся из следующего непустого блока; последнее значение удерживается
 только в конце сегмента. Пустые блоки и пропуски кадров не добавляют тишину.
@@ -141,8 +141,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:48](../include/flashvm/swf_stream_convert.h#L48) |
-| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:56](../include/flashvm/swf_stream_convert.h#L56) |
-| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:67](../include/flashvm/swf_stream_convert.h#L67) |
-| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:73](../include/flashvm/swf_stream_convert.h#L73) |
+| `fvm_swf_stream_converter_init` | function | [include/flashvm/swf_stream_convert.h:52](../include/flashvm/swf_stream_convert.h#L52) |
+| `fvm_swf_stream_converter_init_continuous` | function | [include/flashvm/swf_stream_convert.h:62](../include/flashvm/swf_stream_convert.h#L62) |
+| `fvm_swf_stream_converter_next` | function | [include/flashvm/swf_stream_convert.h:75](../include/flashvm/swf_stream_convert.h#L75) |
+| `fvm_swf_stream_converter_seek` | function | [include/flashvm/swf_stream_convert.h:83](../include/flashvm/swf_stream_convert.h#L83) |
 <!-- source-links:end -->

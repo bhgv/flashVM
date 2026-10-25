@@ -2,9 +2,9 @@
 
 ## Русский
 
-Добавлены C89 API [`fvm_object_get_bytes`](../include/flashvm/value.h#L77), [`fvm_object_set_bytes`](../include/flashvm/value.h#L79),
-[`fvm_object_has_own_bytes`](../include/flashvm/value.h#L82), counted варианты property flags/delete и
-[`fvm_value_get_property_bytes`](../include/flashvm/metamethod.h#L51)/[`fvm_value_set_property_bytes`](../include/flashvm/metamethod.h#L54). Имена — counted
+Добавлены C89 API [`fvm_object_get_bytes`](../include/flashvm/value.h#L111), [`fvm_object_set_bytes`](../include/flashvm/value.h#L115),
+[`fvm_object_has_own_bytes`](../include/flashvm/value.h#L120), counted варианты property flags/delete и
+[`fvm_value_get_property_bytes`](../include/flashvm/metamethod.h#L69)/[`fvm_value_set_property_bytes`](../include/flashvm/metamethod.h#L74). Имена — counted
 UTF-8/WTF-8 без требования терминатора. NUL и одиночные суррогаты сохраняются;
 пара UTF-16 суррогатов и её scalar UTF-8 форма обозначают одно свойство.
 Некорректные последовательности отклоняются до изменения объекта.
@@ -22,7 +22,7 @@ host callbacks. Читатель принимает версии 1–8; стар
 в именах. В версии 8 reader проверяет WTF-8, нормализует эквивалентные ключи и
 отклоняет дубликаты после нормализации; writer не выпускает некорректные ключи.
 Очередь, файл и TCP поддерживают версию 8. Старые readers не читают новые
-графы; ABI структуры [FVM_Value](../include/flashvm/value.h#L24) не меняется, новые функции добавляются к ABI 3.
+графы; ABI структуры [FVM_Value](../include/flashvm/value.h#L26) не меняется, новые функции добавляются к ABI 3.
 
 Границы: counted native method/accessor registration, method/global calls,
 AVM1 variable/function names и length-aware native debug/table-name queries
@@ -67,9 +67,9 @@ remain enabled. No other-platform execution or full stack/leak proof is claimed.
 
 ## v0.82 — Нативные методы / Native members
 
-Добавлены counted [`fvm_object_call_bytes`](../include/flashvm/value.h#L129),
-[`fvm_object_define_method_rooted_bytes`](../include/flashvm/value.h#L132),
-[`fvm_object_define_accessor_rooted_bytes`](../include/flashvm/value.h#L135) и [`fvm_table_named_at_bytes`](../include/flashvm/table.h#L35).
+Добавлены counted [`fvm_object_call_bytes`](../include/flashvm/value.h#L189),
+[`fvm_object_define_method_rooted_bytes`](../include/flashvm/value.h#L194),
+[`fvm_object_define_accessor_rooted_bytes`](../include/flashvm/value.h#L199) и [`fvm_table_named_at_bytes`](../include/flashvm/table.h#L51).
 Старые terminated registration/call API также канонизируют WTF-8. Чтение
 нативного метода возвращает стабильный cached Function для полного ключа.
 Prototype dispatch, accessor receiver и traced capture сохраняют прежние
@@ -93,13 +93,13 @@ sanitizer exclusions remain as above. No other-platform runtime certification.
 
 ## v0.83 — Глобальные и локальные имена / Global and lexical names
 
-Добавлены counted [`fvm_get_global_bytes`](../include/flashvm/value.h#L89), [`fvm_set_global_bytes`](../include/flashvm/value.h#L91),
-[`fvm_register_function_rooted_bytes`](../include/flashvm/value.h#L93) и [`fvm_call_bytes`](../include/flashvm/value.h#L98). Регистрация нативного
+Добавлены counted [`fvm_get_global_bytes`](../include/flashvm/value.h#L133), [`fvm_set_global_bytes`](../include/flashvm/value.h#L137),
+[`fvm_register_function_rooted_bytes`](../include/flashvm/value.h#L141) и [`fvm_call_bytes`](../include/flashvm/value.h#L148). Регистрация нативного
 имени и capture выполняется одной операцией; legacy registration/call также
 используют canonical WTF-8 key. Явный C API call сохраняет native-first правило;
 script lookup продолжает учитывать собственное undefined свойство. Нативный
 callback копируется перед вызовом, результат сохраняется до снятия native
-barrier, bad_alloc и другие C++ исключения переводятся в [FVM_Result](../include/flashvm/flashvm.h#L40).
+barrier, bad_alloc и другие C++ исключения переводятся в [FVM_Result](../include/flashvm/flashvm.h#L42).
 
 AVM1 DefineLocal/DeclareLocal/GetVariable/SetVariable/CallFunction и строковое
 Enumerate сохраняют полное имя и отличают NUL suffix от legacy prefix. NewObject
@@ -181,19 +181,19 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
-| `fvm_get_global_bytes` | function | [include/flashvm/value.h:89](../include/flashvm/value.h#L89) |
-| `fvm_object_call_bytes` | function | [include/flashvm/value.h:129](../include/flashvm/value.h#L129) |
-| `fvm_object_define_accessor_rooted_bytes` | function | [include/flashvm/value.h:135](../include/flashvm/value.h#L135) |
-| `fvm_object_define_method_rooted_bytes` | function | [include/flashvm/value.h:132](../include/flashvm/value.h#L132) |
-| `fvm_object_get_bytes` | function | [include/flashvm/value.h:77](../include/flashvm/value.h#L77) |
-| `fvm_object_has_own_bytes` | function | [include/flashvm/value.h:82](../include/flashvm/value.h#L82) |
-| `fvm_object_set_bytes` | function | [include/flashvm/value.h:79](../include/flashvm/value.h#L79) |
-| `fvm_register_function_rooted_bytes` | function | [include/flashvm/value.h:93](../include/flashvm/value.h#L93) |
-| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_set_global_bytes` | function | [include/flashvm/value.h:91](../include/flashvm/value.h#L91) |
-| `fvm_table_named_at_bytes` | function | [include/flashvm/table.h:35](../include/flashvm/table.h#L35) |
-| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_value_get_property_bytes` | function | [include/flashvm/metamethod.h:51](../include/flashvm/metamethod.h#L51) |
-| `fvm_value_set_property_bytes` | function | [include/flashvm/metamethod.h:54](../include/flashvm/metamethod.h#L54) |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:148](../include/flashvm/value.h#L148) |
+| `fvm_get_global_bytes` | function | [include/flashvm/value.h:133](../include/flashvm/value.h#L133) |
+| `fvm_object_call_bytes` | function | [include/flashvm/value.h:189](../include/flashvm/value.h#L189) |
+| `fvm_object_define_accessor_rooted_bytes` | function | [include/flashvm/value.h:199](../include/flashvm/value.h#L199) |
+| `fvm_object_define_method_rooted_bytes` | function | [include/flashvm/value.h:194](../include/flashvm/value.h#L194) |
+| `fvm_object_get_bytes` | function | [include/flashvm/value.h:111](../include/flashvm/value.h#L111) |
+| `fvm_object_has_own_bytes` | function | [include/flashvm/value.h:120](../include/flashvm/value.h#L120) |
+| `fvm_object_set_bytes` | function | [include/flashvm/value.h:115](../include/flashvm/value.h#L115) |
+| `fvm_register_function_rooted_bytes` | function | [include/flashvm/value.h:141](../include/flashvm/value.h#L141) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_set_global_bytes` | function | [include/flashvm/value.h:137](../include/flashvm/value.h#L137) |
+| `fvm_table_named_at_bytes` | function | [include/flashvm/table.h:51](../include/flashvm/table.h#L51) |
+| `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
+| `fvm_value_get_property_bytes` | function | [include/flashvm/metamethod.h:69](../include/flashvm/metamethod.h#L69) |
+| `fvm_value_set_property_bytes` | function | [include/flashvm/metamethod.h:74](../include/flashvm/metamethod.h#L74) |
 <!-- source-links:end -->

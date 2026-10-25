@@ -1,36 +1,49 @@
 /* Exercise retained RC/tri-colour GC with explicit synthetic pool backing.
  * The pool is a deterministic test boundary, not a replacement runtime allocator. */
+#include <stdlib.h>
 #include "lib9.h"
+
 #ifdef DVM_GC_WORKERS
 #include "dat.h"
 #include "disvm/gc_workers.h"
 #include "disvm/native_process.h"
+
 #endif
 #include "isa.h"
 #include "interp.h"
 #include "pool.h"
+
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
 
+
 /* Match real heap headers while controlling allocated/free state and exact counts. */
-struct Pool {
+struct Pool
+{
     int unused; /* The fixture implements only the pool operations under test. */
 };
+
 static Pool test_pool;
 Pool *heapmem = &test_pool;
 Module *modules;
 void (*heapmonitor)(int, void *, ulong);
 void (*poolfault)(void *, char *, ulong);
-static union { long double alignment; unsigned char bytes[16384]; } arena;
+
+static union
+{
+    long double alignment;
+    unsigned char bytes[16384];
+} arena;
+
 static size_t arena_used;
 static unsigned int live_blocks;
 static unsigned int freed_blocks;
 static Bhdr *arena_header;
+
 
 /* Allocation diagnostics use a native caller address, not ARM inline assembly. */
 uintptr getcallerpc(void *unused)
@@ -39,32 +52,55 @@ uintptr getcallerpc(void *unused)
     return (uintptr)__builtin_return_address(0);
 }
 
+
 /* Real GC does not print in these cases; keep diagnostics linked without a lib9 SDK. */
 int print(char *format, ...)
 {
     (void)format;
     return 0;
 }
+
+
 /* Allocate type descriptors exactly as the retained dtype code expects. */
 void *mallocz(ulong size, int clear)
 {
     return clear ? calloc(1, size) : malloc(size);
 }
+
+
 /* Return the fixture arena chain with actual Bhdr/Btail layouts. */
 Bhdr *poolchain(Pool *pool)
 {
-    assert(pool == heapmem);
+    if (!(pool == heapmem))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     return arena_header;
 }
+
+
 /* Mark a live block freed, preserving its physical extent for the next GC scan. */
 void poolfree(Pool *pool, void *pointer)
 {
     Bhdr *header;
-    assert(pool == heapmem);
+    if (!(pool == heapmem))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     header = (Bhdr *)((unsigned char *)pointer - offsetof(Bhdr, u.data));
-    assert(header->magic == MAGIC_A);
+    if (!(header->magic == MAGIC_A))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     header->magic = MAGIC_F;
-    assert(live_blocks);
+    if (!(live_blocks))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     live_blocks--;
     freed_blocks++;
 }
@@ -72,12 +108,15 @@ void poolfree(Pool *pool, void *pointer)
 PRODUCTION_GC
 PRODUCTION_HEAP
 
+
 /* Use native-aligned extents while retaining the actual allocator header format. */
 static size_t aligned(size_t size)
 {
     size_t alignment = sizeof(void *);
     return (size + alignment - 1) / alignment * alignment;
 }
+
+
 /* Create one test arena; generated functions retain their real GC colour state. */
 static void initialize_arena(void)
 {
@@ -89,13 +128,19 @@ static void initialize_arena(void)
     arena_used = arena_header->size;
     arena_header->csize = arena_used;
 }
+
+
 /* Own one real Heap record with its actual Type/map/refcount fields. */
 static void *allocate_object(Type *type)
 {
     size_t extent = aligned(offsetof(Bhdr, u.data) + sizeof(Heap) + type->size + sizeof(Btail));
     Bhdr *block;
     Heap *heap;
-    assert(arena_used + extent <= sizeof(arena.bytes));
+    if (!(arena_used + extent <= sizeof(arena.bytes)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     block = (Bhdr *)(arena.bytes + arena_used);
     block->magic = MAGIC_A;
     block->size = extent;
@@ -110,16 +155,21 @@ static void *allocate_object(Type *type)
     live_blocks++;
     return H2D(void *, heap);
 }
+
+
 /* Retain an edge using real ref/mark rules; release an existing edge if present. */
 static void set_edge(void **slot, void *value)
 {
-    if (value != H) {
+    if (value != H)
+    {
         D2H(value)->ref++;
         Setmark(D2H(value));
     }
     destroy(*slot);
     *slot = value;
 }
+
+
 /* Check allocation state without dereferencing a reclaimed object's payload. */
 static int is_live(void *object)
 {
@@ -129,7 +179,8 @@ static int is_live(void *object)
 #ifdef DVM_GC_WORKERS
 /* One rooted deferred release and an incremental-cycle budget; main changes
  * these fields only while both workers are idle. */
-typedef struct Backend {
+typedef struct Backend
+{
     DVM_NativeWorld *world;
     DVM_GCWorkers *workers;
     Prog *roots;
@@ -138,23 +189,39 @@ typedef struct Backend {
     DVM_NativeContext *Fast_context;
     DVM_NativeContext *Cycles_context;
 } Backend;
+
 static Backend backend;
 
+
 /* No mutator is registered in this allocator fixture; Prog roots are explicit. */
-static void publish_roots(DVM_NativeContext *context, void *registers, size_t size,
-                          void *process, void *user)
+static void publish_roots(DVM_NativeContext *context, void *registers, size_t size, void *process, void *user)
 {
-    (void)context; (void)registers; (void)size; (void)process; (void)user;
-    assert(0 && "unexpected mutator in the isolated GC allocator fixture");
+    (void)context;
+    (void)registers;
+    (void)size;
+    (void)process;
+    (void)user;
+    if (!(0 && "unexpected mutator in the isolated GC allocator fixture"))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
+
+
 /* [GC:] Removing the pending native root and destroying happen in one stopped phase. */
 static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, void *user)
 {
     Backend *state = user;
     DVM_WorldState world;
-    assert(budget == 1 && dvm_world_state(state->world, &world) && world.stopped);
+    if (!(budget == 1 && dvm_world_state(state->world, &world) && world.stopped))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     state->Fast_context = context;
-    if (state->pending_release != H) {
+    if (state->pending_release != H)
+    {
         void *object = state->pending_release;
         state->pending_release = H;
         ptrdel(D2H(object));
@@ -162,29 +229,51 @@ static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, voi
     }
     return DVM_GC_DONE;
 }
+
+
 /* Advance the real Inferno collector a bounded number of rungc calls. */
 static DVM_GCWorkResult cycles_pass(DVM_NativeContext *context, size_t budget, void *user)
 {
     Backend *state = user;
     DVM_WorldState world;
-    assert(budget == 1 && dvm_world_state(state->world, &world) && world.stopped);
+    if (!(budget == 1 && dvm_world_state(state->world, &world) && world.stopped))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     state->Cycles_context = context;
-    if (state->cycle_steps) {
+    if (state->cycle_steps)
+    {
         rungc(state->roots);
         state->cycle_steps--;
     }
     return state->cycle_steps ? DVM_GC_MORE : DVM_GC_DONE;
 }
+
+
 /* Queue ownership is pinned in Inferno's real pointer-root registry. */
 static void deferred_release(void *object)
 {
-    assert(backend.pending_release == H);
+    if (!(backend.pending_release == H))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     ptradd(D2H(object));
     backend.pending_release = object;
-    assert(dvm_gc_workers_request(backend.workers, DVM_GC_FAST));
-    assert(dvm_gc_workers_wait_idle(backend.workers));
+    if (!(dvm_gc_workers_request(backend.workers, DVM_GC_FAST)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(dvm_gc_workers_wait_idle(backend.workers)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 }
 #endif
+
 
 /* Finish multiple real colour epochs without relying on private colour choices. */
 static void cycles(Prog *roots)
@@ -192,20 +281,33 @@ static void cycles(Prog *roots)
 #ifdef DVM_GC_WORKERS
     backend.roots = roots;
     backend.cycle_steps = 64;
-    assert(dvm_gc_workers_request(backend.workers, DVM_GC_CYCLES));
-    assert(dvm_gc_workers_wait_idle(backend.workers));
+    if (!(dvm_gc_workers_request(backend.workers, DVM_GC_CYCLES)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(dvm_gc_workers_wait_idle(backend.workers)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #else
     unsigned int step;
     for (step = 0; step < 64; step++)
+    {
         rungc(roots);
+    }
 #endif
 }
 
+
 /* A mapped link and an unmapped integer deliberately share the same word width. */
-typedef struct Record {
+typedef struct Record
+{
     void *edge;
     uintptr_t scalar;
 } Record;
+
 
 /* Verify acyclic RC, unreachable cycles, global roots and integer lookalikes. */
 int main(void)
@@ -235,12 +337,20 @@ int main(void)
     config.Cycles.budget = 1;
     config.user = &backend;
     backend.workers = dvm_gc_workers_create(&config);
-    assert(backend.world && backend.workers);
+    if (!(backend.world && backend.workers))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #endif
     initialize_arena();
     record_type = dtype(freeheap, sizeof(Record), map, sizeof(map));
     module_type = dtype(freeheap, sizeof(Modlink), nil, 0);
-    assert(record_type && module_type);
+    if (!(record_type && module_type))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     module_link = allocate_object(module_type);
     module_link->MP = H;
     memset(&root, 0, sizeof(root));
@@ -259,7 +369,11 @@ int main(void)
 #else
     destroy(first);
 #endif
-    assert(freed_blocks == before + 2);
+    if (!(freed_blocks == before + 2))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
     first = allocate_object(record_type);
     second = allocate_object(record_type);
@@ -267,9 +381,17 @@ int main(void)
     set_edge(&second->edge, first);
     destroy(first);
     destroy(second);
-    assert(D2H(first)->ref == 1 && D2H(second)->ref == 1);
+    if (!(D2H(first)->ref == 1 && D2H(second)->ref == 1))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     cycles(&root);
-    assert(!is_live(first) && !is_live(second));
+    if (!(!is_live(first) && !is_live(second)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
     holder = allocate_object(record_type);
     first = allocate_object(record_type);
@@ -281,25 +403,39 @@ int main(void)
     destroy(second);
     global_module.origmp = (uchar *)holder;
     cycles(&root);
-    assert(is_live(holder) && is_live(first) && is_live(second));
+    if (!(is_live(holder) && is_live(first) && is_live(second)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     holder->scalar = (uintptr_t)first;
     set_edge(&holder->edge, H);
     cycles(&root);
-    assert(is_live(holder) && !is_live(first) && !is_live(second));
+    if (!(is_live(holder) && !is_live(first) && !is_live(second)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     global_module.origmp = H;
     destroy(holder);
 
     /* Locals and parameters share a real typed stack-frame map. */
     {
-        typedef struct LocalFrame {
+        typedef struct LocalFrame
+        {
             Frame Frame;     /* Retained frame metadata and return/module links. */
             void *parameter; /* Exactly one strong slot described by frame_map. */
         } LocalFrame;
+
         uchar frame_map[] = {(uchar)(0x80 >> (offsetof(LocalFrame, parameter) / sizeof(void *)))};
         Type *frame_type = dtype(freeheap, sizeof(LocalFrame), frame_map, sizeof(frame_map));
         Stkext *stack = calloc(1, offsetof(Stkext, reg.tos) + sizeof(LocalFrame));
         LocalFrame *frame;
-        assert(frame_type && stack);
+        if (!(frame_type && stack))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         frame = (LocalFrame *)stack->reg.tos.fu;
         frame->Frame.t = frame_type;
         frame->parameter = H;
@@ -313,10 +449,18 @@ int main(void)
         destroy(first);
         destroy(second);
         cycles(&root);
-        assert(is_live(first) && is_live(second));
+        if (!(is_live(first) && is_live(second)))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         set_edge(&frame->parameter, H);
         cycles(&root);
-        assert(!is_live(first) && !is_live(second));
+        if (!(!is_live(first) && !is_live(second)))
+        {
+            fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         root.R.EX = nil;
         root.R.SP = nil;
         free(stack);
@@ -325,14 +469,39 @@ int main(void)
     destroy(module_link);
     freetype(record_type);
     freetype(module_type);
-    assert(live_blocks == 0);
+    if (!(live_blocks == 0))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #ifdef DVM_GC_WORKERS
-    assert(backend.Fast_context && backend.Cycles_context && backend.Fast_context != backend.Cycles_context);
-    assert(dvm_gc_workers_state(backend.workers, &state));
-    assert(state.Fast.passes == 1 && state.Cycles.passes == 320 && !state.failed);
-    assert(dvm_gc_workers_destroy(backend.workers));
-    assert(dvm_world_destroy(backend.world));
+    if (!(backend.Fast_context && backend.Cycles_context && backend.Fast_context != backend.Cycles_context))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(dvm_gc_workers_state(backend.workers, &state)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(state.Fast.passes == 1 && state.Cycles.passes == 320 && !state.failed))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(dvm_gc_workers_destroy(backend.workers)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!(dvm_world_destroy(backend.world)))
+    {
+        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 #endif
-    puts("PASS real Inferno destroy/rungc: acyclic RC, cyclic garbage, global/frame roots, unmapped address-valued scalar");
+    puts(
+        "PASS real Inferno destroy/rungc: acyclic RC, cyclic garbage, global/frame roots, unmapped address-valued scalar");
     return 0;
 }

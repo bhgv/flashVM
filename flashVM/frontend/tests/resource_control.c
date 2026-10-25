@@ -2,15 +2,18 @@
 #include "../common/resource_control.h"
 #include <stdio.h>
 #include <string.h>
-#define CHECK(x)                                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if (!(x))                                                                                  \
-        {                                                                                          \
-            fprintf(stderr, "resource adapter line %d: %s\n", __LINE__, #x);                       \
-            return 1;                                                                              \
-        }                                                                                          \
+
+#define CHECK(x)                                                                                                       \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+        {                                                                                                              \
+            fprintf(stderr, "resource adapter line %d: %s\n", __LINE__, #x);                                           \
+            return 1;                                                                                                  \
+        }                                                                                                              \
     } while (0)
+
+
 /* Only a playback notify may deliver a queued control operation; external pumping returns BUSY. */
 int main(void)
 {
@@ -23,11 +26,9 @@ int main(void)
     unsigned int i;
     unsigned char byte = 1;
     static const unsigned long operations[] = {
-        FVM_DESKTOP_RESOURCE_PAUSE, FVM_DESKTOP_RESOURCE_RESUME, FVM_DESKTOP_RESOURCE_STEP,
-        FVM_DESKTOP_RESOURCE_STOP};
+        FVM_DESKTOP_RESOURCE_PAUSE, FVM_DESKTOP_RESOURCE_RESUME, FVM_DESKTOP_RESOURCE_STEP, FVM_DESKTOP_RESOURCE_STOP};
     static const FVM_DesktopPlaybackCommand commands[] = {
-        FVM_DESKTOP_PLAYBACK_PAUSE, FVM_DESKTOP_PLAYBACK_RESUME, FVM_DESKTOP_PLAYBACK_STEP,
-        FVM_DESKTOP_PLAYBACK_STOP};
+        FVM_DESKTOP_PLAYBACK_PAUSE, FVM_DESKTOP_PLAYBACK_RESUME, FVM_DESKTOP_PLAYBACK_STEP, FVM_DESKTOP_PLAYBACK_STOP};
     CHECK(fvm_rdispatch_create(0, &dispatch) == FVM_R_OK);
     CHECK(fvm_desktop_resource_control_init(&adapter, dispatch, "/timeline/ctl") == FVM_R_OK);
     memset(&failed, 0xa5, sizeof(failed));
@@ -53,8 +54,8 @@ int main(void)
         request.operation = operations[i];
         CHECK(fvm_rdispatch_post(dispatch, &request) == FVM_R_OK);
         CHECK(fvm_desktop_resource_control_notify(&state, &adapter) == commands[i]);
-        CHECK(fvm_rdispatch_take(dispatch, 1, request.id, &reply) == FVM_R_OK &&
-              reply.result == FVM_R_OK && !reply.size);
+        CHECK(fvm_rdispatch_take(dispatch, 1, request.id, &reply) == FVM_R_OK && reply.result == FVM_R_OK &&
+              !reply.size);
     }
     request.id = 6;
     request.size = 1;
@@ -70,8 +71,7 @@ int main(void)
     CHECK(fvm_desktop_resource_control_notify(&state, &adapter) == FVM_DESKTOP_PLAYBACK_STOP);
     CHECK(fvm_rdispatch_take(dispatch, 1, 7, &reply) == FVM_R_PENDING);
     CHECK(fvm_rdispatch_cancel(dispatch, 1, 7) == FVM_R_OK);
-    CHECK(fvm_rdispatch_take(dispatch, 1, 7, &reply) == FVM_R_OK &&
-          reply.result == FVM_R_CANCELLED);
+    CHECK(fvm_rdispatch_take(dispatch, 1, 7, &reply) == FVM_R_OK && reply.result == FVM_R_CANCELLED);
     CHECK(fvm_rdispatch_unregister(dispatch, adapter.target) == FVM_R_OK);
     CHECK(fvm_rdispatch_destroy(&dispatch) == FVM_R_OK && !dispatch);
     puts("PASS pause/resume/step/stop delivery, external-pump rejection, invalid phase/payload and "
