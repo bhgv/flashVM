@@ -234,3 +234,18 @@ precede N executed flags. The [conditional tutorial](../../fir/v1/examples/dis/d
 returns 42 in the second slot, with flags `[0,1,0]`. Slots are not an event log;
 source loops/phi, module ABI and Dis SBL remain separate work.
 [Русский](../../fir/v1/doc/DIS_BACKEND.ru.md).
+
+## Binary64 capture view, component 0.10.0
+
+Our direct FIR emitter now executes f64 constants/copy and four real arithmetic
+operations, including numeric AS1/2/3 Coco/R inputs. `--inspect-reals OFFSET COUNT`
+uses the existing retained pointer-free entry-data inspection with explicit
+binary64 interpretation and `REAL offset value` output (17 significant digits).
+It is mutually exclusive with --inspect-words, has the same aligned bounds and
+error cleanup, and emits no snapshot on execution/quota failure. Executed flags
+are still integer words. See the [bilingual backend contract](../../fir/v1/doc/DIS_BACKEND.md)
+and [commented source/SDK example](../../fir/v1/examples/dis/README.md#binary64-as-source).
+
+Добавлены явное чтение binary64 и прямой числовой путь AS1/2/3→FIR→Dis.
+Тип диапазона задаёт клиент; флаги trace читаются как words. Полного AS/Limbo,
+динамических преобразований и самодостаточного отладочного описания типов нет.

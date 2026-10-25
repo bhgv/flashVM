@@ -278,13 +278,18 @@ If your host restricts temporary files, set TMPDIR to an existing writable folde
 # Expected: DATA 0 2147483647
 
 Read examples/dis/README.md and README.ru.md, plus docs/DIS_BACKEND.md/.ru.md.
-The target captures i32/bool trace values plus executed flags after completion.
+The target captures i32/bool/f64 trace values plus integer executed flags after completion.
 It supports verified CFG and terminal Limbo decisions, not full module lowering. The C99 example and libfir1_ir/libfir1_source_api/libfir1_io are included.
 
 # Terminal decision: values [0,42,0], executed flags [0,1,0].
 ./fir1_source limbo --input examples/dis/decision.b decision.fir
 ./fir1 dis decision.fir decision.dis
 ../disvm-editor/disvm --jit --max-instructions 1000 --inspect-words 0 6 decision.dis
+
+# Numeric AS3 binary64: -11.5, 3.75, -1.25; flags at offsets 24/32/40.
+./fir1_source as3 --input examples/dis/reals.as reals.fir
+./fir1 dis reals.fir reals.dis
+../disvm-editor/disvm --jit --inspect-reals 0 3 reals.dis
 EOF
             ;;
         linker)

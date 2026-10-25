@@ -37,8 +37,8 @@ self-contained objects/libraries/resources; optimization remains explicit.
 Source positions and diagnostic checks do not establish embedded Dis/JIT,
 complete debugging, cross-module function calls or native backend coverage.
 
-[NC64 Dis target 0.7.0](DIS_BACKEND.md): scalar CFG, i32/bool const/copy/comparison/wrap arithmetic, value+executed captures/return.
-Our C99 emitter writes Dis directly; full Limbo ABI, CFG, channels, SBL and Dis linking remain unimplemented.
+[NC64 Dis target 0.8.0](DIS_BACKEND.md): scalar CFG, i32/bool/f64 const/copy, signed i32 comparison/wrap and binary64 arithmetic, value+executed captures/return.
+Our C99 emitter writes Dis directly; full Limbo ABI, phi, channels, SBL and Dis linking remain unimplemented.
 
 Numeric Limbo now admits six comparisons in terminal if/else; every arm
 returns. SSA joins and mutable source loops are not implemented.

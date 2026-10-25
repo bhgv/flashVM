@@ -1,4 +1,4 @@
-# Direct Dis backend, FIR implementation 0.7.0
+# Direct Dis backend, FIR implementation 0.8.0
 
 [Русский](DIS_BACKEND.ru.md) · [Compiler implementation](../compiler/dis.c) ·
 [C99 API](../compiler/API.md) · [Commented tutorial](../examples/dis/README.md) ·
@@ -9,8 +9,8 @@ It does not invoke `limbo-native`, the Inferno assembler, Python, LLVM or an
 external VM to generate code. Both source and FIR parsers remain Coco/R-generated
 C99. The existing SWO/SWL/SWF8 path remains available as a separate target.
 
-The scalar capture target now admits verified multi-block CFG: i32/bool constants,
-scalar copy, wrapping arithmetic, signed less-than/equality, bool branches,
+The scalar capture target now admits verified multi-block CFG: i32/bool/f64 constants,
+scalar copy, i32 wrapping and binary64 +/−/×/÷ arithmetic, signed less-than/equality, bool branches,
 unconditional jumps, captured scalar trace and return. Forward and backward
 edges are relocated from FIR block identities to final **Dis instruction PCs**,
 including after optimization and across variable-width file operands.
@@ -24,9 +24,11 @@ Consequently no phi/join environment is silently invented. Source limits remain
 64 KiB, 1000 values, shared nesting depth 64; at most 127 decisions introduce
 255 blocks. `-g DEBUG.json` records comparison-operator and `if` keyword spans.
 
-AVM1 numeric profiles, f64/strings/channels, imports and function exports remain
-outside this Dis target. AS1/2/3 source lowering still uses binary64/SWO. General
-Limbo functions, mutable source loops, SSA phi and Dis SBL remain separate work.
+The existing numeric-only AS1/2/3 adapters now also reach this Dis backend through
+explicit f64 operations; their source profile metadata remains intact. Dynamic
+AS coercion (`as.add`, `as.to_number`), strings/channels, imports and function
+exports remain unsupported and fail preflight. General Limbo functions, mutable
+source loops, SSA phi and Dis SBL remain separate work.
 Manual FIR cycles can execute but need an explicit runtime instruction limit;
 this does not claim source while/for lowering or loop-carried SSA support.
 
@@ -158,3 +160,25 @@ quota boundaries/cycles, and caller-constructed invalid IR. Live blocks must be
 contiguous and begin with the declared entry, including after removed prefixes;
 this invariant protects both SWO and Dis emitters. The structural Coco/R frontend
 also distinguishes block declarations after a return from actual label operands.
+
+## Binary64 and typed observations (compiler 0.8.0, runtime 0.10.0)
+
+`const.f64`, f64 `copy` and `f64.add/sub/mul/div` use existing MOVF and real
+arithmetic instructions. The constants' IEEE bits are copied through uint64_t
+and emitted big-endian with DEFL, preserving negative zero. Finite source
+constants are still required; operations can produce infinity or NaN. Division
+is real division, including signed-zero/invalid IEEE results, not integer division.
+No i32 normalization follows a real operation. NaN payload identity is unspecified.
+
+Each real trace occupies the same eight-byte capture cell as an integer trace.
+The format has no automatic type tags: callers know the trace types from FIR.
+Use `--inspect-reals OFFSET COUNT` for a homogeneous binary64 range. Output is
+`REAL byte_offset value`, with 17 significant decimal digits, signed zero and
+Inf/NaN class retained. This option shares range/descriptor/retention/error checks
+with `--inspect-words`; the two views cannot be requested together. Executed
+flags remain native integer 0/1 and must be read as words. Mixed traces require
+separate range observations; interpreting an integer cell as a real performs a
+bit reinterpretation, never a numeric cast. No partial REAL report is printed
+on a VM error or exhausted instruction quota.
+
+See [the numeric AS3 example](../examples/dis/README.md#binary64-as-source).

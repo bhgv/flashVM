@@ -180,7 +180,7 @@ int fir_optimise(FirModule *module, char *error, size_t capacity);
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 
 
-/* Emit a verified i32/bool control-flow program as an executable NC64 Dis module.
+/* Emit a verified i32/bool/f64 control-flow program as an executable NC64 Dis module.
  * Streams/module/error are caller-owned; no SDK/runtime dependency. Coverage errors write nothing.
  * N trace values occupy the first N eight-byte cells; the next N cells mark executed slots as 0/1.
  * Slots record each static trace point, retaining its latest value if revisited. No imports/exports or SBL.

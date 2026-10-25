@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1584**. [Русская версия](README.ru.md).
+Development version: **0.1585**. [Русская версия](README.ru.md).
 
 Current series: [v0.1574–v0.1580](docs/releases/v0.1580.md) adds scalar FIR→Dis control flow, Coco/R Limbo terminal decisions, precise DisVM instruction quotas and updated Inferno call/return/ownership support.
 

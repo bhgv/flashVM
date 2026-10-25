@@ -86,3 +86,39 @@ python3 tools/test_installed_workspace.py --prefix out --scratch build/package-t
 Она заново связывает C99-клиент из заголовков/библиотек пакета, сравнивает Dis
 с CLI побайтно и исполняет линейный/условный примеры в обоих режимах из
 перенесённого каталога с пробелами.
+
+## Binary64 из AS
+
+[reals.as](reals.as) — полностью комментированный числовой пример AS3. Его
+Coco/R frontend создаёт FIR, затем наш C99-emitter пишет Dis без Inferno-emitter.
+Библиотечный [main.c](main.c) принимает третий аргумент `as3`; без него сохранён
+Limbo. Это тот же публичный API, не отдельная реализация backend.
+
+```sh
+build/fir/fir1_source as3 --input fir/v1/examples/dis/reals.as build/reals.fir --module dis_example
+build/fir/fir1 dis build/reals.fir build/reals.dis
+build/fir/fir1_dis_example fir/v1/examples/dis/reals.as build/embedded-reals.dis as3
+build/editor/disvm --jit --inspect-reals 0 3 build/reals.dis
+build/editor/disvm --no-jit --inspect-reals 0 3 build/reals.dis
+build/editor/disvm --jit --inspect-words 24 3 build/reals.dis
+```
+
+```text
+REAL 0 -11.5
+REAL 8 3.75
+REAL 16 -1.25
+```
+
+Первые три восьмибайтовые ячейки — значения; ячейки со смещениями 24/32/40 —
+целые флаги, все равны 1. Чтение real и words делается отдельными запусками;
+эти числовые примеры детерминированы. В общем случае повторный запуск программы
+с вводом/эффектами не является единым снимком. Типы в выводе автоматически не
+угадываются, опции чтения диапазона взаимоисключающие. Число trace может меняться
+после оптимизации: смещения надо брать из выбранного FIR.
+
+Для встраивания main.c сначала создаёт временные FIR и Dis, а выходной файл
+открывает после успешной компиляции. Все потоки закрываются на обоих путях.
+Клиент IDE должен сериализовать вызовы парсера на сборочном worker и передавать
+результаты через каналы; выполнение host-C примера на самой DisVM не заявляется.
+Установленный SDK проверяется повторной линковкой main.c из одних поставленных
+заголовков/архивов и побайтовым сравнением с CLI после переноса каталога.

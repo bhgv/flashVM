@@ -59,3 +59,16 @@ NULL-диагностика допустима, ошибка I/O может ос
 if/else; FIRDBG1 добавляет compare/branch с диапазонами оператора и if.
 Verifier отвергает перемежающиеся живые блоки и скрытый entry после tombstone.
 [Контракт](../doc/DIS_BACKEND.ru.md).
+
+## Binary64 Dis 0.8.0
+
+The same `fir_dis` / `fir_run(FIR_DIS, ...)` API now admits f64 constants, copy,
+and add/subtract/multiply/divide. Byte output is identical to the CLI; ownership,
+serialization and rejection contracts are unchanged. Numeric AS1/2/3 source
+profiles emit explicit f64; dynamic coercion and strings remain rejected.
+Real capture cells retain binary64 bits; executed flags remain native words.
+The caller supplies type knowledge; no self-describing debug/type map is implied.
+
+Те же C99 API принимают f64-константы, copy и четыре арифметические операции.
+Типы захватов известны клиенту из FIR; флаги исполнения остаются целыми.
+Правила владения, сериализации вызовов и отказа до записи сохранены.

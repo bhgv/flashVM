@@ -3,11 +3,12 @@
 #include <string.h>
 
 
-/* Translate borrowed Limbo input into caller-owned staged Dis output using our two C99 libraries.
+/* Translate borrowed numeric source input into caller-owned staged Dis output using our two C99 libraries.
+ * language selects the Coco/R source profile (Limbo or optional AS3); error/capacity receive diagnostics.
  * All intermediate FIR storage is private and closed on every path. This call blocks for compilation;
  * an IDE should invoke it on its build worker and return copied results through its service channel.
  * Parsing calls require external serialization. Returns zero with a copied error on failure. */
-static int compile(FILE *source, FILE *dis, char *error, size_t capacity)
+static int compile(FILE *source, FILE *dis, FirLanguage language, char *error, size_t capacity)
 {
     FILE *fir = fir_temporary();
     FirRunOptions options = {0, NULL, NULL}; /* No implicit optimization or callbacks in this example. */
@@ -17,7 +18,7 @@ static int compile(FILE *source, FILE *dis, char *error, size_t capacity)
         snprintf(error, capacity, "cannot allocate intermediate FIR stream");
         return 0;
     }
-    ok = fir_source(source, fir, FIR_LIMBO, "dis_example", error, capacity);
+    ok = fir_source(source, fir, language, "dis_example", error, capacity);
     if (ok && (fflush(fir) || fseek(fir, 0, SEEK_SET)))
     {
         ok = 0;
@@ -46,14 +47,20 @@ int main(int argc, char **argv)
     unsigned char bytes[4096];
     size_t count;
     int ok = 0;
-    if (argc != 3 || !strcmp(argv[1], argv[2]))
+    FirLanguage language = FIR_LIMBO; /* Existing two-path invocation retains the Limbo profile. */
+    if ((argc != 3 && argc != 4) || !strcmp(argv[1], argv[2]) ||
+        (argc == 4 && strcmp(argv[3], "as3")))
     {
-        fprintf(stderr, "usage: fir1_dis_example SOURCE.b OUTPUT.dis (different paths)\n");
+        fprintf(stderr, "usage: fir1_dis_example SOURCE OUTPUT.dis [as3] (different paths)\n");
         return 2;
+    }
+    if (argc == 4)
+    {
+        language = FIR_AS3;
     }
     source = fopen(argv[1], "rb");
     staged = fir_temporary();
-    if (!source || !staged || !compile(source, staged, error, sizeof(error)) || fflush(staged) ||
+    if (!source || !staged || !compile(source, staged, language, error, sizeof(error)) || fflush(staged) ||
         fseek(staged, 0, SEEK_SET))
     {
         goto done;

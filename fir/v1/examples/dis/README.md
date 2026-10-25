@@ -86,3 +86,39 @@ python3 tools/test_installed_workspace.py --prefix out --scratch build/package-t
 This relinks the shipped C99 client from package headers/libraries, compares its
 Dis bytes with CLI output, and executes both linear and conditional examples in
 interpreter/JIT modes from a relocated path containing spaces.
+
+## Binary64 AS source
+
+[reals.as](reals.as) is a fully commented numeric AS3 example. Our Coco/R
+frontend creates FIR and our C99 emitter writes Dis without an Inferno emitter.
+The embedding [main.c](main.c) accepts optional third argument `as3`; omitting it
+retains Limbo. Both routes use the same public API and backend.
+
+```sh
+build/fir/fir1_source as3 --input fir/v1/examples/dis/reals.as build/reals.fir --module dis_example
+build/fir/fir1 dis build/reals.fir build/reals.dis
+build/fir/fir1_dis_example fir/v1/examples/dis/reals.as build/embedded-reals.dis as3
+build/editor/disvm --jit --inspect-reals 0 3 build/reals.dis
+build/editor/disvm --no-jit --inspect-reals 0 3 build/reals.dis
+build/editor/disvm --jit --inspect-words 24 3 build/reals.dis
+```
+
+```text
+REAL 0 -11.5
+REAL 8 3.75
+REAL 16 -1.25
+```
+
+The first three eight-byte cells are values; offsets 24/32/40 are integer
+executed flags, all one. The two views use separate executions of this
+deterministic numeric program. Rerunning a general program with input/effects
+is not an atomic combined snapshot. Types are supplied by the client, not inferred
+from stored bits; inspection options are mutually exclusive. Optimization may
+change trace counts, so derive offsets from the selected FIR.
+
+For embedding, main.c stages FIR and Dis before opening the destination and
+closes every stream on both paths. IDE callers must serialize parser calls on
+a build worker and transfer copied results through channels. This native C
+client is not claimed to run on DisVM. Installed SDK acceptance relinks main.c
+using only shipped headers/archives and byte-compares its output with the CLI
+after moving the whole package to a path with spaces.

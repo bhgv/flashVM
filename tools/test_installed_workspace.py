@@ -153,6 +153,23 @@ def fir_dis_packages(prefix, work, environment):
             raise RuntimeError("relocated decision lost its selected value or capture-validity flags")
 
 
+    # A numeric AS3 input reaches the same installed C99 libraries, now including binary64 Dis.
+    # The relinked client selects its profile explicitly; no build-checkout headers are available.
+    reals = component / "examples/dis/reals.as"
+    run([program(prefix, "fir", "fir1_source"), "as3", "--input", reals, fir,
+         "--module", "dis_example"], work, environment)
+    run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+    run([executable, reals, embedded, "as3"], work, environment)
+    if binary.read_bytes() != embedded.read_bytes():
+        raise RuntimeError("relocated AS3 binary64 CLI and C99 client disagree")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--inspect-reals", "0", "3", binary], work, environment)
+        rows = [(int(line.split()[1]), float(line.split()[2])) for line in output.splitlines()
+                if line.startswith("REAL ")]
+        if rows != [(0, -11.5), (8, 3.75), (16, -1.25)]:
+            raise RuntimeError("relocated AS3 binary64 execution produced wrong values")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():
