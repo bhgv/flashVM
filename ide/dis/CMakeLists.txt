@@ -302,7 +302,7 @@ if(UIBRIDGE_SOURCE_ROOT)
   endfunction()
 
   ide_bridge_module(uibridge "${UIBRIDGE_SOURCE_ROOT}/limbo/uibridge.b")
-  foreach(module ideinput idebridge idecomplete idebuiltins)
+  foreach(module ideinput idebridge idecomplete idebuiltins ideviewport)
     ide_bridge_module(${module} "${CMAKE_CURRENT_SOURCE_DIR}/bridge/${module}.b")
   endforeach()
 

@@ -4,6 +4,7 @@ include "uibridge.m"; # Exchange copied, bounded envelopes with the renderer.
 include "idecore.m"; # Keep text and history in their separate channel owner.
 include "ideinput.m"; # Reuse Dis keyboard, selection and revision policy.
 include "idebridge.m"; # Reuse the bounded snapshot serializer.
+include "ideviewport.m"; # Keep viewport decisions and bounds in a separate Dis module.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
 GraphicalEditor: module # Parameterless entry accepted by the experimental host.
@@ -100,8 +101,9 @@ init()
     codec = load Uibridge Uibridge->PATH; # Link the common channel codec.
     bridge = load Idebridge Idebridge->PATH; # Link the existing snapshot encoder.
     policy := load Ideinput Ideinput->PATH; # Link Dis-owned input policy.
+    viewport := load Ideviewport Ideviewport->PATH; # Link the bounded logical-line viewport.
     host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
-    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil) { # Require all real modules.
+    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
     }
     input := chan of array of byte; # The native owner offers copied events here.
@@ -122,7 +124,23 @@ init()
     if (host->attach(input, output) != 0) { # Borrow these live stack-rooted ports.
         raise "fail: graphical editor channel registration"; # Never continue without a receiver.
     }
+    window := viewport->create(); # The Dis controller exclusively owns its viewport.
+    reveal := 1; # Initial presentation follows the acknowledged caret.
+    ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
+    dragging := 0; # Only an admitted pointer begin starts a Dis selection gesture.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
+        if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
+            raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
+        }
+        ticket++; # Give every published view a distinct scalar identity.
+        (first, last, top) := viewport->window(window, reply.text, state.caret, reveal); # Bound the display window.
+        metadata := codec->hexword(top) + codec->hexword(len reply.text) + codec->hexword(ticket); # No heap addresses.
+        placement := ref Uibridge->Message(codec->View, 0, host->Viewport, reply.revision, first, last, metadata); # Dis owns visible bounds.
+        (placed, geometry) := codec->encode(placement); # Validate the copied viewport record.
+        if (!placed) { # Reject malformed metadata before any snapshot fragment.
+            raise "fail: graphical editor viewport"; # Never fabricate a valid view.
+        }
+        output <-= geometry; # Publish viewport identity before its document fragments.
         if (!bridge->sendreply(codec, output, reply, 1)) { # Send a complete Unicode-aligned snapshot.
             raise "fail: graphical editor snapshot"; # A framing failure is terminal.
         }
@@ -136,6 +154,45 @@ init()
         (valid, event) := codec->decode(frame); # Reject malformed transport input.
         if (!valid) { # Do not execute unvalidated event fields.
             raise "fail: graphical editor input"; # The native host reports failure.
+        }
+        reveal = 0; # Wheel/modifier events must not snap the viewport back to the caret.
+        if (event.kind == codec->Request && (event.code == host->Scroll || event.code == host->Place)) { # Admit native geometry only as a request.
+            expected := array of byte event.text; # The ticket is an exact eight-byte hexadecimal word.
+            (known, seen) := codec->parseword(expected, 0); # Decode without trusting a native pointer.
+            if (!known || len expected != 8 || seen != ticket || event.flags != reply.revision) { # Reject old revision or viewport geometry.
+                reply.status = core->Conflict; # Preserve text, selection and history on stale input.
+                continue; # Publish a fresh view identity with the failure status.
+            }
+            if (event.code == host->Scroll) { # Scroll never edits or moves the caret.
+                viewport->scroll(window, reply.text, event.first); # Clamp the logical-line delta in Dis.
+                reply.status = core->Ok; # Acknowledge the bounded viewport operation.
+            } else { # The renderer only proposed a source scalar from its actual glyph layout.
+                position := event.first; # Coordinates remain source Unicode scalars.
+                phase := event.second; # Begin/update/end are 1/2/3, not native button structs.
+                if (position < 0 || position > len reply.text || phase < 1 || phase > 3) { # Validate before changing selection state.
+                    reply.status = core->RangeError; # Invalid geometry changes nothing.
+                } else if (phase == 1 || dragging) { # An update alone cannot invent a drag gesture.
+                    anchor := state.anchor; # Preserve the original gesture or Shift anchor.
+                    if (phase == 1 && !state.shift) { # Ordinary click collapses selection.
+                        anchor = position; # Only Dis makes this selection decision.
+                    }
+                    if (!policy->select(state, reply, anchor, position)) { # Recheck current document bounds/revision.
+                        reply.status = core->Conflict; # No guessed stale coordinate is applied.
+                    } else { # The acknowledged selection now belongs to this controller.
+                        dragging = phase != 3; # End releases the gesture after its last selection.
+                        reveal = 1; # Keep an admitted pointer selection in the displayed interval.
+                        reply.status = core->Ok; # Acknowledge without changing document history.
+                    }
+                }
+            }
+            continue; # The ordinary input path must not apply the same event a second time.
+        }
+        if (event.kind == codec->Focus && event.flags == 0) { # Losing focus ends any pending drag.
+            dragging = 0; # A later update cannot extend an old gesture.
+        }
+        if (event.kind == codec->Text || (event.kind == codec->Key && event.flags != 0
+            && event.code != 16 && event.code != 17)) { # Navigation/editing reveal their caret; releases do not.
+            reveal = 1; # Viewport policy remains in Dis.
         }
         operation := event.code; # Explicit request operation or virtual-key value.
         if (event.kind == codec->Key && event.flags != 0 && state.control) { # Shortcuts remain Dis policy.

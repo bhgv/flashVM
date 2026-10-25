@@ -76,7 +76,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check)
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -87,7 +87,8 @@ set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworksp
   "${view}/libraries/bufio.b" "${view}/libraries/string.b" "${view}/libraries/arg.b"
   "${view}/libraries/readdir.b" "${view}/libraries/debug.b" "${view}/libraries/dis.b"
   "${view}/libraries/styx.b" "${view}/libraries/styxservers.b"
-  "${root}/disVM/examples/standard-modules/main.b")
+  "${root}/disVM/examples/standard-modules/main.b"
+  "${root}/ide/dis/bridge/ideviewport.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
@@ -105,7 +106,7 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   set(binary "${CMAKE_CURRENT_BINARY_DIR}/${test}-test.dis")
   add_custom_command(OUTPUT "${binary}"

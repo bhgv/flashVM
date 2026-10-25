@@ -40,6 +40,12 @@ Ideinput: module
               state: ref State, event: ref Uibridge->Message): (int, ref View);
 
 
+    # Apply an acknowledged bounded selection without editing text/history.
+    # state is exclusive, reply is a fresh owner snapshot; stale/closed/range errors return zero.
+    # Returns one after setting anchor=first/caret=last and resetting the vertical goal.
+    select: fn(state: ref State, reply: Idecore->Reply, first, last: int): int;
+
+
     # Incorporate an externally acknowledged document command without reinterpreting it in AS.
     # state is exclusive; reply is copied. Changed revisions reset selection deterministically.
     # Returns nothing; the bridge publishes the resulting presentation values separately.

@@ -252,6 +252,21 @@ apply(core: Idecore, document: chan of Idecore->Request,
 }
 
 
+# Change selection only against the controller's current acknowledged revision.
+# state/reply/range ownership and return/error semantics follow ideinput.m.
+select(state: ref State, reply: Idecore->Reply, first, last: int): int
+{
+    if (state == nil || !reply.opened || state.revision != reply.revision
+        || first < 0 || last < 0 || first > len reply.text || last > len reply.text) {
+        return 0;
+    }
+    state.anchor = first;
+    state.caret = last;
+    state.preferred = -1;
+    return 1;
+}
+
+
 # Synchronize private selection after an explicitly acknowledged external document command.
 # state is exclusive, reply is a value snapshot. Returns nothing and performs no I/O.
 observe(state: ref State, reply: Idecore->Reply)

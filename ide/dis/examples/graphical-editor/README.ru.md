@@ -87,3 +87,11 @@ UTF-8, размер, многофрагментные снимки и счётч
 отладчика ещё не подключены. Каретка/выделение используют кластеры глифов;
 полная bidi/grapheme-семантика не заявляется. Покрытие символов зависит от шрифта.
 Синхронный I/O может блокировать единственного владельца VM.
+
+## Viewport / Окно документа v0.1552
+
+[English contract](../../VIEWPORT.md) · [Русский](../../VIEWPORT.ru.md).
+Wheel, mouse click/Shift/drag, Up/Down/PageUp/PageDown and Ctrl+Home/End now run
+through the Dis controller. The old first-prefix/unfinished-mouse limitations
+above describe v0.1550 only. Windows are Dis-selected, bounded UTF-8 intervals;
+full text remains in the document owner. Physical device acceptance stays open.

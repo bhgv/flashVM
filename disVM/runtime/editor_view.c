@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #ifdef DVM_EDITOR_SDL
 #include <SDL.h>
 #endif
@@ -18,6 +19,9 @@
 #define EDITOR_VIEW_BYTES 4096U        /* Bounded first-page TextField preview. */
 #define EDITOR_REPLY_META 56U          /* Seven canonical eight-character hexadecimal words. */
 #define EDITOR_SELECTION 65536UL       /* Dis selection notification code. */
+#define EDITOR_VIEWPORT 65540UL        /* Dis-owned Unicode window and monotonic view ticket. */
+#define EDITOR_SCROLL 65541UL          /* Ticket/revision-bound logical scroll request. */
+#define EDITOR_PLACE 65542UL           /* Ticket/revision-bound glyph hit proposal. */
 #define EDITOR_QUIT 65539UL            /* Dis controller's dirty-checked close operation. */
 
 static const char *font_path;          /* Borrowed explicit TTF/OpenType command-line path. */
@@ -39,6 +43,16 @@ static size_t extent;                  /* Total expected snapshot bytes. */
 static unsigned long revision;         /* Dis revision of the pending/published snapshot. */
 static unsigned long status;           /* Dis status published with that snapshot. */
 static long saved;                     /* Dis saved revision, used only for display. */
+static unsigned long view_ticket;      /* Monotonic Dis view identity, independent of content revision. */
+static unsigned long view_revision;    /* Expected content revision for viewport metadata. */
+static unsigned long view_total;       /* Expected document Unicode scalar count. */
+static unsigned long view_top;         /* Zero-based logical top line chosen by Dis. */
+static long view_first;                /* Dis-selected source scalar at display start. */
+static long view_last;                 /* Dis-selected source scalar after display end. */
+static size_t display_start;           /* Native byte translation of the admitted source scalar start. */
+static size_t display_size;            /* Current display UTF-8 byte length, at most 4096. */
+static FVM_TextLayout *hit_layout;     /* Owned actual glyph layout for the completed view. */
+static double horizontal;              /* Renderer pixel translation, never a document coordinate. */
 static int complete;                   /* A selection frame completed the current view. */
 static int window_replay;              /* Explicit SDL upload check with deterministic input. */
 static int assembling;                 /* A document snapshot is being assembled. */
@@ -215,8 +229,12 @@ int dvm_editor_create(void)
         }
     }
     fvm_value_boolean(&value, 1);
-    if (fvm_object_set(context, field, "multiline", &value) != FVM_OK ||
-        fvm_object_set(context, field, "wordWrap", &value) != FVM_OK)
+    if (fvm_object_set(context, field, "multiline", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_boolean(&value, 0);
+    if (fvm_object_set(context, field, "wordWrap", &value) != FVM_OK)
     {
         return 0;
     }
@@ -268,6 +286,33 @@ int dvm_editor_create(void)
  * Coordinates are pixels, color is copied. Returns one on actual raster success. */
 static int rectangle(FVM_RasterSurface *surface, double x, double y, double width, double height, FVM_RasterColor color)
 {
+    if (width < 0)
+    {
+        x += width;
+        width = -width;
+    }
+    if (x + width <= 0 || y + height <= 0 || x >= surface->width || y >= surface->height)
+    {
+        return 1;
+    }
+    if (x < 0)
+    {
+        width += x;
+        x = 0;
+    }
+    if (y < 0)
+    {
+        height += y;
+        y = 0;
+    }
+    if (x + width > surface->width)
+    {
+        width = surface->width - x;
+    }
+    if (y + height > surface->height)
+    {
+        height = surface->height - y;
+    }
     FVM_RasterPoint points[4];
     points[0].x = x;
     points[0].y = y;
@@ -286,17 +331,41 @@ static int rectangle(FVM_RasterSurface *surface, double x, double y, double widt
 static size_t scalar_byte(size_t shown, long position)
 {
     size_t byte = 0;
-    long scalar = 0;
+    long scalar = view_first;
+    const char *text = snapshot + display_start;
+    if (position < view_first)
+    {
+        return shown + 1;
+    }
     while (byte < shown && scalar < position)
     {
         byte++;
-        while (byte < shown && ((unsigned char)snapshot[byte] & 0xc0U) == 0x80U)
+        while (byte < shown && ((unsigned char)text[byte] & 0xc0U) == 0x80U)
         {
             byte++;
         }
         scalar++;
     }
     return scalar == position ? byte : shown + 1;
+}
+
+
+/* Translate one admitted document scalar offset to UTF-8 bytes in the full snapshot.
+ * position is nonnegative and prevalidated against view_total. Returns an owned byte count. */
+static size_t document_byte(long position)
+{
+    size_t byte = 0;
+    long scalar = 0;
+    while (byte < extent && scalar < position)
+    {
+        byte++;
+        while (byte < extent && ((unsigned char)snapshot[byte] & 0xc0U) == 0x80U)
+        {
+            byte++;
+        }
+        scalar++;
+    }
+    return byte;
 }
 
 
@@ -309,21 +378,91 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
     FVM_TextLayout *layout = 0;
     FVM_TextLayoutMetrics metrics;
     FVM_FontMetrics font;
+    FVM_TextFieldScrollInfo scrolling;
+    FVM_Value value;
     FVM_RasterColor selected = {204, 222, 255, 255};
     FVM_RasterColor cursor = {35, 85, 170, 255};
     size_t first = scalar_byte(shown, caret < anchor ? caret : anchor);
     size_t last = scalar_byte(shown, caret > anchor ? caret : anchor);
     size_t current = scalar_byte(shown, caret);
     size_t index;
+    double cursor_x = 0;
+    double cursor_y = 0;
+    int cursor_visible = 0;
     int ok = 1;
+    if ((caret < anchor ? caret : anchor) < view_first)
+    {
+        first = 0;
+    }
+    if ((caret > anchor ? caret : anchor) > view_last)
+    {
+        last = shown;
+    }
     memset(&options, 0, sizeof(options));
-    options.max_width = EDITOR_WIDTH - 4;
     options.alignment = FVM_TEXT_ALIGN_LEFT;
-    if (fvm_text_layout_create(layout_font, snapshot, shown, &options, &layout) != FVM_OK ||
+    if (fvm_text_layout_create(layout_font, snapshot + display_start, shown, &options, &layout) != FVM_OK ||
         fvm_text_layout_metrics(layout, &metrics) != FVM_OK || fvm_font_metrics(layout_font, &font) != FVM_OK)
     {
         fvm_text_layout_destroy(layout);
         return 0;
+    }
+    for (index = 0; index < metrics.line_count && current <= shown && ok; index++)
+    {
+        FVM_TextLayoutLine line;
+        size_t glyph_index;
+        if (fvm_text_layout_line(layout, index, &line) != FVM_OK)
+        {
+            ok = 0;
+            break;
+        }
+        if (current < line.byte_start || (current >= line.byte_next && index + 1 < metrics.line_count))
+        {
+            continue;
+        }
+        cursor_x = line.x + line.advance;
+        cursor_y = line.baseline - font.ascent;
+        for (glyph_index = 0; glyph_index < line.glyph_count; glyph_index++)
+        {
+            FVM_TextLayoutGlyph glyph;
+            if (fvm_text_layout_glyph(layout, line.glyph_start + glyph_index, &glyph) != FVM_OK)
+            {
+                ok = 0;
+                break;
+            }
+            if (glyph.shaped.cluster >= current)
+            {
+                cursor_x = glyph.x;
+                break;
+            }
+        }
+        cursor_visible = ok;
+        break;
+    }
+    if (cursor_visible)
+    {
+        if (cursor_x - horizontal < 0)
+        {
+            horizontal = floor(cursor_x);
+        }
+        if (cursor_x - horizontal > EDITOR_WIDTH - 12)
+        {
+            horizontal = ceil(cursor_x - (EDITOR_WIDTH - 12));
+        }
+    }
+    if (horizontal < 0)
+    {
+        horizontal = 0;
+    }
+    fvm_value_number(&value, horizontal);
+    scrolling.struct_size = sizeof(scrolling);
+    if (fvm_object_set(context, field, "hscroll", &value) != FVM_OK ||
+        fvm_textfield_scroll_info(context, field, &scrolling) != FVM_OK)
+    {
+        ok = 0;
+    }
+    if (ok)
+    {
+        horizontal = (double)scrolling.hscroll;
     }
     for (index = 0; index < metrics.glyph_count && ok; index++)
     {
@@ -335,47 +474,108 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
         }
         if (glyph.shaped.cluster >= first && glyph.shaped.cluster < last)
         {
-            ok = rectangle(
-                surface, glyph.x + 2, glyph.y - font.ascent + 2, glyph.shaped.x_advance, font.line_height, selected);
+            ok = rectangle(surface,
+                           glyph.x + 2 - horizontal,
+                           glyph.y - font.ascent + 2,
+                           glyph.shaped.x_advance,
+                           font.line_height,
+                           selected);
         }
     }
-    for (index = 0; index < metrics.line_count && current <= shown && ok; index++)
+    if (ok && cursor_visible)
     {
-        FVM_TextLayoutLine line;
-        size_t glyph_index;
-        double x;
-        if (fvm_text_layout_line(layout, index, &line) != FVM_OK)
+        ok = rectangle(surface, cursor_x + 2 - horizontal, cursor_y + 2, 1, font.line_height, cursor);
+    }
+    if (ok)
+    {
+        fvm_text_layout_destroy(hit_layout);
+        hit_layout = layout;
+    }
+    else
+    {
+        fvm_text_layout_destroy(layout);
+    }
+    return ok;
+}
+
+
+/* Cull entire offscreen font contours before the bounded public raster API.
+ * path/surface are borrowed, color is copied. Retained curves/control points stay exact;
+ * this is conservative contour culling, never point clamping or glyph distortion. */
+static FVM_Result draw_visible(const FVM_Path *path, FVM_RasterSurface *surface, FVM_RasterColor color)
+{
+    FVM_Path *visible = 0;
+    FVM_Result result = fvm_path_create(&visible);
+    size_t count = fvm_path_count(path);
+    size_t first = 0;
+    while (first < count && result == FVM_OK)
+    {
+        size_t last = first;
+        double left = 1e100;
+        double right = -1e100;
+        double top = 1e100;
+        double bottom = -1e100;
+        while (last < count)
         {
-            ok = 0;
+            FVM_PathCommand command;
+            unsigned int points;
+            unsigned int index;
+            result = fvm_path_get(path, last, &command);
+            if (result != FVM_OK || (last != first && command.verb == FVM_PATH_MOVE))
+            {
+                break;
+            }
+            points = command.verb == FVM_PATH_CLOSE       ? 0U
+                     : command.verb == FVM_PATH_CUBIC     ? 3U
+                     : command.verb == FVM_PATH_QUADRATIC ? 2U
+                                                          : 1U;
+            for (index = 0; index < points; index++)
+            {
+                if (command.x[index] < left)
+                {
+                    left = command.x[index];
+                }
+                if (command.x[index] > right)
+                {
+                    right = command.x[index];
+                }
+                if (command.y[index] < top)
+                {
+                    top = command.y[index];
+                }
+                if (command.y[index] > bottom)
+                {
+                    bottom = command.y[index];
+                }
+            }
+            last++;
+        }
+        if (last == first || result != FVM_OK)
+        {
+            result = FVM_INVALID_ARGUMENT;
             break;
         }
-        if (current < line.byte_start || (current >= line.byte_next && index + 1 < metrics.line_count))
+        if (right >= 0 && bottom >= 0 && left <= surface->width && top <= surface->height)
         {
-            continue;
-        }
-        x = line.x + line.advance;
-        for (glyph_index = 0; glyph_index < line.glyph_count; glyph_index++)
-        {
-            FVM_TextLayoutGlyph glyph;
-            if (fvm_text_layout_glyph(layout, line.glyph_start + glyph_index, &glyph) != FVM_OK)
+            size_t index;
+            for (index = first; index < last && result == FVM_OK; index++)
             {
-                ok = 0;
-                break;
-            }
-            if (glyph.shaped.cluster >= current)
-            {
-                x = glyph.x;
-                break;
+                FVM_PathCommand command;
+                result = fvm_path_get(path, index, &command);
+                if (result == FVM_OK)
+                {
+                    result = fvm_path_add(visible, &command);
+                }
             }
         }
-        if (ok)
-        {
-            ok = rectangle(surface, x + 2, line.baseline - font.ascent + 2, 1, font.line_height, cursor);
-        }
-        break;
+        first = last;
     }
-    fvm_text_layout_destroy(layout);
-    return ok;
+    if (result == FVM_OK)
+    {
+        result = fvm_path_draw(visible, surface, color, 0, 0);
+    }
+    fvm_path_destroy(visible);
+    return result;
 }
 
 
@@ -388,13 +588,18 @@ static int render(void)
     FVM_RasterSurface surface;
     FVM_RasterColor ink = {32, 36, 48, 255};
     FVM_Result result;
-    size_t shown = extent < EDITOR_VIEW_BYTES ? extent : EDITOR_VIEW_BYTES;
-    while (shown < extent && ((unsigned char)snapshot[shown] & 0xc0U) == 0x80U)
+    size_t shown;
+    display_start = document_byte(view_first);
+    shown = document_byte(view_last) - display_start;
+    if (shown > EDITOR_VIEW_BYTES)
     {
-        shown--;
+        return 0;
     }
-    if (fvm_value_string_bytes(&value, snapshot, shown) != FVM_OK ||
-        fvm_object_set(context, field, "text", &value) != FVM_OK)
+    display_size = shown;
+    if (fvm_value_string_bytes(&value, snapshot + display_start, shown) != FVM_OK ||
+        fvm_object_set(context, field, "text", &value) != FVM_OK ||
+        fvm_object_get(context, field, "text", &value) != FVM_OK || value.type != FVM_VALUE_STRING ||
+        fvm_value_string_size(&value) != shown || memcmp(value.string, snapshot + display_start, shown))
     {
         return 0;
     }
@@ -410,7 +615,7 @@ static int render(void)
     result = fvm_textfield_path(context, field, &path);
     if (result == FVM_OK)
     {
-        result = fvm_path_draw(path, &surface, ink, 0, 0);
+        result = draw_visible(path, &surface, ink);
     }
     fvm_path_destroy(path);
     if (result != FVM_OK)
@@ -424,11 +629,12 @@ static int render(void)
         char title[256];
         snprintf(title,
                  sizeof(title),
-                 "Dis IDE | rev %lu saved %ld status %lu | Ctrl+S save, Ctrl+O reload%s",
+                 "Dis IDE | rev %lu saved %ld status %lu | top %lu | Ctrl+S save, Ctrl+O reload%s",
                  revision,
                  saved,
                  status,
-                 extent > shown ? " | first page" : "");
+                 view_top + 1,
+                 view_first != 0 || view_last != (long)view_total ? " | bounded window" : "");
         SDL_SetWindowTitle(window, title);
         if (SDL_UpdateTexture(texture, 0, pixels, EDITOR_WIDTH * 4U) || SDL_RenderClear(renderer) ||
             SDL_RenderCopy(renderer, texture, 0, 0))
@@ -481,6 +687,26 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code == EDITOR_VIEWPORT)
+    {
+        unsigned long top;
+        unsigned long scalars;
+        unsigned long ticket;
+        if (assembling || message->size != 24 || message->first < 0 || message->second < message->first ||
+            !hexword(message->text, &top) || !hexword(message->text + 8, &scalars) ||
+            !hexword(message->text + 16, &ticket) || scalars > 1048576UL || (unsigned long)message->second > scalars ||
+            ticket == 0 || ticket > 2147483647UL || ticket <= view_ticket)
+        {
+            return 0;
+        }
+        view_first = message->first;
+        view_last = message->second;
+        view_total = scalars;
+        view_top = top;
+        view_ticket = ticket;
+        view_revision = message->flags;
+        return 1;
+    }
     if (message->code == EDITOR_SELECTION)
     {
         if (!assembling || assembled != extent || message->flags != revision || message->first < 0 ||
@@ -491,7 +717,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
         size_t scalars;
         snapshot[extent] = 0;
         if (fvm_utf8_validate(snapshot, extent, &scalars) != FVM_UTF8_OK || (unsigned long)message->first > scalars ||
-            (unsigned long)message->second > scalars)
+            (unsigned long)message->second > scalars || scalars != view_total || revision != view_revision ||
+            !view_ticket)
         {
             return 0;
         }
@@ -512,6 +739,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
                 printf("%02x", (unsigned char)snapshot[index]);
             }
             putchar('\n');
+            printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
         }
         return 1;
     }
@@ -542,6 +770,109 @@ int dvm_editor_present(const DVM_UIMessage *message)
     memcpy(snapshot + offset, message->text + EDITOR_REPLY_META, message->size - EDITOR_REPLY_META);
     assembled += message->size - EDITOR_REPLY_META;
     return 1;
+}
+
+
+/* Convert one actual glyph-layout hit into a source scalar proposal.
+ * Coordinates are borrowed pixel values. Returns -1 if no completed layout is available. */
+static long hit_position(double x, double y)
+{
+    FVM_TextLayoutMetrics metrics;
+    FVM_FontMetrics font;
+    FVM_TextLayoutLine line;
+    size_t index;
+    size_t selected = 0;
+    size_t byte;
+    long position = view_first;
+    double distance;
+    if (!hit_layout || fvm_text_layout_metrics(hit_layout, &metrics) != FVM_OK || !metrics.line_count ||
+        fvm_font_metrics(layout_font, &font) != FVM_OK)
+    {
+        return -1;
+    }
+    y -= 2;
+    x += horizontal - 2;
+    for (index = 0; index < metrics.line_count; index++)
+    {
+        if (fvm_text_layout_line(hit_layout, index, &line) != FVM_OK)
+        {
+            return -1;
+        }
+        selected = index;
+        if (y < line.baseline - font.ascent + font.line_height)
+        {
+            break;
+        }
+    }
+    if (fvm_text_layout_line(hit_layout, selected, &line) != FVM_OK)
+    {
+        return -1;
+    }
+    byte = line.byte_end;
+    distance = fabs(x - (line.x + line.advance));
+    for (index = 0; index < line.glyph_count; index++)
+    {
+        FVM_TextLayoutGlyph glyph;
+        double candidate;
+        if (fvm_text_layout_glyph(hit_layout, line.glyph_start + index, &glyph) != FVM_OK)
+        {
+            return -1;
+        }
+        candidate = fabs(x - glyph.x);
+        if (candidate < distance)
+        {
+            distance = candidate;
+            byte = glyph.shaped.cluster;
+        }
+    }
+    if (byte > display_size)
+    {
+        return -1;
+    }
+    for (index = 0; index < byte; index++)
+    {
+        if (((unsigned char)snapshot[display_start + index] & 0xc0U) != 0x80U)
+        {
+            position++;
+        }
+    }
+    return position;
+}
+
+
+/* Resolve a copied raw pointer event using only the completed actual glyph layout.
+ * message is replaced with a value request carrying revision and view ticket; Dis decides policy. */
+static void resolve_pointer(DVM_UIMessage *message)
+{
+    if (message->kind != DVM_UI_POINTER)
+    {
+        return;
+    }
+    if (message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN)
+    {
+        message->first = message->code == FVM_MOUSE_WHEEL_UP ? -3 : 3;
+        message->second = 0;
+        message->code = EDITOR_SCROLL;
+    }
+    else if (message->code == FVM_MOUSE_LEFT)
+    {
+        message->first = hit_position((double)message->first / 20, (double)message->second / 20);
+        message->second = (long)message->flags;
+        message->code = EDITOR_PLACE;
+    }
+    else
+    {
+        return;
+    }
+    message->kind = DVM_UI_REQUEST;
+    message->id = 1;
+    message->flags = view_revision;
+    message->size = 8;
+    {
+        char ticket[9];
+        snprintf(ticket, sizeof(ticket), "%08lx", view_ticket);
+        memcpy(message->text, ticket, 8);
+    }
 }
 
 
@@ -615,6 +946,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             return -1;
         }
+        resolve_pointer(message);
         complete = 0;
         return 1;
     }
@@ -631,6 +963,37 @@ int dvm_editor_event(DVM_UIMessage *message)
             message->id = 1;
             message->code = EDITOR_QUIT;
             message->flags = (SDL_GetModState() & KMOD_SHIFT) != 0;
+        }
+        else if (event.type == SDL_MOUSEWHEEL)
+        {
+            if (!event.wheel.y)
+            {
+                return 0;
+            }
+            message->kind = DVM_UI_POINTER;
+            message->code = event.wheel.y > 0 ? FVM_MOUSE_WHEEL_UP : FVM_MOUSE_WHEEL_DOWN;
+            if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
+            {
+                message->code = event.wheel.y > 0 ? FVM_MOUSE_WHEEL_DOWN : FVM_MOUSE_WHEEL_UP;
+            }
+        }
+        else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP ||
+                 (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)))
+        {
+            double x = event.type == SDL_MOUSEMOTION ? event.motion.x : event.button.x;
+            double y = event.type == SDL_MOUSEMOTION ? event.motion.y : event.button.y;
+            FVM_InputPhase phase = event.type == SDL_MOUSEBUTTONDOWN ? FVM_INPUT_BEGIN
+                                   : event.type == SDL_MOUSEBUTTONUP ? FVM_INPUT_END
+                                                                     : FVM_INPUT_UPDATE;
+            if (event.type != SDL_MOUSEMOTION && event.button.button != SDL_BUTTON_LEFT)
+            {
+                return 0;
+            }
+            if (fvm_input_set_pointer(context, x, y) != FVM_OK ||
+                dvm_ui_capture_pointer(context, FVM_MOUSE_LEFT, phase, message) != FVM_OK)
+            {
+                return -1;
+            }
         }
         else if (event.type == SDL_TEXTINPUT)
         {
@@ -683,6 +1046,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             return 0;
         }
+        resolve_pointer(message);
         complete = 0;
         return 1;
     }
@@ -718,6 +1082,7 @@ void dvm_editor_destroy(void)
     {
         fvm_gc_unpin(context, field);
     }
+    fvm_text_layout_destroy(hit_layout);
     fvm_font_destroy(layout_font);
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);

@@ -10,8 +10,8 @@ import tempfile
 
 # Encode one independently specified envelope and its little-endian byte count.
 # Fields are integers, text is Unicode. Returns owned bytes, with no runtime dependency.
-def envelope(kind, code=0, flags=0, text=""):
-    fields = (kind, 1 if kind == 1 else 0, code, flags, 0, 0)
+def envelope(kind, code=0, flags=0, text="", first=0, second=0):
+    fields = (kind, 1 if kind == 1 else 0, code, flags, first, second)
     wire = b"fvd1:" + "".join(f"{value & 0xffffffff:08x}" for value in fields).encode("ascii")
     wire += text.encode("utf-8")
     return struct.pack("<I", len(wire)) + wire
@@ -24,7 +24,7 @@ def shortcut(letter):
 
 # Execute actual bytecode from a relocated cwd; collect independently decoded view snapshots.
 # Paths are explicit. Raises on timeout, failed execution or invalid mode counters.
-def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False):
+def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None):
     replay = directory / "input frames.bin"
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
@@ -47,6 +47,8 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
         if line.startswith("VIEW "):
             words = line.split(" ", 6)
             views.append((*map(int, words[1:6]), bytes.fromhex(words[6]).decode("utf-8")))
+    if windows is not None:
+        windows.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("WINDOW "))
     raster = capture.read_bytes()
     header = b"P6\n960 640\n255\n"
     if not raster.startswith(header) or len(raster) != len(header) + 960 * 640 * 3:
@@ -110,6 +112,32 @@ def main():
         views = run(runtime, module, font, mode, directory, events, source)
         if views[-1][-1] != "editfocus":
             raise RuntimeError("focus loss retained a stale Dis modifier")
+        # Actual glyph hits use source scalars, including non-BMP text, not byte indexes.
+        source.write_text("Я😀\none\nlast", encoding="utf-8")
+        events = [envelope(3, 1, 1, first=18000, second=40),
+                  envelope(3, 1, 2, first=40, second=40),
+                  envelope(3, 1, 3, first=40, second=40), envelope(5, text="X"), envelope(1, 65539, 1)]
+        views = run(runtime, module, font, mode, directory, events, source)
+        if views[1][3:5] != (2, 2) or views[2][3:5] != (0, 2) or views[-1][-1] != "X\none\nlast":
+            raise RuntimeError("glyph hit/drag did not preserve Unicode selection policy")
+        # Wheel scrolling changes only the Dis viewport. A stale hit must be refused.
+        source.write_text("\n".join(f"L{i:02d} Я😀" for i in range(50)), encoding="utf-8")
+        windows = []
+        events = [envelope(3, 5, 1), envelope(1, 65542, 1, "00000001", first=1, second=1),
+                  envelope(3, 1, 1, first=40, second=40), envelope(3, 1, 3, first=40, second=40),
+                  envelope(4, 34, 1), envelope(1, 65539)]
+        views = run(runtime, module, font, mode, directory, events, source, windows=windows)
+        if windows[1][1] != 21 or views[1][3] != 0 or views[2][1] != 1 or views[2][3] != 0:
+            raise RuntimeError("wheel/stale view request changed document selection")
+        if views[3][3] != 21 or views[-1][3] != 189 or not (windows[-1][1] <= 189 <= windows[-1][2]):
+            raise RuntimeError("scrolled hit/page movement did not reveal the acknowledged caret")
+        # The complete source remains owned while a long-line suffix follows Ctrl+End.
+        source.write_text("Я😀" * 3000, encoding="utf-8")
+        windows = []
+        events = [envelope(4, 17, 1), envelope(4, 35, 1), envelope(4, 17, 0), envelope(1, 65539)]
+        views = run(runtime, module, font, mode, directory, events, source, windows=windows)
+        if views[-1][3] != 6000 or windows[-1][1] <= 0 or windows[-1][2] != 6000:
+            raise RuntimeError("long-line viewport lost source coordinates or the document tail")
         # Invalid UTF-8 must fail before native file truncation or a published view.
         source.write_bytes(b"\xffinvalid")
         run(runtime, module, font, mode, directory, [], source, success=False)
