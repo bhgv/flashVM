@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1564**. [English](README.md).
+Версия разработки: **0.1565**. [English](README.md).
 
-Текущая серия: [v0.1562–v0.1564](docs/releases/v0.1564.md) — ASCII/расширенные числа из Inferno, сборка путей без повторного копирования префикса и Unicode Copy/Cut/Paste через каналы с одним Undo.
+Текущая серия: [v0.1562–v0.1565](docs/releases/v0.1565.md) — Rune/Type и расширенные числа из Inferno, сборка путей без повторного копирования префикса и Unicode Copy/Cut/Paste через каналы с одним Undo.
 
 ## Просмотр документации
 

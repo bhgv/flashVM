@@ -70,7 +70,11 @@ def main():
         parts.extend(function(upstream, path, name, result) for name, result in names)
     unit = (upstream / "libinterp/tests/dis-loader.c").read_text()
     unit = unit.replace("IMPLEMENTATION", "\n".join(parts) + "\n" + parser)
-    unit = unit.replace("int main(void)", "int upstream_fixture_main(void)")
+    # Preserve the retained body while accepting both one-line and split C entry declarations.
+    # Reject a missing/ambiguous entry before compiling the independent memory-image adapter.
+    unit, renamed = re.subn(r"(?m)^int\s+main\s*\(\s*void\s*\)", "int upstream_fixture_main(void)", unit)
+    if renamed != 1:
+        raise RuntimeError("expected exactly one retained loader fixture entry, found " + str(renamed))
     unit += "\n" + (root / "host/module_image.c").read_text()
     unit += "\n" + re.sub(
         r"^#include \"(?:lib9|isa|interp)\.h\"\n",

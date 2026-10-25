@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Workspace checkpoint v0.1565: reviewed Inferno Rune/Type guards and channel-owned Unicode source clipboard run in the experimental matched Dis/FlashVM host. Path transaction growth preserves public semantics. [Clipboard contract](../../ide/dis/CLIPBOARD.md). This does not close any of the nine Flash compatibility stages or physical/platform acceptance.
+
 Checkpoint v0.1563: public path append stages transformed source fragments and reserves destination growth geometrically. Allocation/transform failures preserve commands and contour state; no compatibility stage closes. [EN](PATH_APPEND_GROWTH.md) / [RU](PATH_APPEND_GROWTH.ru.md).
 
 Build/runtime checkpoint v0.1534: local channels add an explicit rendezvous mode and mutex-protected native waiter snapshots. Dis host adapters reuse FlashVM platform files/sockets/threads; experimental native register isolation is not full parallel-VM/GC acceptance. No compatibility stage is closed. See [shared host and native threads](../../disVM/host/README.md).

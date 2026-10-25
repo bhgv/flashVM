@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-1bda41a0e140dabdb76a179c867315b0421df280; every imported file has a manifest hash.
+5ca377017fe42eac2d95ed0638a5b42ab45ac212; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -149,3 +149,12 @@ Current pin is `1bda41a0e140dabdb76a179c867315b0421df280`. All 75 selected core
 checks pass, including the actual retained libmath parser oracle. The embedded
 editor now uses [Dis clipboard staging](../ide/dis/CLIPBOARD.md); the source
 values, captured range and one-Undo edit stay on Dis. [Series](../docs/releases/v0.1564.md).
+
+
+## Rune concatenation and Type retain checkpoint v0.1565
+
+Current pin is `5ca377017fe42eac2d95ed0638a5b42ab45ac212`: matching Rune ADDC,
+preflight heap/array/loader Type retention and its upstream regressions. The
+selected core has 76 passing entries; native runtime/editor and UBSan acceptance
+is repeated at this pin. The local memory-parser fixture now renames its retained
+entry independently of C whitespace. [Evidence](../docs/releases/v0.1565.md).

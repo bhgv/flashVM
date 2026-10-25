@@ -82,6 +82,7 @@ if(BUILD_TESTING)
     array-indices
     descriptor-index
     heap-bounds
+    type-retains
     reference-slots
     string-branches
     channels
@@ -121,6 +122,8 @@ if(BUILD_TESTING)
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+  set_tests_properties(disvm_type-retains PROPERTIES
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   # Guard new byte-addressed Sys tuples and native argument bounds under UBSan.
   set_tests_properties(disvm_sys-status-slots disvm_sys-stat-slots PROPERTIES
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")

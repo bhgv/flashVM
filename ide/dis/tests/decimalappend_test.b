@@ -68,6 +68,23 @@ init()
     if (len retained != 128 || len joined != 256 || joined[:128] != retained || joined[128:] != retained) {
         raise "fail: shared/self ASCII concatenation";
     }
+    runes := "Я😀";
+    for (count := 0; count < 32; count++) {
+        runes += "€";
+    }
+    if (len runes != 34 || runes[0] != 16r42f || runes[1] != 16r1f600) {
+        raise "fail: Rune concatenation prefix/length";
+    }
+    for (runeindex := 2; runeindex < len runes; runeindex++) {
+        if (runes[runeindex] != 16r20ac) {
+            raise "fail: Rune concatenation contents";
+        }
+    }
+    originalrunes := runes;
+    runes += runes;
+    if (len originalrunes != 34 || len runes != 68 || runes[:34] != originalrunes || runes[34:] != originalrunes) {
+        raise "fail: retained/self Rune concatenation";
+    }
     text := "";
     for (index := 0; index < 64; index++) {
         previous := text; # A retained owner forces copy-on-write where required.
