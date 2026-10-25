@@ -18,7 +18,8 @@ python3 build-menu.py
 Choose one number/name, several separated by commas/spaces, or all. Individual
 language projects are as1/as2/as3/limbo. Explicit tools and disvm have separate menu
 entries. Builds are incremental; --build-root, --jobs and --config remain available.
-No downloads, installation, cleanup, Git operation or scheduling is performed.
+Successful builds now install local packages under out/ or --out. No system
+installation, downloads, cleanup, Git writes or scheduling is performed.
 
 Default Coco/R is source-built from tools/coco-r-C. The optional C/Limbo generators
 are in tools/coco-r-limbo, including cocor.b/runtime fragments. Complex IDE code
@@ -162,3 +163,24 @@ DVM_NATIVE_REGISTERS=ON ./build-workspace.sh --projects disvm --tests
 Menu component `17` (`disvm-host`) is included in `all`.
 [Four platforms, module sources and experiment limits](disVM/host/README.md).
 [Blocking channels and waiter snapshots](flashVM/doc/CHANNEL_RENDEZVOUS.md).
+
+
+## Installed packages and display profiles
+
+Both hyphenated and underscored launchers work. Use --out to choose a local prefix,
+--no-install to explicitly skip packaging, --vm-profiles minimal,agg for separate
+VM variants, and --player for the actual SDL2 frontend (requires its SDK/runtime).
+The no-graphics-headless and agg-headless packages contain the console runner,
+headers/libs and numeric movies that trace 123/42. agg-sdl2 additionally contains
+flashvm_player; no GUI validation is implied when SDL2 is unavailable.
+
+Graphics/input/audio fixtures are under examples/player/animation_audio. Real
+SWF6 video fixtures are supplied separately; FlashVM video playback remains
+unsupported. IDE modules and debug symbols install to out/ide/modules with AS
+and Limbo sources. vm/STATUS.txt explicitly describes the unfinished Dis host;
+no silent emu requirement or successful dummy launcher is introduced.
+
+See [editor channels](ide/EDITOR-CHANNELS.md), [AS](ide/as/README.md), and the
+[native-tool tutorials](examples/firststeps/tools/README.md). Installed sibling
+FIR/linker examples can be rebuilt after relocation; the acceptance script is
+`python3 tools/test_installed_workspace.py --prefix out --scratch build/install-smoke`.

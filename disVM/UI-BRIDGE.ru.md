@@ -104,3 +104,6 @@ Coco/R-фронтендом. Алгоритм AS-кодека дополните
 Мостовые операции не заменяют эту работу и не создают незаявленный эмулятор.
 Ещё предстоят автоматическое подключение ввода frontend и AS-виджеты редактора.
 Запуск `uiecho`/`idecore` целиком в нашем DisVM пока не объявляется проверенным.
+
+Current extension: View=7 is an id-zero Dis-owned presentation envelope.
+Owner pump/client retention and the current acceptance are described in [OWNER-PUMP](OWNER-PUMP.md).

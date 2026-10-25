@@ -112,3 +112,5 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 [Bulk replacement / Массовая замена](REPLACE_ALL.md) · [Example / Пример](examples/replaceall/README.md)
 
 [Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.md)
+
+[Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).

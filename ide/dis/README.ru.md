@@ -108,3 +108,5 @@ IDE должна поставляться в интерпретируемом/JI
 [Bulk replacement / Массовая замена](REPLACE_ALL.ru.md) · [Example / Пример](examples/replaceall/README.ru.md)
 
 [Compiler UTF-8 source spans / UTF-8 диапазоны компилятора](UTF8_SPANS.ru.md) · [End-to-end example / Сквозной пример](examples/compiler-location/README.ru.md)
+
+[Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).

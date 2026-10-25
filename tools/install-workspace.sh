@@ -1,0 +1,389 @@
+#!/usr/bin/env bash
+# Install actual workspace products and owned examples without requiring CMake at install time.
+set -euo pipefail
+ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd) # Workspace source root.
+BUILD="$ROOT/build/workspace"                                       # Existing build tree, never cleaned here.
+OUT="$ROOT/out"                                                     # User-facing local installation prefix.
+PROJECTS=""                                                         # Explicit comma-separated package selection.
+CONFIG=Release                                                      # Multi-configuration build directory spelling.
+VM_BUILD=""                                                         # Optional separately built FlashVM variant.
+
+# Reject an incomplete package instead of silently reporting a successful installation.
+# Parameters: diagnostic words. Returns: never; writes stderr and exits with status 1.
+fail() {
+    printf 'install-workspace: %s\n' "$*" >&2
+    exit 1
+}
+
+# Copy one known product, retaining ordinary data permissions or setting executable mode.
+# Parameters: source, destination, optional mode. Returns: cp/chmod failure propagates.
+copy_file() {
+    local source=$1 destination=$2 mode=${3:-644}
+    [[ -f "$source" ]] || fail "Missing product: $source"
+    mkdir -p "$(dirname -- "$destination")"
+    cp -p -- "$source" "$destination"
+    chmod "$mode" "$destination"
+}
+
+# Copy an explicitly selected SDK/example directory; no source checkout is removed.
+# Parameters: source directory and destination directory. Returns: copy failure propagates.
+copy_tree() {
+    local source=$1 destination=$2
+    [[ -d "$source" ]] || fail "Missing SDK directory: $source"
+    mkdir -p "$destination"
+    cp -R -- "$source/." "$destination/"
+}
+
+# Locate a named executable in native, CMake or multi-configuration output layouts.
+# Parameters: build directory and target basename. Returns: prints a path, or fails visibly.
+program() {
+    local base=$1 name=$2 candidate found
+    for candidate in "$base/$CONFIG/$name.exe" "$base/$CONFIG/$name" "$base/$name.exe" "$base/$name"; do
+        if [[ -f "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    found=$(find "$base" -type f \( -name "$name" -o -name "$name.exe" \) ! -path '*/CMakeFiles/*' -print -quit)
+    [[ -n "$found" ]] || fail "Executable $name was not built under $base"
+    printf '%s\n' "$found"
+}
+
+# Install the actual named program; PE outputs keep their .exe suffix.
+# Parameters: build directory, target basename, package directory. Returns: copy failure propagates.
+install_program() {
+    local source name=$2 destination=$3
+    source=$(program "$1" "$name")
+    if [[ "$source" == *.exe ]]; then
+        name="$name.exe"
+    fi
+    copy_file "$source" "$destination/$name" 755
+}
+
+# Preserve first-party licensing plus selected upstream notices rather than relabeling code.
+# Parameters: package directory and component source directory. Returns: copy failure propagates.
+notices() {
+    local destination=$1 source=$2 file relative
+    copy_file "$ROOT/LICENSE" "$destination/LICENSES/FlashVM-MIT.txt"
+    find "$source" -path "$OUT" -prune -o -type f \( -iname 'license*' -o -iname 'copying*' -o -name NOTICE -o -name 'NOTICE.*' -o -path '*/lib/legal/*' \) ! -path '*/build/*' -print0 |
+        while IFS= read -r -d '' file; do
+            relative=${file#"$source/"}
+            copy_file "$file" "$destination/LICENSES/$relative"
+        done
+    if [[ -f "$source/UPSTREAM.json" ]]; then
+        copy_file "$source/UPSTREAM.json" "$destination/UPSTREAM.json"
+    fi
+}
+
+# Install libraries without flattening their relative paths or mixing graphics variants.
+# Parameters: build directory and package directory. Returns: copy failure propagates.
+libraries() {
+    local base=$1 destination=$2 file relative
+    find "$base" -path "$OUT" -prune -o \( -type f -o -type l \) \( -name '*.a' -o -name '*.lib' -o -name '*.dll' -o -name '*.so' -o -name '*.so.*' -o -name '*.dylib' \) ! -path '*/CMakeFiles/*' -print0 |
+        while IFS= read -r -d '' file; do
+            relative=${file#"$base/"}
+            copy_file "$file" "$destination/lib/$relative"
+        done
+}
+
+# Package one standalone parser with two inputs and its own public API declaration.
+# Parameters: language name and build directory. Returns: complete package or an error.
+frontend() {
+    local language=$1 base=$2 destination="$OUT/$1" sample
+    mkdir -p "$destination/examples"
+    install_program "$base" "${language}_parse" "$destination"
+    libraries "$base" "$destination"
+    copy_file "$ROOT/compiler/$language/frontend/frontend.h" "$destination/include/frontend.h"
+    if [[ "$language" == limbo ]]; then
+        sample=Syntax.b
+        for tool in limbo_tree limbo_interface limbo_bindings; do
+            install_program "$base" "$tool" "$destination"
+        done
+        copy_file "$ROOT/compiler/limbo/examples/Syntax.b" "$destination/examples/Syntax.b"
+        copy_file "$ROOT/compiler/limbo/examples/NativeExample.m" "$destination/examples/NativeExample.m"
+        copy_tree "$ROOT/compiler/limbo/examples/external-modules" "$destination/examples/external-modules"
+    elif [[ "$language" == as3 ]]; then
+        sample=Counter.as
+        copy_file "$ROOT/compiler/as3/examples/Counter.as" "$destination/examples/Counter.as"
+        copy_file "$ROOT/compiler/as3/examples/Functions.as" "$destination/examples/Functions.as"
+    else
+        sample=Automatic.as
+        copy_file "$ROOT/compiler/$language/examples/Automatic.as" "$destination/examples/Automatic.as"
+        copy_file "$ROOT/compiler/$language/examples/UnicodeNames.as" "$destination/examples/UnicodeNames.as"
+    fi
+    notices "$destination" "$ROOT/compiler/$language"
+    copy_file "$ROOT/tools/coco-r-C/upstream/read.me" "$destination/LICENSES/CocoR-README.txt"
+    printf 'component=%s\nbuild=%s\nconfiguration=%s\n' "$language" "$base" "$CONFIG" >"$destination/PACKAGE.txt"
+    printf 'Installed %s -> %s\n' "$language" "$destination"
+    cat >"$destination/README-FIRSTSTEPS.md" <<EOF
+# $language syntax frontend
+
+Run from this directory: ./${language}_parse examples/$sample
+On Windows append .exe to the executable name.
+
+This is the Coco/R syntax frontend. Acceptance is not proof of full semantic
+compilation, FIR lowering or SWF/Dis execution. The optional frontend.h SDK and
+static libraries are separate from the command-line examples. Limbo .m scaffolds
+remain checked bridge scaffolds, not an already implemented native Dis host.
+EOF
+}
+
+# Package one requested component with actual products and honest runtime status.
+# Parameters: component name. Returns: installation failure propagates to the builder.
+install_component() {
+    local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file
+    case "$component" in
+        compilers)
+            for language in as1 as2 as3 limbo; do
+                if [[ -d "$base/$language" ]]; then
+                    frontend "$language" "$base/$language"
+                else
+                    frontend "$language" "$BUILD/$language"
+                fi
+            done
+            return 0
+            ;;
+        as1 | as2 | as3 | limbo)
+            frontend "$component" "$base"
+            return 0
+            ;;
+        vm)
+            base=${VM_BUILD:-$base}
+            profile=$(sed -n 's/^FVM_DEFS_FILE:FILEPATH=//p' "$base/CMakeCache.txt")
+            [[ -f "$profile" ]] || fail "No configured FlashVM profile in $base"
+            graphics=$(sed -n -E '/^(GRAPHICS_AGG|GRAPHICS_CAIRO|NO_GRAPHICS)[[:space:]]*$/p' "$profile" | head -1)
+            display=$(sed -n -E '/^(HEADLESS|FB|GLES|OGL|DX|SDL[123])[[:space:]]*$/p' "$profile" | head -1)
+            [[ -n "$graphics" && -n "$display" ]] || fail 'Missing raster/presentation profile keys'
+            variant=$(printf '%s-%s' "${graphics#GRAPHICS_}" "$display" | tr '[:upper:]_' '[:lower:]-')
+            if grep -q '^FVM_BUILD_DESKTOP_FRONTEND:BOOL=ON$' "$base/CMakeCache.txt"; then
+                display=SDL2
+                variant=$(printf '%s-sdl2' "${graphics#GRAPHICS_}" | tr '[:upper:]_' '[:lower:]-')
+            fi
+            destination="$OUT/flashvm/$variant"
+            source="$ROOT/flashVM"
+            mkdir -p "$destination"
+            install_program "$base" flashvm_reference_swf "$destination"
+            file=$(program "$base" flashvm_reference_swf)
+            if [[ "$file" == *.exe ]]; then
+                copy_file "$file" "$destination/flashvm.exe" 755
+            else
+                copy_file "$file" "$destination/flashvm" 755
+            fi
+            if [[ "$display" == SDL2 ]]; then
+                install_program "$base" flashvm_player "$destination"
+            fi
+            copy_tree "$ROOT/flashVM/include/flashvm" "$destination/include/flashvm"
+            copy_file "$profile" "$destination/configured.defs"
+            for example in constant arithmetic; do
+                copy_file "$ROOT/examples/firststeps/$example.swf" "$destination/$example.swf"
+                copy_file "$ROOT/examples/firststeps/$example.as" "$destination/$example.as"
+            done
+            copy_tree "$ROOT/flashVM/examples/player/animation_audio" "$destination/examples/player/animation_audio"
+            copy_tree "$ROOT/flashVM/examples/player/wheel_cursor" "$destination/examples/player/wheel_cursor"
+            copy_tree "$ROOT/flashVM/examples/player/frame_capture" "$destination/examples/player/frame_capture"
+            copy_tree "$ROOT/examples/firststeps/video" "$destination/examples/video"
+            cat >"$destination/README-FIRSTSTEPS.md" <<EOF
+# FlashVM: $graphics / $display
+
+Run here: ./flashvm constant.swf   (expected trace: 123)
+Run here: ./flashvm arithmetic.swf (expected trace: 42)
+Windows: use flashvm.exe. The corresponding commented AS sources are alongside.
+
+flashvm is a copy of the real console flashvm_reference_swf runner, not a GUI
+player. The configured raster and presentation keys are $graphics / $display.
+HEADLESS does not create a native window. Other variants occupy separate folders;
+copying a runner cannot add a presentation backend that the VM does not implement.
+Static SDK libraries and public headers are provided for host embedding.
+
+## Graphics, input and sound
+
+With the optional native player installed, run:
+./flashvm_player --no-jit --stats examples/player/animation_audio/02-input-audio.swf
+
+Arrows move the blue box; Space stretches it; the pink marker follows the mouse;
+clicks move the yellow marker. Click the window to give keyboard focus. The movie
+also exercises PCM/ADPCM event sounds. 01 is animation/audio without required
+input; 03 checks StopSounds. --mute allows visual/input checks without sound output.
+The fully commented input_equivalent.as and audio-timeline.txt explain the actions.
+wheel_cursor demonstrates wheel/cursor events; frame_capture demonstrates drawing.
+
+## Video compatibility fixtures
+
+examples/video contains genuine SWF6 Sorenson Spark video, including a video+MP3
+variant. Current FlashVM does not implement DefineVideoStream/VideoFrame playback.
+Read examples/video/README.md; a successful load or blank window is not video acceptance.
+EOF
+            ;;
+        fir)
+            source="$ROOT/fir/v1"
+            mkdir -p "$destination/examples"
+            for file in fir1 fir1_source fir1_opt; do
+                install_program "$base" "$file" "$destination"
+            done
+            copy_tree "$ROOT/examples/firststeps" "$destination/examples/firststeps"
+            copy_tree "$source/include" "$destination/include"
+            cat >"$destination/README-FIRSTSTEPS.md" <<'EOF'
+# Numeric source -> FIR -> object
+
+./fir1_source as2 --input examples/firststeps/arithmetic.as arithmetic.fir
+./fir1 check arithmetic.fir
+./fir1 opt arithmetic.fir arithmetic.opt.fir
+./fir1 object arithmetic.opt.fir arithmetic.swo
+
+Pass arithmetic.swo to the separately packaged swl linker. The included source,
+expected FIR and SWF illustrate the numeric subset, not a complete AS compiler.
+If your host restricts temporary files, set TMPDIR to an existing writable folder.
+EOF
+            ;;
+        linker)
+            mkdir -p "$destination/examples"
+            install_program "$base" swl "$destination"
+            copy_tree "$ROOT/linker/include" "$destination/include"
+            copy_tree "$ROOT/examples/firststeps" "$destination/examples/firststeps"
+            copy_tree "$ROOT/linker/examples/inspect" "$destination/examples/inspect"
+            cat >"$destination/README-FIRSTSTEPS.md" <<'EOF'
+# SWL linker
+
+./swl link arithmetic.swf ../fir/arithmetic.swo
+
+First create that object using the FIR package instructions. The supplied .as,
+.fir and .swf files are matched examples; the inspect directory contains a C99
+public-API client. This package does not turn arbitrary AS into complete SWF.
+EOF
+            ;;
+        symbols)
+            source="$ROOT/compiler/limbo/symbols"
+            mkdir -p "$destination/examples"
+            install_program "$base" sblmap "$destination"
+            install_program "$base" sblquery "$destination"
+            copy_tree "$source/include" "$destination/include"
+            if [[ -f "$BUILD/ide/idecore.sbl" ]]; then
+                copy_file "$BUILD/ide/idecore.sbl" "$destination/examples/idecore.sbl"
+            fi
+            printf '%s\n' '# Limbo symbols' './sblmap examples/idecore.sbl' 'Build IDE first to include its real .sbl example.' >"$destination/README-FIRSTSTEPS.md"
+            ;;
+        disvm | disvm-host)
+            source="$ROOT/disVM"
+            mkdir -p "$destination"
+            copy_tree "$ROOT/disVM/include" "$destination/include"
+            copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
+            copy_tree "$ROOT/disVM/module" "$destination/module"
+            copy_tree "$ROOT/disVM/limbo" "$destination/limbo"
+            copy_tree "$ROOT/disVM/examples/ui-channel" "$destination/examples/ui-channel"
+            copy_file "$ROOT/disVM/OWNER-PUMP.ru.md" "$destination/OWNER-PUMP.ru.md"
+            printf '%s\n' '# Dis native SDK' 'This package contains real libraries and headers, not a complete Dis executable.' 'The native module/scheduler/GC host integration remains in progress.' >"$destination/README-FIRSTSTEPS.md"
+            ;;
+        ide)
+            source="$ROOT/ide/dis"
+            mkdir -p "$destination/modules" "$destination/vm"
+            copy_file "$base/idecore.dis" "$destination/modules/idecore.dis"
+            copy_file "$base/idecore.sbl" "$destination/modules/idecore.sbl"
+            copy_file "$source/idecore.m" "$destination/include/idecore.m"
+            copy_tree "$source/examples" "$destination/examples"
+            copy_tree "$source/bridge" "$destination/include/bridge"
+            copy_tree "$ROOT/ide/as" "$destination/as"
+            copy_file "$ROOT/disVM/examples/ui-channel/bridge.as" "$destination/as/bridge.as"
+            copy_file "$ROOT/disVM/OWNER-PUMP.ru.md" "$destination/OWNER-PUMP.ru.md"
+            copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/uibridge.m"
+            copy_file "$ROOT/ide/EDITOR-CHANNELS.ru.md" "$destination/EDITOR-CHANNELS.ru.md"
+            for file in uibridge ideinput idebridge idecomplete idebuiltins navigation history replaceall; do
+                if [[ -f "$base/$file.dis" ]]; then
+                    copy_file "$base/$file.dis" "$destination/modules/$file.dis"
+                    if [[ -f "$base/$file.sbl" ]]; then
+                        copy_file "$base/$file.sbl" "$destination/modules/$file.sbl"
+                    fi
+                fi
+            done
+            if [[ -n "${EMU_EXECUTABLE:-}" && -f "${EMU_EXECUTABLE:-}" ]]; then
+                copy_file "$EMU_EXECUTABLE" "$destination/vm/emu" 755
+                printf '%s\n' 'Explicit reference emu copied; its matching module namespace is still required.' >"$destination/vm/STATUS.txt"
+            else
+                printf '%s\n' 'NO EXECUTABLE DIS HOST AVAILABLE' 'disvm_core is a static library, not an IDE launcher.' >"$destination/vm/STATUS.txt"
+            fi
+            printf '%s\n' '# IDE document-service package' 'Modules and debug symbols are compiled; the full GUI/embedded Dis runner remains unfinished.' 'See vm/STATUS.txt. A FlashVM SWF runner cannot execute idecore.dis.' 'No fake runtime or silent emu dependency is installed.' >"$destination/README-FIRSTSTEPS.md"
+            ;;
+        mk | iyacc | limbo-bootstrap | cocor | cocor-limbo)
+            case "$component" in
+                mk)
+                    source="$ROOT/tools/mk"
+                    file=mk
+                    ;;
+                iyacc)
+                    source="$ROOT/tools/iyacc"
+                    file=iyacc
+                    ;;
+                limbo-bootstrap)
+                    source="$ROOT/tools/limbo-bootstrap"
+                    file=limbo-bootstrap
+                    ;;
+                cocor)
+                    source="$ROOT/tools/coco-r-C"
+                    file=cocor
+                    ;;
+                cocor-limbo)
+                    source="$ROOT/tools/coco-r-limbo"
+                    file=cocor
+                    ;;
+            esac
+            mkdir -p "$destination"
+            install_program "$base" "$file" "$destination"
+            if [[ "$component" == cocor || "$component" == cocor-limbo ]]; then
+                copy_tree "$source/upstream/frames" "$destination/frames"
+                copy_tree "$source/upstream/sources" "$destination/sources"
+                copy_file "$source/upstream/read.me" "$destination/UPSTREAM-README.txt"
+                copy_tree "$ROOT/examples/firststeps/tools/cocor" "$destination/examples"
+                if [[ -f "$base/cocor.dis" ]]; then
+                    copy_file "$base/cocor.dis" "$destination/cocor.dis"
+                fi
+            elif [[ "$component" == iyacc ]]; then
+                copy_file "$source/upstream/utils/iyacc/yaccpar" "$destination/utils/lib/yaccpar"
+                copy_tree "$ROOT/examples/firststeps/tools/iyacc" "$destination/examples"
+            elif [[ "$component" == mk ]]; then
+                copy_tree "$ROOT/examples/firststeps/tools/mk" "$destination/examples"
+            elif [[ "$component" == limbo-bootstrap ]]; then
+                copy_tree "$source/upstream/module" "$destination/module"
+                copy_file "$ROOT/compiler/limbo/examples/external-modules/arithmetic.b" "$destination/examples/arithmetic.b"
+                copy_file "$ROOT/compiler/limbo/examples/external-modules/arithmetic.m" "$destination/examples/arithmetic.m"
+            fi
+            copy_file "$ROOT/examples/firststeps/tools/README.md" "$destination/EXAMPLES.md"
+            printf '# %s\n\nSource-built bootstrap/development tool; see preserved notices and UPSTREAM.json.\n' "$component" >"$destination/README-FIRSTSTEPS.md"
+            ;;
+        *)
+            fail "Unsupported package: $component"
+            ;;
+    esac
+    libraries "$base" "$destination"
+    notices "$destination" "$source"
+    printf 'component=%s\nbuild=%s\nconfiguration=%s\n' "$component" "$base" "$CONFIG" >"$destination/PACKAGE.txt"
+    printf 'Installed %s -> %s\n' "$component" "$destination"
+}
+
+while (($#)); do
+    (($# >= 2)) || fail "Missing value for $1"
+    case "$1" in
+        --projects)
+            PROJECTS=$2
+            ;;
+        --build-root)
+            BUILD=$2
+            ;;
+        --out)
+            OUT=$2
+            ;;
+        --config)
+            CONFIG=$2
+            ;;
+        --vm-build)
+            VM_BUILD=$2
+            ;;
+        *)
+            fail "Unknown argument: $1"
+            ;;
+    esac
+    shift 2
+done
+[[ -n "$PROJECTS" && -n "$BUILD" && -n "$OUT" ]] || fail 'Provide nonempty projects/build/out'
+IFS=, read -r -a selected <<<"$PROJECTS"
+for component in "${selected[@]}"; do
+    install_component "$component"
+done

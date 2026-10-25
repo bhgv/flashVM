@@ -1,0 +1,12 @@
+/* Declare a separate generated tutorial parser. */
+COMPILER Name
+/* Restrict this teaching language to a small explicit ASCII alphabet. */
+CHARACTERS letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+/* Recognize one or more letters as a single token. */
+TOKENS word = letter {letter}.
+/* Skip host-independent line endings and spaces. */
+IGNORE CHR(9) + CHR(10) + CHR(13) + CHR(32)
+/* Accept exactly one word. This is not a programming-language frontend. */
+PRODUCTIONS Name = word EOF.
+/* Close this grammar under the same compiler name. */
+END Name.

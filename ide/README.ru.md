@@ -77,3 +77,5 @@ late results. Without the option, legacy compiler messages remain supported.
 [Bulk replacement, one Undo / Массовая замена и один Undo](dis/REPLACE_ALL.ru.md)
 
 [Series 0.5.0 validation / Проверки серии](dis/SERIES_0_5_0.ru.md)
+
+[Editor services / Сервисы редактора](EDITOR-CHANNELS.ru.md).

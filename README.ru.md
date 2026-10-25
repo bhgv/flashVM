@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1534**. [English](README.md).
+Версия разработки: **0.1538**. [English](README.md).
 
 ## Просмотр документации
 
@@ -143,3 +143,5 @@ Reply ABI изменён в 0.3.0: пересоберите ядро и клие
 [CMake 3.10 / Make / Inferno mk](BUILD-NATIVE.ru.md)
 
 [Отдельное сравнение GC](docs/GC-COMPARISON.ru.md).
+
+[Channel editor / Канальный редактор](ide/EDITOR-CHANNELS.ru.md) · [AS view/worker](ide/as/README.md) · [Dis services](ide/dis/bridge/README.md).

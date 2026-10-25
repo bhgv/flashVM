@@ -1,0 +1,12 @@
+/* Declare the generated parser name. This grammar is a parser-generator tutorial. */
+COMPILER Number
+/* Name a reusable decimal character class. */
+CHARACTERS digit = "0123456789".
+/* Recognize a nonempty run of decimal digits. */
+TOKENS number = digit {digit}.
+/* Permit whitespace between tokens. */
+IGNORE CHR(9) + CHR(10) + CHR(13) + CHR(32)
+/* Accept one number and require end of input. */
+PRODUCTIONS Number = number EOF.
+/* Match the compiler declaration above. */
+END Number.

@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1534**. [Русская версия](README.ru.md).
+Development version: **0.1538**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -142,3 +142,5 @@ acceptance remain open.
 [CMake 3.10 / Make / Inferno mk](BUILD-NATIVE.md)
 
 [Separate GC comparison](docs/GC-COMPARISON.md).
+
+[Channel editor / Канальный редактор](ide/EDITOR-CHANNELS.ru.md) · [AS view/worker](ide/as/README.md) · [Dis services](ide/dis/bridge/README.md).

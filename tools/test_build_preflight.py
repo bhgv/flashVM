@@ -31,7 +31,7 @@ class BuildInvocationTests(unittest.TestCase):
             environment = os.environ.copy()
             environment.update(CMAKE=str(cmake), CTEST=str(ctest), PROBE_LOG=str(log))
             output = root / "output with spaces"
-            result = subprocess.run(['bash', str(ROOT / 'build-workspace.sh'), '--projects', 'linker',
+            result = subprocess.run(['bash', str(ROOT / 'build-workspace.sh'), '--no-install', '--projects', 'linker',
                                      '--build-root', str(output), '--tests', *extra],
                                     capture_output=True, text=True, env=environment)
             return result, log.read_text() if log.exists() else '', str(output)
@@ -64,7 +64,7 @@ class BuildInvocationTests(unittest.TestCase):
             environment = os.environ.copy()
             environment.update(CMAKE=str(cmake), PROBE_LOG=str(log),
                                LIMBO_EXECUTABLE=str(cmake), EMU_EXECUTABLE='')
-            result = subprocess.run(['bash', str(ROOT / 'build-workspace.sh'), '--projects', 'ide',
+            result = subprocess.run(['bash', str(ROOT / 'build-workspace.sh'), '--no-install', '--projects', 'ide',
                                      '--demo', '--build-root', str(root / 'output')],
                                     capture_output=True, text=True, env=environment)
             self.assertEqual(result.returncode, 3, result.stderr)

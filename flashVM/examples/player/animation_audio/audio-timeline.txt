@@ -1,0 +1,12 @@
+Audio timeline encoded by make_movies.py, 24 fps, 120 frames per loop:
+
+Frame 0:  StartSound ID 7, 440 Hz, mono 8-bit PCM at 11025 Hz.
+Frame 24: StartSound ID 7 with loop count 4.
+Frame 26: StartSound ID 7 with SyncNoMultiple, preventing a duplicate active instance.
+Frame 36: StartSound ID 7 with SyncStop, terminating that sound's loop.
+Frame 72: StartSound ID 8, 660 Hz stereo PCM at 44100 Hz.
+Frame 96: StartSound ID 9, quiet 880 Hz four-bit ADPCM diagnostic.
+
+03-stop-sounds.swf additionally executes StopSounds on frames 0 and 30.
+These are actual SWF DefineSound/StartSound tags and AVM1 StopSounds actions.
+They do not imply that an AS Sound-class implementation or SWF video decoder exists.

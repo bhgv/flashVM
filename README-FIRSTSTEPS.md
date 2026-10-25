@@ -3,6 +3,57 @@
 [English](README-FIRSTSTEPS.en.md) · [Обзор](README.ru.md) ·
 [Подробная сборка и кросс-компиляция](BUILDING.ru.md)
 
+## Установка локальных пакетов после сборки
+
+По умолчанию успешная сборка копирует продукты в `out/<компонент>/`: исполняемые
+файлы, нужные SDK-заголовки/библиотеки, лицензии, примеры и README-FIRSTSTEPS.
+`build_menu.py` и `build_workspace.sh` — совместимые имена тех же launcher-ов.
+
+```sh
+# Выбрать компоненты и движок; установка выполняется автоматически.
+python3 build_menu.py --projects vm,compilers,fir,linker,symbols,ide --backend auto
+# Минимальный и AGG варианты не смешиваются в одном пакете.
+./build_workspace.sh --projects vm --vm-profiles minimal,agg
+# Явный каталог пакетов, включая путь с пробелами.
+./build_workspace.sh --projects linker --out "$PWD/out packages"
+# Отключать локальную установку нужно явно.
+./build_workspace.sh --projects linker --no-install
+```
+
+VM-пакеты: `out/flashvm/no-graphics-headless` и `out/flashvm/agg-headless`.
+`flashvm` там — настоящий консольный runner, также сохранённый под исходным
+именем flashvm_reference_swf. Он исполняет numeric SWF примеры, но не создаёт окно.
+Для окна, мыши/клавиатуры и звука нужен native SDL2 player и соответствующий SDK:
+
+```sh
+./build_workspace.sh --projects vm --vm-profiles agg --player
+cd out/flashvm/agg-sdl2
+./flashvm_player examples/player/animation_audio/02-input-audio.swf
+```
+
+SDL2 не скачивается автоматически; его runtime должен быть доступен для вашей ОС.
+`--vm-profiles default,minimal,agg,cairo` выбирает отдельные конфигурации;
+доступность Cairo/SDL/прочих SDK проверяет соответствующая сборка. Примеры
+animation_audio содержат графику, pointer/keyboard input и звук. Video-only и
+video-audio — реальные SWF6 compatibility fixtures, но SWF video decoder/player
+в FlashVM пока отсутствует; наличие файла не означает работающий показ видео.
+
+```sh
+out/flashvm/no-graphics-headless/flashvm out/flashvm/no-graphics-headless/constant.swf
+out/flashvm/agg-headless/flashvm out/flashvm/agg-headless/arithmetic.swf
+# Ожидаемые trace: 123 и 42.
+```
+
+В `out/ide/modules` лежат idecore/uibridge/ideinput/idebridge/idecomplete/idebuiltins
+и их `.sbl`, рядом — Limbo-интерфейсы, AS worker/view и исходники примеров.
+`out/ide/vm/STATUS.txt` сообщает реальный статус runner: embedded Dis-хост ещё
+не закончен. При явном EMU_EXECUTABLE копируется именно этот reference executable;
+его namespace и ABI-совместимый compiler/header набор по-прежнему нужны.
+Один FlashVM SWF runner не исполняет idecore.dis. Подробности:
+[редактор/каналы](ide/EDITOR-CHANNELS.ru.md), [AS](ide/as/README.md),
+[Dis](ide/dis/bridge/README.md), [учебный tool SDK](examples/firststeps/tools/README.md).
+
+
 Запускайте команды из корня репозитория. Общая сборка необязательна:
 каждый проект сохраняет собственный CMakeLists.txt и независимые зависимости.
 Скрипт рассчитан на нативную сборку Bash + CMake 3.10+, C99/C++ компилятором,
@@ -83,7 +134,8 @@ EMU_EXECUTABLE; компиляция и проверки её продуктов
 По умолчанию собираются FlashVM, Dis interpreter/JIT core, четыре фронтенда,
 FIR-инструменты, SWF-линкер, SBL reader и Limbo-ядро IDE. SDK проверяются до начала сборки. Первая ошибка
 останавливает работу; частичные результаты сохраняются для диагностики.
-Скрипт ничего не устанавливает, не удаляет, не коммитит и не запускает по расписанию.
+Скрипт устанавливает только локальные пакеты в out/ (или --out), не выполняет
+системную установку, удаление пользовательских файлов, коммиты или запуск по расписанию.
 
 ```bash
 # Только VM и линкер: Coco/R и Limbo не нужны.

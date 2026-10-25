@@ -52,3 +52,6 @@ Remaining host work includes module loading/registration, scheduler/lifecycle,
 GC ownership, exact typed-channel registration and an owner pump retaining pending
 messages. Full `uiecho`/`idecore` execution in our DisVM, frontend input routing and
 the actual AS editor widgets remain unverified/unfinished.
+
+Current extension: View=7 is an id-zero Dis-owned presentation envelope.
+Owner pump/client retention and the current acceptance are described in [OWNER-PUMP](OWNER-PUMP.md).
