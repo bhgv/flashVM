@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]  # Real packaging scripts under test.
 class FrontendTests(unittest.TestCase):
     """Tool doubles inspect selection only; real SDL movie acceptance is a separate test."""
 
-    def probe_builder(self, options):
+    def probe_builder(self, options, project="vm"):
         """Run the actual root selector in a private minimal source tree; return argv logs."""
         with tempfile.TemporaryDirectory(prefix="GUI selection ") as directory:
             root = Path(directory)
@@ -40,7 +40,7 @@ class FrontendTests(unittest.TestCase):
                     "bash",
                     str(root / "build-workspace.sh"),
                     "--projects",
-                    "vm",
+                    project,
                     "--no-install",
                     "--build-root",
                     str(root / "output"),
@@ -74,6 +74,15 @@ class FrontendTests(unittest.TestCase):
         result, log = self.probe_builder(["--vm-profiles", "minimal"])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("SDK_BOOTSTRAP", log)
+
+    def test_dis_editor_build_enables_its_actual_target(self):
+        """The root GUI project must build the editor, not merely the console runtime."""
+        for options, sdl in (([], "ON"), (["--no-player"], "OFF")):
+            result, log = self.probe_builder(options, "disvm-editor")
+            if result.returncode or "-DDVM_RUNTIME_EDITOR=ON" not in log or "-DDVM_EDITOR_SDL=" + sdl not in log:
+                self.fail("Dis graphical project did not select its actual target/SDK mode: " + result.stderr)
+            if ("SDK_BOOTSTRAP" in log) != (sdl == "ON"):
+                self.fail("Dis graphical SDK selection ignored the explicit no-player choice")
 
     def test_installer_selects_actual_graphical_executable(self):
         """The generic flashvm command must copy the player, keeping a separate console command."""

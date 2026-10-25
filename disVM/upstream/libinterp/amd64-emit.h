@@ -496,6 +496,110 @@ x64mapped(X64Buf *b, LeafLayout *a, LeafOp *p)
 	return 1;
 }
 
+/* Return success when the preceding comparison identifies an empty operation. */
+static void
+x64sliceempty(X64Buf *b, int notempty)
+{
+	x64byte(b, notempty); x64byte(b, 6);
+	x64byte(b, 0xb8); x64word(b, 1); x64byte(b, 0xc3);
+}
+
+/* Copy short byte slices with complete geometry/span guards and no owner helpers. */
+static int
+x64slicecopy(X64Buf *b, LeafLayout *a)
+{
+	int fallback, forward, loop, identical;
+
+	if(a->arraylen < 0 || a->arraylen > 2047 || a->arraylen%a->wordbytes ||
+	   a->arraydata < 0 || a->arraydata > 2047 || a->arraydata%8 ||
+	   a->arraytype < 0 || a->arraytype > 2047 || a->arraytype%8 ||
+	   a->typesize < 0 || a->typesize > 2047 || a->typesize%4 ||
+	   a->typenp < 0 || a->typenp > 2047 || a->typenp%4)
+		return 0;
+	x64byte(b, 0xeb); x64byte(b, 3); fallback=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	x64caseptr(b, 0, a->s); x64load(b, 0, 8);
+	/* Adding one maps C null and H onto the unsigned interval [0,1]. */
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1); x64sliceempty(b, 0x77);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc0);
+	x64caseptr(b, 1, a->d); x64load(b, 1, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc9);
+	x64casefield(b, 0, 8, a->arraylen, a->wordbytes);
+	x64byte(b, 0x48); x64byte(b, 0x3d); x64word(b, 128);
+	if(!x64mappedguard(b, 0x76, fallback)) return 0;
+	x64caseptr(b, 2, a->m); x64load(b, 2, a->wordbytes);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xd6); /* rsi=index */
+	x64casefield(b, 1, 9, a->arraylen, a->wordbytes);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x79, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xca);
+	if(!x64mappedguard(b, 0x76, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x29); x64byte(b, 0xd1);
+	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xc8);
+	if(!x64mappedguard(b, 0x76, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0); x64sliceempty(b, 0x75);
+	x64byte(b, 0xeb); x64byte(b, 3); fallback=b->n;
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	/* index is nonnegative and bounded by a signed WORD destination length. */
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc2);
+	x64byte(b, 0x48); x64byte(b, 0xc1); x64byte(b, 0xea); x64byte(b, 31);
+	x64byte(b, 0x85); x64byte(b, 0xd2);
+	if(!x64mappedguard(b, 0x74, fallback)) return 0;
+	x64casefield(b, 2, 9, a->arraytype, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xd2);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xff);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64casefield(b, 1, 2, a->typesize, 4);
+	x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, 1);
+	if(!x64mappedguard(b, 0x74, fallback)) return 0;
+	x64casefield(b, 1, 2, a->typenp, 4);
+	x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x74, fallback)) return 0;
+	x64casefield(b, 1, 8, a->arraydata, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc8);
+	x64casefield(b, 1, 9, a->arraydata, 8);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	if(!x64mappedguard(b, 0x75, fallback)) return 0;
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xca);
+	x64byte(b, 0x49); x64byte(b, 0x01); x64byte(b, 0xf2);
+	if(!x64mappedguard(b, 0x73, fallback)) return 0;
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc2);
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc2);
+	if(!x64mappedguard(b, 0x73, fallback)) return 0;
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xd2);
+	x64byte(b, 0x48); x64byte(b, 0x01); x64byte(b, 0xc2);
+	if(!x64mappedguard(b, 0x73, fallback)) return 0;
+	/* An explicit signed stride gives memmove order while preserving DF. */
+	x64byte(b, 0xbe); x64word(b, 1);
+	x64byte(b, 0x4d); x64byte(b, 0x39); x64byte(b, 0xc2);
+	/* All span guards precede the no-store path for identical physical ranges. */
+	x64byte(b, 0x74); identical=b->n; x64byte(b, 0);
+	x64byte(b, 0x76); forward=b->n; x64byte(b, 0);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xce); x64byte(b, 0xff);
+	x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x44); x64byte(b, 0x00); x64byte(b, 0xff);
+	x64byte(b, 0x4d); x64byte(b, 0x8d); x64byte(b, 0x54); x64byte(b, 0x02); x64byte(b, 0xff);
+	if(b->n > sizeof(b->bytes)) return 0;
+	b->bytes[forward]=b->n-forward-1;
+	loop=b->n;
+	x64byte(b, 0x41); x64byte(b, 0x8a); x64byte(b, 0x08);
+	x64byte(b, 0x41); x64byte(b, 0x88); x64byte(b, 0x0a);
+	x64byte(b, 0x49); x64byte(b, 0x01); x64byte(b, 0xf0);
+	x64byte(b, 0x49); x64byte(b, 0x01); x64byte(b, 0xf2);
+	x64byte(b, 0xff); x64byte(b, 0xc8);
+	x64byte(b, 0x75); x64byte(b, loop-b->n-1);
+	if(b->n > sizeof(b->bytes)) return 0;
+	b->bytes[identical]=b->n-identical-1;
+	return 1;
+}
+
 /* Emit a SysV AMD64 leaf, returning its bounded count of four-byte code units. */
 static int
 leafemit(u32int *out, int cap, LeafLayout *abi, int op)
@@ -513,7 +617,9 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 	b.n = 0;
 	/* ENDBR64 also permits entry when the host enables indirect-branch tracking. */
 	x64byte(&b, 0xf3); x64byte(&b, 0x0f); x64byte(&b, 0x1e); x64byte(&b, 0xfa);
-	if(p.kind == LeafMappedCopy){
+	if(p.kind == LeafSliceCopy){
+		if(!x64slicecopy(&b, abi)) return 0;
+	}else if(p.kind == LeafMappedCopy){
 		if(!x64mapped(&b, abi, &p)) return 0;
 	}else if(p.kind == LeafOwner){
 		if(!x64owner(&b, abi, &p)) return 0;

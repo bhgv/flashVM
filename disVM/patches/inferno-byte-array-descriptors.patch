@@ -1,22 +1,126 @@
---- a/libinterp/string.c
-+++ b/libinterp/string.c
-@@ -317,7 +317,7 @@
- 	if(a != H){
- 		if(a == nil)
- 			error(exNilref);
--		if(D2H(a)->t != &Tarray || a->t != &Tbyte)
-+		if(D2H(a)->t != &Tarray || (a->t != &Tbyte && (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
- 			error(exType);
- 		if(a->len < 0 || (uvlong)a->len > 0x7fffffff)
- 			error(exHeap);
+From 416c2e1cfe906f740fbe278c48e85c8b9423982d Mon Sep 17 00:00:00 2001
+From: bhgv <bhgv@bhgv.bhgv>
+Date: Sun, 25 Oct 2026 15:11:03 +0200
+Subject: [PATCH] Accept compiler-local byte descriptors in string and Sys UTF
+ conversion
+
+Validate pointer-free one-byte layouts while retaining canonical descriptor fast paths. Exercise production conversion with local descriptors in both word models.
+---
+ libinterp/runt.c                              |  5 +-
+ libinterp/string.c                            |  5 +-
+ .../tests/README.module-byte-descriptors.md   | 15 ++++++
+ libinterp/tests/module-byte-descriptors.py    | 48 +++++++++++++++++++
+ 4 files changed, 71 insertions(+), 2 deletions(-)
+ create mode 100644 libinterp/tests/README.module-byte-descriptors.md
+ create mode 100644 libinterp/tests/module-byte-descriptors.py
+
+diff --git a/libinterp/runt.c b/libinterp/runt.c
+index 83dde63..0ee9ffa 100644
 --- a/libinterp/runt.c
 +++ b/libinterp/runt.c
-@@ -464,7 +464,7 @@
+@@ -464,7 +464,10 @@ sysutfarray(Array *a)
  {
  	if(a == H || a == nil)
  		error(exBounds);
 -	if(D2H(a)->t != &Tarray || a->t != &Tbyte)
-+	if(D2H(a)->t != &Tarray || (a->t != &Tbyte && (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
++	/* A compiler may emit its own pointer-free byte descriptor. */
++        if(D2H(a)->t != &Tarray ||
++            (a->t != &Tbyte &&
++             (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
  		error(exType);
  	if(a->len < 0 || (uvlong)a->len > 0x7fffffff || (a->len != 0 && a->data == nil))
  		error(exBounds);
+diff --git a/libinterp/string.c b/libinterp/string.c
+index ecbcb60..a8eb14e 100644
+--- a/libinterp/string.c
++++ b/libinterp/string.c
+@@ -317,7 +317,10 @@ OP(cvtac)
+ 	if(a != H){
+ 		if(a == nil)
+ 			error(exNilref);
+-		if(D2H(a)->t != &Tarray || a->t != &Tbyte)
++		/* A compiler may emit its own pointer-free byte descriptor. */
++        if(D2H(a)->t != &Tarray ||
++            (a->t != &Tbyte &&
++             (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
+ 			error(exType);
+ 		if(a->len < 0 || (uvlong)a->len > 0x7fffffff)
+ 			error(exHeap);
+diff --git a/libinterp/tests/README.module-byte-descriptors.md b/libinterp/tests/README.module-byte-descriptors.md
+new file mode 100644
+index 0000000..33f1f6f
+--- /dev/null
++++ b/libinterp/tests/README.module-byte-descriptors.md
+@@ -0,0 +1,15 @@
++# Compiler-local byte array descriptors
++
++`cvtac` and the Sys UTF helpers accept a module-local descriptor when its element
++size is one byte and it contains no GC pointers. Pointer-bearing, nil, H and
++wrong-size descriptors remain invalid. This follows typed Limbo array semantics;
++it does not admit arbitrary memory or establish bytecode sandboxing.
++
++Run `python3 libinterp/tests/module-byte-descriptors.py`. It derives only fixture
++inputs and executes unchanged production C through the existing string-slot and
++Sys UTF regression runners, under UBSan in WORD32 and native WORD models. Existing
++alignment, alias, ownership and invalid-input cases remain active. No production
++source is patched by the runner.
++
++This fixes conversion of byte arrays constructed by compiled Limbo modules,
++whose local type identity can differ from the canonical runtime Tbyte address.
+diff --git a/libinterp/tests/module-byte-descriptors.py b/libinterp/tests/module-byte-descriptors.py
+new file mode 100644
+index 0000000..e10f168
+--- /dev/null
++++ b/libinterp/tests/module-byte-descriptors.py
+@@ -0,0 +1,48 @@
++#!/usr/bin/env python3
++"""Run production string/UTF routines with compiler-local byte descriptors.
++
++Only fixture inputs are derived in memory. Production C is read unchanged by the
++existing UBSan runners, in both WORD32 and native WORD models.
++"""
++
++from pathlib import Path
++import runpy
++from unittest.mock import patch
++
++
++# Run existing alignment/alias/error matrices with an equivalent local descriptor.
++# No arguments or result; compiler/runtime failures propagate as nonzero exit.
++def main():
++    root = Path(__file__).resolve().parents[2]
++    original = Path.read_text
++
++    # Borrow fixture text and return a derived copy; never alter production files.
++    def read(path, *args, **kwargs):
++        text = original(path, *args, **kwargs)
++        if path == root / "libinterp/tests/string-slots.c":
++            text = text.replace("Array *a;", "Array *a; Type modulebyte = {1, 0, 0, 1};", 1)
++            anchor = "memmove(before,slots.bytes,128);cvtac();"
++            if text.count(anchor) != 1:
++                raise ValueError("string conversion fixture boundary changed")
++            text = text.replace(anchor, "a->t=&modulebyte;" + anchor)
++        if path == root / "libinterp/tests/string-codecs.c":
++            text = text.replace(
++                "((Array*)v)->t == &Tbyte",
++                "(((Array*)v)->t == &Tbyte || (((Array*)v)->t->size == 1 && ((Array*)v)->t->np == 0))",
++            )
++        if path == root / "libinterp/tests/sys-utf.c":
++            text = text.replace(
++                "Type Tarray = {1}, Tbyte = {1}, other = {1};",
++                "Type Tarray = {1}, Tbyte = {1}, other = {1}, modulebyte = {1, 0, 0, 1};",
++            )
++            text = text.replace("a->t = &Tbyte;", "a->t = &modulebyte;")
++        return text
++
++    with patch.object(Path, "read_text", read):
++        for runner in ("string-slots.py", "sys-utf.py"):
++            runpy.run_path(str(root / "libinterp/tests" / runner), run_name="__main__")
++    print("PASS module-local byte descriptors: string/UTF, WORD32/native, UBSan")
++
++
++if __name__ == "__main__":
++    main()
+-- 
+2.51.1
+

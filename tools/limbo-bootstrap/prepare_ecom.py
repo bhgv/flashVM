@@ -4,19 +4,14 @@ import argparse
 from pathlib import Path
 
 
-# Preserve all 64 big-constant bits in a bounded name on either ILP32 or LP64 hosts.
+# Verify upstream preserves all 64 big-constant identity bits on ILP32/LP64.
 # source is pristine ecom text; cells selects the explicit target ABI. Returns derived text.
 # Missing source anchors are errors, so an upstream refresh cannot silently lose the fix.
 def prepare(source, cells):
-    old = 'seprint(buf, buf+sizeof(buf), ".B.%.8lux.%8lux", (long)(n->val>>32), (long)n->val);'
-    new = (
-        'seprint(buf, buf+sizeof(buf), ".B.%.8lux.%.8lux", '
-        "(ulong)(((uvlong)n->val >> 32) & 0xffffffffUL), "
-        "(ulong)((uvlong)n->val & 0xffffffffUL));"
-    )
-    if source.count(old) != 1:
-        raise ValueError("pinned globalBconst formatting anchor changed")
-    result = source.replace(old, new)
+    identity = '".B.%.8lux.%.8lux"'
+    if source.count(identity) != 1 or source.count("(uvlong)n->val & 0xffffffffUL") != 1:
+        raise ValueError("upstream big-constant identity changed")
+    result = source
     if cells == 8:
         duplicate = "\t\tcase IBY2WD:\n\t\t\top = IINDW;\n\t\t\tbreak;\n"
         if result.count(duplicate) != 1:

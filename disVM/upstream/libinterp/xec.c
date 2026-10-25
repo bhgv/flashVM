@@ -1345,13 +1345,14 @@ channelbuild(void *arg)
 	return 1;
 }
 
+/* Reject missing required descriptors before creating any channel resource. */
 Channel*
 cnewc(Type *t, void (*mover)(void), int len)
 {
 	ChannelBuild b;
 	if(len < 0)
 		error(exNegsize);
-	if((len > 0 || mover == movtmp) && t == nil)
+	if((len > 0 || mover == movtmp) && (t == nil || t == H))
 		error(exHeap);
 	if(len > 0)
 		acheck(t->size,len);
@@ -1897,18 +1898,24 @@ OP(lenl)
 	}
 	memmove(R.d, &l, sizeof(l));
 }
-/* Retain buffered storage if the received value replaces the channel owner. */
+/* Validate and retain buffered storage before changing its ring or destination. */
 static int
 cgetb(Channel *c, void *v)
 {
 	Array *a;
+	Heap *h;
 	void *w;
 
 	if((a = c->buf) == H)
 		return 0;
+	if(a == nil)
+		error(exNilref);
 	if(c->size > 0){
-		D2H(a)->ref++;
-		w = a->data+c->front*a->t->size;
+		h = D2H(a);
+		if(h->ref == 0 || h->ref == (ulong)-1)
+			error(exHeap);
+		h->ref++;
+		w = a->data+(ulong)c->front*a->t->size;
 		c->front++;
 		if(c->front == c->buf->len)
 			c->front = 0;
@@ -1926,6 +1933,7 @@ cgetb(Channel *c, void *v)
 	}
 	return 0;
 }
+/* Compute wrapped indexes without signed sums and use native-width byte offsets. */
 static int
 cputb(Channel *c, void *v)
 {
@@ -1934,15 +1942,19 @@ cputb(Channel *c, void *v)
 
 	if((a = c->buf) == H)
 		return 0;
-	len = c->buf->len;
+	if(a == nil)
+		error(exNilref);
+	len = a->len;
 	if(c->size < len){
-		r = c->front+c->size;
-		if(r >= len)
-			r -= len;
+		/* Subtract the distance to the end before adding an occupied prefix. */
+		if(c->front >= len-c->size)
+			r = c->front-(len-c->size);
+		else
+			r = c->front+c->size;
 		c->size++;
 		R.s = v;
 		R.m = &c->mid;
-		R.d = a->data+r*a->t->size;
+		R.d = a->data+(ulong)r*a->t->size;
 		c->mover();
 		return 1;
 	}
@@ -2058,10 +2070,12 @@ OP(isend)
 	R.t = 0;
 }
 /* Queue blocked receivers safely and retain buffered channels through refill. */
+/* Validate buffered temporary owners before dequeuing or refilling a sender. */
 OP(irecv)
 {
 	Channel *c;
 	Prog *p;
+	Heap *h;
 
 	memmove(&c, R.s, sizeof(c));
 	if(c == H || c == nil)
@@ -2078,6 +2092,20 @@ OP(irecv)
 		R.IC = 1;
 		R.t = 1;
 		return;
+	}
+
+	/* Resolve temporary owner failures before removing or selecting a queued sender. */
+	if(c->buf != H){
+		if(c->buf == nil)
+			error(exNilref);
+		h = D2H(c);
+		if(h->ref == 0 || h->ref == (ulong)-1)
+			error(exHeap);
+		if(c->size > 0){
+			h = D2H(c->buf);
+			if(h->ref == 0 || h->ref == (ulong)-1)
+				error(exHeap);
+		}
 	}
 
 	if(c->buf != H && c->size != c->buf->len)
@@ -2110,7 +2138,7 @@ csendalt(Channel *c, void *ip, Type *t, int len)
 {
 	REG rsav;
 
-	if(c == H || c == nil)
+	if(c == H || c == nil || c->buf == nil)
 		error(exNilref);
 
 	if(c->recv->prog == nil && (c->buf == H || c->size == c->buf->len)){
@@ -2388,12 +2416,12 @@ arrayspan(Array *array, Type *type, WORD start, WORD count)
 	return (uchar*)((uintptr)array->data+offset);
 }
 
-/* Preserve the language slice bounds even when an empty source is VM nil. */
+/* Validate spans and backing lifetimes before allocating or publishing a view. */
 OP(slicea)
 {
 	Type *t;
 	Heap *h;
-	Array *at, *ss, *ds;
+	Array *at, *ss, *ds, *root;
 	WORD v, n, start;
 	uchar *data;
 
@@ -2415,33 +2443,38 @@ OP(slicea)
 
 	t = ds->t;
 	data = arrayspan(ds, t, start, n);
+	root = ds->root == H ? ds : ds->root;
+	if(root == nil)
+		error(exNilref);
+	if(D2H(ds)->ref == 0)
+		error(exHeap);
+	h = D2H(root);
+	if(h->ref == 0 || (ds->root != H && h->ref == (ulong)-1))
+		error(exHeap);
 	h = heap(&Tarray);
 	ss = H2D(Array*, h);
 	ss->len = n;
 	ss->data = data;
 	ss->t = t;
+	ss->root = root;
 	t->ref++;
 
-	if(ds->root != H) {			/* slicing a slice */
-		ds = ds->root;
-		h = D2H(ds);
+	h = D2H(root);
+	if(ds->root != H) {
 		h->ref++;
 		memmove(&at, R.d, sizeof(at));
 		memmove(R.d, &ss, sizeof(ss));
-		ss->root = ds;
 		destroy(at);
 	}
-	else {
-		h = D2H(ds);
-		ss->root = ds;
+	else
 		memmove(R.d, &ss, sizeof(ss));
-	}
 	Setmark(h);
 }
-/* Validate empty spans and retain mapped source storage through destination release. */
+/* Validate spans and temporary ownership before copying mapped array elements. */
 OP(slicela)
 {
 	Type *t;
+	Heap *h;
 	int l;
 	WORD dl;
 	Array *ss, *ds;
@@ -2469,7 +2502,10 @@ OP(slicela)
 		return;
 	}
 	/* A destination element can own the source array or its backing view. */
-	D2H(ss)->ref++;
+	h = D2H(ss);
+	if(h->ref == 0 || h->ref == (ulong)-1)
+		error(exHeap);
+	h->ref++;
 	sp = source;
 	dp = destination;
 

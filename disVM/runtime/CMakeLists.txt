@@ -1,10 +1,11 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.2.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.3.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
 endif()
+option(DVM_RUNTIME_EDITOR "Build the Dis-controlled FlashVM graphical editor" OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS ON)
 find_package(PythonInterp 3 REQUIRED)
@@ -32,12 +33,18 @@ string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}"
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
-file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h")
+file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
 
-add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h"
+set(host_prepare_args)
+set(host_prepare_products)
+if(DVM_RUNTIME_EDITOR)
+  set(host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
+  set(host_prepare_products "${view}/idehostmod.h")
+endif()
+add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
-   --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+   --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
+ DEPENDS limbo-bootstrap prepare.py "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
@@ -201,4 +208,54 @@ endif()
 if(DVM_RUNTIME_TESTS)
   add_executable(disvm_nc64_tables_test test_native_tables.c)
   add_test(NAME disvm_nc64_table_layout_and_errors COMMAND disvm_nc64_tables_test)
+endif()
+
+# Explicit opt-in: core/console builds still need no fonts, rasterizer or window SDK.
+option(DVM_EDITOR_SDL "Enable the real SDL2 editor window and native events" OFF)
+if(DVM_RUNTIME_EDITOR)
+  enable_language(CXX)
+  set(CMAKE_CXX_STANDARD 98)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(FVM_BUILD_TESTS OFF CACHE BOOL "Editor owns focused integration checks" FORCE)
+  set(FVM_BUILD_EXAMPLES OFF CACHE BOOL "Build only the embedded FlashVM" FORCE)
+  add_subdirectory("${DVM_FLASHVM_SOURCE_ROOT}" flashvm)
+  get_target_property(runtime_sources disvm SOURCES)
+  get_target_property(runtime_includes disvm INCLUDE_DIRECTORIES)
+  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c
+    "${root}/disVM/host/dis_ui_channel.c")
+  add_dependencies(disvm-editor disvm_runtime_sources)
+  target_include_directories(disvm-editor PRIVATE ${runtime_includes} "${DVM_FLASHVM_SOURCE_ROOT}/ports")
+  target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_EDITOR=1)
+  target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)
+  target_link_libraries(disvm-editor PRIVATE disvm_flashvm_host limbo_bootstrap_lib9
+    limbo_bootstrap_support limbo_bootstrap_lib9 flashvm m)
+  if(DVM_EDITOR_SDL)
+    find_package(SDL2 2.0.9 CONFIG REQUIRED)
+    target_compile_definitions(disvm-editor PRIVATE DVM_EDITOR_SDL=1)
+    target_link_libraries(disvm-editor PRIVATE SDL2::SDL2)
+  endif()
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.sbl"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
+      -o "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis"
+      "${root}/ide/dis/examples/graphical-editor/main.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/examples/graphical-editor/main.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_graphical_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis")
+endif()
+
+set(DVM_EDITOR_TEST_FONT "" CACHE FILEPATH "Explicit font for real graphical editor checks")
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_graphical_editor_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_graphical_editor_${mode} PROPERTIES TIMEOUT 120)
+    if(DVM_EDITOR_SDL)
+      add_test(NAME disvm_graphical_sdl_upload_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
+        "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}" window)
+      set_tests_properties(disvm_graphical_sdl_upload_${mode} PROPERTIES TIMEOUT 120
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy")
+    endif()
+  endforeach()
 endif()

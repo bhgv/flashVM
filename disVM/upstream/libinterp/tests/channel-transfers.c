@@ -519,6 +519,11 @@ checkfaults(void)
 		assert(!kprotect(attemptnative, &attempt) && last_error == exNilref);
 		if(pointers) assert(D2H(input)->ref == 1);
 		attempt.channel = &box.c;
+		box.c.buf = nil;
+		assert(!kprotect(attemptnative, &attempt) && last_error == exNilref);
+		assert(!memcmp(&R,&saved,sizeof(R)) && attempt.result==-1);
+		if(pointers) assert(D2H(input)->ref==1);
+		box.c.buf = H;
 		assert(kprotect(attemptnative, &attempt) && attempt.result == 1);
 		assert(!memcmp(&R, &saved, sizeof(R)));
 		receivevalue(&box.c, 99, pointers);
@@ -563,11 +568,148 @@ checkservice(void)
 	}
 }
 
+/* Route the actual receive instruction through the production exception protector. */
+static int
+retainrecv(void *unused)
+{
+	(void)unused;
+	irecv();
+	return 1;
+}
+
+/* A bad temporary owner must not dequeue, mutate ring data or publish a receive result. */
+static void
+checkretains(void)
+{
+	TestChannel box,before;
+	Channel *c;
+	Array *buffer;
+	Prog peerbefore;
+	Progq sendbefore,recvbefore;
+	REG saved;
+	union {uvlong align;uchar bytes[80];} slots;
+	union {void *pointer;WORD word;} outgoing;
+	uchar expected[80],data[32];
+	void *empty=H;
+	int queued,kind,pointers,sa,da,oldlive,oldnodes,oldallocations;
+	char *failure,*selection=getenv("CHANNEL_RETAIN_KIND");
+	char *queueselection=getenv("CHANNEL_RETAIN_QUEUED");
+
+	for(queued=0;queued<2;queued++)for(kind=0;kind<5;kind++)
+	for(pointers=0;pointers<2;pointers++)for(sa=0;sa<8;sa++)for(da=0;da<8;da++){
+		if((!queued && kind>=3) || (selection && atoi(selection)!=kind) ||
+		   (queueselection && atoi(queueselection)!=queued))continue;
+		openchannel(&box,2,pointers);c=&box.c;buffer=c->buf;
+		sendvalue(c,1,pointers);if(queued)sendvalue(c,2,pointers);
+		memset(&peers[0],0,sizeof(peers[0]));
+		outgoing.pointer=H;if(!pointers)outgoing.word=3;
+		if(queued){peers[0].state=Psend;peers[0].ptr=&outgoing;cqadd(&c->send,&peers[0]);}
+		failure=kind==2 ? exNilref : exHeap;
+		if(kind==0)D2H(buffer)->ref=0;
+		if(kind==1)D2H(buffer)->ref=(ulong)-1;
+		if(kind==2)c->buf=nil;
+		if(kind==3)box.h.ref=0;
+		if(kind==4)box.h.ref=(ulong)-1;
+		memset(slots.bytes,0xa5,sizeof(slots.bytes));memset(&R,0,sizeof(R));
+		R.s=slots.bytes+8+sa;R.d=slots.bytes+40+da;
+		memmove(R.s,&c,sizeof(c));memmove(R.d,&empty,sizeof(empty));
+		memmove(expected,slots.bytes,sizeof(expected));memmove(data,buffer->data,buffer->len*buffer->t->size);
+		before=box;saved=R;peerbefore=peers[0];sendbefore=*c->send;recvbefore=*c->recv;
+		oldlive=live;oldnodes=nodes;oldallocations=allocations;awakened=removed=0;last_error=nil;
+		assert(!kprotect(retainrecv,nil) && last_error==failure);
+		assert(!memcmp(&before,&box,sizeof(box)) && !memcmp(&saved,&R,sizeof(R)));
+		assert(!memcmp(&peerbefore,&peers[0],sizeof(peerbefore)) && !memcmp(&sendbefore,c->send,sizeof(sendbefore)));
+		assert(!memcmp(&recvbefore,c->recv,sizeof(recvbefore)) && !memcmp(expected,slots.bytes,sizeof(expected)));
+		assert(!memcmp(data,buffer->data,buffer->len*buffer->t->size));
+		assert(live==oldlive && nodes==oldnodes && allocations==oldallocations && !awakened && !removed && !worker.nerr);
+		box.h.ref=1;D2H(buffer)->ref=1;c->buf=buffer;
+		closechannel(c);assert(!live && !nodes);checks++;
+	}
+}
+
+/* Route an ordinary VM send through the production error protector. */
+static int
+ringsend(void *unused)
+{
+	(void)unused;
+	isend();
+	return 1;
+}
+
+/* Reject null buffered storage before publishing operands or queue registrations. */
+static void
+checknullbuffer(void)
+{
+	TestChannel box, before;
+	REG saved;
+	union {uvlong align;uchar bytes[80];} slots;
+	uchar expected[80];
+	Channel *c;
+	WORD value=77;
+	int sa,da,oldallocations;
+
+	for(sa=0;sa<8;sa++)for(da=0;da<8;da++){
+		openchannel(&box,0,0);c=&box.c;c->buf=nil;
+		memset(slots.bytes,0xa5,sizeof(slots.bytes));memset(&R,0,sizeof(R));
+		R.s=slots.bytes+8+sa;R.d=slots.bytes+40+da;
+		memmove(R.s,&value,sizeof(value));memmove(R.d,&c,sizeof(c));
+		saved=R;before=box;memmove(expected,slots.bytes,sizeof(expected));
+		oldallocations=allocations;awakened=removed=0;
+		assert(!kprotect(ringsend,nil) && last_error==exNilref);
+		assert(!memcmp(&saved,&R,sizeof(R)) && !memcmp(&before,&box,sizeof(box)));
+		assert(!memcmp(expected,slots.bytes,sizeof(expected)));
+		assert(!c->send->prog && !c->recv->prog && !awakened && !removed);
+		assert(allocations==oldallocations && !worker.nerr);
+		c->buf=H;closechannel(c);assert(!live && !nodes);checks++;
+	}
+}
+
+/* Exercise large ring metadata while only the selected physical slot is backed. */
+static void
+checkringedges(void)
+{
+	TestChannel box;
+	Channel *c;
+	Array *a;
+	uchar *base;
+	union {uvlong align;uchar bytes[80];} slots;
+	WORD value, result;
+	int direction, profile, shift, index, oldfront;
+	char *selection=getenv("CHANNEL_RING_DIRECTION");
+
+	for(direction=0;direction<2;direction++)
+	for(profile=0;profile<3;profile++)for(shift=0;shift<8;shift++){
+		if(selection && atoi(selection)!=direction)continue;
+		openchannel(&box,4,0);c=&box.c;a=c->buf;base=a->data;
+		a->len=0x7fffffff;
+		c->front=profile==0 ? 0x7ffffffe : profile==1 ? 0x40000000 : 7;
+		c->size=direction ? 2 : 1;oldfront=c->front;
+		index=direction ? (profile==0 ? 1 : oldfront+2) : oldfront;
+		a->data=(uchar*)((uintptr)base-(uintptr)index*scalar.size);
+		value=12345;result=0;memmove(base,&value,sizeof(value));
+		memset(slots.bytes,0xa5,sizeof(slots.bytes));memset(&R,0,sizeof(R));
+		if(direction){
+			value=67890;memmove(slots.bytes+shift,&value,sizeof(value));
+			assert(cputb(c,slots.bytes+shift)==1 && c->size==3 && c->front==oldfront);
+			memmove(&result,base,sizeof(result));assert(result==value);
+		}else{
+			assert(cgetb(c,slots.bytes+shift)==1 && c->size==0);
+			assert(c->front==(oldfront==0x7ffffffe ? 0 : oldfront+1));
+			memmove(&result,slots.bytes+shift,sizeof(result));assert(result==value);
+		}
+		assert(D2H(a)->ref==1);
+		a->data=base;a->len=4;c->front=c->size=0;
+		closechannel(c);assert(!live && !nodes);checks++;
+	}
+}
+
 /* Require all references, descriptors and queue nodes to balance across each matrix. */
 int
 main(void)
 {
+	if(!getenv("CHANNEL_TRANSFER_CASE") || !strcmp(getenv("CHANNEL_TRANSFER_CASE"), "ring")) {scalar.size=sizeof(WORD);checkringedges();checknullbuffer();}
 	scalar.size = sizeof(WORD); pointer.size = sizeof(void*); pointer.np = 1; pointer.map[0] = 0x80;
+	if(!getenv("CHANNEL_TRANSFER_CASE") || !strcmp(getenv("CHANNEL_TRANSFER_CASE"), "retains"))checkretains();
 	if(!getenv("CHANNEL_TRANSFER_CASE") || !strcmp(getenv("CHANNEL_TRANSFER_CASE"), "fifo")) checkfifo();
 	if(!getenv("CHANNEL_TRANSFER_CASE") || !strcmp(getenv("CHANNEL_TRANSFER_CASE"), "senders")) checksenders();
 	if(!getenv("CHANNEL_TRANSFER_CASE") || !strcmp(getenv("CHANNEL_TRANSFER_CASE"), "native")) checknative();

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1549**. [Русская версия](README.ru.md).
+Development version: **0.1550**. [Русская версия](README.ru.md).
 
-Current series: [v0.1549](docs/releases/v0.1549.md) integrates updated Inferno Dis/JIT, executable Srv/Math/Loader and selected Limbo libraries, with menu-driven module checks and corrected floating conversion/Styx decoding.
+Current series: [v0.1550](docs/releases/v0.1550.md) runs the Limbo/Dis graphical editor with FlashVM TextField rendering and synchronizes Inferno experiment through `3c6f5dc`.
 
 ## Browse documentation
 

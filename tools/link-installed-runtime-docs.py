@@ -22,6 +22,9 @@ def main():
         / "disVM/examples/standard-modules/main.b": package
         / "examples/standard-modules/main.b",
     }
+    if (package / "examples/graphical-editor").is_dir():
+        for name in ("README.md", "README.ru.md", "main.b"):
+            pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
     for source, destination in pairs.items():
         if source.suffix != ".md":
             continue

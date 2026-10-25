@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует dad4b09d0631db4d7189b5ffc382e412d1467421. Каждый файл имеет
+Текущий снимок фиксирует 3c6f5dca823927d8cec8c86159ccc35029b3bd51. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -98,3 +98,8 @@ matching Limbo modules with production interpreter/JIT, blocking channels and ID
 services. Select `disvm-runtime` or `all` in `build_menu.py`; post-build menu items
 4/5 launch Dis and IDE console examples. The core archive above remains a separate
 classic SDK. Full GUI, Sys/VFS coverage and parallel shared VM owners remain open.
+
+[Графический редактор v0.1550](../ide/dis/examples/graphical-editor/README.ru.md):
+отдельный исполняемый target `disvm-editor` соединяет Dis-контроллер с TextField
+FlashVM. Описание незавершённого хоста выше относится к отдельному classic SDK,
+а не к этому экспериментальному NC64 runtime.

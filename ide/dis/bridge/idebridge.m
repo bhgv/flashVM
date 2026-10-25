@@ -6,6 +6,11 @@ Idebridge: module
     ChunkBytes: con 968;        # Maximum fragment bytes after metadata within the 1024-byte payload.
 
 
+    # Publish a borrowed core reply as bounded UTF-8 fragments; notify selects View.
+    # Returns one after rendezvous of every fragment, zero for invalid encoding.
+    sendreply: fn(codec: Uibridge, output: chan of array of byte,
+                  reply: Idecore->Reply, notify: int): int;
+
     # codec/core are explicitly loaded modules; input/output are registered byte-array channels.
     # events receives Pointer/Key/Text/Focus records without replacing the input subsystem.
     # Returns zero after acknowledged Shutdown, minus one on malformed framing/admission.

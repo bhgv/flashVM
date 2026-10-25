@@ -2,19 +2,27 @@
 
 The production sizing emitters report 175 opcode slots. `INOP` is invalid and
 `IECLR` is unused, leaving 173 active commands. AMD64 and ARM64 now have native
-paths for 127 commands (73.4%); 46 remain on the interpreter path. RV64 profiles
+paths for 128 commands (74.0%); 45 remain on the interpreter path. RV64 profiles
 retain their earlier counts. WORD32/native-pointer and legacy WORD64
 configurations have the same opcode counts at this checkpoint.
 
 | Backend/profile | Active commands | Native path | C interpreter path |
 | --- | ---: | ---: | ---: |
-| AMD64 | 173 | 127 | 46 |
-| ARM64 | 173 | 127 | 46 |
+| AMD64 | 173 | 128 | 45 |
+| ARM64 | 173 | 128 | 45 |
 | RV64 + M | 173 | 103 | 70 |
 | RV64 + Zmmul | 173 | 90 | 83 |
 | RV64I | 173 | 87 | 86 |
 
-The latest additions are guarded IMOVMP and IHEADMP paths on AMD64/ARM64.
+The latest ISLICELA expansion covers arbitrary valid destination indexes for
+non-pointer byte copies of at most 128 elements on AMD64/ARM64. It checks the
+complete element geometry (index + length <= INT_MAX) and native address spans
+before overlap-aware copying. Validated empty copies retain C's wider WORD-index
+behavior without inspecting type or data metadata. Other element types, mapped
+owners and larger copies retain C. No opcode IDs were added in this expansion.
+See [README.offset-slices-channels.md](README.offset-slices-channels.md).
+
+The preceding additions are guarded IMOVMP and IHEADMP paths on AMD64/ARM64.
 They resolve the current Module.type table, accept pointer-free records of
 1 through 128 bytes, and preserve overlapping memmove order. Zero-size records
 are native no-ops after required list/type validation, independently of pointer
@@ -186,3 +194,12 @@ counts were 109/64:
 this broadens six existing native paths rather than adding six new opcode IDs.
 RISC-V string branches remain on the interpreter path. Physical ARM64 testing
 and full native-block/pointer-ABI completion remain separate work.
+
+## Channel ring width and identical-range checkpoint
+
+[Channel ring width](README.channel-ring-width.md) documents native-width
+buffer offsets, overflow-free ring wrapping and null-buffer send failures.
+AMD64 SLICELA now returns without stores for identical validated physical
+ranges. The ARM64 loop and existing 64-unit emission limit are retained.
+No opcode count changed: AMD64/ARM64 128/45, RV64+M 103/70,
+RV64+Zmmul 90/83, RV64I 87/86 (native-path/interpreter-only).

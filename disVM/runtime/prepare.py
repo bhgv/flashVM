@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--sys", required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--idehost", type=Path)
     args = parser.parse_args()
     # Always start from pinned source, making repeated preparation byte-identical.
     subprocess.run(
@@ -41,6 +42,14 @@ def main():
     loader_at = loader.index(marker)
     (args.output / "runt.h").write_text(text[:at] + srv[:srv_at] + loader[:loader_at])
     (args.output / "loadermod.h").write_text(loader[loader_at:])
+    if args.idehost is not None:
+        host = subprocess.check_output(
+            [args.compiler, "-a", "-t", "Idehost", str(args.idehost)], text=True
+        )
+        host_at = host.index(marker)
+        with (args.output / "runt.h").open("a") as declarations:
+            declarations.write(host[:host_at])
+        (args.output / "idehostmod.h").write_text(host[host_at:])
     math = subprocess.check_output(
         [args.compiler, "-a", "-t", "Math", str(Path(args.sys).with_name("math.m"))], text=True
     )

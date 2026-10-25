@@ -36,3 +36,9 @@ Dis host, and from physical 64-bit JIT acceptance. The bundled source bootstrap
 also compiles all modules, but its ABI must not be assumed compatible with another
 runtime. Own Coco/R Limbo/FIR remains the compiler priority. AS parser/Node checks
 are not proof of executing the full helpers as SWF/JIT. Node/Python are host-only.
+
+## Graphical execution v0.1550
+
+[The Limbo controller](dis/examples/graphical-editor/README.md) now runs on our
+NC64 runtime with a real channel-controlled FlashVM TextField embedding renderer.
+The AS-worker, mixed-colour, popup and debugger limitations above remain open.

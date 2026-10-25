@@ -50,6 +50,14 @@ Unit fixtures используют детерминированные process do
 
 [AS1/AS2 ↔ Dis module interface](MODULE_INTEROP.ru.md): planned bidirectional module support; later AS IDE port is allowed.
 
+## Графический редактор v0.1550
+
+[Исполняемый пример и ограничения](dis/examples/graphical-editor/README.ru.md):
+контроллер на Limbo, настоящий Dis runtime, отображение через TextField FlashVM,
+каналы, Unicode, история и файловый ввод-вывод. Это отдельный компонент
+`disvm-editor`; меню запуска — 8. Существующие AS-workers и отладчик ещё не
+подключены. Python-backend выше остаётся независимым инструментом хоста.
+
 ## Исполняемая часть IDE
 
 [Ядро документа](dis/README.ru.md) реализовано на Limbo и собирается в `idecore.dis`

@@ -38,6 +38,7 @@ COMPONENTS = (
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
     ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
     ("disvm-runtime", "Dis: исполняемая VM и терминальный редактор IDE (Linux AMD64, эксперимент)"),
+    ("disvm-editor", "Графический редактор: логика Limbo/Dis, TextField FlashVM и окно SDL2"),
 )
 
 
@@ -112,7 +113,7 @@ def selection(value):
     names = [name for name, _ in COMPONENTS]
     tokens = value.replace(",", " ").split()
     if tokens in (["all"], ["все"], ["*"]):
-        return names[:6] + ["disvm", "disvm-host", "disvm-runtime", "mk", "iyacc"]
+        return names[:6] + ["disvm", "disvm-host", "disvm-runtime", "disvm-editor", "mk", "iyacc"]
     if not tokens:
         raise ValueError("Выберите хотя бы один компонент")
     result = []
@@ -348,14 +349,28 @@ def show_products(args, bash, interactive):
     while True:
         print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
         print(
-            "  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE, 7 — библиотеки Inferno"
+            "  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE, 7 — библиотеки Inferno, 8 — графический редактор"
         )
         value = input("Enter — закончить, либо номер запуска: ").strip()
         if not value:
             return 0
-        if value not in ("1", "2", "3", "4", "5", "6", "7"):
-            print("Введите 1, 2, 3, 4, 5, 6, 7 или Enter.")
+        if value not in ("1", "2", "3", "4", "5", "6", "7", "8"):
+            print("Введите 1, 2, 3, 4, 5, 6, 7, 8 или Enter.")
             continue
+        if value == "8":
+            script = prefix / "disvm-editor/run-graphical-editor.sh"
+            if not script.is_file():
+                print("Выберите disvm-editor или all в меню сборки.")
+                continue
+            font = os.environ.get("FVM_EDITOR_FONT") or input("Путь к TTF/OpenType шрифту: ").strip()
+            if not font:
+                print("Для отрисовки нужен явно выбранный шрифт.")
+                continue
+            document = input("Файл UTF-8 (Enter — новый буфер без пути сохранения): ").strip()
+            command = [bash, str(script), "--font", font]
+            if document:
+                command += ["--document", document]
+            return subprocess.call(command)
         if value in ("4", "5", "6", "7"):
             script = (
                 prefix

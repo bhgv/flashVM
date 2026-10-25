@@ -13,6 +13,17 @@
 #include <stddef.h>
 #include <limits.h>
 
+#ifdef DVM_RUNTIME_EDITOR
+#include "editor_view.h"
+#include "thread_port.h"
+
+/* Initialize, poll and release the UI channel boundary on this sole native owner. */
+extern int dvm_editor_start(void);
+extern int dvm_editor_poll(void);
+extern int dvm_editor_attached(void);
+extern void dvm_editor_stop(void);
+#endif
+
 #define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
 #define PROCESS_MAX 128                      /* Maximum simultaneous Limbo processes. */
 
@@ -640,6 +651,14 @@ int main(int argc, char **argv)
     cflag = 1;
     while (argc > 1 && argv[1][0] == '-')
     {
+#ifdef DVM_RUNTIME_EDITOR
+        if (argc > 2 && dvm_editor_option(argv[1], argv[2]))
+        {
+            argv += 2;
+            argc -= 2;
+            continue;
+        }
+#endif
         if (strcmp(argv[1], "--stats") == 0)
         {
             show_stats = 1;
@@ -658,12 +677,15 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.2.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.3.0: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
         {
             puts("usage: disvm [--jit|--no-jit] [--stats] [--test-control] native-cell.dis");
+#ifdef DVM_RUNTIME_EDITOR
+            puts("editor options: --font TTF [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES] [--capture PPM]");
+#endif
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
             return 0;
         }
@@ -706,14 +728,44 @@ int main(int argc, char **argv)
     mathmodinit();
     dvm_srv_initialize();
     srvmodinit();
+#ifdef DVM_RUNTIME_EDITOR
+    if (!dvm_editor_start())
+    {
+        dvm_editor_stop();
+        error("cannot initialize graphical editor");
+    }
+#endif
     module = load(entry_resource(argv[1]));
     if (!module)
     {
         error(failure);
     }
     start_module(module);
-    while (ready)
+    while (ready
+#ifdef DVM_RUNTIME_EDITOR
+           || (live && dvm_editor_attached())
+#endif
+    )
     {
+#ifdef DVM_RUNTIME_EDITOR
+        if (dvm_editor_attached())
+        {
+            int progress = dvm_editor_poll();
+            if (progress < 0)
+            {
+                error("graphical editor transport/presentation failure");
+            }
+            if (progress)
+            {
+                execution_slices = 0;
+            }
+        }
+        if (!ready)
+        {
+            fvm_port_thread_sleep_us(1000);
+            continue;
+        }
+#endif
         if (++execution_slices > 100000)
         {
             error("execution budget exceeded");
@@ -770,6 +822,9 @@ int main(int argc, char **argv)
     {
         error("deadlock: processes remain blocked on channels");
     }
+#ifdef DVM_RUNTIME_EDITOR
+    dvm_editor_stop();
+#endif
     poperror();
     if (show_stats)
     {

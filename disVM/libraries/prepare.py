@@ -10,11 +10,10 @@ MODULES = ("bufio", "string", "arg", "readdir", "debug", "dis", "styx", "styxser
 # source is pristine Styx source. Return guarded decoders for request/response packets;
 # unknown source anchors fail explicitly rather than silently dropping the adaptation.
 def prepare_styx(source):
-    anchor = "\tif(len f != size){"
-    if source.count(anchor) != 2:
-        raise ValueError("Styx frame decoder boundaries changed")
-    guard = "\t# Reject impossible frame sizes before slicing away the fixed header.\n\tif(size < H) {\n\t\treturn (-1, nil);\n\t}\n"
-    return source.replace(anchor, guard + anchor)
+    if source.count("if(size < H)") != 2:
+        raise ValueError("upstream Styx frame guards changed")
+    return source
+
 
 
 # Preserve classic signed int32 wire results when the private NC64 int cell is wider.

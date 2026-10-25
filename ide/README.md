@@ -79,3 +79,10 @@ late results. Without the option, legacy compiler messages remain supported.
 [Series 0.5.0 validation / Проверки серии](dis/SERIES_0_5_0.md)
 
 [Editor services / Сервисы редактора](EDITOR-CHANNELS.ru.md).
+
+## Graphical editor v0.1550
+
+[Executable tutorial and limitations](dis/examples/graphical-editor/README.md):
+Limbo controller, actual Dis runtime, channel-owned document/history/file I/O and
+FlashVM TextField rendering. Build component `disvm-editor`, launch menu item 8.
+AS-worker execution and debugger integration remain open.

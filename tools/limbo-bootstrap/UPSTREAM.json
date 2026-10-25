@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "dad4b09d0631db4d7189b5ffc382e412d1467421",
+  "revision": "3c6f5dca823927d8cec8c86159ccc35029b3bd51",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -195,7 +195,7 @@
     "upstream/libbio/tests/write-state.c": "30d65db94cdb9b98ae1baa0973d845529516196abb60941c9b9299b38710ce01",
     "upstream/libmath/FPcontrol-Linux.c": "db5c8f9ac1093169f5229ef9db9ca2f53599bd4ef9fc6af822849473963c21ce",
     "upstream/libmath/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
-    "upstream/libmath/dtoa.c": "90508c1e097c26c9f4e3f22fae739e431b50cfdce788a229c1580199dea3cb74",
+    "upstream/libmath/dtoa.c": "f3767bc73b533b8e73fe83db6f0a30e1148b26bac7c8f84f1777f49384d567f1",
     "upstream/libmath/g_fmt.c": "330cb7a4b535de2d83f952e9e13a7d665891e5c7d2e38c86eaefa83736ff693c",
     "upstream/libmath/gfltconv.c": "0d44b291c9ecce9da301c3eb3d624187b6b2c79fe1b8c25e70d09b0385300f7e",
     "upstream/libsec/NOTICE": "f177c866a638bc9751314e3af4c47a2930afbdc8438f0cfdb021e834e7e7b934",
@@ -207,7 +207,7 @@
     "upstream/limbo/decls.c": "70196edfb67467a46f98fe1fe0aff659b4c184266fbf801aa5ec6fdd1575fde9",
     "upstream/limbo/dis.c": "472d6dc804722e8c8fe3d106bae7b8445b50670245c16dbd001132c2de00d58c",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
-    "upstream/limbo/ecom.c": "3fb5b6ba972e21739b829227fdc955490482f016f029cd80dfaac5a719a34a7f",
+    "upstream/limbo/ecom.c": "7c9d22a75200c442f0497f5ce0856182f304fc4ec7984b97777c68df606dd62e",
     "upstream/limbo/fns.h": "7214964707d13e1eb70fd9156442a67768885c5ea2176fa2d3356b120b453537",
     "upstream/limbo/gen.c": "8f07d4b370c3b56faec3a3dad1385ff10a44d3c0d01b22ce7ea00a3cb447a775",
     "upstream/limbo/lex.c": "345f3674dee8d888fe624cfc54ec7fe4da6a9f818b0532e5744d7611ab9eb491",

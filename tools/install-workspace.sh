@@ -285,10 +285,16 @@ EOF
             fi
             printf '%s\n' '# Limbo symbols' './sblmap examples/idecore.sbl' 'Build IDE first to include its real .sbl example.' >"$destination/README-FIRSTSTEPS.md"
             ;;
-        disvm-runtime)
+        disvm-runtime | disvm-editor)
             source="$ROOT/disVM"
             mkdir -p "$destination"
             install_program "$base" disvm "$destination"
+            if [[ "$component" == disvm-editor ]]; then
+                install_program "$base" disvm-editor "$destination"
+                copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
+                copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"
+                copy_file "$ROOT/ide/dis/bridge/idehost.m" "$destination/include/limbo/idehost.m"
+            fi
             file=$(program "$base" limbo-bootstrap)
             copy_file "$file" "$destination/limbo-native" 755
             copy_file "$base/bootstrap/target-abi.json" "$destination/ABI.json"
@@ -314,6 +320,7 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
+            copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
             copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
             for file in "$ROOT/ide/dis/bridge/"*.m; do

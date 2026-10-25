@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1549**. [English](README.md).
+Версия разработки: **0.1550**. [English](README.md).
 
-Текущая серия: [v0.1549](docs/releases/v0.1549.md) — обновлённый Dis/JIT, исполняемые Srv/Math/Loader и выбранные Limbo-библиотеки; проверки из меню, исправления dtoa и декодеров Styx.
+Текущая серия: [v0.1550](docs/releases/v0.1550.md) — графический редактор с логикой Limbo/Dis и TextField FlashVM; обновление Inferno experiment до `3c6f5dc`.
 
 ## Просмотр документации
 

@@ -121,3 +121,8 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 [Channel-owned binary file windows / Бинарные окна файлов](bridge/idefiles.README.md):
 read-only resource previews through actual Sys seek/readn, used by the
 [interactive editor](examples/editor-console/README.md) `inspect PATH` command.
+
+[Graphical editor / Графический редактор](examples/graphical-editor/README.md) ·
+[Русское руководство](examples/graphical-editor/README.ru.md): executable Limbo
+controller, actual Dis channels and FlashVM TextField presentation; build
+`disvm-editor`, launch 8.

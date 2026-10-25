@@ -5,7 +5,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-dad4b09d0631db4d7189b5ffc382e412d1467421; every imported file has a manifest hash.
+3c6f5dca823927d8cec8c86159ccc35029b3bd51; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -109,3 +109,6 @@ matching Limbo modules with production interpreter/JIT, blocking channels and ID
 services. Select `disvm-runtime` or `all` in `build_menu.py`; post-build menu items
 4/5 launch Dis and IDE console examples. The core archive above remains a separate
 classic SDK. Full GUI, Sys/VFS coverage and parallel shared VM owners remain open.
+
+[Graphical editor v0.1550](../ide/dis/examples/graphical-editor/README.md) adds
+an opt-in real NC64 executable, separate from the classic core SDK archive.

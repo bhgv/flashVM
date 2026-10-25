@@ -455,3 +455,11 @@ SDL2 SDK при необходимости собирается автомати
 Post-build item **7** runs the actual standard-module tutorial. Full /prog,
 namespace and live Styx-server services remain incomplete; compiled library
 availability is distinguished from executed function coverage in the status guide.
+
+## Graphical Dis/FlashVM editor / Графический редактор
+
+Build component `disvm-editor`, then use launch menu **8**. The controller is
+Limbo bytecode on our Dis VM; graphics use FlashVM TextField and an optional SDL2
+window. Select an explicit TTF/OpenType font. [English](ide/dis/examples/graphical-editor/README.md) ·
+[Русский](ide/dis/examples/graphical-editor/README.ru.md). This first graphical
+integration does not yet execute AS workers or connect the debugger.

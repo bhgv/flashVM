@@ -24,6 +24,7 @@ usage() {
 Usage: ./build-workspace.sh [options]
   --projects LIST    vm,compilers,fir,linker,symbols,disvm,disvm-host,disvm-runtime,ide (default main components)
                     Individual frontends: as1,as2,as3,limbo
+                    Optional graphical IDE: disvm-editor (SDL2, fonts; --no-player for replay-only)
                     Explicit tools: cocor,cocor-limbo,limbo-bootstrap,mk,iyacc
   --backend NAME    auto, cmake (3.10+), meson, mk or make; native subset documented
   --build-root DIR   Default build/workspace; repeated builds are incremental
@@ -46,6 +47,7 @@ Optional explicit SDK overrides:
   LIMBO_EXECUTABLE                 Native compiler override (bootstrap, not our FIR compiler)
   LIMBO_MODULE_DIR                 Default: bundled bootstrap module headers
   EMU_EXECUTABLE                   Optional reference runtime; no emu needed for building or compiler tests
+  DVM_EDITOR_TEST_FONT             Explicit TTF/OpenType font for graphical IDE tests
   CMAKE, CTEST, PYTHON              Optional host executable paths
 Graphical VM builds automatically cache/build pinned SDL2 and missing public headers.
 No administrator/system installation or upstream writes; --no-player keeps VM builds offline.
@@ -127,7 +129,7 @@ done
 IFS=, read -r -a selected <<<"$projects"
 for project in "${selected[@]}"; do
     case "$project" in
-        vm | compilers | fir | linker | symbols | disvm | disvm-host | disvm-runtime | ide | as1 | as2 | as3 | limbo | cocor | cocor-limbo | limbo-bootstrap | mk | iyacc) ;;
+        vm | compilers | fir | linker | symbols | disvm | disvm-host | disvm-runtime | disvm-editor | ide | as1 | as2 | as3 | limbo | cocor | cocor-limbo | limbo-bootstrap | mk | iyacc) ;;
         *)
             fail "Unknown project: $project"
             ;;
@@ -285,8 +287,11 @@ fi
 # Resolve the real desktop SDK automatically when a graphical VM is requested.
 # Console-only builds and all non-VM components keep their existing SDK independence.
 SDL2_SDK_DIR=""
-if has vm && [[ "$player" != OFF ]]; then
+if { has vm || has disvm-editor; } && [[ "$player" != OFF ]]; then
     graphical_vm=0
+    if has disvm-editor; then
+        graphical_vm=1
+    fi
     if [[ -z "$vm_profiles" ]]; then
         if ! grep -q '^NO_GRAPHICS[[:space:]]*$' "$ROOT/flashVM/DEFS.txt"; then
             graphical_vm=1
@@ -402,7 +407,7 @@ if has cocor-limbo; then
     build_project cocor-limbo tools/coco-r-limbo \
         "-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR"
 fi
-for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-host disvm-runtime ide; do
+for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-host disvm-runtime disvm-editor ide; do
     has "$project" || continue
     args=()
     case "$project" in
@@ -447,9 +452,17 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
             args+=("-DDVM_LIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")
             args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
             ;;
-        disvm-runtime)
+        disvm-runtime | disvm-editor)
             source=disVM/runtime
             args+=("-DDVM_RUNTIME_TESTS=$tests" "-DDVM_LEGACY_IMAGE=")
+            args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
+            if [[ "$project" == disvm-editor ]]; then
+                args+=(-DDVM_RUNTIME_EDITOR=ON "-DDVM_EDITOR_SDL=$player"
+                    "-DDVM_EDITOR_TEST_FONT=${DVM_EDITOR_TEST_FONT:-}")
+                if [[ -n "$SDL2_SDK_DIR" ]]; then
+                    args+=("-DSDL2_DIR=$SDL2_SDK_DIR")
+                fi
+            fi
             if [[ -f "$build_root/disvm/console-check.dis" ]]; then
                 args+=("-DDVM_LEGACY_IMAGE=$build_root/disvm/console-check.dis")
             fi

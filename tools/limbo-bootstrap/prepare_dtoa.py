@@ -2,30 +2,17 @@
 
 import argparse
 from pathlib import Path
-import re
-
-TOKENS = re.compile(
-    r'/\*[\s\S]*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|\blong\b|.', re.DOTALL
-)
 
 
-# source is pristine dtoa C. Return a derived translation unit with 32-bit limbs;
-# comments/literals remain unchanged. Fail rather than assuming an unknown source layout.
+# source is pinned upstream dtoa C. Verify its portable limb/packing fixes and
+# return it unchanged; an incompatible update fails before compiling the bootstrap.
 def prepare(source):
-    if source.count("unsigned  long x[1];") != 1 or source.count("y->wds*sizeof(long)") != 1:
-        raise ValueError("pinned dtoa limb layout changed; review native-width adaptation")
-    output = "".join(
-        "int" if match.group() == "long" else match.group() for match in TOKENS.finditer(source)
-    )
-    store = "(*a++ = b << 16 | c & 0xffff)"
-    if output.count(store) != 1:
-        raise ValueError("pinned dtoa limb packing changed")
-    output = output.replace(store, "(*a++ = (unsigned int)(b) << 16 | (unsigned int)(c) & 0xffffU)")
-    return output.replace(
-        '#include "lib9.h"',
-        '#include "lib9.h"\n#include <limits.h>\n#if UINT_MAX != 0xffffffffU\n#error dtoa_requires_32_bit_unsigned_int\n#endif',
-        1,
-    )
+    if "dtoa_requires_32_bit_unsigned_int" not in source or "unsigned  int x[1];" not in source:
+        raise ValueError("upstream dtoa must provide checked 32-bit limbs")
+    if "(unsigned int)(b) << 16" not in source:
+        raise ValueError("upstream dtoa unsigned packing is missing")
+    return source
+
 
 
 # CLI requires pristine source and build-owned output. Writes no imported source;

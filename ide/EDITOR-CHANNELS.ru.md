@@ -87,3 +87,10 @@ state/escape/star для следующего смежного окна, рев�
 AS2-фронтенд разбирает оба AS-файла; Node дополнительно проверяет алгоритмы и
 stale-result gates. Это не доказательство исполнения этих файлов как SWF/JIT.
 Python/Node — только необязательные хостовые проверки, не runtime IDE.
+
+## Сквозной графический запуск v0.1550
+
+[Контроллер на Limbo и руководство](dis/examples/graphical-editor/README.ru.md)
+теперь исполняются на нашем NC64 runtime, соединённом с настоящим TextField
+FlashVM. Это отдельный C embedding renderer с канальным управлением; прежние
+границы для AS-workers, mixed-colour, popup и отладчика сохраняются.

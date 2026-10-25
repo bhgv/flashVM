@@ -112,3 +112,8 @@ IDE должна поставляться в интерпретируемом/JI
 [Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).
 
 [Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../WORKSPACE.md).
+
+[Graphical editor / Графический редактор](examples/graphical-editor/README.md) ·
+[Русское руководство](examples/graphical-editor/README.ru.md): executable Limbo
+controller, actual Dis channels and FlashVM TextField presentation; build
+`disvm-editor`, launch 8.

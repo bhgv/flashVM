@@ -47,8 +47,10 @@ FVM_Result dvm_ui_dis_export(DVM_UIBridge *bridge, Array *frame)
     FVM_Value value;
     DVM_UIMessage message;
     FVM_Result result;
-    if (!bridge || frame == nil || frame == H || frame->t != &Tbyte || frame->len < (int)DVM_UI_HEADER_SIZE ||
-        frame->len > (int)(DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX) || frame->data == nil || frame->data == H)
+    if (!bridge || frame == nil || frame == H ||
+        (frame->t != &Tbyte && (frame->t == nil || frame->t == H || frame->t->size != 1 || frame->t->np != 0)) ||
+        frame->len < (int)DVM_UI_HEADER_SIZE || frame->len > (int)(DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX) ||
+        frame->data == nil || frame->data == H)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -123,7 +125,9 @@ FVM_Result dvm_ui_dis_take(Channel *source, DVM_UIMessage *out)
     saved = DVM_R;
     completed = kprotect(protected_take, &attempt);
     DVM_R = saved;
-    if (completed && attempt.array != H && attempt.array != nil && attempt.array->t == &Tbyte &&
+    if (completed && attempt.array != H && attempt.array != nil &&
+        (attempt.array->t == &Tbyte || (attempt.array->t != nil && attempt.array->t != H &&
+                                        attempt.array->t->size == 1 && attempt.array->t->np == 0)) &&
         attempt.array->len >= (int)DVM_UI_HEADER_SIZE &&
         attempt.array->len <= (int)(DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX) && attempt.array->data != nil &&
         attempt.array->data != H)

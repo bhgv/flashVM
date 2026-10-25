@@ -21,7 +21,7 @@ workspace tutorial: it creates document owners, takes a revision-bound build
 snapshot and stops all services through channels. It does not fabricate compiler
 output. The [interactive terminal editor](../../ide/dis/examples/editor-console/README.md)
 also provides editing, Undo/Redo, search, AS/Limbo declarations/call tips and actual
-UTF-8 file save/load. The graphical editor is not connected to this executable yet. The FlashVM
+UTF-8 file save/load. The optional `disvm-editor` executable now connects these document/input services to actual FlashVM TextField rendering; see the graphical tutorial below. The FlashVM
 windowed examples remain separately launchable from the same build menu.
 
 ## Explicit experimental ABI
@@ -156,3 +156,16 @@ cannot silently truncate a destination PC.
 а наличие Styx-кодека — готовую VFS. Проверочный пункт 7 исполняет реальные
 поддержанные функции и проверяет ошибочные входы; подробные ограничения указаны
 в таблице готовности модулей.
+
+### Graphical editor (runtime 0.3.0)
+
+[English tutorial](../../ide/dis/examples/graphical-editor/README.md) ·
+[Русское руководство](../../ide/dis/examples/graphical-editor/README.ru.md).
+Build `disvm-editor` with `DVM_RUNTIME_EDITOR=ON`; SDL windows additionally require
+`DVM_EDITOR_SDL=ON` and an explicit SDL2 SDK. The console `disvm` keeps its existing
+graphics-free build. `$Idehost` is registered only by the editor executable and
+borrows stack-rooted channels until Limbo explicitly detaches. No cross-heap
+pointers are transmitted. File/save/history policy runs in Limbo; TextField
+presentation uses FlashVM, and the thin SDL host only presents pixels/events.
+The fixed first-page preview, mouse/scrolling/AS-worker/debugger limits are
+explicit in the tutorial. `--events` is offscreen replay, not physical UI proof.
