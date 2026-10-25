@@ -1,0 +1,867 @@
+/* Experimental sequential owner for the retained Dis interpreter and native leaves. */
+#include "lib9.h"
+#include "dat.h"
+#include "fns.h"
+#include "isa.h"
+#include "interp.h"
+#include "runt.h"
+#include "pool.h"
+#include "raise.h"
+#include "disvm/native_process.h"
+#include "file_port.h"
+#include <stdio.h>
+#include <stddef.h>
+
+#define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
+#define PROCESS_MAX 128                      /* Maximum simultaneous Limbo processes. */
+
+
+/* Private allocator owner; the arena has stable metadata for production GC walks. */
+struct Pool
+{
+    Bhdr *arena; /* Owned bounded arena, including collector block headers. */
+};
+
+static Pool memory;                       /* Sole pool owned by the bound runtime thread. */
+Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
+static Prog *ready;                       /* FIFO head for runnable Limbo processes. */
+static Prog *tail;                        /* FIFO tail. */
+static Prog *processes;                   /* Complete GC root/process list. */
+static int nextpid;                       /* Monotonic process identity. */
+static int live;                          /* Process quota accounting. */
+static char failure[256];                 /* Current native error copied before unwinding. */
+static Osenv environment;                 /* Error string environment for this runtime owner. */
+extern int dontcompile;                   /* Production loader switch that prohibits forced JIT compilation. */
+int cflag;                                /* Native leaf compilation switch consumed by the loader. */
+int keepbroken;                           /* No debugger retention is implemented in this initial runner. */
+Type *TFD;                                /* Descriptor owner for supported module/control input handles. */
+Type *TFileIO;                            /* Unavailable file-to-channel host type. */
+unsigned long dvm_runtime_instructions;   /* Decoded complete instructions across every Limbo process. */
+static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
+static int show_stats;                    /* Emit actual instruction counts on explicit request. */
+static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
+static FVM_PortFile *files[32]; /* Bounded module-input handles over FlashVM's file port. */
+
+
+/* Report allocator corruption and terminate instead of continuing with invalid metadata. */
+static void allocator_fault(void *address, char *reason, ulong pc)
+{
+    USED(address);
+    USED(pc);
+    fprintf(stderr, "disvm allocator: %s\n", reason);
+    exit(1);
+}
+
+void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
+
+
+/* Create a bounded arena with stable headers for the retained cycle collector. */
+static void arena_init(void)
+{
+    Bhdr *block;
+    ulong header = (sizeof(Bhdr) + 15UL) & ~15UL;
+    memory.arena = calloc(1, ARENA_BYTES);
+    if (!memory.arena)
+    {
+        error(exNomem);
+    }
+    memory.arena->magic = MAGIC_E;
+    memory.arena->size = header;
+    memory.arena->csize = ARENA_BYTES;
+    memory.arena->clink = nil;
+    block = B2NB(memory.arena);
+    block->magic = MAGIC_F;
+    block->size = ARENA_BYTES - header;
+}
+
+
+/* First-fit allocation preserves block addresses and GC traversal metadata. */
+void *poolalloc(Pool *pool, ulong size)
+{
+    Bhdr *block;
+    Bhdr *remainder;
+    ulong need;
+    if (size > ARENA_BYTES - BHDRSIZE - 16)
+    {
+        return nil;
+    }
+    need = (size + BHDRSIZE + 15UL) & ~15UL;
+    for (block = B2NB(pool->arena); block < B2LIMIT(pool->arena); block = B2NB(block))
+    {
+        if (block->magic != MAGIC_F || block->size < need)
+        {
+            continue;
+        }
+        if (block->size - need >= sizeof(Bhdr) + 16)
+        {
+            remainder = (Bhdr *)((uchar *)block + need);
+            remainder->magic = MAGIC_F;
+            remainder->size = block->size - need;
+            block->size = need;
+        }
+        block->magic = MAGIC_A;
+        return B2D(block);
+    }
+    return nil;
+}
+
+
+/* Free one heap block without moving headers observed by the cycle collector. */
+void poolfree(Pool *pool, void *value)
+{
+    Bhdr *block;
+    USED(pool);
+    D2B(block, value);
+    block->magic = MAGIC_F;
+}
+
+
+/* Return the stable arena chain consumed by production rungc. */
+Bhdr *poolchain(Pool *pool)
+{
+    return pool->arena;
+}
+
+
+/* Report usable payload bytes for production heap bounds checks. */
+ulong poolmsize(Pool *pool, void *value)
+{
+    Bhdr *block;
+    USED(pool);
+    D2B(block, value);
+    return block->size - BHDRSIZE;
+}
+
+
+/* Allocate ordinary host metadata; the VM heap uses its separate bounded arena. */
+void *mallocz(ulong size, int clear)
+{
+    void *value = malloc(size);
+    if (value && clear)
+    {
+        memset(value, 0, size);
+    }
+    return value;
+}
+
+
+/* Preserve the current host error and unwind through the retained Proc error frames. */
+void error(char *message)
+{
+    if (message != failure)
+    {
+        snprintf(failure, sizeof(failure), "%s", message);
+    }
+    nexterror();
+}
+
+
+/* Propagate the active error to the next enclosing native owner frame. */
+void nexterror(void)
+{
+    if (!up || up->nerr <= 0)
+    {
+        fprintf(stderr, "disvm: %s\n", failure);
+        exit(1);
+    }
+    siglongjmp(up->estack[--up->nerr], 1);
+}
+
+
+/* Run fallible construction with the real Proc jump-frame discipline. */
+int kprotect(int (*callback)(void *), void *argument)
+{
+    int result;
+    if (waserror())
+    {
+        return 0;
+    }
+    result = callback(argument);
+    poperror();
+    return result;
+}
+
+
+/* Re-raise after production cleanup. */
+void krethrow(void)
+{
+    nexterror();
+}
+
+
+/* Save a native error for the retained module loader. */
+void kwerrstr(char *format, ...)
+{
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprint(failure, sizeof(failure), format, arguments);
+    va_end(arguments);
+}
+
+
+/* Preserve the exclusive VM owner across synchronous host work. */
+void release(void)
+{
+}
+
+
+/* Return from synchronous host work on the same exclusive VM owner. */
+void acquire(void)
+{
+}
+
+
+/* Locate the current runnable process for production channel operations. */
+Prog *currun(void)
+{
+    return ready;
+}
+
+
+/* Append a runnable process to the scheduler FIFO. */
+void addrun(Prog *process)
+{
+    process->state = Pready;
+    process->link = nil;
+    if (tail)
+    {
+        tail->link = process;
+    }
+    else
+    {
+        ready = process;
+    }
+    tail = process;
+}
+
+
+/* Block/remove the FIFO head while retaining it in the GC root list. */
+Prog *delrun(int state)
+{
+    Prog *process = ready;
+    ready = process->link;
+    if (!ready)
+    {
+        tail = nil;
+    }
+    process->link = nil;
+    process->state = state;
+    return process;
+}
+
+
+/* Create one Limbo process; it is scheduled above one bound native OS owner. */
+Prog *newprog(Prog *parent, Modlink *module)
+{
+    Prog *process;
+    USED(parent);
+    if (live == PROCESS_MAX)
+    {
+        error("process quota exceeded");
+    }
+    process = calloc(1, sizeof(Prog));
+    if (!process)
+    {
+        error(exNomem);
+    }
+    process->pid = ++nextpid;
+    process->quanta = PQUANTA;
+    process->xec = xec;
+    process->exval = H;
+    process->R.M = module;
+    process->R.MP = module->MP;
+    D2H(module)->ref++;
+    process->next = processes;
+    processes = process;
+    live++;
+    addrun(process);
+    return process;
+}
+
+
+/* Wake channel peers with an explicit hangup, using the production queue representation. */
+void killcomm(Progq **queue)
+{
+    Progq *entry;
+    Prog *process;
+    while ((entry = *queue) != nil)
+    {
+        *queue = entry->next;
+        process = entry->prog;
+        free(entry);
+        if (!process)
+        {
+            return;
+        }
+        process->ptr = nil;
+        switch (process->state)
+        {
+        case Psend:
+        case Precv:
+            process->kill = "channel hangup";
+            addrun(process);
+            break;
+        case Palt:
+            altgone(process);
+            break;
+        case Prelease:
+            error("foreign C channel waiter is not supported by this host");
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+
+/* Reuse production formatting and publish the actual stdout write result. */
+void Sys_print(void *frame)
+{
+    F_Sys_print *call = frame;
+    char text[4096];
+    int count = xprint(currun(), frame, &call->vargs, call->s, text, sizeof(text));
+    WORD result;
+    if (count < 0 || count >= sizeof(text) - UTFmax - 2)
+    {
+        error("experimental stdout message limit");
+    }
+    result = fwrite(text, 1, count, stdout);
+    fflush(stdout);
+    memmove(call->ret, &result, sizeof(result));
+}
+
+
+/* Sys string-only functions are provided by retained runt.c; FD services are unavailable. */
+static void free_fd(Heap *heap, int swept)
+{
+    Sys_FD *fd = H2D(Sys_FD *, heap);
+    USED(swept);
+    if (fd->fd >= 0 && fd->fd < 32)
+    {
+        kclose(fd->fd);
+    }
+}
+
+
+/* Initialize the actual descriptor-owner finalizer used by the supported input path. */
+void sysinit(void)
+{
+    TFD = dtype(free_fd, sizeof(Sys_FD), nil, 0);
+    if (!TFD)
+    {
+        error(exNomem);
+    }
+}
+
+
+/* Accept only ordinary Dis; dynamic native libraries and signatures are unavailable. */
+int dynldable(int fd)
+{
+    USED(fd);
+    return 0;
+}
+
+
+/* Do not require signatures for local experimental module files. */
+int mustbesigned(char *path, uchar *bytes, ulong length, Dir *metadata)
+{
+    USED(path);
+    USED(bytes);
+    USED(length);
+    USED(metadata);
+    return 0;
+}
+
+
+/* Signed payload verification is explicitly unsupported. */
+int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
+{
+    USED(bytes);
+    USED(length);
+    USED(signature);
+    USED(size);
+    return 0;
+}
+
+
+/* Open module input through the shared FlashVM file implementation. */
+int kopen(char *path, int mode)
+{
+    int index;
+    if (mode != OREAD)
+    {
+        kwerrstr("unsupported file open mode");
+        return -1;
+    }
+    for (index = 0; index < 32; index++)
+    {
+        if (!files[index])
+        {
+            if (fvm_port_file_open(path, "r", &files[index]) == FVM_OK)
+            {
+                return index;
+            }
+            kwerrstr("cannot open module file: %s", path);
+            return -1;
+        }
+    }
+    kwerrstr("module file handle quota exceeded");
+    return -1;
+}
+
+
+/* Read one module fragment from its borrowed file slot. */
+long kread(int fd, void *bytes, long size)
+{
+    size_t received;
+    if (fd < 0 || fd >= 32 || !files[fd] || size < 0)
+    {
+        return -1;
+    }
+    if (fvm_port_file_read(files[fd], bytes, size, &received) != FVM_OK)
+    {
+        return -1;
+    }
+    return received;
+}
+
+
+/* Close exactly the module handle owned by the loader. */
+int kclose(int fd)
+{
+    if (fd < 0 || fd >= 32 || !files[fd])
+    {
+        return -1;
+    }
+    fvm_port_file_close(files[fd]);
+    files[fd] = nil;
+    return 0;
+}
+
+
+/* Determine module extent without reading beyond its framed contents. */
+Dir *kdirfstat(int fd)
+{
+    Dir *metadata;
+    size_t available;
+    if (fd < 0 || fd >= 32 || !files[fd])
+    {
+        return nil;
+    }
+    if (fvm_port_file_size(files[fd], &available) != FVM_OK || available >= 8UL * 1024UL * 1024UL)
+    {
+        return nil;
+    }
+    metadata = calloc(1, sizeof(Dir));
+    if (metadata)
+    {
+        metadata->length = available;
+    }
+    return metadata;
+}
+
+
+/* Module dynamic seeks are not required by ordinary Dis input. */
+vlong kseek(int fd, vlong position, int origin)
+{
+    USED(fd);
+    USED(position);
+    USED(origin);
+    error("native dynamic module seek unsupported");
+    return -1;
+}
+
+
+/* Return a diagnostic for the interpreter's %r conversion. */
+char *syserr(char *start, char *end, Prog *process)
+{
+    USED(process);
+    return seprint(start, end, "%s", failure);
+}
+
+
+/* Reserve the complete native-cell entry frame before publishing its process. */
+static Prog *start_module(Module *module)
+{
+    Import empty;
+    Modlink *link;
+    Prog initial;
+    Prog *process;
+    Frame *frame;
+    memset(&initial, 0, sizeof(initial));
+    memset(&empty, 0, sizeof(empty));
+    if (!module->entryt || module->entryt->size < sizeof(Frame))
+    {
+        error("incompatible legacy module frame; native-cell module required");
+    }
+    link = linkmod(module, &empty, 1);
+    frame = calloc(1, module->entryt->size);
+    if (!frame)
+    {
+        error(exNomem);
+    }
+    frame->t = module->entryt;
+    initial.R.M = link;
+    initial.R.MP = link->MP;
+    initial.R.PC = module->entry;
+    DVM_R.s = &frame;
+    newstack(&initial);
+    initmem(module->entryt, initial.R.FP);
+    process = newprog(nil, link);
+    process->R = initial.R;
+    D2H(link)->ref--;
+    free(frame);
+    return process;
+}
+
+
+/* Execute a bounded experimental application using real decoding, JIT and channels.
+ * argc/argv select the NC64 module and runtime options. Returns zero on completion,
+ * one for execution/input failure, or two for an invalid command/ABI configuration. */
+int main(int argc, char **argv)
+{
+    DVM_NativeContext *context;
+    Module *module;
+    Prog *process;
+    Prog **slot;
+    unsigned long slices = 0;
+    cflag = 1;
+    while (argc > 1 && argv[1][0] == '-')
+    {
+        if (strcmp(argv[1], "--stats") == 0)
+        {
+            show_stats = 1;
+        }
+        else if (strcmp(argv[1], "--test-control") == 0)
+        {
+            test_control = 1;
+        }
+        else if (strcmp(argv[1], "--no-jit") == 0)
+        {
+            cflag = 0;
+        }
+        else if (strcmp(argv[1], "--jit") == 0)
+        {
+            cflag = 1;
+        }
+        else if (strcmp(argv[1], "--version") == 0)
+        {
+            puts("DisVM runtime 0.1.0: experimental NC64, magic 819264, Linux AMD64");
+            return 0;
+        }
+        else if (strcmp(argv[1], "--help") == 0)
+        {
+            puts("usage: disvm [--jit|--no-jit] [--stats] [--test-control] native-cell.dis");
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
+            return 0;
+        }
+        else
+        {
+            fprintf(stderr, "unknown runtime option: %s\n", argv[1]);
+            return 2;
+        }
+        argv++;
+        argc--;
+    }
+    if (argc != 2)
+    {
+        fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
+        return 2;
+    }
+    dontcompile = !cflag;
+    if (sizeof(WORD) != 8 || sizeof(void *) != 8 || IBY2WD != 8 || offsetof(Alt, ac) != 16 ||
+        offsetof(F_Sys_print, s) != 64)
+    {
+        fprintf(stderr, "native-cell compiler/runtime frame contract mismatch\n");
+        return 2;
+    }
+    context = dvm_native_process_create(nil);
+    if (!context || !dvm_native_context_bind(context))
+    {
+        return 1;
+    }
+    up->env = &environment;
+    environment.errstr = failure;
+    if (waserror())
+    {
+        fprintf(stderr, "disvm: %s\n", failure);
+        return 1;
+    }
+    arena_init();
+    opinit();
+    sysmodinit();
+    module = load(argv[1]);
+    if (!module)
+    {
+        error(failure);
+    }
+    start_module(module);
+    while (ready)
+    {
+        if (++slices > 100000)
+        {
+            error("execution budget exceeded");
+        }
+        process = ready;
+        if (!dvm_native_context_set_process(context, process))
+        {
+            error("cannot publish active Dis process in TLS owner");
+        }
+        up->prog = process;
+        if (waserror())
+        {
+            process->R = DVM_R;
+            if (failure[0])
+            {
+                fprintf(stderr,
+                        "Dis process %d module %s pc %ld: %s\n",
+                        process->pid,
+                        DVM_R.M->m->path,
+                        (long)(DVM_R.PC - DVM_R.M->prog - 1),
+                        failure);
+                return 1;
+            }
+            delrun(Pexiting);
+            for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
+            {
+            }
+            if (*slot)
+            {
+                *slot = process->next;
+            }
+            destroystack(&process->R);
+            destroy(process->R.M);
+            dvm_native_context_set_process(context, nil);
+            up->prog = nil;
+            free(process);
+            live--;
+        }
+        else
+        {
+            xec(process);
+            poperror();
+            if (ready == process)
+            {
+                addrun(delrun(Pready));
+            }
+        }
+        if (processes)
+        {
+            rungc(processes);
+        }
+    }
+    if (live)
+    {
+        error("deadlock: processes remain blocked on channels");
+    }
+    poperror();
+    if (show_stats)
+    {
+        fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
+    }
+    puts("PASS Dis application completed");
+    return 0;
+}
+
+
+/* Preserve formatted VM errors before unwinding their current owner. */
+void errorf(char *format, ...)
+{
+    char text[256];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprint(text, sizeof(text), format, arguments);
+    va_end(arguments);
+    error(text);
+}
+
+
+/* Dynamic native code is excluded; ordinary Dis never enters this boundary. */
+Module *newdyncode(int fd, char *path, Dir *metadata)
+{
+    USED(fd);
+    USED(path);
+    USED(metadata);
+    error("native library loading unsupported");
+    return nil;
+}
+
+
+/* Reject native data attachment rather than manufacturing a successful import. */
+void newdyndata(Modlink *module)
+{
+    USED(module);
+    error("native data loading unsupported");
+}
+
+
+/* There are no native dynamic-code allocations in this host. */
+void freedyncode(Module *module)
+{
+    USED(module);
+}
+
+
+/* There are no native dynamic-data allocations in this host. */
+void freedyndata(Modlink *module)
+{
+    USED(module);
+}
+
+
+/* Ask the host allocator about metadata storage; VM blocks use poolmsize instead. */
+ulong msize(void *value)
+{
+    extern size_t malloc_usable_size(void *);
+    return malloc_usable_size(value);
+}
+
+
+/* Open ordinary read-only input, or the explicitly enabled isolated-test control node. */
+void Sys_open(void *frame)
+{
+    F_Sys_open *call = frame;
+    Sys_FD *old;
+    Sys_FD *result;
+    int descriptor;
+    if (call->s == H)
+    {
+        error(exNilref);
+    }
+    if (test_control && strcmp(string2c(call->s), "/dev/sysctl") == 0 && call->mode == 1)
+    {
+        descriptor = -2;
+    }
+    else
+    {
+        descriptor = -1;
+        if (call->mode == OREAD)
+        {
+            descriptor = kopen(string2c(call->s), OREAD);
+        }
+        else
+        {
+            kwerrstr("unsupported file open mode");
+        }
+    }
+    result = H;
+    if (descriptor >= 0 || descriptor == -2)
+    {
+        result = H2D(Sys_FD *, heapz(TFD));
+        result->fd = descriptor;
+    }
+    memmove(&old, call->ret, sizeof(old));
+    memmove(call->ret, &result, sizeof(result));
+    destroy(old);
+}
+
+
+/* Consume only the isolated test halt command; ordinary write services remain unavailable. */
+void Sys_write(void *frame)
+{
+    F_Sys_write *call = frame;
+    if (test_control && call->fd != H && call->fd->fd == -2 && call->buf != H && call->n == 4 && call->buf->len >= 4 &&
+        memcmp(call->buf->data, "halt", 4) == 0)
+    {
+        fflush(stdout);
+        if (show_stats)
+        {
+            fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
+        }
+        exit(0);
+    }
+    error("unsupported native host service: Sys_write");
+}
+
+
+/* Count only a successfully accepted native leaf; guarded rejection retains the C handler. */
+int dvm_runtime_leaf(Jit *jit, int operation, REG *registers)
+{
+    int accepted = jit->entry[operation](registers);
+    if (accepted)
+    {
+        native_instructions++;
+    }
+    return accepted;
+}
+
+
+/* Validate a typed byte-array read and keep its native count within the C port range.
+ * descriptor/bytes borrow a live FD and mutable array; count is clamped to its extent.
+ * Returns the bounded byte count, or -1 for invalid array metadata. */
+static int read_span(Sys_FD *descriptor, Array *bytes, WORD count)
+{
+    if (descriptor == H || descriptor == nil || D2H(descriptor)->t != TFD)
+    {
+        error(exNilref);
+    }
+    if (descriptor->fd < 0 || descriptor->fd >= 32)
+    {
+        kwerrstr("invalid native file descriptor");
+        return -1;
+    }
+    if (bytes == nil || D2H(bytes)->t != &Tarray || bytes->t == nil || bytes->t == H || bytes->t->size != 1 ||
+        bytes->t->np != 0 || bytes->len < 0 || bytes->len > 0x7fffffff || (bytes->len && !bytes->data))
+    {
+        kwerrstr("invalid byte-array read span");
+        return -1;
+    }
+    if (count > bytes->len)
+    {
+        count = bytes->len;
+    }
+    return count;
+}
+
+
+/* Read one genuine fragment through the shared FlashVM file port.
+ * frame supplies a borrowed descriptor/array; result is the byte count or -1. */
+void Sys_read(void *frame)
+{
+    F_Sys_read *call = frame;
+    int count;
+    WORD result = 0;
+    if (call->buf != H && call->n >= 0)
+    {
+        count = read_span(call->fd, call->buf, call->n);
+        result = count < 0 ? -1 : count == 0 ? 0 : kread(call->fd->fd, call->buf->data, count);
+    }
+    memmove(call->ret, &result, sizeof(result));
+}
+
+
+/* Read until the requested extent, EOF or an actual port error.
+ * frame is borrowed; partial reads return their exact count and leave trailing bytes unread. */
+void Sys_readn(void *frame)
+{
+    F_Sys_readn *call = frame;
+    int count;
+    WORD result = 0;
+    long fragment;
+    if (call->buf == H || call->n < 0)
+    {
+        memmove(call->ret, &result, sizeof(result));
+        return;
+    }
+    count = read_span(call->fd, call->buf, call->n);
+    if (count < 0)
+    {
+        result = -1;
+        memmove(call->ret, &result, sizeof(result));
+        return;
+    }
+    while (result < count)
+    {
+        fragment = kread(call->fd->fd, call->buf->data + result, count - result);
+        if (fragment <= 0)
+        {
+            if (!result)
+            {
+                result = fragment;
+            }
+            break;
+        }
+        result += fragment;
+    }
+    memmove(call->ret, &result, sizeof(result));
+}

@@ -285,6 +285,30 @@ EOF
             fi
             printf '%s\n' '# Limbo symbols' './sblmap examples/idecore.sbl' 'Build IDE first to include its real .sbl example.' >"$destination/README-FIRSTSTEPS.md"
             ;;
+        disvm-runtime)
+            source="$ROOT/disVM"
+            mkdir -p "$destination"
+            install_program "$base" disvm "$destination"
+            file=$(program "$base" limbo-bootstrap)
+            copy_file "$file" "$destination/limbo-native" 755
+            copy_file "$base/bootstrap/target-abi.json" "$destination/ABI.json"
+            for file in "$base"/*.dis "$base"/*.sbl; do
+                if [[ -f "$file" ]]; then
+                    copy_file "$file" "$destination/$(basename "$file")"
+                fi
+            done
+            copy_file "$ROOT/disVM/runtime/run-console.sh" "$destination/run-console.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
+            copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
+            copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
+            copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
+            copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
+            copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
+            copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
+            for file in "$ROOT/ide/dis/bridge/"*.m; do
+                copy_file "$file" "$destination/include/limbo/$(basename "$file")"
+            done
+            ;;
         disvm | disvm-host)
             source="$ROOT/disVM"
             mkdir -p "$destination"
@@ -345,9 +369,9 @@ EOF
                 copy_file "$EMU_EXECUTABLE" "$destination/vm/emu" 755
                 printf '%s\n' 'Explicit reference emu copied; its matching module namespace is still required.' >"$destination/vm/STATUS.txt"
             else
-                printf '%s\n' 'NO EXECUTABLE DIS HOST AVAILABLE' 'disvm_core is a static library, not an IDE launcher.' >"$destination/vm/STATUS.txt"
+                printf '%s\n' 'These modules use the classic Dis ABI; disvm_core is a separate SDK.' 'Select disvm-runtime (included in all) for matching NC64 modules and ../disvm-runtime/run-ide.sh.' >"$destination/vm/STATUS.txt"
             fi
-            printf '%s\n' '# IDE document-service package' 'Modules and debug symbols are compiled; the full GUI/embedded Dis runner remains unfinished.' 'See vm/STATUS.txt. A FlashVM SWF runner cannot execute idecore.dis.' 'No fake runtime or silent emu dependency is installed.' >"$destination/README-FIRSTSTEPS.md"
+            printf '%s\n' '# IDE document-service package' 'Classic modules/debug symbols are compiled. The separate disvm-runtime package runs matching NC64 IDE services; graphical editor integration remains unfinished.' 'See vm/STATUS.txt. A FlashVM SWF runner cannot execute idecore.dis.' 'No fake runtime or silent emu dependency is installed.' >"$destination/README-FIRSTSTEPS.md"
             ;;
         mk | iyacc | limbo-bootstrap | cocor | cocor-limbo)
             case "$component" in

@@ -15,6 +15,34 @@ set(host_include "${CMAKE_CURRENT_SOURCE_DIR}/host/include")
 # The upstream lib9 header is shared POSIX C declarations; ARM assembly is never built.
 set(sdk_include "${host_include}" "${u}/Linux/arm/include" "${u}/include" "${u}/libinterp")
 
+# Keep legacy modules unchanged; an explicit experimental target matches native cells.
+set(LIMBO_BOOTSTRAP_CELL_BYTES "4" CACHE STRING "Dis target cell bytes: legacy 4 or experimental native 8")
+set_property(CACHE LIMBO_BOOTSTRAP_CELL_BYTES PROPERTY STRINGS 4 8)
+if(NOT LIMBO_BOOTSTRAP_CELL_BYTES MATCHES "^(4|8)$")
+  message(FATAL_ERROR "LIMBO_BOOTSTRAP_CELL_BYTES must be 4 or 8")
+endif()
+set(limbo_ecom "${u}/limbo/ecom.c")
+if(LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "8")
+  file(READ "${u}/include/isa.h" target_isa)
+  string(REPLACE "IBY2WD\t= 4" "IBY2WD\t= 8" target_isa "${target_isa}")
+  string(REPLACE "XMAGIC\t= 819248" "XMAGIC\t= 819264" target_isa "${target_isa}")
+  string(REPLACE "SMAGIC\t= 923426" "SMAGIC\t= 923442" target_isa "${target_isa}")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/target-include")
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/target-include/isa.h" "${target_isa}")
+  list(INSERT sdk_include 0 "${CMAKE_CURRENT_BINARY_DIR}/target-include")
+  file(READ "${u}/limbo/ecom.c" target_ecom)
+  string(REPLACE "\t\tcase IBY2WD:\n\t\t\top = IINDW;\n\t\t\tbreak;\n" "" target_ecom "${target_ecom}")
+  set(limbo_ecom "${CMAKE_CURRENT_BINARY_DIR}/target-include/ecom.c")
+  file(WRITE "${limbo_ecom}" "${target_ecom}")
+endif()
+
+set(target_magic 819248)
+if(LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "8")
+  set(target_magic 819264)
+endif()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/target-abi.json"
+  "{\"format\":\"Dis\",\"cell_bytes\":${LIMBO_BOOTSTRAP_CELL_BYTES},\"magic\":${target_magic}}\n")
+
 add_library(limbo_bootstrap_lib9 STATIC
   upstream/lib9/convD2M.c
   upstream/lib9/convM2D.c
@@ -135,13 +163,20 @@ if(IYACC_EXECUTABLE)
   # The copied lexer includes the newly generated token header from its own directory.
   set_source_files_properties("${limbo_lexer}" PROPERTIES OBJECT_DEPENDS "${parser_dir}/y.tab.h")
 endif()
+# Preserve all grammar actions; reserve one real sentinel instead of forming yys[-1].
+set(raw_limbo_parser "${limbo_parser}")
+set(limbo_parser "${CMAKE_CURRENT_BINARY_DIR}/safe-parser.c")
+add_custom_command(OUTPUT "${limbo_parser}"
+  COMMAND "${CMAKE_COMMAND}" "-DINPUT=${raw_limbo_parser}" "-DOUTPUT=${limbo_parser}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/prepare_parser.cmake"
+  DEPENDS "${raw_limbo_parser}" prepare_parser.cmake VERBATIM)
 add_executable(limbo-bootstrap
   upstream/limbo/asm.c
   upstream/limbo/com.c
   upstream/limbo/decls.c
   upstream/limbo/dis.c
   upstream/limbo/dtocanon.c
-  upstream/limbo/ecom.c
+  "${limbo_ecom}"
   upstream/limbo/gen.c
   "${limbo_lexer}"
   upstream/limbo/nodes.c

@@ -136,6 +136,7 @@ class MenuTests(unittest.TestCase):
             self.assertEqual(menu.main([]), 0)
         command = run.call_args[0][0]
         self.assertIn("--player", command)
+        self.assertIn("disvm-runtime", command[command.index("--projects") + 1])
         self.assertEqual(command[command.index("--vm-profiles") + 1], "player")
         self.assertNotIn("--no-install", command)
         self.assertNotIn("--no-player", command)
@@ -210,6 +211,22 @@ class MenuTests(unittest.TestCase):
         ), patch.object(menu, "show_products") as products:
             self.assertEqual(menu.main(["--projects", "vm"]), 7)
         products.assert_not_called()
+
+    def test_menu_launches_native_ide_without_switches(self):
+        """Native Dis and IDE examples are real post-build menu choices."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            (prefix / "disvm-runtime").mkdir()
+            (prefix / "run-checks.sh").write_text("#!/bin/sh\nexit 0\n")
+            (prefix / "disvm-runtime/run-ide.sh").write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            with contextlib.redirect_stdout(io.StringIO()), patch(
+                "builtins.input", return_value="5"
+            ), patch.object(menu.subprocess, "call", return_value=0) as run:
+                self.assertEqual(menu.show_products(args, "/bin/bash", True), 0)
+            self.assertEqual(
+                run.call_args[0][0], ["/bin/bash", str(prefix / "disvm-runtime/run-ide.sh")]
+            )
 
     def test_missing_override_is_reported(self):
         """An invalid CMAKE override is not displayed as a detected system CMake."""

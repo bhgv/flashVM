@@ -42,6 +42,10 @@ void fvm_port_file_restore(FVM_PortFile *, long);
 
 /* Implement port file available for this subsystem. */
 FVM_Result fvm_port_file_available(FVM_PortFile *, int *);
+
+
+/* Measure an open file without changing logical positions; output changes on success. */
+FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size);
 #ifdef __cplusplus
 }
 #endif

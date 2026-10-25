@@ -95,3 +95,12 @@ Native host checkpoint v0.1535 embeds active REG in extended up and adds coopera
 [Owner pump / Прокачка и сохранение ввода](OWNER-PUMP.ru.md).
 
 [Versioned module namespace / Версии модулей](MODULE-STORE.md).
+
+
+## Runnable native owner / Исполняемый нативный рантайм
+
+The separate [experimental NC64 runner](runtime/README.md) now loads and executes
+matching Limbo modules with production interpreter/JIT, blocking channels and IDE
+services. Select `disvm-runtime` or `all` in `build_menu.py`; post-build menu items
+4/5 launch Dis and IDE console examples. The core archive above remains a separate
+classic SDK. Full GUI, Sys/VFS coverage and parallel shared VM owners remain open.

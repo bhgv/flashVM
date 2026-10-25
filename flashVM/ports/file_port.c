@@ -236,3 +236,28 @@ FVM_Result fvm_port_file_available(FVM_PortFile *file, int *available)
     *available = result == FVM_OK && count != 0;
     return result;
 }
+
+
+/* Measure the already-open binary file without changing logical read/write positions.
+ * file is borrowed; size changes only on success. Returns an explicit port error. */
+FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size)
+{
+    long saved;
+    long end;
+    if (!file || !size)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    saved = ftell(file->stream);
+    if (saved < 0 || fseek(file->stream, 0, SEEK_END) != 0)
+    {
+        return FVM_ERROR;
+    }
+    end = ftell(file->stream);
+    if (fseek(file->stream, saved, SEEK_SET) != 0 || end < 0)
+    {
+        return FVM_ERROR;
+    }
+    *size = (size_t)end;
+    return FVM_OK;
+}

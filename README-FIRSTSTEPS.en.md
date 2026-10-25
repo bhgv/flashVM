@@ -247,3 +247,16 @@ configuration, build/install paths, profiles and installation without CLI flags.
 After success, choose checks, the graphical demo, both, or Enter to finish.
 JIT and interpreter packages use separate directories and do not overwrite each
 other. The full embedded Dis/IDE host remains in development.
+
+
+## Native Dis executable and IDE services / Исполняемый Dis и сервисы IDE
+
+`python3 build_menu.py` → `all` → Enter теперь также собирает `disvm-runtime`
+для Linux AMD64. В конце меню: **4** — программа Dis с каналами, **5** —
+консольные сервисы IDE. Бинарный файл, согласованный компилятор, `.dis`, `.sbl`
+и примеры устанавливаются в `out/disvm-runtime/`.
+
+Это реальное исполнение Limbo/Dis без внешнего `emu`. Используется отдельный
+экспериментальный NC64-формат; старые `.dis` не смешиваются с нативными модулями.
+Графический редактор и полный набор Sys ещё не подключены. Подробности и
+точные границы — в [руководстве рантайма](disVM/runtime/README.md).

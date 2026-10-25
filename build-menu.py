@@ -37,6 +37,7 @@ COMPONENTS = (
     ("mk", "Inferno mk: нативная сборка из выбранных исходников"),
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
     ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
+    ("disvm-runtime", "Dis: исполняемая VM и запуск сервисов IDE (Linux AMD64, эксперимент)"),
 )
 
 
@@ -111,7 +112,7 @@ def selection(value):
     names = [name for name, _ in COMPONENTS]
     tokens = value.replace(",", " ").split()
     if tokens in (["all"], ["все"], ["*"]):
-        return names[:6] + ["disvm", "disvm-host", "mk", "iyacc"]
+        return names[:6] + ["disvm", "disvm-host", "disvm-runtime", "mk", "iyacc"]
     if not tokens:
         raise ValueError("Выберите хотя бы один компонент")
     result = []
@@ -339,16 +340,26 @@ def show_products(args, bash, interactive):
         print("Проверки: " + str(checker))
     if window.is_file():
         print("Окно, ввод и звук: " + str(window))
+    native = prefix / "disvm-runtime/run-ide.sh"
+    if native.is_file():
+        print("Сервисы IDE на собственном Dis: " + str(native))
     if not interactive or not checker.is_file():
         return 0
     while True:
         print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
+        print("  4 — программа Dis с каналами, 5 — сервисы IDE на Dis")
         value = input("Enter — закончить, либо номер запуска: ").strip()
         if not value:
             return 0
-        if value not in ("1", "2", "3"):
-            print("Введите 1, 2, 3 или Enter.")
+        if value not in ("1", "2", "3", "4", "5"):
+            print("Введите 1, 2, 3, 4, 5 или Enter.")
             continue
+        if value in ("4", "5"):
+            script = prefix / "disvm-runtime" / ("run-console.sh" if value == "4" else "run-ide.sh")
+            if not script.is_file():
+                print("Выберите disvm-runtime или all в меню сборки.")
+                continue
+            return subprocess.call([bash, str(script)])
         if value in ("2", "3") and not window.is_file():
             print("Оконный пакет не установлен. Выберите оконную сборку FlashVM в меню.")
             continue

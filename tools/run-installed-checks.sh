@@ -29,6 +29,11 @@ for component in disvm disvm-host; do
         checks=$((checks + 1))
     fi
 done
+if [ -x "$root/disvm-runtime/disvm" ]; then
+    sh "$root/disvm-runtime/run-console.sh"
+    sh "$root/disvm-runtime/run-ide.sh"
+    checks=$((checks + 1))
+fi
 if [ "$checks" -eq 0 ]; then
     printf '%s\n' 'No runnable VM checks installed; build vm or disvm first.' >&2
     exit 1

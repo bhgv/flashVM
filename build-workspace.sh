@@ -2,7 +2,7 @@
 # Optional workspace orchestration. Builds use selected, repository-owned SDK sources.
 set -euo pipefail
 ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)       # Absolute workspace source root; never used as a global HOME override.
-projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,disvm-host,ide # Default component selection; command-line --projects replaces it.
+projects=mk,iyacc,vm,compilers,fir,linker,symbols,disvm,disvm-host,disvm-runtime,ide # Default component selection; command-line --projects replaces it.
 build_root="$ROOT/build/workspace"                                     # Default output tree; command-line --build-root replaces it.
 jobs=2                                                                 # Parallel build jobs, validated before invoking the selected engine.
 config=Release                                                         # Build configuration passed to CMake and CTest.
@@ -22,7 +22,7 @@ vm_profiles=""                                                         # Optiona
 usage() {
     cat <<'HELP'
 Usage: ./build-workspace.sh [options]
-  --projects LIST    vm,compilers,fir,linker,symbols,disvm,disvm-host,ide (default all eight)
+  --projects LIST    vm,compilers,fir,linker,symbols,disvm,disvm-host,disvm-runtime,ide (default main components)
                     Individual frontends: as1,as2,as3,limbo
                     Explicit tools: cocor,cocor-limbo,limbo-bootstrap,mk,iyacc
   --backend NAME    auto, cmake (3.10+), meson, mk or make; native subset documented
@@ -39,7 +39,7 @@ Usage: ./build-workspace.sh [options]
   --help             Show help
 Default generator: tools/coco-r-C, compiled locally when needed.
 Default IDE bootstrap: tools/limbo-bootstrap, from bhgv/Inferno-OS-bhgv experiment.
-DisVM builds the interpreter/JIT core archive; its full host runner is still pending.
+disvm builds the core SDK; disvm-runtime builds the experimental executable and IDE services (Linux AMD64).
 Optional explicit SDK overrides:
   COCOR_ROOT + COCOR_EXECUTABLE     Optional complete external Coco/R SDK pair
   COCOR_SOURCE                    auto (default), bundled, or strict external
@@ -127,7 +127,7 @@ done
 IFS=, read -r -a selected <<<"$projects"
 for project in "${selected[@]}"; do
     case "$project" in
-        vm | compilers | fir | linker | symbols | disvm | disvm-host | ide | as1 | as2 | as3 | limbo | cocor | cocor-limbo | limbo-bootstrap | mk | iyacc) ;;
+        vm | compilers | fir | linker | symbols | disvm | disvm-host | disvm-runtime | ide | as1 | as2 | as3 | limbo | cocor | cocor-limbo | limbo-bootstrap | mk | iyacc) ;;
         *)
             fail "Unknown project: $project"
             ;;
@@ -402,7 +402,7 @@ if has cocor-limbo; then
     build_project cocor-limbo tools/coco-r-limbo \
         "-DLIMBO_EXECUTABLE=$LIMBO_EXECUTABLE" "-DLIMBO_MODULE_DIR=$LIMBO_MODULE_DIR"
 fi
-for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-host ide; do
+for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-host disvm-runtime ide; do
     has "$project" || continue
     args=()
     case "$project" in
@@ -446,6 +446,13 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
             args+=("-DDVM_NATIVE_REGISTERS=${DVM_NATIVE_REGISTERS:-OFF}")
             args+=("-DDVM_LIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")
             args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
+            ;;
+        disvm-runtime)
+            source=disVM/runtime
+            args+=("-DDVM_RUNTIME_TESTS=$tests" "-DDVM_LEGACY_IMAGE=")
+            if [[ -f "$build_root/disvm/console-check.dis" ]]; then
+                args+=("-DDVM_LEGACY_IMAGE=$build_root/disvm/console-check.dis")
+            fi
             ;;
         disvm-host)
             source=disVM/host
