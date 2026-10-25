@@ -44,8 +44,17 @@ success clears the result, positions use original UTF-8 bytes.
 ## Direct Dis API 0.6.0
 
 `fir_dis(output, module, error, capacity)` emits NC64 Dis for a verified
-one-block i32 profile. `fir_run(FIR_DIS, ...)` uses the same implementation,
+scalar i32/bool CFG profile. `fir_run(FIR_DIS, ...)` uses the same implementation,
 including optional optimization/snapshots. Coverage rejection preserves the
 stream; NULL diagnostics are admitted; I/O failures can leave a prefix.
 [Exact target and limits](../doc/DIS_BACKEND.md),
 [in-process client](../examples/dis/main.c).
+
+## CFG and decisions 0.7.0
+
+`FIR_DIS` supports verified i32/bool blocks, comparisons and CFG edges. For N
+live O_TRACE instructions, N values precede N execution flags. Count N through
+the post-optimization `after` callback and publish metadata only on success.
+`fir_source` admits terminal Limbo if/else; FIRDBG1 adds compare/branch events
+with operator/if spans. The verifier rejects interleaved live blocks and an entry
+hidden by tombstones. [Contract](../doc/DIS_BACKEND.md).

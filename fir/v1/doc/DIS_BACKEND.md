@@ -1,4 +1,4 @@
-# Direct Dis backend, FIR implementation 0.6.0
+# Direct Dis backend, FIR implementation 0.7.0
 
 [Русский](DIS_BACKEND.ru.md) · [Compiler implementation](../compiler/dis.c) ·
 [C99 API](../compiler/API.md) · [Commented tutorial](../examples/dis/README.md) ·
@@ -9,13 +9,26 @@ It does not invoke `limbo-native`, the Inferno assembler, Python, LLVM or an
 external VM to generate code. Both source and FIR parsers remain Coco/R-generated
 C99. The existing SWO/SWL/SWF8 path remains available as a separate target.
 
-This first target is an **integer capture harness**, not complete Limbo module
-compilation. It runs one FIR `@main() -> void` with one block. It admits i32
-constants, i32 copy, wrapping addition/subtraction/multiplication, i32 trace and
-return. It rejects AVM1 numeric profiles, other types, branch/loop CFGs, channels,
-imports, function exports and other operations before writing output. AS1/2/3
-source lowering still uses binary64 and therefore does not target this backend.
-Broad Limbo syntax recognition in `compiler/limbo` does not imply lowering it.
+The scalar capture target now admits verified multi-block CFG: i32/bool constants,
+scalar copy, wrapping arithmetic, signed less-than/equality, bool branches,
+unconditional jumps, captured scalar trace and return. Forward and backward
+edges are relocated from FIR block identities to final **Dis instruction PCs**,
+including after optimization and across variable-width file operands.
+
+The Coco/R numeric Limbo adapter additionally accepts terminal decision trees:
+after its ordinary prelude, either `return expression;` or a braced
+`if (expression relation expression) { result } else { result }`, recursively.
+Relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Every arm returns; declarations,
+assignments and continuation after a decision are not admitted inside arms.
+Consequently no phi/join environment is silently invented. Source limits remain
+64 KiB, 1000 values, shared nesting depth 64; at most 127 decisions introduce
+255 blocks. `-g DEBUG.json` records comparison-operator and `if` keyword spans.
+
+AVM1 numeric profiles, f64/strings/channels, imports and function exports remain
+outside this Dis target. AS1/2/3 source lowering still uses binary64/SWO. General
+Limbo functions, mutable source loops, SSA phi and Dis SBL remain separate work.
+Manual FIR cycles can execute but need an explicit runtime instruction limit;
+this does not claim source while/for lowering or loop-carried SSA support.
 
 ## Console pipeline
 
@@ -67,13 +80,20 @@ signed-30-bit Dis encoding. Frame size, offsets, instruction counts and data
 extent are bounded by the verified FIR limits. No pointers occur in module data
 or local-value maps; Dis owns the ordinary entry-frame header and lifetime.
 
-In this explicit harness, `trace` **captures**, rather than streams, its i32
-value into module data: trace zero at byte 0, trace one at byte 8, and so on.
-Running without `--inspect-words` executes the program but does not print these
-values. There is no Sys import or print service hidden in generated code.
-Values are read only after all Dis processes finish. This observation contract
-is deliberately narrower than live SWF trace; it does not add a debugger
-breakpoint, source stepping or a new module ABI.
+In this harness, each **live static trace instruction** has a capture slot in
+physical FIR order. For N traces, the first N eight-byte cells hold values; the
+next N cells hold execution flags, initially zero. A visited trace writes its
+value and flag one. An unvisited slot stays zero with flag zero, so a taken
+`trace 0` is distinguishable. Revisited slots retain the latest value; this is
+not an ordered event log. Raw and optimized artifacts can have different N
+because unreachable traces disappear. Count live O_TRACE instructions in the
+post-optimization module, available to the existing `after` snapshot callback;
+publish that metadata only if compilation succeeds.
+
+Linear clients reading the first N values keep their offsets. Clients consuming
+CFG results must also read flags. The private constant pool follows the capture
+area; it is not trace output. No new Dis tag/opcode/ABI is introduced. Ordinary
+execution without inspection does not print captured values or call Sys print.
 
 `disvm --inspect-words OFFSET COUNT` explicitly requests a post-execution scalar
 snapshot. OFFSET is an aligned decimal byte offset; COUNT is 1..4096 native
@@ -81,6 +101,22 @@ words. Before execution the owner checks the actual entry-instance data range
 and rejects pointer-bearing descriptors. It retains that instance's scalar data
 until report/error cleanup, so it reads executed writes rather than pristine
 module constants or a dead process frame. Output is `DATA byte_offset signed_word`.
+
+## Bounded execution, component 0.9.0
+
+`disvm --max-instructions COUNT` accepts one decimal value in 1..2147483647.
+At the full instruction boundary, after the GC poll and before C/native execution,
+the owner refuses the next dispatch once COUNT instructions have been admitted.
+Fallback is counted once; successful native leaves alone increment native stats.
+This is a total across processes/scheduler slices, not reset by stdin/UI progress;
+it is not a wall-clock timeout. The existing busy-work guard still applies.
+
+At the exact budget, a completed program succeeds. A cycle exceeding the budget
+fails with `instruction limit exceeded`, reports its current unexecuted PC and,
+with `--stats`, the exact admitted count. No incomplete DATA snapshot is printed;
+the extra inspection retain is retired through the error path. Without the option,
+the prior runtime policy remains active. No remote debugger protocol or breakpoint
+is implied by this local CLI execution limit.
 
 ## Library and IDE build service
 
@@ -109,8 +145,16 @@ our actual Limbo source/scopes pipeline and reject malformed inspection ranges
 and pointer-bearing module data. No temporary Limbo compiler emits these programs.
 
 Next required stages include typed functions/module signatures and imports,
-branches/loops, f64/strings, source channels, broader Limbo/AS lowering, Dis
+SSA joins/source loops, f64/strings, source channels, broader Limbo/AS lowering, Dis
 linking and SBL/source-PC mapping. Existing source `-g DEBUG.json` origins remain
 available but are not automatically a Dis `.sbl`. The complete graphical IDE
 still uses temporary source-built bootstrap modules until its language subset
 can be lowered by our compiler.
+
+[Terminal decision tutorial](../examples/dis/README.md#terminal-decisions-and-capture-flags)
+contains a three-slot path example. Tests additionally cover six signed source
+relations on both outcomes, physical backward edges, PCs above 8191, 255 blocks,
+quota boundaries/cycles, and caller-constructed invalid IR. Live blocks must be
+contiguous and begin with the declared entry, including after removed prefixes;
+this invariant protects both SWO and Dis emitters. The structural Coco/R frontend
+also distinguishes block declarations after a return from actual label operands.

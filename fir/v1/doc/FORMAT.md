@@ -151,3 +151,7 @@ and NaN are not replaced by integer identities. [Example](../examples/profiles/m
 The SWF target emits SWO1; the separate [Dis target](DIS_BACKEND.md) admits a bounded i32 capture profile; Divide needs SWL >=0.3.2. First line remains FIR 1.0.
 
 [The new structural parser](../frontend/README.md) recognizes extended structure separately; executable-profile limits above remain effective.
+
+Caller-constructed IR must keep each live block contiguous. The first live
+block is the entry identified by instructions[0].block, even if that first row
+is removed. Violating the physical layout is rejected before either emitter.

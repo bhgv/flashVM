@@ -38,8 +38,8 @@ I/O and closes every opened stream. The exported libraries print nothing and
 do not terminate the process. For an IDE, execute this blocking work on its
 build worker and send copied results to the channel-owned UI.
 
-This profile has one block, i32 constants/copy/wrap arithmetic and captured
-trace/return. It has no imports, exported Limbo `value` ABI, strings, source
+The linear example uses i32 constants/copy/wrap arithmetic and captured
+trace/return. The target also admits bool and verified CFG, as shown below. It has no imports, exported Limbo `value` ABI, strings, source
 channels or Dis SBL. The source tutorial return becomes FIR `@main` trace capture;
 ordinary execution without `--inspect-words` does not print it. It is not yet
 possible to compile the complete graphical IDE with this subset.
@@ -50,3 +50,39 @@ Inside the installed FIR package, rebuild the C99 client using only its SDK:
 cc -std=c99 -I include examples/dis/main.c lib/libfir1_ir.a lib/libfir1_source_api.a lib/libfir1_io.a -o dis-client
 ./dis-client examples/dis/main.b answer.dis
 ```
+
+## Terminal decisions and capture flags
+
+[decision.b](decision.b) uses our Coco/R source grammar; [decision.fir](decision.fir)
+spells out its CFG. Overflow makes wrapped negative, so the outer >= arm is not
+visited and the nested equality selects 42. All arms return: no SSA join or
+binding mutation inside a branch is implied.
+
+```sh
+build/fir/fir1_source limbo --input fir/v1/examples/dis/decision.b build/decision.fir
+build/fir/fir1 dis build/decision.fir build/decision.dis
+build/editor/disvm --jit --max-instructions 1000 --inspect-words 0 6 build/decision.dis
+```
+
+Three static trace points reserve values `[0, 42, 0]` followed by executed flags
+`[0, 1, 0]`. The selected value is in byte 8, and its flag is at byte 32. A real
+return of zero would have flag one; a zero-filled unvisited slot has flag zero.
+Slots are in physical FIR order and keep their latest value if revisited, rather
+than forming a chronological log. After optimization, count trace points again:
+unreachable arms and their slots can disappear.
+
+The same source can still use `fir1 object` and SWL to produce SWF8. The source
+return harness traces the selected value there; Dis captures it for inspection.
+Six comparisons are supported only in terminal, explicitly braced if/else trees.
+General statements inside arms, continuation after a decision, source while/for,
+phi, module imports and Dis SBL remain future work.
+
+For installed-package acceptance:
+
+```sh
+python3 tools/test_installed_workspace.py --prefix out --scratch build/package-tmp --fir-dis-only
+```
+
+This relinks the shipped C99 client from package headers/libraries, compares its
+Dis bytes with CLI output, and executes both linear and conditional examples in
+interpreter/JIT modes from a relocated path containing spaces.

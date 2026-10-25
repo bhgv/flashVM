@@ -36,4 +36,4 @@ AS3 пока понижает в AVM1, не ABC. Имена модулей пр�
 
 [Рабочий source-синтаксис](../doc/SOURCE_SYNTAX.ru.md).
 
-[Backend Dis 0.6.0: одна i32-функция с захватом результатов](../doc/DIS_BACKEND.ru.md).
+[Backend Dis 0.7.0: скалярный CFG со значениями и флагами исполнения](../doc/DIS_BACKEND.ru.md).

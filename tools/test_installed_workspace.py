@@ -136,6 +136,23 @@ def fir_dis_packages(prefix, work, environment):
             raise RuntimeError("relocated FIR/Dis execution produced the wrong i32 result")
 
 
+    # A second input proves that the shipped source library and emitter support terminal CFG,
+    # and that an unvisited first slot cannot masquerade as the selected return value.
+    decision = component / "examples/dis/decision.b"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", decision, fir,
+         "--module", "dis_example"], work, environment)
+    run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+    run([executable, decision, embedded], work, environment)
+    if binary.read_bytes() != embedded.read_bytes():
+        raise RuntimeError("relocated terminal-decision CLI and relinked C99 client disagree")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--max-instructions", "1000", "--inspect-words", "0", "6", binary],
+                     work, environment)
+        rows = [tuple(map(int, line.split()[1:])) for line in output.splitlines() if line.startswith("DATA ")]
+        if rows != [(0, 0), (8, 42), (16, 0), (24, 0), (32, 1), (40, 0)]:
+            raise RuntimeError("relocated decision lost its selected value or capture-validity flags")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():

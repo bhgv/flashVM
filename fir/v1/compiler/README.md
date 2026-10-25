@@ -1,4 +1,4 @@
-# FIR 0.3.2 compiler and C API
+# FIR 0.7.0 compiler and C API
 
 The compiler produces `.swo` objects, never SWF containers. Linking belongs to
 independent [SWL](../../../linker/README.md). Optimization runs separately or
@@ -36,4 +36,4 @@ write failures may leave a partial file.
 
 [Working source syntax](../doc/SOURCE_SYNTAX.md).
 
-[Dis backend 0.6.0: one i32 function with captured results](../doc/DIS_BACKEND.md).
+[Dis backend 0.7.0: scalar CFG with value/executed captures](../doc/DIS_BACKEND.md).

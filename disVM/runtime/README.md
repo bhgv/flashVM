@@ -218,3 +218,19 @@ Configure optional cross-project tests with DVM_FIR_COMPILER and
 DVM_FIR_SOURCE_COMPILER pointing to our built fir1/fir1_source. The standalone
 runtime still builds without those paths. The existing graphical IDE still
 requires the temporary bootstrap until broader source lowering is implemented.
+
+## Exact instruction quota and scalar CFG, component 0.9.0
+
+`--max-instructions COUNT` bounds total admitted instruction attempts across
+scheduler slices and processes. The guard follows the GC poll and precedes
+C/native execution; a declined native leaf is still one attempt. Completion
+at the exact count succeeds. Failure reports the current unexecuted PC and
+`--stats` counters, releases inspection ownership and prints no incomplete DATA.
+This is not a wall-clock limit; stdin/UI progress does not reset it.
+
+Our [Coco/R terminal Limbo decisions and Dis CFG](../../fir/v1/doc/DIS_BACKEND.md)
+now execute without bootstrap emission. For N static traces, N captured words
+precede N executed flags. The [conditional tutorial](../../fir/v1/examples/dis/decision.b)
+returns 42 in the second slot, with flags `[0,1,0]`. Slots are not an event log;
+source loops/phi, module ABI and Dis SBL remain separate work.
+[Русский](../../fir/v1/doc/DIS_BACKEND.ru.md).

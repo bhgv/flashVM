@@ -1,4 +1,4 @@
-# Working numeric source profile 0.4.1
+# Working numeric source profile 0.7.0
 
 This profile actually lowers into FIR, separately from the broader syntax
 frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
@@ -40,3 +40,14 @@ matched source_language/source_semantics fields, retained across round trips and
 optimization. Division requires SWL >=0.3.2.
 
 [Limbo lexical blocks / Лексические блоки](LEXICAL_SCOPES.md).
+
+## Limbo terminal decisions 0.7.0
+
+After the prelude, accept return or `if (a relation b) { result } else { result }`,
+where each result is another terminal result. Both numeric operands are evaluated
+once; relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Assignments inside arms,
+continuation after the decision and general bool expressions are not supported;
+no phi or merged environment is invented. Limits are shared depth 64 and at most
+127 decisions/255 blocks within the existing 1000 SSA values. Coco/R productions
+LimboResult/LimboCondition/Relation in [src1.atg](../compiler/src1.atg) call
+[lower.c](../compiler/lower.c). [Example and both backends](../examples/dis/README.md).

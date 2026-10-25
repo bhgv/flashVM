@@ -8,8 +8,8 @@
 | FIR reader | Coco/R, UTF-8, comments, exact FIR 1.0 | Future versions, binary encoding |
 | Verifier | SSA uniqueness, dominance, types, targets, reachability, terminators | Interprocedural analysis |
 | AS1/AS2/AS3 numeric adapters | trace, initialized var, AS3 const, reads/assignments, AS2/3 Number annotations | Objects, strings, source branches/loops/functions, hoisting, general language semantics |
-| Limbo numeric adapter | value(): int tutorial, initialized int/inferred names, lexical blocks/shadowing, reads/assignments, return | General module ABI, functions/imports, source channels, alt/spawn, big/real |
-| Expressions | Numeric literals, groups, bounded unary +/-, + - *, compound assignments; AS / and /= | Limbo division, source comparisons, general types |
+| Limbo numeric adapter | value(): int tutorial, initialized int/inferred names, lexical blocks/shadowing, reads/assignments, terminal if/else returns | General module ABI, functions/imports, source channels, alt/spawn, big/real |
+| Expressions | Numeric literals, groups, bounded unary +/-, + - *, compound assignments; AS / and /= | Limbo division, general boolean expressions/joins, broader types |
 | FIR channels | Create/send/receive/close through existing FlashVM extensions | Source Limbo channel lowering, typed module graphs |
 | Source diagnostics | First-failure C99 struct and opt-in schema-1 JSON with original byte spans | Multiple diagnostics, general AST maps, reentrant parser |
 | SWF backend | SWO1 AVM1 objects; separate SWL links SWF8 | ABC/AVM2, function imports/relocations, exceptions |
@@ -37,5 +37,8 @@ self-contained objects/libraries/resources; optimization remains explicit.
 Source positions and diagnostic checks do not establish embedded Dis/JIT,
 complete debugging, cross-module function calls or native backend coverage.
 
-[NC64 Dis target 0.6.0](DIS_BACKEND.md): one block, i32 const/copy/wrap arithmetic/trace capture/return.
+[NC64 Dis target 0.7.0](DIS_BACKEND.md): scalar CFG, i32/bool const/copy/comparison/wrap arithmetic, value+executed captures/return.
 Our C99 emitter writes Dis directly; full Limbo ABI, CFG, channels, SBL and Dis linking remain unimplemented.
+
+Numeric Limbo now admits six comparisons in terminal if/else; every arm
+returns. SSA joins and mutable source loops are not implemented.
