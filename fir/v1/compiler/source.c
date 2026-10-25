@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.8.0 (numeric tutorial profiles; diagnostic schema 1)");
+        puts("fir1_source 0.9.0 (numeric tutorial profiles; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

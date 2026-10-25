@@ -306,12 +306,25 @@ PRODUCTIONS
                                                                             capture();
                                                                             source_module(0);
                                                                         .)
-    ":" "module" "{" "value" ":" "fn" "(" ")" ":" "int" ";" "}" ";"
-    "value" "(" ")" ":" "int" "{"
+    ":" "module" "{" "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
+    "}" ";" "value" "(" ")" ":" ResultType<0> "{"
     {
         LimboStatement
     }
     LimboResult "}"
+  .
+
+  /* The interface records the numeric result type; the definition must match it.
+  * Keeping this choice in Coco/R avoids scanning source text for type keywords. */
+  ResultType<int declaration> =
+    "int"                                                               (. capture(); source_result_type(0, declaration); .)
+    | "real"                                                            (. capture(); source_result_type(1, declaration); .)
+  .
+
+  /* Locals stay homogeneous: explicit int/real conversions are not implemented. */
+  BindingType =
+    "int"                                                               (. capture(); source_binding_type(0); .)
+    | "real"                                                            (. capture(); source_binding_type(1); .)
   .
 
   /* A terminal decision tree avoids unimplemented SSA joins: every arm returns.
@@ -387,7 +400,7 @@ PRODUCTIONS
     | IF(Sym==LbraceSym && depth<64) LimboBlock
     | Name<&name>                                                       (. target = source_mark(); .)
     (
-        ":" "int" "=" Expression<&value> ";"                            (.
+        ":" BindingType "=" Expression<&value> ";"                      (.
                                                                             source_restore(target);
                                                                             source_bind(name, value, 1);
                                                                         .)

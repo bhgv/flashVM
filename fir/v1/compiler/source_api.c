@@ -14,6 +14,7 @@ extern int fir_utf8(const unsigned char *, size_t);
 extern int source_parser_run(unsigned char *, int);
 extern Error_Func Custom_Error;
 
+
 /* Borrowed only during fir_source_ex; retired on every return path. */
 static char *active_error;
 static size_t active_capacity;
@@ -254,15 +255,7 @@ int fir_source_debug(FILE *input,
     }
     source_config(temporary, (int)language);
     Custom_Error = report;
-    fprintf(temporary,
-            "FIR 1.0\nmodule @%s\nsource_language %s\nsource_semantics %s\nfunc @main() -> void "
-            "{\n^entry:\n",
-            name,
-            language == FIR_AS1   ? "as1"
-            : language == FIR_AS2 ? "as2"
-            : language == FIR_AS3 ? "as3"
-                                  : "limbo",
-            language == FIR_LIMBO ? "limbo_i32" : "avm1_numeric");
+    fputs("func @main() -> void {\n^entry:\n", temporary);
     if (!source_parser_run(text, (int)length))
     {
         source_error(FIR_DIAG_RESOURCE, 0, -1, 0, "scanner allocation failure");
@@ -287,6 +280,16 @@ int fir_source_debug(FILE *input,
         source_error(FIR_DIAG_OUTPUT, 0, -1, 0, "temporary FIR write/seek failure");
         goto done;
     }
+    fprintf(output,
+            "FIR 1.0\nmodule @%s\nsource_language %s\nsource_semantics %s\n",
+            name,
+            language == FIR_AS1   ? "as1"
+            : language == FIR_AS2 ? "as2"
+            : language == FIR_AS3 ? "as3"
+                                  : "limbo",
+            source_semantics() == FIR_LIMBO_I32    ? "limbo_i32"
+            : source_semantics() == FIR_LIMBO_REAL ? "limbo_real"
+                                                   : "avm1_numeric");
     while ((length = fread(text, 1, 65536, temporary)) != 0)
     {
         if (fwrite(text, 1, length, output) != length)

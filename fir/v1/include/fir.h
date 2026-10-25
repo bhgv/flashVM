@@ -48,7 +48,8 @@ typedef enum
 {
     FIR_SEM_UNSPECIFIED = 0,
     FIR_AVM1_NUMERIC,
-    FIR_LIMBO_I32
+    FIR_LIMBO_I32,
+    FIR_LIMBO_REAL /* Homogeneous real numeric tutorial; no implicit integer conversions. */
 } FirSemantics;
 
 

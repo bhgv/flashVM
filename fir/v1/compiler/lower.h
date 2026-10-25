@@ -106,6 +106,20 @@ void source_module(int);
 void source_language(int);
 
 
+/* Select/check the homogeneous numeric return type at its source mark.
+ * real selects binary64; declaration records the interface, zero checks the definition.
+ * No stream is acquired. Mismatch records the first semantic diagnostic. */
+void source_result_type(int real, int declaration);
+
+
+/* Reject an explicitly typed local that differs from the selected result profile. */
+void source_binding_type(int real);
+
+
+/* Return the selected provenance profile after parsing, before borrowed output publication. */
+FirSemantics source_semantics(void);
+
+
 int source_negate(int);
 
 

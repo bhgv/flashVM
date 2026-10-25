@@ -13,7 +13,6 @@
 extern int fir_utf8(const unsigned char *, size_t);
 #define INPUT_LIMIT (2u * 1024u * 1024u)
 
-
 typedef struct
 {
     FirModule *module;
@@ -232,7 +231,9 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_SEMANTICS)
     {
-        m->source_semantics = !strcmp(text, "avm1_numeric") ? FIR_AVM1_NUMERIC : FIR_LIMBO_I32;
+        m->source_semantics = !strcmp(text, "avm1_numeric") ? FIR_AVM1_NUMERIC
+                              : !strcmp(text, "limbo_real") ? FIR_LIMBO_REAL
+                                                            : FIR_LIMBO_I32;
         return;
     }
     if (role == B_LITERAL)

@@ -23,6 +23,7 @@ static int binding_scope[256], active[256], scope_depth;
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
 static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
+static int result_real;   /* Interface return type, checked against the definition before expressions. */
 static int terminal;      /* The last emitted arm already terminates and needs no footer return. */
 
 
@@ -39,6 +40,7 @@ void source_config(FILE *out, int language)
     serial = failed = name_count = scope_depth = debug_scope_serial = 0;
     debug_scopes[0] = 0;
     branch_serial = terminal = 0;
+    result_real = 0;
 }
 
 
@@ -139,7 +141,8 @@ static int32_t integer_literal(const char *text, int negative)
 }
 
 
-/* AS numeric literals are binary64; Limbo retains checked i32 spellings. */
+/* Lower numeric spelling in the selected homogeneous profile; Limbo real requires
+ * decimal fraction/exponent literals so inferred integer arithmetic cannot be silently changed. */
 int source_constant(int negative)
 {
     char text[256], *end;
@@ -153,6 +156,10 @@ int source_constant(int negative)
     }
     else
     {
+        if (profile == FIR_LIMBO && (!strpbrk(text, ".eE") || (text[0] == '0' && (text[1] == 'x' || text[1] == 'X'))))
+        {
+            reject("Limbo real profile requires decimal real literals; integer/radix conversions are unsupported");
+        }
         errno = 0;
         value = strtod(text, &end);
         if (negative)
@@ -161,7 +168,7 @@ int source_constant(int negative)
         }
         if (!text[0] || *end || errno || !isfinite(value))
         {
-            reject("invalid finite AS numeric literal");
+            reject("invalid finite binary64 numeric literal");
         }
     }
     if (serial > 1000)
@@ -287,7 +294,7 @@ int source_read(int name)
  * Nondeclaration writes keep targeting the nearest active outer binding. */
 void source_bind(int name, int value, int declaration)
 {
-    if (declaration && integer_mode && binding_scope[name] < scope_depth)
+    if (declaration && profile == FIR_LIMBO && binding_scope[name] < scope_depth)
     {
         if (name_count == 256)
         {
@@ -370,7 +377,7 @@ void source_module(int first)
 /* Reject a parsed source family that disagrees with the requested profile. */
 void source_language(int limbo)
 {
-    if (integer_mode != limbo)
+    if ((profile == FIR_LIMBO) != limbo)
     {
         reject("source does not match selected language");
     }
@@ -424,7 +431,7 @@ void source_assign(int name, int value, int op)
 /* Keep native Limbo comments from silently changing AS lexical coverage. */
 void source_hash_comment(void)
 {
-    if (!integer_mode)
+    if (profile != FIR_LIMBO)
     {
         reject("# comments require Limbo profile");
     }
@@ -575,4 +582,40 @@ void source_finish(void)
         fputs("    return\n", destination);
     }
     fputs("}\n", destination);
+}
+
+
+/* Select a homogeneous Limbo result profile and require interface/definition agreement.
+ * real/declaration are parser booleans; diagnostics use the restored type-token mark.
+ * No implicit conversion, output publication or allocation is performed. */
+void source_result_type(int real, int declaration)
+{
+    if (declaration)
+    {
+        result_real = real;
+    }
+    else if (result_real != real)
+    {
+        reject("Limbo interface and definition result types differ");
+    }
+    integer_mode = !real;
+}
+
+
+/* Validate a typed local against the already selected homogeneous Limbo profile.
+ * real is a parser boolean. Mismatch is sticky and prevents all output publication. */
+void source_binding_type(int real)
+{
+    if (real == integer_mode)
+    {
+        reject("mixed int/real bindings require explicit conversion support");
+    }
+}
+
+
+/* Return provenance after the generated parser has selected its result type.
+ * No arguments or ownership transfer; the host serializes source compiler calls. */
+FirSemantics source_semantics(void)
+{
+    return profile == FIR_LIMBO ? (integer_mode ? FIR_LIMBO_I32 : FIR_LIMBO_REAL) : FIR_AVM1_NUMERIC;
 }

@@ -199,6 +199,7 @@ PRODUCTIONS
         (
             "avm1_numeric"
             | "limbo_i32"
+            | "limbo_real"
         )
                                                                         (. capture(B_SEMANTICS); .)
     ]

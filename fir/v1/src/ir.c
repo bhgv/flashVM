@@ -63,6 +63,7 @@ static const char *const ops[] = {"const.i32",
                                   "jump",
                                   "return"};
 
+
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
 
@@ -82,10 +83,11 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "invalid IR table counts");
     }
-    if ((unsigned)m->source_language > FIR_LIMBO || (unsigned)m->source_semantics > FIR_LIMBO_I32 ||
+    if ((unsigned)m->source_language > FIR_LIMBO || (unsigned)m->source_semantics > FIR_LIMBO_REAL ||
         (!m->source_language != !m->source_semantics) ||
-        (m->source_language &&
-         m->source_semantics != (m->source_language == FIR_LIMBO ? FIR_LIMBO_I32 : FIR_AVM1_NUMERIC)))
+        (m->source_language && (m->source_language == FIR_LIMBO
+                                    ? (m->source_semantics != FIR_LIMBO_I32 && m->source_semantics != FIR_LIMBO_REAL)
+                                    : m->source_semantics != FIR_AVM1_NUMERIC)))
     {
         return fail(error, cap, "incompatible source language/semantics profile");
     }
@@ -432,7 +434,9 @@ int fir_print(FILE *out, const FirModule *m)
         fprintf(out,
                 "source_language %s\nsource_semantics %s\n",
                 languages[m->source_language],
-                m->source_semantics == FIR_LIMBO_I32 ? "limbo_i32" : "avm1_numeric");
+                m->source_semantics == FIR_LIMBO_I32    ? "limbo_i32"
+                : m->source_semantics == FIR_LIMBO_REAL ? "limbo_real"
+                                                        : "avm1_numeric");
     }
     if (m->channels)
     {
