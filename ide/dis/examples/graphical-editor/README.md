@@ -105,3 +105,5 @@ coverage is finite; missing glyphs do not alter Unicode source/saved bytes.
 Synchronous I/O may block the sole native owner.
 
 [Source editing / редактирование](../../EDITING.md).
+
+[Caret geometry / геометрия каретки](../../CARET.md).

@@ -135,3 +135,5 @@ The current graphical package includes default Noto Sans Mono/11 without a font
 question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.
 
 [Source editing / редактирование](EDITING.md).
+
+[Caret geometry / геометрия каретки](CARET.md).

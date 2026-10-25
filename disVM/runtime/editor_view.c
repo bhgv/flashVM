@@ -22,6 +22,7 @@
 #define EDITOR_ZOOM 65547UL            /* Dis-admitted font-size step proposal. */
 #define EDITOR_STYLE 65548UL           /* Complete-view font-size and row geometry. */
 #define EDITOR_PINCH 65550UL           /* Normalized two-finger pinch input code. */
+#define EDITOR_LEADING 2.0             /* Explicit TextFormat leading shared by all editor geometry. */
 #define EDITOR_FONT_MIN 6              /* Bounded minimum editor pixel size. */
 #define EDITOR_FONT_MAX 48             /* Bounded maximum editor pixel size. */
 #define EDITOR_PINCH_THRESHOLD 0.015   /* Normalized SDL distance change per admitted zoom step. */
@@ -49,7 +50,7 @@ static FVM_Font *layout_font;          /* Owned same-face layout for Dis selecti
 static long caret;                     /* Last Dis Unicode scalar caret, presentation only. */
 static long anchor;                    /* Last Dis Unicode scalar selection anchor. */
 static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
-static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement. */
+static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement, 6 Go To. */
 static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
 static int panel_selected;             /* Dis-owned field select-all presentation flag. */
 static char panel_text[1024];          /* Copied counted UTF-8 prompt/path label. */
@@ -201,17 +202,25 @@ static int panel_height(double line_height)
 }
 
 
+/* Return the TextField baseline distance for the explicit editor TextFormat.
+ * metrics is a borrowed current/proposed font record; no VM or view state changes. */
+static double line_step(const FVM_FontMetrics *metrics)
+{
+    return metrics->ascent + metrics->descent + EDITOR_LEADING;
+}
+
+
 /* Measure bounded visible logical rows from the actual current face metrics.
  * No arguments; returns 1..128, with a conservative single row on an unavailable metric. */
 int dvm_editor_rows(void)
 {
     FVM_FontMetrics metrics;
     int rows;
-    if (!layout_font || fvm_font_metrics(layout_font, &metrics) != FVM_OK || !(metrics.line_height > 0))
+    if (!layout_font || fvm_font_metrics(layout_font, &metrics) != FVM_OK || !(line_step(&metrics) > 0))
     {
         return 1;
     }
-    rows = (int)floor((EDITOR_HEIGHT - panel_height(metrics.line_height) - 4) / metrics.line_height);
+    rows = (int)floor((EDITOR_HEIGHT - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
     if (rows < 1)
     {
         rows = 1;
@@ -240,12 +249,12 @@ static int rows_for_size(int size)
     {
         return 0;
     }
-    if (fvm_font_metrics(font, &metrics) != FVM_OK || !(metrics.line_height > 0))
+    if (fvm_font_metrics(font, &metrics) != FVM_OK || !(line_step(&metrics) > 0))
     {
         fvm_font_destroy(font);
         return 0;
     }
-    rows = (int)floor((EDITOR_HEIGHT - panel_height(metrics.line_height) - 4) / metrics.line_height);
+    rows = (int)floor((EDITOR_HEIGHT - panel_height(line_step(&metrics)) - 4) / line_step(&metrics));
     fvm_font_destroy(font);
     if (rows < 1)
     {
@@ -282,6 +291,16 @@ static int apply_font_size(int size)
     }
     fvm_value_number(&value, size);
     result = fvm_object_set(context, format, "size", &value);
+    if (result == FVM_OK)
+    {
+        fvm_value_number(&value, EDITOR_LEADING);
+        result = fvm_object_set(context, format, "leading", &value);
+    }
+    if (result == FVM_OK)
+    {
+        fvm_value_boolean(&value, 0);
+        result = fvm_object_set(context, format, "kerning", &value);
+    }
     fvm_value_undefined(&argument);
     argument.type = FVM_VALUE_OBJECT;
     argument.object = format;
@@ -381,6 +400,16 @@ int dvm_editor_create(void)
         }
         fvm_value_number(&value, font_size);
         result = fvm_object_set(context, format, "size", &value);
+        if (result == FVM_OK)
+        {
+            fvm_value_number(&value, EDITOR_LEADING);
+            result = fvm_object_set(context, format, "leading", &value);
+        }
+        if (result == FVM_OK)
+        {
+            fvm_value_boolean(&value, 0);
+            result = fvm_object_set(context, format, "kerning", &value);
+        }
         fvm_value_undefined(&argument);
         argument.type = FVM_VALUE_OBJECT;
         argument.object = format;
@@ -570,8 +599,42 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
     }
     memset(&options, 0, sizeof(options));
     options.alignment = FVM_TEXT_ALIGN_LEFT;
-    if (fvm_text_layout_create(layout_font, snapshot + display_start, shown, &options, &layout) != FVM_OK ||
-        fvm_text_layout_metrics(layout, &metrics) != FVM_OK || fvm_font_metrics(layout_font, &font) != FVM_OK)
+    if (fvm_font_metrics(layout_font, &font) != FVM_OK)
+    {
+        return 0;
+    }
+    options.line_height = line_step(&font);
+    {
+        FVM_Result result;
+        if (memchr(snapshot + display_start, '\t', shown))
+        {
+            double average;
+            result = fvm_font_average_width(layout_font, &average);
+            if (result == FVM_OK)
+            {
+                /* Match AS2 TextField's implicit tab interval: four average character widths. */
+                result = fvm_text_layout_create_periodic(layout_font,
+                                                         snapshot + display_start,
+                                                         shown,
+                                                         &options,
+                                                         FVM_FONT_SHAPE_NO_KERNING,
+                                                         0,
+                                                         0,
+                                                         average * 4,
+                                                         &layout);
+            }
+        }
+        else
+        {
+            result = fvm_text_layout_create_configured(
+                layout_font, snapshot + display_start, shown, &options, FVM_FONT_SHAPE_NO_KERNING, &layout);
+        }
+        if (result != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    if (fvm_text_layout_metrics(layout, &metrics) != FVM_OK)
     {
         fvm_text_layout_destroy(layout);
         return 0;
@@ -648,13 +711,13 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
                            glyph.x + 2 - horizontal,
                            glyph.y - font.ascent + 2,
                            glyph.shaped.x_advance,
-                           font.line_height,
+                           line_step(&font),
                            selected);
         }
     }
     if (ok && cursor_visible)
     {
-        ok = rectangle(surface, cursor_x + 2 - horizontal, cursor_y + 2, 1, font.line_height, cursor);
+        ok = rectangle(surface, cursor_x + 2 - horizontal, cursor_y + 2, 1, line_step(&font), cursor);
     }
     if (ok)
     {
@@ -776,13 +839,17 @@ static int render_panel(FVM_RasterSurface *surface)
     {
         return 0;
     }
-    height = panel_height(metrics.line_height);
+    height = panel_height(line_step(&metrics));
     fvm_value_number(&value, height - 8);
     if (fvm_object_set(context, panel_field, "_height", &value) != FVM_OK)
     {
         return 0;
     }
-    if (!rectangle(surface, 0, EDITOR_HEIGHT - height, EDITOR_WIDTH, height,
+    if (!rectangle(surface,
+                   0,
+                   EDITOR_HEIGHT - height,
+                   EDITOR_WIDTH,
+                   height,
                    panel_mode && panel_selected ? active : background))
     {
         return 0;
@@ -1070,6 +1137,10 @@ static long hit_position(double x, double y)
     {
         return -1;
     }
+    if (x < 0 || y < 0 || y >= EDITOR_HEIGHT - panel_height(line_step(&font)))
+    {
+        return -1;
+    }
     y -= 2;
     x += horizontal - 2;
     for (index = 0; index < metrics.line_count; index++)
@@ -1079,7 +1150,7 @@ static long hit_position(double x, double y)
             return -1;
         }
         selected = index;
-        if (y < line.baseline - font.ascent + font.line_height)
+        if (y < line.baseline - font.ascent + line_step(&font))
         {
             break;
         }

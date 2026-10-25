@@ -291,5 +291,9 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_zoom.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}")
     set_tests_properties(disvm_graphical_default_font_zoom_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_graphical_caret_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_caret.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}")
+    set_tests_properties(disvm_graphical_caret_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
