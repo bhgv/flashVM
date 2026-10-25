@@ -110,3 +110,9 @@ complete embedded host remain unfinished. Root builds compile modules/debug data
 optional reference execution requires an explicitly matching compiler/header/VM.
 
 [Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../../WORKSPACE.md).
+
+## Dynamic object direction / Направление динамических объектов
+
+[Channel-owned any/object proxies](../../../fir/v1/doc/DYNAMIC_VALUES.md) keep
+representation and conversion in the owning VM. This is the selected design,
+not an implemented IDE bridge operation or source any lowering.
