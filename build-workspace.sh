@@ -14,7 +14,7 @@ cmake=${CMAKE:-cmake}                                                  # Explici
 ctest=${CTEST:-ctest}                                                  # Explicit CTEST override or the command found on PATH.
 out_root="$ROOT/out"                                                   # Local product installation root; never a system prefix.
 install_outputs=1                                                      # Install successful build products by default.
-player=OFF                                                             # Optional real SDL2 window/audio/input host; requires its SDK.
+player=auto                                                             # Window/audio/input host is automatic for graphical VM profiles.
 vm_profiles=""                                                         # Optional comma-separated VM build profiles.
 
 # Display the interface without downloading, checking out or writing anything.
@@ -31,8 +31,9 @@ Usage: ./build-workspace.sh [options]
   --config NAME      CMake configuration (default Release)
   --out DIR          Install local packages here (default out/)
   --no-install       Explicitly skip local product installation
-  --vm-profiles LIST Build selected VM variants: default,minimal,agg,cairo
-  --player           Build/install the native SDL2 player (requires an SDL2 SDK)
+  --vm-profiles LIST Build selected VM variants: default,minimal,agg,cairo,player
+  --player           Require the real native window/audio/input player
+  --no-player        Explicit console-only/offline VM build; no SDL bootstrap
   --tests            Build/run selected component tests; stop on failure
   --demo [NAME]      Run navigation (default), history or replaceall in a matching reference emu
   --help             Show help
@@ -46,7 +47,8 @@ Optional explicit SDK overrides:
   LIMBO_MODULE_DIR                 Default: bundled bootstrap module headers
   EMU_EXECUTABLE                   Optional reference runtime; no emu needed for building or compiler tests
   CMAKE, CTEST, PYTHON              Optional host executable paths
-No downloads, upstream changes, system installation, cleanup or Git operations.
+Graphical VM builds automatically cache/build pinned SDL2 and missing public headers.
+No administrator/system installation or upstream writes; --no-player keeps VM builds offline.
 Successful products are installed locally under out/ unless --no-install is used.
 HELP
 }
@@ -65,6 +67,10 @@ while (($#)); do
             ;;
         --player)
             player=ON
+            shift
+            ;;
+        --no-player)
+            player=OFF
             shift
             ;;
         --no-install)
@@ -158,7 +164,7 @@ if [[ -n "$vm_profiles" ]]; then
     IFS=, read -r -a requested_profiles <<<"$vm_profiles"
     for profile in "${requested_profiles[@]}"; do
         case "$profile" in
-            default | minimal | agg | cairo) ;;
+            default | minimal | agg | cairo | player) ;;
             *)
                 fail "Unknown VM profile: $profile"
                 ;;
@@ -276,6 +282,29 @@ if [[ "$need_cmake" == 1 ]]; then
         command -v "$ctest" >/dev/null || fail 'CTest not found'
     fi
 fi
+# Resolve the real desktop SDK automatically when a graphical VM is requested.
+# Console-only builds and all non-VM components keep their existing SDK independence.
+SDL2_SDK_DIR=""
+if has vm && [[ "$player" != OFF ]]; then
+    graphical_vm=0
+    if [[ -z "$vm_profiles" ]]; then
+        if ! grep -q '^NO_GRAPHICS[[:space:]]*$' "$ROOT/flashVM/DEFS.txt"; then
+            graphical_vm=1
+        fi
+    else
+        for profile in "${requested_profiles[@]}"; do
+            [[ "$profile" == minimal ]] || graphical_vm=1
+        done
+    fi
+    if [[ "$graphical_vm" == 1 ]]; then
+        command -v "${PYTHON:-python3}" >/dev/null || fail 'The automatic desktop SDK bootstrap requires Python 3'
+        SDL2_SDK_DIR=$("${PYTHON:-python3}" "$ROOT/tools/sdl2/ensure_sdk.py" \
+            --workspace "$ROOT" --build-root "$build_root" --cmake "$cmake" --jobs "$jobs")
+        player=ON
+    else
+        player=OFF
+    fi
+fi
 need_cocor=0
 need_limbo=0
 if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo; then
@@ -283,7 +312,7 @@ if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || h
     source "$ROOT/tools/coco-r-C/select-sdk.sh"
     select_cocor_sdk "$ROOT" "$build_root" || exit 2
 fi
-if has ide || has cocor-limbo || has limbo-bootstrap; then
+if has ide || has disvm || has cocor-limbo || has limbo-bootstrap; then
     if [[ -n "${LIMBO_EXECUTABLE:-}" ]]; then
         [[ -f "$LIMBO_EXECUTABLE" && -x "$LIMBO_EXECUTABLE" ]] || fail 'LIMBO_EXECUTABLE must be a native executable'
         LIMBO_EXECUTABLE=$(absolute "$LIMBO_EXECUTABLE")
@@ -379,11 +408,16 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
     case "$project" in
         vm)
             source=flashVM
-            args+=("-DFVM_BUILD_TESTS=$tests" -DFVM_BUILD_EXAMPLES=OFF -DFVM_BUILD_REFERENCE_RUNNER=ON "-DFVM_BUILD_DESKTOP_FRONTEND=$player")
+            args+=("-DFVM_BUILD_TESTS=$tests" -DFVM_BUILD_EXAMPLES=OFF -DFVM_BUILD_REFERENCE_RUNNER=ON "-DFVM_BUILD_DESKTOP_FRONTEND=$player" "-DFVM_ENABLE_SDL_AUDIO=$player")
+            if [[ -n "$SDL2_SDK_DIR" ]]; then
+                args+=("-DSDL2_DIR=$SDL2_SDK_DIR")
+            fi
             if [[ -n "$vm_profiles" ]]; then
                 for profile in "${requested_profiles[@]}"; do
                     if [[ "$profile" == default ]]; then
                         definitions="$ROOT/flashVM/DEFS.txt"
+                    elif [[ "$profile" == player ]]; then
+                        definitions="$ROOT/flashVM/cmake/profiles/player-jit.defs"
                     else
                         definitions="$ROOT/flashVM/cmake/profiles/$profile.defs"
                     fi
@@ -392,7 +426,7 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
                     else
                         profile_player=$player
                     fi
-                    build_project "vm-$profile" "$source" "${args[@]}" "-DFVM_DEFS_FILE=$definitions" "-DFVM_BUILD_DESKTOP_FRONTEND=$profile_player"
+                    build_project "vm-$profile" "$source" "${args[@]}" "-DFVM_DEFS_FILE=$definitions" "-DFVM_BUILD_DESKTOP_FRONTEND=$profile_player" "-DFVM_ENABLE_SDL_AUDIO=$profile_player"
                 done
                 continue
             fi
@@ -410,6 +444,7 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
         disvm)
             source=disVM
             args+=("-DDVM_NATIVE_REGISTERS=${DVM_NATIVE_REGISTERS:-OFF}")
+            args+=("-DDVM_LIMBO_EXECUTABLE=$LIMBO_EXECUTABLE")
             args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
             ;;
         disvm-host)

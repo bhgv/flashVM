@@ -23,7 +23,8 @@ python3 build_menu.py --projects vm,compilers,fir,linker,symbols,ide --backend a
 VM-пакеты: `out/flashvm/no-graphics-headless` и `out/flashvm/agg-headless`.
 `flashvm` там — настоящий консольный runner, также сохранённый под исходным
 именем flashvm_reference_swf. Он исполняет numeric SWF примеры, но не создаёт окно.
-Для окна, мыши/клавиатуры и звука нужен native SDL2 player и соответствующий SDK:
+Окно, мышь/клавиатура и звук используют native SDL2 player. Отсутствующий SDK
+теперь собирается автоматически из закреплённых исходников:
 
 ```sh
 ./build_workspace.sh --projects vm --vm-profiles agg --player
@@ -207,7 +208,7 @@ build/workspace/vm/flashvm_reference_swf build/workspace/variables.swf
 [примеры линкера](linker/examples/README.md),
 [host-инструменты IDE](ide/README.ru.md).
 Для окна проигрывателя отдельно соберите SDL2 frontend по
-[его руководству](flashVM/frontend/README.md); он требует SDL2 SDK.
+[руководству по запуску](flashVM/frontend/RUNNING.md); SDK собирается автоматически.
 
 ```bash
 # Один фронтенд или несколько отдельных языков:
@@ -366,3 +367,18 @@ exercise actual channels/native threads; full embedded Dis/IDE startup remains u
 Документы, история и билеты компиляции принадлежат Limbo-сервисам. Хранилище
 байтов модулей удерживает прежние версии для читателей и не заменяет парсер,
 планировщик или GC. Устаревшие результаты сборки отвергаются по ревизии/билету.
+
+
+## Runnable desktop and Dis checks / Запуск окна и проверок Dis
+
+```sh
+bash build-workspace.sh --projects vm,disvm --vm-profiles player --jobs 4
+./out/run-checks.sh
+./out/run-checks.sh --window
+```
+
+SDL2 SDK при необходимости собирается автоматически, без ручной установки.
+`flashvm` в SDL2-пакете запускает настоящее окно, а `flashvm-console` — отдельную
+консольную проверку. См. [запуск плеера](flashVM/frontend/RUNNING.md) и
+[проверочные программы Dis](disVM/RUNNABLE-CHECKS.md). Проверки Dis/JIT исполнимы
+нативно; полноценный хост исполнения произвольных Dis-модулей и IDE ещё не завершён.

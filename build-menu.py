@@ -209,6 +209,8 @@ def build_command(args, projects, bash):
         command.extend(["--vm-profiles", args.vm_profiles])
     if getattr(args, "player", False):
         command.append("--player")
+    if getattr(args, "no_player", False):
+        command.append("--no-player")
     if args.tests:
         command.append("--tests")
     command.extend(["--backend", args.backend])
@@ -228,8 +230,10 @@ def main(argv=None):
     parser.add_argument("--build-root", help="Output directory; default build/workspace")
     parser.add_argument("--out", help="Local installation directory; default out/")
     parser.add_argument("--no-install", action="store_true", help="Explicitly skip local product installation")
-    parser.add_argument("--vm-profiles", help="Comma-separated VM profiles: default,minimal,agg,cairo")
-    parser.add_argument("--player", action="store_true", help="Build the SDL2 window/audio/input player; requires its SDK")
+    parser.add_argument("--vm-profiles", help="Comma-separated VM profiles: default,minimal,agg,cairo,player")
+    presentation = parser.add_mutually_exclusive_group()
+    presentation.add_argument("--no-player", action="store_true", help="Explicit console-only/offline VM build")
+    presentation.add_argument("--player", action="store_true", help="Require the native window/audio/input player; SDK is bootstrapped automatically")
     parser.add_argument("--tests", action="store_true", help="Run selected component tests")
     parser.add_argument("--demo", nargs="?", const="navigation", choices=("navigation", "history", "replaceall"),
                         help="Run a Limbo IDE example (default navigation; requires ide)")

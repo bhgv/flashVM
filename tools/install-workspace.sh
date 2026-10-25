@@ -131,7 +131,7 @@ EOF
 # Package one requested component with actual products and honest runtime status.
 # Parameters: component name. Returns: installation failure propagates to the builder.
 install_component() {
-    local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file
+    local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file sdk_cache
     case "$component" in
         compilers)
             for language in as1 as2 as3 limbo; do
@@ -163,14 +163,32 @@ install_component() {
             source="$ROOT/flashVM"
             mkdir -p "$destination"
             install_program "$base" flashvm_reference_swf "$destination"
+            # Retain an explicit action-only CLI in every package.
             file=$(program "$base" flashvm_reference_swf)
+            if [[ "$file" == *.exe ]]; then
+                copy_file "$file" "$destination/flashvm-console.exe" 755
+            else
+                copy_file "$file" "$destination/flashvm-console" 755
+            fi
+            if [[ "$display" == SDL2 ]]; then
+                install_program "$base" flashvm_player "$destination"
+                file=$(program "$base" flashvm_player)
+                copy_file "$ROOT/flashVM/frontend/run-demo.sh" "$destination/run-demo.sh" 755
+                copy_file "$ROOT/external/sdl2/LICENSE.txt" "$destination/LICENSES/SDL2.txt"
+                sdk_cache="$BUILD/deps/sdl2/sdk"
+                if [[ -d "$sdk_cache/licenses" ]]; then
+                    copy_tree "$sdk_cache/licenses" "$destination/LICENSES/desktop-sdk"
+                fi
+                if [[ -f "$sdk_cache/CAPABILITIES.txt" ]]; then
+                    copy_file "$sdk_cache/CAPABILITIES.txt" "$destination/BUILD-CAPABILITIES.txt"
+                fi
+                copy_file "$ROOT/tools/sdl2/run-packaged-demo.sh" "$OUT/flashvm/run-demo.sh" 755
+            fi
+            # flashvm is the real windowed player for an SDL package, console otherwise.
             if [[ "$file" == *.exe ]]; then
                 copy_file "$file" "$destination/flashvm.exe" 755
             else
                 copy_file "$file" "$destination/flashvm" 755
-            fi
-            if [[ "$display" == SDL2 ]]; then
-                install_program "$base" flashvm_player "$destination"
             fi
             copy_tree "$ROOT/flashVM/include/flashvm" "$destination/include/flashvm"
             copy_file "$profile" "$destination/configured.defs"
@@ -185,12 +203,14 @@ install_component() {
             cat >"$destination/README-FIRSTSTEPS.md" <<EOF
 # FlashVM: $graphics / $display
 
-Run here: ./flashvm constant.swf   (expected trace: 123)
-Run here: ./flashvm arithmetic.swf (expected trace: 42)
+Console example: ./flashvm-console constant.swf   (expected trace: 123)
+Console example: ./flashvm-console arithmetic.swf (expected trace: 42)
 Windows: use flashvm.exe. The corresponding commented AS sources are alongside.
 
-flashvm is a copy of the real console flashvm_reference_swf runner, not a GUI
-player. The configured raster and presentation keys are $graphics / $display.
+With display=SDL2, flashvm is the real native player: use ./run-demo.sh or
+./flashvm examples/player/animation_audio/02-input-audio.swf. The separate
+flashvm-console command is the bounded action-only runner.
+The configured raster and presentation keys are $graphics / $display.
 HEADLESS does not create a native window. Other variants occupy separate folders;
 copying a runner cannot add a presentation backend that the VM does not implement.
 Static SDK libraries and public headers are provided for host embedding.
@@ -273,15 +293,28 @@ EOF
             done
             copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
             copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
+            copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
+            if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&
+                grep -q '^DVM_BUILD_DIAGNOSTICS:BOOL=ON$' "$base/CMakeCache.txt"; then
+                for file in disvm-check disvm-jit-word32 disvm-jit-word64; do
+                    install_program "$base" "$file" "$destination"
+                done
+            fi
+            for file in console-check.dis console-check.sbl; do
+                if [[ -f "$base/$file" ]]; then
+                    copy_file "$base/$file" "$destination/$file"
+                fi
+            done
             if [[ -n "$(find "$base" -type f \( -name disvm_module_store_example -o -name disvm_module_store_example.exe \) -print -quit)" ]]; then
                 install_program "$base" disvm_module_store_example "$destination"
             fi
             copy_file "$ROOT/disVM/MODULE-STORE.md" "$destination/MODULE-STORE.md"
+            copy_file "$ROOT/disVM/RUNNABLE-CHECKS.md" "$destination/RUNNABLE-CHECKS.md"
             copy_tree "$ROOT/disVM/module" "$destination/module"
             copy_tree "$ROOT/disVM/limbo" "$destination/limbo"
             copy_tree "$ROOT/disVM/examples/ui-channel" "$destination/examples/ui-channel"
             copy_file "$ROOT/disVM/OWNER-PUMP.ru.md" "$destination/OWNER-PUMP.ru.md"
-            printf '%s\n' '# Dis native SDK' 'This package contains real libraries and headers, not a complete Dis executable.' 'The native module/scheduler/GC host integration remains in progress.' >"$destination/README-FIRSTSTEPS.md"
+            printf '%s\n' '# Dis native SDK' 'Run ./disvm-check when native AMD64 diagnostics were built. This executes real Dis/JIT checks without external emu.' 'console-check.dis is a genuine Limbo channel/Sys test program; its full embedded module host is still in progress.' 'The native module/scheduler/GC host integration remains in progress.' >"$destination/README-FIRSTSTEPS.md"
             ;;
         ide)
             source="$ROOT/ide/dis"
@@ -398,3 +431,13 @@ IFS=, read -r -a selected <<<"$PROJECTS"
 for component in "${selected[@]}"; do
     install_component "$component"
 done
+
+# Install one discoverable entry point after all requested packages succeed.
+copy_file "$ROOT/tools/run-installed-checks.sh" "$OUT/run-checks.sh" 755
+cat >"$OUT/README-RUN.txt" <<'GUIDE'
+Run ./run-checks.sh for installed FlashVM/Dis native checks.
+Run ./run-checks.sh --window for the actual window, input and sound demo.
+The graphical player accepts --frames N, --mute, --stats and --no-jit.
+Each selected component has its own README, examples and actual products.
+Dis/JIT checks are native diagnostics; a general Dis/IDE executable host is pending.
+GUIDE

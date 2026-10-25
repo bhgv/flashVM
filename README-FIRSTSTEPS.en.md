@@ -19,7 +19,8 @@ Choose one number/name, several separated by commas/spaces, or all. Individual
 language projects are as1/as2/as3/limbo. Explicit tools and disvm have separate menu
 entries. Builds are incremental; --build-root, --jobs and --config remain available.
 Successful builds now install local packages under out/ or --out. No system
-installation, downloads, cleanup, Git writes or scheduling is performed.
+installation, cleanup, Git writes or scheduling is performed. Graphical builds
+automatically download/build a pinned SDL2 SDK when no usable installed SDK exists.
 
 Default Coco/R is source-built from tools/coco-r-C. The optional C/Limbo generators
 are in tools/coco-r-limbo, including cocor.b/runtime fragments. Complex IDE code
@@ -169,10 +170,13 @@ Menu component `17` (`disvm-host`) is included in `all`.
 
 Both hyphenated and underscored launchers work. Use --out to choose a local prefix,
 --no-install to explicitly skip packaging, --vm-profiles minimal,agg for separate
-VM variants, and --player for the actual SDL2 frontend (requires its SDK/runtime).
+VM variants. Graphical profiles automatically build the SDL2 frontend and missing
+SDK; --no-player explicitly selects console-only builds. OS display/audio runtime
+libraries are still needed to open physical devices.
 The no-graphics-headless and agg-headless packages contain the console runner,
 headers/libs and numeric movies that trace 123/42. agg-sdl2 additionally contains
-flashvm_player; no GUI validation is implied when SDL2 is unavailable.
+flashvm_player and assigns the generic flashvm command to that actual player.
+Use flashvm-console for numeric traces; run-demo.sh starts the windowed example.
 
 Graphics/input/audio fixtures are under examples/player/animation_audio. Real
 SWF6 video fixtures are supplied separately; FlashVM video playback remains
@@ -216,3 +220,18 @@ exercise actual channels/native threads; full embedded Dis/IDE startup remains u
 Документы, история и билеты компиляции принадлежат Limbo-сервисам. Хранилище
 байтов модулей удерживает прежние версии для читателей и не заменяет парсер,
 планировщик или GC. Устаревшие результаты сборки отвергаются по ревизии/билету.
+
+
+## Runnable desktop and Dis checks / Запуск окна и проверок Dis
+
+```sh
+bash build-workspace.sh --projects vm,disvm --vm-profiles player --jobs 4
+./out/run-checks.sh
+./out/run-checks.sh --window
+```
+
+SDL2 SDK при необходимости собирается автоматически, без ручной установки.
+`flashvm` в SDL2-пакете запускает настоящее окно, а `flashvm-console` — отдельную
+консольную проверку. См. [запуск плеера](flashVM/frontend/RUNNING.md) и
+[проверочные программы Dis](disVM/RUNNABLE-CHECKS.md). Проверки Dis/JIT исполнимы
+нативно; полноценный хост исполнения произвольных Dis-модулей и IDE ещё не завершён.

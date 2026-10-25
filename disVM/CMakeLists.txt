@@ -1,6 +1,6 @@
 # Independent selected Dis/JIT core and explicit legacy bootstrap from owned sources.
 cmake_minimum_required(VERSION 3.10)
-project(disvm VERSION 0.1.4 LANGUAGES C)
+project(disvm VERSION 0.1.5 LANGUAGES C)
 if(NOT UNIX)
   message(FATAL_ERROR "This initial host build supports POSIX; native OS adapters remain separate")
 endif()
@@ -150,6 +150,33 @@ if(BUILD_TESTING)
   endforeach()
 endif()
 
+# Installable diagnostics give the core a runnable acceptance frontend without
+# pretending that the remaining general-purpose host/ABI work is complete.
+option(DVM_BUILD_DIAGNOSTICS "Build native AMD64 Dis/JIT check programs" ON)
+if(DVM_BUILD_DIAGNOSTICS AND backend STREQUAL "amd64" AND NOT CMAKE_CROSSCOMPILING
+    AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID)
+  find_package(PythonInterp 3 REQUIRED)
+  file(GLOB diagnostic_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h"
+    "${u}/include/*.h" "${u}/libinterp/tests/*.c")
+  foreach(bits 32 64)
+    set(probe "${CMAKE_CURRENT_BINARY_DIR}/disvm-jit-word${bits}")
+    add_custom_command(OUTPUT "${probe}"
+      COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/host/build_probe.py"
+        --driver "${u}/libinterp/tests/leaf64-runtime.py" --output "${probe}"
+        --cc "${CMAKE_C_COMPILER}" --wordbits ${bits}
+      DEPENDS host/build_probe.py "${u}/libinterp/tests/leaf64-runtime.py" ${diagnostic_inputs}
+      VERBATIM)
+    add_custom_target(disvm_diagnostic_word${bits} ALL DEPENDS "${probe}")
+    if(BUILD_TESTING)
+      add_test(NAME disvm_installed_diagnostic_word${bits} COMMAND "${probe}")
+      set_tests_properties(disvm_installed_diagnostic_word${bits} PROPERTIES TIMEOUT 30)
+    endif()
+  endforeach()
+  configure_file(host/disvm-check.sh "${CMAKE_CURRENT_BINARY_DIR}/disvm-check" COPYONLY)
+  execute_process(COMMAND "${PYTHON_EXECUTABLE}" -c
+    "import os,sys;os.chmod(sys.argv[1],493)" "${CMAKE_CURRENT_BINARY_DIR}/disvm-check")
+endif()
+
 # Experimental opt-in only: TLS registers do not by themselves synchronize the
 # remaining global heaps/modules/GC/scheduler. Do not run a complete shared VM yet.
 option(DVM_NATIVE_REGISTERS "Compile interpreter references to R through native TLS" OFF)
@@ -216,6 +243,14 @@ if(DVM_LIMBO_EXECUTABLE)
       -o "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis" "${CMAKE_CURRENT_SOURCE_DIR}/examples/ui-channel/uiecho.b"
     DEPENDS module/uibridge.m examples/ui-channel/uiecho.m examples/ui-channel/uiecho.b
       "${DVM_LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/console-check.dis"
+      "${CMAKE_CURRENT_BINARY_DIR}/console-check.sbl"
+    COMMAND "${DVM_LIMBO_EXECUTABLE}" -g -I "${u}/module"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/console-check.dis"
+      "${CMAKE_CURRENT_SOURCE_DIR}/examples/console-check/main.b"
+    DEPENDS examples/console-check/main.b "${u}/module/sys.m" "${DVM_LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(disvm_console_example ALL DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/console-check.dis" "${CMAKE_CURRENT_BINARY_DIR}/console-check.sbl")
   add_custom_target(disvm_ui_modules ALL DEPENDS
     "${CMAKE_CURRENT_BINARY_DIR}/uibridge.dis" "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis")
 endif()

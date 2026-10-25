@@ -130,7 +130,7 @@ def main():
         if not variants:
             raise RuntimeError("no installed FlashVM variant")
         for variant in variants:
-            runner = program(prefix, "flashvm/" + variant.name, "flashvm")
+            runner = program(prefix, "flashvm/" + variant.name, "flashvm-console")
             for sample, expected in (("constant", "123"), ("arithmetic", "42")):
                 output = run([runner, variant / (sample + ".swf")], work, environment)
                 if output.strip() != expected:
@@ -161,7 +161,7 @@ def main():
         run(["bash", prefix / "fir/examples/firststeps/build.sh"], work, environment)
         output = run(
             [
-                program(prefix, "flashvm/" + variants[0].name, "flashvm"),
+                program(prefix, "flashvm/" + variants[0].name, "flashvm-console"),
                 work / "firststeps-build/arithmetic.swf",
             ],
             work,

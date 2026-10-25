@@ -1401,3 +1401,14 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
     add_test(NAME flashvm_frontend_${mixed_test} COMMAND flashvm_frontend_${mixed_test})
   endforeach()
 endif()
+
+# Workspace orchestration checks are optional when this component is detached.
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  foreach(check frontend_packages sdl_bootstrap)
+    set(workspace_check "${PROJECT_SOURCE_DIR}/../tools/test_${check}.py")
+    if(EXISTS "${workspace_check}")
+      add_test(NAME flashvm_workspace_${check} COMMAND "${Python3_EXECUTABLE}" "${workspace_check}")
+      set_tests_properties(flashvm_workspace_${check} PROPERTIES TIMEOUT 60)
+    endif()
+  endforeach()
+endif()
