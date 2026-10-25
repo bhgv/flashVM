@@ -54,7 +54,7 @@ def main():
                        if event['kind'] in ('constant', 'binary')}
             if definitions != origins:
                 raise RuntimeError('real SSA values are missing source origins')
-        rejected = [program('return 2;'), program('return 16rA;'), program('return 0x1e;'),
+        rejected = [program('real := 2.5; return real;'), program('return 2;'), program('return 16rA;'), program('return 0x1e;'),
                     program('return 1e400;'), program('x: int = 2.5; return x;'),
                     program('return 2.5;', 'int', 'real'), program('return 2;', 'real', 'int'),
                     program('if(1.0<2.0){return 1.0;}else{return 2.0;}'),
@@ -69,6 +69,11 @@ def main():
             diagnostic = json.loads(result.stderr)
             if diagnostic['kind'] not in ('semantic', 'syntax') or fir.read_bytes() != b'old FIR' or debug.read_bytes() != b'old debug':
                 raise RuntimeError('real rejection lost diagnostic/transactional output')
+        # Adding a Limbo type keyword must preserve the same spelling as an AS variable name.
+        for language in ('as1', 'as2', 'as3'):
+            source.write_text('var real = 2.5; trace(real * 2.0);')
+            call([source_compiler, language, '--input', source, fir])
+            call([compiler, 'dis', fir, directory / 'as-real-name.dis'])
         # The new profile is paired only with Limbo; AS must not acquire it through forged metadata.
         source.write_text(program('return 2.5;'))
         call([source_compiler, 'limbo', '--input', source, fir])

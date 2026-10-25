@@ -257,6 +257,11 @@ void source_token(const char *text, int line, long offset, size_t length, int ov
 int source_name(void)
 {
     int i;
+    if (profile == FIR_LIMBO && !strcmp(token, "real"))
+    {
+        reject("real is a Limbo type keyword, not a binding name");
+        return 0;
+    }
     for (i = name_count - 1; i >= 0; --i)
     {
         if (active[i] && !strcmp(names[i], token))

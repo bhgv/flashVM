@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1591**. [English](README.md).
+Версия разработки: **0.1592**. [English](README.md).
 
 Текущая серия: [v0.1581–v0.1588](docs/releases/v0.1588.md) — binary64 в FIR→Dis, исполнение числового AS, проверка Sys/модулей и обратные исправления владения Srv/Loader в Inferno.
 

@@ -286,7 +286,11 @@ PRODUCTIONS
 
   /* Intern a source identifier separately from reading its current binding. */
   Name<int *name> =
-    ident                                                               (.
+    (
+        ident
+        | "real"
+    )
+                                                                        (.
                                                                             capture();
                                                                             *name = source_name();
                                                                         .)
