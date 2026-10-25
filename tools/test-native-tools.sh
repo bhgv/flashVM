@@ -14,6 +14,8 @@ for component in "$@"; do
                 "$root/tools/limbo-bootstrap/upstream/limbo/y.tab.h" ;;
         limbo-bootstrap)
             "$python" "$root/tools/limbo-bootstrap/tests/smoke.py" \
+                "$output/limbo-bootstrap/limbo-bootstrap"
+            "$python" "$root/tools/limbo-bootstrap/tests/big_constants.py" \
                 "$output/limbo-bootstrap/limbo-bootstrap" ;;
         *) printf 'No native test adapter for %s\n' "$component" >&2; exit 2 ;;
     esac

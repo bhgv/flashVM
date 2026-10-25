@@ -38,6 +38,21 @@ add_custom_target(ide_workspace_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}
 include(CTest)
 set(EMU_EXECUTABLE "" CACHE FILEPATH "Optional explicit reference Dis emulator for channel regression")
 set(LIMBO_MODULE_DIR "" CACHE PATH "External module headers for the test bootstrap's Sys interface")
+# File windows require only explicit Sys headers, independently of the optional UI SDK.
+if(LIMBO_MODULE_DIR)
+  if(NOT EXISTS "${LIMBO_MODULE_DIR}/sys.m")
+    message(FATAL_ERROR "Provide LIMBO_MODULE_DIR containing sys.m for file windows")
+  endif()
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/idefiles.dis"
+      "${CMAKE_CURRENT_BINARY_DIR}/idefiles.sbl"
+    COMMAND "${LIMBO_EXECUTABLE}" -g -I "${LIMBO_MODULE_DIR}"
+      -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge" -o "${CMAKE_CURRENT_BINARY_DIR}/idefiles.dis"
+      "${CMAKE_CURRENT_SOURCE_DIR}/bridge/idefiles.b"
+    DEPENDS bridge/idefiles.b bridge/idefiles.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_file_windows ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idefiles.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/idefiles.sbl")
+endif()
+
 if(BUILD_TESTING AND (LIMBO_MODULE_DIR OR EMU_EXECUTABLE))
   if(NOT EXISTS "${LIMBO_MODULE_DIR}/sys.m")
     message(FATAL_ERROR "Provide LIMBO_MODULE_DIR for compiling test/example modules")

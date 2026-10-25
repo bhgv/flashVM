@@ -48,6 +48,18 @@ FVM_Result fvm_port_file_available(FVM_PortFile *, int *);
 FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size);
 
 
+#define FVM_FILE_SEEK_START 0   /* Offset is relative to the beginning of the file. */
+#define FVM_FILE_SEEK_CURRENT 1 /* Offset is relative to the active logical cursor. */
+#define FVM_FILE_SEEK_END 2     /* Offset is relative to the measured file extent. */
+
+
+/* Move a read-only or write-only file cursor; rw append channels are rejected.
+ * file is borrowed and externally synchronized; offset/origin select a nonnegative
+ * native-long position. On success position receives that offset. Errors preserve
+ * both logical cursors and the output. This call can block on native file I/O. */
+FVM_Result fvm_port_file_seek(FVM_PortFile *file, long offset, int origin, long *position);
+
+
 /* Borrow standard input (descriptor 0); report one bounded read without closing it. */
 FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, size_t *received);
 

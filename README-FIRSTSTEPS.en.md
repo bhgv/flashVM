@@ -3,6 +3,15 @@
 [Русский](README-FIRSTSTEPS.md) · [Build reference](BUILDING.md) ·
 [Source provenance](tools/UPSTREAMS.md)
 
+Run `python3 build_menu.py`, enter `all`, and accept the defaults. Post-build
+choices include the real FlashVM window (2), native Dis example (4), interactive
+Dis editor (5) and IDE service demonstration (6). `inspect PATH` in the editor
+shows a read-only binary header; AS/Limbo `complete`/`hint` show declarations and
+parameter help. The executable Dis package is currently experimental Linux AMD64
+NC64; it needs no external emu. See the [editor guide](ide/dis/examples/editor-console/README.md)
+and [runtime boundary](disVM/runtime/README.md). The older console/reference
+workflows below remain separate options, not prerequisites for menu item 5.
+
 Use Bash, CMake 3.10+, native C/C++ and Make/Ninja. Python 3 is used by the menu
 and tests; Node is an optional test runtime for generated common-AS code only.
 Termux prerequisites: `pkg install git clang make cmake python`.

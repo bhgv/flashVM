@@ -76,3 +76,19 @@ for example a NUL becomes `␀` and ESC becomes `␛`. Display conversion uses a
 string, so saved bytes and document history remain unchanged. The busy-work
 budget renews only after actual standard-input progress, allowing a long terminal
 session without weakening the guard against a busy loop or repeated EOF reads.
+
+
+### Read-only binary resources / Чтение бинарных ресурсов
+
+`inspect PATH` asks the independent [Idefiles channel service](../../bridge/idefiles.README.md)
+for the file extent and its first sixteen bytes. Paths retain interior spaces.
+For example, `inspect editor-console.dis` shows compiled bytecode without trying
+to decode it as source. The result contains `RESOURCE size=… offset=0 bytes=…`
+and hexadecimal bytes. The existing source, history and saved revision stay intact.
+Missing paths report `ERROR inspect`; no file is created or changed.
+
+`inspect PATH` показывает размер и первые 16 байт `.dis`, `.swf` либо другого
+ресурса. Чтение выполняет отдельный процесс Dis по типизированному каналу.
+Путь может содержать пробелы. Команда не заменяет открытый текст и не изменяет
+историю Undo/Redo; файловый дескриптор закрывается перед ответом. Это просмотр
+байтов, а не декодер форматов SWF/Dis и не подключённая графическая панель.

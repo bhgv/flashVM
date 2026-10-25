@@ -11,6 +11,7 @@
 #include "file_port.h"
 #include <stdio.h>
 #include <stddef.h>
+#include <limits.h>
 
 #define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
 #define PROCESS_MAX 128                      /* Maximum simultaneous Limbo processes. */
@@ -607,7 +608,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.1.1: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.1.2: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
@@ -1099,4 +1100,37 @@ void Sys_create(void *frame)
         kwerrstr("create supports OWRITE and permission 0666 only");
     }
     publish_descriptor(call->ret, result);
+}
+
+
+/* Position an ordinary native file; standard streams and test capabilities fail.
+ * frame borrows a typed FD and signed big offset. The big result is the new
+ * position, or -1 with a native error. Checked narrowing precedes the port call. */
+void Sys_seek(void *frame)
+{
+    F_Sys_seek *call = frame;
+    LONG result = -1;
+    long position;
+    if (call->fd == H || call->fd == nil || D2H(call->fd)->t != TFD)
+    {
+        error(exNilref);
+    }
+    if (call->fd->fd < 3 || call->fd->fd >= 32 || !files[call->fd->fd])
+    {
+        kwerrstr("seek requires an ordinary live file");
+    }
+    else if (call->start < FVM_FILE_SEEK_START || call->start > FVM_FILE_SEEK_END || call->off < LONG_MIN ||
+             call->off > LONG_MAX)
+    {
+        kwerrstr("invalid seek origin or native offset range");
+    }
+    else if (fvm_port_file_seek(files[call->fd->fd], (long)call->off, (int)call->start, &position) != FVM_OK)
+    {
+        kwerrstr("file seek failed");
+    }
+    else
+    {
+        result = position;
+    }
+    memmove(call->ret, &result, sizeof(result));
 }

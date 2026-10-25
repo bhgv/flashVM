@@ -115,6 +115,28 @@ def main():
         output, _ = session(b"set a\x00b\x1bc\nshow\nsave " + str(binary).encode() + b"\nquit\n")
         if "a␀b␛c" not in output or binary.read_bytes() != b"a\x00b\x1bc":
             raise RuntimeError("visible controls changed the saved source bytes")
+        resource = root / "resource with spaces.dis"
+        resource.write_bytes(bytes(range(32)))
+        output, _ = session(
+            "set keep\ninspect "
+            + str(resource)
+            + "\ninspect "
+            + str(resource)
+            + ".missing\nshow\nquit\nquit!\n"
+        )
+        for expected in (
+            "RESOURCE size=32 offset=0 bytes=16",
+            "00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f",
+            "ERROR inspect: cannot open file",
+            "TEXT 4\nkeep\nEND",
+            "DIRTY: save or use quit!",
+        ):
+            if expected not in output:
+                raise RuntimeError(
+                    "binary inspection changed text/history or preview failed: " + output
+                )
+        if resource.read_bytes() != bytes(range(32)):
+            raise RuntimeError("read-only resource inspection modified its input")
         empty = root / "empty.b"
         output, _ = session("save " + str(empty) + "\nquit\n")
         if empty.read_bytes() != b"":

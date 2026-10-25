@@ -273,6 +273,65 @@ FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size)
 }
 
 
+/* Move the single active cursor without changing append-channel semantics.
+ * file is borrowed; offset/origin choose a checked nonnegative native-long offset.
+ * position changes only on success. Caller serializes access; native seek may block. */
+FVM_Result fvm_port_file_seek(FVM_PortFile *file, long offset, int origin, long *position)
+{
+    long base;
+    long target;
+    size_t extent;
+    if (!file || !position || origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (file->append)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    if (file->failed)
+    {
+        return FVM_ERROR;
+    }
+    base = 0;
+    if (origin == FVM_FILE_SEEK_CURRENT)
+    {
+        base = file->readable ? file->read_position : file->write_position;
+    }
+    else if (origin == FVM_FILE_SEEK_END)
+    {
+        if (fvm_port_file_size(file, &extent) != FVM_OK || extent > (size_t)LONG_MAX)
+        {
+            return FVM_ERROR;
+        }
+        base = (long)extent;
+    }
+    if (base < 0)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if ((offset < 0 && offset < -base) || (offset > 0 && offset > LONG_MAX - base))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    target = base + offset;
+    if (fseek(file->stream, target, SEEK_SET))
+    {
+        return FVM_ERROR;
+    }
+    if (file->readable)
+    {
+        file->read_position = target;
+    }
+    else
+    {
+        file->write_position = target;
+    }
+    *position = target;
+    return FVM_OK;
+}
+
+
 /* Read one bounded fragment from borrowed standard input.
  * descriptor must be zero; output receives the actual extent, including EOF zero. */
 FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, size_t *received)

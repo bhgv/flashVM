@@ -93,3 +93,35 @@ runner and launch scripts preserve the caller's working directory for ordinary
 Sys file paths. Installed applications can therefore find their sibling modules
 while loading/saving relative user paths. This is resource lookup, not a filesystem
 sandbox. Embedded NUL paths are rejected before any native open or truncation.
+
+
+### File positioning and IDE resource windows
+
+Native `Sys->seek` now uses the shared
+[`fvm_port_file_seek`](../../flashVM/ports/file_port.h) adapter. `SEEKSTART`,
+`SEEKRELA` and `SEEKEND` support negative relative offsets where the resulting
+position remains nonnegative. A failed seek returns `big -1` without changing
+the logical cursor. The native port currently uses checked `long` positions;
+Linux AMD64 supports offsets above 2 GiB. Platforms with narrower `long` reject
+unrepresentable offsets rather than truncating them. No wider-platform runtime
+acceptance is implied. Standard descriptors and the isolated test-control node
+are not seekable. Read-only handles reposition reads; write-only handles
+reposition writes and may create holes if a later write extends the file.
+Existing FlashVM `rw` channel handles retain independent read/append positions
+and explicitly reject this new positioning API.
+
+The installed terminal IDE offers `inspect PATH`: a separate
+[Idefiles process](../../ide/dis/bridge/idefiles.README.md) measures the actual
+file and returns a bounded binary window over typed channels. The console shows
+the first sixteen bytes in hexadecimal. The service can also read arbitrary
+start/end-relative windows up to 64 KiB for future debugger and source views.
+It closes each file before replying and never retains a descriptor or array
+between requests. Measurement/read are not a transactional file snapshot; another
+writer may change the file between native operations. This is ordinary native
+file access, not complete Inferno namespaces, Styx, or a sandbox.
+
+Позиционирование `Sys->seek` работает через общий файловый порт FlashVM.
+Команда IDE `inspect ПУТЬ` читает бинарный заголовок через отдельный Limbo-сервис
+с каналом запросов/ответов. Смещения проверяются до сужения типа, ошибки не
+меняют логическую позицию, стандартные потоки не перематываются. Для существующих
+каналов FlashVM `rw` сохранён прежний режим независимого чтения и дописывания.

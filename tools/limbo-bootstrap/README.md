@@ -70,3 +70,18 @@ IYACC_ROOT="$PWD/build/workspace/iyacc" \
 ```
 
 No runtime modules or whole Inferno installation are imported for this path.
+
+
+## LP64 big-constant identity fix
+
+The pinned C compiler uses a 32-byte internal name for `big` constants. On LP64,
+casting a negative value/high half to `long` can format sixteen digits per half;
+truncation then merges different values, for example -2 and -5. Both build routes
+now prepare a derived ecom source with explicitly masked 32-bit unsigned halves,
+producing a complete fixed 20-character name (21 bytes including NUL). The pinned snapshot stays unchanged.
+See [preparation](prepare_ecom.py), [actual compiler-output regression](tests/big_constants.py)
+and [upstream patch](patches/0001-bound-big-constant-names-on-lp64.patch).
+Python 3 is a build-time source preparation dependency, not a deployed runtime.
+The patch applies to the owner repository's `limbo/ecom.c`; its Limbo implementation
+already uses `bhex(value,16)`. Native execution tests additionally distinguish
+negative seek offsets and offsets above 2 GiB in both JIT/interpreter modes.

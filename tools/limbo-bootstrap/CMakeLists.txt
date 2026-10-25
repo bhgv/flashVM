@@ -21,7 +21,17 @@ set_property(CACHE LIMBO_BOOTSTRAP_CELL_BYTES PROPERTY STRINGS 4 8)
 if(NOT LIMBO_BOOTSTRAP_CELL_BYTES MATCHES "^(4|8)$")
   message(FATAL_ERROR "LIMBO_BOOTSTRAP_CELL_BYTES must be 4 or 8")
 endif()
-set(limbo_ecom "${u}/limbo/ecom.c")
+# Python is a source-preparation tool only; no Python is deployed with the runtime.
+find_package(PythonInterp 3 REQUIRED)
+set(limbo_ecom "${CMAKE_CURRENT_BINARY_DIR}/prepared-ecom.c")
+execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_ecom.py"
+  --source "${u}/limbo/ecom.c" --output "${limbo_ecom}" --cells "${LIMBO_BOOTSTRAP_CELL_BYTES}"
+  RESULT_VARIABLE ecom_prepared)
+if(NOT ecom_prepared EQUAL 0)
+  message(FATAL_ERROR "Limbo constant/source preparation failed")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_ecom.py" "${u}/limbo/ecom.c")
 if(LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "8")
   file(READ "${u}/include/isa.h" target_isa)
   string(REPLACE "IBY2WD\t= 4" "IBY2WD\t= 8" target_isa "${target_isa}")
@@ -30,10 +40,6 @@ if(LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "8")
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/target-include")
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/target-include/isa.h" "${target_isa}")
   list(INSERT sdk_include 0 "${CMAKE_CURRENT_BINARY_DIR}/target-include")
-  file(READ "${u}/limbo/ecom.c" target_ecom)
-  string(REPLACE "\t\tcase IBY2WD:\n\t\t\top = IINDW;\n\t\t\tbreak;\n" "" target_ecom "${target_ecom}")
-  set(limbo_ecom "${CMAKE_CURRENT_BINARY_DIR}/target-include/ecom.c")
-  file(WRITE "${limbo_ecom}" "${target_ecom}")
 endif()
 
 set(target_magic 819248)
@@ -207,5 +213,12 @@ if(BUILD_TESTING)
   add_test(NAME limbo_bootstrap_products COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/smoke.py" $<TARGET_FILE:limbo-bootstrap>)
   set_tests_properties(limbo_bootstrap_products PROPERTIES TIMEOUT 60
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_big_constant_pool COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/big_constants.py" $<TARGET_FILE:limbo-bootstrap>)
+  set_tests_properties(limbo_bootstrap_big_constant_pool PROPERTIES TIMEOUT 30
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()

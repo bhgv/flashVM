@@ -4,7 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1547**. [English](README.md).
+Версия разработки: **0.1548**. [English](README.md).
+
+Текущая серия: [v0.1548](docs/releases/v0.1548.md) — настоящий Sys->seek, бинарные окна по каналам и команда IDE `inspect ПУТЬ`; исправлена коллизия big-констант временного компилятора на LP64.
 
 ## Просмотр документации
 

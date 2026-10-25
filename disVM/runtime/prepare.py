@@ -48,6 +48,7 @@ def main():
         "Sys_readn",
         "Sys_fildes",
         "Sys_create",
+        "Sys_seek",
     }
     source = '#include "lib9.h"\n#include "kernel.h"\nextern void error(char *);\n'
     for name in sorted(functions - implemented):

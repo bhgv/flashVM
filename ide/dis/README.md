@@ -116,3 +116,8 @@ LF and CRLF documents and checks stale/closed/range errors in both modes.
 [Editor services / Сервисы редактора](../EDITOR-CHANNELS.ru.md).
 
 [Dis workspace and compiler-job ownership / Рабочие документы и задания сборки](../WORKSPACE.md).
+
+
+[Channel-owned binary file windows / Бинарные окна файлов](bridge/idefiles.README.md):
+read-only resource previews through actual Sys seek/readn, used by the
+[interactive editor](examples/editor-console/README.md) `inspect PATH` command.

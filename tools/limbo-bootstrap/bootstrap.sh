@@ -52,11 +52,18 @@ compile_archive() {
 }
 
 for group in lib9 bio support; do compile_archive "$group"; done
+# Use the same checked constant-pool adaptation as the CMake build.
+"${PYTHON:-python3}" "$root/prepare_ecom.py" --source "$root/upstream/limbo/ecom.c" \
+    --output "$output/generated/ecom.c" --cells 4
 objects=()
 while IFS= read -r source; do
     case "$source" in ''|'#'*) continue ;; esac
     object="$output/objects/${source//\//_}.o"
-    compile_source "$root/$source" "$object"
+    if [[ "$source" == upstream/limbo/ecom.c ]]; then
+        compile_source "$output/generated/ecom.c" "$object"
+    else
+        compile_source "$root/$source" "$object"
+    fi
     objects+=("$object")
 done < "$root/compiler.sources"
 for source in lex.c y.tab.c; do

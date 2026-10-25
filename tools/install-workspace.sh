@@ -307,6 +307,8 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
+            copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
+            copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
             for file in "$ROOT/ide/dis/bridge/"*.m; do
                 copy_file "$file" "$destination/include/limbo/$(basename "$file")"
             done
@@ -359,7 +361,7 @@ EOF
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/uibridge.m"
             copy_file "$ROOT/ide/EDITOR-CHANNELS.ru.md" "$destination/EDITOR-CHANNELS.ru.md"
             copy_file "$ROOT/ide/WORKSPACE.md" "$destination/WORKSPACE.md"
-            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace workspace-example navigation history replaceall; do
+            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace idefiles workspace-example navigation history replaceall; do
                 if [[ -f "$base/$file.dis" ]]; then
                     copy_file "$base/$file.dis" "$destination/modules/$file.dis"
                     if [[ -f "$base/$file.sbl" ]]; then

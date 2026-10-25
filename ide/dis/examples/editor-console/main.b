@@ -8,6 +8,8 @@ include "idecore.m";
 include "idecomplete.m";
 # Use compiler-owned initial AS/Limbo declaration catalogs and call tips.
 include "idebuiltins.m";
+# Inspect compiled resources through an independent typed Dis file service.
+include "idefiles.m";
 
 sys: Sys;                                                # Loaded native I/O module for this frontend.
 core: Idecore;                                           # Loaded document service; owns all edits and history.
@@ -16,6 +18,8 @@ completion: Idecomplete;                                 # Loaded channel-owned 
 builtins: Idebuiltins;                                   # Loaded declaration/call-tip provider.
 ascommands: chan of Idecomplete->Request;                # Independent AS catalog owner.
 limbocommands: chan of Idecomplete->Request;              # Independent Limbo catalog owner.
+files: Idefiles;                                         # Loaded read-only resource inspector.
+filecommands: chan of Idefiles->Request;                  # File-window owner request endpoint.
 nextid := 1;                                             # Monotonic correlation ID for synchronous requests.
 MaxLine: con 4096;                                       # Maximum accepted command extent in UTF-8 bytes.
 
@@ -408,6 +412,48 @@ report(state: Idecore->Reply)
 }
 
 
+# Send one read-only resource request and consume its private acknowledgement.
+# operation/path are copied inputs. Returns the correlated file-window response.
+filecall(operation: int, path: string): Idefiles->Reply
+{
+    # Isolate the result from concurrent document/completion response channels.
+    reply := chan of Idefiles->Reply;
+    # Read only the first sixteen bytes; Shutdown ignores these window fields.
+    request := Idefiles->Request(nextid, operation, path, big 0, Sys->SEEKSTART, 16, reply);
+    # Reserve a distinct correlation identity before rendezvous.
+    nextid++;
+    # The Dis owner performs all file positioning and reading.
+    filecommands <-= request;
+    # Consume the result before reusing caller-owned values.
+    return <-reply;
+}
+
+
+# Display a read-only resource size and first sixteen bytes in hexadecimal.
+# path is a literal native path with spaces preserved. No document state is changed.
+inspect(path: string)
+{
+    # Request a bounded binary window instead of decoding arbitrary bytes as source.
+    result := filecall(files->Read, path);
+    # Keep file errors separate from editor/history status.
+    if (result.status != files->Ok) {
+        # Report plain fixed diagnostic text supplied by the file owner.
+        sys->print("ERROR inspect: %s\n", result.message);
+        # Preserve the current document and its saved revision.
+        return;
+    }
+    # big offsets preserve the file's measured extent without narrowing to int.
+    sys->print("RESOURCE size=%bd offset=%bd bytes=%d\n", result.size, result.position, len result.bytes);
+    # Emit bounded byte values, including embedded NUL, without terminal control effects.
+    for (index := 0; index < len result.bytes; index++) {
+        # Convert the byte to its unsigned hexadecimal representation.
+        sys->print("%2.2x ", int result.bytes[index]);
+    }
+    # Terminate the binary preview without changing its underlying bytes.
+    sys->print("\n");
+}
+
+
 # Display complete source using bounded writes rather than the native formatter's message limit.
 # text is immutable document data. Returns after the terminal has received every chunk.
 # Supply the documented display arguments or interface definition.
@@ -533,6 +579,8 @@ help()
     # Show this bounded result or prompt on real standard output.
     sys->print("find TEXT; replaceall OLD|NEW; undo; redo; load PATH; load! PATH; save PATH\n");
     # Show this bounded result or prompt on real standard output.
+    sys->print("inspect PATH (read-only binary resource header)\n");
+    # List language-aware catalog and parameter help.
     sys->print("complete LANGUAGE PREFIX; hint LANGUAGE NAME ARGUMENT (LANGUAGE: as or limbo)\n");
     # Explain dirty-state and offset semantics before edits.
     sys->print("quit (clean only); quit! (discard). Offsets count Unicode characters.\n");
@@ -581,6 +629,16 @@ init()
         # The runtime will visibly fail the incomplete startup.
         raise "fail: completion catalogs";
     }
+    # Resolve the actual read-only resource inspection implementation.
+    files = load Idefiles Idefiles->PATH;
+    # A missing implementation must fail before publishing its endpoint.
+    if (files == nil) {
+        # Do not substitute native editor policy.
+        raise "fail: file-window module";
+    }
+    # Start a separate Dis process owning bounded file-window requests.
+    filecommands = files->start(sys);
+    # Keep the borrowed standard-input descriptor alive throughout the command loop.
     input := sys->fildes(0);
     # Check this init boundary before consuming or publishing data.
     if (input == nil) {
@@ -645,6 +703,9 @@ init()
             # Complete this explicit init step; the owner protocol remains synchronous.
             help();
         # Handle the alternative branch of the current checked operation.
+        } else if (verb == "inspect") {
+            # Inspect literal bytes without loading them into the editable source document.
+            inspect(rest);
         } else if (verb == "complete" || verb == "hint") {
             # Parse language separately from its case-sensitive qualified prefix.
             (language, query) := splitword(rest);
@@ -858,6 +919,13 @@ init()
     if (asstopped.status != completion->Ok || limbostopped.status != completion->Ok) {
         # Expose lifecycle errors to the native application caller.
         raise "fail: completion shutdown";
+    }
+    # Drain the file owner acknowledgement before terminating the application.
+    filestopped := filecall(files->Shutdown, "");
+    # A terminal request must not leave a blocked file-service process behind.
+    if (filestopped.status != files->Ok) {
+        # Expose a real lifecycle failure instead of claiming a completed shutdown.
+        raise "fail: file-window shutdown";
     }
     state = call(core->Shutdown, state.revision, 0, 0, "", "");
     # Check this init boundary before consuming or publishing data.
