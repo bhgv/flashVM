@@ -685,7 +685,7 @@ int main(int argc, char **argv)
         {
             puts("usage: disvm [--jit|--no-jit] [--stats] [--test-control] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
-            puts("editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES] [--capture PPM]");
+            puts("editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
             return 0;

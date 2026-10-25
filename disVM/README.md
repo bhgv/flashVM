@@ -141,3 +141,11 @@ core checks have passed, including native/AMD64/ARM64 instruction comparisons.
 [Commented executable tutorial](examples/decimal-append/README.md) demonstrates
 real conversions, signed zero and retained Unicode string owners on the actual
 Dis host. [Series evidence](../docs/releases/v0.1561.md).
+
+
+## ASCII/wide decimal and clipboard checkpoint v0.1564
+
+Current pin is `1bda41a0e140dabdb76a179c867315b0421df280`. All 75 selected core
+checks pass, including the actual retained libmath parser oracle. The embedded
+editor now uses [Dis clipboard staging](../ide/dis/CLIPBOARD.md); the source
+values, captured range and one-Undo edit stay on Dis. [Series](../docs/releases/v0.1564.md).

@@ -120,8 +120,8 @@ callback сохраняет его назначение, но качество �
 
 ## Renderer integration and limits
 
-[`fvm_path_draw_quality`](../src/capi/path_c.cpp#L314) applies AGG's half-coverage threshold for LOW and Cairo's
-ANTIALIAS_NONE. [`fvm_path_mask_quality`](../src/capi/path_c.cpp#L528) carries the same choice into gradient
+[`fvm_path_draw_quality`](../src/capi/path_c.cpp#L335) applies AGG's half-coverage threshold for LOW and Cairo's
+ANTIALIAS_NONE. [`fvm_path_mask_quality`](../src/capi/path_c.cpp#L549) carries the same choice into gradient
 and bitmap paint. Solid fills, strokes and optional geometry-coverage surfaces
 use the same context selection. Bitmap paint's own smoothing option is retained;
 edge antialiasing is a separate decision.
@@ -194,8 +194,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:9](../src/jit/display.cpp#L9) |
 | `fvm_movieclip_quality_read` | function | [src/standard/movieclip_quality.cpp:35](../src/standard/movieclip_quality.cpp#L35) |
 | `fvm_movieclip_quality_write` | function | [src/standard/movieclip_quality.cpp:63](../src/standard/movieclip_quality.cpp#L63) |
-| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:314](../src/capi/path_c.cpp#L314) |
-| `fvm_path_mask_quality` | function | [src/capi/path_c.cpp:528](../src/capi/path_c.cpp#L528) |
+| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:335](../src/capi/path_c.cpp#L335) |
+| `fvm_path_mask_quality` | function | [src/capi/path_c.cpp:549](../src/capi/path_c.cpp#L549) |
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:21](../include/flashvm/stage.h#L21) |
 | `FVM_STAGE_QUALITY_HIGH` | enum constant | [include/flashvm/stage.h:15](../include/flashvm/stage.h#L15) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:26](../include/flashvm/stage.h#L26) |

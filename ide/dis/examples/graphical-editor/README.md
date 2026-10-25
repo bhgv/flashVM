@@ -109,3 +109,5 @@ Synchronous I/O may block the sole native owner.
 [Caret geometry / геометрия каретки](../../CARET.md).
 
 [Canvas resize / размер окна](../../RESIZE.md).
+
+[Clipboard / буфер обмена](../../CLIPBOARD.md).

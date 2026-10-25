@@ -13,29 +13,49 @@
 #include <SDL.h>
 #endif
 
-#define EDITOR_WIDTH 960U                          /* Initial viewport width in pixels. */
-#define EDITOR_HEIGHT 640U                         /* Initial viewport height in pixels. */
-#define EDITOR_SOURCE_MAX 4194304U                 /* Maximum assembled UTF-8 document snapshot. */
-#define EDITOR_VIEW_BYTES 4096U                    /* Bounded first-page TextField preview. */
-#define EDITOR_REPLY_META 56U                      /* Seven canonical eight-character hexadecimal words. */
-#define EDITOR_SELECTION 65536UL                   /* Dis selection notification code. */
-#define EDITOR_ZOOM 65547UL                        /* Dis-admitted font-size step proposal. */
-#define EDITOR_STYLE 65548UL                       /* Complete-view font-size and row geometry. */
-#define EDITOR_PINCH 65550UL                       /* Normalized two-finger pinch input code. */
-#define EDITOR_LEADING 2.0                         /* Explicit TextFormat leading shared by all editor geometry. */
-#define EDITOR_FONT_MIN 6                          /* Bounded minimum editor pixel size. */
-#define EDITOR_FONT_MAX 48                         /* Bounded maximum editor pixel size. */
-#define EDITOR_PINCH_THRESHOLD 0.015               /* Normalized SDL distance change per admitted zoom step. */
-#define EDITOR_PANEL 65543UL                       /* Dis-owned prompt mode, selection and counted field text. */
-#define EDITOR_VIEWPORT 65540UL                    /* Dis-owned Unicode window and monotonic view ticket. */
-#define EDITOR_SCROLL 65541UL                      /* Ticket/revision-bound logical scroll request. */
-#define EDITOR_PLACE 65542UL                       /* Ticket/revision-bound glyph hit proposal. */
-#define EDITOR_RESIZE 65552UL                      /* Raw/checked width-height proposal, bound to the completed view. */
-#define EDITOR_CANVAS 65553UL                      /* Dis-admitted pixel extent before Style and snapshot frames. */
-#define EDITOR_WIDTH_MIN 240U                      /* Bounded minimum native surface width. */
-#define EDITOR_HEIGHT_MIN 160U                     /* Bounded minimum native surface height. */
-#define EDITOR_EXTENT_MAX 2048U                    /* Bound each dimension and the RGBA allocation to 16 MiB. */
-#define EDITOR_QUIT 65539UL                        /* Dis controller's dirty-checked close operation. */
+#define EDITOR_WIDTH 960U                /* Initial viewport width in pixels. */
+#define EDITOR_HEIGHT 640U               /* Initial viewport height in pixels. */
+#define EDITOR_SOURCE_MAX 4194304U       /* Maximum assembled UTF-8 document snapshot. */
+#define EDITOR_VIEW_BYTES 4096U          /* Bounded first-page TextField preview. */
+#define EDITOR_REPLY_META 56U            /* Seven canonical eight-character hexadecimal words. */
+#define EDITOR_SELECTION 65536UL         /* Dis selection notification code. */
+#define EDITOR_ZOOM 65547UL              /* Dis-admitted font-size step proposal. */
+#define EDITOR_STYLE 65548UL             /* Complete-view font-size and row geometry. */
+#define EDITOR_PINCH 65550UL             /* Normalized two-finger pinch input code. */
+#define EDITOR_LEADING 2.0               /* Explicit TextFormat leading shared by all editor geometry. */
+#define EDITOR_FONT_MIN 6                /* Bounded minimum editor pixel size. */
+#define EDITOR_FONT_MAX 48               /* Bounded maximum editor pixel size. */
+#define EDITOR_PINCH_THRESHOLD 0.015     /* Normalized SDL distance change per admitted zoom step. */
+#define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
+#define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
+#define EDITOR_SCROLL 65541UL            /* Ticket/revision-bound logical scroll request. */
+#define EDITOR_PLACE 65542UL             /* Ticket/revision-bound glyph hit proposal. */
+#define EDITOR_RESIZE 65552UL            /* Raw/checked width-height proposal, bound to the completed view. */
+#define EDITOR_CANVAS 65553UL            /* Dis-admitted pixel extent before Style and snapshot frames. */
+#define EDITOR_WIDTH_MIN 240U            /* Bounded minimum native surface width. */
+#define EDITOR_HEIGHT_MIN 160U           /* Bounded minimum native surface height. */
+#define EDITOR_EXTENT_MAX 2048U          /* Bound each dimension and the RGBA allocation to 16 MiB. */
+#define EDITOR_QUIT 65539UL              /* Dis controller's dirty-checked close operation. */
+
+#define EDITOR_CLIP_WRITE 65554UL        /* Dis-authorized source selection copied to native clipboard. */
+#define EDITOR_CLIP_READ 65556UL         /* Dis request for one immutable native clipboard snapshot. */
+#define EDITOR_CLIP_DATA 65557UL         /* Revision/transfer-bound ordered paste fragment. */
+#define EDITOR_CLIP_CONTINUE 65559UL     /* One fragment credit without retransmitting an unchanged source view. */
+#define EDITOR_CLIP_ACK 65558UL          /* Acknowledged clipboard write or explicit read failure. */
+#define EDITOR_CLIP_MAX 65536U           /* Bound each clipboard snapshot and staged paste in UTF-8 bytes. */
+#define EDITOR_CLIP_OK 0                 /* Successful copied-value result, matching Idecore. */
+#define EDITOR_CLIP_TOO_LARGE 3          /* UTF-8 clipboard bound rejected before any source edit. */
+#define EDITOR_CLIP_INVALID 4            /* Native API, allocation, NUL or UTF-8 admission failure. */
+#define EDITOR_CLIP_PREFIX 8U            /* Original completed-view ticket before each Unicode body. */
+
+static char *clipboard_text;             /* Owned replay clipboard value; also retains successful native writes. */
+static char *clipboard_transfer;         /* Owned immutable UTF-8 read snapshot until its last copied fragment. */
+static size_t clipboard_total;           /* Staged clipboard bytes, at most EDITOR_CLIP_MAX. */
+static size_t clipboard_offset;          /* Next byte offset to emit, never a Unicode source coordinate. */
+static unsigned long clipboard_ticket;   /* Original view identity retained across fragment acknowledgements. */
+static unsigned long clipboard_revision; /* Source revision captured by the Dis-authorized native command. */
+static int clipboard_ack;                /* One pending acknowledgement; zero means none. */
+static int clipboard_status;             /* Copied Idecore status: 0 success, 3 too large, 4 invalid/native error. */
 
 static unsigned int canvas_width = EDITOR_WIDTH;   /* Last Dis-admitted raster/field width in pixels. */
 static unsigned int canvas_height = EDITOR_HEIGHT; /* Last Dis-admitted raster/field height in pixels. */
@@ -82,6 +102,7 @@ static size_t display_size;            /* Current display UTF-8 byte length, at 
 static FVM_TextLayout *hit_layout;     /* Owned actual glyph layout for the completed view. */
 static double horizontal;              /* Renderer pixel translation, never a document coordinate. */
 static int complete;                   /* A selection frame completed the current view. */
+static int system_clipboard_events;    /* Explicit SDL clipboard replay check; ordinary replay remains isolated. */
 static int window_replay;              /* Explicit SDL upload check with deterministic input. */
 static int assembling;                 /* A document snapshot is being assembled. */
 #ifdef DVM_EDITOR_SDL
@@ -144,6 +165,12 @@ int dvm_editor_option(const char *name, const char *value)
     {
         event_path = value;
         window_replay = 1;
+    }
+    else if (!strcmp(name, "--clipboard-events"))
+    {
+        event_path = value;
+        window_replay = 1;
+        system_clipboard_events = 1;
     }
     else if (!strcmp(name, "--capture"))
     {
@@ -663,6 +690,174 @@ static size_t document_byte(long position)
 }
 
 
+/* Queue one copied clipboard result for the next ordinary input rendezvous.
+ * status is an Idecore-compatible scalar; no source edit or channel operation occurs here. */
+static void clipboard_result(int status)
+{
+    clipboard_status = status;
+    clipboard_ack = 1;
+}
+
+
+/* Execute a Dis-authorized clipboard command against the previous complete immutable snapshot.
+ * message is borrowed. Returns zero for a framing/identity error, one for a queued value outcome.
+ * Native buffers remain owner-local; failed writes never authorize a Cut source mutation.
+ * Platform clipboard access may block this native UI owner; no Dis heap pointer escapes. */
+static int clipboard_command(const DVM_UIMessage *message)
+{
+    unsigned long ticket;
+    char *candidate;
+    const char *source;
+    size_t length;
+    size_t first;
+    size_t last;
+    size_t scalars;
+    if (assembling || clipboard_ack || clipboard_transfer || message->size != EDITOR_CLIP_PREFIX ||
+        message->flags != revision || message->flags != view_revision || !hexword(message->text, &ticket) ||
+        ticket != view_ticket)
+    {
+        return 0;
+    }
+    clipboard_ticket = ticket;
+    clipboard_revision = message->flags;
+    if (message->code == EDITOR_CLIP_WRITE)
+    {
+        if (message->first < 0 || message->second < message->first || (unsigned long)message->second > view_total)
+        {
+            return 0;
+        }
+        first = document_byte(message->first);
+        last = document_byte(message->second);
+        length = last - first;
+        if (length > EDITOR_CLIP_MAX)
+        {
+            clipboard_result(EDITOR_CLIP_TOO_LARGE);
+            return 1;
+        }
+        if (memchr(snapshot + first, 0, length))
+        {
+            clipboard_result(EDITOR_CLIP_INVALID);
+            return 1;
+        }
+        candidate = malloc(length + 1);
+        if (!candidate)
+        {
+            clipboard_result(EDITOR_CLIP_INVALID);
+            return 1;
+        }
+        memcpy(candidate, snapshot + first, length);
+        candidate[length] = 0;
+#ifdef DVM_EDITOR_SDL
+        if ((!events || system_clipboard_events) && SDL_SetClipboardText(candidate) != 0)
+        {
+            free(candidate);
+            clipboard_result(EDITOR_CLIP_INVALID);
+            return 1;
+        }
+#endif
+        free(clipboard_text);
+        clipboard_text = candidate;
+        clipboard_result(EDITOR_CLIP_OK);
+        return 1;
+    }
+    if (message->first || message->second)
+    {
+        return 0;
+    }
+    source = clipboard_text ? clipboard_text : "";
+#ifdef DVM_EDITOR_SDL
+    candidate = !events || system_clipboard_events ? SDL_GetClipboardText() : 0;
+    if (!events || system_clipboard_events)
+    {
+        if (!candidate)
+        {
+            clipboard_result(EDITOR_CLIP_INVALID);
+            return 1;
+        }
+        source = candidate;
+    }
+#endif
+    length = 0;
+    while (length <= EDITOR_CLIP_MAX && source[length])
+    {
+        length++;
+    }
+    clipboard_status = length > EDITOR_CLIP_MAX                                     ? 3
+                       : fvm_utf8_validate(source, length, &scalars) == FVM_UTF8_OK ? 0
+                                                                                    : 4;
+    clipboard_transfer = clipboard_status ? 0 : malloc(length + 1);
+    if (!clipboard_status && !clipboard_transfer)
+    {
+        clipboard_status = EDITOR_CLIP_INVALID;
+    }
+    if (!clipboard_status)
+    {
+        memcpy(clipboard_transfer, source, length + 1);
+        clipboard_total = length;
+        clipboard_offset = 0;
+    }
+#ifdef DVM_EDITOR_SDL
+    if (!events || system_clipboard_events)
+    {
+        SDL_free(candidate);
+    }
+#endif
+    if (clipboard_status)
+    {
+        clipboard_result(clipboard_status);
+    }
+    return 1;
+}
+
+
+/* Copy at most one acknowledged result or Unicode-aligned read fragment into message.
+ * message is caller-owned. Returns one for a pending result; zero leaves ordinary input available.
+ * Bytes are copied before native storage is freed; a later document edit is solely Dis policy. */
+static int clipboard_event(DVM_UIMessage *message)
+{
+    char identity[9];
+    size_t count;
+    if (!clipboard_ack && !clipboard_transfer)
+    {
+        return 0;
+    }
+    message->kind = DVM_UI_REQUEST;
+    message->id = 1;
+    message->flags = clipboard_revision;
+    snprintf(identity, sizeof(identity), "%08lx", clipboard_ticket);
+    memcpy(message->text, identity, EDITOR_CLIP_PREFIX);
+    message->size = EDITOR_CLIP_PREFIX;
+    if (clipboard_ack)
+    {
+        message->code = EDITOR_CLIP_ACK;
+        message->first = clipboard_status;
+        clipboard_ack = 0;
+        return 1;
+    }
+    count = clipboard_total - clipboard_offset;
+    if (count > DVM_UI_TEXT_MAX - EDITOR_CLIP_PREFIX)
+    {
+        count = DVM_UI_TEXT_MAX - EDITOR_CLIP_PREFIX;
+        while (count && ((unsigned char)clipboard_transfer[clipboard_offset + count] & 0xc0U) == 0x80U)
+        {
+            count--;
+        }
+    }
+    message->code = EDITOR_CLIP_DATA;
+    message->first = (long)clipboard_offset;
+    message->second = (long)clipboard_total;
+    memcpy(message->text + EDITOR_CLIP_PREFIX, clipboard_transfer + clipboard_offset, count);
+    message->size += count;
+    clipboard_offset += count;
+    if (clipboard_offset == clipboard_total)
+    {
+        free(clipboard_transfer);
+        clipboard_transfer = 0;
+    }
+    return 1;
+}
+
+
 /* Paint acknowledged caret/selection using the same face/size and FlashVM layout.
  * surface is borrowed; shown bounds the preview. Returns zero on layout/raster failure.
  * Combining/bidi clusters highlight as glyph clusters; no native editing policy is inferred. */
@@ -1097,6 +1292,22 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code == EDITOR_CLIP_CONTINUE)
+    {
+        unsigned long ticket;
+        if (complete || assembling || !clipboard_transfer || message->size != EDITOR_CLIP_PREFIX ||
+            message->flags != clipboard_revision || message->first != (long)clipboard_offset ||
+            message->second != (long)clipboard_total || !hexword(message->text, &ticket) || ticket != clipboard_ticket)
+        {
+            return 0;
+        }
+        complete = 1;
+        return 1;
+    }
+    if (message->code == EDITOR_CLIP_WRITE || message->code == EDITOR_CLIP_READ)
+    {
+        return clipboard_command(message);
+    }
     if (message->code == EDITOR_CANVAS)
     {
         if (assembling || message->first < EDITOR_WIDTH_MIN || message->second < EDITOR_HEIGHT_MIN ||
@@ -1453,6 +1664,11 @@ int dvm_editor_event(DVM_UIMessage *message)
         return 0;
     }
     memset(message, 0, sizeof(*message));
+    if (clipboard_event(message))
+    {
+        complete = 0;
+        return 1;
+    }
     if (events)
     {
         unsigned char length[4];
@@ -1683,6 +1899,8 @@ void dvm_editor_destroy(void)
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);
     free(snapshot);
+    free(clipboard_text);
+    free(clipboard_transfer);
     free(pixels);
     free(font_bytes);
     free(default_font_path);

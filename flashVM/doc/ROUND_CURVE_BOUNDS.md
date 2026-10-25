@@ -10,7 +10,7 @@ Move only changes the contour origin and contributes no stroke. Constant line/qu
 
 [fvm_path_stroke_bounds_style](../src/capi/path_hit_c.cpp#L733) borrows an immutable path, accepts a finite positive width up to 1,000,000 destination units, valid cap/join selectors, and two required caller-owned output pointers. It allocates nothing, executes no callbacks or GC and needs no context. Errors preserve both outputs. Invalid selectors/widths/pointers return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Curves with butt/square caps or bevel joins still return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) without publishing outputs. Concurrent path mutation is forbidden.
 
-Derivative roots use a [shared internal math module](../src/render/curve_bounds.hpp) extracted from the existing [fvm_path_bounds](../src/capi/path_c.cpp#L239). The public function retains its formulas and existing inclusion of isolated Moves. The new round walker deliberately excludes moves without strokes. Zero authored width still becomes one destination unit in managed traversal; positive width keeps the existing maximum-axis transform metric. A complete positive-width collapse creates no stroke.
+Derivative roots use a [shared internal math module](../src/render/curve_bounds.hpp) extracted from the existing [fvm_path_bounds](../src/capi/path_c.cpp#L260). The public function retains its formulas and existing inclusion of isolated Moves. The new round walker deliberately excludes moves without strokes. Zero authored width still becomes one destination unit in managed traversal; positive width keeps the existing maximum-axis transform metric. A complete positive-width collapse creates no stroke.
 
 ## MovieClip and remaining limits
 

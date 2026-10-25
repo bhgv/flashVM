@@ -90,3 +90,5 @@ Noto и сравнивают настоящие растры.
 [Caret geometry / геометрия каретки](../../CARET.ru.md).
 
 [Canvas resize / размер окна](../../RESIZE.ru.md).
+
+[Clipboard / буфер обмена](../../CLIPBOARD.ru.md).

@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.5.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.6.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -76,7 +76,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append)
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -90,7 +90,7 @@ set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworksp
   "${root}/disVM/examples/standard-modules/main.b"
   "${root}/ide/dis/bridge/ideviewport.b"
   "${root}/ide/dis/bridge/idefileops.b" "${root}/ide/dis/bridge/idesearch.b"
-  "${root}/disVM/examples/decimal-append/main.b")
+  "${root}/disVM/examples/decimal-append/main.b" "${root}/ide/dis/bridge/ideclipboard.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
@@ -108,7 +108,7 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   set(binary "${CMAKE_CURRENT_BINARY_DIR}/${test}-test.dis")
   add_custom_command(OUTPUT "${binary}"
@@ -309,7 +309,16 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_resize.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}")
     set_tests_properties(disvm_graphical_resize_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_graphical_clipboard_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_clipboard.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}")
+    set_tests_properties(disvm_graphical_clipboard_${mode} PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
     if(DVM_EDITOR_SDL)
+      add_test(NAME disvm_graphical_clipboard_sdl_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_clipboard.py" "$<TARGET_FILE:disvm-editor>"
+        "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}" sdl)
+      set_tests_properties(disvm_graphical_clipboard_sdl_${mode} PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy")
       add_test(NAME disvm_graphical_resize_sdl_${mode} COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_resize.py" "$<TARGET_FILE:disvm-editor>"
         "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" DEFAULT "${mode}" window)

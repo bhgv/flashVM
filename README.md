@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1561**. [Русская версия](README.ru.md).
+Development version: **0.1564**. [Русская версия](README.ru.md).
 
-Current series: [v0.1559–v0.1561](docs/releases/v0.1561.md) integrates Inferno real-decimal/append/comparison paths, adds Dis-admitted editor window resizing, and ships a commented executable numeric/Unicode tutorial.
+Current series: [v0.1562–v0.1564](docs/releases/v0.1564.md) integrates Inferno ASCII/wide decimals, removes repeated path-prefix copying, and adds channel-owned Unicode Copy/Cut/Paste with one Undo.
 
 ## Browse documentation
 

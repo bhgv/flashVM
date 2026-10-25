@@ -25,6 +25,9 @@ def main():
     if (package / "examples/graphical-editor").is_dir():
         for name in ("README.md", "README.ru.md", "main.b"):
             pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
+    clipboard_tutorial = package / "examples/graphical-editor/clipboard-demo.b"
+    if clipboard_tutorial.is_file():
+        pairs[root / "ide/dis/examples/graphical-editor/clipboard-demo.b"] = clipboard_tutorial
     if (package / "examples/decimal-append").is_dir():
         for name in ("README.md", "README.ru.md", "main.b"):
             pairs[root / "disVM/examples/decimal-append" / name] = package / "examples/decimal-append" / name

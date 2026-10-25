@@ -3,7 +3,7 @@
 [English](PATH_APPEND_GROWTH.md) · [Реализация](../src/capi/path_c.cpp) ·
 [Проверка выделений, ошибок и alias](../tests/path_append_transaction.cpp).
 
-Раньше fvm_path_append копировал весь накопленный путь при каждом новом глифе
+Раньше [fvm_path_append](../include/flashvm/path.h#L91) копировал весь накопленный путь при каждом новом глифе
 или фрагменте. Сборка длинного TextField многократно выделяла память и копировала
 один префикс. Граничный тест буфера обмена обнаружил превышение действующего
 лимита времени редактора на длинной строке размером 64 КиБ.
@@ -12,7 +12,7 @@
 включая source==destination. Все проверки преобразования и потенциально
 неуспешные выделения выполняются до записи команд назначения. Геометрический
 рост ёмкости исключает перевыделение на каждом маленьком добавлении.
-FVM_PathCommand содержит только POD-скаляры: после успешного reserve добавления
+[FVM_PathCommand](../include/flashvm/path.h#L30) содержит только POD-скаляры: после успешного reserve добавления
 не выделяют память и не бросают исключения. Состояние открытого контура
 публикуется после всех команд; пустой источник его сохраняет.
 
@@ -26,3 +26,16 @@ FVM_PathCommand содержит только POD-скаляры: после у�
 проходит. Прошли 125 выбранных backend-independent проверок path/raster;
 графический редактор и UBSan проверяются в составе серии рабочего пространства.
 Все девять стадий roadmap и общая reference/device-проверка остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_path_append` | function | [include/flashvm/path.h:91](../include/flashvm/path.h#L91) |
+| `FVM_PathCommand` | struct | [include/flashvm/path.h:30](../include/flashvm/path.h#L30) |
+<!-- source-links:end -->

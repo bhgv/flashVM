@@ -7,6 +7,7 @@ include "idebridge.m"; # Reuse the bounded snapshot serializer.
 include "idefileops.m"; # Reuse bounded source I/O independently of any renderer.
 include "idesearch.m"; # Reuse literal document operations through typed channels.
 include "ideviewport.m"; # Keep viewport decisions and bounds in a separate Dis module.
+include "ideclipboard.m"; # Keep copied clipboard fragments in an exclusive Dis staging owner.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
 GraphicalEditor: module # Parameterless entry accepted by the experimental host.
@@ -46,6 +47,28 @@ readsource(path: string): (int, string)
 writesource(path: string, text: string): int
 {
     return files->write(sys, path, text) == files->Ok; # The library validates before creating or overwriting.
+}
+
+
+# Publish one clipboard edit through the real document owner, never the renderer.
+# Range/text are copied values at the captured revision; returns the acknowledged source snapshot.
+clipboardedit(document: chan of Idecore->Request, revision, first, last: int, text: string): Idecore->Reply
+{
+    answers := chan of Idecore->Reply;
+    document <-= Idecore->Request(1, core->Replace, revision, first, last, text, "", answers);
+    return <-answers;
+}
+
+
+# Preserve the visible last operation result across modifier/key-release/focus observations.
+# Replies and event are copied/borrowed values; a new source revision always supplies its own status.
+inputreply(previous, current: Idecore->Reply, event: ref Uibridge->Message): Idecore->Reply
+{
+    if (previous.revision == current.revision && (event.kind == Uibridge->Focus
+        || (event.kind == Uibridge->Key && (!event.flags || event.code == 16 || event.code == 17)))) {
+        current.status = previous.status;
+    }
+    return current;
 }
 
 
@@ -152,8 +175,9 @@ init()
     bridge = load Idebridge Idebridge->PATH; # Link the existing snapshot encoder.
     policy := load Ideinput Ideinput->PATH; # Link Dis-owned input policy.
     viewport := load Ideviewport Ideviewport->PATH; # Link the bounded logical-line viewport.
+    clipboard := load Ideclipboard Ideclipboard->PATH; # Load reusable bounded clipboard value staging.
     host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
-    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil) { # Require all real modules.
+    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
     }
     input := chan of array of byte; # The native owner offers copied events here.
@@ -187,59 +211,120 @@ init()
     selected := 0; # Ctrl+A marks the complete prompt for replacement by the next text input.
     query := ""; # Last literal query, reused by F3 and replacement.
     dragging := 0; # Only an admitted pointer begin starts a Dis selection gesture.
+    transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
-        if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
-            raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
-        }
-        canvas := ref Uibridge->Message(codec->View, 0, host->Canvas, reply.revision, width, height, "");
-        (canvasok, canvaswire) := codec->encode(canvas); # Publish only copied pixel dimensions.
-        if (!canvasok) {
-            raise "fail: graphical editor canvas";
-        }
-        output <-= canvaswire; # Admit native allocation before its matching font/row geometry.
-        style := ref Uibridge->Message(codec->View, 0, host->Style, reply.revision, fontsize, window.rows, ""); # Publish Dis-owned font/row policy.
-        (styleok, stylewire) := codec->encode(style); # Style is a value, never a TextField pointer.
-        if (!styleok) { # Invalid style must fail visibly before the following snapshot.
-            raise "fail: graphical editor style"; # Never continue with mismatched hit geometry.
-        }
-        output <-= stylewire; # Native geometry is committed before the matching viewport/snapshot.
-        paneltext := prompt; # Active input fields are Dis-owned values.
-        if (mode == 0) { # An inactive panel reports the selected document path.
-            paneltext = path; # Save As only changes this path after successful output.
-            if (len paneltext > 200) { # Bound the label without changing the actual file destination.
-                paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
+        if (transfer.action == clipboard->Paste && transfer.total >= 0 && transfer.used < transfer.total) {
+            credit := ref Uibridge->Message(codec->View, 0, host->ClipboardContinue, transfer.revision,
+                                           transfer.used, transfer.total, codec->hexword(transfer.ticket));
+            (credited, creditwire) := codec->encode(credit);
+            if (!credited) {
+                raise "fail: graphical editor clipboard credit";
             }
+            output <-= creditwire; # No unchanged document retransmission between private paste fragments.
+        } else {
+            if (ticket == 2147483647) { # Never wrap a view identity onto a stale input.
+                raise "fail: graphical editor view ticket exhausted"; # Stop with explicit exhaustion.
+            }
+            canvas := ref Uibridge->Message(codec->View, 0, host->Canvas, reply.revision, width, height, "");
+            (canvasok, canvaswire) := codec->encode(canvas); # Publish only copied pixel dimensions.
+            if (!canvasok) {
+                raise "fail: graphical editor canvas";
+            }
+            output <-= canvaswire; # Admit native allocation before its matching font/row geometry.
+            style := ref Uibridge->Message(codec->View, 0, host->Style, reply.revision, fontsize, window.rows, ""); # Publish Dis-owned font/row policy.
+            (styleok, stylewire) := codec->encode(style); # Style is a value, never a TextField pointer.
+            if (!styleok) { # Invalid style must fail visibly before the following snapshot.
+                raise "fail: graphical editor style"; # Never continue with mismatched hit geometry.
+            }
+            output <-= stylewire; # Native geometry is committed before the matching viewport/snapshot.
+            paneltext := prompt; # Active input fields are Dis-owned values.
+            if (mode == 0) { # An inactive panel reports the selected document path.
+                paneltext = path; # Save As only changes this path after successful output.
+                if (len paneltext > 200) { # Bound the label without changing the actual file destination.
+                    paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
+                }
+            }
+            panel := ref Uibridge->Message(codec->View, 0, host->Panel, reply.revision, mode, selected, paneltext); # Publish prompt state by channel.
+            (panelok, panelwire) := codec->encode(panel); # Validate the counted Unicode field.
+            if (!panelok) { # Invalid UI state must fail visibly, not mutate native widgets directly.
+                raise "fail: graphical editor panel"; # No successful dummy panel response is substituted.
+            }
+            output <-= panelwire; # Panel and viewport are committed together at the final selection record.
+            ticket++; # Give every published view a distinct scalar identity.
+            (first, last, top) := viewport->window(window, reply.text, state.caret, reveal); # Bound the display window.
+            metadata := codec->hexword(top) + codec->hexword(len reply.text) + codec->hexword(ticket); # No heap addresses.
+            placement := ref Uibridge->Message(codec->View, 0, host->Viewport, reply.revision, first, last, metadata); # Dis owns visible bounds.
+            (placed, geometry) := codec->encode(placement); # Validate the copied viewport record.
+            if (!placed) { # Reject malformed metadata before any snapshot fragment.
+                raise "fail: graphical editor viewport"; # Never fabricate a valid view.
+            }
+            output <-= geometry; # Publish viewport identity before its document fragments.
+            if (!bridge->sendreply(codec, output, reply, 1)) { # Send a complete Unicode-aligned snapshot.
+                raise "fail: graphical editor snapshot"; # A framing failure is terminal.
+            }
+            view := ref Uibridge->Message(codec->View, 0, 65536, reply.revision, state.caret, state.anchor, ""); # Selection is Dis authority.
+            (encoded, selection) := codec->encode(view); # Encode only copied scalar coordinates.
+            if (!encoded) { # Refuse invalid coordinates/format before sending.
+                raise "fail: graphical editor selection"; # Surface the protocol failure.
+            }
+            output <-= selection; # Complete the view before receiving another event.
         }
-        panel := ref Uibridge->Message(codec->View, 0, host->Panel, reply.revision, mode, selected, paneltext); # Publish prompt state by channel.
-        (panelok, panelwire) := codec->encode(panel); # Validate the counted Unicode field.
-        if (!panelok) { # Invalid UI state must fail visibly, not mutate native widgets directly.
-            raise "fail: graphical editor panel"; # No successful dummy panel response is substituted.
-        }
-        output <-= panelwire; # Panel and viewport are committed together at the final selection record.
-        ticket++; # Give every published view a distinct scalar identity.
-        (first, last, top) := viewport->window(window, reply.text, state.caret, reveal); # Bound the display window.
-        metadata := codec->hexword(top) + codec->hexword(len reply.text) + codec->hexword(ticket); # No heap addresses.
-        placement := ref Uibridge->Message(codec->View, 0, host->Viewport, reply.revision, first, last, metadata); # Dis owns visible bounds.
-        (placed, geometry) := codec->encode(placement); # Validate the copied viewport record.
-        if (!placed) { # Reject malformed metadata before any snapshot fragment.
-            raise "fail: graphical editor viewport"; # Never fabricate a valid view.
-        }
-        output <-= geometry; # Publish viewport identity before its document fragments.
-        if (!bridge->sendreply(codec, output, reply, 1)) { # Send a complete Unicode-aligned snapshot.
-            raise "fail: graphical editor snapshot"; # A framing failure is terminal.
-        }
-        view := ref Uibridge->Message(codec->View, 0, 65536, reply.revision, state.caret, state.anchor, ""); # Selection is Dis authority.
-        (encoded, selection) := codec->encode(view); # Encode only copied scalar coordinates.
-        if (!encoded) { # Refuse invalid coordinates/format before sending.
-            raise "fail: graphical editor selection"; # Surface the protocol failure.
-        }
-        output <-= selection; # Complete the view before receiving another event.
         frame := <-input; # Block this process while native rendering/events continue.
         (valid, event) := codec->decode(frame); # Reject malformed transport input.
         if (!valid) { # Do not execute unvalidated event fields.
             raise "fail: graphical editor input"; # The native host reports failure.
         }
         reveal = 0; # Wheel/modifier events must not snap the viewport back to the caret.
+        if (event.kind == codec->Request && event.code == host->ClipboardAck) {
+            identity := array of byte event.text;
+            (known, seen) := codec->parseword(identity, 0);
+            if (transfer.action == clipboard->None || !known || len identity != 8 || seen != transfer.ticket
+                || event.flags != transfer.revision || reply.revision != transfer.revision) {
+                reply.status = core->Conflict;
+            } else if (event.second != 0 || (event.first != core->Ok && event.first != core->TooLarge && event.first != core->Invalid)
+                       || (transfer.action == clipboard->Paste && event.first == core->Ok)) {
+                reply.status = core->Invalid;
+            } else if (event.first != core->Ok) {
+                reply.status = event.first; # Native errors never authorize source deletion.
+            } else if (transfer.action == clipboard->Cut) {
+                reply = clipboardedit(document, transfer.revision, transfer.first, transfer.last, "");
+                if (reply.status == core->Ok) {
+                    position := transfer.first;
+                    policy->observe(state, reply);
+                    policy->select(state, reply, position, position);
+                    reveal = 1;
+                }
+            } else {
+                reply.status = core->Ok; # Copy changes neither selection nor source/history/saved state.
+            }
+            clipboard->reset(transfer);
+            continue;
+        }
+        if (event.kind == codec->Request && event.code == host->ClipboardData) {
+            first := transfer.first; # Retain value coordinates before a complete fragment releases staging.
+            last := transfer.last;
+            captured := transfer.revision;
+            if (captured != reply.revision) {
+                clipboard->reset(transfer);
+                reply.status = core->Conflict;
+            } else {
+                (status, ready, text) := clipboard->chunk(codec, transfer, event);
+                reply.status = status;
+                if (ready && text != "") { # Empty clipboard is a no-op, including a nonempty selection.
+                    reply = clipboardedit(document, captured, first, last, text);
+                    if (reply.status == core->Ok) {
+                        position := first + len text;
+                        policy->observe(state, reply);
+                        policy->select(state, reply, position, position);
+                        reveal = 1;
+                    }
+                }
+            }
+            continue; # No partial prefix is ever submitted as an edit or Undo entry.
+        }
+        if (transfer.action != clipboard->None) {
+            clipboard->reset(transfer); # Unrelated input retires the staged range and all private bytes.
+        }
         if (event.kind == codec->Request && event.code == host->Resize) {
             metadata := array of byte event.text; # Exactly two canonical words, never a pointer/struct.
             (known, seen) := codec->parseword(metadata, 0);
@@ -289,7 +374,7 @@ init()
                 if (!admitted) { # Never use malformed input to alter field policy.
                     raise "fail: graphical editor prompt modifier"; # Report a protocol failure.
                 }
-                reply = observed.document; # Preserve current document metadata.
+                reply = inputreply(reply, observed.document, event); # Modifier release cannot erase a field error.
                 if (event.kind == codec->Focus && event.flags == 0) { # Focus loss retires any gesture.
                     dragging = 0; # Returning focus cannot resume a hidden drag.
                 }
@@ -380,6 +465,43 @@ init()
             continue; # A field event is never also applied to the source document.
         }
         if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
+            if (event.code == 67 || event.code == 88 || event.code == 86) { # Ctrl+C/X/V are document-only channel actions.
+                first := state.caret;
+                last := state.anchor;
+                if (first > last) {
+                    (first, last) = (last, first);
+                }
+                action := clipboard->Copy;
+                code := host->ClipboardWrite;
+                if (event.code == 88) {
+                    action = clipboard->Cut;
+                } else if (event.code == 86) {
+                    action = clipboard->Paste;
+                    code = host->ClipboardRead;
+                }
+                if (first == last && action != clipboard->Paste) {
+                    reply.status = core->Ok; # No selection leaves the native clipboard and history intact.
+                    continue;
+                }
+                if (!clipboard->begin(transfer, action, ticket, reply.revision, first, last)) {
+                    raise "fail: graphical editor clipboard admission";
+                }
+                low := first;
+                high := last;
+                if (action == clipboard->Paste) {
+                    low = 0;
+                    high = 0;
+                }
+                command := ref Uibridge->Message(codec->View, 0, code, reply.revision, low, high, codec->hexword(ticket));
+                (accepted, wire) := codec->encode(command);
+                if (!accepted) {
+                    raise "fail: graphical editor clipboard request";
+                }
+                output <-= wire; # Native access returns copied acknowledgement/data events, never an edit.
+                dragging = 0;
+                reply.status = core->Ok;
+                continue;
+            }
             if (event.code == 70 || event.code == 71 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
                 mode = 1; # Ctrl+F starts literal Find.
                 prompt = query; # Reuse the previous literal query as editable field text.
@@ -534,7 +656,7 @@ init()
             if (!admitted) { # Reject unknown/malformed input explicitly.
                 raise "fail: graphical editor input policy"; # Native host reports the error.
             }
-            reply = result.document; # Publish only the owner's acknowledged snapshot.
+            reply = inputreply(reply, result.document, event); # Keep diagnostics until a real new operation.
         }
     }
 }

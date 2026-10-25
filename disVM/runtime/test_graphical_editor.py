@@ -24,7 +24,7 @@ def shortcut(letter):
 
 # Execute actual bytecode from a relocated cwd; collect independently decoded view snapshots.
 # Paths are explicit. Raises on timeout, failed execution or invalid mode counters.
-def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640)):
+def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640), native_clipboard=False):
     replay = directory / "input frames.bin"
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
@@ -32,7 +32,7 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
     if font is not None:
         command += ["--font", str(font)]
     command += ["--new" if fresh else "--document", str(source),
-                "--window-events" if len(sys.argv) > 5 else "--events", str(replay),
+                "--clipboard-events" if native_clipboard else ("--window-events" if len(sys.argv) > 5 else "--events"), str(replay),
                 "--capture", str(capture), str(module)]
     result = subprocess.run(command, cwd=directory, capture_output=True, text=True, timeout=40)
     if not success:

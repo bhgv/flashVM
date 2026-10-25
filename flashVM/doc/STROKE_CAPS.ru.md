@@ -21,8 +21,8 @@ DefineShape4 рисует одинаковые round, butt (без удлине�
 внешние значения возвращают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47) до записи пикселей этой
 обводки. Сцена в целом не является транзакцией.
 
-Внутренние селекторы вызова [fvm_path_draw_quality](../src/capi/path_c.cpp#L314),
-[fvm_path_mask_width_quality](../src/capi/path_c.cpp#L536), [fvm_path_gradient_focal_quality](../src/capi/gradient_c.cpp#L315) и
+Внутренние селекторы вызова [fvm_path_draw_quality](../src/capi/path_c.cpp#L335),
+[fvm_path_mask_width_quality](../src/capi/path_c.cpp#L557), [fvm_path_gradient_focal_quality](../src/capi/gradient_c.cpp#L315) и
 [fvm_path_bitmap_paint_quality](../src/capi/bitmap_paint_c.cpp#L210) передают одну геометрию в сплошной цвет, маски
 градиента/bitmap и покрытие BitmapData.draw. Аргументы заимствуются на время
 синхронного вызова, callbacks не вызываются, глобальный стиль/кеш не сохраняется.
@@ -74,9 +74,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `fvm_path_bitmap_paint_quality` | function | [src/capi/bitmap_paint_c.cpp:210](../src/capi/bitmap_paint_c.cpp#L210) |
-| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:314](../src/capi/path_c.cpp#L314) |
+| `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:335](../src/capi/path_c.cpp#L335) |
 | `fvm_path_gradient_focal_quality` | function | [src/capi/gradient_c.cpp:315](../src/capi/gradient_c.cpp#L315) |
-| `fvm_path_mask_width_quality` | function | [src/capi/path_c.cpp:536](../src/capi/path_c.cpp#L536) |
+| `fvm_path_mask_width_quality` | function | [src/capi/path_c.cpp:557](../src/capi/path_c.cpp#L557) |
 | `fvm_swf_read_shape` | function | [src/swf/shape.cpp:600](../src/swf/shape.cpp#L600) |
 | `fvm_swf_shape_build` | function | [src/swf/shape_graph.cpp:137](../src/swf/shape_graph.cpp#L137) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |

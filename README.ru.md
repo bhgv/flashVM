@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1561**. [English](README.md).
+Версия разработки: **0.1564**. [English](README.md).
 
-Текущая серия: [v0.1559–v0.1561](docs/releases/v0.1561.md) — real/append/сравнения из Inferno, изменение размера окна через Dis и комментированный исполняемый пример чисел/Unicode.
+Текущая серия: [v0.1562–v0.1564](docs/releases/v0.1564.md) — ASCII/расширенные числа из Inferno, сборка путей без повторного копирования префикса и Unicode Copy/Cut/Paste через каналы с одним Undo.
 
 ## Просмотр документации
 

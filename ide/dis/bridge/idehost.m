@@ -24,6 +24,13 @@ Idehost: module
     Resize: con 65552;    # Request width/height in pixels; text is ticket+row-capacity hex, flags=revision.
     Canvas: con 65553;    # View admitted width 240..2048 and height 160..2048 before Style.
 
+    ClipboardWrite: con 65554; # View authorized source selection; flags=revision, first/last, text=ticket.
+    ClipboardRead: con 65556; # View request for a bounded native UTF-8 clipboard snapshot, text=ticket.
+    ClipboardData: con 65557; # Request ordered paste fragment: offset/total bytes, text=ticket+body.
+    ClipboardAck: con 65558; # Request write/read error acknowledgement: first=status, text=ticket.
+
+    ClipboardContinue: con 65559; # View fragment credit: first=next offset, second=total, text=original ticket.
+
     # Actual initial font geometry, returned as a bounded copied value without document access.
     rows: fn(): int;
 

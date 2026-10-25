@@ -185,3 +185,13 @@ The signed-int32 envelope fix is exercised by real NC64 codec tests.
 The [editor resize contract](../../ide/dis/RESIZE.md) describes component 0.5.0
 Canvas/Style matching, allocation bounds and retained Dis-owned prompt/source
 state. Keep the host/controller pair together when updating packages.
+
+
+## Source clipboard, component 0.6.0
+
+Ctrl+C/X/V uses acknowledged native clipboard values and a private Dis transfer
+owner. Multi-fragment Unicode paste is one source Replace/Undo; empty clipboard
+is a no-op and failed Cut cannot delete source. [Bilingual protocol/tutorial](../../ide/dis/CLIPBOARD.md).
+Ship the host, controller and ideclipboard.dis together. Ordinary replay remains
+process-local; explicit --clipboard-events tests use SDL's clipboard API under
+the selected video driver. Native file saving is a separate action.

@@ -139,3 +139,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Caret geometry / геометрия каретки](CARET.md).
 
 [Canvas resize / размер окна](RESIZE.md).
+
+[Clipboard / буфер обмена](CLIPBOARD.md).
