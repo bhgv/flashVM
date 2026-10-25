@@ -22,3 +22,5 @@ Source-примеры содержат также ожидаемый читае�
 [Сборка всех примеров для своей/другой ОС и CPU](../../../BUILDING.ru.md).
 
 [structural](structural/README.ru.md) — параметры функций/блоков, только syntax-профиль.
+
+[Сквозной Limbo→FIR→Dis и C99 API](dis/README.ru.md).

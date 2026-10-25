@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.5.5 LANGUAGES C)
+project(fir1 VERSION 0.6.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -28,7 +28,7 @@ target_compile_definitions(fir1_generated PRIVATE CUSTOM_BUFF)
 target_include_directories(fir1_generated PRIVATE include src)
 target_include_directories(fir1_generated PUBLIC "${generated}")
 add_library(fir1_io src/input.c)
-add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c compiler/object.c)
+add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c compiler/object.c compiler/dis.c)
 # Preserve object inclusion and private generated headers on CMake 3.10.
 target_sources(fir1_ir PRIVATE $<TARGET_OBJECTS:fir1_generated>)
 target_include_directories(fir1_ir PRIVATE "${generated}")
@@ -146,3 +146,19 @@ if(BUILD_TESTING)
   target_link_libraries(fir1_source_debug_api PRIVATE fir1_source_api)
   add_test(NAME fir1_source_debug_api COMMAND fir1_source_debug_api)
 endif()
+
+# The direct backend remains independently testable without DisVM or an Inferno SDK.
+if(BUILD_TESTING)
+  add_test(NAME fir1_dis_backend COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/dis_backend.py" $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_source>)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_dis_api tests/dis_api.c)
+  target_link_libraries(fir1_dis_api PRIVATE fir1_ir)
+  add_test(NAME fir1_dis_api COMMAND fir1_dis_api)
+endif()
+
+# Runnable embedding client links our libraries directly; it never shells out to limbo-native.
+add_executable(fir1_dis_example examples/dis/main.c)
+target_link_libraries(fir1_dis_example PRIVATE fir1_ir fir1_source_api)

@@ -2,7 +2,6 @@
 #include "fir.h"
 #include <stdlib.h>
 
-
 int fir_run(FirTask task, FILE *input, FILE *output, const FirRunOptions *options, char *error, size_t capacity)
 {
     FirModule *module;
@@ -11,7 +10,7 @@ int fir_run(FirTask task, FILE *input, FILE *output, const FirRunOptions *option
     {
         error[0] = 0;
     }
-    if (!input || task < FIR_CHECK || task > FIR_OBJECT || (task != FIR_CHECK && !output))
+    if (!input || task < FIR_CHECK || task > FIR_DIS || (task != FIR_CHECK && !output))
     {
         if (error && capacity)
         {
@@ -48,7 +47,9 @@ int fir_run(FirTask task, FILE *input, FILE *output, const FirRunOptions *option
     }
     if (ok && task != FIR_CHECK)
     {
-        ok = task == FIR_OBJECT ? fir_object(output, module, error, capacity) : fir_print(output, module);
+        ok = task == FIR_OBJECT ? fir_object(output, module, error, capacity)
+             : task == FIR_DIS  ? fir_dis(output, module, error, capacity)
+                                : fir_print(output, module);
     }
     if (!ok && options && options->snapshot && error && capacity && !error[0])
     {

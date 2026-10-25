@@ -36,3 +36,6 @@ FIR writes objects only. The [linker](../../../linker/README.md) combines
 self-contained objects/libraries/resources; optimization remains explicit.
 Source positions and diagnostic checks do not establish embedded Dis/JIT,
 complete debugging, cross-module function calls or native backend coverage.
+
+[NC64 Dis target 0.6.0](DIS_BACKEND.md): one block, i32 const/copy/wrap arithmetic/trace capture/return.
+Our C99 emitter writes Dis directly; full Limbo ABI, CFG, channels, SBL and Dis linking remain unimplemented.

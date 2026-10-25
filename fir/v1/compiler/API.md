@@ -6,7 +6,7 @@ CLI drivers only open files, select operations and present returned diagnostics.
 | API | CMake target | Operation |
 | --- | --- | --- |
 | `fir_source(input, output, language, module_name, error, capacity)` | `fir1_source_api` | AS1/AS2/AS3/Limbo numeric subset → FIR |
-| `fir_run(task, input, output, options, error, capacity)` | `fir1_ir` | `FIR_CHECK`, `FIR_PRINT`, `FIR_OPT`, `FIR_OBJECT` |
+| `fir_run(task, input, output, options, error, capacity)` | `fir1_ir` | `FIR_CHECK`, `FIR_PRINT`, `FIR_OPT`, `FIR_OBJECT`, `FIR_DIS` |
 | `fir_optimise(module, error, capacity)` | `fir1_ir` | In-place verified optimization |
 | `fir_object(output, module, error, capacity)` | `fir1_ir` | FIR → SWO1 |
 
@@ -40,3 +40,12 @@ the existing arguments. `fir_source` remains a wrapper. First error wins,
 success clears the result, positions use original UTF-8 bytes.
 [English contract](../doc/SOURCE_DIAGNOSTICS.md) ·
 [Полный контракт на русском](../doc/SOURCE_DIAGNOSTICS.ru.md).
+
+## Direct Dis API 0.6.0
+
+`fir_dis(output, module, error, capacity)` emits NC64 Dis for a verified
+one-block i32 profile. `fir_run(FIR_DIS, ...)` uses the same implementation,
+including optional optimization/snapshots. Coverage rejection preserves the
+stream; NULL diagnostics are admitted; I/O failures can leave a prefix.
+[Exact target and limits](../doc/DIS_BACKEND.md),
+[in-process client](../examples/dis/main.c).

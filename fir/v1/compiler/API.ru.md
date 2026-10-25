@@ -1,4 +1,4 @@
-# Встраиваемые C API 0.5.4
+# Встраиваемые C API 0.6.0
 
 [FIR API](../include/fir.h) доступен без argv, stdout/stderr и запуска процессов.
 Консольные драйверы только открывают файлы, выбирают операции и печатают ошибки.
@@ -6,7 +6,7 @@
 | API | CMake target | Operation |
 | --- | --- | --- |
 | `fir_source(input, output, language, module_name, error, capacity)` | `fir1_source_api` | AS1/AS2/AS3/Limbo numeric subset → FIR |
-| `fir_run(task, input, output, options, error, capacity)` | `fir1_ir` | `FIR_CHECK`, `FIR_PRINT`, `FIR_OPT`, `FIR_OBJECT` |
+| `fir_run(task, input, output, options, error, capacity)` | `fir1_ir` | `FIR_CHECK`, `FIR_PRINT`, `FIR_OPT`, `FIR_OBJECT`, `FIR_DIS` |
 | `fir_optimise(module, error, capacity)` | `fir1_ir` | In-place verified optimization |
 | `fir_object(output, module, error, capacity)` | `fir1_ir` | FIR → SWO1 |
 
@@ -40,3 +40,12 @@ the existing arguments. `fir_source` remains a wrapper. First error wins,
 success clears the result, positions use original UTF-8 bytes.
 [English contract](../doc/SOURCE_DIAGNOSTICS.md) ·
 [Полный контракт на русском](../doc/SOURCE_DIAGNOSTICS.ru.md).
+
+## Прямой Dis API 0.6.0
+
+`fir_dis(output, module, error, capacity)` генерирует NC64 Dis для проверенного
+одноблочного i32-профиля. `fir_run(FIR_DIS, ...)` использует ту же реализацию,
+с необязательной оптимизацией/снимками. Ошибка покрытия не изменяет поток;
+NULL-диагностика допустима, ошибка I/O может оставить префикс.
+[Точный контракт и пределы](../doc/DIS_BACKEND.ru.md),
+[клиент без дочерних процессов](../examples/dis/main.c).

@@ -13,15 +13,14 @@
 /* Validate CLI arguments, run the selected pipeline, and stage output on success. */
 extern FILE *fir_temporary(void);
 
-
 int main(int argc, char **argv)
 {
     FILE *input, *output;
     char error[512] = "operation failed";
-    int ok, check, optimise, compile;
+    int ok, check, optimise, compile, dis;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.5.5 (FIR 1.0; SWO1)");
+        puts("fir1 0.6.0 (FIR 1.0; SWO1; NC64 Dis i32)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -31,10 +30,11 @@ int main(int argc, char **argv)
 #ifdef FIR_HAS_SYNTAX_FRONTEND
              "       fir1 syntax INPUT.fir (structural syntax only; no lowering)\n"
 #endif
-             "       fir1 print|opt|object INPUT.fir OUTPUT\n"
+             "       fir1 print|opt|object|dis INPUT.fir OUTPUT\n"
              "check: syntax, SSA dominance, types and CFG; no output\n"
              "print: canonical FIR; opt: conservative FIR peephole\n"
              "object: SWO1 object; use swl to link SWF\n"
+             "dis: direct NC64 Dis, one block, i32 constants/copy/wrap arithmetic/trace/return\n"
              "No implicit optimization. Use opt output explicitly.\n"
              "Required header: FIR 1.0; conditional: if %c, ^yes, ^no\n"
              "Comments: // and /* ... */. Channels require FlashVM extensions.\n"
@@ -80,7 +80,8 @@ int main(int argc, char **argv)
     check = !strcmp(argv[1], "check");
     optimise = !strcmp(argv[1], "opt");
     compile = !strcmp(argv[1], "object");
-    if ((!check && !optimise && !compile && strcmp(argv[1], "print")) || argc != (check ? 3 : 4))
+    dis = !strcmp(argv[1], "dis");
+    if ((!check && !optimise && !compile && !dis && strcmp(argv[1], "print")) || argc != (check ? 3 : 4))
     {
         goto usage;
     }
@@ -113,7 +114,15 @@ int main(int argc, char **argv)
         fclose(input);
         return 2;
     }
-    ok = fir_run(compile ? FIR_OBJECT : optimise ? FIR_OPT : FIR_PRINT, input, output, NULL, error, sizeof(error));
+    ok = fir_run(compile    ? FIR_OBJECT
+                 : dis      ? FIR_DIS
+                 : optimise ? FIR_OPT
+                            : FIR_PRINT,
+                 input,
+                 output,
+                 NULL,
+                 error,
+                 sizeof(error));
     if (fclose(input))
     {
         ok = 0;

@@ -24,3 +24,5 @@ index; the workspace viewer includes the same files.
 [structural](structural/README.md) — function/block parameters, syntax profile only.
 
 [Limbo lexical blocks / Лексические блоки](../doc/LEXICAL_SCOPES.md).
+
+[End-to-end Limbo→FIR→Dis and C99 API](dis/README.md).

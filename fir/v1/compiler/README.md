@@ -35,3 +35,5 @@ a stable binary ABI is not promised. CLI: 0 success, 1 pipeline/output failure,
 write failures may leave a partial file.
 
 [Working source syntax](../doc/SOURCE_SYNTAX.md).
+
+[Dis backend 0.6.0: one i32 function with captured results](../doc/DIS_BACKEND.md).
