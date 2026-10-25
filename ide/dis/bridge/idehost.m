@@ -31,6 +31,11 @@ Idehost: module
 
     ClipboardContinue: con 65559; # View fragment credit: first=next offset, second=total, text=original ticket.
 
+    PanelSelection: con 65560; # View field caret/anchor as Unicode scalars, flags=document revision.
+
+    ClipboardFieldWrite: con 65561; # View copy of a completed modal field range, same revision/ticket binding.
+    FieldPlace: con 65562; # Request field scalar/phase 1..3 from actual glyph geometry, revision/ticket bound.
+
     # Actual initial font geometry, returned as a bounded copied value without document access.
     rows: fn(): int;
 

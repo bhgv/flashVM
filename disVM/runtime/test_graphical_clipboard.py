@@ -77,7 +77,7 @@ def main():
         views = session(runtime, module, None, mode, directory, events, source)
         if any(view[-1] != "protected" or view[0] != 1 for view in views) or views[-1][1] != 1:
             raise RuntimeError("retired clipboard result modified a source snapshot")
-        # Source clipboard shortcuts never type into or mutate the current modal field.
+        # Modal clipboard shortcuts must never edit the source document.
         events = shortcut("F") + [envelope(5, text="query")] + shortcut("V")
         events += [envelope(4, 27, 1), envelope(1, 65539)]
         views = session(runtime, module, None, mode, directory, events, source)

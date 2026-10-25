@@ -24,7 +24,7 @@ def shortcut(letter):
 
 # Execute actual bytecode from a relocated cwd; collect independently decoded view snapshots.
 # Paths are explicit. Raises on timeout, failed execution or invalid mode counters.
-def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640), native_clipboard=False):
+def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640), native_clipboard=False, field_states=None):
     replay = directory / "input frames.bin"
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
@@ -60,6 +60,8 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
                 panels.append((int(fields[1]), int(fields[2]), bytes.fromhex(fields[3]).decode("utf-8")))
     if canvases is not None:
         canvases.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("CANVAS "))
+    if field_states is not None:
+        field_states.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("FIELD "))
     raster = capture.read_bytes()
     width, height = dimensions
     header = f"P6\n{width} {height}\n255\n".encode("ascii")

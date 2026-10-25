@@ -7,6 +7,7 @@ include "idebridge.m"; # Reuse the bounded snapshot serializer.
 include "idefileops.m"; # Reuse bounded source I/O independently of any renderer.
 include "idesearch.m"; # Reuse literal document operations through typed channels.
 include "ideviewport.m"; # Keep viewport decisions and bounds in a separate Dis module.
+include "idefield.m"; # Reuse single-line value/selection policy for every modal field.
 include "ideclipboard.m"; # Keep copied clipboard fragments in an exclusive Dis staging owner.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
@@ -147,22 +148,6 @@ gotolocation(policy: Ideinput, state: ref Ideinput->State, reply: Idecore->Reply
 }
 
 
-# Reject multiline/NUL prompt input and bound its Unicode size before publication.
-# text is borrowed; returns one for a valid single-line field, zero otherwise.
-promptvalid(text: string): int
-{
-    if (len text > 256) { # Four-byte Unicode scalars still fit the 1024-byte envelope.
-        return 0; # Never truncate a path or search query silently.
-    }
-    for (i := 0; i < len text; i++) { # A file/search field is an explicit single-line UI value.
-        if (text[i] == 0 || text[i] == '\n' || text[i] == '\r') { # No accidental newline command or C-string truncation.
-            return 0; # The prior field and document remain unchanged.
-        }
-    }
-    return 1; # Unicode is preserved as scalars, not sliced UTF-8 bytes.
-}
-
-
 # Own graphical editor policy with no Draw/Tk/AS-side document mutation.
 # No parameters; channels remain rooted on this stack through the final reply.
 init()
@@ -175,9 +160,10 @@ init()
     bridge = load Idebridge Idebridge->PATH; # Link the existing snapshot encoder.
     policy := load Ideinput Ideinput->PATH; # Link Dis-owned input policy.
     viewport := load Ideviewport Ideviewport->PATH; # Link the bounded logical-line viewport.
+    fields := load Idefield Idefield->PATH; # Keep modal field editing in reusable Dis logic.
     clipboard := load Ideclipboard Ideclipboard->PATH; # Load reusable bounded clipboard value staging.
     host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
-    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil) { # Require all real modules.
+    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil || fields == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
     }
     input := chan of array of byte; # The native owner offers copied events here.
@@ -207,10 +193,12 @@ init()
     reveal := 1; # Initial presentation follows the acknowledged caret.
     ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
     mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 needle, 5 replacement, 6 Go To.
-    prompt := ""; # Exclusive single-line field value; never a native document buffer.
-    selected := 0; # Ctrl+A marks the complete prompt for replacement by the next text input.
+    inputfield := fields->create(); # [GC:] Exclusive single-line field text/selection root, never a native editor buffer.
     query := ""; # Last literal query, reused by F3 and replacement.
     dragging := 0; # Only an admitted pointer begin starts a Dis selection gesture.
+    fielddrag := 0; # Field anchor policy belongs to Dis, independent of document dragging.
+    transfer_mode := 0; # Zero targets the source; nonzero captures the exact modal operation.
+    transfer_stamp := 0; # A field edit/selection change retires a clipboard's captured generation.
     transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
         if (transfer.action == clipboard->Paste && transfer.total >= 0 && transfer.used < transfer.total) {
@@ -237,19 +225,36 @@ init()
                 raise "fail: graphical editor style"; # Never continue with mismatched hit geometry.
             }
             output <-= stylewire; # Native geometry is committed before the matching viewport/snapshot.
-            paneltext := prompt; # Active input fields are Dis-owned values.
+            paneltext := inputfield.text; # Active input fields are Dis-owned values.
             if (mode == 0) { # An inactive panel reports the selected document path.
                 paneltext = path; # Save As only changes this path after successful output.
                 if (len paneltext > 200) { # Bound the label without changing the actual file destination.
                     paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
                 }
             }
+            selected := inputfield.caret != inputfield.anchor
+                && ((inputfield.anchor == 0 && inputfield.caret == len inputfield.text)
+                    || (inputfield.caret == 0 && inputfield.anchor == len inputfield.text));
             panel := ref Uibridge->Message(codec->View, 0, host->Panel, reply.revision, mode, selected, paneltext); # Publish prompt state by channel.
             (panelok, panelwire) := codec->encode(panel); # Validate the counted Unicode field.
             if (!panelok) { # Invalid UI state must fail visibly, not mutate native widgets directly.
                 raise "fail: graphical editor panel"; # No successful dummy panel response is substituted.
             }
             output <-= panelwire; # Panel and viewport are committed together at the final selection record.
+            fieldcaret := 0;
+            fieldanchor := 0;
+            if (mode != 0) {
+                fieldcaret = inputfield.caret;
+                fieldanchor = inputfield.anchor;
+            }
+            fieldview := ref Uibridge->Message(codec->View, 0, host->PanelSelection, reply.revision,
+                                              fieldcaret, fieldanchor, "");
+            (fieldok, fieldwire) := codec->encode(fieldview);
+            if (!fieldok) {
+                raise "fail: graphical editor field selection";
+            }
+            output <-= fieldwire; # Copied scalar field positions, independent of document selection.
+
             ticket++; # Give every published view a distinct scalar identity.
             (first, last, top) := viewport->window(window, reply.text, state.caret, reveal); # Bound the display window.
             metadata := codec->hexword(top) + codec->hexword(len reply.text) + codec->hexword(ticket); # No heap addresses.
@@ -279,13 +284,16 @@ init()
             identity := array of byte event.text;
             (known, seen) := codec->parseword(identity, 0);
             if (transfer.action == clipboard->None || !known || len identity != 8 || seen != transfer.ticket
-                || event.flags != transfer.revision || reply.revision != transfer.revision) {
+                || event.flags != transfer.revision || reply.revision != transfer.revision || transfer_mode != mode
+                || (transfer_mode != 0 && transfer_stamp != inputfield.stamp)) {
                 reply.status = core->Conflict;
             } else if (event.second != 0 || (event.first != core->Ok && event.first != core->TooLarge && event.first != core->Invalid)
                        || (transfer.action == clipboard->Paste && event.first == core->Ok)) {
                 reply.status = core->Invalid;
             } else if (event.first != core->Ok) {
                 reply.status = event.first; # Native errors never authorize source deletion.
+            } else if (transfer.action == clipboard->Cut && transfer_mode != 0) {
+                reply.status = fields->insert(inputfield, ""); # No document edit or Undo entry for field cut.
             } else if (transfer.action == clipboard->Cut) {
                 reply = clipboardedit(document, transfer.revision, transfer.first, transfer.last, "");
                 if (reply.status == core->Ok) {
@@ -304,13 +312,16 @@ init()
             first := transfer.first; # Retain value coordinates before a complete fragment releases staging.
             last := transfer.last;
             captured := transfer.revision;
-            if (captured != reply.revision) {
+            if (captured != reply.revision || transfer_mode != mode
+                || (transfer_mode != 0 && transfer_stamp != inputfield.stamp)) {
                 clipboard->reset(transfer);
                 reply.status = core->Conflict;
             } else {
                 (status, ready, text) := clipboard->chunk(codec, transfer, event);
                 reply.status = status;
-                if (ready && text != "") { # Empty clipboard is a no-op, including a nonempty selection.
+                if (ready && text != "" && transfer_mode != 0) {
+                    reply.status = fields->insert(inputfield, text); # Complete single-line admission before any field mutation.
+                } else if (ready && text != "") { # Empty clipboard is a no-op, including a nonempty selection.
                     reply = clipboardedit(document, captured, first, last, text);
                     if (reply.status == core->Ok) {
                         position := first + len text;
@@ -324,6 +335,15 @@ init()
         }
         if (transfer.action != clipboard->None) {
             clipboard->reset(transfer); # Unrelated input retires the staged range and all private bytes.
+        }
+        if (event.kind == codec->Request && event.code == host->Quit) { # Close works even inside a modal field.
+            if (reply.revision == reply.saved || event.flags == 1) {
+                call(document, core->Shutdown, reply.revision, "");
+                host->detach(); # Retire borrowed channel roots before the controller stack exits.
+                return;
+            }
+            reply.status = core->Conflict; # Unsaved source is still protected; the field remains editable.
+            continue;
         }
         if (event.kind == codec->Request && event.code == host->Resize) {
             metadata := array of byte event.text; # Exactly two canonical words, never a pointer/struct.
@@ -340,6 +360,7 @@ init()
                 window.rows = rows; # The native metric is a bounded proposal admitted on Dis.
                 state.page = rows;
                 dragging = 0; # The old pixel gesture cannot continue across a changed canvas.
+                fielddrag = 0;
                 reply.status = core->Ok; # Document/history/saved state do not change.
                 reveal = 1;
             }
@@ -361,6 +382,7 @@ init()
                     candidate = 48; # A gesture at the maximum remains a no-op content-wise.
                 }
                 fontsize = candidate; # The renderer receives this size only through Style.
+                fielddrag = 0; # Old field pixel gestures cannot continue through a changed face size.
                 window.rows = event.second; # Native metrics are admitted as copied bounded values.
                 state.page = window.rows; # Keep page movement consistent after scaling.
                 reply.status = core->Ok; # Zoom never changes content revision or saved state.
@@ -368,111 +390,43 @@ init()
             }
             continue; # A zoom event is never also a text selection or ordinary scroll.
         }
-        if (mode != 0) { # Modal field policy executes entirely on Dis.
-            if (event.kind == codec->Focus || (event.kind == codec->Key && (event.code == 16 || event.code == 17))) { # Keep modifier/focus state accurate.
-                (admitted, observed) := policy->apply(core, document, state, event); # Reuse the production modifier controller.
-                if (!admitted) { # Never use malformed input to alter field policy.
-                    raise "fail: graphical editor prompt modifier"; # Report a protocol failure.
+        if (event.kind == codec->Request && event.code == host->FieldPlace) {
+            identity := array of byte event.text;
+            (known, seen) := codec->parseword(identity, 0);
+            if (mode == 0 || !known || len identity != 8 || seen != ticket || event.flags != reply.revision) {
+                reply.status = core->Conflict;
+            } else if (event.second < 1 || event.second > 3 || event.first > len inputfield.text) {
+                reply.status = core->RangeError;
+            } else if (event.first < 0) {
+                if (event.second == 3) {
+                    fielddrag = 0; # Mouse release outside the footer cannot leave an active gesture.
                 }
-                reply = inputreply(reply, observed.document, event); # Modifier release cannot erase a field error.
-                if (event.kind == codec->Focus && event.flags == 0) { # Focus loss retires any gesture.
-                    dragging = 0; # Returning focus cannot resume a hidden drag.
+            } else if (event.second == 1 || fielddrag) {
+                anchor := inputfield.anchor;
+                if (event.second == 1 && !state.shift) {
+                    anchor = event.first;
                 }
-            } else if (event.kind == codec->Text) { # Committed text edits the field, not the source.
-                candidate := prompt + event.text; # Append unless the entire field was selected.
-                if (selected) { # Ctrl+A is field-local while a prompt is active.
-                    candidate = event.text; # Replace the selected field value as one UI action.
-                }
-                if (!promptvalid(candidate)) { # Validate before publishing a changed field.
-                    reply.status = core->TooLarge; # Preserve prompt, source, history and path.
-                } else { # The bounded field is now owned by this controller.
-                    prompt = candidate; # No direct TextField mutation occurs here.
-                    selected = 0; # Consume the field selection exactly once.
-                    reply.status = core->Ok; # Acknowledge accepted field input.
-                }
-            } else if (event.kind == codec->Key && event.flags != 0) { # Only key-down performs a field action.
-                if (event.code == 27) { # Escape cancels without touching document/path/history.
-                    mode = 0; # Return to document input policy.
-                    prompt = ""; # Release the private field text.
-                    selected = 0; # Release any field-local selection.
-                    reply.status = core->Ok; # Explicit successful cancellation.
-                } else if (event.code == 65 && state.control) { # Ctrl+A selects the complete field.
-                    selected = 1; # Document selection remains unchanged.
-                } else if (event.code == 8) { # Backspace uses Unicode field coordinates.
-                    if (selected) { # Deleting the selected field clears it.
-                        prompt = ""; # No source edit or Undo entry is made.
-                    } else if (len prompt > 0) { # An empty field cannot underflow.
-                        prompt = prompt[:len prompt - 1]; # Remove exactly one scalar.
-                    }
-                    selected = 0; # The remaining field is no longer selected.
-                } else if (event.code == 13) { # Enter executes an explicitly accepted field operation.
-                    if (mode == 6) { # Go To uses bounded one-based source coordinates.
-                        (line, column) := locationfield(prompt); # Reject syntax/overflow without touching selection.
-                        reply = gotolocation(policy, state, reply, line, column);
-                        if (reply.status == core->Ok) {
-                            mode = 0; # Invalid/absent locations keep the editable field open.
-                            reveal = 1; # Reveal the admitted scalar caret through the normal viewport.
-                        }
-                    } else if (mode == 1) { # Literal Find selects the real acknowledged match.
-                        query = prompt; # Retain the user's query for F3.
-                        reply = findnext(document, state, policy, query); # Search through the document channel.
-                        mode = 0; # Errors/NotFound are visible in the normal status view.
-                        reveal = 1; # Reveal a successful match's caret.
-                    } else if (mode == 4) { # Replacement is a two-field operation, without delimiter ambiguity.
-                        if (prompt == "") { # An empty needle is invalid before any replacement stage.
-                            reply.status = core->Invalid; # Keep this field open for correction.
-                        } else { # Preserve the exact literal needle.
-                            query = prompt; # Unicode/non-BMP text stays unchanged.
-                            prompt = ""; # Begin a separately counted replacement field.
-                            mode = 5; # The next Enter confirms replacement text, including empty text.
-                            selected = 0; # No accidental selection carries into the second field.
-                        }
-                    } else if (mode == 5) { # ReplaceAll remains one real document-owner operation.
-                        reply = search->replace(core, document, reply.revision, query, prompt); # Bounds/history are checked by Idecore.
-                        policy->observe(state, reply); # Synchronize selection after an acknowledged edit.
-                        mode = 0; # Publish actual match count/status with the resulting snapshot.
-                        reveal = 1; # Show the post-operation cursor.
-                    } else if (mode == 3) { # Save As adopts its destination only after a successful write.
-                        if (writesource(prompt, reply.text)) { # Preserve exact current snapshot bytes.
-                            path = prompt; # Subsequent Ctrl+S and reload now use this successful destination.
-                            reply = call(document, core->MarkSaved, reply.revision, ""); # Acknowledge that exact revision.
-                            mode = 0; # Close the field only after success.
-                        } else { # A failed candidate does not replace the current path.
-                            reply.status = core->Invalid; # Keep the field open and preserve dirty state.
-                        }
-                    } else if (mode == 2) { # Open never discards unsaved edits.
-                        if (reply.revision != reply.saved) { # Check before touching the candidate file.
-                            reply.status = core->Conflict; # Keep the original document and destination.
-                        } else { # Read and validate before retiring the current session.
-                            (loaded, source) := readsource(prompt); # I/O policy stays on Dis.
-                            if (loaded) { # Only validated bytes can replace the document.
-                                reply = call(document, core->Close, reply.revision, ""); # Retire old history.
-                                reply = call(document, core->Open, reply.revision, source); # Establish a fresh saved revision.
-                                path = prompt; # Adopt the successfully loaded path.
-                                policy->observe(state, reply); # Reset old source positions.
-                                window = viewport->create(); # Retire old scroll coordinates too.
-                                window.rows = state.page; # Preserve admitted font geometry.
-                                dragging = 0; # Retire old gesture state.
-                                mode = 0; # Return to the new document.
-                                reveal = 1; # Show its initial caret.
-                            } else { # Failed UTF-8/limit/open admission changes no document state.
-                                reply.status = core->Invalid; # Leave the field open for correction.
-                            }
-                        }
-                    }
-                }
+                reply.status = fields->select(inputfield, anchor, event.first);
+                fielddrag = reply.status == core->Ok && event.second != 3;
             }
-            continue; # A field event is never also applied to the source document.
+            continue; # Field placement cannot move source selection or change document history.
         }
-        if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
-            if (event.code == 67 || event.code == 88 || event.code == 86) { # Ctrl+C/X/V are document-only channel actions.
+        if (event.kind == codec->Key && event.flags != 0 && state.control) {
+            if (event.code == 67 || event.code == 88 || event.code == 86) { # Ctrl+C/X/V capture the active Dis source or field domain.
                 first := state.caret;
                 last := state.anchor;
+                if (mode != 0) {
+                    first = inputfield.caret;
+                    last = inputfield.anchor;
+                }
                 if (first > last) {
                     (first, last) = (last, first);
                 }
                 action := clipboard->Copy;
                 code := host->ClipboardWrite;
+                if (mode != 0) {
+                    code = host->ClipboardFieldWrite;
+                }
                 if (event.code == 88) {
                     action = clipboard->Cut;
                 } else if (event.code == 86) {
@@ -486,6 +440,9 @@ init()
                 if (!clipboard->begin(transfer, action, ticket, reply.revision, first, last)) {
                     raise "fail: graphical editor clipboard admission";
                 }
+                transfer_mode = mode;
+                transfer_stamp = inputfield.stamp;
+                fielddrag = 0;
                 low := first;
                 high := last;
                 if (action == clipboard->Paste) {
@@ -502,27 +459,111 @@ init()
                 reply.status = core->Ok;
                 continue;
             }
+        }
+        if (mode != 0) { # Modal field policy executes entirely on Dis.
+            if (event.kind == codec->Focus || (event.kind == codec->Key && (event.code == 16 || event.code == 17))) { # Keep modifier/focus state accurate.
+                (admitted, observed) := policy->apply(core, document, state, event); # Reuse the production modifier controller.
+                if (!admitted) { # Never use malformed input to alter field policy.
+                    raise "fail: graphical editor prompt modifier"; # Report a protocol failure.
+                }
+                reply = inputreply(reply, observed.document, event); # Modifier release cannot erase a field error.
+                if (event.kind == codec->Focus && event.flags == 0) { # Focus loss retires any gesture.
+                    dragging = 0; # Returning focus cannot resume a hidden drag.
+                    fielddrag = 0;
+                }
+            } else if (event.kind == codec->Text || (event.kind == codec->Key && event.flags != 0)) {
+                if (event.kind == codec->Key && event.code == 27) {
+                    mode = 0;
+                    fielddrag = 0;
+                    inputfield = fields->create(); # Retire this field session without changing source or path.
+                    reply.status = core->Ok;
+                } else if (event.kind == codec->Key && event.code == 13) { # Enter executes an explicitly accepted field operation.
+                    fielddrag = 0; # A command cannot leave an old field drag active across a mode change.
+                    if (mode == 6) { # Go To uses bounded one-based source coordinates.
+                        (line, column) := locationfield(inputfield.text); # Reject syntax/overflow without touching selection.
+                        reply = gotolocation(policy, state, reply, line, column);
+                        if (reply.status == core->Ok) {
+                            mode = 0; # Invalid/absent locations keep the editable field open.
+                            reveal = 1; # Reveal the admitted scalar caret through the normal viewport.
+                        }
+                    } else if (mode == 1) { # Literal Find selects the real acknowledged match.
+                        query = inputfield.text; # Retain the user's query for F3.
+                        reply = findnext(document, state, policy, query); # Search through the document channel.
+                        mode = 0; # Errors/NotFound are visible in the normal status view.
+                        reveal = 1; # Reveal a successful match's caret.
+                    } else if (mode == 4) { # Replacement is a two-field operation, without delimiter ambiguity.
+                        if (inputfield.text == "") { # An empty needle is invalid before any replacement stage.
+                            reply.status = core->Invalid; # Keep this field open for correction.
+                        } else { # Preserve the exact literal needle.
+                            query = inputfield.text; # Unicode/non-BMP text stays unchanged.
+                            inputfield = fields->create(); # Begin a separately counted replacement field.
+                            mode = 5; # The next Enter confirms replacement text, including empty text.
+                        }
+                    } else if (mode == 5) { # ReplaceAll remains one real document-owner operation.
+                        reply = search->replace(core, document, reply.revision, query, inputfield.text); # Bounds/history are checked by Idecore.
+                        policy->observe(state, reply); # Synchronize selection after an acknowledged edit.
+                        mode = 0; # Publish actual match count/status with the resulting snapshot.
+                        reveal = 1; # Show the post-operation cursor.
+                    } else if (mode == 3) { # Save As adopts its destination only after a successful write.
+                        if (writesource(inputfield.text, reply.text)) { # Preserve exact current snapshot bytes.
+                            path = inputfield.text; # Subsequent Ctrl+S and reload now use this successful destination.
+                            reply = call(document, core->MarkSaved, reply.revision, ""); # Acknowledge that exact revision.
+                            mode = 0; # Close the field only after success.
+                        } else { # A failed candidate does not replace the current path.
+                            reply.status = core->Invalid; # Keep the field open and preserve dirty state.
+                        }
+                    } else if (mode == 2) { # Open never discards unsaved edits.
+                        if (reply.revision != reply.saved) { # Check before touching the candidate file.
+                            reply.status = core->Conflict; # Keep the original document and destination.
+                        } else { # Read and validate before retiring the current session.
+                            (loaded, source) := readsource(inputfield.text); # I/O policy stays on Dis.
+                            if (loaded) { # Only validated bytes can replace the document.
+                                reply = call(document, core->Close, reply.revision, ""); # Retire old history.
+                                reply = call(document, core->Open, reply.revision, source); # Establish a fresh saved revision.
+                                path = inputfield.text; # Adopt the successfully loaded path.
+                                policy->observe(state, reply); # Reset old source positions.
+                                window = viewport->create(); # Retire old scroll coordinates too.
+                                window.rows = state.page; # Preserve admitted font geometry.
+                                dragging = 0; # Retire old gesture state.
+                                mode = 0; # Return to the new document.
+                                reveal = 1; # Show its initial caret.
+                            } else { # Failed UTF-8/limit/open admission changes no document state.
+                                reply.status = core->Invalid; # Leave the field open for correction.
+                            }
+                        }
+                    }
+                } else {
+                    (status, handled) := fields->apply(policy, inputfield, event, state.control, state.shift);
+                    if (handled) {
+                        reply.status = status;
+                    }
+                }
+            }
+            continue; # A field event is never also applied to the source document.
+        }
+        if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
             if (event.code == 70 || event.code == 71 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
                 mode = 1; # Ctrl+F starts literal Find.
-                prompt = query; # Reuse the previous literal query as editable field text.
+                prefill := query; # Reuse the previous literal query as editable field text.
                 if (event.code == 71) { # Ctrl+G opens the source location field.
                     mode = 6; # All input and validation remain on Dis.
-                    prompt = ""; # No native source position is inferred.
+                    prefill = ""; # No native source position is inferred.
                 }
                 if (event.code == 72) { # Ctrl+H begins the needle stage of Replace All.
                     mode = 4; # Replacement text is accepted in a separate second field.
                 }
                 if (event.code == 79) { # Ctrl+O selects a source file.
                     mode = 2; # Open retains the current document until successful admission.
-                    prompt = path; # Prefill only the editable field, not a native file dialog.
+                    prefill = path; # Prefill only the editable field, not a native file dialog.
                 }
                 if (event.code == 83) { # Ctrl+Shift+S chooses a save destination.
                     mode = 3; # Destination adoption is conditional on successful I/O.
-                    prompt = path; # Preserve the original path until that acknowledgement.
+                    prefill = path; # Preserve the original path until that acknowledgement.
                 }
-                selected = 1; # The next committed text replaces the prefilled field.
+                inputfield = fields->create(); # A new field session cannot reuse stale selection/generation state.
+                reply.status = fields->set(inputfield, prefill, 1); # Invalid/oversize prefill leaves a safe empty field.
                 dragging = 0; # A modal action retires any document drag gesture.
-                reply.status = core->Ok; # Opening a field does not edit source/history.
+                fielddrag = 0;
                 continue; # The shortcut must not reach document insertion/navigation.
             }
         }
@@ -631,13 +672,6 @@ init()
             } else { # Keep the original revision/saved metadata on failure.
                 reply.status = core->Invalid; # Present a visible save error.
             }
-        } else if (event.kind == codec->Request && operation == host->Quit) { # Window close is also a request.
-            if (reply.revision == reply.saved || event.flags == 1) { # Forced discard must be explicit.
-                call(document, core->Shutdown, reply.revision, ""); # Stop the real owner before returning.
-                host->detach(); # Stop native borrowing before this stack releases the channel roots.
-                return; # Remaining acknowledged process exits can now be reaped safely.
-            }
-            reply.status = core->Conflict; # Dirty close is refused and visibly reported.
         } else if ((event.kind == codec->Request || event.kind == codec->Key) && operation == host->Reload) { # Reload through Dis I/O.
             if (reply.revision != reply.saved) { # Preserve unsaved changes.
                 reply.status = core->Conflict; # Signal the refused reload.

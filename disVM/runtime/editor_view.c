@@ -37,6 +37,9 @@
 #define EDITOR_EXTENT_MAX 2048U          /* Bound each dimension and the RGBA allocation to 16 MiB. */
 #define EDITOR_QUIT 65539UL              /* Dis controller's dirty-checked close operation. */
 
+#define EDITOR_CLIP_FIELD_WRITE 65561UL  /* Copy Dis-authorized modal field bytes, excluding the label. */
+#define EDITOR_FIELD_PLACE 65562UL       /* Checked modal scalar placement/drag proposal from native glyphs. */
+#define EDITOR_PANEL_SELECTION 65560UL   /* Dis-owned modal caret/anchor, independent of the source selection. */
 #define EDITOR_CLIP_WRITE 65554UL        /* Dis-authorized source selection copied to native clipboard. */
 #define EDITOR_CLIP_READ 65556UL         /* Dis request for one immutable native clipboard snapshot. */
 #define EDITOR_CLIP_DATA 65557UL         /* Revision/transfer-bound ordered paste fragment. */
@@ -80,35 +83,41 @@ static long anchor;                    /* Last Dis Unicode scalar selection anch
 static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
 static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement, 6 Go To. */
 static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
-static int panel_selected;             /* Dis-owned field select-all presentation flag. */
-static char panel_text[1024];          /* Copied counted UTF-8 prompt/path label. */
-static size_t panel_size;              /* Active panel bytes, never implicitly strlen-decoded. */
-static FVM_Object *field;              /* [GC:] Pinned display object until destroy. */
-static unsigned char *pixels;          /* Owned RGBA8 raster storage. */
-static char *snapshot;                 /* Owned assembly storage, independent of both VM heaps. */
-static size_t assembled;               /* Next expected UTF-8 byte offset. */
-static size_t extent;                  /* Total expected snapshot bytes. */
-static unsigned long revision;         /* Dis revision of the pending/published snapshot. */
-static unsigned long status;           /* Dis status published with that snapshot. */
-static long saved;                     /* Dis saved revision, used only for display. */
-static unsigned long view_ticket;      /* Monotonic Dis view identity, independent of content revision. */
-static unsigned long view_revision;    /* Expected content revision for viewport metadata. */
-static unsigned long view_total;       /* Expected document Unicode scalar count. */
-static unsigned long view_top;         /* Zero-based logical top line chosen by Dis. */
-static long view_first;                /* Dis-selected source scalar at display start. */
-static long view_last;                 /* Dis-selected source scalar after display end. */
-static size_t display_start;           /* Native byte translation of the admitted source scalar start. */
-static size_t display_size;            /* Current display UTF-8 byte length, at most 4096. */
-static FVM_TextLayout *hit_layout;     /* Owned actual glyph layout for the completed view. */
-static double horizontal;              /* Renderer pixel translation, never a document coordinate. */
-static int complete;                   /* A selection frame completed the current view. */
-static int system_clipboard_events;    /* Explicit SDL clipboard replay check; ordinary replay remains isolated. */
-static int window_replay;              /* Explicit SDL upload check with deterministic input. */
-static int assembling;                 /* A document snapshot is being assembled. */
+static long panel_caret;               /* Copied Unicode field caret, excluding its native label prefix. */
+static long panel_anchor;              /* Copied Unicode field selection anchor. */
+static unsigned long panel_selection_revision; /* Expected source revision of the pending field endpoints. */
+static FVM_TextLayout *panel_layout;           /* Owned same-contract glyph layout for the current completed field. */
+static double panel_horizontal;                /* Effective native field scroll, never a source/text authority. */
+static size_t panel_prefix;                    /* ASCII label byte/scalar extent used only for geometry. */
+static int panel_selected;                     /* Dis-owned field select-all presentation flag. */
+static char panel_text[1024];                  /* Copied counted UTF-8 prompt/path label. */
+static size_t panel_size;                      /* Active panel bytes, never implicitly strlen-decoded. */
+static FVM_Object *field;                      /* [GC:] Pinned display object until destroy. */
+static unsigned char *pixels;                  /* Owned RGBA8 raster storage. */
+static char *snapshot;                         /* Owned assembly storage, independent of both VM heaps. */
+static size_t assembled;                       /* Next expected UTF-8 byte offset. */
+static size_t extent;                          /* Total expected snapshot bytes. */
+static unsigned long revision;                 /* Dis revision of the pending/published snapshot. */
+static unsigned long status;                   /* Dis status published with that snapshot. */
+static long saved;                             /* Dis saved revision, used only for display. */
+static unsigned long view_ticket;              /* Monotonic Dis view identity, independent of content revision. */
+static unsigned long view_revision;            /* Expected content revision for viewport metadata. */
+static unsigned long view_total;               /* Expected document Unicode scalar count. */
+static unsigned long view_top;                 /* Zero-based logical top line chosen by Dis. */
+static long view_first;                        /* Dis-selected source scalar at display start. */
+static long view_last;                         /* Dis-selected source scalar after display end. */
+static size_t display_start;                   /* Native byte translation of the admitted source scalar start. */
+static size_t display_size;                    /* Current display UTF-8 byte length, at most 4096. */
+static FVM_TextLayout *hit_layout;             /* Owned actual glyph layout for the completed view. */
+static double horizontal;                      /* Renderer pixel translation, never a document coordinate. */
+static int complete;                           /* A selection frame completed the current view. */
+static int system_clipboard_events; /* Explicit SDL clipboard replay check; ordinary replay remains isolated. */
+static int window_replay;           /* Explicit SDL upload check with deterministic input. */
+static int assembling;              /* A document snapshot is being assembled. */
 #ifdef DVM_EDITOR_SDL
-static SDL_Window *window;             /* Main-thread-only native window. */
-static SDL_Renderer *renderer;         /* Main-thread presentation owner. */
-static SDL_Texture *texture;           /* RGBA8 upload target. */
+static SDL_Window *window;          /* Main-thread-only native window. */
+static SDL_Renderer *renderer;      /* Main-thread presentation owner. */
+static SDL_Texture *texture;        /* RGBA8 upload target. */
 #endif
 
 
@@ -138,7 +147,6 @@ static int hexword(const char *text, unsigned long *out)
     *out = value;
     return 1;
 }
-
 
 /* Store a known CLI option without copying argv; returns whether it was recognized. */
 int dvm_editor_option(const char *name, const char *value)
@@ -183,20 +191,17 @@ int dvm_editor_option(const char *name, const char *value)
     return 1;
 }
 
-
 /* Expose immutable configuration to the Dis builtin; no I/O or heap pointer escapes. */
 const char *dvm_editor_path(void)
 {
     return document_path;
 }
 
-
 /* Return copied new-document configuration; no file or VM operation occurs. */
 int dvm_editor_fresh(void)
 {
     return new_document;
 }
-
 
 /* Choose the bundled font relative to the entry module, preserving the caller's cwd.
  * directory is borrowed. An explicit --font remains an optional override, never a prompt. */
@@ -223,7 +228,6 @@ int dvm_editor_default_font(const char *directory)
     return 1;
 }
 
-
 /* Reserve enough native pixels for a readable prompt at the admitted face size.
  * line_height is an actual finite font metric; returns bounded surface pixels, never text policy. */
 static int panel_height(double line_height)
@@ -236,14 +240,12 @@ static int panel_height(double line_height)
     return height;
 }
 
-
 /* Return the TextField baseline distance for the explicit editor TextFormat.
  * metrics is a borrowed current/proposed font record; no VM or view state changes. */
 static double line_step(const FVM_FontMetrics *metrics)
 {
     return metrics->ascent + metrics->descent + EDITOR_LEADING;
 }
-
 
 /* Measure bounded visible logical rows from the actual current face metrics.
  * No arguments; returns 1..128, with a conservative single row on an unavailable metric. */
@@ -266,7 +268,6 @@ int dvm_editor_rows(void)
     }
     return rows;
 }
-
 
 /* Measure a proposed face size without changing the current view or either VM state.
  * size is bounded 6..48; height is admitted 160..2048 pixels. Returns row capacity or zero on failure. */
@@ -301,7 +302,6 @@ static int rows_for_canvas(int size, unsigned int height)
     }
     return rows;
 }
-
 
 /* Admit a bounded Dis-selected surface with fresh storage before retiring the old one.
  * width/height are copied pixels. Returns zero on allocation/field/SDL failure; no document access.
@@ -380,7 +380,6 @@ static int apply_canvas(unsigned int width, unsigned int height)
     return 1;
 }
 
-
 /* Apply a Dis-admitted size to both real TextFields and the glyph-hit face.
  * size is bounded; returns one on actual matching font/layout setup, zero on failure. */
 static int apply_font_size(int size)
@@ -436,7 +435,6 @@ static int apply_font_size(int size)
     font_size = size;
     return 1;
 }
-
 
 /* Load an explicitly selected bounded font and create a pinned uniform TextField.
  * Returns one on success, zero on any actual backend/SDK/file failure. */
@@ -602,7 +600,6 @@ int dvm_editor_create(void)
     return 1;
 }
 
-
 /* Draw a clipped rectangle through FlashVM's raster backend; no document mutation.
  * Coordinates are pixels, color is copied. Returns one on actual raster success. */
 static int rectangle(FVM_RasterSurface *surface, double x, double y, double width, double height, FVM_RasterColor color)
@@ -646,7 +643,6 @@ static int rectangle(FVM_RasterSurface *surface, double x, double y, double widt
     return fvm_raster_fill_polygon(surface, points, 4, color) == FVM_OK;
 }
 
-
 /* Map borrowed valid UTF-8 scalar positions to bounded preview byte offsets.
  * Offscreen positions return shown+1; bytes and document authority stay unchanged. */
 static size_t scalar_byte(size_t shown, long position)
@@ -670,17 +666,16 @@ static size_t scalar_byte(size_t shown, long position)
     return scalar == position ? byte : shown + 1;
 }
 
-
-/* Translate one admitted document scalar offset to UTF-8 bytes in the full snapshot.
- * position is nonnegative and prevalidated against view_total. Returns an owned byte count. */
-static size_t document_byte(long position)
+/* Translate an admitted scalar insertion coordinate in borrowed valid UTF-8.
+ * text/length are borrowed bytes; position is nonnegative. Returns a bounded byte count without mutation. */
+static size_t text_byte(const char *text, size_t length, long position)
 {
     size_t byte = 0;
     long scalar = 0;
-    while (byte < extent && scalar < position)
+    while (byte < length && scalar < position)
     {
         byte++;
-        while (byte < extent && ((unsigned char)snapshot[byte] & 0xc0U) == 0x80U)
+        while (byte < length && ((unsigned char)text[byte] & 0xc0U) == 0x80U)
         {
             byte++;
         }
@@ -689,6 +684,12 @@ static size_t document_byte(long position)
     return byte;
 }
 
+/* Translate a prevalidated source scalar through its immutable complete UTF-8 snapshot.
+ * position is copied; returns a byte count and performs no VM, allocation or I/O operation. */
+static size_t document_byte(long position)
+{
+    return text_byte(snapshot, extent, position);
+}
 
 /* Queue one copied clipboard result for the next ordinary input rendezvous.
  * status is an Idecore-compatible scalar; no source edit or channel operation occurs here. */
@@ -697,7 +698,6 @@ static void clipboard_result(int status)
     clipboard_status = status;
     clipboard_ack = 1;
 }
-
 
 /* Execute a Dis-authorized clipboard command against the previous complete immutable snapshot.
  * message is borrowed. Returns zero for a framing/identity error, one for a queued value outcome.
@@ -720,21 +720,35 @@ static int clipboard_command(const DVM_UIMessage *message)
     }
     clipboard_ticket = ticket;
     clipboard_revision = message->flags;
-    if (message->code == EDITOR_CLIP_WRITE)
+    if (message->code == EDITOR_CLIP_WRITE || message->code == EDITOR_CLIP_FIELD_WRITE)
     {
-        if (message->first < 0 || message->second < message->first || (unsigned long)message->second > view_total)
+        source = snapshot;
+        length = extent;
+        scalars = view_total;
+        if (message->code == EDITOR_CLIP_FIELD_WRITE)
+        {
+            if (!panel_mode || panel_revision != revision ||
+                fvm_utf8_validate(panel_text, panel_size, &scalars) != FVM_UTF8_OK)
+            {
+                clipboard_result(EDITOR_CLIP_INVALID);
+                return 1;
+            }
+            source = panel_text;
+            length = panel_size;
+        }
+        if (message->first < 0 || message->second < message->first || (unsigned long)message->second > scalars)
         {
             return 0;
         }
-        first = document_byte(message->first);
-        last = document_byte(message->second);
+        first = text_byte(source, length, message->first);
+        last = text_byte(source, length, message->second);
         length = last - first;
         if (length > EDITOR_CLIP_MAX)
         {
             clipboard_result(EDITOR_CLIP_TOO_LARGE);
             return 1;
         }
-        if (memchr(snapshot + first, 0, length))
+        if (memchr(source + first, 0, length))
         {
             clipboard_result(EDITOR_CLIP_INVALID);
             return 1;
@@ -745,7 +759,7 @@ static int clipboard_command(const DVM_UIMessage *message)
             clipboard_result(EDITOR_CLIP_INVALID);
             return 1;
         }
-        memcpy(candidate, snapshot + first, length);
+        memcpy(candidate, source + first, length);
         candidate[length] = 0;
 #ifdef DVM_EDITOR_SDL
         if ((!events || system_clipboard_events) && SDL_SetClipboardText(candidate) != 0)
@@ -809,7 +823,6 @@ static int clipboard_command(const DVM_UIMessage *message)
     return 1;
 }
 
-
 /* Copy at most one acknowledged result or Unicode-aligned read fragment into message.
  * message is caller-owned. Returns one for a pending result; zero leaves ordinary input available.
  * Bytes are copied before native storage is freed; a later document edit is solely Dis policy. */
@@ -856,7 +869,6 @@ static int clipboard_event(DVM_UIMessage *message)
     }
     return 1;
 }
-
 
 /* Paint acknowledged caret/selection using the same face/size and FlashVM layout.
  * surface is borrowed; shown bounds the preview. Returns zero on layout/raster failure.
@@ -1005,7 +1017,7 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
                            selected);
         }
     }
-    if (ok && cursor_visible)
+    if (ok && cursor_visible && !panel_mode)
     {
         ok = rectangle(surface, cursor_x + 2 - horizontal, cursor_y + 2, 1, line_step(&font), cursor);
     }
@@ -1020,7 +1032,6 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
     }
     return ok;
 }
-
 
 /* Cull entire offscreen font contours before the bounded public raster API.
  * path/surface are borrowed, color is copied. Retained curves/control points stay exact;
@@ -1101,6 +1112,32 @@ static FVM_Result draw_visible(const FVM_Path *path, FVM_RasterSurface *surface,
     return result;
 }
 
+/* Resolve an admitted byte insertion coordinate in one owned single-line field layout.
+ * layout is borrowed; out receives native pixels. Returns zero on invalid geometry, without policy changes. */
+static int field_position(const FVM_TextLayout *layout, size_t byte, double *out)
+{
+    FVM_TextLayoutLine line;
+    size_t index;
+    if (fvm_text_layout_line(layout, 0, &line) != FVM_OK)
+    {
+        return 0;
+    }
+    *out = line.x + line.advance;
+    for (index = 0; index < line.glyph_count; index++)
+    {
+        FVM_TextLayoutGlyph glyph;
+        if (fvm_text_layout_glyph(layout, line.glyph_start + index, &glyph) != FVM_OK)
+        {
+            return 0;
+        }
+        if (glyph.shaped.cluster >= byte)
+        {
+            *out = glyph.x;
+            break;
+        }
+    }
+    return 1;
+}
 
 /* Draw a channel-published prompt/status field over the document surface.
  * surface is borrowed; mode/text/selection are copied Dis values. Returns one only on real rendering. */
@@ -1125,6 +1162,10 @@ static int render_panel(FVM_RasterSurface *surface)
     FVM_Result result;
     FVM_FontMetrics metrics;
     int height;
+    double cursor_x = 0;
+    size_t first = 0;
+    size_t last = 0;
+    size_t index;
     if (fvm_font_metrics(layout_font, &metrics) != FVM_OK)
     {
         return 0;
@@ -1135,12 +1176,7 @@ static int render_panel(FVM_RasterSurface *surface)
     {
         return 0;
     }
-    if (!rectangle(surface,
-                   0,
-                   canvas_height - height,
-                   canvas_width,
-                   height,
-                   panel_mode && panel_selected ? active : background))
+    if (!rectangle(surface, 0, canvas_height - height, canvas_width, height, background))
     {
         return 0;
     }
@@ -1156,16 +1192,80 @@ static int render_panel(FVM_RasterSurface *surface)
     {
         return 0;
     }
-    fvm_value_number(&value, panel_mode && !panel_selected ? scrolling.maxhscroll : 0);
-    if (fvm_object_set(context, panel_field, "hscroll", &value) != FVM_OK)
+    if (panel_mode)
+    {
+        FVM_TextLayoutOptions options;
+        FVM_TextLayout *layout = 0;
+        memset(&options, 0, sizeof(options));
+        options.alignment = FVM_TEXT_ALIGN_LEFT;
+        options.line_height = line_step(&metrics);
+        if (fvm_text_layout_create_configured(
+                layout_font, text, prefix + panel_size, &options, FVM_FONT_SHAPE_NO_KERNING, &layout) != FVM_OK)
+        {
+            return 0;
+        }
+        fvm_text_layout_destroy(panel_layout);
+        panel_layout = layout;
+        panel_prefix = prefix;
+        first = prefix + text_byte(panel_text, panel_size, panel_caret < panel_anchor ? panel_caret : panel_anchor);
+        last = prefix + text_byte(panel_text, panel_size, panel_caret > panel_anchor ? panel_caret : panel_anchor);
+        if (!field_position(panel_layout, prefix + text_byte(panel_text, panel_size, panel_caret), &cursor_x))
+        {
+            return 0;
+        }
+        if (cursor_x - panel_horizontal < 0)
+        {
+            panel_horizontal = floor(cursor_x);
+        }
+        if (cursor_x - panel_horizontal > canvas_width - 24)
+        {
+            panel_horizontal = ceil(cursor_x - (canvas_width - 24));
+        }
+    }
+    else
+    {
+        fvm_text_layout_destroy(panel_layout);
+        panel_layout = 0;
+        panel_horizontal = 0;
+    }
+    fvm_value_number(&value, panel_horizontal);
+    if (fvm_object_set(context, panel_field, "hscroll", &value) != FVM_OK ||
+        fvm_textfield_scroll_info(context, panel_field, &scrolling) != FVM_OK)
     {
         return 0;
     }
+    panel_horizontal = scrolling.hscroll;
     memset(&placement, 0, sizeof(placement));
     placement.xx = 1;
     placement.yy = 1;
     placement.x0 = 8;
     placement.y0 = canvas_height - height + 6;
+    if (panel_layout)
+    {
+        FVM_TextLayoutMetrics layout_metrics;
+        if (fvm_text_layout_metrics(panel_layout, &layout_metrics) != FVM_OK)
+        {
+            return 0;
+        }
+        for (index = 0; index < layout_metrics.glyph_count; index++)
+        {
+            FVM_TextLayoutGlyph glyph;
+            if (fvm_text_layout_glyph(panel_layout, index, &glyph) != FVM_OK)
+            {
+                return 0;
+            }
+            if (glyph.shaped.cluster >= first && glyph.shaped.cluster < last &&
+                !rectangle(surface,
+                           placement.x0 + 2 + glyph.x - panel_horizontal,
+                           placement.y0 + 2 + glyph.y - metrics.ascent,
+                           glyph.shaped.x_advance,
+                           line_step(&metrics),
+                           active))
+            {
+                return 0;
+            }
+        }
+    }
     result = fvm_textfield_path(context, panel_field, &path);
     if (result == FVM_OK)
     {
@@ -1176,9 +1276,21 @@ static int render_panel(FVM_RasterSurface *surface)
         result = draw_visible(path, surface, ink);
     }
     fvm_path_destroy(path);
+    if (result == FVM_OK && panel_mode)
+    {
+        FVM_RasterColor cursor = {35, 85, 170, 255};
+        if (!rectangle(surface,
+                       placement.x0 + 2 + cursor_x - panel_horizontal,
+                       placement.y0 + 2,
+                       1,
+                       line_step(&metrics),
+                       cursor))
+        {
+            return 0;
+        }
+    }
     return result == FVM_OK;
 }
-
 
 /* Render only a complete document through actual FlashVM contours and rasterization.
  * No parameters; returns one on success, zero on backend/file/presentation failure. */
@@ -1234,7 +1346,7 @@ static int render(void)
         char title[256];
         snprintf(title,
                  sizeof(title),
-                 "Dis IDE | rev %lu saved %ld status %lu | top %lu | Ctrl+S save, Ctrl+O reload%s",
+                 "Dis IDE | rev %lu saved %ld status %lu | top %lu | Ctrl+S save, Ctrl+O open, Ctrl+G location%s",
                  revision,
                  saved,
                  status,
@@ -1281,7 +1393,6 @@ static int render(void)
     return fvm_gc_collect(context, 0) == FVM_OK;
 }
 
-
 /* Assemble ordered Dis snapshot fragments, publishing TextField only at selection boundary.
  * message is borrowed, never retained. Returns zero on malformed/stale/inconsistent framing. */
 int dvm_editor_present(const DVM_UIMessage *message)
@@ -1304,7 +1415,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
         complete = 1;
         return 1;
     }
-    if (message->code == EDITOR_CLIP_WRITE || message->code == EDITOR_CLIP_READ)
+    if (message->code == EDITOR_CLIP_WRITE || message->code == EDITOR_CLIP_FIELD_WRITE ||
+        message->code == EDITOR_CLIP_READ)
     {
         return clipboard_command(message);
     }
@@ -1344,6 +1456,21 @@ int dvm_editor_present(const DVM_UIMessage *message)
         memcpy(panel_text, message->text, panel_size);
         return 1;
     }
+    if (message->code == EDITOR_PANEL_SELECTION)
+    {
+        size_t scalars;
+        if (assembling || message->size || message->flags != panel_revision || message->first < 0 ||
+            message->second < 0 || fvm_utf8_validate(panel_text, panel_size, &scalars) != FVM_UTF8_OK ||
+            (unsigned long)message->first > scalars || (unsigned long)message->second > scalars ||
+            (!panel_mode && (message->first || message->second)))
+        {
+            return 0;
+        }
+        panel_caret = message->first;
+        panel_anchor = message->second;
+        panel_selection_revision = message->flags;
+        return 1;
+    }
     if (message->code == EDITOR_VIEWPORT)
     {
         unsigned long top;
@@ -1375,7 +1502,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
         snapshot[extent] = 0;
         if (fvm_utf8_validate(snapshot, extent, &scalars) != FVM_UTF8_OK || (unsigned long)message->first > scalars ||
             (unsigned long)message->second > scalars || scalars != view_total || revision != view_revision ||
-            revision != canvas_revision || revision != style_revision || revision != panel_revision || !view_ticket)
+            revision != canvas_revision || revision != style_revision || revision != panel_revision ||
+            revision != panel_selection_revision || !view_ticket)
         {
             return 0;
         }
@@ -1399,6 +1527,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
             printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
             printf("STYLE %d %d\n", font_size, dvm_editor_rows());
             printf("CANVAS %u %u\n", canvas_width, canvas_height);
+            printf("FIELD %ld %ld %.0f\n", panel_caret, panel_anchor, panel_horizontal);
             printf("PANEL %lu %d ", panel_mode, panel_selected);
             for (index = 0; index < panel_size; index++)
             {
@@ -1436,7 +1565,6 @@ int dvm_editor_present(const DVM_UIMessage *message)
     assembled += message->size - EDITOR_REPLY_META;
     return 1;
 }
-
 
 /* Convert one actual glyph-layout hit into a source scalar proposal.
  * Coordinates are borrowed pixel values. Returns -1 if no completed layout is available. */
@@ -1508,6 +1636,58 @@ static long hit_position(double x, double y)
     return position;
 }
 
+/* Propose a scalar in the completed single-line field using its actual label/scroll layout.
+ * Coordinates are native pixels. Returns -1 outside the footer or before a valid completed layout. */
+static long field_hit(double x, double y)
+{
+    FVM_FontMetrics font;
+    FVM_TextLayoutLine line;
+    size_t byte;
+    size_t index;
+    long scalar = 0;
+    double distance;
+    if (!panel_mode || !panel_layout || fvm_font_metrics(layout_font, &font) != FVM_OK ||
+        y < canvas_height - panel_height(line_step(&font)) || y >= canvas_height ||
+        fvm_text_layout_line(panel_layout, 0, &line) != FVM_OK)
+    {
+        return -1;
+    }
+    x += panel_horizontal - 10;
+    byte = line.byte_end;
+    distance = fabs(x - (line.x + line.advance));
+    for (index = 0; index < line.glyph_count; index++)
+    {
+        FVM_TextLayoutGlyph glyph;
+        double candidate;
+        if (fvm_text_layout_glyph(panel_layout, line.glyph_start + index, &glyph) != FVM_OK)
+        {
+            return -1;
+        }
+        candidate = fabs(x - glyph.x);
+        if (candidate < distance)
+        {
+            distance = candidate;
+            byte = glyph.shaped.cluster;
+        }
+    }
+    if (byte <= panel_prefix)
+    {
+        return 0;
+    }
+    byte -= panel_prefix;
+    if (byte > panel_size)
+    {
+        return -1;
+    }
+    for (index = 0; index < byte; index++)
+    {
+        if (((unsigned char)panel_text[index] & 0xc0U) != 0x80U)
+        {
+            scalar++;
+        }
+    }
+    return scalar;
+}
 
 /* Resolve a copied raw pointer event using only the completed actual glyph layout.
  * message is replaced with a value request carrying revision and view ticket; Dis decides policy. */
@@ -1584,9 +1764,10 @@ static void resolve_pointer(DVM_UIMessage *message)
     }
     else if (message->code == FVM_MOUSE_LEFT)
     {
-        message->first = hit_position((double)message->first / 20, (double)message->second / 20);
+        message->first = panel_mode ? field_hit((double)message->first / 20, (double)message->second / 20)
+                                    : hit_position((double)message->first / 20, (double)message->second / 20);
         message->second = (long)message->flags;
-        message->code = EDITOR_PLACE;
+        message->code = panel_mode ? EDITOR_FIELD_PLACE : EDITOR_PLACE;
     }
     else
     {
@@ -1863,7 +2044,6 @@ int dvm_editor_event(DVM_UIMessage *message)
 #endif
 }
 
-
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)
 {
@@ -1895,6 +2075,7 @@ void dvm_editor_destroy(void)
         fvm_gc_unpin(context, field);
     }
     fvm_text_layout_destroy(hit_layout);
+    fvm_text_layout_destroy(panel_layout);
     fvm_font_destroy(layout_font);
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);

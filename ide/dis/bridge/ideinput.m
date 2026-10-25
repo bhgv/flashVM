@@ -44,6 +44,11 @@ Ideinput: module
               state: ref State, event: ref Uibridge->Message): (int, ref View);
 
 
+    # Resolve a clamped scalar word boundary without editing; forward is 0/1.
+    # Uses the same deterministic spacing/text/punctuation runs as source Ctrl+arrow commands.
+    wordboundary: fn(text: string, position, forward: int): int;
+
+
     # Resolve positive one-based line/column against LF/CRLF text without editing or I/O.
     # Returns a Unicode insertion offset; a long column clamps to logical EOL, absent lines return -1.
     locate: fn(text: string, line, column: int): int;

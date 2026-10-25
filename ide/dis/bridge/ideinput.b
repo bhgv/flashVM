@@ -92,6 +92,12 @@ wordclass(character: int): int
 # position is bounded; forward is 0/1. Returns an insertion coordinate, without I/O or mutation.
 wordboundary(text: string, position, forward: int): int
 {
+    if (position < 0) {
+        position = 0;
+    }
+    if (position > len text) {
+        position = len text;
+    }
     if (forward) {
         if (position < len text) {
             category := wordclass(text[position]);
