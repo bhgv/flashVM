@@ -204,3 +204,17 @@ and modal clipboard ownership. All field edits remain Dis policy and preserve
 source history; Enter alone submits a document/file command. Rebuild the matched
 host, controller, idefield.dis, ideinput.dis and interfaces together.
 [Русский](../../ide/dis/FIELDS.ru.md).
+
+## Our compiler and scalar inspection, component 0.8.0
+
+The [direct FIR→Dis target](../../fir/v1/doc/DIS_BACKEND.md) executes actual code
+from our C99 emitter and Coco/R numeric Limbo frontend without limbo-native.
+`--inspect-words OFFSET COUNT` captures the completed entry-instance scalar data
+with bounds/alignment checks and a retained owner; pointer-bearing descriptors
+are rejected. It does not expose a live frame, mutate code/data or implement
+breakpoints. [Русский контракт](../../fir/v1/doc/DIS_BACKEND.ru.md).
+
+Configure optional cross-project tests with DVM_FIR_COMPILER and
+DVM_FIR_SOURCE_COMPILER pointing to our built fir1/fir1_source. The standalone
+runtime still builds without those paths. The existing graphical IDE still
+requires the temporary bootstrap until broader source lowering is implemented.

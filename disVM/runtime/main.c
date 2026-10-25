@@ -12,10 +12,13 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #ifdef DVM_RUNTIME_EDITOR
 #include "editor_view.h"
 #include "thread_port.h"
+
 
 /* Initialize, poll and release the UI channel boundary on this sole native owner. */
 extern int dvm_editor_start(void);
@@ -69,8 +72,91 @@ Type *TFileIO;                            /* Unavailable file-to-channel host ty
 unsigned long dvm_runtime_instructions;   /* Decoded complete instructions across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
 static int show_stats;                    /* Emit actual instruction counts on explicit request. */
+static int inspect_requested;             /* Explicit read-only post-execution module-data inspection. */
+static size_t inspect_offset;             /* Requested byte offset, aligned to the NC64 word width. */
+static size_t inspect_count;              /* Requested native words, bounded to 4096 before execution. */
+static uchar *inspect_data;               /* [GC:] Retained scalar-only entry-instance MP until report/cleanup. */
 static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
 static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+
+
+/* Parse one nonnegative decimal extent into caller storage, without signs, bases or overflow.
+ * text is borrowed argv memory. Returns zero without publishing partial results on invalid input. */
+static int inspect_extent(const char *text, size_t *result)
+{
+    size_t value = 0;
+    const unsigned char *cursor = (const unsigned char *)text;
+    if (!*cursor)
+    {
+        return 0;
+    }
+    for (; *cursor; cursor++)
+    {
+        unsigned digit;
+        if (*cursor < '0' || *cursor > '9')
+        {
+            return 0;
+        }
+        digit = *cursor - '0';
+        if (value > ((size_t)INT_MAX - digit) / 10U)
+        {
+            return 0;
+        }
+        value = value * 10U + digit;
+    }
+    *result = value;
+    return 1;
+}
+
+
+/* Retain the actual entry-instance data before its last process can release it.
+ * process is borrowed on the sole VM owner. Only pointer-free, bounded NC64 words are admitted;
+ * pointer-bearing descriptors are rejected rather than exposing native heap addresses. */
+static void inspect_retain(Prog *process)
+{
+    Heap *heap;
+    uchar *data = process->R.MP;
+    if (data == nil || data == H)
+    {
+        error("inspection requires entry module data");
+    }
+    heap = D2H(data);
+    if (!heap->t || heap->t->np != 0 || heap->t->size < 0 || inspect_offset % 8U != 0 ||
+        inspect_offset > (size_t)heap->t->size || inspect_count > ((size_t)heap->t->size - inspect_offset) / 8U)
+    {
+        error("inspection requires an aligned in-bounds range in pointer-free module data");
+    }
+    if (heap->ref == 0 || heap->ref == (ulong)-1)
+    {
+        error("inspection encountered an invalid module-data owner");
+    }
+    heap->ref++;
+    Setmark(heap);
+    inspect_data = data; /* [GC:] One explicit native retain, no heap pointers in the retained scalar payload. */
+}
+
+
+/* Report copied signed native words after all processes have stopped, then release the retain.
+ * No Dis stack/frame address is exposed. Returns zero on output failure; never changes module data. */
+static int inspect_report(void)
+{
+    size_t index;
+    int ok = 1;
+    for (index = 0; index < inspect_count; index++)
+    {
+        int64_t value;
+        size_t offset = inspect_offset + index * 8U;
+        memcpy(&value, inspect_data + offset, sizeof(value));
+        if (printf("DATA %zu %" PRId64 "\n", offset, value) < 0)
+        {
+            ok = 0;
+            break;
+        }
+    }
+    destroy(inspect_data);
+    inspect_data = nil; /* [GC:] Reporting retires the exclusive native root even on output failure. */
+    return ok;
+}
 
 
 /* Report allocator corruption and terminate instead of continuing with invalid metadata. */
@@ -664,6 +750,20 @@ int main(int argc, char **argv)
         {
             show_stats = 1;
         }
+        else if (strcmp(argv[1], "--inspect-words") == 0)
+        {
+            if (inspect_requested || argc < 4 || !inspect_extent(argv[2], &inspect_offset) ||
+                !inspect_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
+                inspect_offset % 8U != 0)
+            {
+                fprintf(stderr, "--inspect-words requires one aligned decimal byte offset and 1..4096 words\n");
+                return 2;
+            }
+            inspect_requested = 1;
+            argv += 3;
+            argc -= 3;
+            continue;
+        }
         else if (strcmp(argv[1], "--test-control") == 0)
         {
             test_control = 1;
@@ -678,14 +778,16 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.4.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime 0.8.0: experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
         {
-            puts("usage: disvm [--jit|--no-jit] [--stats] [--test-control] native-cell.dis");
+            puts(
+                "usage: disvm [--jit|--no-jit] [--stats] [--test-control] [--inspect-words OFFSET COUNT] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
-            puts("editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
+            puts(
+                "editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
             return 0;
@@ -719,6 +821,11 @@ int main(int argc, char **argv)
     environment.errstr = failure;
     if (waserror())
     {
+        if (inspect_data)
+        {
+            destroy(inspect_data);
+            inspect_data = nil; /* [GC:] Execution failure must retire the inspection retain too. */
+        }
         fprintf(stderr, "disvm: %s\n", failure);
         return 1;
     }
@@ -742,7 +849,11 @@ int main(int argc, char **argv)
     {
         error(failure);
     }
-    start_module(module);
+    process = start_module(module);
+    if (inspect_requested)
+    {
+        inspect_retain(process);
+    }
     while (ready
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
@@ -828,6 +939,11 @@ int main(int argc, char **argv)
     dvm_editor_stop();
 #endif
     poperror();
+    if (inspect_requested && !inspect_report())
+    {
+        fprintf(stderr, "disvm: inspection output failed\n");
+        return 1;
+    }
     if (show_stats)
     {
         fprintf(stderr, "instructions=%lu native=%lu\n", dvm_runtime_instructions, native_instructions);
