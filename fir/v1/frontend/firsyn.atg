@@ -5,38 +5,94 @@ COMPILER Firsyn
 void firsyn_syntax_enter(void);
 void firsyn_syntax_leave(void);
 
-/* A value beginning the next SSA definition is not an operand of the preceding
- * operation. */
-static int OperandAhead(int token)
+/* Skip whitespace/comments while peeking after a scanner token; return -1 for an unfinished comment.
+ * pos is a byte offset in borrowed scanner storage. No parser state or source text is changed. */
+static long SkipTrivia(long pos)
 {
-    long pos;
-    if (token != valueSym)
-        return token == symbolSym || token == labelSym || token == numericSym ||
-               token == hexnumSym || token == textlitSym || token == trueSym ||
-               token == falseSym || token == nullSym || token == undefinedSym;
-    pos = S_NextPos + S_NextLen;
     for (;;)
     {
         int ch = S_CurrentCh(pos);
         if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+        {
             ++pos;
+        }
         else if (ch == '/' && S_CurrentCh(pos + 1) == '/')
+        {
             while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+            {
                 ++pos;
+            }
+        }
         else if (ch == '/' && S_CurrentCh(pos + 1) == '*')
         {
             pos += 2;
-            while (S_CurrentCh(pos) &&
-                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+            while (S_CurrentCh(pos) && !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+            {
                 ++pos;
+            }
             if (!S_CurrentCh(pos))
-                return 0;
+            {
+                return -1;
+            }
             pos += 2;
         }
         else
-            return ch != ':';
+        {
+            return pos;
+        }
     }
 }
+
+
+/* Distinguish operands from the next SSA/block declaration without scanning nested argument tails.
+ * token is scanner lookahead. A typed first label parameter starts with %name:, while an empty
+ * label group is a declaration only when followed by :. Coco/R still validates all actual types,
+ * operands and delimiters. Malformed prefixes remain scanner/parser diagnostics, not guessed syntax. */
+static int OperandAhead(int token)
+{
+    long pos;
+    if (token != valueSym && token != labelSym)
+    {
+        return token == symbolSym || token == numericSym ||
+               token == hexnumSym || token == textlitSym || token == trueSym ||
+               token == falseSym || token == nullSym || token == undefinedSym;
+    }
+    pos = SkipTrivia(S_NextPos + S_NextLen);
+    if (pos < 0)
+    {
+        return 1;
+    }
+    if (token == labelSym && S_CurrentCh(pos) == '(')
+    {
+        pos = SkipTrivia(pos + 1);
+        if (pos < 0)
+        {
+            return 1;
+        }
+        if (S_CurrentCh(pos) == ')')
+        {
+            pos = SkipTrivia(pos + 1);
+        }
+        else if (S_CurrentCh(pos) == '%')
+        {
+            int ch;
+            ++pos;
+            while ((ch = S_CurrentCh(pos)) != 0 && ch != ':' && ch != '(' && ch != ')'
+                   && ch != ',' && ch != '/' && ch != ' ' && ch != 9 && ch != 10 && ch != 13)
+            {
+                ++pos;
+            }
+            pos = SkipTrivia(pos);
+        }
+        else
+        {
+            return 1;
+        }
+    }
+    return pos < 0 || S_CurrentCh(pos) != ':';
+}
+
+
 /* Version is a syntax contract, never a floating-point comparison. */
 static void CheckVersion(void)
 {

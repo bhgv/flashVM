@@ -1,18 +1,23 @@
-/* Direct NC64 Dis emission for verified straight-line FIR i32 programs.
+/* Direct NC64 Dis emission for verified scalar FIR control-flow programs.
  * This backend does not invoke the temporary Limbo compiler or a Dis assembler. */
 #include "fir.h"
 #include <string.h>
 
 enum
 {
-    DIS_MAGIC = 819264, /* Explicit experimental eight-byte native-cell target. */
-    DIS_MOVW = 45,      /* Existing Dis instruction numbers, not new opcodes. */
-    DIS_ADDW = 58, /* Native-word addition; followed by explicit i32 normalization. */
-    DIS_SUBW = 61, /* Native-word subtraction with middle minus source ordering. */
-    DIS_MULW = 64, /* Native-word multiplication; followed by explicit i32 normalization. */
-    DIS_ANDW = 72, /* Retain the low 32 result bits. */
-    DIS_XORW = 76, /* Bias the sign bit before signed-i32 normalization. */
-    DIS_RET = 12, /* Existing Dis return, including normal entry-process termination. */
+    DIS_MAGIC = 819264,  /* Explicit experimental eight-byte native-cell target. */
+    DIS_MOVW = 45,       /* Existing Dis instruction numbers, not new opcodes. */
+    DIS_ADDW = 58,       /* Native-word addition; followed by explicit i32 normalization. */
+    DIS_SUBW = 61,       /* Native-word subtraction with middle minus source ordering. */
+    DIS_MULW = 64,       /* Native-word multiplication; followed by explicit i32 normalization. */
+    DIS_ANDW = 72,       /* Retain the low 32 result bits. */
+    DIS_XORW = 76,       /* Bias the sign bit before signed-i32 normalization. */
+    DIS_RET = 12,        /* Existing Dis return, including normal entry-process termination. */
+    DIS_JMP = 13,        /* Existing Dis branch to a verified program index. */
+    DIS_BEQW = 93,       /* Signed/native equality used to materialize bool. */
+    DIS_BNEW = 94,       /* Branch when a normalized bool differs from scratch zero. */
+    DIS_BLTW = 95,       /* Signed/native comparison of normalized i32 values. */
+    DIS_IMMEDIATE = 2,   /* Immediate scalar or loader-relocated branch program index. */
     DIS_MP = 0,          /* Module-relative byte offset. */
     DIS_FP = 1,          /* Frame-relative byte offset. */
     DIS_NONE = 3,        /* Absent operand. */
@@ -105,19 +110,21 @@ static void integer(FILE *output, int64_t value)
 }
 
 
-/* Validate all backend-specific restrictions before writing even the magic.
- * module is borrowed after FIR verification; counts receive bounded instruction/trace extents.
- * Unsupported FIR is diagnosed, never silently reinterpreted with different numeric semantics. */
-static int supported(FirModule *module, unsigned *count, unsigned *traces, char *error, size_t capacity)
+/* Preflight scalar coverage and map FIR instruction/block indices to final Dis PCs.
+ * module is borrowed after verification. Output arrays/counts are caller-owned and bounded
+ * by FIR_LIMIT/FIR_BLOCKS. No file bytes or caller IR are modified on rejection. */
+static int supported(
+    FirModule *module, unsigned *count, unsigned *traces, unsigned *pcs, unsigned *blocks, char *error, size_t capacity)
 {
     int index;
-    *count = 0;
+    *count = 1; /* Entry prologue initializes a dedicated scalar zero scratch slot. */
     *traces = 0;
-    if (module->block_count != 1 || module->source_semantics == FIR_AVM1_NUMERIC)
+    memset(blocks, 0, FIR_BLOCKS * sizeof(*blocks));
+    if (module->source_semantics == FIR_AVM1_NUMERIC || module->channels)
     {
         if (error && capacity)
         {
-            snprintf(error, capacity, "Dis i32 backend requires one block and non-AVM1 semantics");
+            snprintf(error, capacity, "Dis scalar backend does not implement AVM1 semantics or channel requirements");
         }
         return 0;
     }
@@ -128,27 +135,41 @@ static int supported(FirModule *module, unsigned *count, unsigned *traces, char 
         {
             continue;
         }
+        pcs[index] = *count;
+        if (!blocks[current->block])
+        {
+            blocks[current->block] = *count;
+        }
         switch (current->op)
         {
         case O_I32:
+        case O_BOOL:
         case O_COPY:
-        case O_ADD:
-        case O_SUB:
-        case O_MUL:
-            if (current->type != T_I32)
+            if (current->type != T_I32 && current->type != T_BOOL)
             {
                 goto unsupported;
             }
-            *count += current->op == O_ADD || current->op == O_SUB || current->op == O_MUL ? 4U : 1U;
+            (*count)++;
+            break;
+        case O_ADD:
+        case O_SUB:
+        case O_MUL:
+        case O_LT:
+        case O_EQ:
+            *count += 4U;
             break;
         case O_TRACE:
-            if (module->values[current->a].type != T_I32)
+            if (module->values[current->a].type != T_I32 && module->values[current->a].type != T_BOOL)
             {
                 goto unsupported;
             }
             (*traces)++;
-            (*count)++;
+            *count += 2U; /* Capture value and set its distinct executed flag. */
             break;
+        case O_IF:
+            *count += 2U; /* Conditional yes edge followed by unconditional no edge. */
+            break;
+        case O_JUMP:
         case O_RETURN:
             (*count)++;
             break;
@@ -156,7 +177,19 @@ static int supported(FirModule *module, unsigned *count, unsigned *traces, char 
         unsupported:
             if (error && capacity)
             {
-                snprintf(error, capacity, "line %d: operation/type is outside Dis i32 backend coverage", current->line);
+                snprintf(
+                    error, capacity, "line %d: operation/type is outside Dis scalar backend coverage", current->line);
+            }
+            return 0;
+        }
+    }
+    for (index = 0; index < module->block_count; index++)
+    {
+        if (!blocks[index])
+        {
+            if (error && capacity)
+            {
+                snprintf(error, capacity, "Dis scalar backend found a block without emitted instructions");
             }
             return 0;
         }
@@ -168,12 +201,15 @@ static int supported(FirModule *module, unsigned *count, unsigned *traces, char 
 /* Emit existing NC64 Dis directly from caller-owned FIR, preserving i32 wrap arithmetic.
  * output/module are borrowed; no native runtime/SDK is required. Verification or coverage errors
  * leave output untouched. I/O errors can leave a prefix; CLI staging protects prior destination files.
- * Trace statements store ordered results in the first module-data cells for debugger inspection.
+ * Trace statements store values followed by 0/1 executed flags, indexed by static trace point.
  * See fir.h and doc/DIS_BACKEND.md for the deliberately bounded entry/module contract. */
 int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
 {
     unsigned count, traces, data_size, frame_size, mask, sign, constants;
     unsigned trace = 0;
+    unsigned pcs[FIR_LIMIT];     /* Final start PC for each live FIR instruction, local to this emission. */
+    unsigned blocks[FIR_BLOCKS]; /* Final start PC for each verifier-admitted CFG block. */
+    unsigned scratch;            /* Extra frame word initialized once; never aliases an SSA result. */
     int index;
     if (!error)
     {
@@ -187,15 +223,16 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         }
         return 0;
     }
-    if (!fir_verify(module, error, capacity) || !supported(module, &count, &traces, error, capacity))
+    if (!fir_verify(module, error, capacity) || !supported(module, &count, &traces, pcs, blocks, error, capacity))
     {
         return 0;
     }
-    mask = traces * DIS_CELL;
+    mask = 2U * traces * DIS_CELL;
     sign = mask + DIS_CELL;
     constants = sign + DIS_CELL;
     data_size = constants + (unsigned)module->value_count * DIS_CELL;
-    frame_size = slot(module->value_count);
+    scratch = slot(module->value_count);
+    frame_size = scratch + DIS_CELL;
     operand(output, DIS_MAGIC);
     operand(output, 0); /* No runtime flags, signed payload, imports or exception table. */
     operand(output, frame_size + 4096U);
@@ -205,6 +242,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     operand(output, 0); /* No public function exports: this is an executable numeric harness. */
     operand(output, 0); /* Entry instruction zero. */
     operand(output, 1); /* Entry frame descriptor one. */
+    instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, scratch, -1);
     for (index = 0; index < module->count; index++)
     {
         FirInstruction *current = &module->instructions[index];
@@ -217,6 +255,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         switch (current->op)
         {
         case O_I32:
+        case O_BOOL:
             instruction(
                 output, DIS_MOVW, DIS_MP, constants + (unsigned)current->result * DIS_CELL, DIS_FP, destination, -1);
             break;
@@ -234,8 +273,30 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             break;
+        case O_LT:
+        case O_EQ:
+            instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
+            instruction(output,
+                        current->op == O_LT ? DIS_BLTW : DIS_BEQW,
+                        DIS_FP,
+                        slot(current->a),
+                        DIS_IMMEDIATE,
+                        pcs[index] + 3U,
+                        (int)slot(current->b));
+            instruction(output, DIS_JMP, DIS_NONE, 0, DIS_IMMEDIATE, pcs[index] + 4U, -1);
+            instruction(output, DIS_MOVW, DIS_IMMEDIATE, 1, DIS_FP, destination, -1);
+            break;
+        case O_IF:
+            instruction(output, DIS_BNEW, DIS_FP, slot(current->a), DIS_IMMEDIATE, blocks[current->yes], (int)scratch);
+            instruction(output, DIS_JMP, DIS_NONE, 0, DIS_IMMEDIATE, blocks[current->no], -1);
+            break;
+        case O_JUMP:
+            instruction(output, DIS_JMP, DIS_NONE, 0, DIS_IMMEDIATE, blocks[current->yes], -1);
+            break;
         case O_TRACE:
-            instruction(output, DIS_MOVW, DIS_FP, slot(current->a), DIS_MP, trace++ * DIS_CELL, -1);
+            instruction(output, DIS_MOVW, DIS_FP, slot(current->a), DIS_MP, trace * DIS_CELL, -1);
+            instruction(output, DIS_MOVW, DIS_IMMEDIATE, 1, DIS_MP, (traces + trace) * DIS_CELL, -1);
+            trace++;
             break;
         default: /* Preflight admits only the remaining O_RETURN. */
             instruction(output, DIS_RET, DIS_NONE, 0, DIS_NONE, 0, -1);
@@ -251,7 +312,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     octet(output, DIS_BIG_DATA << 4); /* Extended-count existing DEFL record. */
     operand(output, data_size / DIS_CELL);
     operand(output, 0);
-    for (index = 0; index < (int)traces; index++)
+    for (index = 0; index < (int)(2U * traces); index++)
     {
         integer(output, 0);
     }
@@ -260,7 +321,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     for (index = 0; index < module->value_count; index++)
     {
         FirInstruction *definition = &module->instructions[module->values[index].definition];
-        integer(output, definition->op == O_I32 ? definition->integer : 0);
+        integer(output, definition->op == O_I32 || definition->op == O_BOOL ? definition->integer : 0);
     }
     octet(output, 0); /* End initializers. */
     fwrite(module->module, 1, strlen(module->module) + 1, output);

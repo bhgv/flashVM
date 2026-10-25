@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     }
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("firsyn_parse 0.1.1 (C99 syntax API)");
+        puts("firsyn_parse 0.1.2 (C99 syntax API)");
         return 0;
     }
     if (argc != 2)

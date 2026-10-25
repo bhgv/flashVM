@@ -4,6 +4,8 @@
 #include <string.h>
 
 
+/* Reject forged indices and physical block layouts through the public verifier.
+ * No arguments; successful completion frees private modules and closes the fixture stream. */
 int main(void)
 {
     FirModule *base = (FirModule *)malloc(sizeof(*base)), *m = (FirModule *)malloc(sizeof(*m));
@@ -21,7 +23,7 @@ int main(void)
         return 2;
     }
     fclose(in);
-    for (i = 0; i < 13; ++i)
+    for (i = 0; i < 15; ++i)
     {
         memcpy(m, base, sizeof(*m));
         switch (i)
@@ -65,6 +67,23 @@ int main(void)
             break;
         case 11:
             strcpy(m->module, "@bad-name");
+            break;
+        case 13:
+        case 14:
+            /* Logical entry->other is reachable, but its physical instruction layout would
+             * execute the wrong block in both emitters. Removed prefixes must not hide entry. */
+            m->block_count = 2;
+            strcpy(m->blocks[1].name, "^other");
+            m->blocks[1].defined = 1;
+            m->instructions[1].op = O_RETURN;
+            m->instructions[1].block = 1;
+            m->instructions[1].a = -1;
+            m->instructions[2].op = O_JUMP;
+            m->instructions[2].yes = 1;
+            if (i == 14)
+            {
+                m->instructions[0].removed = 1;
+            }
             break;
         }
         if (fir_verify(m, error, sizeof(error)))

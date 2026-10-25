@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdint.h>
 
+
 /* Borrowed output stream and copied source position; released after parsing. */
 static FILE *destination;
 static SourceMark location;
@@ -21,6 +22,8 @@ static int bindings[256], immutable[256], name_count, source_line;
 static int binding_scope[256], active[256], scope_depth;
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
+static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
+static int terminal;      /* The last emitted arm already terminates and needs no footer return. */
 
 
 /* Configure one translation unit; each process owns one generated parser. */
@@ -35,6 +38,7 @@ void source_config(FILE *out, int language)
     integer_mode = language == 4;
     serial = failed = name_count = scope_depth = debug_scope_serial = 0;
     debug_scopes[0] = 0;
+    branch_serial = terminal = 0;
 }
 
 
@@ -478,4 +482,97 @@ void source_restore(SourceMark mark)
 void source_release(void)
 {
     destination = NULL;
+}
+
+
+/* Lower one admitted Limbo relation to signed i32 comparison plus edge inversion.
+ * Operands/relation are parser values. Return owns no storage; source errors remain sticky.
+ * The current restored source mark identifies the comparison operator, not a later operand. */
+SourceCondition source_compare(int left, int right, SourceRelation relation)
+{
+    SourceCondition condition;
+    int swap = relation == SOURCE_GREATER || relation == SOURCE_LESS_EQUAL;
+    int equality = relation == SOURCE_EQUAL || relation == SOURCE_NOT_EQUAL;
+    condition.value = serial++;
+    condition.invert =
+        relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
+    if (!integer_mode || serial > 1000)
+    {
+        reject("terminal comparisons require the bounded Limbo i32 profile");
+    }
+    if (!failed)
+    {
+        fprintf(destination,
+                "    %%v%d: bool = i32.%s %%v%d, %%v%d\n",
+                condition.value,
+                equality ? "eq" : "lt.signed",
+                swap ? right : left,
+                swap ? left : right);
+        source_debug_event("compare", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return condition;
+}
+
+
+/* Publish the two edges and first label of a terminal decision; return its scalar identity.
+ * condition is a copied bool/inversion pair. Bounds leave room for the entry plus two blocks
+ * per decision. No assignment environment is merged: each accepted arm must return. */
+int source_branch(SourceCondition condition)
+{
+    int choice = ++branch_serial;
+    if (branch_serial > (FIR_BLOCKS - 1) / 2)
+    {
+        reject("terminal decision block limit exceeded");
+    }
+    if (!failed)
+    {
+        fprintf(destination,
+                "    if %%v%d, ^choose%d_%s, ^choose%d_%s\n^choose%d_yes:\n",
+                condition.value,
+                choice,
+                condition.invert ? "no" : "yes",
+                choice,
+                condition.invert ? "yes" : "no",
+                choice);
+        source_debug_event("branch", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    terminal = 0;
+    return choice;
+}
+
+
+/* Begin the source-false arm after a terminated true arm; choice is parser-local and borrowed.
+ * It introduces no source binding scope or phi: the authoritative grammar admits terminal results only. */
+void source_else(int choice)
+{
+    if (!failed)
+    {
+        fprintf(destination, "^choose%d_no:\n", choice);
+    }
+    terminal = 0;
+}
+
+
+/* Return the tutorial value through its existing trace harness, then terminate this FIR arm.
+ * value is a parser-owned SSA index. No caller stream or source binding is acquired. */
+void source_return(int value)
+{
+    source_trace(value);
+    if (!failed)
+    {
+        fputs("    return\n", destination);
+    }
+    terminal = 1;
+}
+
+
+/* Finish one staged module. AS statements need a footer return; every Limbo result already has one.
+ * No parameters; destination remains caller-owned until source_release retires the borrow. */
+void source_finish(void)
+{
+    if (!terminal)
+    {
+        fputs("    return\n", destination);
+    }
+    fputs("}\n", destination);
 }

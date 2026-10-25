@@ -74,6 +74,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     unsigned char dom[FIR_BLOCKS][FIR_BLOCKS], reachable[FIR_BLOCKS] = {0};
     int first[FIR_BLOCKS], last[FIR_BLOCKS], terminated[FIR_BLOCKS] = {0};
     int i, b, j, k, changed, entry;
+    int previous = -1; /* Live instructions must form contiguous blocks beginning with the entry. */
     /* Public C callers can build IR themselves; reject indices before any
      * table lookup. Removed instructions retain definitions but no live CFG. */
     if (!m || m->count < 1 || m->count > FIR_LIMIT || m->value_count < 0 || m->value_count > FIR_LIMIT ||
@@ -154,6 +155,15 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             continue;
         }
         b = in->block;
+        if (previous < 0 && b != m->instructions[0].block)
+        {
+            return fail(error, cap, "first live block must be the entry block");
+        }
+        if (previous != b && first[b] >= 0)
+        {
+            return fail(error, cap, "interleaved live block layout");
+        }
+        previous = b;
         if (terminated[b])
         {
             return fail(error, cap, "line %d: instruction after terminator", in->line);

@@ -39,13 +39,13 @@ def main():
         if binary.read_bytes() != accepted:
             raise RuntimeError("direct Dis emission is not deterministic")
         for body in ("%v: f64 = const.f64 1.5\ntrace %v\nreturn",
-                     "%v: bool = const.bool true\ntrace %v\nreturn",
                      "%v: string = const.string \"x\"\ntrace %v\nreturn",
-                     "jump ^next\n^next:\nreturn"):
-            fir.write_text("FIR 1.0\nmodule @Reject\nfunc @main() -> void {\n^entry:\n" + body + "\n}\n")
+                     "%c: channel = limbo.chan_create\nlimbo.chan_close %c\nreturn"):
+            requirement = "requires flashvm.channels\n" if "limbo.chan" in body else ""
+            fir.write_text("FIR 1.0\nmodule @Reject\n" + requirement + "func @main() -> void {\n^entry:\n" + body + "\n}\n")
             invoke(compiler, ["check", fir], environment)
             result = invoke(compiler, ["dis", fir, binary], environment, success=False)
-            if "Dis i32 backend" not in result.stderr or binary.read_bytes() != accepted:
+            if "Dis scalar backend" not in result.stderr or binary.read_bytes() != accepted:
                 raise RuntimeError("unsupported backend coverage changed destination or hid its diagnostic")
         # The same verified input remains valid for other backends after Dis rejects it.
         invoke(compiler, ["print", fir, directory / "copy.fir"], environment)

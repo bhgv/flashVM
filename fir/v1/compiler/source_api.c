@@ -268,7 +268,7 @@ int fir_source_debug(FILE *input,
         source_error(FIR_DIAG_RESOURCE, 0, -1, 0, "scanner allocation failure");
         goto done;
     }
-    fputs("    return\n}\n", temporary);
+    source_finish();
     if (!Successful() || source_failed() || error_recorded)
     {
         goto done;

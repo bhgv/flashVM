@@ -23,6 +23,16 @@ good = [
     "invoke as.call %f(%x) normal ^ok catch ^failed\n"
     "^ok(%v:any):\nreturn %v\n^failed(%error:any):\nreturn %error\n}\n",
 ]
+# A no-value return or operand-free operation must not consume the next block label.
+# Comments, empty parameters and nested function types exercise the Coco/R lookahead resolver.
+good += [
+    prefix + "func @x()->void {^entry:return\n^next:return}\n",
+    prefix + "func @x()->void {^entry:return /* gap */ ^next():return}\n",
+    prefix + "func @x()->void {^entry:return ^next(%f:func(i32,tuple<i32,bool>)->void):return}\n",
+    prefix + "func @x()->void {^entry:opaque ^next(%x /* gap */ :i32):return}\n",
+    prefix + 'func @x()->void {^entry:return ^target(1, ")") }\n',
+    prefix + "func @x(%a:i32)->void {^entry:opaque ^target(%a) return}\n",
+]
 # A detached frontend does not depend on sibling executable examples.
 examples = Path(__file__).resolve().parents[2] / "examples"
 if examples.is_dir():

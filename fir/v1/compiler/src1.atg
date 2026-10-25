@@ -295,7 +295,6 @@ PRODUCTIONS
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
   LimboProgram =
                                                                         (.
-                                                                            int value = 0;
                                                                             depth = 0;
                                                                             source_language(1);
                                                                         .)
@@ -312,7 +311,62 @@ PRODUCTIONS
     {
         LimboStatement
     }
-    "return" Expression<&value> ";" "}"                                 (. source_trace(value); .)
+    LimboResult "}"
+  .
+
+  /* A terminal decision tree avoids unimplemented SSA joins: every arm returns.
+  * Resolver arms consume an over-budget if without descending; accepted decisions
+  * share the existing 64-level source recursion budget with groups and lexical blocks. */
+  LimboResult =
+                                                                        (.
+                                                                            int value = 0, choice = 0;
+                                                                            SourceCondition condition;
+                                                                            SourceMark branch;
+                                                                        .)
+    "return" Expression<&value> ";"                                     (. source_return(value); .)
+    | IF(Sym==ifSym && depth>=64) "if"                                  (.
+                                                                            capture();
+                                                                            source_scope_limit();
+                                                                        .)
+    | IF(Sym==ifSym && depth<64) "if"                                   (.
+                                                                            capture();
+                                                                            branch = source_mark();
+                                                                        .)
+    "(" LimboCondition<&condition> ")"                                  (.
+                                                                            ++depth;
+                                                                            source_restore(branch);
+                                                                            choice = source_branch(condition);
+                                                                        .)
+    "{" LimboResult "}" "else"                                          (. source_else(choice); .)
+    "{" LimboResult "}"                                                 (. --depth; .)
+  .
+
+  /* Compare complete numeric expressions once; bool is internal, never coerced from an int.
+  * Restore the operator's original byte span after parsing the right-hand expression. */
+  LimboCondition<SourceCondition *condition> =
+                                                                        (.
+                                                                            int left = 0, right = 0;
+                                                                            SourceRelation relation = SOURCE_LESS;
+                                                                            SourceMark target;
+                                                                        .)
+    Expression<&left> Relation<&relation>                               (. target = source_mark(); .)
+    Expression<&right>                                                  (.
+                                                                            source_restore(target);
+                                                                            *condition = source_compare(left, right, relation);
+                                                                        .)
+  .
+
+  /* Native Limbo comparisons; edge inversion implements <=, >= and != without new FIR opcodes. */
+  Relation<SourceRelation *relation> =
+    (
+        "<"                                                             (. *relation = SOURCE_LESS; .)
+        | "=="                                                          (. *relation = SOURCE_EQUAL; .)
+        | ">"                                                           (. *relation = SOURCE_GREATER; .)
+        | "!="                                                          (. *relation = SOURCE_NOT_EQUAL; .)
+        | "<="                                                          (. *relation = SOURCE_LESS_EQUAL; .)
+        | ">="                                                          (. *relation = SOURCE_GREATER_EQUAL; .)
+    )
+                                                                        (. capture(); .)
   .
 
   /* Limbo inferred declarations and initialized int declarations stay distinct

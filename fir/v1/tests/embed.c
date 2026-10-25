@@ -6,7 +6,6 @@
 
 extern FILE *fir_temporary(void);
 
-
 static FILE *input(const char *text)
 {
     FILE *f = fir_temporary();
@@ -22,7 +21,6 @@ static FILE *input(const char *text)
     return f;
 }
 
-
 static int snapshots(void *user, const char *phase, const FirModule *m)
 {
     int *count = (int *)user;
@@ -34,7 +32,6 @@ static int snapshots(void *user, const char *phase, const FirModule *m)
     return 1;
 }
 
-
 static int cancel(void *user, const char *phase, const FirModule *module)
 {
     (void)user;
@@ -44,6 +41,8 @@ static int cancel(void *user, const char *phase, const FirModule *module)
 }
 
 
+/* Repeat failed/accepted source and FIR calls in one process, checking ownership and parser reset.
+ * No arguments; all successful paths close private streams and callbacks borrow modules only. */
 int main(void)
 {
     int i, j, count = 0;
@@ -53,7 +52,11 @@ int main(void)
     {
         for (j = FIR_AS1; j <= FIR_LIMBO; ++j)
         {
-            FILE *bad = input("trace((1 + );"), *fir = fir_temporary(), *obj = fir_temporary(), *src;
+            FILE *bad =
+                     input(j == FIR_LIMBO
+                               ? "implement A; A: module { value: fn(): int; }; value(): int { if (1<2) {return 1;} }"
+                               : "trace((1 + );"),
+                 *fir = fir_temporary(), *obj = fir_temporary(), *src;
             unsigned char magic[4];
             if (!bad || !fir || !obj)
             {
@@ -64,14 +67,27 @@ int main(void)
                 return 2;
             }
             fclose(bad);
-            src = input(j == FIR_LIMBO
-                            ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; return x * 7; }"
-                            : "var x = 6; trace(x * 7);");
+            src = input(
+                j == FIR_LIMBO
+                    ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; if(x<7){return x*7;}else{return 0;} }"
+                    : "var x = 6; trace(x * 7);");
             if (!src || !fir_source(src, fir, (FirLanguage)j, "valid", error, sizeof(error)))
             {
                 return 3;
             }
             fclose(src);
+            if (j == FIR_LIMBO)
+            {
+                char generated[2048];
+                size_t length;
+                rewind(fir);
+                length = fread(generated, 1, sizeof(generated) - 1, fir);
+                generated[length] = 0;
+                if (!strstr(generated, "^choose1_yes:") || strstr(generated, "^choose2_yes:"))
+                {
+                    return 11; /* Every failed/accepted call must restart the decision-label namespace. */
+                }
+            }
             rewind(fir);
             bad = input("FIR 1.0\nmodule @broken\nfunc @main() -> void { ^entry: trace return }");
             if (!bad || fir_run(FIR_CHECK, bad, NULL, NULL, error, sizeof(error)))

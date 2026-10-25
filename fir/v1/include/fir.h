@@ -180,9 +180,10 @@ int fir_optimise(FirModule *module, char *error, size_t capacity);
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 
 
-/* Emit a verified straight-line i32 program as an executable NC64 Dis module.
+/* Emit a verified i32/bool control-flow program as an executable NC64 Dis module.
  * Streams/module/error are caller-owned; no SDK/runtime dependency. Coverage errors write nothing.
- * Trace results occupy ordered eight-byte module-data cells. No imports/exports or SBL are generated.
+ * N trace values occupy the first N eight-byte cells; the next N cells mark executed slots as 0/1.
+ * Slots record each static trace point, retaining its latest value if revisited. No imports/exports or SBL.
  * This is experimental NC64 magic 819264, not classic Dis or complete Limbo module ABI support. */
 int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity);
 
@@ -200,7 +201,7 @@ typedef enum
     FIR_PRINT,
     FIR_OPT,
     FIR_OBJECT,
-    FIR_DIS /* Direct, verified straight-line i32 NC64 capture harness. */
+    FIR_DIS /* Direct, verified scalar-CFG NC64 capture harness. */
 } FirTask;
 
 

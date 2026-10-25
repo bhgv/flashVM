@@ -45,7 +45,7 @@ int main(void)
     }
     initial = ftell(output);
     if (initial != 8 || !parse(unsupported, module, error, sizeof(error)) ||
-        fir_dis(output, module, error, sizeof(error)) || !strstr(error, "Dis i32 backend") || ftell(output) != initial)
+        fir_dis(output, module, error, sizeof(error)) || !strstr(error, "Dis scalar backend") || ftell(output) != initial)
     {
         goto done;
     }

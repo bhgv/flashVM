@@ -13,6 +13,46 @@ typedef struct
 } SourceMark;
 
 
+/* Scalar relation selected by the authoritative Coco/R source grammar. */
+typedef enum
+{
+    SOURCE_LESS,         /* lhs < rhs. */
+    SOURCE_EQUAL,        /* lhs == rhs. */
+    SOURCE_GREATER,      /* rhs < lhs. */
+    SOURCE_NOT_EQUAL,    /* Invert equality when selecting source branches. */
+    SOURCE_LESS_EQUAL,   /* Invert rhs < lhs. */
+    SOURCE_GREATER_EQUAL /* Invert lhs < rhs. */
+} SourceRelation;
+
+
+/* Generated-parser-local condition; no heap state or reference escapes compilation. */
+typedef struct
+{
+    int value;  /* Normalized FIR bool SSA index. */
+    int invert; /* Reverse FIR edges to implement the source relation without bool casts. */
+} SourceCondition;
+
+
+/* Lower borrowed scalar operands/relation to a bool with the current source origin. */
+SourceCondition source_compare(int left, int right, SourceRelation relation);
+
+
+/* Start a terminal decision and return its private label identity; errors retire staged output. */
+int source_branch(SourceCondition condition);
+
+
+/* Start the other arm of one terminal decision; choice is the value returned by source_branch. */
+void source_else(int choice);
+
+
+/* Emit a terminal trace/return without changing the caller's source binding environment. */
+void source_return(int value);
+
+
+/* Close generated FIR, adding a return only for nonterminal AS trace programs. */
+void source_finish(void);
+
+
 SourceMark source_mark(void);
 
 
