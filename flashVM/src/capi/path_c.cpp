@@ -204,27 +204,49 @@ extern "C" FVM_Result fvm_path_transform(FVM_Path *p, const FVM_Affine *m)
 }
 
 
-/* Append path. */
+/* Append a borrowed source with optional borrowed affine transform to an exclusive destination.
+ * Returns INVALID_ARGUMENT for bounds/transform errors and OUT_OF_MEMORY on staging/reservation.
+ * Supports source==destination; failure preserves commands/open state. No VM/GC/device callbacks. */
 extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const FVM_Affine *m)
 {
-    if (!p || !source || (m && !valid_matrix(m)) || source->commands.size() > 1000000 - p->commands.size())
+    if (!p || !source || (m && !valid_matrix(m)) || p->commands.size() > FVM_PATH_GEOMETRY_MAX_COMMANDS ||
+        source->commands.size() > FVM_PATH_GEOMETRY_MAX_COMMANDS - p->commands.size())
     {
         return FVM_INVALID_ARGUMENT;
     }
     try
     {
-        fvm_detail::vector<FVM_PathCommand> copy = p->commands;
+        /* Stage only the new commands, including self-append, before touching the destination.
+         * A failed transform/allocation preserves its entire command stream and open state. */
+        fvm_detail::vector<FVM_PathCommand> appended;
+        appended.reserve(source->commands.size());
         for (size_t i = 0; i < source->commands.size(); ++i)
         {
-            FVM_PathCommand c = source->commands[i];
-            if (!transform_command(c, m))
+            FVM_PathCommand command = source->commands[i];
+            if (!transform_command(command, m))
             {
                 return FVM_INVALID_ARGUMENT;
             }
-            copy.push_back(c);
+            appended.push_back(command);
         }
-        bool open = source->commands.empty() ? p->open : source->open;
-        p->commands.swap(copy);
+        const bool open = source->commands.empty() ? p->open : source->open;
+        const size_t total = p->commands.size() + appended.size();
+        size_t capacity = FVM_PATH_GEOMETRY_INITIAL_APPEND_CAPACITY;
+        while (capacity < total)
+        {
+            capacity = capacity > FVM_PATH_GEOMETRY_MAX_COMMANDS / 2
+                ? FVM_PATH_GEOMETRY_MAX_COMMANDS : capacity * 2;
+        }
+        if (total)
+        {
+            p->commands.reserve(capacity);
+        }
+        /* FVM_PathCommand is scalar POD. Reserved pushes cannot allocate or throw:
+         * all possible failures precede these writes, retaining public append atomicity. */
+        for (size_t i = 0; i < appended.size(); ++i)
+        {
+            p->commands.push_back(appended[i]);
+        }
         p->open = open;
         return FVM_OK;
     }
@@ -233,7 +255,6 @@ extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const
         return FVM_OUT_OF_MEMORY;
     }
 }
-
 
 /* Compute and return path bounds. */
 extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)

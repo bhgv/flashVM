@@ -318,3 +318,11 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
     endif()
   endforeach()
 endif()
+
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  # The long-line editor uses this public path transaction; reuse its actual allocation oracle under UBSan.
+  add_executable(disvm_editor_path_transaction "${root}/flashVM/tests/path_append_transaction.cpp")
+  target_link_libraries(disvm_editor_path_transaction PRIVATE flashvm)
+  add_test(NAME disvm_editor_path_transaction COMMAND disvm_editor_path_transaction)
+  set_tests_properties(disvm_editor_path_transaction PROPERTIES TIMEOUT 30)
+endif()
