@@ -384,3 +384,14 @@ if(DVM_RUNTIME_TESTS)
     set_tests_properties(disvm_projection_inspector_${mode} PROPERTIES TIMEOUT 30)
   endforeach()
 endif()
+
+# Optional explicit development tools check the shipped AS client, not a deployed runtime dependency.
+set(DVM_IDE_NODE "" CACHE FILEPATH "Node for optional AS client contract checks")
+set(DVM_IDE_AS2 "" CACHE FILEPATH "Our Coco/R AS2 syntax frontend for optional client checks")
+if(DVM_RUNTIME_TESTS AND DVM_IDE_NODE)
+  add_test(NAME disvm_projection_as_client COMMAND "${DVM_IDE_NODE}"
+    "${root}/ide/as/test_projection_values.js" "${root}/ide/as/projection-values.as")
+endif()
+if(DVM_RUNTIME_TESTS AND DVM_IDE_AS2)
+  add_test(NAME disvm_projection_as_syntax COMMAND "${DVM_IDE_AS2}" "${root}/ide/as/projection-values.as")
+endif()
