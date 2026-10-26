@@ -13,7 +13,8 @@ remains a separate temporary tool for the ordinary Limbo IDE modules.
 | Numeric/string keys and `t.k` | Implemented | Distinct key namespaces; big values |
 | `len`, explicit slices, `keysof` | Implemented | Independent copied snapshots/slices |
 | `keys[i]`, `t[keys[i]]` reads/writes | Implemented | Checked immutable snapshot key |
-| `typeof`, heterogeneous tables | Pending | No fabricated static answer for dynamic data |
+| `typeof`, big/string casts | Implemented | [Supported profile and conversions](TYPE_REFLECTION.md) |
+| Heterogeneous tables | Pending | Values remain big |
 | Language `any` | Pending | Existing FIR `T_ANY` enum does not establish an implementation |
 | Transparent proxy locals/operators | Pending | IDE uses explicit typed request/reply APIs |
 | Object/method projections | Explicit IDE APIs | Owner identity/epoch descriptors; no native heap pointers |
@@ -62,3 +63,5 @@ source-occurrence diagnostics, owner incarnation and lifecycle handling before
 transparent syntax is enabled. Atomic compound updates must execute at the owner;
 a client read followed by a client write is not an atomic implementation.
 No table-language extension from this series is exported to Inferno.
+
+[Limbo reflection/casts; AS helper distinction](TYPE_REFLECTION.md).

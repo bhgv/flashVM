@@ -27,5 +27,8 @@ value(): big
     key := keys[2]; # Checked snapshot key: the two numeric keys precede literal "total".
     keys = keysof part; # Replacing this local does not invalidate key's retained snapshot.
     alias[key] = big 42; # Write through the original string key, without converting its namespace.
-    return t[key]; # Observe the aliased write; key retains its immutable snapshot until retirement.
+    kind := typeof key; # Runtime key kind is "string", not the internal table.key representation.
+    copiedKey := string key; # Explicit Limbo value copy; AS uses its separate tostring helper.
+    decimal := string t[copiedKey]; # Canonical exact decimal, without a floating-point intermediate.
+    return big decimal; # Standard Limbo cast syntax; this supported decimal conversion returns 42.
 }

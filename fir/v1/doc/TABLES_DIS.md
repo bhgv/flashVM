@@ -8,13 +8,13 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-FIR compiler 0.13 emits the supported single-block big-table subset directly as
+FIR compiler 0.14 emits the supported single-block big-table subset directly as
 NC64 Dis. It does not call the temporary Limbo compiler, an assembler, Python or
 the reference execution library. The destination uses the existing HASLDT import
 table and existing `load`, `mframe`, `mcall`, `lea`, scalar and pointer moves.
 
 The resulting image requires the matching hosted `$Bigtable` module in runtime
-0.16 or later with this ABI. Its imported function signatures are checked by the
+0.17 or later with this ABI. Its imported function signatures are checked by the
 real Dis loader. A missing helper or mismatched signature fails before the
 generated operation can invoke another native function. This does not change
 Inferno, the Dis container or the instruction set.
@@ -57,7 +57,7 @@ The API borrows the module and output stream. Coverage/layout/staging failures
 write no output. A final output I/O failure may leave a prefix; the CLI stages
 before replacing an existing destination. Supported operations are deliberately
 single-block; table CFG/loops, general language modules,
-typeof/any and AS/SWF adapters remain pending. FIRDBG1 source records remain
+any and AS/SWF adapters remain pending. FIRDBG1 source records remain
 separate; full source-to-Dis SBL/PC mapping is not claimed.
 
 ## Collector and inspection acceptance
@@ -81,3 +81,5 @@ aliasing, copied locations/ranges/snapshots, large maps beyond inline prefixes,
 bad import signatures, rejected pointer inspection and bounded caller-PC errors.
 Native dispatch counters distinguish JIT leaves from interpreter execution; the
 C table functions remain ordinary compiled runtime services.
+
+[Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).

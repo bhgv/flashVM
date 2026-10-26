@@ -73,3 +73,5 @@ errno. This is a limitation of the current bounded numeric profile.
 The `limbo_tables` profile, exact `i64` constants and typed table/location/range/key operations are described in [TABLES.md](TABLES.md). They are accepted by the updated parser/verifier/optimizer; the [hosted Dis table backend](TABLES_DIS.md) emits checked module calls, while AVM1 SWO rejects them explicitly.
 
 [Checked snapshot keys and exact extension status](EXTENSIONS.md).
+
+[Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).

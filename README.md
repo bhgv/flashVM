@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1627**. [Русская версия](README.ru.md).
+Development version: **0.1628**. [Русская версия](README.ru.md).
 
-Current series: [v0.1627](docs/releases/v0.1627.md): checked keysof indexing across our Coco/R compiler, FIR, DisVM and relocated SDK.
+Current series: [v0.1628](docs/releases/v0.1628.md): runtime typeof, exact Limbo big/string casts and source occurrences through our compiler and DisVM.
 
 ## Browse documentation
 

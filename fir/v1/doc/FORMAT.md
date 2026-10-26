@@ -186,3 +186,5 @@ returns `table.key`, and may throw on invalid bounds even when unused. `table.in
 accepts this key type in addition to numeric/string keys. The value owns no raw
 pointer in the IR; native layouts, effects and GC are specified in
 [the Dis table contract](TABLES_DIS.md) and [extension matrix](EXTENSIONS.md).
+
+[Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).

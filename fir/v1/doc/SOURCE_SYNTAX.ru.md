@@ -67,3 +67,5 @@ Limbo. Новый `limbo_real` сохраняется при print/opt и дос
 если host strtod выставляет errno. Это ограничение текущего числового профиля.
 
 [Checked snapshot keys and exact extension status](EXTENSIONS.ru.md).
+
+[Отражение и стандартный синтаксис cast big/string в Limbo](TYPE_REFLECTION.ru.md).
