@@ -103,3 +103,29 @@ our Coco/R numeric FIR frontend is not presented as their compiler.
 [Window buttons and line gutter](WINDOWS-GUTTER.md) extend this presentation with
 a visible dirty-close choice (mode 8), checked window resize notifications and
 Ctrl+L line numbers. Native/controller interfaces must be upgraded together.
+
+## Static types and owner requests
+
+The live document already serves a typed `chan of ref Ideprojection->Request`.
+This is an explicit request/reply protocol; ordinary Limbo variables do not
+automatically become remote variables. Each ReadAs selects asType, obtains a
+current owner snapshot and performs a checked conversion. Reading length as Int
+returns an integer; reading it as Text returns a string. An incompatible value
+returns Invalid and nil. Another client may mutate between reads; an earlier
+copied snapshot stays unchanged.
+
+Standard Limbo has no built-in dictionary. ADTs describe known structures; a
+library can implement dynamic name tables. Value.Table is a bounded shallow
+snapshot with unique names, not a language dictionary. Objects with methods stay
+at their owner: Object/Method carry identity and incarnation, and operations use
+the adapter channel. Those descriptors contain no endpoint and are not network
+capabilities by themselves. Within one Dis VM, ref ADTs can share memory according
+to Limbo semantics; such pointers must never cross VM heaps or a network.
+
+Compiler insertion of ReadAs from expression types, arbitrary FlashVM variable
+exports, distributed cycle collection and network transport remain unimplemented.
+Copying a value, retaining an object proxy and constructing a new object from a
+snapshot must stay explicit separate operations. The document-projection test
+covers owner changes between reads, two requested types and conversion failure.
+
+FlashVM currently stores FVM_Object named/indexed properties in separate maps. The standalone hybrid_table.hpp is not connected to FVM_Object; no shared Lua-derived universal table module is exposed to Limbo. Runtime native_tables.c implements Dis switch/case tables, not a user dictionary.

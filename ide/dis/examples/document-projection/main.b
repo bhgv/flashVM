@@ -39,6 +39,37 @@ project(endpoint: chan of ref Ideprojection->Request, operation: int, member: st
 }
 
 
+# Read one owner field into a statically typed Limbo int, retaining status and revision.
+# endpoint/member are borrowed. Blocks for one owner reply; failure returns zero with non-Ok status.
+# Only an Ok result authorizes use of the numeric payload; no failed conversion becomes a value.
+readint(endpoint: chan of ref Ideprojection->Request, member: string): (int, int, int)
+{
+    result := project(endpoint, Ideprojection->ReadAs, member, Idevalue->Int, 0, 0, nil);
+    if (result.status != Ideprojection->Ok) {
+        return (result.status, 0, result.revision);
+    }
+    if (result.value == nil || result.value.kind != Idevalue->Int) {
+        return (Ideprojection->Invalid, 0, result.revision);
+    }
+    return (Ideprojection->Ok, int result.value.integer, result.revision);
+}
+
+
+# Read one owner field into a statically typed Limbo string without exposing the Value envelope.
+# endpoint/member are borrowed. Blocks for one reply; failure returns nil with non-Ok status.
+readtext(endpoint: chan of ref Ideprojection->Request, member: string): (int, string, int)
+{
+    result := project(endpoint, Ideprojection->ReadAs, member, Idevalue->Text, 0, 0, nil);
+    if (result.status != Ideprojection->Ok) {
+        return (result.status, nil, result.revision);
+    }
+    if (result.value == nil || result.value.kind != Idevalue->Text) {
+        return (Ideprojection->Invalid, nil, result.revision);
+    }
+    return (Ideprojection->Ok, result.value.text, result.revision);
+}
+
+
 # Test copied reads, bounded snapshots, exact revision writes, real bound history and lifecycle.
 # The ordinary editor channel remains authoritative throughout adapter reads/mutations.
 init()
@@ -65,6 +96,19 @@ init()
     }
     saved := state.revision;
     state = doc(document, c->Replace, state.revision, len state.text, "second");
+    # A typed read is a new owner operation, not a subscription or a cached variable.
+    # The earlier copied snapshot must remain unchanged after another client writes.
+    (lengthstatus, lengthnow, lengthrevision) := readint(endpoint, "length");
+    (textstatus, lengthtext, textrevision) := readtext(endpoint, "length");
+    (invalidstatus, ignored, invalidrevision) := readint(endpoint, "text");
+    if (lengthstatus != Ideprojection->Ok || lengthnow != 6
+        || textstatus != Ideprojection->Ok || lengthtext != "6"
+        || lengthrevision != state.revision || textrevision != state.revision
+        || invalidrevision != state.revision
+        || snapshot.value.values[0].integer != big 8
+        || invalidstatus != Ideprojection->Invalid) {
+        raise "fail: typed owner reads freshness conversion or snapshot isolation";
+    }
     undo := project(endpoint, Ideprojection->ReadAs, "undo", Idevalue->Method, 0, 0, nil);
     if (undo.value == nil || undo.value.member != "undo") {
         raise "fail: live bound history method";

@@ -31,3 +31,5 @@ The installed runtime package includes this source, matching headers and all
 four dependent modules. Its relocated SDK test recompiles the source and runs
 it in both modes from a directory with spaces. This is a local Dis-process
 boundary, not network RPC or arbitrary FlashVM object reflection.
+
+Typed helper functions readint/readtext return (status, typed value, revision). They select the requested owner conversion explicitly, reject incompatible values and retain the revision for optimistic writes. The example also checks that an earlier copied table stays unchanged after another client edits the live document.

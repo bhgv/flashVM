@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1619**. [Русская версия](README.ru.md).
+Development version: **0.1620**. [Русская версия](README.ru.md).
 
-Current series: [v0.1611–v0.1619](docs/releases/v0.1619.md) repairs window controls, adds hideable line numbers/live projections, and synchronizes guarded scalar/byte-string JIT paths with Inferno.
+Current series: [v0.1620](docs/releases/v0.1620.md): CVTCA JIT synchronization and checked statically typed owner reads.
 
 ## Browse documentation
 
