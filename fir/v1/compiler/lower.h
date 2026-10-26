@@ -175,6 +175,14 @@ int source_table_load(int location);
 int source_table_len(int value);
 
 
+/* Convert a supported borrowed SSA value explicitly to big or string; text selects string. */
+int source_table_convert(int value, int text);
+
+
+/* Reflect the type of a borrowed supported SSA value; keys inspect their actual snapshot kind. */
+int source_table_typeof(int value);
+
+
 /* Emit an independent all-key snapshot of the typed table SSA input. */
 int source_table_keys(int table);
 

@@ -36,38 +36,40 @@ typedef struct
 
 enum
 {
-    CREATE,      /* Create a new table owner. */
-    GET_INDEX,   /* Read a numeric location. */
-    GET_TEXT,    /* Read a string location. */
-    INDEX_CHECK, /* Validate eager numeric-index construction. */
-    KEY_LEN,     /* Count an immutable snapshot. */
-    KEYS_OF,     /* Copy all keys. */
-    LENGTH,      /* Read contiguous sequence length. */
-    RANGE_CHECK, /* Validate eager half-open bounds. */
-    REQUIRE_OK,  /* Raise on a failed get/set status. */
-    SET_INDEX,   /* Write a numeric location. */
-    SET_TEXT,    /* Write a string location. */
-    KEY_CHECK,   /* Validate a snapshot position eagerly. */
-    GET_KEY,     /* Read with a snapshot-owned key identity. */
-    SET_KEY,     /* Write with a snapshot-owned key identity. */
-    SLICE        /* Copy a numeric sequence slice. */
+    CREATE,        /* Create a new table owner. */
+    GET_INDEX,     /* Read a numeric location. */
+    GET_TEXT,      /* Read a string location. */
+    INDEX_CHECK,   /* Validate eager numeric-index construction. */
+    KEY_LEN,       /* Count an immutable snapshot. */
+    KEYS_OF,       /* Copy all keys. */
+    LENGTH,        /* Read contiguous sequence length. */
+    RANGE_CHECK,   /* Validate eager half-open bounds. */
+    REQUIRE_OK,    /* Raise on a failed get/set status. */
+    SET_INDEX,     /* Write a numeric location. */
+    SET_TEXT,      /* Write a string location. */
+    KEY_CHECK,     /* Validate a snapshot position eagerly. */
+    GET_KEY,       /* Read with a snapshot-owned key identity. */
+    SET_KEY,       /* Write with a snapshot-owned key identity. */
+    BIG_FROM_TEXT, /* Exact checked decimal parsing. */
+    TEXT_FROM_BIG, /* Exact canonical decimal formatting. */
+    KEY_BIG,       /* Convert the actual snapshot key to big. */
+    KEY_TEXT,      /* Copy text from the actual snapshot key. */
+    TYPE_NAME,     /* Reflect a supported static type tag. */
+    KEY_TYPE,      /* Reflect the actual kind of an immutable snapshot key. */
+    SLICE          /* Copy a numeric sequence slice. */
 };
 
 static const Import imports[] = {
-    {"create", UINT32_C(0xf9bff31f)},
-    {"getindex", UINT32_C(0xd03b2e8c)},
-    {"gettext", UINT32_C(0x7a1ec3e7)},
-    {"indexcheck", UINT32_C(0x93504811)},
-    {"keylen", UINT32_C(0x6c3299de)},
-    {"keysof", UINT32_C(0xa4157ed7)},
-    {"length", UINT32_C(0x6c3299de)},
-    {"rangecheck", UINT32_C(0xd039b06a)},
-    {"requireok", UINT32_C(0xb1f25db6)},
-    {"setindex", UINT32_C(0xe420e8cf)},
-    {"settext", UINT32_C(0xb244346a)},
-    {"keycheck", UINT32_C(0x6c3c4973)},
-    {"getkey", UINT32_C(0x420ebc79)},
-    {"setkey", UINT32_C(0x9ea8730a)},
+    {"create", UINT32_C(0xf9bff31f)},      {"getindex", UINT32_C(0xd03b2e8c)},
+    {"gettext", UINT32_C(0x7a1ec3e7)},     {"indexcheck", UINT32_C(0x93504811)},
+    {"keylen", UINT32_C(0x6c3299de)},      {"keysof", UINT32_C(0xa4157ed7)},
+    {"length", UINT32_C(0x6c3299de)},      {"rangecheck", UINT32_C(0xd039b06a)},
+    {"requireok", UINT32_C(0xb1f25db6)},   {"setindex", UINT32_C(0xe420e8cf)},
+    {"settext", UINT32_C(0xb244346a)},     {"keycheck", UINT32_C(0x6c3c4973)},
+    {"getkey", UINT32_C(0x420ebc79)},      {"setkey", UINT32_C(0x9ea8730a)},
+    {"bigfromtext", UINT32_C(0xbb695870)}, {"textfrombig", UINT32_C(0x72c1d264)},
+    {"keybig", UINT32_C(0xa56b6949)},      {"keytext", UINT32_C(0x85cca8a1)},
+    {"typename", UINT32_C(0xa9b8ab85)},    {"keytype", UINT32_C(0x85cca8a1)},
     {"slice", UINT32_C(0x71c4132a)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
@@ -277,7 +279,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
             e->traces++;
         }
-        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_KEYS_AT))
+        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TO_TEXT))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -439,6 +441,44 @@ static void body(Emitter *e, FirModule *module)
             if (in->op == O_TABLE_LOAD)
             {
                 instruction(e, MOVL, FP, e->status + CELL, FP, d, 0, -1);
+            }
+            break;
+        case O_TO_BIG:
+        case O_TO_TEXT:
+            if ((in->op == O_TO_BIG && module->values[in->a].type == T_I64) ||
+                (in->op == O_TO_TEXT && module->values[in->a].type == T_STRING))
+            {
+                copy_value(e, module, in->result, in->a);
+            }
+            else
+            {
+                FirType type = module->values[in->a].type;
+                import = type == T_TABLE_KEY ? (in->op == O_TO_BIG ? KEY_BIG : KEY_TEXT)
+                                             : (in->op == O_TO_BIG ? BIG_FROM_TEXT : TEXT_FROM_BIG);
+                call_begin(e, import);
+                argument(e, type == T_I64 ? MOVL : MOVP, a, 0);
+                if (type == T_TABLE_KEY)
+                {
+                    argument(e, MOVL, a + CELL, 1);
+                }
+                call_end(e, import, (int)d);
+            }
+            break;
+        case O_VALUE_TYPE:
+            if (module->values[in->a].type == T_TABLE_KEY)
+            {
+                call_begin(e, KEY_TYPE);
+                argument(e, MOVP, a, 0);
+                argument(e, MOVL, a + CELL, 1);
+                call_end(e, KEY_TYPE, (int)d);
+            }
+            else
+            {
+                FirType type = module->values[in->a].type;
+                unsigned kind = type == T_I64 ? 0U : type == T_STRING ? 1U : type == T_TABLE_BIG ? 2U : 3U;
+                call_begin(e, TYPE_NAME);
+                instruction(e, MOVW, IMM, kind, INDIRECT_FP, e->call_frame, ARGUMENTS, -1);
+                call_end(e, TYPE_NAME, (int)d);
             }
             break;
         case O_KEYS_AT:

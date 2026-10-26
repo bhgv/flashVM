@@ -8,7 +8,9 @@
 typedef struct
 {
     int64_t big;      /* Exact scalar payload. */
-    const char *text; /* Borrowed immutable text in the caller-owned verified module. */
+    size_t text_size; /* Exact copied/borrowed byte count, including embedded zeros. */
+    char digits[21];  /* Invocation-lifetime exact numeric conversion storage. */
+    const char *text; /* Borrowed module/snapshot/static bytes or this value's numeric storage. */
     Fht *table;       /* Borrowed owner from the execution-local registry. */
     FhtKeys *keys;    /* Borrowed independent snapshot from the execution-local registry. */
     FhtKey key;       /* Captured key; text bytes are borrowed from the module or registered snapshot. */
@@ -32,7 +34,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_KEYS_AT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_TO_TEXT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
         {
             continue;
         }
@@ -101,6 +103,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             break;
         case O_STRING:
             result->text = in->text;
+            result->text_size = strlen(in->text);
             break;
         case O_COPY:
             *result = *a;
@@ -135,7 +138,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             {
                 result->key.kind = FHT_TEXT;
                 result->key.text = b->text;
-                result->key.size = strlen(b->text);
+                result->key.size = b->text_size;
             }
             break;
         case O_TABLE_LOAD:
@@ -169,6 +172,61 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                 keys[key_count++] = result->keys;
             }
             break;
+        case O_TO_BIG:
+            if (module->values[in->a].type == T_I64)
+            {
+                result->big = a->big;
+            }
+            else if (module->values[in->a].type == T_TABLE_KEY && a->key.kind == FHT_INDEX)
+            {
+                result->big = a->key.index;
+            }
+            else
+            {
+                const char *text = module->values[in->a].type == T_STRING ? a->text : a->key.text;
+                size_t length = module->values[in->a].type == T_STRING ? a->text_size : a->key.size;
+                status = fht_big_parse(text, length, &result->big);
+            }
+            break;
+        case O_TO_TEXT:
+            if (module->values[in->a].type == T_STRING)
+            {
+                result->text = a->text;
+                result->text_size = a->text_size;
+            }
+            else if (module->values[in->a].type == T_TABLE_KEY && a->key.kind == FHT_TEXT)
+            {
+                result->text = a->key.text;
+                result->text_size = a->key.size;
+            }
+            else
+            {
+                int64_t number = module->values[in->a].type == T_I64 ? a->big : a->key.index;
+                result->text_size = fht_big_format(number, result->digits, sizeof(result->digits));
+                result->text = result->digits;
+            }
+            break;
+        case O_VALUE_TYPE:
+            switch (module->values[in->a].type)
+            {
+            case T_I64:
+                result->text = "big";
+                break;
+            case T_STRING:
+                result->text = "string";
+                break;
+            case T_TABLE_BIG:
+                result->text = "table of big";
+                break;
+            case T_KEYS:
+                result->text = "keys";
+                break;
+            default:
+                result->text = a->key.kind == FHT_INDEX ? "big" : "string";
+                break;
+            }
+            result->text_size = strlen(result->text);
+            break;
         case O_KEYS_AT:
             if (b->big < 0 || (uint64_t)b->big >= a->keys->count)
             {
@@ -189,7 +247,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             else
             {
-                fprintf(staged, "%s\n", a->text);
+                fwrite(a->text, 1, a->text_size, staged);
+                fputc('\n', staged);
             }
             break;
         case O_RETURN:
@@ -204,9 +263,10 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                      capacity,
                      "line %d: table operation failed: %s",
                      in->line,
-                     status == FHT_MISSING ? "missing key"
-                     : status == FHT_NOMEM ? "allocation failure"
-                                           : "invalid key/range");
+                     in->op == O_TO_BIG      ? "invalid big conversion"
+                     : status == FHT_MISSING ? "missing key"
+                     : status == FHT_NOMEM   ? "allocation failure"
+                                             : "invalid key/range");
             goto done;
         }
     }

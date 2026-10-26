@@ -3,43 +3,60 @@
  * Generated globals belong to fir1_source, separate from the FIR parser. */
 COMPILER Src1
 #include "lower.h"
-/* Only scanner access lives here; C99 lowering is in lower.c. */
+
+/* Copy the previous scanner token into semantic storage, including its source span.
+ * No arguments or ownership transfer. Oversized tokens become sticky diagnostics. */
 static void capture(void)
 {
     char text[256] = "";
     if (S_Len < 256)
+    {
         S_GetString(S_Pos, S_Len, text, 255);
+    }
     source_token(text, S_Line, S_Pos, (size_t)S_Len, S_Len >= 256);
 }
-static int depth;
-/* Signed literals need a direct path for the i32 minimum; general unary
- * expressions share the bounded group/unary depth counter. */
+
+static int depth; /* Bounded parser recursion; reset for every source module. */
+
+
+/* Recognize the numeric operand after a sign without consuming scanner input.
+ * Returns a boolean. Borrows scanner bytes, skips comments and whitespace, and
+ * does not allocate or block; general unary expressions use the shared depth cap. */
 static int LiteralAhead(void)
 {
     long pos = S_NextPos + S_NextLen;
     for (;;)
     {
-        int ch = S_CurrentCh(pos), next = S_CurrentCh(pos + 1);
+        int ch = S_CurrentCh(pos);
+        int next = S_CurrentCh(pos + 1);
         if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+        {
             ++pos;
+        }
         else if (ch == '#' || (ch == '/' && next == '/'))
         {
             while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+            {
                 ++pos;
+            }
         }
         else if (ch == '/' && next == '*')
         {
             pos += 2;
-            while (S_CurrentCh(pos) &&
-                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+            while (S_CurrentCh(pos) && !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+            {
                 ++pos;
+            }
             if (!S_CurrentCh(pos))
+            {
                 return 0;
+            }
             pos += 2;
         }
         else
-            return (ch >= '0' && ch <= '9') ||
-                   (ch == '.' && next >= '0' && next <= '9');
+        {
+            return (ch >= '0' && ch <= '9') || (ch == '.' && next >= '0' && next <= '9');
+        }
     }
 }
 
@@ -585,17 +602,30 @@ PRODUCTIONS
     | IF(depth >= 64) ident (. source_scope_limit(); *result = 0; .)
   .
 
-  /* Numeric literals in this explicit big-result subset are exact decimal big constants. */
+  /* Numeric literals are exact big constants. Limbo big/string casts and typeof
+   * retain their own operator span while recursively parsing a bounded operand. */
   TableUnary<int *result> =
-    (. int name = 0, key = 0, end = 0, slice = 0, negative = 0; .)
+    (. int name = 0;
+       int key = 0;
+       int end = 0;
+       int slice = 0;
+       int negative = 0;
+       SourceMark operation;
+    .)
     (
         "len" TableExpression<result> (. *result = source_table_len(*result); .)
+        | "big" (. capture(); operation = source_mark(); .) TableExpression<result>
+          (. source_restore(operation); *result = source_table_convert(*result, 0); .)
+        | "string" (. capture(); operation = source_mark(); .) TableExpression<result>
+          (. source_restore(operation); *result = source_table_convert(*result, 1); .)
+        | "typeof" (. capture(); operation = source_mark(); .) TableExpression<result>
+          (. source_restore(operation); *result = source_table_typeof(*result); .)
         | "keysof" TableExpression<result> (. *result = source_table_keys(*result); .)
         | (
             Name<&name> (. *result = source_read(name); .)
             | "table" (. capture(); .) "of" "big" (. *result = source_table_new(); .)
             | textlit (. capture(); *result = source_table_text(1); .)
-            | [ "big" ] [ "-" (. negative = 1; .) ] numeral
+            | [ "-" (. negative = 1; .) ] numeral
               (. capture(); *result = source_table_constant(negative); .)
             | "(" TableExpression<result> ")"
           )

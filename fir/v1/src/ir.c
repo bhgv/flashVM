@@ -83,7 +83,10 @@ static const char *const ops[] = {"const.i32",
                                   "table.slice",
                                   "table.keys",
                                   "keys.len",
-                                  "keys.at"};
+                                  "keys.at",
+                                  "value.type",
+                                  "value.big",
+                                  "value.text"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -138,7 +141,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_KEYS_AT || (unsigned)in->type > T_TABLE_KEY || in->block < 0 ||
+        if ((unsigned)in->op > O_TO_TEXT || (unsigned)in->type > T_TABLE_KEY || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -155,7 +158,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         }
         unary = in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE || in->op == O_TRACE ||
                 in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN ||
-                in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN;
+                in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN || in->op == O_VALUE_TYPE || in->op == O_TO_BIG ||
+                in->op == O_TO_TEXT;
         binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
                  in->op == O_KEYS_AT || in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
         if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
@@ -324,6 +328,21 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 goto bad_type;
             }
             expected = T_TABLE_SLOT;
+            break;
+        case O_TO_BIG:
+        case O_TO_TEXT:
+            if (a != T_I64 && a != T_STRING && a != T_TABLE_KEY)
+            {
+                goto bad_type;
+            }
+            expected = in->op == O_TO_BIG ? T_I64 : T_STRING;
+            break;
+        case O_VALUE_TYPE:
+            if (a != T_I64 && a != T_STRING && a != T_TABLE_BIG && a != T_KEYS && a != T_TABLE_KEY)
+            {
+                goto bad_type;
+            }
+            expected = T_STRING;
             break;
         case O_KEYS_AT:
             if (a != T_KEYS || c != T_I64)

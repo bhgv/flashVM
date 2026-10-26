@@ -755,6 +755,30 @@ int source_table_len(int value)
     return table_operation(T_I64, table_values[value] == T_KEYS ? "keys.len" : "table.len", value, -1);
 }
 
+/* Convert only big/text/key values in this profile; failure is sticky and the
+ * runtime preserves exact decimal and snapshot semantics. No implicit owner RPC. */
+int source_table_convert(int value, int text)
+{
+    FirType type = table_values[value];
+    if (type != T_I64 && type != T_STRING && type != T_TABLE_KEY)
+    {
+        reject("conversion requires big, string or snapshot key");
+    }
+    return table_operation(text ? T_STRING : T_I64, text ? "value.text" : "value.big", value, -1);
+}
+
+/* Reflect supported typed values without converting data or invoking owner methods.
+ * A snapshot key remains dynamic: the VM must inspect its retained immutable owner. */
+int source_table_typeof(int value)
+{
+    FirType type = table_values[value];
+    if (type != T_I64 && type != T_STRING && type != T_TABLE_BIG && type != T_KEYS && type != T_TABLE_KEY)
+    {
+        reject("typeof requires a supported table-profile value");
+    }
+    return table_operation(T_STRING, "value.type", value, -1);
+}
+
 /* Copy all keys without exporting the mutable table representation. */
 int source_table_keys(int table)
 {

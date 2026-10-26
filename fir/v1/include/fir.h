@@ -104,7 +104,10 @@ typedef enum
     O_TABLE_SLICE, /* Copy a sequence slice, reindexed from zero. */
     O_TABLE_KEYS,  /* Copy all keys in deterministic order. */
     O_KEYS_LEN,    /* Count every copied key. */
-    O_KEYS_AT      /* Capture one checked immutable snapshot key. */
+    O_KEYS_AT,     /* Capture one checked immutable snapshot key. */
+    O_VALUE_TYPE,  /* Reflect a supported value; snapshot keys report their runtime key kind. */
+    O_TO_BIG,      /* Exact explicit conversion from big/text/snapshot key. */
+    O_TO_TEXT      /* Copied explicit conversion from big/text/snapshot key. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */
