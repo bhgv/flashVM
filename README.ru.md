@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1628**. [English](README.md).
+Версия разработки: **0.1629**. [English](README.md).
 
-Текущая серия: [v0.1628](docs/releases/v0.1628.md): typeof, точные приведения big/string Limbo и исходные позиции через наш компилятор и DisVM.
+Текущая серия: [v0.1629](docs/releases/v0.1629.md): нативная арифметика big, точные пипхол-оптимизации и обновлённые Dis JIT x64/ARM64.
 
 ## Просмотр документации
 

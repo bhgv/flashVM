@@ -26,7 +26,7 @@ value(): big
     alias := t; # A table assignment retains the same mutable owner.
     key := keys[2]; # Checked snapshot key: the two numeric keys precede literal "total".
     keys = keysof part; # Replacing this local does not invalidate key's retained snapshot.
-    alias[key] = big 42; # Write through the original string key, without converting its namespace.
+    alias[key] = (big 5 + big 2) * big 6; # Direct exact big ALU: grouping and multiplication produce 42.
     kind := typeof key; # Runtime key kind is "string", not the internal table.key representation.
     copiedKey := string key; # Explicit Limbo value copy; AS uses its separate tostring helper.
     decimal := string t[copiedKey]; # Canonical exact decimal, without a floating-point intermediate.

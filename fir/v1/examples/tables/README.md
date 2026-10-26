@@ -9,7 +9,7 @@ commented. It demonstrates dense/sparse numeric keys, string fields, aliases,
 independent slices/key snapshots, retained snapshot keys, runtime typeof and
 standard Limbo big/string cast syntax. Its result is exactly 42.
 
-From the workspace root, with matching compiler 0.14/runtime 0.17 builds:
+From the workspace root, with matching compiler 0.15/runtime 0.18 builds:
 
 ```sh
 export TMPDIR="$PWD/build/tmp"
@@ -43,3 +43,5 @@ These files do not implement automatic channel any/proxy locals, general Limbo
 modules, arbitrary table element types, table CFG/loops or SWF table generation.
 AS conversion helpers remain separate from Limbo cast syntax. The debug JSON maps
 to FIR source occurrences; full source-to-Dis SBL is still separate work.
+
+[arithmetic.b](arithmetic.b) demonstrates signed wrap, negation and native big arithmetic on table reads. [Full contract](../../doc/BIG_ARITHMETIC.md).

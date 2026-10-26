@@ -63,7 +63,7 @@ unused conversions through optimization. FIRDBG1 records the exact prefix token
 rather than a nested operand's position; full source-to-Dis SBL remains pending.
 
 The NC64 backend uses existing Dis instructions and checked Bigtable imports.
-Matching runtime 0.17 and compiler 0.14 are required. String results occupy genuine
+Matching runtime 0.18 and compiler 0.15 are required. String results occupy genuine
 mapped frame roots. Snapshot owners remain rooted across String allocation; no
 native pointer crosses heaps/channels. Scalar adapters in common/table parse and
 format exact int64 values without allocation. The reference executor tracks byte
@@ -72,3 +72,5 @@ lengths explicitly, including copied text, instead of truncating at embedded zer
 Tests cover signed extrema and overflow, copied keys, namespace changes, Unicode,
 binary text at the native module boundary, failing unused operations, precise
 source occurrences, forged owners and collection between each Dis instruction.
+
+[Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).

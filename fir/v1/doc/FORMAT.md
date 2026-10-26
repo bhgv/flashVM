@@ -188,3 +188,5 @@ pointer in the IR; native layouts, effects and GC are specified in
 [the Dis table contract](TABLES_DIS.md) and [extension matrix](EXTENSIONS.md).
 
 [Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).
+
+[Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).

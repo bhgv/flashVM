@@ -7,14 +7,14 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-`fir1_source` 0.14 adds an explicit `value(): big` source profile using our Coco/R
+`fir1_source` 0.15 adds an explicit `value(): big` source profile using our Coco/R
 parser and C99 semantic lowering. This is not the complete Limbo language or the
 Inferno bootstrap. `source_semantics limbo_tables` records the selected profile.
 
 Supported: `table of big` declarations/creation, inferred locals, `big` and string
 locals, plain/exact decimal big literals, numeric/string indices, literal dotted
 members, table aliases, explicit `[first:end]` slices, `keysof`, `len`, and a big
-return. Statements are straight-line; arithmetic, loops, branching,
+return. Statements are straight-line; loops, branching,
 omitted slice bounds, other table element types and general modules remain outside
 this subset. A declaration without initialization cannot be read.
 
@@ -86,3 +86,5 @@ executes the image on the matching hosted Dis runtime. SWO/AS table lowering
 remains pending. No new Dis opcode or Inferno extension is used.
 
 [Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).
+
+[Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).

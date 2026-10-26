@@ -10,6 +10,7 @@ remains a separate temporary tool for the ordinary Limbo IDE modules.
 | Feature | Source → typed FIR → native Dis | Current boundary |
 | --- | --- | --- |
 | `table of big` | Implemented | Straight-line `value(): big` profile |
+| Big arithmetic +, -, *, unary signs | Implemented | [Modulo-64/native contract](BIG_ARITHMETIC.md) |
 | Numeric/string keys and `t.k` | Implemented | Distinct key namespaces; big values |
 | `len`, explicit slices, `keysof` | Implemented | Independent copied snapshots/slices |
 | `keys[i]`, `t[keys[i]]` reads/writes | Implemented | Checked immutable snapshot key |

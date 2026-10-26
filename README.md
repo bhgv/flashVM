@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1628**. [Русская версия](README.ru.md).
+Development version: **0.1629**. [Русская версия](README.ru.md).
 
-Current series: [v0.1628](docs/releases/v0.1628.md): runtime typeof, exact Limbo big/string casts and source occurrences through our compiler and DisVM.
+Current series: [v0.1629](docs/releases/v0.1629.md): native big arithmetic, exact peephole optimization and refreshed x64/ARM64 Dis JITs.
 
 ## Browse documentation
 

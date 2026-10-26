@@ -1,3 +1,25 @@
+# Current synchronization — v0.1629
+
+Experiment: `5c79135244b0c2e651d200ec3caa4b589833dc60`. 474 exact core/reference files and 174 bootstrap files.
+Imported AMD64/ARM64 paths cover raw/mapped NEWCM/NEWCMP and pointer-free mapped
+CONSMP. Availability is 163/173 active commands; guarded cases may retain C.
+Physical ARM64 execution remains separate from instruction-emulation evidence.
+
+The refresh includes protected string case tables, mapped-head retain rollback,
+and numeric case/goto readers matching declared IBY2WD cells. Meaningful scalar
+width, cell width, VM WORD and native pointer width remain independent contracts.
+The first snapshot exposed five Python fixture ABI failures; upstream b579b5f
+already repaired that layout. Our returned 5c79135 expands and documents the
+fixture fields for review, preserving b579b5f's concurrent functional work.
+
+[PC cells](upstream/libinterp/tests/README.pc-table-cells.md) ·
+[Mapped lists](upstream/libinterp/tests/README.mapped-cons-native.md) ·
+[Channels](upstream/libinterp/tests/README.payload-channel-native.md).
+The complete refreshed core suite passed 171/171. No Limbo table extension was
+exported to Inferno. Historical synchronization reports follow.
+
+---
+
 # Current synchronization — v0.1626
 
 Priority: x86-64 and ARM64. Experiment: `875d12263efa72bab84d27f0d4215713e7da9465`.
