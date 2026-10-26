@@ -2,7 +2,7 @@
 
 [Channel projection inspector and admission model](PROJECTIONS.md)
 
-Version 0.5.0. [Русский](README.ru.md).
+Version 0.8.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first

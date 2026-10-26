@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1603**. [Русская версия](README.ru.md).
+Development version: **0.1604**. [Русская версия](README.ru.md).
 
-Current series: [v0.1589–v0.1595](docs/releases/v0.1595.md) adds our Coco/R Limbo real profile, updates Inferno SLICEA/self-load support and returns remaining Loader result-slot fixes upstream.
+Current series: [v0.1597–v0.1604](docs/releases/v0.1604.md) synchronizes Inferno JIT updates and adds exact source occurrences, broker diagnostics and channel-owned IDE projection services.
 
 ## Browse documentation
 
