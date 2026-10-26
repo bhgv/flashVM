@@ -272,3 +272,16 @@ Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TAB
 [Acyclic table decisions (FIR 0.19 / runtime 0.22)](../../fir/v1/doc/TABLE_CFG.md) · [Русский](../../fir/v1/doc/TABLE_CFG.ru.md).
 
 [Typed 64-bit shifts and int counts (FIR 0.20 / runtime 0.23)](../../fir/v1/doc/BIG_SHIFTS.md) · [Русский](../../fir/v1/doc/BIG_SHIFTS.ru.md).
+
+## IDE application entry
+
+The graphical package now ships ide.dis and run-ide.sh for the real Dis-owned
+application, with FlashVM rendering. [Application guide](../../ide/dis/app/README.md) ·
+[Русское руководство](../../ide/dis/app/README.ru.md). The console-only package
+keeps its original console run-ide.sh; the graphical package also supplies
+run-ide-console.sh. These entries need no external emu/Python at deployment.
+Build/Run/Debug GUI integration and full Dis debugger wiring remain unfinished.
+
+Compiler 0.21/runtime 0.24 table helpers are documented in
+[TABLE_MUTATION](../../fir/v1/doc/TABLE_MUTATION.md) ·
+[Русский](../../fir/v1/doc/TABLE_MUTATION.ru.md).

@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.23.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.24.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -123,12 +123,19 @@ if(DVM_RUNTIME_TESTS)
    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${binary}" "${source}"
    DEPENDS limbo-bootstrap "${source}" ${module_headers} VERBATIM)
   add_custom_target(disvm_native_${test} ALL DEPENDS "${binary}")
+  # The unchanged million-character replace-all matrix takes about 55 s with
+  # checked interpreter operands on this host; preserve its data and all oracles.
+  set(application_budget 50)
+  if(test STREQUAL "replaceall")
+    set(application_budget 90)
+  endif()
+  math(EXPR application_outer_budget "${application_budget} + 10")
   foreach(mode jit interpreter)
    add_test(NAME disvm_application_${test}_${mode} COMMAND "${PYTHON_EXECUTABLE}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${binary}" "${mode}")
-   set_tests_properties(disvm_application_${test}_${mode} PROPERTIES TIMEOUT 60)
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${binary}" "${mode}" "${application_budget}")
+   set_tests_properties(disvm_application_${test}_${mode} PROPERTIES TIMEOUT ${application_outer_budget})
    if(test STREQUAL "replaceall")
-     # This million-character matrix is CPU-heavy; preserve its existing timeout.
+     # This million-character matrix is CPU-heavy; preserve all functional checks.
      # RUN_SERIAL covers this CTest instance only: run the separate core/JIT
      # checkpoint before this runtime checkpoint to avoid cross-instance contention.
      set_tests_properties(disvm_application_${test}_${mode} PROPERTIES RUN_SERIAL TRUE)
@@ -283,6 +290,14 @@ if(DVM_RUNTIME_EDITOR)
       "${root}/ide/dis/examples/graphical-editor/main.b"
     DEPENDS limbo-bootstrap "${root}/ide/dis/examples/graphical-editor/main.b" ${module_headers} VERBATIM)
   add_custom_target(disvm_graphical_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis")
+  # Ship an explicit IDE application entry; the channel controller remains reusable.
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ide.dis" "${CMAKE_CURRENT_BINARY_DIR}/ide.sbl"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -I "${root}/ide/dis/app"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/ide.dis" "${root}/ide/dis/app/main.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/app/main.b" "${root}/ide/dis/app/ide.m"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" ${module_headers} VERBATIM)
+  add_custom_target(disvm_ide_application ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ide.dis")
+
 endif()
 
 set(DVM_EDITOR_TEST_FONT "" CACHE FILEPATH "Optional explicit font override for graphical editor checks")
@@ -295,6 +310,11 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_graphical_editor_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_ide_application_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_ide_application_${mode} PROPERTIES TIMEOUT 120)
+
     if(DVM_EDITOR_SDL)
       add_test(NAME disvm_graphical_sdl_upload_${mode} COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
@@ -460,5 +480,15 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
         "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${mode}")
       set_tests_properties(disvm_graphical_${feature}_${mode} PROPERTIES TIMEOUT 120)
     endforeach()
+  endforeach()
+endif()
+
+# Compile and execute new Limbo table operations on the actual matching DisVM.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_table_mutation_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/table_mutation.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_table_mutation_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

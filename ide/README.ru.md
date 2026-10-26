@@ -96,3 +96,5 @@ The current graphical package includes default Noto Sans Mono/11 without a font
 question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoom.
 
 [Сквозная реализация расширений Limbo: таблицы, проекции и any](../fir/v1/doc/EXTENSIONS.ru.md).
+
+[IDE application on our DisVM / Приложение IDE на нашем DisVM](dis/app/README.md) · [Русский](dis/app/README.ru.md).

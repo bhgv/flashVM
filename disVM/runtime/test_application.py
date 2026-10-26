@@ -9,7 +9,12 @@ import sys
 # Run one isolated application; the explicit test-control node matches existing halt clients.
 # Arguments are runtime, compiled module, jit/interpreter. Fail on exceptions, FAIL text or missing PASS.
 def main():
-    runtime, program, mode = sys.argv[1:]
+    if len(sys.argv) not in (4, 5):
+        raise SystemExit("runtime program mode [timeout-seconds]")
+    runtime, program, mode = sys.argv[1:4]
+    budget = int(sys.argv[4]) if len(sys.argv) == 5 else 50
+    if budget <= 0:
+        raise SystemExit("application timeout must be positive")
     result = subprocess.run(
         [
             str(Path(runtime).resolve()),
@@ -21,7 +26,7 @@ def main():
         cwd=Path(program).parent,
         capture_output=True,
         text=True,
-        timeout=50,
+        timeout=budget,
     )
     print(result.stdout, end="")
     print(result.stderr, end="", file=sys.stderr)

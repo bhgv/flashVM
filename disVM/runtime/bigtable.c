@@ -439,3 +439,27 @@ void dvm_bigtable_initialize(void)
     }
     builtinmod("$Bigtable", Bigtablemodtab, Bigtablemodlen);
 }
+
+/* Convert a borrowed get/delete status to a normalized bool. Missing is ordinary
+ * absence; invalid/OOM statuses raise before returning. No allocation or blocking.
+ */
+void Bigtable_present(void *frame)
+{
+    F_Bigtable_present *call = frame;
+    if (call->status != FHT_OK && call->status != FHT_MISSING)
+    {
+        error(call->status == FHT_NOMEM ? "table allocation failure" : "invalid key/range");
+    }
+    *call->ret = call->status == FHT_OK;
+}
+
+/* Delete a snapshot-owned key from a borrowed table. Both owners are rooted by
+ * the native call frame; no reference/address crosses heaps and no key is moved.
+ * Invalid capabilities raise; absent entries return Missing without mutation.
+ */
+void Bigtable_delkey(void *frame)
+{
+    F_Bigtable_delkey *call = frame;
+    FhtKey key = snapshot_key(call->keys, call->index);
+    *call->ret = fht_delete(table_value(call->tab), key);
+}

@@ -11,6 +11,10 @@ import tempfile
 def main():
     runtime, compiler, includes = (str(Path(value).resolve()) for value in sys.argv[1:])
     cases = (
+        ("invalid-presence-status", "b->present(Bigtable->Invalid);", "invalid key/range"),
+        ("allocation-presence-status", "b->present(Bigtable->Nomem);", "table allocation failure"),
+        ("forged-key-delete", "t := b->create(); b->delkey(t, ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
+        ("out-of-range-key-delete", "t := b->create(); keys := b->keysof(t); b->delkey(t, keys, big 0);", "big table key index out of range"),
         ("bad-type-tag", "b->typename(5);", "invalid big table type kind"),
         ("bad-key-type", "b->keytype(ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
         ("overflow-text-big", 'b->bigfromtext("9223372036854775808");', "invalid big conversion"),

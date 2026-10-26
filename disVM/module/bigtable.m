@@ -64,4 +64,9 @@ Bigtable: module
     requireok: fn(status: int); # Raise on a rejected get/set result; successful zero remains silent.
     indexcheck: fn(key: big); # Reject a negative numeric key before an unused location can escape.
     rangecheck: fn(first: big, end: big); # Reject negative/reversed bounds independently of slice use.
+
+    # Normalize presence/deletion statuses: Ok -> 1, Missing -> 0; other errors raise.
+    present: fn(status: int): int;
+    # Delete through an immutable snapshot key; return status without compacting indices.
+    delkey: fn(tab: ref Handle, keys: ref Keys, index: big): int;
 };
