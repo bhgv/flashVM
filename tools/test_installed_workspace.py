@@ -112,6 +112,18 @@ def table_packages(prefix, work, environment):
         result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 6, image], work, environment)
         if "DATA 0 -9223372036854775808\nDATA 8 0\nDATA 16 0\nDATA 24 1\nDATA 32 0\nDATA 40 0\n" not in result:
             raise RuntimeError("relocated big source decision library/example result differs")
+    # Exercise DAG owner lifetimes through freshly relinked compiler and reference C99 clients.
+    dag_fir = work / "table-dag.fir"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
+         prefix / "fir/examples/tables/decisions.b", dag_fir], work, environment)
+    if run([binary, dag_fir], work, environment).strip() != "42":
+        raise RuntimeError("relocated table DAG reference client result differs")
+    run([compiler_host, dag_fir, image], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 6, image], work, environment)
+        if "DATA 0 42\nDATA 8 0\nDATA 16 0\nDATA 24 1\nDATA 32 0\nDATA 40 0\n" not in result:
+            raise RuntimeError("relocated table DAG compiler client result differs")
+
 
 
 # Compile the shipped tutorial using only relocated SDK headers/libraries, then run it.
