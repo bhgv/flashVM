@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.10)
-project(flashvm_ide_dis VERSION 0.8.0 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.9.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -296,7 +296,7 @@ if(UIBRIDGE_SOURCE_ROOT)
         -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
         -o "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis" "${source}"
       DEPENDS "${source}" "${LIMBO_EXECUTABLE}" idecore.m bridge/idebridge.m
-        bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" VERBATIM)
+        bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m bridge/idevalue.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" VERBATIM)
     add_custom_target(ide_bridge_${module} ALL DEPENDS
       "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis" "${CMAKE_CURRENT_BINARY_DIR}/${module}.sbl")
   endfunction()
@@ -313,7 +313,7 @@ if(UIBRIDGE_SOURCE_ROOT)
           -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
           -I "${LIMBO_MODULE_DIR}" -o "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis"
           "${CMAKE_CURRENT_SOURCE_DIR}/tests/${module}.b"
-        DEPENDS "tests/${module}.b" bridge/idebridge.m bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m
+        DEPENDS "tests/${module}.b" bridge/idebridge.m bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m bridge/idevalue.m
           idecore.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" "${LIMBO_EXECUTABLE}" VERBATIM)
       add_custom_target(ide_bridge_${module} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis")
       if(EMU_EXECUTABLE)
@@ -348,17 +348,17 @@ endif()
 
 
 # Projection services are pure modules and require no native UI SDK.
-foreach(service ideprojection ideinspect)
+foreach(service idevalue ideprojection ideinspect)
   add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
       "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl"
     COMMAND "${LIMBO_EXECUTABLE}" -g -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
       -o "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
       "${CMAKE_CURRENT_SOURCE_DIR}/bridge/${service}.b"
-    DEPENDS "bridge/${service}.b" bridge/ideprojection.m bridge/ideinspect.m
+    DEPENDS "bridge/${service}.b" bridge/ideprojection.m bridge/ideinspect.m bridge/idevalue.m
       "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(${service} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
     "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
     "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl" DESTINATION lib/dis)
 endforeach()
-install(FILES bridge/ideprojection.m bridge/ideinspect.m DESTINATION include/limbo)
+install(FILES bridge/ideprojection.m bridge/ideinspect.m bridge/idevalue.m DESTINATION include/limbo)
