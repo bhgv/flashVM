@@ -8,6 +8,8 @@ enum
     DIS_MAGIC = 819264,  /* Explicit experimental eight-byte native-cell target. */
     DIS_BLTL = 130,      /* Signed big less-than branch. */
     DIS_BEQL = 134,      /* Full-width big equality branch. */
+    DIS_SHLL = 127,      /* Checked full-width left shift by a native int count. */
+    DIS_SHRL = 128,      /* Checked arithmetic full-width right shift. */
     DIS_MOVL = 118,      /* Exact full-width big move; independent of host long. */
     DIS_ADDL = 119,      /* Modulo-2^64 addition. */
     DIS_SUBL = 120,      /* Modulo-2^64 subtraction and negation. */
@@ -157,7 +159,8 @@ static int supported(
         case O_I64:
         case O_COPY:
         case O_TO_BIG:
-            if (current->op == O_TO_BIG && module->values[current->a].type != T_I64)
+            if (current->op == O_TO_BIG && module->values[current->a].type != T_I64 &&
+                module->values[current->a].type != T_I32)
             {
                 goto unsupported;
             }
@@ -167,6 +170,11 @@ static int supported(
             }
             (*count)++;
             break;
+        case O_TO_INT:
+            *count += 3U;
+            break;
+        case O_BIG_SHL:
+        case O_BIG_SHR:
         case O_BIG_ADD:
         case O_BIG_SUB:
         case O_BIG_MUL:
@@ -272,9 +280,10 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     for (index = 0; index < module->count; index++)
     {
         FirInstruction *in = &module->instructions[index];
-        if (!in->removed && (((in->op >= O_TABLE_NEW && in->op <= O_TO_TEXT) &&
-                              !(in->op == O_TO_BIG && module->values[in->a].type == T_I64)) ||
-                             in->type >= T_TABLE_BIG))
+        if (!in->removed &&
+            (((in->op >= O_TABLE_NEW && in->op <= O_TO_TEXT) &&
+              !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32))) ||
+             in->type >= T_TABLE_BIG))
         {
             return fir_dis_table(output, module, error, capacity);
         }
@@ -346,6 +355,21 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)destination);
             instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            break;
+        case O_TO_INT:
+            instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)slot(current->a));
+            instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            break;
+        case O_BIG_SHL:
+        case O_BIG_SHR:
+            instruction(output,
+                        current->op == O_BIG_SHL ? DIS_SHLL : DIS_SHRL,
+                        DIS_FP,
+                        slot(current->b),
+                        DIS_FP,
+                        destination,
+                        (int)slot(current->a));
             break;
         case O_BIG_ADD:
         case O_BIG_SUB:

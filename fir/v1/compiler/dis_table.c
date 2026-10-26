@@ -8,6 +8,11 @@
 
 enum
 {
+    SHLL = 127,            /* Checked big left shift by an int count. */
+    SHRL = 128,            /* Checked arithmetic big right shift. */
+    ANDW = 72,             /* Low-32-bit normalization mask operation. */
+    XORW = 76,             /* Bias the normalized int sign bit. */
+    SUBW = 61,             /* Restore the normalized signed int. */
     LOAD = 8,              /* Load a signature-checked module instance. */
     MCALL = 9,             /* Invoke the prepared module function. */
     MFRAME = 11,           /* Allocate a typed native call frame. */
@@ -97,6 +102,8 @@ typedef struct
     unsigned status;             /* Scalar first result cell for native status/value tuples. */
     unsigned frame_size;         /* Complete native entry-frame byte size. */
     unsigned data_size;          /* Module data size, including numeric captures and string roots. */
+    unsigned int_mask;           /* Plain MP byte offset of 0xffffffff. */
+    unsigned int_sign;           /* Plain MP byte offset of 0x80000000. */
     unsigned plain_cells;        /* Unmapped numeric module data cells before strings. */
     unsigned traces;             /* Scalar capture count; executed flags follow the values. */
     unsigned char frame_map[MAP_BYTES];     /* [GC:] Only genuine entry-frame heap references are marked. */
@@ -280,7 +287,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 root(e->frame_map, offset + CELL);
             }
         }
-        else if (type != T_I64 && type != T_BOOL && type != T_BIG_RANGE)
+        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -303,21 +310,25 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         }
         else if (in->op == O_TRACE)
         {
-            if (module->values[in->a].type != T_I64 && module->values[in->a].type != T_BOOL)
+            if (module->values[in->a].type != T_I64 && module->values[in->a].type != T_I32 &&
+                module->values[in->a].type != T_BOOL)
             {
                 snprintf(error, capacity, "Dis table trace requires big or bool");
                 return 0;
             }
             e->traces++;
         }
-        else if (in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY && in->op != O_RETURN &&
-                 !(in->op >= O_I64 && in->op <= O_BIG_EQ))
+        else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_SHR))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
         }
     }
     e->plain_cells = 2U * e->traces + (unsigned)module->value_count;
+    e->int_mask = e->plain_cells * CELL;
+    e->int_sign = e->int_mask + CELL;
+    e->plain_cells += 2U;
     offset = e->plain_cells * CELL;
     root(e->data_map, offset);
     offset += CELL;
@@ -376,7 +387,7 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     FirType key = slot ? module->values[slot->b].type : T_VOID;
     for (index = 0; index < cells(module, source); index++)
     {
-        int pointer = index == 0 && type != T_I64 && type != T_BOOL && type != T_BIG_RANGE;
+        int pointer = index == 0 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
@@ -418,6 +429,21 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_JUMP:
             instruction(e, JMP, NONE, 0, IMM, e->blocks[in->yes], 0, -1);
+            break;
+        case O_TO_INT:
+            arithmetic(e, ANDW, MIDDLE_MODULE, e->int_mask, a, d);
+            arithmetic(e, XORW, MIDDLE_MODULE, e->int_sign, d, d);
+            /* SUBW is middle minus source: normalized frame value minus the MP sign bias. */
+            octet(e->body, SUBW);
+            octet(e->body, MIDDLE_FRAME | (MP << 3) | FP);
+            operand(e->body, d);
+            operand(e->body, e->int_sign);
+            operand(e->body, d);
+            e->count++;
+            break;
+        case O_BIG_SHL:
+        case O_BIG_SHR:
+            arithmetic(e, in->op == O_BIG_SHL ? SHLL : SHRL, MIDDLE_FRAME, a, b, d);
             break;
         case O_BIG_LT:
         case O_BIG_EQ:
@@ -464,6 +490,7 @@ static void body(Emitter *e, FirModule *module, int measure)
             instruction(e, SUBL, FP, a, FP, d, 0, 0);
             break;
         case O_BOOL:
+        case O_I32:
         case O_I64:
             instruction(e, MOVL, MP, (2U * e->traces + (unsigned)in->result) * CELL, FP, d, 0, -1);
             break;
@@ -535,7 +562,7 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_TO_BIG:
         case O_TO_TEXT:
-            if ((in->op == O_TO_BIG && module->values[in->a].type == T_I64) ||
+            if ((in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32)) ||
                 (in->op == O_TO_TEXT && module->values[in->a].type == T_STRING))
             {
                 copy_value(e, module, in->result, in->a);
@@ -546,7 +573,7 @@ static void body(Emitter *e, FirModule *module, int measure)
                 import = type == T_TABLE_KEY ? (in->op == O_TO_BIG ? KEY_BIG : KEY_TEXT)
                                              : (in->op == O_TO_BIG ? BIG_FROM_TEXT : TEXT_FROM_BIG);
                 call_begin(e, import);
-                argument(e, type == T_I64 ? MOVL : MOVP, a, 0);
+                argument(e, type == T_I64 || type == T_I32 ? MOVL : MOVP, a, 0);
                 if (type == T_TABLE_KEY)
                 {
                     argument(e, MOVL, a + CELL, 1);
@@ -565,7 +592,11 @@ static void body(Emitter *e, FirModule *module, int measure)
             else
             {
                 FirType type = module->values[in->a].type;
-                unsigned kind = type == T_I64 ? 0U : type == T_STRING ? 1U : type == T_TABLE_BIG ? 2U : 3U;
+                unsigned kind = type == T_I32         ? 4U
+                                : type == T_I64       ? 0U
+                                : type == T_STRING    ? 1U
+                                : type == T_TABLE_BIG ? 2U
+                                                      : 3U;
                 call_begin(e, TYPE_NAME);
                 instruction(e, MOVW, IMM, kind, INDIRECT_FP, e->call_frame, ARGUMENTS, -1);
                 call_end(e, TYPE_NAME, (int)d);
@@ -728,13 +759,15 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
             int defining = module->values[i].definition;
             FirInstruction *in = defining < 0 ? NULL : &module->instructions[defining];
             bits(output,
-                 in && !in->removed ? (in->op == O_I64       ? (uint64_t)in->big
-                                       : in->op == O_BOOL    ? (uint64_t)in->integer
-                                       : in->op == O_BIG_NOT ? UINT64_MAX
-                                                             : 0)
+                 in && !in->removed ? (in->op == O_I64                         ? (uint64_t)in->big
+                                       : (in->op == O_BOOL || in->op == O_I32) ? (uint64_t)(int64_t)in->integer
+                                       : in->op == O_BIG_NOT                   ? UINT64_MAX
+                                                                               : 0)
                                     : 0,
                  CELL);
         }
+        bits(output, UINT64_C(4294967295), CELL);
+        bits(output, UINT64_C(2147483648), CELL);
     }
     string_data(output, e->plain_cells * CELL, "$Bigtable");
     for (i = 0; i < (unsigned)module->count; i++)

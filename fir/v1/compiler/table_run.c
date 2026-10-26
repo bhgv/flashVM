@@ -44,13 +44,13 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BIG_EQ) || in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY ||
-            in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_BIG_SHR) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
+            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
-        if (in->op == O_TRACE && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_STRING ||
-                                  module->values[in->a].type == T_BOOL))
+        if (in->op == O_TRACE && (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64 ||
+                                  module->values[in->a].type == T_STRING || module->values[in->a].type == T_BOOL))
         {
             continue;
         }
@@ -124,12 +124,40 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_TO_INT:
+        {
+            uint32_t bits = (uint32_t)(uint64_t)a->big;
+            result->big = bits <= INT32_MAX ? (int64_t)bits : -1 - (int64_t)(UINT32_MAX - bits);
+            break;
+        }
+        case O_BIG_SHL:
+        case O_BIG_SHR:
+            if (b->big < 0 || b->big >= 64)
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                unsigned count = (unsigned)b->big;
+                uint64_t bits = (uint64_t)a->big;
+                if (in->op == O_BIG_SHL)
+                {
+                    bits <<= count;
+                }
+                else if (count)
+                {
+                    bits = (bits >> count) | (a->big < 0 ? UINT64_MAX << (64U - count) : 0);
+                }
+                result->big = big_bits(bits);
+            }
+            break;
         case O_BIG_LT:
             result->big = a->big < b->big;
             break;
         case O_BIG_EQ:
             result->big = a->big == b->big;
             break;
+        case O_I32:
         case O_BOOL:
             result->big = in->integer;
             break;
@@ -247,7 +275,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         case O_TO_BIG:
-            if (module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
+            if (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64)
             {
                 result->big = a->big;
             }
@@ -275,7 +303,9 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             else
             {
-                int64_t number = module->values[in->a].type == T_I64 ? a->big : a->key.index;
+                int64_t number = (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32)
+                                     ? a->big
+                                     : a->key.index;
                 result->text_size = fht_big_format(number, result->digits, sizeof(result->digits));
                 result->text = result->digits;
             }
@@ -283,6 +313,9 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_VALUE_TYPE:
             switch (module->values[in->a].type)
             {
+            case T_I32:
+                result->text = "int";
+                break;
             case T_I64:
                 result->text = "big";
                 break;
@@ -315,7 +348,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             result->big = (int64_t)a->keys->count;
             break;
         case O_TRACE:
-            if (module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
+            if (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64 ||
+                module->values[in->a].type == T_BOOL)
             {
                 fprintf(staged, "%" PRId64 "\n", a->big);
             }
@@ -344,11 +378,12 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                      capacity,
                      "line %d: table operation failed: %s",
                      in->line,
-                     (in->op == O_BIG_DIV || in->op == O_BIG_MOD) ? "zero divide"
-                     : in->op == O_TO_BIG                         ? "invalid big conversion"
-                     : status == FHT_MISSING                      ? "missing key"
-                     : status == FHT_NOMEM                        ? "allocation failure"
-                                                                  : "invalid key/range");
+                     (in->op == O_BIG_SHL || in->op == O_BIG_SHR)   ? "invalid argument"
+                     : (in->op == O_BIG_DIV || in->op == O_BIG_MOD) ? "zero divide"
+                     : in->op == O_TO_BIG                           ? "invalid big conversion"
+                     : status == FHT_MISSING                        ? "missing key"
+                     : status == FHT_NOMEM                          ? "allocation failure"
+                                                                    : "invalid key/range");
             goto done;
         }
         i = next;
