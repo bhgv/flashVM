@@ -9,7 +9,7 @@ commented. It demonstrates dense/sparse numeric keys, string fields, aliases,
 independent slices/key snapshots, retained snapshot keys, runtime typeof and
 standard Limbo big/string cast syntax. Its result is exactly 42.
 
-From the workspace root, with matching compiler 0.16/runtime 0.19 builds:
+From the workspace root, with matching compiler 0.19/runtime 0.22 builds:
 
 ```sh
 export TMPDIR="$PWD/build/tmp"
@@ -47,3 +47,5 @@ to FIR source occurrences; full source-to-Dis SBL is still separate work.
 [arithmetic.b](arithmetic.b) demonstrates signed wrap, negation and native big arithmetic on table reads. [Full contract](../../doc/BIG_ARITHMETIC.md).
 
 [bitwise.b](bitwise.b) exercises signed division/remainder and full-width masks with runtime reads. [Contract](../../doc/BIG_BITWISE.md).
+
+[Conditional owners tutorial / Пример с ветвлениями и владельцами](../../doc/TABLE_CFG.md) · [Исходник](decisions.b) · [Русский](../../doc/TABLE_CFG.ru.md).

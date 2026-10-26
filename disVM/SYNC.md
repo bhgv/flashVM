@@ -1,3 +1,29 @@
+# Current synchronization — v0.1633
+
+Experiment: `826dae5c387528f3120728f0bf61204b76639658`. 495 exact core/reference files and 174 bootstrap files.
+Incoming ADDC, decimal and INDC/INSC repairs preflight decoded slots, String
+headers and backward reference cells before reads/publication on C/AMD64/ARM64.
+Native paths retain write-free decline; availability remains 164/173 active
+opcodes, not complete operand coverage.
+
+The reverse publication is 9f00116: our independent C/native INDC regressions,
+checkpoint registration and expanded private-capacity sweeps. Upstream b6c160b
+landed a concurrent, broader INDC/INSC implementation while our expected-head
+publication was in progress. That implementation was preserved; the earlier
+local functional commits were not published. The returned tests pass against
+b6c160b. [Independent contract](upstream/libinterp/tests/README.indc-preflight.md) ·
+[Owning repair](upstream/libinterp/tests/README.string-cell-preflight.md) ·
+[Decimal](upstream/libinterp/tests/README.decimal-preflight.md) ·
+[ADDC](upstream/libinterp/tests/README.append-preflight.md).
+
+Our acyclic table CFG remains a local compiler/runtime capability; no table
+language extension is exported to Inferno. AMD64 RX and ARM64 instruction
+emulation remain distinct from physical ARM64/full Inferno boot acceptance.
+The second reverse publication, 826dae5, fixes the adjacent decimal-span driver's stale 64-unit buffer and verifies NULL sizing plus every insufficient capacity
+against production's existing 128-unit limit. Historical reports follow.
+
+---
+
 # Current synchronization — v0.1632
 
 Experiment: `583c3ce6ea8629aa37a1e0237a2b8d99f4a39004`. 488 exact core/reference files and 174 bootstrap files.

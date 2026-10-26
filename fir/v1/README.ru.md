@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.18.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.19.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -88,7 +88,7 @@ python fir/v1/view_docs.py --no-browser --port 8766
 
 [Прямая генерация NC64 Dis](doc/DIS_BACKEND.ru.md) · [Limbo/FIR/Dis и библиотечный пример](examples/dis/README.ru.md).
 
-[Типизированные таблицы → FIR](doc/TABLES.ru.md) · [English](doc/TABLES.md): компилятор 0.17, явный профиль с результатом big и эталонное исполнение на C99; [генерация Dis для таблиц](doc/TABLES_DIS.ru.md) реализована; SWF ещё предстоит.
+[Типизированные таблицы → FIR](doc/TABLES.ru.md) · [English](doc/TABLES.md): компилятор 0.19, явный профиль с результатом big и эталонное исполнение на C99; [генерация Dis для таблиц](doc/TABLES_DIS.ru.md) реализована; SWF ещё предстоит.
 
 [Сквозная реализация расширений Limbo: таблицы, проекции и any](doc/EXTENSIONS.ru.md).
 
@@ -101,3 +101,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Скалярный CFG с big](doc/BIG_CFG.ru.md).
 
 [Exact big source decisions / Точные решения big](doc/BIG_DECISIONS.md) · [Русский](doc/BIG_DECISIONS.ru.md).
+
+[Acyclic table decisions / Ациклические решения таблиц](doc/TABLE_CFG.md) · [Русский](doc/TABLE_CFG.ru.md).

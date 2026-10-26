@@ -1,3 +1,28 @@
+# Текущая синхронизация — v0.1633
+
+Experiment: `826dae5c387528f3120728f0bf61204b76639658`. 495 точных файлов ядра/проверок и 174 файла bootstrap.
+Входящие исправления ADDC, decimal и INDC/INSC проверяют слоты, String-header и
+обратные ref-ячейки до чтений/публикации в C/AMD64/ARM64. Native-отказ не пишет
+состояние; доступность остаётся 164/173 opcodes, покрытие операндов частичное.
+
+Обратная публикация — 9f00116: наши независимые C/native регрессии INDC,
+регистрация checkpoint и расширенная проверка private capacity. Пока проверялся
+ожидаемый head, в upstream появилась более широкая реализация b6c160b для
+INDC/INSC. Она сохранена; ранние локальные функциональные коммиты не публиковались.
+Возвращённые тесты проходят на b6c160b.
+[Независимые проверки](upstream/libinterp/tests/README.indc-preflight.md) ·
+[Основное исправление](upstream/libinterp/tests/README.string-cell-preflight.md) ·
+[Decimal](upstream/libinterp/tests/README.decimal-preflight.md) ·
+[ADDC](upstream/libinterp/tests/README.append-preflight.md).
+
+Наш ациклический CFG таблиц остаётся локальной возможностью компилятора/runtime;
+расширение языка в Inferno не переносится. Native AMD64 RX и эмуляция ARM64
+не означают испытаний физического ARM64/полной загрузки Inferno. Вторая обратная публикация, 826dae5, исправляет устаревший 64-unit буфер
+соседнего decimal-span теста и проверяет sizing/все недостаточные ёмкости
+против существующего production-лимита 128. Ниже — история.
+
+---
+
 # Текущая синхронизация — v0.1632
 
 Experiment: `583c3ce6ea8629aa37a1e0237a2b8d99f4a39004`. 488 точных файлов ядра/проверок и 174 файла bootstrap.

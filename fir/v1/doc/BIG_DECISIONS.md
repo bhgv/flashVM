@@ -29,13 +29,12 @@ and pure, so identical comparisons can be reused and unused ones eliminated.
 Division/remainder remain potentially throwing even when their result is unused.
 An unselected zero-divisor arm does not execute and may disappear after opt.
 
-The hosted single-block table backend and independent C reference runner also
+The hosted acyclic table backend and independent C reference runner also
 accept both comparison operations and scalar bool copies/traces. Runtime-loaded
 big values compare with all 64 bits intact; bool cells have no GC pointer bit.
 The native hosted materialization uses the same existing long branch instructions.
-This does not add multi-block table lowering: source decisions involving live
-owners/conversion imports can compile to FIR but direct Dis preflight still
-requires the supported target subset. Such rejection writes no image bytes.
+FIR 0.19 now admits these live owners/conversion imports across acyclic CFG.
+Cyclic table graphs still fail preflight without writing image bytes.
 
 ## Scope and limits
 
@@ -72,3 +71,5 @@ values above 2^53, nested decisions, wrong operand kinds, missing arms, forbidde
 bindings, depth overflow, copied source spans and original/optimized execution.
 Independent Python integer comparisons and the table C reference runner verify
 results. Physical ARM64 execution is not established by instruction emulation.
+
+[FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).

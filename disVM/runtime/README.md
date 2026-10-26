@@ -268,3 +268,5 @@ Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TAB
 [Direct scalar big CFG (FIR 0.17 / runtime 0.20)](../../fir/v1/doc/BIG_CFG.md) · [Русский](../../fir/v1/doc/BIG_CFG.ru.md).
 
 [Big source comparisons/decisions (FIR 0.18 / runtime 0.21)](../../fir/v1/doc/BIG_DECISIONS.md) · [Русский](../../fir/v1/doc/BIG_DECISIONS.ru.md).
+
+[Acyclic table decisions (FIR 0.19 / runtime 0.22)](../../fir/v1/doc/TABLE_CFG.md) · [Русский](../../fir/v1/doc/TABLE_CFG.ru.md).

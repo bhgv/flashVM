@@ -11,7 +11,7 @@ unnecessarily loaded Bigtable. Dispatch now selects the table backend only for
 actual table, key, range, reflection or conversion operations.
 
 FIR 0.18 extends this foundation with [exact big source terminal decisions](BIG_DECISIONS.md).
-Table CFG/loops, phi values, mixed-type arithmetic, shifts, transparent any/proxy
+Table loops, phi values, mixed-type arithmetic, shifts, transparent any/proxy
 access and full Limbo function/module lowering remain separate work.
 
 ## Binary and ownership contract
@@ -32,8 +32,7 @@ The capture layout remains N eight-byte values followed by N executed flags.
 Unexecuted captures stay zero with flag zero. Count the live traces again after
 optimization: dead-arm traces and their slots can disappear. Both descriptors
 have empty pointer maps. Actual tables retain the separate hosted path with
-signature-checked imports and precise owner maps; multi-block table CFG remains
-unsupported. Do not treat ordinary arithmetic as an atomic remote mutation.
+signature-checked imports and precise owner maps; acyclic table CFG is now supported; cyclic table execution remains unsupported. Do not treat ordinary arithmetic as an atomic remote mutation.
 
 ## Run the example
 
@@ -65,3 +64,5 @@ These tests exercise AMD64 runtime execution. ARM64 emitter instruction-emulatio
 coverage is separate and does not establish physical ARM64 execution.
 
 [FIR 0.18: big comparisons and terminal source if/else / Сравнения и решения исходника](BIG_DECISIONS.md) · [Русский](BIG_DECISIONS.ru.md).
+
+[FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).

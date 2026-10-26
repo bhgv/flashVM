@@ -7,14 +7,14 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-`fir1_source` 0.16 adds an explicit `value(): big` source profile using our Coco/R
+`fir1_source` 0.19 provides an explicit `value(): big` source profile using our Coco/R
 parser and C99 semantic lowering. This is not the complete Limbo language or the
 Inferno bootstrap. `source_semantics limbo_tables` records the selected profile.
 
 Supported: `table of big` declarations/creation, inferred locals, `big` and string
 locals, plain/exact decimal big literals, numeric/string indices, literal dotted
 members, table aliases, explicit `[first:end]` slices, `keysof`, `len`, and a big
-return. Statements are straight-line; loops, branching,
+return and terminal if/else decisions. Source loops,
 omitted slice bounds, other table element types and general modules remain outside
 this subset. A declaration without initialization cannot be read.
 
@@ -55,7 +55,7 @@ spelling and unsupported escapes fail rather than truncating a key.
 ## Explicit hosted reference execution
 
 The optional `fir1_tables` C99 library and `fir1_table_run` CLI execute the verified
-single-block subset against the same scalar C core as the native Bigtable module.
+acyclic table subset against the same scalar C core as the native Bigtable module.
 They own temporary tables/snapshots until invocation retirement and preserve
 aliases without double-free. Errors retire every owner and publish no partial
 traces. This is reference execution, not a Dis interpreter or JIT.
@@ -88,3 +88,5 @@ remains pending. No new Dis opcode or Inferno extension is used.
 [Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).
 
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
+
+[FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
