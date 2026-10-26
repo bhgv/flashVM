@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "85cd4e5d01df291b04215b501db406817b8662b0",
+  "revision": "9de5fe916f66efbafa91a7661a82b0b67f2272d3",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -624,7 +624,7 @@
     "upstream/libinterp/tests/README.pc-table-cells.md": "8b636fc776126cd2000c322e22dc899a60eb078fa6c41565d2bf469b66a3a24a",
     "upstream/libinterp/tests/README.power-scales-packdir.md": "7d9b3dea8ea05d682d09be75f795e2b0429d45bc1d810d1bc22bb63b9338def8",
     "upstream/libinterp/tests/README.raise-lifetime.md": "10e5913e710b316564656ffdff756e113851060092aaa557395369b38160b07b",
-    "upstream/libinterp/tests/README.raw-copy-spans.md": "5a0fddb8bf075223d8b3580486deff9cf5bc45d31e48dd36cd8995663b125a71",
+    "upstream/libinterp/tests/README.raw-copy-spans.md": "b400329786ec0399d72af204193f3f12b0df1ebc59d10af1d360fd5f1cf06e30",
     "upstream/libinterp/tests/README.raw-record-arrays.md": "04d70d399eb2128f3695d3b5cf40cb19eef08e2e1732aa19ae8bfb784ac140e5",
     "upstream/libinterp/tests/README.real-branches-owner-slots.md": "890d5e38cb034703cf5ac060592dc96602eebc4b9c8d99f65a63a3a711dc7ab5",
     "upstream/libinterp/tests/README.real-decimal-append.md": "0debdfa4bad9718b89877d8a3e6cfb406e840260ba1d231627992a5de858f002",
@@ -805,7 +805,7 @@
     "upstream/libinterp/tests/prog-diagnostics.py": "9f647ae3a60ebe192295e3f17114e1a4713de224175a5ff1984ca2c65d63d955",
     "upstream/libinterp/tests/raise-slots.c": "26480d6d21b6dddc3aca83051dc8dbb2ee921c8deb17f7f7efd7999010d82d75",
     "upstream/libinterp/tests/raise-slots.py": "974d6251c19252e5c97d9df57ad9ef741d27772310877bd693c39f94bd36ce15",
-    "upstream/libinterp/tests/raw-copy-jit.py": "8a790a5dca21371bbd9ce12abc02a1b341e5f5925c0e19b3d34025ac112c192f",
+    "upstream/libinterp/tests/raw-copy-jit.py": "062847f33387b77544de4b2dcb154beb53aa4c4e726c759bb31638691249d5e8",
     "upstream/libinterp/tests/raw-copy-layouts.py": "08b3603d1283a93849bf7225e9602205f407521bd9829e15f5e3c5d548d50cc6",
     "upstream/libinterp/tests/raw-copy-native.c": "ac29fe850a076c55b29cdaddeed0ea7b6dde756d4c3031928361547484597ccd",
     "upstream/libinterp/tests/raw-copy-native.py": "391452c9567b38aafc2e40651184ca671bb5193e83987387d1fde309e4d62cfc",

@@ -1,6 +1,6 @@
 # Current synchronization — v0.1635
 
-Experiment: `ca53cc69902388ee5b982f9d669f0d32534d9539`. 499 exact core/reference
+Experiment: `9de5fe916f66efbafa91a7661a82b0b67f2272d3`. 503 exact core/reference
 files and 174 bootstrap files. Incoming 808a4f6 and 70611aa repair C/AMD64/ARM64
 string predicate and owner preflight: conditional branch targets remain unread
 on false predicates; source lifetime errors precede destination-owner reads and
@@ -17,6 +17,20 @@ Native availability remains 164/173 on AMD64 and ARM64. Arithmetic pointer-span
 checks do not establish mapped allocation ownership. ARM64 instruction emulation
 is not physical ARM64 execution or a full Inferno boot. Compiler table/any/int
 extensions were not exported; the native WORD ABI remains unchanged.
+
+The final follow-up 85cd4e5 additionally imports decoded-slot preflight for
+HEADB/HEADW/HEADL/HEADF/LENL/HEADM/MOVM/TCMP. It preserves zero-copy nonaccess,
+source/count error ordering and write-free native decline. Native and emulated
+list-slot checkpoints are registered in our CMake suite. Upstream explicitly
+validated our incoming optimized owner checkpoint.
+[List/copy/type contract](upstream/libinterp/tests/README.list-slot-preflight.md).
+
+Our second reverse commit 9de5fe9 repairs the raw-copy regression fixture's stale
+64-unit limit after ARM64 HEADM guards grew. The fixture now uses the existing
+128-unit private capacity, checks every insufficient size, exact output and a
+trailing canary, and invalidates the complete code window. Production capacity
+and ABI are unchanged. All 411,264 differential copy cases pass under Python -O
+and UBSan across AMD64/ARM64/RV64.
 
 ---
 
