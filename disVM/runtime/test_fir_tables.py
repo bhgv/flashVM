@@ -29,7 +29,7 @@ def operand(data, position):
 
 # Inspect the image's actual descriptors independently of the emitter's layout calculations.
 # Returns header fields and descriptor dictionaries; generated test images use nonnegative operands.
-def descriptors(path):
+def descriptors(path, code=None):
     data = path.read_bytes()
     position = 0
     header = []
@@ -37,6 +37,8 @@ def descriptors(path):
         value, position = operand(data, position)
         header.append(value)
     for _ in range(header[3]):
+        if code is not None:
+            code.append(data[position])
         mode = data[position + 1]
         position += 2
         if mode & 192:
@@ -82,6 +84,9 @@ def main():
         optimized = work / "tables.opt.fir"
         image = work / "tables.dis"
         cases = (
+            ('return -(-9223372036854775808);', -9223372036854775808),
+            ('return -(1 + 2) * 3;', -9),
+            ('return 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;', 180),
             ('tobig := big 7; tostring := big 8; return tobig;', 7),
             ('t := table of big; t.k = big 42; return t["k"];', 42),
             ('t: table of big; t = table of big; t["k"] = big 41; return t.k;', 41),
@@ -122,6 +127,38 @@ def main():
             ('t := table of big; t["123"] = big 18; a := string big 123; b := a; a = "other"; return t[b];', 18),
             ('t := table of big; t["ключ😀"] = big 19; ks := keysof t; return t[string ks[0]];', 19),
             ('t := table of big; t["string"] = big 20; return t[typeof string big 7];', 20),
+            ('return 1 + 2 * 3;', 7),
+            ('return (1 + 2) * 3;', 9),
+            ('return 9 - 3 - 1;', 5),
+            ('return 9 - (3 - 1);', 7),
+            ('return +7 * -3;', -21),
+            ('return 9223372036854775807 + 1;', -9223372036854775808),
+            ('return -9223372036854775808 - 1;', 9223372036854775807),
+            ('return 9223372036854775807 * 2;', -2),
+            ('x := big -9223372036854775808; return -x;', -9223372036854775808),
+            ('return 9007199254740993 + 2;', 9007199254740995),
+            ('return big "40" + 2;', 42),
+            ('t := table of big; t.k = big 7; t.k = t.k + 5 * t.k; return t.k;', 42),
+            ('t := table of big; t[0] = big 1; t[1] = big 2; return len t + 1;', 3),
+            ('t := table of big; t["big"] = big 17; return t[typeof (1 + 2)];', 17),
+            ('t := table of big; t["42"] = big 19; return t[string (6 * 7)];', 19),
+            ('t := table of big; t[0] = big 31; ks := keysof t; return t[ks[3 - 3]];', 31),
+            ('t := table of big; t.x = big 9007199254740993; t.y = big 17; a := t.x; b := t.y; return a * b + a - b;', 162129586585337857),
+            ('t := table of big; t.x = big 21352878164852206; t.y = big 98765432101130; a := t.x; b := t.y; return a * b + a - b;', -7010115842783490512),
+            ('t := table of big; t.x = big 33698557074963419; t.y = big 197530864202243; a := t.x; b := t.y; return a * b + a - b;', 3436606346904109929),
+            ('t := table of big; t.x = big 46044235985074632; t.y = big 296296296303356; a := t.x; b := t.y; return a * b + a - b;', -5391191991770964052),
+            ('t := table of big; t.x = big 58389914895185845; t.y = big 395061728404469; a := t.x; b := t.y; return a * b + a - b;', 3399977288610390777),
+            ('t := table of big; t.x = big 70735593805297058; t.y = big 493827160505582; a := t.x; b := t.y; return a * b + a - b;', -7083373959370928816),
+            ('t := table of big; t.x = big 83081272715408271; t.y = big 592592592606695; a := t.x; b := t.y; return a * b + a - b;', 52242411704180401),
+            ('t := table of big; t.x = big 95426951625519484; t.y = big 691358024707808; a := t.x; b := t.y; return a * b + a - b;', 6360082328126166812),
+            ('t := table of big; t.x = big 107772630535630697; t.y = big 790123456808921; a := t.x; b := t.y; return a * b + a - b;', -6606598283814521199),
+            ('t := table of big; t.x = big 120118309445741910; t.y = big 888888888910034; a := t.x; b := t.y; return a * b + a - b;', -1954311276698780400),
+            ('t := table of big; t.x = big 132463988355853123; t.y = big 987654321011147; a := t.x; b := t.y; return a * b + a - b;', 1870199275763837593),
+            ('t := table of big; t.x = big 144809667265964336; t.y = big 1086419753112260; a := t.x; b := t.y; return a * b + a - b;', 4866933373573332780),
+            ('t := table of big; t.x = big 157155346176075549; t.y = big 1185185185213373; a := t.x; b := t.y; return a * b + a - b;', 7035891016729705161),
+            ('t := table of big; t.x = big 169501025086186762; t.y = big 1283950617314486; a := t.x; b := t.y; return a * b + a - b;', 8377072205232954736),
+            ('t := table of big; t.x = big 181846703996297975; t.y = big 1382716049415599; a := t.x; b := t.y; return a * b + a - b;', 8890476939083081505),
+            ('t := table of big; t.x = big 194192382906409188; t.y = big 1481481481516712; a := t.x; b := t.y; return a * b + a - b;', 8576105218280085468),
         )
         # Exercise frame/data maps beyond their small inline prefixes and non-ASCII string roots.
         large = 't := table of big; ' + ''.join('t["ключ' + str(i) + '"] = big ' + str(i) + '; ' for i in range(110))
@@ -139,7 +176,13 @@ def main():
                 invoke([compiler, "dis", selected, image])
                 result = invoke([runtime, dispatch, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image])
                 observed(result, expected, mode)
-                header, types = descriptors(image)
+                code = []
+                header, types = descriptors(image, code)
+                if body.endswith('return a * b + a - b;') and not {119, 120, 123}.issubset(code):
+                    raise RuntimeError("big arithmetic did not emit existing native 64-bit Dis ALU operations")
+                if body == 'return 1 + 2 * 3;' and selected == fir:
+                    if not {119, 123}.issubset(code) or 9 in code or 11 in code:
+                        raise RuntimeError("pure big arithmetic was lowered through native helper calls")
                 if header[0] != 819264 or header[1] != 64 or not types[0][1] or not types[1][1]:
                     raise RuntimeError("table image missing checked imports or pointer maps")
             if body.startswith(large):
@@ -221,6 +264,10 @@ func @main() -> void {
             ('return big " 1";', 'invalid big conversion'),
             ('t := table of big; t["bad"] = big 1; ks := keysof t; ignored := big ks[0]; return big 0;', 'invalid big conversion'),
             ('t := table of big; ignored := typeof t.missing; return big 0;', 'missing key'),
+            ('ignored := (big "bad") * 0; return big 0;', "invalid big conversion"),
+            ('t := table of big; ignored := t.missing * 0; return big 0;', "missing key"),
+            ('t := table of big; t[9223372036854775807 + 1] = big "bad"; return big 0;', "invalid key/range"),
+            ('t := table of big; ignored := t.missing + big "bad"; return big 0;', "missing key"),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),

@@ -32,6 +32,9 @@ def main():
         optimized = work / "optimized.fir"
         debug = work / "debug.json"
         cases = (
+            ('return -(-9223372036854775808);', -9223372036854775808),
+            ('return -(1 + 2) * 3;', -9),
+            ('return 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;', 180),
             ('tobig := big 7; tostring := big 8; return tobig;', 7),
             ('t: table of big; t = table of big; t.k = big 42; return t["k"];', 42),
             ('t := table of big; t["k"] = big 41; return t.k;', 41),
@@ -72,6 +75,38 @@ def main():
             ('t := table of big; t["123"] = big 18; a := string big 123; b := a; a = "other"; return t[b];', 18),
             ('t := table of big; t["ключ😀"] = big 19; ks := keysof t; return t[string ks[0]];', 19),
             ('t := table of big; t["string"] = big 20; return t[typeof string big 7];', 20),
+            ('return 1 + 2 * 3;', 7),
+            ('return (1 + 2) * 3;', 9),
+            ('return 9 - 3 - 1;', 5),
+            ('return 9 - (3 - 1);', 7),
+            ('return +7 * -3;', -21),
+            ('return 9223372036854775807 + 1;', -9223372036854775808),
+            ('return -9223372036854775808 - 1;', 9223372036854775807),
+            ('return 9223372036854775807 * 2;', -2),
+            ('x := big -9223372036854775808; return -x;', -9223372036854775808),
+            ('return 9007199254740993 + 2;', 9007199254740995),
+            ('return big "40" + 2;', 42),
+            ('t := table of big; t.k = big 7; t.k = t.k + 5 * t.k; return t.k;', 42),
+            ('t := table of big; t[0] = big 1; t[1] = big 2; return len t + 1;', 3),
+            ('t := table of big; t["big"] = big 17; return t[typeof (1 + 2)];', 17),
+            ('t := table of big; t["42"] = big 19; return t[string (6 * 7)];', 19),
+            ('t := table of big; t[0] = big 31; ks := keysof t; return t[ks[3 - 3]];', 31),
+            ('t := table of big; t.x = big 9007199254740993; t.y = big 17; a := t.x; b := t.y; return a * b + a - b;', 162129586585337857),
+            ('t := table of big; t.x = big 21352878164852206; t.y = big 98765432101130; a := t.x; b := t.y; return a * b + a - b;', -7010115842783490512),
+            ('t := table of big; t.x = big 33698557074963419; t.y = big 197530864202243; a := t.x; b := t.y; return a * b + a - b;', 3436606346904109929),
+            ('t := table of big; t.x = big 46044235985074632; t.y = big 296296296303356; a := t.x; b := t.y; return a * b + a - b;', -5391191991770964052),
+            ('t := table of big; t.x = big 58389914895185845; t.y = big 395061728404469; a := t.x; b := t.y; return a * b + a - b;', 3399977288610390777),
+            ('t := table of big; t.x = big 70735593805297058; t.y = big 493827160505582; a := t.x; b := t.y; return a * b + a - b;', -7083373959370928816),
+            ('t := table of big; t.x = big 83081272715408271; t.y = big 592592592606695; a := t.x; b := t.y; return a * b + a - b;', 52242411704180401),
+            ('t := table of big; t.x = big 95426951625519484; t.y = big 691358024707808; a := t.x; b := t.y; return a * b + a - b;', 6360082328126166812),
+            ('t := table of big; t.x = big 107772630535630697; t.y = big 790123456808921; a := t.x; b := t.y; return a * b + a - b;', -6606598283814521199),
+            ('t := table of big; t.x = big 120118309445741910; t.y = big 888888888910034; a := t.x; b := t.y; return a * b + a - b;', -1954311276698780400),
+            ('t := table of big; t.x = big 132463988355853123; t.y = big 987654321011147; a := t.x; b := t.y; return a * b + a - b;', 1870199275763837593),
+            ('t := table of big; t.x = big 144809667265964336; t.y = big 1086419753112260; a := t.x; b := t.y; return a * b + a - b;', 4866933373573332780),
+            ('t := table of big; t.x = big 157155346176075549; t.y = big 1185185185213373; a := t.x; b := t.y; return a * b + a - b;', 7035891016729705161),
+            ('t := table of big; t.x = big 169501025086186762; t.y = big 1283950617314486; a := t.x; b := t.y; return a * b + a - b;', 8377072205232954736),
+            ('t := table of big; t.x = big 181846703996297975; t.y = big 1382716049415599; a := t.x; b := t.y; return a * b + a - b;', 8890476939083081505),
+            ('t := table of big; t.x = big 194192382906409188; t.y = big 1481481481516712; a := t.x; b := t.y; return a * b + a - b;', 8576105218280085468),
         )
         for body, expected in cases:
             source.write_text(program(body))
@@ -97,6 +132,18 @@ def main():
                 call([compiler, backend, fir, output], False)
                 if output.read_bytes() != b"preserve destination":
                     raise RuntimeError("unsupported backend overwrote destination")
+
+        # Fold exact big constants and CSE only pure calculations on captured SSA values.
+        source.write_text(program('return 9223372036854775807 + 1;'))
+        call([source_compiler, "limbo", "--input", source, fir])
+        call([compiler, "opt", fir, optimized])
+        if "big.add" in optimized.read_text() or "const.i64 -9223372036854775808" not in optimized.read_text():
+            raise RuntimeError("big constant folding lost modulo-64 semantics")
+        source.write_text(program('t := table of big; t.k = big 7; a := t.k; b := a + 2; c := a + 2; return b * c;'))
+        call([source_compiler, "limbo", "--input", source, fir])
+        call([compiler, "opt", fir, optimized])
+        if optimized.read_text().count("big.add") != 1 or call([runner, optimized]).stdout.strip() != "81":
+            raise RuntimeError("pure big CSE changed captured-value semantics")
 
         # A write occurrence belongs to the literal member, independently of its RHS location.
         body = 't := table of big; t.member = big 4; return t.member;'
@@ -124,7 +171,37 @@ def main():
             if len(selected) != 1 or selected[0]["byte_offset"] != text.index(token) or selected[0]["byte_length"] != len(token):
                 raise RuntimeError("prefix operation lost its exact source occurrence")
 
+        # Arithmetic source events identify operators rather than a later operand.
+        text = program('a := big 7; return -a + a * 3 - 1;')
+        source.write_text(text)
+        call([source_compiler, "limbo", "--input", source, fir, "-g", debug])
+        events = json.loads(debug.read_text())["events"]
+        for spelling, token, offset in (("big.neg", "-", text.index("-a")),
+                                        ("big.add", "+", text.index("+")),
+                                        ("big.mul", "*", text.index("*")),
+                                        ("big.sub", "-", text.index("- 1"))):
+            selected = [event for event in events if event["kind"] == "table-operation" and event["name"] == spelling]
+            if len(selected) != 1 or selected[0]["byte_offset"] != offset or selected[0]["byte_length"] != len(token):
+                raise RuntimeError("big arithmetic lost its exact operator origin")
+        text = program('return -9223372036854775808;')
+        source.write_text(text)
+        call([source_compiler, "limbo", "--input", source, fir, "-g", debug])
+        events = [event for event in json.loads(debug.read_text())["events"] if event["kind"] == "constant"]
+        if len(events) != 1 or events[0]["byte_offset"] != text.index("-922") or events[0]["byte_length"] != 20:
+            raise RuntimeError("signed minimum literal lost its complete source span")
+
         rejected = (
+            'return ' + 'big ' * 80 + '1;',
+            'return ' + '(' * 80 + '1' + ')' * 80 + ';',
+            'return ' + '-' * 80 + 'x;',
+
+            'return "1" + 2;',
+            'return string 1 + 2;',
+            't := table of big; return t * 2;',
+            't := table of big; ks := keysof t; return +ks;',
+            'return typeof 1 + 2;',
+            'return 8 / 2;',
+
             'return tobig "7";',
             't := table of big; t.k = "wrong"; return big 0;',
             't := table of big; t = big 1; return big 0;',
@@ -166,6 +243,10 @@ def main():
             ('return big " 1";', 'invalid big conversion'),
             ('t := table of big; t["bad"] = big 1; ks := keysof t; ignored := big ks[0]; return big 0;', 'invalid big conversion'),
             ('t := table of big; ignored := typeof t.missing; return big 0;', 'missing key'),
+            ('ignored := (big "bad") * 0; return big 0;', "invalid big conversion"),
+            ('t := table of big; ignored := t.missing * 0; return big 0;', "missing key"),
+            ('t := table of big; t[9223372036854775807 + 1] = big "bad"; return big 0;', "invalid key/range"),
+            ('t := table of big; ignored := t.missing + big "bad"; return big 0;', "missing key"),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),
@@ -201,6 +282,8 @@ func @main() -> void {
             staged_failure.replace("table.index %t, %k", "table.index %k, %t"),
             staged_failure.replace("%v: i64 = table.load", "%v: keys = table.load"),
             staged_failure.replace("table.index", "table.future"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = big.add %t, %t"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = big.neg %p"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: string = value.type %p"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: keys = value.type %t"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = value.big %t"),
