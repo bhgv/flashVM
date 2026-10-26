@@ -1,5 +1,7 @@
 # Interactive editor on native Dis
 
+[Live watch/watchtable/callref/setref commands](../../LIVE-PROJECTIONS.md)
+
 Run `python3 build_menu.py`, choose `all`, accept the defaults, then select **5**.
 The terminal editor starts with an empty document. It is written in Limbo and
 runs on the packaged Dis interpreter/JIT. The separate idecore owner receives

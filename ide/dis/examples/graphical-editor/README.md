@@ -1,5 +1,7 @@
 # Graphical editor: Limbo/Dis logic, FlashVM graphics
 
+[Ctrl+I: live document projection inspector](../../LIVE-PROJECTIONS.md)
+
 [Русский](README.ru.md) · [Fully commented controller](main.b) ·
 [Host interface](../../bridge/idehost.m) · [Runtime](../../../../disVM/runtime/README.md) ·
 [Navigation](../../NAVIGATION.md) · [Viewport/mouse](../../VIEWPORT.md) ·

@@ -1,5 +1,7 @@
 # Графический редактор: логика Limbo/Dis, графика FlashVM
 
+[Ctrl+I: живой инспектор документа](../../LIVE-PROJECTIONS.ru.md)
+
 [English](README.md) · [Полностью комментированный контроллер](main.b) ·
 [Интерфейс хоста](../../bridge/idehost.m) · [Рантайм](../../../../disVM/runtime/README.md) ·
 [Навигация](../../NAVIGATION.ru.md) · [Окно/мышь](../../VIEWPORT.ru.md) ·

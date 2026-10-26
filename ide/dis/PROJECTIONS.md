@@ -1,5 +1,7 @@
 # Channel projections in the IDE inspector
 
+[Live document adapter and graphical inspector](LIVE-PROJECTIONS.md)
+
 [Copied values and Limbo type reflection](VALUES.md)
 
 [IDE](README.md) · [Bridge services](bridge/README.md) ·
@@ -58,8 +60,8 @@ checks Unicode, read/write/method result, explicit invocation consent, stale
 incarnation, independent objects, pause/resume, release, stale refresh, duplicate
 response, changed selection and copied row isolation.
 
-This series supplies IDE services/model and packaged modules; it does not yet
-add a graphical watch panel, serialize these requests over a socket, bridge them
+The live document adapter now adds a read-only graphical panel to these IDE
+services and packaged modules. It does not yet serialize requests over a socket or bridge them
 to an arbitrary FlashVM object, or lower Limbo `any` in our FIR compiler. The
 existing C broker/BD1 codecs provide the independent diagnostic layer, but the
 projection sample does not pretend its Dis rendezvous is a network session.
@@ -77,7 +79,7 @@ our Coco/R FIR frontend still has a bounded numeric profile.
 Проверены настоящие Dis-процессы в интерпретаторе и JIT. Кооперативная пауза
 разрешает чтение, но отклоняет запись и выполнение метода. Это ещё не адаптер
 полной остановки процесса отладчиком. Сетевой RPC, общий Flash-compatible `any`,
-автоматический GC экспортированных объектов и графическая панель остаются
+автоматический GC экспортированных объектов и универсальная панель локальных переменных остаются
 отдельными шагами; текущий пример не подменяет их симуляцией.
 
 

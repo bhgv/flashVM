@@ -1,5 +1,7 @@
 # Copied values and references, derived from Limbo types
 
+[Live document projections](LIVE-PROJECTIONS.md)
+
 [Русский](VALUES.ru.md) · [Projection inspector](PROJECTIONS.md) ·
 [Interface](bridge/idevalue.m) · [Executable checks](tests/values_test.b) ·
 [AS library](../as/projection-values.as)
@@ -121,4 +123,5 @@ Coco/R frontend; the client dispatch contract is tested under Node. Real Dis
 channel tests cover constants, typed writes, exact Big, binary64, Unicode,
 snapshots, bound receivers and model copy isolation in interpreter/AMD64 JIT.
 A separate classic-profile build checks compilation only. Network RPC, arbitrary
-FlashVM reflection, exported-object GC and the graphical watch panel remain open.
+FlashVM reflection, exported-object GC and arbitrary debuggee-local inspection remain open.
+The live document panel is implemented separately as described above.

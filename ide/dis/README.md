@@ -1,10 +1,14 @@
 # Portable IDE document core
 
+[Window close/resize and hideable line numbers](WINDOWS-GUTTER.md)
+
+[Live document projection inspector](LIVE-PROJECTIONS.md)
+
 [Copied values and Limbo type reflection](VALUES.md)
 
 [Channel projection inspector and admission model](PROJECTIONS.md)
 
-Version 0.9.0. [Русский](README.ru.md).
+Version 0.10.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
