@@ -41,4 +41,10 @@ Bigtable: module
     # Return snapshot length and an indexed key; keyat raises on invalid bounds/foreign owners.
     keylen: fn(keys: ref Keys): big;
     keyat: fn(keys: ref Keys, index: big): (int, big, string);
+
+
+    # Compiler helpers preserve eager errors while using existing Dis module-call instructions.
+    requireok: fn(status: int); # Raise on a rejected get/set result; successful zero remains silent.
+    indexcheck: fn(key: big); # Reject a negative numeric key before an unused location can escape.
+    rangecheck: fn(first: big, end: big); # Reject negative/reversed bounds independently of slice use.
 };

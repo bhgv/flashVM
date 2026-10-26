@@ -21,15 +21,21 @@ typedef struct
     FhtKeys *keys; /* [GC:] Independent C key snapshot, no references into either VM heap. */
 } KeysOwner;
 
-static Type *table_type; /* [GC:] Runtime-lifetime exact descriptor for native table owners. */
-static Type *keys_type;  /* [GC:] Runtime-lifetime exact descriptor for immutable snapshot owners. */
+static Type *table_type;           /* [GC:] Runtime-lifetime exact descriptor for native table owners. */
+static Type *keys_type;            /* [GC:] Runtime-lifetime exact descriptor for immutable snapshot owners. */
+static unsigned long table_owners; /* [GC:] Live native scalar table owners, for explicit runtime statistics. */
+static unsigned long key_owners;   /* [GC:] Live independent key snapshots, not references to table owners. */
 
 /* Release private C storage during RC destruction or cycle sweep. No VM pointers are contained. */
 static void free_table(Heap *heap, int swept)
 {
     TableOwner *owner = H2D(TableOwner *, heap);
     USED(swept);
-    fht_destroy(owner->table);
+    if (owner->table)
+    {
+        table_owners--;
+        fht_destroy(owner->table);
+    }
     owner->table = nil;
 }
 
@@ -38,7 +44,11 @@ static void free_keys(Heap *heap, int swept)
 {
     KeysOwner *owner = H2D(KeysOwner *, heap);
     USED(swept);
-    fht_keys_destroy(owner->keys);
+    if (owner->keys)
+    {
+        key_owners--;
+        fht_keys_destroy(owner->keys);
+    }
     owner->keys = nil;
 }
 
@@ -107,6 +117,7 @@ void Bigtable_create(void *frame)
     {
         error(exNomem);
     }
+    table_owners++;
 }
 
 /* Read a numeric key from the borrowed owner; failed reads return status plus an unusable zero. */
@@ -189,6 +200,7 @@ void Bigtable_slice(void *frame)
     {
         error(status == FHT_NOMEM ? exNomem : "invalid big table slice");
     }
+    table_owners++;
 }
 
 /* Root an independent immutable snapshot owner before copying native keys; no source alias escapes. */
@@ -203,6 +215,7 @@ void Bigtable_keysof(void *frame)
     {
         error(exNomem);
     }
+    key_owners++;
 }
 
 /* Return the complete key count of a validated immutable owner. */
@@ -237,6 +250,47 @@ void Bigtable_keyat(void *frame)
     call->ret->t0 = key.kind;
     call->ret->t1 = key.kind == FHT_INDEX ? key.index : 0;
     call->ret->t2 = text;
+}
+
+/* Check a borrowed status word after a generated get/set call; no allocation or user code runs.
+ * Missing, invalid and allocation failure raise explicitly; success emits no diagnostic traffic. */
+void Bigtable_requireok(void *frame)
+{
+    F_Bigtable_requireok *call = frame;
+    if (call->status != FHT_OK)
+    {
+        error(call->status == FHT_MISSING ? "missing key"
+              : call->status == FHT_NOMEM ? "table allocation failure"
+                                          : "invalid key/range");
+    }
+}
+
+/* Validate a borrowed numeric key before capturing a FIR location; return normally for nonnegative keys. */
+void Bigtable_indexcheck(void *frame)
+{
+    F_Bigtable_indexcheck *call = frame;
+    if (call->key < 0)
+    {
+        error("invalid key/range");
+    }
+}
+
+/* Validate copied half-open bounds before capturing a FIR range; source length is checked by slice. */
+void Bigtable_rangecheck(void *frame)
+{
+    F_Bigtable_rangecheck *call = frame;
+    if (call->first < 0 || call->end < call->first)
+    {
+        error("invalid key/range");
+    }
+}
+
+/* Copy owner counts on the sole scheduler thread. Output pointers are borrowed/non-null;
+ * no native addresses, keys or application values are exposed, and no allocation occurs. */
+void dvm_bigtable_owners(unsigned long *tables, unsigned long *keys)
+{
+    *tables = table_owners;
+    *keys = key_owners;
 }
 
 /* Register private scalar-only finalizers and generated typed exports after VM heap initialization.
