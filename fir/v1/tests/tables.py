@@ -32,6 +32,7 @@ def main():
         optimized = work / "optimized.fir"
         debug = work / "debug.json"
         cases = (
+            ('tobig := big 7; tostring := big 8; return tobig;', 7),
             ('t: table of big; t = table of big; t.k = big 42; return t["k"];', 42),
             ('t := table of big; t["k"] = big 41; return t.k;', 41),
             ('t := table of big; t[1] = big 8; return len t;', 0),
@@ -53,6 +54,24 @@ def main():
             ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; ks = keysof table of big; t[k] = big 19; return t.k;', 19),
             ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; t = table of big; t[k] = big 29; return t.k;', 29),
             ('t := table of big; t.k = big 7; ks := keysof t; u := table of big; u[ks[0]] = big 39; return u.k;', 39),
+            ('t := table of big; t["big"] = big 11; return t[typeof big 7];', 11),
+            ('t := table of big; t["string"] = big 12; return t[typeof "text"];', 12),
+            ('t := table of big; t["table of big"] = big 13; return t[typeof t];', 13),
+            ('t := table of big; t["keys"] = big 14; ks := keysof t; return t[typeof ks];', 14),
+            ('t := table of big; t[7] = big 1; t["seven"] = big 2; ks := keysof t; names := table of big; names["big"] = big 11; names["string"] = big 12; return names[typeof ks[0]];', 11),
+            ('t := table of big; t[7] = big 1; t["seven"] = big 2; ks := keysof t; names := table of big; names["big"] = big 11; names["string"] = big 12; return names[typeof ks[1]];', 12),
+            ('t := table of big; t[7] = big 1; t["7"] = big 2; ks := keysof t; return t[string ks[0]];', 2),
+            ('t := table of big; t[7] = big 1; t["7"] = big 2; ks := keysof t; return t[big ks[1]];', 1),
+            ('return big "9223372036854775807";', 9223372036854775807),
+            ('return big "-9223372036854775808";', -9223372036854775808),
+            ('return big string big -9223372036854775808;', -9223372036854775808),
+            ('return big string big 9223372036854775807;', 9223372036854775807),
+            ('return big "+00042";', 42),
+            ('return big big -7;', -7),
+            ('t := table of big; t[""] = big 17; return t[string ""];', 17),
+            ('t := table of big; t["123"] = big 18; a := string big 123; b := a; a = "other"; return t[b];', 18),
+            ('t := table of big; t["ключ😀"] = big 19; ks := keysof t; return t[string ks[0]];', 19),
+            ('t := table of big; t["string"] = big 20; return t[typeof string big 7];', 20),
         )
         for body, expected in cases:
             source.write_text(program(body))
@@ -94,7 +113,19 @@ def main():
         if offset != text.index("t.member") + 2 or write["byte_length"] != len("member"):
             raise RuntimeError("table write attributed to RHS rather than member")
 
+        # Prefix operations keep their own occurrence, independently of nested operands.
+        body = 't := table of big; t["big"] = big 42; return t[typeof big string big 7];'
+        text = program(body)
+        source.write_text(text)
+        call([source_compiler, "limbo", "--input", source, fir, "-g", debug])
+        events = json.loads(debug.read_text())["events"]
+        for spelling, token in (("value.type", "typeof"), ("value.text", "string")):
+            selected = [event for event in events if event["kind"] == "table-operation" and event["name"] == spelling]
+            if len(selected) != 1 or selected[0]["byte_offset"] != text.index(token) or selected[0]["byte_length"] != len(token):
+                raise RuntimeError("prefix operation lost its exact source occurrence")
+
         rejected = (
+            'return tobig "7";',
             't := table of big; t.k = "wrong"; return big 0;',
             't := table of big; t = big 1; return big 0;',
             't: table of big; return t.k;',
@@ -109,6 +140,10 @@ def main():
             't := table of big; ks := keysof t; return len ks[0];',
             't := table of big; ks := keysof t; ks[0] = big 4; return big 0;',
             'v: any; return big 0;',
+            't := table of big; return big t;',
+            't := table of big; return big keysof t;',
+            't := table of big; return string t;',
+
             't: table of any; return big 0;',
 
         )
@@ -124,6 +159,13 @@ def main():
             ('t := table of big; ks := keysof t; ignored := ks[0]; return big 0;', "invalid key/range"),
             ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[-1]; return big 0;', "invalid key/range"),
             ('t := table of big; t.k = big 1; ks := keysof t; u := table of big; return u[ks[0]];', "missing key"),
+            ('return big "9223372036854775808";', 'invalid big conversion'),
+            ('return big "-9223372036854775809";', 'invalid big conversion'),
+            ('return big "12x";', 'invalid big conversion'),
+            ('return big "";', 'invalid big conversion'),
+            ('return big " 1";', 'invalid big conversion'),
+            ('t := table of big; t["bad"] = big 1; ks := keysof t; ignored := big ks[0]; return big 0;', 'invalid big conversion'),
+            ('t := table of big; ignored := typeof t.missing; return big 0;', 'missing key'),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),
@@ -159,6 +201,10 @@ func @main() -> void {
             staged_failure.replace("table.index %t, %k", "table.index %k, %t"),
             staged_failure.replace("%v: i64 = table.load", "%v: keys = table.load"),
             staged_failure.replace("table.index", "table.future"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: string = value.type %p"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: keys = value.type %t"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = value.big %t"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: string = value.text %t"),
         ):
             fir.write_text(malformed)
             call([compiler, "check", fir], False)

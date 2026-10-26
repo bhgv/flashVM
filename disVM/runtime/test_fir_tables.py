@@ -82,6 +82,7 @@ def main():
         optimized = work / "tables.opt.fir"
         image = work / "tables.dis"
         cases = (
+            ('tobig := big 7; tostring := big 8; return tobig;', 7),
             ('t := table of big; t.k = big 42; return t["k"];', 42),
             ('t: table of big; t = table of big; t["k"] = big 41; return t.k;', 41),
             ('t := table of big; t[1] = big 8; return len t;', 0),
@@ -103,6 +104,24 @@ def main():
             ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; ks = keysof table of big; t[k] = big 19; return t.k;', 19),
             ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; t = table of big; t[k] = big 29; return t.k;', 29),
             ('t := table of big; t.k = big 7; ks := keysof t; u := table of big; u[ks[0]] = big 39; return u.k;', 39),
+            ('t := table of big; t["big"] = big 11; return t[typeof big 7];', 11),
+            ('t := table of big; t["string"] = big 12; return t[typeof "text"];', 12),
+            ('t := table of big; t["table of big"] = big 13; return t[typeof t];', 13),
+            ('t := table of big; t["keys"] = big 14; ks := keysof t; return t[typeof ks];', 14),
+            ('t := table of big; t[7] = big 1; t["seven"] = big 2; ks := keysof t; names := table of big; names["big"] = big 11; names["string"] = big 12; return names[typeof ks[0]];', 11),
+            ('t := table of big; t[7] = big 1; t["seven"] = big 2; ks := keysof t; names := table of big; names["big"] = big 11; names["string"] = big 12; return names[typeof ks[1]];', 12),
+            ('t := table of big; t[7] = big 1; t["7"] = big 2; ks := keysof t; return t[string ks[0]];', 2),
+            ('t := table of big; t[7] = big 1; t["7"] = big 2; ks := keysof t; return t[big ks[1]];', 1),
+            ('return big "9223372036854775807";', 9223372036854775807),
+            ('return big "-9223372036854775808";', -9223372036854775808),
+            ('return big string big -9223372036854775808;', -9223372036854775808),
+            ('return big string big 9223372036854775807;', 9223372036854775807),
+            ('return big "+00042";', 42),
+            ('return big big -7;', -7),
+            ('t := table of big; t[""] = big 17; return t[string ""];', 17),
+            ('t := table of big; t["123"] = big 18; a := string big 123; b := a; a = "other"; return t[b];', 18),
+            ('t := table of big; t["ключ😀"] = big 19; ks := keysof t; return t[string ks[0]];', 19),
+            ('t := table of big; t["string"] = big 20; return t[typeof string big 7];', 20),
         )
         # Exercise frame/data maps beyond their small inline prefixes and non-ASCII string roots.
         large = 't := table of big; ' + ''.join('t["ключ' + str(i) + '"] = big ' + str(i) + '; ' for i in range(110))
@@ -110,7 +129,7 @@ def main():
         # Many retained key capabilities must survive a map larger than the inline prefix.
         retained = 't := table of big; t.k = big 43; ks := keysof t; '
         retained += ''.join('k' + str(i) + ' := ks[0]; ' for i in range(120))
-        retained += 'ks = keysof table of big; return t[k119];'
+        retained += 'ks = keysof table of big; name := typeof k119; labels := table of big; labels["string"] = big 43; return labels[name];'
         cases += ((retained, 43),)
         for body, expected in cases:
             source.write_text('implement T; T: module { value: fn(): big; }; value(): big {' + body + '}\n')
@@ -195,6 +214,13 @@ func @main() -> void {
             ('t := table of big; ks := keysof t; ignored := ks[0]; return big 0;', "big table key index out of range"),
             ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[-1]; return big 0;', "big table key index out of range"),
             ('t := table of big; t.k = big 1; ks := keysof t; u := table of big; return u[ks[0]];', "missing key"),
+            ('return big "9223372036854775808";', 'invalid big conversion'),
+            ('return big "-9223372036854775809";', 'invalid big conversion'),
+            ('return big "12x";', 'invalid big conversion'),
+            ('return big "";', 'invalid big conversion'),
+            ('return big " 1";', 'invalid big conversion'),
+            ('t := table of big; t["bad"] = big 1; ks := keysof t; ignored := big ks[0]; return big 0;', 'invalid big conversion'),
+            ('t := table of big; ignored := typeof t.missing; return big 0;', 'missing key'),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),
