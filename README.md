@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1620**. [Русская версия](README.ru.md).
+Development version: **0.1621**. [Русская версия](README.ru.md).
 
 Current series: [v0.1620](docs/releases/v0.1620.md): CVTCA JIT synchronization and checked statically typed owner reads.
 

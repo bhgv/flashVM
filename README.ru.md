@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1620**. [English](README.md).
+Версия разработки: **0.1621**. [English](README.md).
 
 Текущая серия: [v0.1611–v0.1619](docs/releases/v0.1619.md): кнопки окна, скрываемые номера строк, живые проекции и синхронизация новых защищённых JIT-путей Inferno.
 

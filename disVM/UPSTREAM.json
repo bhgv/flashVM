@@ -408,7 +408,8 @@
     "libinterp/tests/README.zero-object-native.md",
     "libinterp/tests/array-create*",
     "libinterp/tests/array-reuse-native*",
-    "libinterp/tests/newzero-*"
+    "libinterp/tests/newzero-*",
+    "libinterp/tests/leaf-plain-stubs.h"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -657,6 +658,7 @@
     "upstream/libinterp/tests/integer-real.c": "661da4257288f0444da03bd223c30988bb0ba81facbb7d01f825d397eb6b0045",
     "upstream/libinterp/tests/jit-coverage.py": "e6b8d88b69ab658dfcb8521293fb63de02109bb011b99aa24b457824735b268f",
     "upstream/libinterp/tests/jit-unknown-kind.py": "521e5c248dce5c103153d6bc1863ca694d0ddeaf7031dc4b75099e9d275ced0b",
+    "upstream/libinterp/tests/leaf-plain-stubs.h": "a75a9399201c383bf8e5f04419b4e24841604bf4ad30f4f469a077b5db74dc50",
     "upstream/libinterp/tests/leaf64-jit.py": "e18c3bad9295f3021095c7fb02f5b6afdcdf1e6936b73e1ea78397da4e1b1d96",
     "upstream/libinterp/tests/leaf64-runtime.py": "ec0390adc6219c618bb2c8e8667fd87351416077407cd2b0ded9f0ae67acb322",
     "upstream/libinterp/tests/list-length-jit.py": "893650a9b79e2e97bf0f5d64245b744db9ab433915246c4d844f57ee90bf2f60",
