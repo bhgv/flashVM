@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1614**. [English](README.md).
+Версия разработки: **0.1615**. [English](README.md).
 
 Текущая серия: [v0.1605–v0.1610](docs/releases/v0.1610.md): значения по типам Limbo, ссылки на объекты/методы и подсказки преобразований в IDE.
 

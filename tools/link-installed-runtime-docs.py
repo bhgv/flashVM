@@ -12,6 +12,7 @@ from urllib.parse import quote
 # Local guide/source links use installed copies; other existing repository files use GitHub.
 def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
+    aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
         root / "disVM/runtime/README.md": package / "README-FIRSTSTEPS.md",
         root / "disVM/libraries/README.md": package / "STANDARD-MODULES.md",
@@ -25,12 +26,12 @@ def main():
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
     # Include the portable inspector/value closure even in the headless runtime package.
-    for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md"):
+    for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md", "LIVE-PROJECTIONS.md", "LIVE-PROJECTIONS.ru.md", "WINDOWS-GUTTER.md", "WINDOWS-GUTTER.ru.md"):
         if (package / name).is_file():
             pairs[root / "ide/dis" / name] = package / name
     for source in (root / "ide/dis/bridge").glob("*.m"):
         pairs[source] = package / "include/limbo" / source.name
-    for name in ("idevalue", "ideprojection", "ideinspect"):
+    for name in ("idevalue", "ideprojection", "ideinspect", "idedocprojection"):
         pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
     pairs[root / "ide/as/projection-values.as"] = package / "as/projection-values.as"
     if (package / "examples/broker").is_dir():
@@ -39,7 +40,7 @@ def main():
                 installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
                 if installed.is_file():
                     pairs[source] = installed
-    for example in ("workspace", "editor-console", "native-console", "projection"):
+    for example in ("workspace", "editor-console", "native-console", "projection", "document-projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():
@@ -56,14 +57,18 @@ def main():
             pairs[root / "disVM/examples/decimal-append" / name] = package / "examples/decimal-append" / name
     if (package / "docs/dis").is_dir():
         for source in (root / "ide/dis").glob("*.md"):
-            pairs[source] = package / "docs/dis" / source.name
+            target = package / "docs/dis" / source.name
+            if source in pairs:
+                aliases.append((source, target))
+            else:
+                pairs[source] = target
         for directory in (root / "ide/dis", root / "ide/dis/bridge", root / "disVM/module"):
             for source in directory.glob("*.m"):
                 pairs[source] = package / "include/limbo" / source.name
         for source in (root / "ide/assets/fonts").iterdir():
             if source.is_file():
                 pairs[source] = package / "fonts" / source.name
-    for source, destination in pairs.items():
+    for source, destination in list(pairs.items()) + aliases:
         if source.suffix != ".md":
             continue
 

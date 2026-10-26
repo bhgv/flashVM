@@ -336,6 +336,7 @@ EOF
                     copy_file "$file" "$destination/docs/dis/$(basename "$file")"
                 done
                 copy_file "$ROOT/ide/assets/fonts/OFL.txt" "$destination/LICENSES/Noto-OFL.txt"
+                copy_file "$ROOT/external/sdl2/LICENSE.txt" "$destination/LICENSES/SDL2.txt"
                 copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
                 copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"
                 copy_file "$ROOT/ide/dis/bridge/idehost.m" "$destination/include/limbo/idehost.m"
@@ -372,13 +373,18 @@ EOF
             done
             copy_tree "$ROOT/disVM/broker" "$destination/examples/broker"
             copy_tree "$ROOT/ide/dis/examples/projection" "$destination/examples/projection"
+            copy_tree "$ROOT/ide/dis/examples/document-projection" "$destination/examples/document-projection"
             copy_file "$ROOT/ide/as/projection-values.as" "$destination/as/projection-values.as"
-            for file in idevalue ideprojection ideinspect; do
+            for file in idevalue ideprojection ideinspect idedocprojection; do
                 copy_file "$ROOT/ide/dis/bridge/$file.b" "$destination/source/$file.b"
             done
             copy_file "$ROOT/ide/dis/PROJECTIONS.md" "$destination/PROJECTIONS.md"
             copy_file "$ROOT/ide/dis/VALUES.md" "$destination/VALUES.md"
             copy_file "$ROOT/ide/dis/VALUES.ru.md" "$destination/VALUES.ru.md"
+            copy_file "$ROOT/ide/dis/LIVE-PROJECTIONS.md" "$destination/LIVE-PROJECTIONS.md"
+            copy_file "$ROOT/ide/dis/LIVE-PROJECTIONS.ru.md" "$destination/LIVE-PROJECTIONS.ru.md"
+            copy_file "$ROOT/ide/dis/WINDOWS-GUTTER.md" "$destination/WINDOWS-GUTTER.md"
+            copy_file "$ROOT/ide/dis/WINDOWS-GUTTER.ru.md" "$destination/WINDOWS-GUTTER.ru.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
             for file in "$ROOT/ide/dis/bridge/"*.m; do
@@ -434,7 +440,7 @@ EOF
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/uibridge.m"
             copy_file "$ROOT/ide/EDITOR-CHANNELS.ru.md" "$destination/EDITOR-CHANNELS.ru.md"
             copy_file "$ROOT/ide/WORKSPACE.md" "$destination/WORKSPACE.md"
-            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace idefiles workspace-example navigation history replaceall idevalue ideprojection ideinspect; do
+            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace idefiles workspace-example navigation history replaceall idevalue ideprojection ideinspect idedocprojection; do
                 if [[ -f "$base/$file.dis" ]]; then
                     copy_file "$base/$file.dis" "$destination/modules/$file.dis"
                     if [[ -f "$base/$file.sbl" ]]; then

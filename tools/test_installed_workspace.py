@@ -192,7 +192,8 @@ def broker_packages(prefix, work, environment):
     if not component.is_dir():
         component = prefix / "disvm-editor"
     # Relocation must preserve the linked user documentation, not only executable products.
-    guides = [component / name for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md")]
+    guides = [component / name for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md", "LIVE-PROJECTIONS.md", "LIVE-PROJECTIONS.ru.md", "WINDOWS-GUTTER.md", "WINDOWS-GUTTER.ru.md")]
+    guides += [component / "docs/dis" / guide.name for guide in list(guides) if (component / "docs/dis" / guide.name).is_file()]
     guides += list((component / "examples/projection").glob("*.md"))
     guides += list((component / "examples/broker").glob("*.md"))
     for guide in guides:
@@ -232,7 +233,7 @@ def broker_packages(prefix, work, environment):
 
 
     # Recompile the shipped inspector example using only installed headers/modules.
-    for name in ("ideprojection.dis", "ideinspect.dis", "idevalue.dis"):
+    for name in ("ideprojection.dis", "ideinspect.dis", "idevalue.dis", "idedocprojection.dis"):
         shutil.copyfile(component / name, work / name)
     projection = work / "projection-check.dis"
     run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo",
@@ -241,6 +242,17 @@ def broker_packages(prefix, work, environment):
         result = run([program(prefix, component.name, "disvm"), mode, projection], work, environment)
         if "PASS projection inspector:" not in result:
             raise RuntimeError("relocated inspector projection/model failed")
+
+
+    # The shipped live document adapter must execute against a genuine installed Idecore owner.
+    shutil.copyfile(component / "idecore.dis", work / "idecore.dis")
+    document_example = work / "document-projection.dis"
+    run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo",
+         "-o", document_example, component / "examples/document-projection/main.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([program(prefix, component.name, "disvm"), mode, document_example], work, environment)
+        if "PASS live document projections:" not in result:
+            raise RuntimeError("relocated live document projection failed")
 
 
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
