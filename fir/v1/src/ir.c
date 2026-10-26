@@ -136,6 +136,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             return fail(error, cap, "unterminated block name");
         }
+        for (j = 0; j < b; ++j)
+        {
+            if (!strcmp(m->blocks[b].name, m->blocks[j].name))
+            {
+                return fail(error, cap, "duplicate block spelling %s", m->blocks[b].name);
+            }
+        }
     }
     for (i = 0; i < m->value_count; ++i)
     {
@@ -145,6 +152,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             (d >= 0 && (m->instructions[d].result != i || m->instructions[d].type != m->values[i].type)))
         {
             return fail(error, cap, "invalid value definition table");
+        }
+        for (j = 0; j < i; ++j)
+        {
+            if (!strcmp(m->values[i].name, m->values[j].name))
+            {
+                return fail(error, cap, "duplicate value spelling %s", m->values[i].name);
+            }
         }
     }
     for (i = 0; i < m->count; ++i)

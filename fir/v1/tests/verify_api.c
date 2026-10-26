@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /* Reject forged indices and physical block layouts through the public verifier.
  * No arguments; successful completion frees private modules and closes the fixture stream. */
 int main(void)
@@ -23,7 +22,7 @@ int main(void)
         return 2;
     }
     fclose(in);
-    for (i = 0; i < 15; ++i)
+    for (i = 0; i < 17; ++i)
     {
         memcpy(m, base, sizeof(*m));
         switch (i)
@@ -68,6 +67,18 @@ int main(void)
         case 11:
             strcpy(m->module, "@bad-name");
             break;
+        case 15:
+            /* Even unused forward entries share the FIR value namespace. Distinct indices
+             * with one spelling would print text that cannot be parsed back unambiguously. */
+            m->values[1] = m->values[0];
+            m->values[1].definition = -1;
+            m->value_count = 2;
+            break;
+        case 16:
+            /* The spelling check precedes CFG reachability, including unused labels. */
+            m->blocks[1] = m->blocks[0];
+            m->block_count = 2;
+            break;
         case 13:
         case 14:
             /* Logical entry->other is reachable, but its physical instruction layout would
@@ -89,6 +100,11 @@ int main(void)
         if (fir_verify(m, error, sizeof(error)))
         {
             return 10 + i;
+        }
+        if ((i == 15 && !strstr(error, "duplicate value spelling")) ||
+            (i == 16 && !strstr(error, "duplicate block spelling")))
+        {
+            return 40 + i;
         }
     }
     if (fir_verify(NULL, error, sizeof(error)))
