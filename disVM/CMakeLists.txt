@@ -212,6 +212,7 @@ if(BUILD_TESTING)
       scalar-channel-native
       payload-channel-native
       pc-tables-native
+      string-case-native
       mapped-cons-native
       typecheck-prefix
     )
@@ -247,6 +248,7 @@ if(BUILD_TESTING)
     foreach(driver
       payload-channel-jit
       pc-tables-jit
+      string-case-jit
       mapped-cons-jit
       scalar-channel-jit
       payload-cons-jit
