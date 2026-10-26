@@ -1,3 +1,22 @@
+# Current synchronization — v0.1639
+
+Experiment `80f859e`: exact fixed operand/frame guards and AMD64/ARM64 qword
+MOVM/HEADM kernels were imported from their owning Inferno commit. Native copies
+retain the 0..256 domain and C fallback for larger records. Backward/forward
+blocks and 0..7-byte tails preserve overlap order; no empty payload is accessed.
+The three new C/native-emulation drivers are registered in our CTest selection.
+[Upstream contract](upstream/libinterp/tests/README.fixed-slots-copy-chunks.md).
+
+No additional owning native defect was confirmed during this import. Our earlier
+reverse branch/JMP repair remains in experiment; no duplicate reverse commit was
+created. Compiler 0.22 lexical arm/scoping extensions remain FlashVM-only.
+[Compiler guide](../fir/v1/doc/TERMINAL_ARMS.md).
+
+AMD64/ARM64 availability remains 164/173, with partial operand coverage. Emulated
+ARM64 checks do not establish hardware execution or full Inferno boot.
+
+---
+
 # Current synchronization — v0.1638
 
 Experiment: `02b7b7f96183d30f6c75b7415197ecc986e5d411`. 531 exact core/reference

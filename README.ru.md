@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1638**. [English](README.md).
+Версия разработки: **0.1639**. [English](README.md).
 
-Текущая серия: [v0.1638](docs/releases/v0.1638.md): компилятор 0.21, countof/in/delete, FIR/Dis, runtime 0.24 с точкой входа IDE и проверки целочисленных переходов.
+Текущая серия: [v0.1639](docs/releases/v0.1639.md): компилятор 0.22, лексические терминальные ветви и изоляция SSA, обновления fixed/copy JIT из Inferno.
 
 ## Просмотр документации
 
