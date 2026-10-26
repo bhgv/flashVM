@@ -7,6 +7,10 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_BIG_ADD:
+    case O_BIG_SUB:
+    case O_BIG_MUL:
+    case O_BIG_NEG:
     case O_I64:
     case O_I32:
     case O_F64:

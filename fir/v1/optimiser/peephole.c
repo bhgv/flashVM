@@ -4,13 +4,18 @@
 #include "fir.h"
 #include <stdint.h>
 
-
 /* Interpret a modulo-2^32 result without implementation-defined unsigned casts. */
 static int32_t signed_bits(uint32_t bits)
 {
     return bits <= INT32_MAX ? (int32_t)bits : (int32_t)(-1 - (int32_t)(UINT32_MAX - bits));
 }
 
+/* Interpret modulo-2^64 arithmetic without implementation-defined unsigned casts.
+ * bits is a scalar payload; conversion is total and has no allocation or effects. */
+static int64_t signed_big_bits(uint64_t bits)
+{
+    return bits <= INT64_MAX ? (int64_t)bits : -1 - (int64_t)(UINT64_MAX - bits);
+}
 
 /* Fold known branches, find live blocks (including cycles), and compact label
  * indices. Instruction/value indices stay stable for definition references. */
@@ -91,7 +96,6 @@ static int simplify_cfg(FirModule *m)
     return changed;
 }
 
-
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -113,7 +117,20 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op >= O_ADD && in->op <= O_EQ && a->op == O_I32 && b->op == O_I32)
+            if (in->op >= O_BIG_ADD && in->op <= O_BIG_NEG && a->op == O_I64 && (in->op == O_BIG_NEG || b->op == O_I64))
+            {
+                uint64_t x = (uint64_t)a->big;
+                uint64_t y = in->op == O_BIG_NEG ? 0 : (uint64_t)b->big;
+                uint64_t bits = in->op == O_BIG_ADD   ? x + y
+                                : in->op == O_BIG_SUB ? x - y
+                                : in->op == O_BIG_MUL ? x * y
+                                                      : 0U - x;
+                in->big = signed_big_bits(bits);
+                in->op = O_I64;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op >= O_ADD && in->op <= O_EQ && a->op == O_I32 && b->op == O_I32)
             {
                 uint32_t x = (uint32_t)a->integer, y = (uint32_t)b->integer;
                 if (in->op == O_LT || in->op == O_EQ)
@@ -136,15 +153,17 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->b = -1;
                 changed = 1;
             }
-            /* Reuse identical typed calculations only inside one block.
+            /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
-            if (in->op >= O_ADD && in->op <= O_FDIV && !fir_effects(in->op))
+            if ((in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
+                 (in->op >= O_BIG_ADD && in->op <= O_BIG_NEG)) &&
+                !fir_effects(in->op))
             {
                 for (j = 0; j < i; ++j)
                 {
                     FirInstruction *old = &m->instructions[j];
                     if (!old->removed && old->block == in->block && old->op == in->op && old->a == in->a &&
-                        old->b == in->b && old->type == in->type)
+                        old->b == in->b && old->type == in->type && (in->op != O_I64 || old->big == in->big))
                     {
                         in->op = O_COPY;
                         in->a = old->result;
