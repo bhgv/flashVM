@@ -105,6 +105,13 @@ def table_packages(prefix, work, environment):
         result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
         if "DATA 0 -9007199254740993\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in result:
             raise RuntimeError("relocated big CFG library/example result differs")
+    # Exercise source decisions through the shipped in-process source+Dis compiler client.
+    decision_source = prefix / "fir/examples/dis/big-decisions.b"
+    run([program(prefix, "fir", "fir1_dis_example"), decision_source, image], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 6, image], work, environment)
+        if "DATA 0 -9223372036854775808\nDATA 8 0\nDATA 16 0\nDATA 24 1\nDATA 32 0\nDATA 40 0\n" not in result:
+            raise RuntimeError("relocated big source decision library/example result differs")
 
 
 # Compile the shipped tutorial using only relocated SDK headers/libraries, then run it.
