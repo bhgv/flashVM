@@ -253,7 +253,8 @@ EOF
             copy_tree "$source/examples/tables" "$destination/examples/tables"
             copy_tree "$source/include" "$destination/include"
             copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
-            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md; do
+            copy_file "$source/compiler/dis_table.c" "$destination/source/dis_table.c"
+            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md; do
                 copy_file "$source/doc/$file" "$destination/docs/$file"
             done
             for file in API.md API.ru.md; do
@@ -271,6 +272,12 @@ EOF
 Pass arithmetic.swo to the separately packaged swl linker. The included source,
 expected FIR and SWF illustrate the numeric subset, not a complete AS compiler.
 If your host restricts temporary files, set TMPDIR to an existing writable folder.
+
+Typed tables: [source/FIR](docs/TABLES.md), [native Dis](docs/TABLES_DIS.md),
+[русский контракт](docs/TABLES_DIS.ru.md). Compile examples/tables/main.b with
+fir1_source, then fir1 dis tables.fir tables.dis and run it with the matching
+hosted disvm --jit --quantum 1 --inspect-words 0 2 tables.dis. Expected: 42, 1.
+The reference runner and C99 reference/compiler clients remain available separately.
 
 # Our Limbo numeric subset -> direct NC64 Dis (no limbo-native/assembler)
 ./fir1_source limbo --input examples/dis/main.b answer.fir

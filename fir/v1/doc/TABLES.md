@@ -2,7 +2,7 @@
 
 [Русский](TABLES.ru.md) · [Commented source](../examples/tables/main.b)
 
-`fir1_source` 0.11 adds an explicit `value(): big` source profile using our Coco/R
+`fir1_source` 0.12 adds an explicit `value(): big` source profile using our Coco/R
 parser and C99 semantic lowering. This is not the complete Limbo language or the
 Inferno bootstrap. `source_semantics limbo_tables` records the selected profile.
 
@@ -74,6 +74,7 @@ restricted hosts. Without FIR_TABLE_CORE_ROOT the source compiler/verifier still
 build independently; the optional runner/library do not build. Workspace builds
 provide the owned core explicitly and ship the matching CLI/library/example.
 
-The Dis and SWO backends explicitly reject table operations before publishing an
-output file. Automatic native Bigtable module calls, Dis frame/GC maps and AS
-table lowering are still pending. No new Dis opcode or Inferno extension is used.
+The [Dis table backend](TABLES_DIS.md) now emits checked native Bigtable calls and
+precise frame/data GC maps. It builds without the optional reference core and
+executes the image on the matching hosted Dis runtime. SWO/AS table lowering
+remains pending. No new Dis opcode or Inferno extension is used.

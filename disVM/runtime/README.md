@@ -260,3 +260,7 @@ independent binary64 bit oracles and the Inferno compiler in both dispatch modes
 The reference path is only an oracle; our programs use our emitter.
 
 [Hybrid big-table builtin](../examples/hybrid-table/README.md): dynamic numeric/string keys, prefix length, copied slices and immutable key snapshots. Hosted-only extension; it is not exported to Inferno.
+
+## Generated table programs
+
+Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TABLES_DIS.md) using checked Bigtable imports and precise GC maps. Runtime 0.15 provides the matching eager validation helpers. `--quantum 1` exercises GC between instructions; default scheduling stays 2048. `--stats` includes collector passes/epochs and live table/key-owner counts. Scalar inspection checks the requested range's GC bits, so captures can coexist safely with mapped String data.

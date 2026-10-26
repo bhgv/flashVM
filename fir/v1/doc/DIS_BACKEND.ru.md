@@ -1,5 +1,8 @@
 # Прямой Dis-backend, реализация FIR 0.9.0
 
+[Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). The scalar CFG contract below remains separate from the single-block hosted table path.
+
+
 [English](DIS_BACKEND.md) · [Реализация C99](../compiler/dis.c) ·
 [Библиотечный API](../compiler/API.ru.md) · [Подробный пример](../examples/dis/README.ru.md) ·
 [Наш DisVM](../../../disVM/runtime/README.md).

@@ -42,7 +42,7 @@ def run(argv, work, environment, input_text=None):
 
 
 # Compile/verify/optimize the shipped hybrid source with relocated tools and reference execution.
-# This is deliberately separate from the actual Dis checks; no table JIT execution is implied.
+# Both the reference runner and the actual native Dis path are checked with explicit tools.
 def table_packages(prefix, work, environment):
     source = prefix / "fir/examples/tables/main.b"
     fir = work / "tables.fir"
@@ -54,6 +54,27 @@ def table_packages(prefix, work, environment):
         result = run([program(prefix, "fir", "fir1_table_run"), selected], work, environment)
         if result.strip() != "42":
             raise RuntimeError("relocated table reference result differs")
+    # Generated table Dis must execute on the matching relocated VM, including collection at every step.
+    component = "disvm-runtime" if (prefix / "disvm-runtime").is_dir() else "disvm-editor"
+    runtime = program(prefix, component, "disvm")
+    image = work / "tables.dis"
+    for selected in (fir, optimized):
+        run([program(prefix, "fir", "fir1"), "dis", selected, image], work, environment)
+        for mode in ("--jit", "--no-jit"):
+            result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image], work, environment)
+            if "DATA 0 42\nDATA 8 1\n" not in result:
+                raise RuntimeError("relocated generated table Dis result differs")
+    # Relink the public compiler API without either the bootstrap or reference-execution archive.
+    compiled_client = work / "table-compile.c"
+    shutil.copyfile(prefix / "fir/examples/tables/compile.c", compiled_client)
+    compiler_host = work / "table-compile"
+    compiler_archives = [prefix / "fir/lib" / ("lib" + name + ".a")
+                         for name in ("fir1_ir", "fir1_io")]
+    run([environment.get("CC", "cc"), "-std=c99", "-I", prefix / "fir/include",
+         compiled_client, *compiler_archives, "-lm", "-o", compiler_host], work, environment)
+    run([compiler_host, fir, image], work, environment)
+    if "DATA 0 42\nDATA 8 1\n" not in run([runtime, "--jit", "--quantum", 1, "--inspect-words", 0, 2, image], work, environment):
+        raise RuntimeError("relocated public Dis compiler API result differs")
     # Link a fresh C99 host using only the installed public table API and archives.
     client = work / "table-client.c"
     shutil.copyfile(prefix / "fir/examples/tables/client.c", client)

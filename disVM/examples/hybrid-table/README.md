@@ -42,6 +42,6 @@ The general Coco/R Limbo frontend accepts the extension syntax. Separately, our
 fir1_source big-result subset now performs typed lowering of table creation,
 numeric/string/dotted access, slices, keysof and len into FIR. See the
 [compiler contract](../../../fir/v1/doc/TABLES.md). Its hosted C reference runner
-is distinct from this native Dis module example. Automatic compiler-generated
-native Dis/SWF table calls, keyseq indexing, pair iteration and typeof/any remain
-pending; the module example continues to use the matching bootstrap explicitly.
+is distinct from this native Dis module example. Compiler-generated [native Dis table calls](../../../fir/v1/doc/TABLES_DIS.md) now
+execute this same hosted module. SWF table calls, keyseq indexing, pair iteration
+and typeof/any remain pending; the module example continues to use the matching bootstrap explicitly.

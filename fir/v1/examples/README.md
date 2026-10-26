@@ -27,4 +27,4 @@ index; the workspace viewer includes the same files.
 
 [End-to-end Limbo→FIR→Dis and C99 API](dis/README.md).
 
-[Typed hybrid table source](tables/main.b) · [Contract](../doc/TABLES.md) · [Русский](../doc/TABLES.ru.md). This example uses our Coco/R → FIR pipeline and a hosted C reference runner, not SWF/Dis execution.
+[Typed hybrid table source](tables/main.b) · [Contract](../doc/TABLES.md) · [Русский](../doc/TABLES.ru.md). This example uses our Coco/R → FIR pipeline and a hosted C reference runner, and [native Dis table execution](../doc/TABLES_DIS.md). SWF is not supported for these tables.

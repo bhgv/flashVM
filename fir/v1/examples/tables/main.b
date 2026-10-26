@@ -4,7 +4,7 @@ implement Tables;
 
 Tables: module
 {
-    value: fn(): big; # Restricted tutorial entry; the hosted FIR runner observes this result.
+    value: fn(): big; # Restricted entry: native Dis captures the result; the C reference runner prints it.
 };
 
 
