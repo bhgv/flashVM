@@ -1,6 +1,7 @@
 /* Scalar hybrid acceptance: holes, exact big values, independent snapshots and OOM rollback. */
 #include "table.h"
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -214,9 +215,47 @@ static void allocation_failures(void)
     }
 }
 
+/* Verify exact decimal adapters independently of VM ABI and allocator behavior.
+ * Outputs remain caller-owned; failed parsing/short formatting must not publish. */
+static void scalar_conversions(void)
+{
+    const int64_t extremes[] = {INT64_MIN, INT64_MAX, 0, -1, 1};
+    const char *invalid[] = {"", "+", "-", " 1", "1 ", "1.0", "0x10", "9223372036854775808", "-9223372036854775809"};
+    char text[21];
+    char oracle[32];
+    int64_t result;
+    size_t i;
+    for (i = 0; i < 20005; i++)
+    {
+        int64_t value = i < 5 ? extremes[i] : (int64_t)(i * UINT64_C(0x123456789ab));
+        if (i >= 5 && i % 2)
+        {
+            value = -value;
+        }
+        snprintf(oracle, sizeof(oracle), "%" PRId64, value);
+        check(fht_big_format(value, text, sizeof(text)) == strlen(oracle), "exact format length");
+        check(strcmp(text, oracle) == 0, "exact format differs from independent decimal oracle");
+        result = 7;
+        check(fht_big_parse(text, strlen(text), &result) == FHT_OK && result == value, "exact decimal roundtrip");
+    }
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++)
+    {
+        result = 7;
+        check(fht_big_parse(invalid[i], strlen(invalid[i]), &result) == FHT_INVALID && result == 7,
+              "invalid parse published a result");
+    }
+    result = 7;
+    check(fht_big_parse("1\0x", 3, &result) == FHT_INVALID && result == 7, "embedded zero accepted");
+    check(fht_big_parse("+00042", 6, &result) == FHT_OK && result == 42, "explicit positive decimal");
+    text[0] = 'x';
+    check(fht_big_format(1, text, 20) == 0 && text[0] == 'x', "short format storage modified");
+    check(fht_big_parse(NULL, 1, &result) == FHT_INVALID, "null text accepted");
+}
+
 /* Run independent semantic/reference and allocator-failure acceptance suites. */
 int main(void)
 {
+    scalar_conversions();
     numeric_model();
     mixed_keys();
     allocation_failures();

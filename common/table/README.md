@@ -38,3 +38,14 @@ signed big limits, holes, binary/Unicode-compatible keys, detached slices and
 snapshots, and inject allocation failures with outstanding-block accounting.
 The source uses the repository MIT license. It is not copied from Lua and does
 not alter Inferno or its Dis container ABI.
+
+## Exact scalar adapters
+
+`fht_big_parse(text, size, result)` accepts a complete byte-counted signed decimal
+integer with optional +/-. Invalid syntax, embedded zero or signed-64 overflow
+returns FHT_INVALID without changing result. `fht_big_format(value, text, capacity)`
+requires at least 21 bytes, returns the canonical decimal length excluding NUL,
+and writes nothing for invalid storage. Both borrow their arguments, allocate
+nothing and never use floating point. The independent C tests compare 20,005
+formatted values against snprintf and check parsing extrema/failures. See the
+[Limbo cast contract](../../fir/v1/doc/TYPE_REFLECTION.md).

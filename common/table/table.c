@@ -43,14 +43,12 @@ static void *default_allocate(void *context, size_t size)
     return malloc(size);
 }
 
-
 /* Default release ignores context and accepts null. */
 static void default_release(void *context, void *memory)
 {
     (void)context;
     free(memory);
 }
-
 
 /* Allocate and zero a checked array with the borrowed allocator; returns null on overflow/OOM. */
 static void *zeroed(FhtAllocator allocator, size_t count, size_t width)
@@ -68,13 +66,11 @@ static void *zeroed(FhtAllocator allocator, size_t count, size_t width)
     return memory;
 }
 
-
 /* Validate the borrowed tagged key before hashing or reading its bytes. */
 static int valid_key(FhtKey key)
 {
     return (key.kind == FHT_INDEX && key.index >= 0) || (key.kind == FHT_TEXT && (key.text || !key.size));
 }
-
 
 /* Compute a namespace-separated FNV hash over the explicit payload; no allocation. */
 static uint64_t key_hash(FhtKey key)
@@ -101,7 +97,6 @@ static uint64_t key_hash(FhtKey key)
     return hash;
 }
 
-
 /* Compare validated keys; text pointers are borrowed and zero-length strings need no dereference. */
 static int equal_key(FhtKey a, FhtKey b)
 {
@@ -115,7 +110,6 @@ static int equal_key(FhtKey a, FhtKey b)
     }
     return a.size == b.size && (!a.size || memcmp(a.text, b.text, a.size) == 0);
 }
-
 
 /* Locate the owned bucket link for a validated key; returns null if no directory exists. */
 static Entry **find_link(Fht *table, FhtKey key, uint64_t hash)
@@ -132,7 +126,6 @@ static Entry **find_link(Fht *table, FhtKey key, uint64_t hash)
     }
     return link;
 }
-
 
 /* Rehash existing entries into a larger initialized directory before publishing it.
  * Returns zero on overflow/OOM, preserving all logical contents and iteration order. */
@@ -172,7 +165,6 @@ static int reserve_hash(Fht *table)
     table->bucket_count = count;
     return 1;
 }
-
 
 /* Grow a bounded dense region and move any now-covered sparse numeric entries into it.
  * Allocation happens before mutation. Entry count, values and logical length do not change. */
@@ -220,7 +212,6 @@ static int reserve_dense(Fht *table, size_t index)
     return 1;
 }
 
-
 /* Create an empty scalar owner using a copied allocator; see table.h for lifetime/error contracts. */
 Fht *fht_create(const FhtAllocator *allocator)
 {
@@ -241,7 +232,6 @@ Fht *fht_create(const FhtAllocator *allocator)
     }
     return table;
 }
-
 
 /* Release all owned storage at the exclusive table owner; null is accepted. */
 void fht_destroy(Fht *table)
@@ -267,7 +257,6 @@ void fht_destroy(Fht *table)
     allocator.release(allocator.context, table->dense);
     allocator.release(allocator.context, table);
 }
-
 
 /* Read a borrowed key without allocation; publish the output only when present. */
 FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value)
@@ -295,7 +284,6 @@ FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value)
     *value = (*link)->value;
     return FHT_OK;
 }
-
 
 /* Copy a scalar/key at the exclusive owner, retaining logical state on allocation failure. */
 FhtStatus fht_set(Fht *table, FhtKey key, int64_t value)
@@ -387,7 +375,6 @@ FhtStatus fht_set(Fht *table, FhtKey key, int64_t value)
     return FHT_OK;
 }
 
-
 /* Remove a borrowed key and adjust sequence length without shifting other entries. */
 FhtStatus fht_delete(Fht *table, FhtKey key)
 {
@@ -444,20 +431,17 @@ FhtStatus fht_delete(Fht *table, FhtKey key)
     return FHT_OK;
 }
 
-
 /* Read cached sequence length from a borrowed owner; null represents zero. */
 uint64_t fht_length(const Fht *table)
 {
     return table ? table->length : 0;
 }
 
-
 /* Read stored pair count from a borrowed owner; null represents zero. */
 size_t fht_count(const Fht *table)
 {
     return table ? table->count : 0;
 }
-
 
 /* Compare numeric snapshot keys without subtraction overflow; qsort borrows both operands. */
 static int compare_index(const void *left, const void *right)
@@ -466,7 +450,6 @@ static int compare_index(const void *left, const void *right)
     const FhtKey *b = right;
     return (a->index > b->index) - (a->index < b->index);
 }
-
 
 /* Build an independently owned all-key snapshot; publish only a complete result. */
 FhtStatus fht_keys(const Fht *table, FhtKeys **result)
@@ -535,7 +518,6 @@ FhtStatus fht_keys(const Fht *table, FhtKeys **result)
     return FHT_OK;
 }
 
-
 /* Retire a key snapshot with its matching allocator; null is accepted. */
 void fht_keys_destroy(FhtKeys *keys)
 {
@@ -556,7 +538,6 @@ void fht_keys_destroy(FhtKeys *keys)
     allocator.release(allocator.context, (void *)keys->items);
     allocator.release(allocator.context, keys);
 }
-
 
 /* Copy a checked half-open sequence range into a new independent owner. */
 FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result)
@@ -590,4 +571,74 @@ FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result
     }
     *result = copy;
     return FHT_OK;
+}
+
+/* Parse borrowed byte-counted decimal text into an exact signed big. Optional +/-,
+ * digits only; no whitespace, prefixes, embedded zero or truncation. On invalid
+ * input/overflow output is unchanged. No allocation, blocking or ownership transfer. */
+FhtStatus fht_big_parse(const char *text, size_t size, int64_t *result)
+{
+    uint64_t number = 0;
+    uint64_t limit = INT64_MAX;
+    size_t position = 0;
+    int negative = 0;
+    if (!text || !size || !result)
+    {
+        return FHT_INVALID;
+    }
+    if (text[0] == '-' || text[0] == '+')
+    {
+        negative = text[0] == '-';
+        position++;
+    }
+    if (position == size)
+    {
+        return FHT_INVALID;
+    }
+    if (negative)
+    {
+        limit++;
+    }
+    for (; position < size; position++)
+    {
+        unsigned digit = (unsigned char)text[position] - (unsigned)'0';
+        if (digit > 9 || number > (limit - digit) / 10U)
+        {
+            return FHT_INVALID;
+        }
+        number = number * 10U + digit;
+    }
+    *result = negative ? (number == (uint64_t)INT64_MAX + 1U ? INT64_MIN : -(int64_t)number) : (int64_t)number;
+    return FHT_OK;
+}
+
+/* Format an exact big into borrowed storage of at least 21 bytes, including NUL.
+ * Returns zero for insufficient/null storage without writing. Otherwise returns
+ * byte length excluding NUL. No allocation, blocking or native VM dependency. */
+size_t fht_big_format(int64_t value, char *text, size_t capacity)
+{
+    char reversed[20];
+    uint64_t magnitude;
+    size_t digits = 0;
+    size_t size = 0;
+    if (!text || capacity < 21)
+    {
+        return 0;
+    }
+    magnitude = value < 0 ? (uint64_t)(-(value + 1)) + 1U : (uint64_t)value;
+    do
+    {
+        reversed[digits++] = (char)('0' + magnitude % 10U);
+        magnitude /= 10U;
+    } while (magnitude);
+    if (value < 0)
+    {
+        text[size++] = '-';
+    }
+    while (digits)
+    {
+        text[size++] = reversed[--digits];
+    }
+    text[size] = 0;
+    return size;
 }

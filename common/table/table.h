@@ -91,6 +91,15 @@ void fht_keys_destroy(FhtKeys *keys);
  * Strings/sparse keys are omitted; result is assigned only on success. No source mutation occurs. */
 FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result);
 
+/* Parse exact signed decimal text. Borrowed byte span/output; output is unchanged
+ * on invalid syntax/overflow. Optional +/-, no whitespace/prefixes; never allocates. */
+FhtStatus fht_big_parse(const char *text, size_t size, int64_t *result);
+
+
+/* Format canonical decimal in borrowed storage (capacity >=21), returning bytes
+ * excluding NUL. Zero means invalid storage and writes nothing; never allocates. */
+size_t fht_big_format(int64_t value, char *text, size_t capacity);
+
 #ifdef __cplusplus
 }
 #endif
