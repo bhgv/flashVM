@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <inttypes.h>
 
 
 extern int fir_utf8(const unsigned char *, size_t);
@@ -28,7 +29,6 @@ extern Error_Func Custom_Error;
 
 extern int fir_parser_run(unsigned char *, int);
 
-
 /* Keep the first semantic failure; later recovery actions cannot overwrite it. */
 void fir_build_error(const char *message, int line)
 {
@@ -38,7 +38,6 @@ void fir_build_error(const char *message, int line)
     }
     active->failed = 1;
 }
-
 
 /* Translate the generated parser callback into the same bounded diagnostic. */
 static void syntax_error(int code, int line, int column, long offset)
@@ -51,7 +50,6 @@ static void syntax_error(int code, int line, int column, long offset)
     }
     active->failed = 1;
 }
-
 
 /* Insert forward references now; the verifier later requires definitions. */
 static int symbol(const char *text, int block)
@@ -84,7 +82,6 @@ static int symbol(const char *text, int block)
     return n;
 }
 
-
 /* Reset the next instruction before any of its semantic actions execute. */
 void fir_build_begin(int line)
 {
@@ -94,7 +91,6 @@ void fir_build_begin(int line)
     in->block = active->block;
     in->line = line;
 }
-
 
 /* Commit a complete instruction only while semantic construction is valid. */
 void fir_build_end(void)
@@ -112,20 +108,17 @@ void fir_build_end(void)
     m->instructions[m->count++] = active->instruction;
 }
 
-
 /* Record the exact opcode selected by the grammar alternative. */
 void fir_build_op(FirOp op)
 {
     active->instruction.op = op;
 }
 
-
 /* Record the explicit requirement for the existing FlashVM channel extension. */
 void fir_build_channels(void)
 {
     active->module->channels = 1;
 }
-
 
 /* Decimal parsing is independent of host long width. String escapes are
  * decoded after Coco/R has recognised a complete, bounded quoted token. */
@@ -164,6 +157,18 @@ static void literal(const char *text, int line)
     {
         in->integer = !strcmp(text, "true");
     }
+    else if (in->op == O_I64)
+    {
+        intmax_t value = strtoimax(text, &end, 10);
+        if (*end || errno || value < INT64_MIN || value > INT64_MAX)
+        {
+            fir_build_error("invalid i64 literal", line);
+        }
+        else
+        {
+            in->big = (int64_t)value;
+        }
+    }
     else if (in->op == O_I32)
     {
         const char *digits = text + (*text == '-' || *text == '+');
@@ -188,13 +193,23 @@ static void literal(const char *text, int line)
     }
 }
 
-
 /* Dispatch a captured grammar token by its semantic role. */
 void fir_build_token(int role, const char *text, int line)
 {
     FirModule *m = active->module;
     FirInstruction *in = &active->instruction;
-    static const char *const types[] = {"void", "i32", "f64", "bool", "string", "any", "channel"};
+    static const char *const types[] = {"void",
+                                        "i32",
+                                        "f64",
+                                        "bool",
+                                        "string",
+                                        "any",
+                                        "channel",
+                                        "i64",
+                                        "table.big",
+                                        "table.slot",
+                                        "big.range",
+                                        "keys"};
     int index;
     if (active->failed)
     {
@@ -231,9 +246,10 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_SEMANTICS)
     {
-        m->source_semantics = !strcmp(text, "avm1_numeric") ? FIR_AVM1_NUMERIC
-                              : !strcmp(text, "limbo_real") ? FIR_LIMBO_REAL
-                                                            : FIR_LIMBO_I32;
+        m->source_semantics = !strcmp(text, "avm1_numeric")   ? FIR_AVM1_NUMERIC
+                              : !strcmp(text, "limbo_tables") ? FIR_LIMBO_TABLES
+                              : !strcmp(text, "limbo_real")   ? FIR_LIMBO_REAL
+                                                              : FIR_LIMBO_I32;
         return;
     }
     if (role == B_LITERAL)
@@ -243,14 +259,14 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_TYPE)
     {
-        for (index = T_I32; index <= T_CHANNEL; ++index)
+        for (index = T_I32; index <= T_KEYS; ++index)
         {
             if (!strcmp(types[index], text))
             {
                 break;
             }
         }
-        if (index > T_CHANNEL || in->result < 0)
+        if (index > T_KEYS || in->result < 0)
         {
             fir_build_error("invalid type", line);
             return;
@@ -304,7 +320,6 @@ void fir_build_token(int role, const char *text, int line)
         break;
     }
 }
-
 
 /* Read and validate bounded input before invoking the generated Coco/R parser. */
 int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)

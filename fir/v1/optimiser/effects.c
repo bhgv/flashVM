@@ -3,11 +3,11 @@
  * External/dynamic operations are conservative until a narrower contract exists. */
 #include "fir.h"
 
-
 unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_I64:
     case O_I32:
     case O_F64:
     case O_BOOL:

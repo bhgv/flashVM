@@ -200,6 +200,7 @@ PRODUCTIONS
             "avm1_numeric"
             | "limbo_i32"
             | "limbo_real"
+            | "limbo_tables"
         )
                                                                         (. capture(B_SEMANTICS); .)
     ]
@@ -248,13 +249,27 @@ PRODUCTIONS
         | "string"
         | "any"
         | "channel"
+        | "i64"
+        | "table.big"
+        | "table.slot"
+        | "big.range"
+        | "keys"
     )
                                                                         (. capture(B_TYPE); .)
   .
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "const.i32"                                                         (. fir_build_op(O_I32); .)
+    "const.i64" (. fir_build_op(O_I64); .) number (. capture(B_LITERAL); .)
+    | "table.new" (. fir_build_op(O_TABLE_NEW); .)
+    | "table.index" (. fir_build_op(O_TABLE_INDEX); .) A "," B
+    | "table.load" (. fir_build_op(O_TABLE_LOAD); .) A
+    | "table.len" (. fir_build_op(O_TABLE_LEN); .) A
+    | "range.big" (. fir_build_op(O_BIG_RANGE); .) A "," B
+    | "table.slice" (. fir_build_op(O_TABLE_SLICE); .) A "," B
+    | "table.keys" (. fir_build_op(O_TABLE_KEYS); .) A
+    | "keys.len" (. fir_build_op(O_KEYS_LEN); .) A
+    | "const.i32"                                                         (. fir_build_op(O_I32); .)
     (
         number
         | hexnum
@@ -316,7 +331,8 @@ PRODUCTIONS
 
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
-    "trace"                                                             (. fir_build_op(O_TRACE); .)
+    "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B
+    | "trace"                                                             (. fir_build_op(O_TRACE); .)
     A
     | "limbo.chan_send"                                                 (. fir_build_op(O_SEND); .)
     A "," B

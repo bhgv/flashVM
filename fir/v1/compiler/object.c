@@ -8,7 +8,6 @@
 
 #define BYTE_LIMIT (2u * 1024u * 1024u)
 
-
 typedef struct
 {
     unsigned char *data;
@@ -16,13 +15,11 @@ typedef struct
     int failed;
 } Bytes;
 
-
 typedef struct
 {
     size_t at;
     int target;
 } Fixup;
-
 
 /* Append one byte, recording capacity failure without writing out of bounds. */
 static void byte(Bytes *b, unsigned x)
@@ -37,7 +34,6 @@ static void byte(Bytes *b, unsigned x)
     }
 }
 
-
 /* Append an unsigned little-endian 16-bit field. */
 static void word(Bytes *b, unsigned x)
 {
@@ -45,14 +41,12 @@ static void word(Bytes *b, unsigned x)
     byte(b, x >> 8);
 }
 
-
 /* Append an unsigned little-endian 32-bit field. */
 static void dword(Bytes *b, uint32_t x)
 {
     word(b, x);
     word(b, x >> 16);
 }
-
 
 /* Push one NUL-terminated AVM1 string with a checked FIR-bounded spelling. */
 static void text(Bytes *b, const char *s)
@@ -66,7 +60,6 @@ static void text(Bytes *b, const char *s)
     } while (*s++);
 }
 
-
 /* Push a signed i32 using the AVM1 integer constant representation. */
 static void integer(Bytes *b, int32_t x)
 {
@@ -75,7 +68,6 @@ static void integer(Bytes *b, int32_t x)
     byte(b, 7);
     dword(b, (uint32_t)x);
 }
-
 
 /* Push a binary64 constant using the SWF mixed-word byte layout. */
 static void real(Bytes *b, double x)
@@ -89,7 +81,6 @@ static void real(Bytes *b, double x)
     dword(b, (uint32_t)(bits >> 32));
     dword(b, (uint32_t)bits);
 }
-
 
 /* Encode every module-name byte as two hex digits. AVM1 variable names must
  * not reinterpret an accepted module separator as a property/target path.
@@ -115,14 +106,12 @@ static void variable(Bytes *b, const FirModule *m, int index)
     text(b, name);
 }
 
-
 /* Retrieve one SSA value from its generated object-local variable. */
 static void load(Bytes *b, const FirModule *m, int index)
 {
     variable(b, m, index);
     byte(b, 0x1c);
 }
-
 
 /* Push the low unsigned 16-bit half of an i32 value. */
 static void low(Bytes *b, const FirModule *m, int index)
@@ -132,7 +121,6 @@ static void low(Bytes *b, const FirModule *m, int index)
     byte(b, 0x60); /* BitAnd */
 }
 
-
 /* Push the high signed 16-bit half of an i32 value. */
 static void high(Bytes *b, const FirModule *m, int index)
 {
@@ -140,7 +128,6 @@ static void high(Bytes *b, const FirModule *m, int index)
     integer(b, 16);
     byte(b, 0x64); /* signed shift right */
 }
-
 
 /* Full 32x32 multiplication cannot use one AVM1 double multiply: low bits
  * disappear above 2^53. Three exact 16-bit partial products preserve them. */
@@ -163,7 +150,6 @@ static void multiply(Bytes *b, const FirModule *m, int a, int c)
     byte(b, 0x61);
 }
 
-
 /* Emit an unresolved branch and return the offset-field position. */
 static size_t branch(Bytes *b, int conditional)
 {
@@ -172,7 +158,6 @@ static size_t branch(Bytes *b, int conditional)
     word(b, 0);
     return b->n - 2;
 }
-
 
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
@@ -184,6 +169,14 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     if (!fir_verify(m, error, cap))
     {
         return 0;
+    }
+    for (i = 0; i < m->count; i++)
+    {
+        if (!m->instructions[i].removed && (m->instructions[i].op > O_RETURN || m->instructions[i].type > T_CHANNEL))
+        {
+            snprintf(error, cap, "table/big operations require a table-capable backend");
+            return 0;
+        }
     }
     actions.data = (unsigned char *)malloc(BYTE_LIMIT);
     object.data = (unsigned char *)malloc(BYTE_LIMIT);
@@ -311,6 +304,9 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             fixes[nf].at = branch(&actions, 0);
             fixes[nf++].target = in->op == O_RETURN ? -1 : in->yes;
             break;
+        default:
+            snprintf(error, cap, "operation is outside the AVM1 backend");
+            goto done;
         }
         if (in->result >= 0)
         {

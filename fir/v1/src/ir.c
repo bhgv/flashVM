@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
-
+#include <inttypes.h>
 
 /* Format a bounded verifier diagnostic and return failure. */
 static int fail(char *error, size_t cap, const char *format, ...)
@@ -15,7 +15,6 @@ static int fail(char *error, size_t cap, const char *format, ...)
     va_end(args);
     return 0;
 }
-
 
 /* Public IR spelling has the same bounded ASCII grammar as .fir input. */
 static int symbol_name(const char *text, char prefix)
@@ -37,7 +36,8 @@ static int symbol_name(const char *text, char prefix)
     return 1;
 }
 
-static const char *const types[] = {"void", "i32", "f64", "bool", "string", "any", "channel"};
+static const char *const types[] = {
+    "void", "i32", "f64", "bool", "string", "any", "channel", "i64", "table.big", "table.slot", "big.range", "keys"};
 static const char *const ops[] = {"const.i32",
                                   "const.f64",
                                   "const.bool",
@@ -61,8 +61,17 @@ static const char *const ops[] = {"const.i32",
                                   "limbo.chan_close",
                                   "if",
                                   "jump",
-                                  "return"};
-
+                                  "return",
+                                  "const.i64",
+                                  "table.new",
+                                  "table.index",
+                                  "table.load",
+                                  "table.store",
+                                  "table.len",
+                                  "range.big",
+                                  "table.slice",
+                                  "table.keys",
+                                  "keys.len"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -83,10 +92,11 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "invalid IR table counts");
     }
-    if ((unsigned)m->source_language > FIR_LIMBO || (unsigned)m->source_semantics > FIR_LIMBO_REAL ||
+    if ((unsigned)m->source_language > FIR_LIMBO || (unsigned)m->source_semantics > FIR_LIMBO_TABLES ||
         (!m->source_language != !m->source_semantics) ||
         (m->source_language && (m->source_language == FIR_LIMBO
-                                    ? (m->source_semantics != FIR_LIMBO_I32 && m->source_semantics != FIR_LIMBO_REAL)
+                                    ? (m->source_semantics != FIR_LIMBO_I32 && m->source_semantics != FIR_LIMBO_REAL &&
+                                       m->source_semantics != FIR_LIMBO_TABLES)
                                     : m->source_semantics != FIR_AVM1_NUMERIC)))
     {
         return fail(error, cap, "incompatible source language/semantics profile");
@@ -105,8 +115,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     for (i = 0; i < m->value_count; ++i)
     {
         int d = m->values[i].definition;
-        if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count ||
-            (unsigned)m->values[i].type > T_CHANNEL ||
+        if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count || (unsigned)m->values[i].type > T_KEYS ||
             (d >= 0 && (m->instructions[d].result != i || m->instructions[d].type != m->values[i].type)))
         {
             return fail(error, cap, "invalid value definition table");
@@ -116,7 +125,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_RETURN || (unsigned)in->type > T_CHANNEL || in->block < 0 ||
+        if ((unsigned)in->op > O_KEYS_LEN || (unsigned)in->type > T_KEYS || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -132,8 +141,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             return fail(error, cap, "invalid constant payload");
         }
         unary = in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE || in->op == O_TRACE ||
-                in->op == O_CLOSE || in->op == O_IF;
-        binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND;
+                in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN ||
+                in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN;
+        binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
+                 in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
         if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
@@ -175,11 +186,11 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             first[b] = i;
         }
         last[b] = i;
-        if ((in->op < O_TRACE) != (in->result >= 0))
+        if (((in->op < O_TRACE || (in->op > O_RETURN && in->op != O_TABLE_STORE))) != (in->result >= 0))
         {
             return fail(error, cap, "line %d: wrong result arity", in->line);
         }
-        if (in->op >= O_IF)
+        if (in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             terminated[b] = 1;
             if (in->yes >= 0)
@@ -288,6 +299,61 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         }
         switch (in->op)
         {
+        case O_I64:
+            expected = T_I64;
+            break;
+        case O_TABLE_NEW:
+            expected = T_TABLE_BIG;
+            break;
+        case O_TABLE_INDEX:
+            if (a != T_TABLE_BIG || (c != T_I64 && c != T_STRING))
+            {
+                goto bad_type;
+            }
+            expected = T_TABLE_SLOT;
+            break;
+        case O_TABLE_LOAD:
+            if (a != T_TABLE_SLOT)
+            {
+                goto bad_type;
+            }
+            expected = T_I64;
+            break;
+        case O_TABLE_STORE:
+            if (a != T_TABLE_SLOT || c != T_I64)
+            {
+                goto bad_type;
+            }
+            break;
+        case O_TABLE_LEN:
+        case O_KEYS_LEN:
+            if (a != (in->op == O_TABLE_LEN ? T_TABLE_BIG : T_KEYS))
+            {
+                goto bad_type;
+            }
+            expected = T_I64;
+            break;
+        case O_BIG_RANGE:
+            if (a != T_I64 || c != T_I64)
+            {
+                goto bad_type;
+            }
+            expected = T_BIG_RANGE;
+            break;
+        case O_TABLE_SLICE:
+            if (a != T_TABLE_BIG || c != T_BIG_RANGE)
+            {
+                goto bad_type;
+            }
+            expected = T_TABLE_BIG;
+            break;
+        case O_TABLE_KEYS:
+            if (a != T_TABLE_BIG)
+            {
+                goto bad_type;
+            }
+            expected = T_KEYS;
+            break;
         case O_I32:
             expected = T_I32;
             break;
@@ -325,14 +391,14 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             expected = T_F64;
             break;
         case O_ASADD:
-            if (!a || !c || a == T_CHANNEL || c == T_CHANNEL)
+            if (!a || !c || a > T_ANY || c > T_ANY)
             {
                 goto bad_type;
             }
             expected = T_ANY;
             break;
         case O_NUMBER:
-            if (!a || a == T_CHANNEL)
+            if (!a || a > T_ANY)
             {
                 goto bad_type;
             }
@@ -365,7 +431,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             }
             break;
         case O_TRACE:
-            if (!a || a == T_CHANNEL)
+            if (!a || a == T_CHANNEL || a >= T_TABLE_BIG)
             {
                 goto bad_type;
             }
@@ -389,7 +455,6 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     }
     return 1;
 }
-
 
 /* Escape a decoded string into canonical, reparsable FIR spelling. */
 static void quoted(FILE *out, const char *text)
@@ -422,7 +487,6 @@ static void quoted(FILE *out, const char *text)
     fputc('"', out);
 }
 
-
 /* Emit live instructions in stable input order, retaining original line notes. */
 int fir_print(FILE *out, const FirModule *m)
 {
@@ -434,9 +498,10 @@ int fir_print(FILE *out, const FirModule *m)
         fprintf(out,
                 "source_language %s\nsource_semantics %s\n",
                 languages[m->source_language],
-                m->source_semantics == FIR_LIMBO_I32    ? "limbo_i32"
-                : m->source_semantics == FIR_LIMBO_REAL ? "limbo_real"
-                                                        : "avm1_numeric");
+                m->source_semantics == FIR_LIMBO_I32      ? "limbo_i32"
+                : m->source_semantics == FIR_LIMBO_TABLES ? "limbo_tables"
+                : m->source_semantics == FIR_LIMBO_REAL   ? "limbo_real"
+                                                          : "avm1_numeric");
     }
     if (m->channels)
     {
@@ -461,7 +526,11 @@ int fir_print(FILE *out, const FirModule *m)
             fprintf(out, "%s: %s = ", m->values[in->result].name, types[in->type]);
         }
         fputs(ops[in->op], out);
-        if (in->op == O_I32)
+        if (in->op == O_I64)
+        {
+            fprintf(out, " %" PRId64, in->big);
+        }
+        else if (in->op == O_I32)
         {
             fprintf(out, " %ld", (long)in->integer);
         }

@@ -32,7 +32,6 @@ extern "C"
 #define FIR_BLOCKS 256
 #define FIR_TEXT 256
 
-
 /* Optional source provenance; this is not a claim of complete language support. */
 typedef enum
 {
@@ -43,15 +42,14 @@ typedef enum
     FIR_LIMBO
 } FirLanguage;
 
-
 typedef enum
 {
     FIR_SEM_UNSPECIFIED = 0,
     FIR_AVM1_NUMERIC,
     FIR_LIMBO_I32,
-    FIR_LIMBO_REAL /* Homogeneous real numeric tutorial; no implicit integer conversions. */
+    FIR_LIMBO_REAL,  /* Homogeneous real numeric tutorial; no implicit integer conversions. */
+    FIR_LIMBO_TABLES /* Typed big-table source profile; no implicit dynamic conversions. */
 } FirSemantics;
-
 
 typedef enum
 {
@@ -61,9 +59,13 @@ typedef enum
     T_BOOL,
     T_STRING,
     T_ANY,
-    T_CHANNEL
+    T_CHANNEL,
+    T_I64,        /* Exact signed Limbo big. */
+    T_TABLE_BIG,  /* Owner reference to a mutable big-valued hybrid table. */
+    T_TABLE_SLOT, /* Checked table/key location, not a native address. */
+    T_BIG_RANGE,  /* Half-open big bounds for a sequence slice. */
+    T_KEYS        /* Independent immutable key sequence snapshot. */
 } FirType;
-
 
 typedef enum
 {
@@ -90,9 +92,18 @@ typedef enum
     O_CLOSE,
     O_IF,
     O_JUMP,
-    O_RETURN
+    O_RETURN,
+    O_I64,         /* Exact big constant. */
+    O_TABLE_NEW,   /* Allocate an empty table. */
+    O_TABLE_INDEX, /* Capture table plus numeric/string key without loading. */
+    O_TABLE_LOAD,  /* Read a captured location; missing raises. */
+    O_TABLE_STORE, /* Store big at a captured location. */
+    O_TABLE_LEN,   /* Contiguous numeric prefix length. */
+    O_BIG_RANGE,   /* Construct checked slice bounds. */
+    O_TABLE_SLICE, /* Copy a sequence slice, reindexed from zero. */
+    O_TABLE_KEYS,  /* Copy all keys in deterministic order. */
+    O_KEYS_LEN     /* Count every copied key. */
 } FirOp;
-
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */
 enum
@@ -106,9 +117,7 @@ enum
     FIR_ALL_EFFECTS = 63
 };
 
-
 unsigned fir_effects(FirOp op);
-
 
 /* Operands are symbol-table indices; -1 means absent. Source lines survive
      * optimisation. Strings are UTF-8 bytes without embedded NUL. */
@@ -123,10 +132,10 @@ typedef struct
     int line;        /* Physical source line retained for diagnostics and dumps. */
     int removed;     /* Optimizer tombstone; printers/backends omit this instruction. */
     int32_t integer; /* Signed, fixed-width integer constant payload. */
+    int64_t big;     /* Exact signed payload for O_I64, independent of host long width. */
     double real;     /* Floating constant payload; SWO encodes its binary64 bits. */
     char text[FIR_TEXT];
 } FirInstruction;
-
 
 /* Symbol-table entry: printable spelling, defining instruction index and type. */
 typedef struct
@@ -136,14 +145,12 @@ typedef struct
     FirType type;
 } FirValue;
 
-
 /* Label entry: forward references are resolved before verification. */
 typedef struct
 {
     char name[FIR_TEXT];
     int defined;
 } FirBlock;
-
 
 typedef struct
 {
@@ -205,9 +212,7 @@ typedef enum
     FIR_DIS /* Direct, verified scalar-CFG NC64 capture harness. */
 } FirTask;
 
-
 typedef int (*FirSnapshot)(void *user, const char *phase, const FirModule *module);
-
 
 typedef struct
 {
@@ -215,7 +220,6 @@ typedef struct
     FirSnapshot snapshot;
     void *user;
 } FirRunOptions;
-
 
 /* First source failure, copied into caller storage. Locations use original
      * UTF-8 bytes: zero-based offset/length, one-based physical line/byte column.
@@ -233,7 +237,6 @@ typedef enum
     FIR_DIAG_OUTPUT
 } FirSourceDiagnosticKind;
 
-
 typedef struct
 {
     FirSourceDiagnosticKind kind;
@@ -244,7 +247,6 @@ typedef struct
     size_t line;
     size_t column;
 } FirSourceDiagnostic;
-
 
 /* Additive source API: diagnostic may be NULL, cleared on every call.
      * No borrowed source/error/stream pointer survives return. Parser calls must
