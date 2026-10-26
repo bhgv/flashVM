@@ -107,6 +107,17 @@ def main():
                          "--inspect-words", "0", "2", binary], directory, success=False)
         if counters(failed, mode) != total - 1 or "DATA " in failed.stdout or "instruction limit exceeded" not in failed.stderr:
             raise RuntimeError("instruction guard was late or published incomplete captures")
+        # Sibling source arms restore incoming SSA bindings after local/outer assignments.
+        for condition, expected in (("0 < 1", 100), ("0 > 1", 42)):
+            source.write_text("implement M; M: module {value: fn(): int;}; value(): int {"
+                              "x := 41; if(" + condition + "){x = 100; return x;}else{return x+1;}}")
+            invoke([source_compiler, "limbo", "--input", source, fir], directory)
+            execute([expected])
+        source.write_text("implement M; M: module {value: fn(): int;}; value(): int {"
+                          "x := 40; if(0<1){x := x+1; if(0>1){x=99; return x;}else{return x+1;}}else{return x+2;}}")
+        invoke([source_compiler, "limbo", "--input", source, fir], directory)
+        execute([42])
+
         # A real backward cycle remains bounded across scheduler slices in both dispatch modes.
         fir.write_text("FIR 1.0\nmodule @Cycle\nfunc @main() -> void {\n^entry:\n"
                        "%again: bool = const.bool true\n%n: i32 = const.i32 0\ntrace %n\njump ^loop\n"
