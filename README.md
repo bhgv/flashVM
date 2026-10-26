@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1622**. [Русская версия](README.ru.md).
+Development version: **0.1623**. [Русская версия](README.ru.md).
 
-Current series: [v0.1621–v0.1622](docs/releases/v0.1622.md): Inferno constructor/JIT updates and the first hosted hybrid-table runtime.
+Current series: [v0.1623](docs/releases/v0.1623.md): Inferno scalar-cons JIT synchronization and typed Limbo table lowering into FIR.
 
 ## Browse documentation
 
