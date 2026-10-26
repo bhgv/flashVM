@@ -754,6 +754,18 @@ x64smallfield(X64Buf *b, int result, int owner, int offset, int bytes)
 }
 
 
+/* Check the reference cell and complete len/max span without clobbering either owner. */
+static void
+x64appendowner(X64Buf *b, int owner, int reference, int extent, int fallback)
+{
+	x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x80 | owner);
+	x64word(b, -reference-1); // lea r8,[owner-reference-1].
+	x64byte(b, 0x49); x64byte(b, 0x81); x64byte(b, 0xf8);
+	x64word(b, -reference-extent-2);
+	x64moduleguard(b, 0x76, fallback);
+}
+
+
 /* Concatenate matching string representations within unique capacity and bounded copy size. */
 static int
 x64stringappend(X64Buf *b, LeafLayout *a)
@@ -770,14 +782,14 @@ x64stringappend(X64Buf *b, LeafLayout *a)
 	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
 	x64ptr(b, 0, a->m); x64ptr(b, 1, a->d);
 	x64byte(b, 0x4d); x64byte(b, 0x39); x64byte(b, 0xc8); x64moduleguard(b, 0x74, fallback);
+	/* Validate both readable operand slots before capturing either owner. */
+	x64pcspan(b, 8, 8);
+	x64ptr(b, 2, a->s); x64pcspan(b, 10, 8);
 	x64load(b, 0, 8);
 	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc2);
 	x64ptr(b, 0, a->s); x64load(b, 0, 8);
-	/* owner+1 must be above one: this rejects both C null and language nil. */
-	x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x42); x64byte(b, 1);
-	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 1); x64moduleguard(b, 0x77, fallback);
-	x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x40); x64byte(b, 1);
-	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 1); x64moduleguard(b, 0x77, fallback);
+	x64appendowner(b, 2, a->heapref, a->stringdata, fallback);
+	x64appendowner(b, 0, a->heapref, a->stringdata, fallback);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0x7a); x64byte(b, -a->heapref); x64byte(b, 1); x64moduleguard(b, 0x74, fallback);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0x78); x64byte(b, -a->heapref); x64byte(b, 0); x64moduleguard(b, 0x75, fallback);
 	x64smallfield(b, 1, 2, a->stringlen, 4);
@@ -851,12 +863,15 @@ x64decimal(X64Buf *b, LeafLayout *a, LeafOp *p)
 	   a->stringdata < a->stringmax+4 || a->stringdata > 2047) return 0;
 	x64byte(b, 0xeb); x64byte(b, 3);
 	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
-	x64ptr(b, 0, a->s); x64load(b, 0, 8);
+	/* Bound both decoded slots before any String load or floating conversion. */
+	x64ptr(b, 2, a->d); x64pcspan(b, 10, p->bytes);
+	x64ptr(b, 0, a->s); x64pcspan(b, 8, 8); x64load(b, 0, 8);
 	x64byte(b, 0x45); x64byte(b, 0x31); x64byte(b, 0xc0); /* r8d=value */
 	x64byte(b, 0x45); x64byte(b, 0x31); x64byte(b, 0xc9); /* r9d=negative */
 	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0); x64moduleguard(b, 0x75, fallback);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff);
 	x64byte(b, 0x0f); x64byte(b, 0x84); absent=b->n; x64word(b, 0);
+	x64pcspan(b, 0, a->stringdata);
 	x64field(b, 1, 0, a->stringlen, 4);
 	x64byte(b, 0x83); x64byte(b, 0xf9); x64byte(b, p->input+1); x64moduleguard(b, 0x76, fallback);
 	x64field(b, 2, 0, a->stringmax, 4);
@@ -942,9 +957,14 @@ x64stringindex(X64Buf *b, LeafLayout *a)
 	   a->stringdata < a->stringmax+4 || a->stringdata > 2047) return 0;
 	x64byte(b, 0xeb); x64byte(b, 3);
 	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	/* Preflight every decoded slot before capturing operands or reading headers. */
+	x64ptr(b, 0, a->s); x64pcspan(b, 8, 8);
+	x64ptr(b, 0, a->m); x64pcspan(b, 8, a->wordbytes);
+	x64ptr(b, 0, a->d); x64pcspan(b, 8, a->wordbytes);
 	x64ptr(b, 0, a->s); x64load(b, 0, 8);
 	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc0); x64moduleguard(b, 0x75, fallback);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xff); x64moduleguard(b, 0x75, fallback);
+	x64pcspan(b, 0, a->stringdata);
 	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc3); /* r11 = owner */
 	x64field(b, 1, 0, a->stringlen, 4);
 	x64byte(b, 0x81); x64byte(b, 0xf9); x64word(b, 0x80000000U); x64moduleguard(b, 0x75, fallback);
@@ -986,6 +1006,10 @@ x64stringstore(X64Buf *b, LeafLayout *a)
 	   a->heapref <= 0 || a->heapref > 255 || a->heapref%8 || a->refbytes != 8) return 0;
 	x64byte(b, 0xeb); x64byte(b, 3);
 	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	/* Preflight every decoded slot before capturing operands or reading headers. */
+	x64ptr(b, 0, a->s); x64pcspan(b, 8, a->wordbytes);
+	x64ptr(b, 0, a->m); x64pcspan(b, 8, a->wordbytes);
+	x64ptr(b, 0, a->d); x64pcspan(b, 8, 8);
 	x64ptr(b, 0, a->s); x64load(b, 0, a->wordbytes);
 	x64byte(b, 0x41); x64byte(b, 0x89); x64byte(b, 0xc0); /* r8d=Rune(value) */
 	x64ptr(b, 1, a->m); x64load(b, 1, a->wordbytes);
@@ -993,6 +1017,10 @@ x64stringstore(X64Buf *b, LeafLayout *a)
 	x64ptr(b, 2, a->d); x64load(b, 2, 8);
 	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xd2); x64moduleguard(b, 0x75, fallback);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xff); x64moduleguard(b, 0x75, fallback);
+	/* rax bounds the backward reference cell and forward header; r8 retains the Rune. */
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x82); x64word(b, -a->heapref-1);
+	x64byte(b, 0x48); x64byte(b, 0x3d); x64word(b, -a->heapref-a->stringdata-2);
+	x64moduleguard(b, 0x76, fallback);
 	x64field(b, 0, 2, -a->heapref, 8);
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 1); x64moduleguard(b, 0x74, fallback);
 	x64field(b, 1, 2, a->stringlen, 4);

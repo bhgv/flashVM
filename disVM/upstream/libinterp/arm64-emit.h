@@ -550,6 +550,16 @@ a64slicecopy(A64Buf *b, LeafLayout *a)
 }
 
 
+/* Bound the reference cell and String header while preserving the captured owner. */
+static void
+a64appendowner(A64Buf *b, int owner, int reference, int extent, int fallback)
+{
+	a64put(b, 0xd1000004U | (u32int)(reference+1)<<10 | owner<<5); // sub x4,owner,#reference+1.
+	a64put(b, 0xb100009fU | (u32int)(reference+extent+1)<<10); // cmn x4,#reference+extent+1.
+	a64defer(b, 0x54000002, fallback); // Reject unsigned carry before any owner read.
+}
+
+
 /* Append bounded matching representations after checking slots, ownership and capacities. */
 static int
 a64stringappend(A64Buf *b, LeafLayout *a)
@@ -566,12 +576,12 @@ a64stringappend(A64Buf *b, LeafLayout *a)
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
 	a64ptr(b, 9, a->m); a64ptr(b, 10, a->d);
 	a64put(b, 0xeb0a013f); a64defer(b, 0x54000001, fallback);
+	a64pcspan(b, 9, 8, fallback);
 	a64load(b, 12, 9, 8);
-	a64ptr(b, 9, a->s); a64load(b, 13, 9, 8);
-	a64defer(b, 0xb400000c, fallback);
-	a64put(b, 0xb100059f); a64defer(b, 0x54000000, fallback);
-	a64defer(b, 0xb400000d, fallback);
-	a64put(b, 0xb10005bf); a64defer(b, 0x54000000, fallback);
+	a64ptr(b, 9, a->s); a64pcspan(b, 9, 8, fallback);
+	a64load(b, 13, 9, 8);
+	a64appendowner(b, 12, a->heapref, a->stringdata, fallback);
+	a64appendowner(b, 13, a->heapref, a->stringdata, fallback);
 	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 12<<5 | 14);
 	a64put(b, 0xf10005df); a64defer(b, 0x54000001, fallback);
 	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 13<<5 | 3);
@@ -646,10 +656,13 @@ a64decimal(A64Buf *b, LeafLayout *a, LeafOp *p)
 	   a->stringdata < a->stringmax+4 || a->stringdata > 2047) return 0;
 	fallback=b->n+1;
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
-	a64ptr(b, 9, a->s); a64load(b, 12, 9, 8);
+	/* Reject invalid outputs before a parser can touch memory or FP state. */
+	a64ptr(b, 10, a->d); a64pcspan(b, 10, p->bytes, fallback);
+	a64ptr(b, 9, a->s); a64pcspan(b, 9, 8, fallback); a64load(b, 12, 9, 8);
 	a64put(b, 0x5280000e); a64put(b, 0x5280000f);
 	a64pcguard(b, 0xb500006c, fallback);
 	a64put(b, 0xb100059f); absent=b->n; a64put(b, 0x54000000);
+	a64pcspan(b, 12, a->stringdata, fallback);
 	a64field(b, 13, 12, a->stringlen, 4);
 	a64put(b, 0x710001bfU | (u32int)(p->input+1)<<10); a64pcguard(b, 0x54000069, fallback);
 	a64field(b, 10, 12, a->stringmax, 4);
@@ -717,9 +730,14 @@ a64stringindex(A64Buf *b, LeafLayout *a)
 	   a->stringmax < 0 || a->stringmax > 16380 || a->stringmax%4) return 0;
 	fallback=b->n+1;
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
+	/* Validate scalar/pointer slot widths before reading either representation. */
+	a64ptr(b, 9, a->s); a64pcspan(b, 9, 8, fallback);
+	a64ptr(b, 9, a->m); a64pcspan(b, 9, a->wordbytes, fallback);
+	a64ptr(b, 9, a->d); a64pcspan(b, 9, a->wordbytes, fallback);
 	a64ptr(b, 9, a->s); a64load(b, 12, 9, 8);
 	a64pcguard(b, 0xb500006c, fallback);
 	a64put(b, 0xb100059f); a64pcguard(b, 0x54000061, fallback);
+	a64pcspan(b, 12, a->stringdata, fallback);
 	a64field(b, 13, 12, a->stringlen, 4);
 	a64put(b, 0x52b0000e); a64put(b, 0x6b0e01bf); a64pcguard(b, 0x54000061, fallback);
 	a64put(b, 0x2a0d03ef); /* preserve the representation sign */
@@ -759,11 +777,16 @@ a64stringstore(A64Buf *b, LeafLayout *a)
 	   a->heapref <= 0 || a->heapref > 255 || a->heapref%8 || a->refbytes != 8) return 0;
 	fallback=b->n+1;
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
+	/* Validate scalar/pointer slot widths before reading either representation. */
+	a64ptr(b, 9, a->s); a64pcspan(b, 9, a->wordbytes, fallback);
+	a64ptr(b, 9, a->m); a64pcspan(b, 9, a->wordbytes, fallback);
+	a64ptr(b, 9, a->d); a64pcspan(b, 9, 8, fallback);
 	a64ptr(b, 9, a->s); a64load(b, 12, 9, a->wordbytes);
 	a64ptr(b, 10, a->m); a64load(b, 13, 10, a->wordbytes);
 	a64ptr(b, 11, a->d); a64load(b, 14, 11, 8);
 	a64pcguard(b, 0xb500006e, fallback);
 	a64put(b, 0xb10005df); a64pcguard(b, 0x54000061, fallback);
+	a64appendowner(b, 14, a->heapref, a->stringdata, fallback);
 	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 14<<5 | 4);
 	a64put(b, 0xf100049f); a64pcguard(b, 0x54000060, fallback);
 	a64field(b, 15, 14, a->stringlen, 4);

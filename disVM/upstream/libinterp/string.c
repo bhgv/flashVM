@@ -28,10 +28,18 @@ OP(indc)
 	uintptr address;
 	String *string;
 
+	/* Bound all decoded slots before a source read, allocation or character store. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(string) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(index) ||
+	   R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result))
+		error(exHeap);
+
 	memmove(&index, R.m, sizeof(index));
 	memmove(&string, R.s, sizeof(string));
 	if(string == H || string == nil)
 		error(exNilref);
+	if((uintptr)string > (uintptr)-1 - offsetof(String, data))
+		error(exHeap);
 	length = string->len;
 	if(length == (-0x7fffffff-1))
 		error(exHeap);
@@ -69,6 +77,12 @@ OP(insc)
 	String *old, *result;
 	void *slot;
 
+	/* Bound all decoded slots before a source read, allocation or character store. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(value) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(index) ||
+	   R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(old))
+		error(exHeap);
+
 	memmove(&value, R.s, sizeof(value));
 	rune = value;
 	memmove(&index, R.m, sizeof(index));
@@ -76,6 +90,9 @@ OP(insc)
 	memmove(&old, slot, sizeof(old));
 	if(old == nil)
 		error(exNilref);
+	if(old != H && ((uintptr)old <= sizeof(Heap) ||
+	   (uintptr)old > (uintptr)-1 - offsetof(String, data)))
+		error(exHeap);
 	length = old == H ? 0 : old->len;
 	if(length == (-0x7fffffff-1))
 		error(exHeap);
@@ -274,6 +291,16 @@ addstring(String *s1, String *s2, int append)
 
 	if(s1 == nil || s2 == nil)
 		error(exNilref);
+	/* Validate both headers and heap origins before any metadata read or shortcut. */
+	for(i = 0; i < 2; i++){
+		source = i == 0 ? s1 : s2;
+		if(source == H)
+			continue;
+		address = (uintptr)source;
+		if(address <= sizeof(Heap) ||
+		   address > (uintptr)-1-(offsetof(String, max)+sizeof(source->max)))
+			error(exHeap);
+	}
 	if((s1 != H && s1->len == (-0x7fffffff-1)) ||
 	   (s2 != H && s2->len == (-0x7fffffff-1)))
 		error(exHeap);
@@ -372,6 +399,12 @@ addstring(String *s1, String *s2, int append)
 OP(addc)
 {
 	String *left, *right, *old, *result;
+
+	/* No source read or result publication precedes complete pointer-slot checks. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left) ||
+	   R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(old))
+		error(exHeap);
 
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
@@ -642,6 +675,11 @@ OP(cvtcw)
 	String *s;
 	WORD value;
 
+	/* Invalid destinations must fail before UTF-8 termination/cache mutation. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(s) ||
+	   R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(value))
+		error(exHeap);
+
 	memmove(&s, R.s, sizeof(s));
 	value = strtol(string2c(s), nil, 10);
 	memmove(R.d, &value, sizeof(value));
@@ -652,6 +690,11 @@ OP(cvtcf)
 {
 	String *s;
 	REAL value;
+
+	/* Invalid destinations must fail before UTF-8 termination/cache mutation. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(s) ||
+	   R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(value))
+		error(exHeap);
 
 	memmove(&s, R.s, sizeof(s));
 	value = strtod(string2c(s), nil);
@@ -825,6 +868,10 @@ string2c(String *s)
 		error(exNilref);
 	if(s == H)
 		return "";
+
+	/* Bound the complete header before reading lengths, capacities or the cache. */
+	if((uintptr)s > (uintptr)-1 - offsetof(String, data))
+		error(exHeap);
 
 	if(s->len >= 0) {
 		if(s->max < s->len)
