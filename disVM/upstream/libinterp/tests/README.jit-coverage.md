@@ -431,3 +431,25 @@ address span; C string2c checks ASCII termination and Rune storage before cache
 preparation. Production lib9 big parsing and libmath real parsing pass separate
 native comparisons. The core suite now contains 102 host drivers. Counts remain
 AMD64/ARM64 142/31 and RV64 M/Zmmul/I 103/70, 90/83 and 87/86.
+
+## Checked string-comparison spans checkpoint
+
+[Checked comparison spans](README.string-compare-spans.md) validates C stringcmp's
+accessed common prefix while retaining payload-free identities and empty
+comparisons. All six AMD64/ARM64 predicates reject the final 16 GiB owner window
+before native payload access; C provides precise handling there. False targets
+remain unread, and both private layouts stay within 64 units without ABI changes.
+The core checkpoint now has 103 host drivers. Counts remain AMD64/ARM64 142/31
+and RV64 M/Zmmul/I 103/70, 90/83 and 87/86.
+
+The RV64 string-window checkpoint adds pre-metadata address-window rejection
+for IINDC/ILENC and rejects IINDC payload layouts overlapping the length field.
+Scalar-list HEADB/HEADW/HEADL/HEADF paths also validate offset and access-end
+address sums before payload reads. The 50,145-case fixture covers both WORD widths and keeps
+its checks with optimized Python. Opcode availability is unchanged. See
+[README.riscv-string-window.md](README.riscv-string-window.md).
+
+Numeric formatting now validates exact Tstring identity before native buffer reuse;
+generic ADT/array pointer temporaries decline into the ownership-safe C conversion.
+AMD64/ARM64 reserve 80 words for emission, including the full-width type guard.
+[Regression and lifetime contract](README.format-pointer-temporaries.md).

@@ -99,6 +99,7 @@ CORE = [
     'libinterp/tests/real-arithmetic.py',
     'libinterp/tests/vm-addresses.py',
     'libinterp/tests/string-branches.py',
+    'libinterp/tests/string-compare-spans-c.py',
     'libinterp/tests/string-slots.py',
     'libinterp/tests/raise-slots.py',
     'libinterp/tests/riscv-features.py',
@@ -116,6 +117,7 @@ CORE = [
     'limbo/tests/case-max.py',
 ]
 JIT = [
+    'libinterp/tests/riscv-string-window.py',
     'libinterp/tests/real-format-jit.py',
     'libinterp/tests/real-format-layouts.py',
     'libinterp/tests/list-length-layouts.py',
@@ -134,6 +136,8 @@ JIT = [
     'libinterp/tests/frame-jit.py',
     'libinterp/tests/string-slice-jit.py',
     'libinterp/tests/string-append-jit.py',
+    'libinterp/tests/string-compare-jit.py',
+    'libinterp/tests/string-compare-layouts.py',
     'libinterp/tests/append-spans-jit.py',
     'libinterp/tests/append-layouts.py',
     'libinterp/tests/string-cell-layouts.py',
