@@ -1,0 +1,593 @@
+/* Dense scalar slots plus chained hash storage. Keys and values stay at a single owner. */
+#include "table.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define FHT_BUCKETS 16U        /* Initial power-of-two bucket count. */
+#define FHT_DENSE_MAX 1048576U /* Dense growth ceiling, not a key/count limit. */
+
+typedef struct
+{
+    int present;   /* Separates a missing slot from a stored zero. */
+    int64_t value; /* Exact Limbo big payload; never converted through double. */
+} Slot;
+
+typedef struct Entry
+{
+    struct Entry *next;       /* Owned bucket chain link. */
+    struct Entry *order_next; /* Borrowed string insertion-order link. */
+    struct Entry *order_prev; /* Borrowed previous string entry. */
+    FhtKey key;               /* Text bytes follow this allocation; numeric keys own no text. */
+    int64_t value;            /* Exact copied scalar. */
+    uint64_t hash;            /* Cached namespace-aware hash. */
+} Entry;
+
+struct Fht
+{
+    FhtAllocator allocator; /* Copied allocator; context lifetime belongs to caller. */
+    Slot *dense;            /* Owned initialized slots. */
+    size_t capacity;        /* Dense allocated slot count, not visible sequence length. */
+    Entry **buckets;        /* Owned hash directory. */
+    size_t bucket_count;    /* Power of two, or zero before the first hash insertion. */
+    size_t sparse_count;    /* Hash entries, including string keys. */
+    size_t count;           /* All present dense/hash pairs. */
+    uint64_t length;        /* First missing nonnegative integer key. */
+    Entry *strings_first;   /* Borrowed first string in insertion order. */
+    Entry *strings_last;    /* Borrowed last string in insertion order. */
+};
+
+/* Default allocator ignores context; returns malloc-owned storage or null. */
+static void *default_allocate(void *context, size_t size)
+{
+    (void)context;
+    return malloc(size);
+}
+
+
+/* Default release ignores context and accepts null. */
+static void default_release(void *context, void *memory)
+{
+    (void)context;
+    free(memory);
+}
+
+
+/* Allocate and zero a checked array with the borrowed allocator; returns null on overflow/OOM. */
+static void *zeroed(FhtAllocator allocator, size_t count, size_t width)
+{
+    void *memory;
+    if (!count || count > SIZE_MAX / width)
+    {
+        return NULL;
+    }
+    memory = allocator.allocate(allocator.context, count * width);
+    if (memory)
+    {
+        memset(memory, 0, count * width);
+    }
+    return memory;
+}
+
+
+/* Validate the borrowed tagged key before hashing or reading its bytes. */
+static int valid_key(FhtKey key)
+{
+    return (key.kind == FHT_INDEX && key.index >= 0) || (key.kind == FHT_TEXT && (key.text || !key.size));
+}
+
+
+/* Compute a namespace-separated FNV hash over the explicit payload; no allocation. */
+static uint64_t key_hash(FhtKey key)
+{
+    uint64_t hash = UINT64_C(14695981039346656037);
+    size_t i;
+    if (key.kind == FHT_INDEX)
+    {
+        uint64_t number = (uint64_t)key.index;
+        for (i = 0; i < 8; i++)
+        {
+            hash = (hash ^ (number & 255)) * UINT64_C(1099511628211);
+            number >>= 8;
+        }
+    }
+    else
+    {
+        hash ^= UINT64_C(0xa77);
+        for (i = 0; i < key.size; i++)
+        {
+            hash = (hash ^ (unsigned char)key.text[i]) * UINT64_C(1099511628211);
+        }
+    }
+    return hash;
+}
+
+
+/* Compare validated keys; text pointers are borrowed and zero-length strings need no dereference. */
+static int equal_key(FhtKey a, FhtKey b)
+{
+    if (a.kind != b.kind)
+    {
+        return 0;
+    }
+    if (a.kind == FHT_INDEX)
+    {
+        return a.index == b.index;
+    }
+    return a.size == b.size && (!a.size || memcmp(a.text, b.text, a.size) == 0);
+}
+
+
+/* Locate the owned bucket link for a validated key; returns null if no directory exists. */
+static Entry **find_link(Fht *table, FhtKey key, uint64_t hash)
+{
+    Entry **link;
+    if (!table->bucket_count)
+    {
+        return NULL;
+    }
+    link = &table->buckets[hash & (table->bucket_count - 1)];
+    while (*link && ((*link)->hash != hash || !equal_key((*link)->key, key)))
+    {
+        link = &(*link)->next;
+    }
+    return link;
+}
+
+
+/* Rehash existing entries into a larger initialized directory before publishing it.
+ * Returns zero on overflow/OOM, preserving all logical contents and iteration order. */
+static int reserve_hash(Fht *table)
+{
+    size_t count;
+    size_t i;
+    Entry **buckets;
+    if (table->sparse_count < table->bucket_count / 2)
+    {
+        return 1;
+    }
+    if (table->bucket_count > SIZE_MAX / 2)
+    {
+        return 0;
+    }
+    count = table->bucket_count ? table->bucket_count * 2 : FHT_BUCKETS;
+    buckets = zeroed(table->allocator, count, sizeof(*buckets));
+    if (!buckets)
+    {
+        return 0;
+    }
+    for (i = 0; i < table->bucket_count; i++)
+    {
+        Entry *entry = table->buckets[i];
+        while (entry)
+        {
+            Entry *next = entry->next;
+            size_t bucket = entry->hash & (count - 1);
+            entry->next = buckets[bucket];
+            buckets[bucket] = entry;
+            entry = next;
+        }
+    }
+    table->allocator.release(table->allocator.context, table->buckets);
+    table->buckets = buckets;
+    table->bucket_count = count;
+    return 1;
+}
+
+
+/* Grow a bounded dense region and move any now-covered sparse numeric entries into it.
+ * Allocation happens before mutation. Entry count, values and logical length do not change. */
+static int reserve_dense(Fht *table, size_t index)
+{
+    size_t capacity = table->capacity ? table->capacity : 16;
+    size_t i;
+    Slot *slots;
+    while (capacity <= index)
+    {
+        capacity *= 2;
+    }
+    slots = zeroed(table->allocator, capacity, sizeof(*slots));
+    if (!slots)
+    {
+        return 0;
+    }
+    if (table->capacity)
+    {
+        memcpy(slots, table->dense, table->capacity * sizeof(*slots));
+    }
+    for (i = 0; i < table->bucket_count; i++)
+    {
+        Entry **link = &table->buckets[i];
+        while (*link)
+        {
+            Entry *entry = *link;
+            if (entry->key.kind == FHT_INDEX && (uint64_t)entry->key.index < capacity)
+            {
+                slots[entry->key.index].present = 1;
+                slots[entry->key.index].value = entry->value;
+                *link = entry->next;
+                table->sparse_count--;
+                table->allocator.release(table->allocator.context, entry);
+            }
+            else
+            {
+                link = &entry->next;
+            }
+        }
+    }
+    table->allocator.release(table->allocator.context, table->dense);
+    table->dense = slots;
+    table->capacity = capacity;
+    return 1;
+}
+
+
+/* Create an empty scalar owner using a copied allocator; see table.h for lifetime/error contracts. */
+Fht *fht_create(const FhtAllocator *allocator)
+{
+    FhtAllocator selected = {NULL, default_allocate, default_release};
+    Fht *table;
+    if (allocator)
+    {
+        selected = *allocator;
+    }
+    if (!selected.allocate || !selected.release)
+    {
+        return NULL;
+    }
+    table = zeroed(selected, 1, sizeof(*table));
+    if (table)
+    {
+        table->allocator = selected;
+    }
+    return table;
+}
+
+
+/* Release all owned storage at the exclusive table owner; null is accepted. */
+void fht_destroy(Fht *table)
+{
+    FhtAllocator allocator;
+    size_t i;
+    if (!table)
+    {
+        return;
+    }
+    allocator = table->allocator;
+    for (i = 0; i < table->bucket_count; i++)
+    {
+        Entry *entry = table->buckets[i];
+        while (entry)
+        {
+            Entry *next = entry->next;
+            allocator.release(allocator.context, entry);
+            entry = next;
+        }
+    }
+    allocator.release(allocator.context, table->buckets);
+    allocator.release(allocator.context, table->dense);
+    allocator.release(allocator.context, table);
+}
+
+
+/* Read a borrowed key without allocation; publish the output only when present. */
+FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value)
+{
+    Entry **link;
+    if (!table || !value || !valid_key(key))
+    {
+        return FHT_INVALID;
+    }
+    if (key.kind == FHT_INDEX && (uint64_t)key.index < table->capacity)
+    {
+        Slot slot = table->dense[key.index];
+        if (!slot.present)
+        {
+            return FHT_MISSING;
+        }
+        *value = slot.value;
+        return FHT_OK;
+    }
+    link = find_link((Fht *)table, key, key_hash(key));
+    if (!link || !*link)
+    {
+        return FHT_MISSING;
+    }
+    *value = (*link)->value;
+    return FHT_OK;
+}
+
+
+/* Copy a scalar/key at the exclusive owner, retaining logical state on allocation failure. */
+FhtStatus fht_set(Fht *table, FhtKey key, int64_t value)
+{
+    Entry **link;
+    Entry *entry;
+    uint64_t hash;
+    int64_t ignored;
+    if (!table || !valid_key(key))
+    {
+        return FHT_INVALID;
+    }
+    if (key.kind == FHT_INDEX && (uint64_t)key.index >= table->capacity && (uint64_t)key.index < FHT_DENSE_MAX &&
+        (uint64_t)key.index <= table->capacity * 2 + 16)
+    {
+        if (!reserve_dense(table, (size_t)key.index))
+        {
+            return FHT_NOMEM;
+        }
+    }
+    if (key.kind == FHT_INDEX && (uint64_t)key.index < table->capacity)
+    {
+        Slot *slot = &table->dense[key.index];
+        table->count += !slot->present;
+        slot->present = 1;
+        slot->value = value;
+    }
+    else
+    {
+        hash = key_hash(key);
+        link = find_link(table, key, hash);
+        if (link && *link)
+        {
+            (*link)->value = value;
+            return FHT_OK;
+        }
+        if (key.kind == FHT_TEXT && key.size > SIZE_MAX - sizeof(*entry))
+        {
+            return FHT_NOMEM;
+        }
+        entry =
+            table->allocator.allocate(table->allocator.context, sizeof(*entry) + (key.kind == FHT_TEXT ? key.size : 0));
+        if (!entry)
+        {
+            return FHT_NOMEM;
+        }
+        if (!reserve_hash(table))
+        {
+            table->allocator.release(table->allocator.context, entry);
+            return FHT_NOMEM;
+        }
+        memset(entry, 0, sizeof(*entry));
+        entry->key = key;
+        entry->hash = hash;
+        entry->value = value;
+        if (key.kind == FHT_TEXT)
+        {
+            entry->key.text = (const char *)(entry + 1);
+            if (key.size)
+            {
+                memcpy((char *)(entry + 1), key.text, key.size);
+            }
+            entry->order_prev = table->strings_last;
+            if (table->strings_last)
+            {
+                table->strings_last->order_next = entry;
+            }
+            else
+            {
+                table->strings_first = entry;
+            }
+            table->strings_last = entry;
+        }
+        link = &table->buckets[hash & (table->bucket_count - 1)];
+        entry->next = *link;
+        *link = entry;
+        table->sparse_count++;
+        table->count++;
+    }
+    while (table->length <= INT64_MAX)
+    {
+        FhtKey next = {FHT_INDEX, (int64_t)table->length, NULL, 0};
+        if (fht_get(table, next, &ignored) != FHT_OK)
+        {
+            break;
+        }
+        table->length++;
+    }
+    return FHT_OK;
+}
+
+
+/* Remove a borrowed key and adjust sequence length without shifting other entries. */
+FhtStatus fht_delete(Fht *table, FhtKey key)
+{
+    Entry **link;
+    Entry *entry;
+    if (!table || !valid_key(key))
+    {
+        return FHT_INVALID;
+    }
+    if (key.kind == FHT_INDEX && (uint64_t)key.index < table->capacity)
+    {
+        if (!table->dense[key.index].present)
+        {
+            return FHT_MISSING;
+        }
+        table->dense[key.index].present = 0;
+    }
+    else
+    {
+        link = find_link(table, key, key_hash(key));
+        if (!link || !*link)
+        {
+            return FHT_MISSING;
+        }
+        entry = *link;
+        *link = entry->next;
+        if (key.kind == FHT_TEXT)
+        {
+            if (entry->order_prev)
+            {
+                entry->order_prev->order_next = entry->order_next;
+            }
+            else
+            {
+                table->strings_first = entry->order_next;
+            }
+            if (entry->order_next)
+            {
+                entry->order_next->order_prev = entry->order_prev;
+            }
+            else
+            {
+                table->strings_last = entry->order_prev;
+            }
+        }
+        table->sparse_count--;
+        table->allocator.release(table->allocator.context, entry);
+    }
+    table->count--;
+    if (key.kind == FHT_INDEX && (uint64_t)key.index < table->length)
+    {
+        table->length = (uint64_t)key.index;
+    }
+    return FHT_OK;
+}
+
+
+/* Read cached sequence length from a borrowed owner; null represents zero. */
+uint64_t fht_length(const Fht *table)
+{
+    return table ? table->length : 0;
+}
+
+
+/* Read stored pair count from a borrowed owner; null represents zero. */
+size_t fht_count(const Fht *table)
+{
+    return table ? table->count : 0;
+}
+
+
+/* Compare numeric snapshot keys without subtraction overflow; qsort borrows both operands. */
+static int compare_index(const void *left, const void *right)
+{
+    const FhtKey *a = left;
+    const FhtKey *b = right;
+    return (a->index > b->index) - (a->index < b->index);
+}
+
+
+/* Build an independently owned all-key snapshot; publish only a complete result. */
+FhtStatus fht_keys(const Fht *table, FhtKeys **result)
+{
+    FhtKeys *snapshot;
+    FhtKey *keys;
+    size_t i;
+    size_t count = 0;
+    size_t numeric;
+    Entry *entry;
+    if (!table || !result)
+    {
+        return FHT_INVALID;
+    }
+    snapshot = zeroed(table->allocator, 1, sizeof(*snapshot));
+    if (!snapshot)
+    {
+        return FHT_NOMEM;
+    }
+    snapshot->allocator = table->allocator;
+    keys = zeroed(table->allocator, table->count ? table->count : 1, sizeof(*keys));
+    if (!keys)
+    {
+        fht_keys_destroy(snapshot);
+        return FHT_NOMEM;
+    }
+    snapshot->items = keys;
+    for (i = 0; i < table->capacity; i++)
+    {
+        if (table->dense[i].present)
+        {
+            keys[count].kind = FHT_INDEX;
+            keys[count++].index = (int64_t)i;
+        }
+    }
+    for (i = 0; i < table->bucket_count; i++)
+    {
+        for (entry = table->buckets[i]; entry; entry = entry->next)
+        {
+            if (entry->key.kind == FHT_INDEX)
+            {
+                keys[count++] = entry->key;
+            }
+        }
+    }
+    numeric = count;
+    qsort(keys, numeric, sizeof(*keys), compare_index);
+    snapshot->count = numeric;
+    for (entry = table->strings_first; entry; entry = entry->order_next)
+    {
+        char *text = table->allocator.allocate(table->allocator.context, entry->key.size ? entry->key.size : 1);
+        if (!text)
+        {
+            fht_keys_destroy(snapshot);
+            return FHT_NOMEM;
+        }
+        if (entry->key.size)
+        {
+            memcpy(text, entry->key.text, entry->key.size);
+        }
+        keys[count] = entry->key;
+        keys[count++].text = text;
+        snapshot->count = count;
+    }
+    *result = snapshot;
+    return FHT_OK;
+}
+
+
+/* Retire a key snapshot with its matching allocator; null is accepted. */
+void fht_keys_destroy(FhtKeys *keys)
+{
+    FhtAllocator allocator;
+    size_t i;
+    if (!keys)
+    {
+        return;
+    }
+    allocator = keys->allocator;
+    for (i = 0; i < keys->count; i++)
+    {
+        if (keys->items[i].kind == FHT_TEXT)
+        {
+            allocator.release(allocator.context, (void *)keys->items[i].text);
+        }
+    }
+    allocator.release(allocator.context, (void *)keys->items);
+    allocator.release(allocator.context, keys);
+}
+
+
+/* Copy a checked half-open sequence range into a new independent owner. */
+FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result)
+{
+    Fht *copy;
+    uint64_t i;
+    if (!table || !result || first > end || end > table->length)
+    {
+        return FHT_INVALID;
+    }
+    copy = fht_create(&table->allocator);
+    if (!copy)
+    {
+        return FHT_NOMEM;
+    }
+    for (i = first; i < end; i++)
+    {
+        FhtKey key = {FHT_INDEX, (int64_t)i, NULL, 0};
+        FhtKey target = {FHT_INDEX, (int64_t)(i - first), NULL, 0};
+        int64_t value;
+        FhtStatus status = fht_get(table, key, &value);
+        if (status == FHT_OK)
+        {
+            status = fht_set(copy, target, value);
+        }
+        if (status != FHT_OK)
+        {
+            fht_destroy(copy);
+            return status;
+        }
+    }
+    *result = copy;
+    return FHT_OK;
+}
