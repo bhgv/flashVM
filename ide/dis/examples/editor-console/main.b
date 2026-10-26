@@ -4,6 +4,9 @@ implement ConsoleEditor;
 include "sys.m";
 # Use the existing document/history channel protocol.
 include "idecore.m";
+include "idevalue.m";
+include "ideprojection.m";
+include "idedocprojection.m";
 # Load the existing declaration-index protocol.
 include "idecomplete.m";
 # Use compiler-owned initial AS/Limbo declaration catalogs and call tips.
@@ -21,7 +24,111 @@ limbocommands: chan of Idecomplete->Request;              # Independent Limbo ca
 files: Idefiles;                                         # Loaded read-only resource inspector.
 filecommands: chan of Idefiles->Request;                  # File-window owner request endpoint.
 nextid := 1;                                             # Monotonic correlation ID for synchronous requests.
+valuecodec: Idevalue; # Loaded reflected copy/conversion library.
+docprojection: Idedocprojection; # Adapter to this editor's actual document, not a demonstration object.
+projectioncommands: chan of ref Ideprojection->Request; # Borrowed until adapter Release before document shutdown.
 MaxLine: con 4096;                                       # Maximum accepted command extent in UTF-8 bytes.
+
+
+# Exchange one request with the document adapter; fields are copied and reply is always consumed.
+# number is the expected document revision for mutations; returns the acknowledged projection result.
+projectioncall(operation: int, member: string, target, number, permit: int,
+               value: ref Idevalue->Value): Ideprojection->Reply
+{
+    answers := chan of Ideprojection->Reply;
+    projectioncommands <-= ref Ideprojection->Request(nextid, 1, operation, member, number, "", permit, 0,
+                                                     target, value, answers);
+    nextid++;
+    return <-answers;
+}
+
+
+# Render a bounded copied value/reference without evaluating receiver code.
+# value is borrowed canonical data; table children are explicitly bounded to one snapshot level.
+showvalue(value: ref Idevalue->Value)
+{
+    if (value == nil) {
+        sys->print("WATCH invalid\n");
+        return;
+    }
+    case value.kind {
+    Idevalue->Text =>
+        sys->print("WATCH string\n");
+        display(value.text);
+    Idevalue->Object or Idevalue->Method =>
+        sys->print("WATCH ref %s %d %s\n", value.owner, value.epoch, value.member);
+    Idevalue->Real =>
+        sys->print("WATCH real %g\n", value.number);
+    Idevalue->Table =>
+        sys->print("WATCH table %d\n", len value.names);
+        for (i := 0; i < len value.names; i++) {
+            sys->print("FIELD %s\n", value.names[i]);
+            showvalue(value.values[i]);
+        }
+    * =>
+        sys->print("WATCH integer %bd\n", value.integer);
+    }
+}
+
+
+# Handle explicit watch/snapshot/mutation commands without parsing or evaluating source code.
+# verb/rest are copied command text. Returns nothing; every failure prints a typed projection status.
+watchcommand(verb, rest: string)
+{
+    result: Ideprojection->Reply;
+    if (verb == "watchtable") {
+        if (rest != "") {
+            sys->print("ERROR watchtable takes no arguments\n");
+            return;
+        }
+        result = projectioncall(Ideprojection->ToTable, "", Idevalue->Table, 0, 0, nil);
+    } else if (verb == "watch") {
+        (member, typename) := splitword(rest);
+        target := -1;
+        types := valuecodec->types();
+        for (i := 0; i < len types; i++) {
+            if (types[i].name == typename) {
+                target = types[i].kind;
+            }
+        }
+        if (member == "" || target < 0) {
+            sys->print("ERROR watch MEMBER TYPE\n");
+            return;
+        }
+        result = projectioncall(Ideprojection->ReadAs, member, target, 0, 0, nil);
+    } else if (verb == "callref") {
+        (member, suffix) := splitword(rest);
+        (valid, expected) := number(suffix);
+        if (!valid) {
+            sys->print("ERROR callref METHOD EXPECTED_REVISION\n");
+            return;
+        }
+        bound := projectioncall(Ideprojection->ReadAs, member, Idevalue->Method, 0, 0, nil);
+        if (bound.status != Ideprojection->Ok) {
+            sys->print("PROJECT status=%d revision=%d\n", bound.status, bound.revision);
+            return;
+        }
+        result = projectioncall(Ideprojection->InvokeRef, "", 0, expected, 1, bound.value);
+    } else {
+        (revisiontext, text) := splitword(rest);
+        (valid, expected) := number(revisiontext);
+        if (!valid) {
+            sys->print("ERROR setref EXPECTED_REVISION TEXT\n");
+            return;
+        }
+        (decoded, payload) := unescape(text);
+        if (!decoded) {
+            sys->print("ERROR setref invalid escape\n");
+            return;
+        }
+        value := ref Idevalue->Value(Idevalue->Text, big 0, 0.0, payload, "", 0, "", nil, nil);
+        result = projectioncall(Ideprojection->WriteValue, "text", 0, expected, 0, value);
+    }
+    sys->print("PROJECT status=%d revision=%d\n", result.status, result.revision);
+    if (result.status == Ideprojection->Ok) {
+        showvalue(result.value);
+    }
+}
 
 
 # Terminal entry: the actual document/history owner remains in the loaded Dis module.
@@ -580,6 +687,7 @@ help()
     sys->print("find TEXT; replaceall OLD|NEW; undo; redo; load PATH; load! PATH; save PATH\n");
     # Show this bounded result or prompt on real standard output.
     sys->print("inspect PATH (read-only binary resource header)\n");
+    sys->print("watch MEMBER TYPE; watchtable; callref METHOD EXPECTED_REVISION; setref EXPECTED_REVISION TEXT\n");
     # List language-aware catalog and parameter help.
     sys->print("complete LANGUAGE PREFIX; hint LANGUAGE NAME ARGUMENT (LANGUAGE: as or limbo)\n");
     # Explain dirty-state and offset semantics before edits.
@@ -656,6 +764,15 @@ init()
     commands = core->start();
     # Send core->Open and retain the returned complete snapshot.
     state := call(core->Open, 0, 0, 0, "", "");
+    valuecodec = load Idevalue Idevalue->PATH;
+    docprojection = load Idedocprojection Idedocprojection->PATH;
+    if (valuecodec == nil || docprojection == nil) {
+        raise "fail: live document projection modules";
+    }
+    projectioncommands = docprojection->start(core, valuecodec, commands, 1, "console-document");
+    if (projectioncommands == nil) {
+        raise "fail: live document projection endpoint";
+    }
     # Show this bounded result or prompt on real standard output.
     sys->print("Dis IDE console: real document/history service; type help.\n");
     # Record unsaved EOF separately from an explicit forced quit.
@@ -709,6 +826,9 @@ init()
             # Complete this explicit init step; the owner protocol remains synchronous.
             help();
         # Handle the alternative branch of the current checked operation.
+        } else if (verb == "watch" || verb == "watchtable" || verb == "callref" || verb == "setref") {
+            watchcommand(verb, rest);
+            state = call(core->Snapshot, 0, 0, 0, "", "");
         } else if (verb == "inspect") {
             # Inspect literal bytes without loading them into the editable source document.
             inspect(rest);
@@ -932,6 +1052,10 @@ init()
     if (filestopped.status != files->Ok) {
         # Expose a real lifecycle failure instead of claiming a completed shutdown.
         raise "fail: file-window shutdown";
+    }
+    retired := projectioncall(Ideprojection->Release, "", 0, 0, 0, nil);
+    if (retired.status != Ideprojection->Ok) {
+        raise "fail: document projection shutdown";
     }
     state = call(core->Shutdown, state.revision, 0, 0, "", "");
     # Check this init boundary before consuming or publishing data.

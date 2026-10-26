@@ -68,6 +68,12 @@ def main():
     ):
         if required not in output:
             raise RuntimeError("AS/Limbo declaration help failed: " + output)
+    output, _ = session("set alpha\nwatch length big\nwatch text string\nwatchtable\n"
+                        "watch undo method\ncallref undo 1\ncallref undo 2\nshow\nsetref 3 beta\nshow\nquit!\n")
+    for required in ("WATCH integer 5", "WATCH string", "WATCH table 5", "WATCH ref console-document 1 undo",
+                     "PROJECT status=2 revision=2", "TEXT 0\n\nEND", "TEXT 4\nbeta\nEND"):
+        if required not in output:
+            raise RuntimeError("live document inspector failed: " + required + "\n" + output)
     with tempfile.TemporaryDirectory(dir=program.parent) as temporary:
         root = Path(temporary)
         target = root / "saved source.b"
