@@ -117,7 +117,9 @@ typedef enum
     O_BIG_AND,     /* Exact full-width bit intersection. */
     O_BIG_OR,      /* Exact full-width bit union. */
     O_BIG_XOR,     /* Exact full-width exclusive-or. */
-    O_BIG_NOT      /* Exact full-width complement. */
+    O_BIG_NOT,     /* Exact full-width complement. */
+    O_BIG_LT,      /* Signed big less-than, returning bool. */
+    O_BIG_EQ       /* Full-width big equality, returning bool. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

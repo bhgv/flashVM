@@ -7,6 +7,8 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_BIG_LT:
+    case O_BIG_EQ:
     case O_BIG_ADD:
     case O_BIG_SUB:
     case O_BIG_MUL:

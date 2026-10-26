@@ -117,9 +117,23 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op >= O_BIG_DIV && in->op <= O_BIG_NOT && a->op == O_I64 &&
-                (in->op == O_BIG_NOT || b->op == O_I64) &&
-                (in->op == O_BIG_NOT || (in->op != O_BIG_DIV && in->op != O_BIG_MOD) || b->big != 0))
+            if (in->op == O_TO_BIG && m->values[in->a].type == T_I64)
+            {
+                /* An explicit same-type big cast copies its scalar; text/key conversions
+                 * keep their allocation/error effects and are never rewritten here. */
+                in->op = O_COPY;
+                changed = 1;
+            }
+            else if ((in->op == O_BIG_LT || in->op == O_BIG_EQ) && a->op == O_I64 && b->op == O_I64)
+            {
+                in->integer = in->op == O_BIG_LT ? a->big < b->big : a->big == b->big;
+                in->op = O_BOOL;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op >= O_BIG_DIV && in->op <= O_BIG_NOT && a->op == O_I64 &&
+                     (in->op == O_BIG_NOT || b->op == O_I64) &&
+                     (in->op == O_BIG_NOT || (in->op != O_BIG_DIV && in->op != O_BIG_MOD) || b->big != 0))
             {
                 uint64_t x = (uint64_t)a->big;
                 uint64_t y = in->op == O_BIG_NOT ? 0 : (uint64_t)b->big;
@@ -181,7 +195,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
             if ((in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
-                 (in->op >= O_BIG_ADD && in->op <= O_BIG_NOT)) &&
+                 (in->op >= O_BIG_ADD && in->op <= O_BIG_EQ)) &&
                 !fir_effects(in->op))
             {
                 for (j = 0; j < i; ++j)

@@ -11,6 +11,9 @@ enum
     LOAD = 8,              /* Load a signature-checked module instance. */
     MCALL = 9,             /* Invoke the prepared module function. */
     MFRAME = 11,           /* Allocate a typed native call frame. */
+    JMP = 13,              /* Existing direct instruction-PC branch. */
+    BLTL = 130,            /* Signed big less-than branch. */
+    BEQL = 134,            /* Exact full-width big equality branch. */
     RET = 12,              /* Return from the entry harness. */
     LEA = 39,              /* Pass a return destination by address. */
     MOVP = 41,             /* Retain/move one heap reference. */
@@ -272,7 +275,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 root(e->frame_map, offset + CELL);
             }
         }
-        else if (type != T_I64 && type != T_BIG_RANGE)
+        else if (type != T_I64 && type != T_BOOL && type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -295,14 +298,14 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         }
         else if (in->op == O_TRACE)
         {
-            if (module->values[in->a].type != T_I64)
+            if (module->values[in->a].type != T_I64 && module->values[in->a].type != T_BOOL)
             {
-                snprintf(error, capacity, "Dis table trace requires big");
+                snprintf(error, capacity, "Dis table trace requires big or bool");
                 return 0;
             }
             e->traces++;
         }
-        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_NOT))
+        else if (in->op != O_BOOL && in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_EQ))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -367,7 +370,7 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     FirType key = slot ? module->values[slot->b].type : T_VOID;
     for (index = 0; index < cells(module, source); index++)
     {
-        int pointer = index == 0 && type != T_I64 && type != T_BIG_RANGE;
+        int pointer = index == 0 && type != T_I64 && type != T_BOOL && type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
@@ -397,6 +400,23 @@ static void body(Emitter *e, FirModule *module)
         }
         switch (in->op)
         {
+        case O_BIG_LT:
+        case O_BIG_EQ:
+        {
+            unsigned start = e->count;
+            instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
+            /* Read both big cells before writing the bool. Middle mode is FP; the
+             * branch destination is an instruction PC rather than an address/byte offset. */
+            octet(e->body, in->op == O_BIG_LT ? BLTL : BEQL);
+            octet(e->body, MIDDLE_FRAME | (FP << 3) | IMM);
+            operand(e->body, b);
+            operand(e->body, a);
+            operand(e->body, start + 3U);
+            e->count++;
+            instruction(e, JMP, NONE, 0, IMM, start + 4U, 0, -1);
+            instruction(e, MOVW, IMM, 1, FP, d, 0, -1);
+            break;
+        }
         case O_BIG_ADD:
         case O_BIG_SUB:
         case O_BIG_MUL:
@@ -424,6 +444,7 @@ static void body(Emitter *e, FirModule *module)
         case O_BIG_NEG:
             instruction(e, SUBL, FP, a, FP, d, 0, 0);
             break;
+        case O_BOOL:
         case O_I64:
             instruction(e, MOVL, MP, (2U * e->traces + (unsigned)in->result) * CELL, FP, d, 0, -1);
             break;
@@ -660,6 +681,7 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
             FirInstruction *in = defining < 0 ? NULL : &module->instructions[defining];
             bits(output,
                  in && !in->removed ? (in->op == O_I64       ? (uint64_t)in->big
+                                       : in->op == O_BOOL    ? (uint64_t)in->integer
                                        : in->op == O_BIG_NOT ? UINT64_MAX
                                                              : 0)
                                     : 0,

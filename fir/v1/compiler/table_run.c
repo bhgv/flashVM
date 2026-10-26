@@ -41,11 +41,13 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BIG_NOT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_BIG_EQ) || in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY ||
+            in->op == O_RETURN)
         {
             continue;
         }
-        if (in->op == O_TRACE && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_STRING))
+        if (in->op == O_TRACE && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_STRING ||
+                                  module->values[in->a].type == T_BOOL))
         {
             continue;
         }
@@ -105,6 +107,15 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_BIG_LT:
+            result->big = a->big < b->big;
+            break;
+        case O_BIG_EQ:
+            result->big = a->big == b->big;
+            break;
+        case O_BOOL:
+            result->big = in->integer;
+            break;
         case O_BIG_ADD:
             result->big = big_bits((uint64_t)a->big + (uint64_t)b->big);
             break;
@@ -219,7 +230,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         case O_TO_BIG:
-            if (module->values[in->a].type == T_I64)
+            if (module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
             {
                 result->big = a->big;
             }
@@ -287,7 +298,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             result->big = (int64_t)a->keys->count;
             break;
         case O_TRACE:
-            if (module->values[in->a].type == T_I64)
+            if (module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
             {
                 fprintf(staged, "%" PRId64 "\n", a->big);
             }
