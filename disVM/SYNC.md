@@ -1,3 +1,30 @@
+# Current synchronization — v0.1636
+
+Experiment: `d899383090f6013e8be41da7e3e2c09888856b0b`. 507 exact core/reference files and 174 bootstrap
+files. No new incoming commit followed 9de5fe9 at the initial synchronization.
+This series returns our confirmed decoded-slot fix for eight integer shifts to
+Inferno and imports the same committed sources without adapter divergence.
+
+SHLB/SHRB/SHLW/SHRW/LSRW/SHLL/SHRL/LSRL validate the native count-slot span
+before loading WORD. Invalid count values keep priority over value/result errors.
+For valid counts both remaining spans fit before the value read. C raises bounds
+for malformed slots; AMD64/ARM64 decline without stores. All operands precede the
+possibly overlapping result publication. Native pointer width stays separate
+from WORD32/WORD64. [Contract](upstream/libinterp/tests/README.shift-slot.md).
+
+New registered C/native-emulation checkpoints cover 2,944 error/atomicity cases
+and 51,200 image/read/write/count/FP cases. All 24 previous-version command and
+backend probes reproduce the original null count-slot read. Existing integer
+and shift/division fixtures retain their arithmetic/alias coverage and now
+supply the production bounds-error declarations for extraction.
+
+Availability remains AMD64/ARM64 164/173 active opcodes, with partial operand
+coverage. Arithmetic spans cannot prove arbitrary mapped allocation ownership.
+ARM64 instruction emulation is separate from physical ARM64/full Inferno boot.
+No language-extension export or native WORD ABI change is part of this series.
+
+---
+
 # Current synchronization — v0.1635
 
 Experiment: `9de5fe916f66efbafa91a7661a82b0b67f2272d3`. 503 exact core/reference

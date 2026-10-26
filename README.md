@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1635**. [Русская версия](README.ru.md).
+Development version: **0.1636**. [Русская версия](README.ru.md).
 
-Current series: [v0.1635](docs/releases/v0.1635.md): C/AMD64/ARM64 string-branch and owner preflight, returned optimized checkpoint and complete owner-JIT registration.
+Current series: [v0.1636](docs/releases/v0.1636.md): decoded-slot preflight for eight C/x64/ARM64 integer shifts, independent error and native-image checkpoints.
 
 ## Browse documentation
 
