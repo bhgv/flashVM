@@ -10,6 +10,10 @@ unsigned fir_effects(FirOp op)
     case O_BIG_ADD:
     case O_BIG_SUB:
     case O_BIG_MUL:
+    case O_BIG_AND:
+    case O_BIG_OR:
+    case O_BIG_XOR:
+    case O_BIG_NOT:
     case O_BIG_NEG:
     case O_I64:
     case O_I32:
@@ -30,6 +34,9 @@ unsigned fir_effects(FirOp op)
     case O_JUMP:
     case O_RETURN:
         return 0;
+    case O_BIG_DIV:
+    case O_BIG_MOD:
+        return FIR_MAY_THROW;
     case O_ASADD:
     case O_NUMBER:
     case O_CHANNEL:

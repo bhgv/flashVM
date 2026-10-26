@@ -117,7 +117,32 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op >= O_BIG_ADD && in->op <= O_BIG_NEG && a->op == O_I64 && (in->op == O_BIG_NEG || b->op == O_I64))
+            if (in->op >= O_BIG_DIV && in->op <= O_BIG_NOT && a->op == O_I64 &&
+                (in->op == O_BIG_NOT || b->op == O_I64) &&
+                (in->op == O_BIG_NOT || (in->op != O_BIG_DIV && in->op != O_BIG_MOD) || b->big != 0))
+            {
+                uint64_t x = (uint64_t)a->big;
+                uint64_t y = in->op == O_BIG_NOT ? 0 : (uint64_t)b->big;
+                if (in->op == O_BIG_DIV || in->op == O_BIG_MOD)
+                {
+                    in->big = a->big == INT64_MIN && b->big == -1
+                                  ? (in->op == O_BIG_DIV ? INT64_MIN : 0)
+                                  : (in->op == O_BIG_DIV ? a->big / b->big : a->big % b->big);
+                }
+                else
+                {
+                    uint64_t bits = in->op == O_BIG_AND   ? x & y
+                                    : in->op == O_BIG_OR  ? x | y
+                                    : in->op == O_BIG_XOR ? x ^ y
+                                                          : ~x;
+                    in->big = signed_big_bits(bits);
+                }
+                in->op = O_I64;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op >= O_BIG_ADD && in->op <= O_BIG_NEG && a->op == O_I64 &&
+                     (in->op == O_BIG_NEG || b->op == O_I64))
             {
                 uint64_t x = (uint64_t)a->big;
                 uint64_t y = in->op == O_BIG_NEG ? 0 : (uint64_t)b->big;
@@ -156,7 +181,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
             if ((in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
-                 (in->op >= O_BIG_ADD && in->op <= O_BIG_NEG)) &&
+                 (in->op >= O_BIG_ADD && in->op <= O_BIG_NOT)) &&
                 !fir_effects(in->op))
             {
                 for (j = 0; j < i; ++j)
