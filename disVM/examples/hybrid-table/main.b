@@ -76,6 +76,21 @@ init()
     if (kind != tables->Text || text != "ключ😀") {
         raise "fail: keys retain source storage";
     }
+    # A snapshot key can populate another owner after the source was retired.
+    # The embedded zero byte is carried by the copied key, without string conversion.
+    tab = tables->create();
+    tables->keycheck(keys, big 5);
+    if (tables->setkey(tab, keys, big 5, big 66) != tables->Ok) {
+        raise "fail: snapshot key write";
+    }
+    (status, value) = tables->getkey(tab, keys, big 5);
+    if (status != tables->Ok || value != big 66) {
+        raise "fail: snapshot key read";
+    }
+    (status, value) = tables->gettext(tab, "a\0b");
+    if (status != tables->Ok || value != big 66) {
+        raise "fail: snapshot key lost binary text identity";
+    }
     # Exercise repeated native owner replacement; RC/GC invokes the C storage finalizers.
     for (i := 0; i < 2000; i++) {
         tab = tables->create();

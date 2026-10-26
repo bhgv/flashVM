@@ -225,6 +225,45 @@ void Bigtable_keylen(void *frame)
     *call->ret = (LONG)keys_value(call->keys)->count;
 }
 
+/* Borrow a checked key until the native call returns. The caller frame roots its
+ * immutable snapshot; no VM pointer is stored in C table/key storage. */
+static FhtKey snapshot_key(Bigtable_Keys *owner, LONG index)
+{
+    FhtKeys *keys = keys_value(owner);
+    if (index < 0 || (uint64_t)index >= keys->count)
+    {
+        error("big table key index out of range");
+    }
+    return keys->items[index];
+}
+
+/* Validate eagerly even if a key value is unused. Borrowed frame/owner; no allocation. */
+void Bigtable_keycheck(void *frame)
+{
+    F_Bigtable_keycheck *call = frame;
+    (void)snapshot_key(call->keys, call->index);
+}
+
+/* Read using an immutable key capability. Both frame-owned native owners remain
+ * rooted for this call; status/value follow the existing checked get contract. */
+void Bigtable_getkey(void *frame)
+{
+    F_Bigtable_getkey *call = frame;
+    int64_t value = 0;
+    FhtKey key = snapshot_key(call->keys, call->index);
+    call->ret->t0 = fht_get(table_value(call->tab), key, &value);
+    call->ret->t1 = value;
+}
+
+/* Write a scalar through a copied key capability; fht_set copies any new text bytes.
+ * Borrowed owners never cross heaps, and allocation failure preserves logical contents. */
+void Bigtable_setkey(void *frame)
+{
+    F_Bigtable_setkey *call = frame;
+    FhtKey key = snapshot_key(call->keys, call->index);
+    *call->ret = fht_set(table_value(call->tab), key, call->value);
+}
+
 /* Copy one snapshot key into a tagged tuple, preserving string bytes and numeric identity.
  * Existing result String is replaced only after successful conversion; invalid indices raise. */
 void Bigtable_keyat(void *frame)

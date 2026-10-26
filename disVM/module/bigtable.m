@@ -43,6 +43,12 @@ Bigtable: module
     keyat: fn(keys: ref Keys, index: big): (int, big, string);
 
 
+    # Checked key capabilities retain the immutable snapshot, never a native address.
+    keycheck: fn(keys: ref Keys, index: big);
+    getkey: fn(tab: ref Handle, keys: ref Keys, index: big): (int, big);
+    setkey: fn(tab: ref Handle, keys: ref Keys, index: big, value: big): int;
+
+
     # Compiler helpers preserve eager errors while using existing Dis module-call instructions.
     requireok: fn(status: int); # Raise on a rejected get/set result; successful zero remains silent.
     indexcheck: fn(key: big); # Reject a negative numeric key before an unused location can escape.
