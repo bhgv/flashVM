@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1623**. [Русская версия](README.ru.md).
+Development version: **0.1624**. [Русская версия](README.ru.md).
 
-Current series: [v0.1623](docs/releases/v0.1623.md): Inferno scalar-cons JIT synchronization and typed Limbo table lowering into FIR.
+Current series: [v0.1624](docs/releases/v0.1624.md): our typed table compiler now emits native Dis with checked imports and GC maps.
 
 ## Browse documentation
 
