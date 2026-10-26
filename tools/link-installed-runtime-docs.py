@@ -24,7 +24,22 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for example in ("workspace", "editor-console", "native-console"):
+    # Include the portable inspector/value closure even in the headless runtime package.
+    for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md"):
+        if (package / name).is_file():
+            pairs[root / "ide/dis" / name] = package / name
+    for source in (root / "ide/dis/bridge").glob("*.m"):
+        pairs[source] = package / "include/limbo" / source.name
+    for name in ("idevalue", "ideprojection", "ideinspect"):
+        pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
+    pairs[root / "ide/as/projection-values.as"] = package / "as/projection-values.as"
+    if (package / "examples/broker").is_dir():
+        for source in (root / "disVM/broker").rglob("*"):
+            if source.is_file():
+                installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
+                if installed.is_file():
+                    pairs[source] = installed
+    for example in ("workspace", "editor-console", "native-console", "projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():

@@ -372,7 +372,13 @@ EOF
             done
             copy_tree "$ROOT/disVM/broker" "$destination/examples/broker"
             copy_tree "$ROOT/ide/dis/examples/projection" "$destination/examples/projection"
+            copy_file "$ROOT/ide/as/projection-values.as" "$destination/as/projection-values.as"
+            for file in idevalue ideprojection ideinspect; do
+                copy_file "$ROOT/ide/dis/bridge/$file.b" "$destination/source/$file.b"
+            done
             copy_file "$ROOT/ide/dis/PROJECTIONS.md" "$destination/PROJECTIONS.md"
+            copy_file "$ROOT/ide/dis/VALUES.md" "$destination/VALUES.md"
+            copy_file "$ROOT/ide/dis/VALUES.ru.md" "$destination/VALUES.ru.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
             for file in "$ROOT/ide/dis/bridge/"*.m; do
@@ -428,7 +434,7 @@ EOF
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/uibridge.m"
             copy_file "$ROOT/ide/EDITOR-CHANNELS.ru.md" "$destination/EDITOR-CHANNELS.ru.md"
             copy_file "$ROOT/ide/WORKSPACE.md" "$destination/WORKSPACE.md"
-            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace idefiles workspace-example navigation history replaceall; do
+            for file in uibridge ideinput idebridge idecomplete idebuiltins ideworkspace idefiles workspace-example navigation history replaceall idevalue ideprojection ideinspect; do
                 if [[ -f "$base/$file.dis" ]]; then
                     copy_file "$base/$file.dis" "$destination/modules/$file.dis"
                     if [[ -f "$base/$file.sbl" ]]; then

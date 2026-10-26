@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import shutil
 import shlex
+import re
 import subprocess
 import tempfile
 
@@ -190,6 +191,16 @@ def broker_packages(prefix, work, environment):
     component = prefix / "disvm-runtime"
     if not component.is_dir():
         component = prefix / "disvm-editor"
+    # Relocation must preserve the linked user documentation, not only executable products.
+    guides = [component / name for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md")]
+    guides += list((component / "examples/projection").glob("*.md"))
+    guides += list((component / "examples/broker").glob("*.md"))
+    for guide in guides:
+        for target in re.findall(r"\]\(([^)]+)\)", guide.read_text()):
+            if "://" in target or target.startswith("#"):
+                continue
+            if not (guide.parent / target.split("#", 1)[0]).exists():
+                raise RuntimeError("broken relocated guide link: " + str(guide) + " -> " + target)
     libraries = list((component / "lib").rglob("libdisvm_broker.a"))
     if len(libraries) != 1:
         raise RuntimeError("installed broker archive is missing or ambiguous")
@@ -221,7 +232,7 @@ def broker_packages(prefix, work, environment):
 
 
     # Recompile the shipped inspector example using only installed headers/modules.
-    for name in ("ideprojection.dis", "ideinspect.dis"):
+    for name in ("ideprojection.dis", "ideinspect.dis", "idevalue.dis"):
         shutil.copyfile(component / name, work / name)
     projection = work / "projection-check.dis"
     run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo",
