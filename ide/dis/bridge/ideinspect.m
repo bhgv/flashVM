@@ -18,6 +18,7 @@ Ideinspect: module
         revision: int; # Last accepted owner revision.
         number: int; # Last accepted typed integer projection.
         text: string; # Last accepted string projection.
+        value: ref Idevalue->Value; # Independent explicit value/reference for the current row.
     };
 
 
