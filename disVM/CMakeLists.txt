@@ -170,12 +170,17 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   # Retain production fixed-point selection and constant-folding regressions.
-  foreach(driver fixed-ops fold-casts fold-strings case-cell-layouts)
+  foreach(driver fixed-ops fold-casts fold-strings case-cell-layouts asm-roundtrip)
     add_test(NAME disvm_compiler_${driver} COMMAND "${Python3_EXECUTABLE}"
       "${u}/limbo/tests/${driver}.py")
     set_tests_properties(disvm_compiler_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+  # The two production Str implementations share checked integer parser expressions.
+  add_test(NAME disvm_string_radix_host COMMAND "${Python3_EXECUTABLE}"
+    "${u}/appl/lib/tests/string-radix-host.py")
+  set_tests_properties(disvm_string_radix_host PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   # Exercise bounded compiler source history and coordinate lookup in both word models.
   add_test(NAME disvm_source_history COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/source-history.py")
