@@ -76,6 +76,8 @@ if(BUILD_TESTING)
     integer-ops
     shift-slot-native
     branch-slot-native
+    integer-branch-native
+    numeric-slot-native
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -263,6 +265,8 @@ if(BUILD_TESTING)
       shift-slot-jit
       arithmetic-slot-jit
       branch-slot-jit
+      integer-branch-jit
+      numeric-slot-jit
       transfer-slot-jit
       integer-slot-jit
       list-slot-jit
