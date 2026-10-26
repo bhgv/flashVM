@@ -26,3 +26,38 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_broker_state_and_diagnostics PROPERTIES TIMEOUT 20)
 endif()
 
+# Optional real-FlashVM channel acceptance; the standalone core has no implicit engine dependency.
+set(DVM_BROKER_FLASHVM_ROOT "" CACHE PATH "Explicit FlashVM source root for real channel integration")
+if(DVM_BROKER_FLASHVM_ROOT)
+  enable_language(CXX)
+  if(NOT TARGET flashvm)
+    set(FVM_BUILD_TESTS OFF CACHE BOOL "Broker owns focused acceptance" FORCE)
+    set(FVM_BUILD_EXAMPLES OFF CACHE BOOL "Only the embedded VM is needed" FORCE)
+    add_subdirectory("${DVM_BROKER_FLASHVM_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/flashvm")
+  endif()
+  add_library(disvm_broker_flash STATIC flash_channel.c)
+  target_include_directories(disvm_broker_flash PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+  target_link_libraries(disvm_broker_flash PUBLIC disvm_broker flashvm)
+  if(BUILD_TESTING)
+    add_executable(disvm_broker_flash_test test_flash_channel.c)
+    target_link_libraries(disvm_broker_flash_test PRIVATE disvm_broker_flash)
+    add_test(NAME disvm_broker_real_flash_channel COMMAND disvm_broker_flash_test)
+    set_tests_properties(disvm_broker_real_flash_channel PROPERTIES TIMEOUT 20)
+  endif()
+endif()
+
+# Explicit external test tools; they are build/test inputs, never a deployed IDE dependency.
+set(DVM_BROKER_SOURCE_COMPILER "" CACHE FILEPATH "Our fir1_source")
+set(DVM_BROKER_NODE "" CACHE FILEPATH "Node for the AS codec algorithm oracle")
+set(DVM_BROKER_LIMBO "" CACHE FILEPATH "Matching NC64 bootstrap reference compiler")
+set(DVM_BROKER_RUNTIME "" CACHE FILEPATH "Matching native DisVM executable")
+set(DVM_BROKER_MODULES "" CACHE PATH "Matching native Dis module headers")
+if(BUILD_TESTING AND DVM_BROKER_SOURCE_COMPILER AND DVM_BROKER_NODE AND DVM_BROKER_LIMBO
+    AND DVM_BROKER_RUNTIME AND DVM_BROKER_MODULES)
+  find_package(PythonInterp 3 REQUIRED)
+  add_test(NAME disvm_broker_language_channels COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_clients.py" "$<TARGET_FILE:disvm_broker_frame>"
+    "${DVM_BROKER_SOURCE_COMPILER}" "${DVM_BROKER_NODE}" "${DVM_BROKER_LIMBO}"
+    "${DVM_BROKER_RUNTIME}" "${DVM_BROKER_MODULES}")
+  set_tests_properties(disvm_broker_language_channels PROPERTIES TIMEOUT 120)
+endif()
