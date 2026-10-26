@@ -1,5 +1,7 @@
 # 64-bit JIT opcode availability checkpoint
 
+Latest ownership preflight fixes and validation: [README.owner-preflight.md](README.owner-preflight.md).
+
 The production sizing emitters report 175 opcode slots. `INOP` is invalid and
 `IECLR` is unused, leaving 173 active commands. AMD64 and ARM64 now have native
 paths for 164 commands (94.8%); nine remain on the interpreter path. RV64 profiles
@@ -42,6 +44,11 @@ SLICEC and LENC also preflight decoded slots. Slice owner checks bound exactly
 the reference/len/max metadata, preserving payload-free prefixes; length queries
 retain their length-field-only behavior. C slicec/slicer validate metadata before
 access. See [README.slice-length-preflight.md](README.slice-length-preflight.md).
+
+All six String predicates now preflight both owner slots and both C-nil owners
+before metadata reads. Target slots are checked only on taken branches, retaining
+false-target nonaccess and comparison-error priority. See
+[README.string-branch-preflight.md](README.string-branch-preflight.md).
 
 The preceding addition is ICONSMP for pointer-free mapped payloads up to 256 bytes.
 Native code resolves a checked live Type, stages the old tail across allocation,

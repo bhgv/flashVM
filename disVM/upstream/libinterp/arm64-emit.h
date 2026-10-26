@@ -132,14 +132,13 @@ a64fixedround(A64Buf *b, int alu, int wordbytes)
 }
 
 
-/* Resolve signed lengths with x4 supplying the address window and x5 the Rune stride.
- * Nil has zero length, so its unspecified stride is never used for a payload read. */
+/* Resolve non-null owners with x4 as the address window and x5 as the Rune stride.
+ * H has zero length, so its unspecified stride is never used for a payload read. */
 static void
 a64stringheader(A64Buf *b, int owner, int length, int stride, int lenoff, int maxoff, int dataoff, int fallback)
 {
 	int empty, done;
 
-	a64defer(b, 0xb4000000U | owner, fallback);
 	a64put(b, 0xb100041fU | owner<<5);
 	empty=b->n; a64put(b, 0x54000000);
 	/* x4 is the conservative payload window; carry rejects its top-address range. */
@@ -331,7 +330,7 @@ static int
 a64owner(A64Buf *b, LeafLayout *abi, LeafOp *p)
 {
 	unsigned long long color;
-	int offset, empty, fallback, same, marked, i;
+	int offset, empty, fallback, same, marked, i, validated;
 
 	if(abi->module < 0 || abi->module > 2047 || abi->module%8 ||
 	   abi->heapref <= 0 || abi->heapref > 255 || abi->heapref%8 ||
@@ -344,6 +343,11 @@ a64owner(A64Buf *b, LeafLayout *abi, LeafOp *p)
 		return 0;
 	fallback=b->n+1;
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
+	/* SELF has no source slot; every operation must validate its destination first. */
+	a64ptr(b, 11, abi->d); a64pcspan(b, 11, 8, fallback);
+	if(p->alu != 1){
+		a64ptr(b, 9, abi->s); a64pcspan(b, 9, 8, fallback);
+	}
 	if(p->alu == 1)
 		a64ptr(b, 12, abi->module);
 	else{
@@ -352,25 +356,36 @@ a64owner(A64Buf *b, LeafLayout *abi, LeafOp *p)
 	if(p->alu >= 2){
 		a64pcguard(b, 0xb500006c, fallback);
 		a64put(b, 0xb100059f); a64pcguard(b, 0x54000061, fallback);
+		a64pcspan(b, 12, offset+8, fallback);
 		a64put(b, 0x91000000U | offset<<10 | 12<<5 | 9);
 		a64load(b, 12, 9, 8);
 	}
+	/* Validate the complete source lifetime before loading the old destination owner. */
+	a64pcguard(b, 0xb500006c, fallback);
+	a64put(b, 0xb100059f);
+	validated=-1;
+	if(p->alu == 1)
+		a64pcguard(b, 0x54000061, fallback);
+	else{
+		validated=b->n; a64put(b, 0x54000000);
+	}
+	a64put(b, 0xf100019fU | (u32int)(abi->heapref > abi->heapcolor ? abi->heapref : abi->heapcolor)<<10);
+	a64pcguard(b, 0x54000068, fallback);
+	a64put(b, 0xf8400000U | ((u32int)-abi->heapref&511)<<12 | 12<<5 | 13);
+	a64pcguard(b, 0xb500006d, fallback);
+	a64put(b, 0xb10005bf); a64pcguard(b, 0x54000061, fallback);
+	if(validated >= 0)
+		b->code[validated] |= (b->n-validated)<<5;
 	a64ptr(b, 11, abi->d); a64load(b, 10, 11, 8);
 	a64put(b, 0xb100055f);
 	same=b->n; a64put(b, 0x54000000);
 	a64put(b, 0xeb0c015f); a64pcguard(b, 0x54000060, fallback);
 	b->code[same] |= (b->n-same)<<5;
-	a64pcguard(b, 0xb500006c, fallback);
-	a64put(b, 0xb100059f);
 	empty=-1;
-	if(p->alu == 1)
-		a64pcguard(b, 0x54000061, fallback);
-	else{
+	if(p->alu != 1){
+		a64put(b, 0xb100059f);
 		empty=b->n; a64put(b, 0x54000000);
 	}
-	a64put(b, 0xf8400000U | ((u32int)-abi->heapref&511)<<12 | 12<<5 | 13);
-	a64pcguard(b, 0xb500006d, fallback);
-	a64put(b, 0xb10005bf); a64pcguard(b, 0x54000061, fallback);
 	/* An identical owner skips the net-zero retain/release after validating its lifetime. */
 	a64put(b, 0xb100055f);
 	same=b->n; a64put(b, 0x54000001);
@@ -2050,10 +2065,15 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		   abi->stringdata < abi->stringmax+4 || abi->stringdata > 2047) return 0;
 		fallback=b.n+1;
 		a64put(&b, 0x14000003); a64put(&b, 0x52800000); a64put(&b, 0xd65f03c0);
+		/* Slot checks use x4 before it is initialized as the payload window. */
+		a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, 8, fallback);
+		a64ptr(&b, 9, abi->m); a64pcspan(&b, 9, 8, fallback);
 		a64put(&b, 0xd2c00004U | (u32int)(LeafStringWindow>>32)<<5); // MOVZ x4,window>>32,lsl #32.
 		a64put(&b, 0xd2800085); // x5 supplies the Rune stride to both CSINC selections.
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
 		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, 8);
+		/* Match stringcmp's nil error before either len/max read. */
+		a64defer(&b, 0xb400000c, fallback); a64defer(&b, 0xb400000d, fallback);
 		a64stringheader(&b, 12, 14, 1, abi->stringlen, abi->stringmax, abi->stringdata, fallback);
 		a64stringheader(&b, 13, 15, 2, abi->stringlen, abi->stringmax, abi->stringdata, fallback);
 		a64put(&b, 0xeb0d019f);
@@ -2077,7 +2097,8 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		a64put(&b, 0xeb0f01df);
 		b.code[done] |= (b.n-done)<<5;
 		patch=b.n; a64put(&b, 0x54000000U | inverse[p.condition]);
-		a64ptr(&b, 11, abi->d); a64load(&b, 12, 11, 8);
+		/* Preserve false-target nonaccess while bounding a taken target load. */
+		a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, 8, fallback); a64load(&b, 12, 11, 8);
 		a64put(&b, 0xf9000000U | (abi->pc/8)<<10 | 12);
 		b.code[patch] |= (b.n-patch)<<5;
 	}else if(p.kind == LeafTypeCheck){
