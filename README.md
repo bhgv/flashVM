@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1624**. [Русская версия](README.ru.md).
+Development version: **0.1625**. [Русская версия](README.ru.md).
 
-Current series: [v0.1624](docs/releases/v0.1624.md): our typed table compiler now emits native Dis with checked imports and GC maps.
+Current series: [v0.1625](docs/releases/v0.1625.md): new Inferno payload-list JITs and compiler history fixes, with native ownership and folding regressions.
 
 ## Browse documentation
 

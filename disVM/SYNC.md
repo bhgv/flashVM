@@ -1,3 +1,29 @@
+# Current synchronization — v0.1625
+
+Selected experiment: `b2da16226dfc5bc0e0c754ae5d95fcde6cc1afb9` (three commits after b9a569e).
+The Dis snapshot contains 446 byte-identical files; the temporary bootstrap has 174.
+
+AMD64/ARM64 now include native ICONSM/ICONSP list payload construction. Raw
+copies stage destination ownership until allocation and copying succeed; pointer
+payloads retain and mark current owners after the allocator returns. Copies above
+256 bytes preserve the checked interpreter fallback. RV64 availability is unchanged.
+Strict heap-prefix guards reject the exact boundary that would access address zero.
+See [payload ownership and test contracts](upstream/libinterp/tests/README.payload-cons-native.md).
+
+Compiler synchronization includes bounded source-history growth and overflow-safe
+coordinate/case lookup, with production fixed-point selection and cast/string
+folding regressions. These are imported compiler references and bootstrap fixes;
+our Coco/R frontend and its native table Dis backend remain independent.
+
+Seven acceptance drivers are now registered: payload layout, AMD64 native payload,
+AMD64/ARM64 emulation, source history, fixed selection, cast folding and string folding.
+WORD32/WORD64 layout models and ARM64 instruction emulation do not establish a
+physical ARM64 port. No table-language extension is exported to Inferno.
+
+Earlier synchronization reports follow as history.
+
+---
+
 # Current synchronization / Текущая синхронизация — v0.1593
 
 Selected experiment: `74c193724a7352b8fda2724a5cf10029885be68c`.
