@@ -11,6 +11,9 @@ import tempfile
 def main():
     runtime, compiler, includes = (str(Path(value).resolve()) for value in sys.argv[1:])
     cases = (
+        ("forged-key-read", "t := b->create(); b->getkey(t, ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
+        ("bad-key-write", "t := b->create(); keys := b->keysof(t); b->setkey(t, keys, big 0, big 9);", "big table key index out of range"),
+        ("negative-key-check", "t := b->create(); keys := b->keysof(t); b->keycheck(keys, -big 1);", "big table key index out of range"),
         ("forged-table", "b->length(ref Bigtable->Handle(0));", "invalid native big table owner"),
         ("forged-keys", "b->keylen(ref Bigtable->Keys(0));", "invalid native big table keys owner"),
         ("negative-slice", "t := b->create(); b->slice(t, -big 1, big 0);", "invalid big table slice"),

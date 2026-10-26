@@ -47,6 +47,12 @@ def main():
             ('t := table of big; t.k = big -9223372036854775808; return t.k;', -9223372036854775808),
             ('t := table of big; key := "ключ😀"; t[key] = big 7; return t["ключ😀"];', 7),
             ('t := table of big; k := "different"; t.k = big 5; return t["k"];', 5),
+            ('t := table of big; t[7] = big 81; ks := keysof t; return t[ks[0]];', 81),
+            ('t := table of big; t["ключ😀"] = big 83; ks := keysof t; return t[ks[0]];', 83),
+            ('t := table of big; t[1] = big 8; t["1"] = big 3; ks := keysof t; return t[ks[1]];', 3),
+            ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; ks = keysof table of big; t[k] = big 19; return t.k;', 19),
+            ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; t = table of big; t[k] = big 29; return t.k;', 29),
+            ('t := table of big; t.k = big 7; ks := keysof t; u := table of big; u[ks[0]] = big 39; return u.k;', 39),
         )
         for body, expected in cases:
             source.write_text(program(body))
@@ -99,6 +105,12 @@ def main():
             'return big 9223372036854775808;',
             'return big 1.5;',
             't := table of string; return big 0;',
+            't := table of big; ks := keysof t; return ks["0"];',
+            't := table of big; ks := keysof t; return len ks[0];',
+            't := table of big; ks := keysof t; ks[0] = big 4; return big 0;',
+            'v: any; return big 0;',
+            't: table of any; return big 0;',
+
         )
         for body in rejected:
             source.write_text(program(body))
@@ -108,6 +120,10 @@ def main():
                 raise RuntimeError("failed typed translation published output")
 
         for body, diagnostic in (
+            ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[4294967296]; return big 0;', "invalid key/range"),
+            ('t := table of big; ks := keysof t; ignored := ks[0]; return big 0;', "invalid key/range"),
+            ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[-1]; return big 0;', "invalid key/range"),
+            ('t := table of big; t.k = big 1; ks := keysof t; u := table of big; return u[ks[0]];', "missing key"),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),

@@ -97,10 +97,21 @@ def main():
             ('t := table of big; key := "ключ😀"; t[key] = big 7; key = "other"; return t["ключ😀"];', 7),
             ('t := table of big; t[9223372036854775807] = big 6; return t[9223372036854775807];', 6),
             ('t := table of big; t.k = big 1; old := t.k; t.k = big 2; return t.k;', 2),
+            ('t := table of big; t[7] = big 81; ks := keysof t; return t[ks[0]];', 81),
+            ('t := table of big; t["ключ😀"] = big 83; ks := keysof t; return t[ks[0]];', 83),
+            ('t := table of big; t[1] = big 8; t["1"] = big 3; ks := keysof t; return t[ks[1]];', 3),
+            ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; ks = keysof table of big; t[k] = big 19; return t.k;', 19),
+            ('t := table of big; t.k = big 7; ks := keysof t; k := ks[0]; t = table of big; t[k] = big 29; return t.k;', 29),
+            ('t := table of big; t.k = big 7; ks := keysof t; u := table of big; u[ks[0]] = big 39; return u.k;', 39),
         )
         # Exercise frame/data maps beyond their small inline prefixes and non-ASCII string roots.
         large = 't := table of big; ' + ''.join('t["ключ' + str(i) + '"] = big ' + str(i) + '; ' for i in range(110))
         cases += ((large + 'return t["ключ109"];', 109),)
+        # Many retained key capabilities must survive a map larger than the inline prefix.
+        retained = 't := table of big; t.k = big 43; ks := keysof t; '
+        retained += ''.join('k' + str(i) + ' := ks[0]; ' for i in range(120))
+        retained += 'ks = keysof table of big; return t[k119];'
+        cases += ((retained, 43),)
         for body, expected in cases:
             source.write_text('implement T; T: module { value: fn(): big; }; value(): big {' + body + '}\n')
             invoke([source_compiler, "limbo", "--input", source, fir])
@@ -139,6 +150,11 @@ func @main() -> void {
  %s: table.big = table.slice %alias, %rc
  %keys: keys = table.keys %s
  %keysc: keys = copy %keys
+ %key: table.key = keys.at %keysc, %zero
+ %keycopy: table.key = copy %key
+ %captured: table.slot = table.index %alias, %keycopy
+ %capturedcopy: table.slot = copy %captured
+ table.store %capturedcopy, %v
  %count: i64 = keys.len %keysc
  %r: i64 = table.load %q
  trace %r
@@ -175,6 +191,10 @@ func @main() -> void {
 
         # Errors remain observable before/after optimization and point back to a real caller PC.
         for body, message in (
+            ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[4294967296]; return big 0;', "big table key index out of range"),
+            ('t := table of big; ks := keysof t; ignored := ks[0]; return big 0;', "big table key index out of range"),
+            ('t := table of big; t.k = big 1; ks := keysof t; ignored := ks[-1]; return big 0;', "big table key index out of range"),
+            ('t := table of big; t.k = big 1; ks := keysof t; u := table of big; return u[ks[0]];', "missing key"),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),
