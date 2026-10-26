@@ -23,7 +23,9 @@ static int bindings[256], immutable[256], name_count, source_line;
 static int binding_scope[256], active[256], scope_depth;
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
-static int branch_serial;           /* Total terminal decisions; two new blocks per decision. */
+static int branch_serial;                        /* Total terminal decisions; two new blocks per decision. */
+static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isolated per decision. */
+static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
@@ -299,25 +301,38 @@ int source_read(int name)
     return bindings[name];
 }
 
-/* Bind declarations in their lexical owner; initialization reads the outer binding.
- * Nondeclaration writes keep targeting the nearest active outer binding. */
-void source_bind(int name, int value, int declaration)
+
+/* Allocate a local shadow after its initializer has resolved the outer binding.
+ * name is a translation-local identity. Return the local identity, or the original
+ * on a sticky resource error. Names and static types remain compiler-owned. */
+static int local_declaration(int name)
 {
-    if (declaration && profile == FIR_LIMBO && binding_scope[name] < scope_depth)
+    if (profile == FIR_LIMBO && binding_scope[name] < scope_depth)
     {
         if (name_count == 256)
         {
             reject("variable limit exceeded");
-            return;
+            return name;
         }
-        /* Table rows are disjoint, but memmove also makes the bounded copy
-         * explicit to fortified compilers before name_count is advanced. */
         memmove(names[name_count], names[name], sizeof(names[name_count]));
         name = name_count++;
         bindings[name] = -1;
         immutable[name] = 0;
+        table_bindings[name] = T_VOID;
         binding_scope[name] = scope_depth;
         active[name] = 1;
+    }
+    return name;
+}
+
+
+/* Bind declarations in their lexical owner; initialization reads the outer binding.
+ * Nondeclaration writes keep targeting the nearest active outer binding. */
+void source_bind(int name, int value, int declaration)
+{
+    if (declaration)
+    {
+        name = local_declaration(name);
     }
     if (declaration && bindings[name] >= 0)
     {
@@ -539,6 +554,8 @@ int source_branch(SourceCondition condition)
     }
     if (!failed)
     {
+        branch_names[choice] = name_count;
+        memcpy(branch_bindings[choice], bindings, (size_t)name_count * sizeof(bindings[0]));
         fprintf(destination,
                 "    if %%v%d, ^choose%d_%s, ^choose%d_%s\n^choose%d_yes:\n",
                 condition.value,
@@ -553,12 +570,16 @@ int source_branch(SourceCondition condition)
     return choice;
 }
 
-/* Begin the source-false arm after a terminated true arm; choice is parser-local and borrowed.
- * It introduces no source binding scope or phi: the authoritative grammar admits terminal results only. */
+
+/* Begin the source-false arm with the decision's original SSA environment.
+ * choice is parser-local. The true arm has terminated and retired its lexical
+ * locals. Restore outer scalar/owner bindings, not mutable table contents: effects
+ * execute only in the selected runtime arm. No phi or continuation is introduced. */
 void source_else(int choice)
 {
     if (!failed)
     {
+        memcpy(bindings, branch_bindings[choice], (size_t)branch_names[choice] * sizeof(bindings[0]));
         fprintf(destination, "^choose%d_no:\n", choice);
     }
     terminal = 0;
@@ -953,6 +974,10 @@ void source_table_store(int slot, int value)
 void source_table_bind(int name, int value, int type, int declaration)
 {
     FirType actual = value >= 0 ? table_values[value] : (FirType)type;
+    if (declaration)
+    {
+        name = local_declaration(name);
+    }
     if (declaration && table_bindings[name])
     {
         reject("duplicate table-profile declaration");

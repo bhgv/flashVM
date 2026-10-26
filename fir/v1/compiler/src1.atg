@@ -378,8 +378,16 @@ PRODUCTIONS
                                                                             source_restore(branch);
                                                                             choice = source_branch(condition);
                                                                         .)
-    "{" LimboResult "}" "else"                                          (. source_else(choice); .)
-    "{" LimboResult "}"                                                 (. --depth; .)
+    LimboArm "else"                                                    (. source_else(choice); .)
+    LimboArm                                                            (. --depth; .)
+  .
+
+  /* Homogeneous int arms share the lexical declaration rules of ordinary blocks.
+   * Every arm still returns; sibling parsing starts from the incoming bindings. */
+  LimboArm =
+    "{" (. capture(); source_enter_scope(); .)
+    { LimboStatement } LimboResult
+    "}" (. capture(); source_leave_scope(); .)
   .
 
   /* Compare complete numeric expressions once; bool is internal, never coerced from an int.
@@ -562,8 +570,9 @@ PRODUCTIONS
     TableResult
   .
 
-  /* Every big arm terminates. No local declaration, assignment or environment join is invented.
-   * Resolver branches share the 64-level group/unary/decision budget and consume excess if tokens. */
+  /* Every arm has its own lexical prelude and terminates. The false arm restores
+   * incoming SSA bindings; no join or continuation is invented. Resolver branches
+   * share the 64-level group/unary/decision budget and consume excess if tokens. */
   TableResult =
     (. int value = 0, choice = 0;
        SourceCondition condition;
@@ -574,8 +583,17 @@ PRODUCTIONS
     | IF(Sym==ifSym && depth<64) "if" (. capture(); branch = source_mark(); .)
       "(" TableCondition<&condition> ")"
       (. ++depth; source_restore(branch); choice = source_branch(condition); .)
-      "{" TableResult "}" "else" (. source_else(choice); .)
-      "{" TableResult "}" (. --depth; .)
+      TableArm "else" (. source_else(choice); .)
+      TableArm (. --depth; .)
+  .
+
+  /* Declare arm-local names after parsing initializers against the outer scope.
+   * Retire locals before the sibling is parsed; runtime table owners remain rooted
+   * by the backend's checked CFG maps until their selected arm has terminated. */
+  TableArm =
+    "{" (. capture(); source_enter_scope(); .)
+    TableBody
+    "}" (. capture(); source_leave_scope(); .)
   .
 
   /* Both big expressions evaluate once in source order. Retain the exact relation-token span. */

@@ -76,6 +76,17 @@ def main():
                 start = event["byte_offset"]
                 if text.encode("utf-8")[start:start + event["byte_length"]] != b"if":
                     raise RuntimeError("branch origin must identify its authored if keyword")
+        # Terminal lexical preludes also lower to the existing scalar SWF object backend.
+        for body in (
+                "x := 41; if(0<1){x = 99; return x;}else{return x+1;}",
+                "x := 40; if(0>1){x := x+1; return x;}else{x := x+2; return x;}",
+                "x := 40; if(0<1){x += 1; if(0>1){x = 99; return x;}else{return x+1;}}else{return x+2;}"):
+            source.write_text(program(body))
+            call([source_compiler, "limbo", "--input", source, fir, "-g", debug])
+            call([compiler, "check", fir])
+            call([compiler, "object", fir, directory / "arms.swo"])
+            call([compiler, "opt", fir, directory / "arms-opt.fir"])
+            call([compiler, "object", directory / "arms-opt.fir", directory / "arms-opt.swo"])
         nested = "return 1;"
         for _ in range(65):
             nested = "if(0<1){" + nested + "}else{return 0;}"
@@ -90,7 +101,6 @@ def main():
         call([compiler, "check", fir])
         call([compiler, "dis", fir, directory / "max-blocks.dis"])
         rejected = ["if(1<2){return 1;}", "if(1<2){", "if(", "if(1){return 1;}else{return 2;}",
-                    "if(1<2){x := 2; return x;}else{return 0;}",
                     "if(1<2){return 1;}else{return 2;} return 3;", nested, wide]
         for body in rejected:
             source.write_text(program(body))

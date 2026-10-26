@@ -107,7 +107,6 @@ def main():
                    'if(1 == "x"){return 1;}else{return 0;}',
                    'if(table of big == 1){return 1;}else{return 0;}',
                    'if(1){return 1;}else{return 0;}',
-                   'if(1<2){x := 3;return x;}else{return 0;}',
                    'if(1<2){return 1;}', nested, 'if(0 < 1){' + wide + '}else{' + wide + '}']
         for body in invalid:
             source.write_text(module(body))

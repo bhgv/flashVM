@@ -38,8 +38,8 @@ Cyclic table graphs still fail preflight without writing image bytes.
 
 ## Scope and limits
 
-Every arm terminates. Declarations/assignments inside arms, continuation after
-the terminal tree, joins/phi, mutable source loops,  transparent any/proxy
+Every arm terminates. Compiler 0.22 admits [lexical arm preludes](TERMINAL_ARMS.md).
+Continuation after the terminal tree, joins/phi, mutable source loops,  transparent any/proxy
 operations, general functions and full Dis SBL remain separate work. Existing
 limits remain: shared nesting budget 64, 1000 source values, 127 decisions/255
 blocks and 64 KiB source. Rejected syntax/types/limits preserve the previous FIR
@@ -67,7 +67,7 @@ one flag remain). The shipped C99 in-process compiler example accepts the same
 source; relocated SDK acceptance checks it in both dispatch modes.
 
 Tests cover all six relations with both outcomes, signed extrema, equality,
-values above 2^53, nested decisions, wrong operand kinds, missing arms, forbidden
+values above 2^53, nested decisions, wrong operand kinds, missing arms, invalid
 bindings, depth overflow, copied source spans and original/optimized execution.
 Independent Python integer comparisons and the table C reference runner verify
 results. Physical ARM64 execution is not established by instruction emulation.

@@ -21,8 +21,9 @@ including after optimization and across variable-width file operands.
 The Coco/R numeric Limbo adapter additionally accepts terminal decision trees:
 after its ordinary prelude, either `return expression;` or a braced
 `if (expression relation expression) { result } else { result }`, recursively.
-Relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Every arm returns; declarations,
-assignments and continuation after a decision are not admitted inside arms.
+Relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Every arm returns. Compiler 0.22 admits lexical
+declarations/assignments inside arms; continuation after a decision remains unsupported.
+See [terminal-arm semantics](TERMINAL_ARMS.md).
 Consequently no phi/join environment is silently invented. Source limits remain
 64 KiB, 1000 values, shared nesting depth 64; at most 127 decisions introduce
 255 blocks. `-g DEBUG.json` records comparison-operator and `if` keyword spans.

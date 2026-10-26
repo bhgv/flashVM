@@ -72,3 +72,10 @@ remaining records. The unselected arm deliberately loads a missing value.
 [Complete syntax, effects, ABI and run commands](../../doc/TABLE_MUTATION.md).
 The relocated SDK tests original/optimized FIR through fresh C99 API clients and
 both interpreter/JIT modes, checking values and branch execution flags.
+
+## Terminal lexical arms
+
+[arms.b](arms.b) returns 42 through either branch. It demonstrates initializer
+lookup before shadowing, deferred typed initialization, local table aliases and
+outer owner reassignment. Both branches terminate; no SSA join is implied.
+[Step-by-step semantics and run commands](../../doc/TERMINAL_ARMS.md).

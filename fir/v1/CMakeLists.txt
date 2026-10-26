@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.21.0 LANGUAGES C)
+project(fir1 VERSION 0.22.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -237,6 +237,19 @@ if(BUILD_TESTING)
   else()
     add_test(NAME fir1_table_mutation COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/table_mutation.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> -)
+  endif()
+endif()
+
+# Terminal-arm lexical scopes must isolate incoming SSA environments and live owners.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    add_test(NAME fir1_table_arms COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/table_arms.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  else()
+    add_test(NAME fir1_table_arms COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/table_arms.py" $<TARGET_FILE:fir1_source>
       $<TARGET_FILE:fir1> -)
   endif()
 endif()
