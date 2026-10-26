@@ -272,6 +272,12 @@ PRODUCTIONS
     | "big.add" (. fir_build_op(O_BIG_ADD); .) A "," B
     | "big.sub" (. fir_build_op(O_BIG_SUB); .) A "," B
     | "big.mul" (. fir_build_op(O_BIG_MUL); .) A "," B
+    | "big.div" (. fir_build_op(O_BIG_DIV); .) A "," B
+    | "big.mod" (. fir_build_op(O_BIG_MOD); .) A "," B
+    | "big.and" (. fir_build_op(O_BIG_AND); .) A "," B
+    | "big.or" (. fir_build_op(O_BIG_OR); .) A "," B
+    | "big.xor" (. fir_build_op(O_BIG_XOR); .) A "," B
+    | "big.not" (. fir_build_op(O_BIG_NOT); .) A
     | "big.neg" (. fir_build_op(O_BIG_NEG); .) A
     | "value.big" (. fir_build_op(O_TO_BIG); .) A
     | "value.text" (. fir_build_op(O_TO_TEXT); .) A

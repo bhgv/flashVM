@@ -111,7 +111,13 @@ typedef enum
     O_BIG_ADD,     /* Exact modulo-2^64 addition. */
     O_BIG_SUB,     /* Exact modulo-2^64 subtraction. */
     O_BIG_MUL,     /* Exact modulo-2^64 multiplication. */
-    O_BIG_NEG      /* Exact modulo-2^64 unary negation. */
+    O_BIG_NEG,     /* Exact modulo-2^64 unary negation. */
+    O_BIG_DIV,     /* Signed truncating division; zero raises, MIN/-1 wraps. */
+    O_BIG_MOD,     /* Signed remainder; zero raises, MIN%-1 is zero. */
+    O_BIG_AND,     /* Exact full-width bit intersection. */
+    O_BIG_OR,      /* Exact full-width bit union. */
+    O_BIG_XOR,     /* Exact full-width exclusive-or. */
+    O_BIG_NOT      /* Exact full-width complement. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

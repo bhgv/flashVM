@@ -593,8 +593,44 @@ PRODUCTIONS
     | "[" TableExpression<key> "]"
   .
 
-  /* Big sums associate left; products bind more tightly than addition/subtraction. */
+  /* Bitwise OR is weakest; each level associates left and keeps source order. */
   TableExpression<int *result> =
+    (. int right = 0;
+       SourceMark operation;
+    .)
+    TableBitXor<result>
+    {
+        "|" (. capture(); operation = source_mark(); .) TableBitXor<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '|'); .)
+    }
+  .
+
+  /* XOR binds more tightly than OR and less tightly than AND. */
+  TableBitXor<int *result> =
+    (. int right = 0;
+       SourceMark operation;
+    .)
+    TableBitAnd<result>
+    {
+        "^" (. capture(); operation = source_mark(); .) TableBitAnd<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '^'); .)
+    }
+  .
+
+  /* AND binds more tightly than the other bitwise operators, below arithmetic sums. */
+  TableBitAnd<int *result> =
+    (. int right = 0;
+       SourceMark operation;
+    .)
+    TableSum<result>
+    {
+        "&" (. capture(); operation = source_mark(); .) TableSum<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '&'); .)
+    }
+  .
+
+  /* Big sums associate left; products bind more tightly than addition/subtraction. */
+  TableSum<int *result> =
     (. int right = 0;
        int op = 0;
        SourceMark operation;
@@ -609,16 +645,20 @@ PRODUCTIONS
     }
   .
 
-  /* Multiplication is left associative; no implicit string/real coercion is admitted. */
+  /* Multiplication, division and remainder associate left at the same precedence. */
   TableProduct<int *result> =
     (. int right = 0;
+       int op = 0;
        SourceMark operation;
     .)
     TableUnary<result>
     {
-        "*" (. capture(); operation = source_mark(); .)
+        ( "*" (. capture(); operation = source_mark(); op = '*'; .)
+          | "/" (. capture(); operation = source_mark(); op = '/'; .)
+          | "%" (. capture(); operation = source_mark(); op = '%'; .)
+        )
         TableUnary<&right>
-        (. source_restore(operation); *result = source_table_binary(*result, right, '*'); .)
+        (. source_restore(operation); *result = source_table_binary(*result, right, op); .)
     }
   .
 
@@ -650,9 +690,11 @@ PRODUCTIONS
              *result = source_table_constant(1);
           .)
         | "-" (. capture(); operation = source_mark(); .) TableUnary<result>
-          (. source_restore(operation); *result = source_table_unary(*result, 1); .)
+          (. source_restore(operation); *result = source_table_unary(*result, '-'); .)
         | "+" (. capture(); operation = source_mark(); .) TableUnary<result>
-          (. source_restore(operation); *result = source_table_unary(*result, 0); .)
+          (. source_restore(operation); *result = source_table_unary(*result, '+'); .)
+        | "~" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_unary(*result, '~'); .)
         | "len" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_len(*result); .)
         | "big" (. capture(); operation = source_mark(); .) TableUnary<result>

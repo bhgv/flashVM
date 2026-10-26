@@ -41,7 +41,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BIG_NEG) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_BIG_NOT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
         {
             continue;
         }
@@ -113,6 +113,33 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             break;
         case O_BIG_MUL:
             result->big = big_bits((uint64_t)a->big * (uint64_t)b->big);
+            break;
+        case O_BIG_DIV:
+        case O_BIG_MOD:
+            if (b->big == 0)
+            {
+                status = FHT_INVALID;
+            }
+            else if (a->big == INT64_MIN && b->big == -1)
+            {
+                result->big = in->op == O_BIG_DIV ? INT64_MIN : 0;
+            }
+            else
+            {
+                result->big = in->op == O_BIG_DIV ? a->big / b->big : a->big % b->big;
+            }
+            break;
+        case O_BIG_AND:
+            result->big = big_bits((uint64_t)a->big & (uint64_t)b->big);
+            break;
+        case O_BIG_OR:
+            result->big = big_bits((uint64_t)a->big | (uint64_t)b->big);
+            break;
+        case O_BIG_XOR:
+            result->big = big_bits((uint64_t)a->big ^ (uint64_t)b->big);
+            break;
+        case O_BIG_NOT:
+            result->big = big_bits(~(uint64_t)a->big);
             break;
         case O_BIG_NEG:
             result->big = big_bits(0U - (uint64_t)a->big);
@@ -282,10 +309,11 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                      capacity,
                      "line %d: table operation failed: %s",
                      in->line,
-                     in->op == O_TO_BIG      ? "invalid big conversion"
-                     : status == FHT_MISSING ? "missing key"
-                     : status == FHT_NOMEM   ? "allocation failure"
-                                             : "invalid key/range");
+                     (in->op == O_BIG_DIV || in->op == O_BIG_MOD) ? "zero divide"
+                     : in->op == O_TO_BIG                         ? "invalid big conversion"
+                     : status == FHT_MISSING                      ? "missing key"
+                     : status == FHT_NOMEM                        ? "allocation failure"
+                                                                  : "invalid key/range");
             goto done;
         }
     }

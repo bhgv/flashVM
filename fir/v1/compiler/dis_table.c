@@ -18,12 +18,18 @@ enum
     ADDL = 119,            /* Native exact modulo-2^64 addition. */
     SUBL = 120,            /* Native exact modulo-2^64 subtraction. */
     MULL = 123,            /* Native exact modulo-2^64 multiplication. */
+    DIVL = 121,            /* Signed big division, with runtime zero/overflow handling. */
+    MODL = 122,            /* Signed big remainder, with runtime zero handling. */
+    ANDL = 124,            /* Full-width bit intersection. */
+    ORL = 125,             /* Full-width bit union. */
+    XORL = 126,            /* Full-width exclusive-or and complement. */
     MOVL = 118,            /* Move an exact signed big payload. */
     MP = 0,                /* Module-relative addressing. */
     FP = 1,                /* Frame-relative addressing. */
     IMM = 2,               /* Immediate scalar operand. */
     NONE = 3,              /* Absent source/destination operand. */
     INDIRECT_FP = 5,       /* Indirect frame addressing for callee argument slots. */
+    MIDDLE_MODULE = 192,   /* Middle operand reads a plain module-data scalar. */
     MIDDLE_FRAME = 128,    /* Three-address arithmetic middle operand is frame relative. */
     MIDDLE_IMMEDIATE = 64, /* Module import indices are immediate middle operands. */
     HAS_IMPORTS = 64,      /* Existing HASLDT flag, no container extension. */
@@ -166,12 +172,13 @@ static void instruction(Emitter *e,
     e->count++;
 }
 
-/* Emit an existing three-address big operation. All arguments are scalar frame
- * offsets and remain live until execution; this has no native-call/GC ownership. */
-static void arithmetic(Emitter *e, unsigned op, unsigned left, unsigned right, unsigned destination)
+/* Emit an existing three-address big operation. left is a scalar offset selected by middle_mode,
+ * right/destination are frame offsets that remain live until execution; this has no native-call/GC ownership. */
+static void
+arithmetic(Emitter *e, unsigned op, unsigned middle_mode, unsigned left, unsigned right, unsigned destination)
 {
     octet(e->body, op);
-    octet(e->body, MIDDLE_FRAME | (FP << 3) | FP);
+    octet(e->body, middle_mode | (FP << 3) | FP);
     operand(e->body, left);
     operand(e->body, right);
     operand(e->body, destination);
@@ -295,7 +302,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
             e->traces++;
         }
-        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_NEG))
+        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_NOT))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -393,7 +400,26 @@ static void body(Emitter *e, FirModule *module)
         case O_BIG_ADD:
         case O_BIG_SUB:
         case O_BIG_MUL:
-            arithmetic(e, in->op == O_BIG_ADD ? ADDL : in->op == O_BIG_SUB ? SUBL : MULL, a, b, d);
+            arithmetic(e, in->op == O_BIG_ADD ? ADDL : in->op == O_BIG_SUB ? SUBL : MULL, MIDDLE_FRAME, a, b, d);
+            break;
+        case O_BIG_DIV:
+        case O_BIG_MOD:
+        case O_BIG_AND:
+        case O_BIG_OR:
+        case O_BIG_XOR:
+            arithmetic(e,
+                       in->op == O_BIG_DIV   ? DIVL
+                       : in->op == O_BIG_MOD ? MODL
+                       : in->op == O_BIG_AND ? ANDL
+                       : in->op == O_BIG_OR  ? ORL
+                                             : XORL,
+                       MIDDLE_FRAME,
+                       a,
+                       b,
+                       d);
+            break;
+        case O_BIG_NOT:
+            arithmetic(e, XORL, MIDDLE_MODULE, (2U * e->traces + (unsigned)in->result) * CELL, a, d);
             break;
         case O_BIG_NEG:
             instruction(e, SUBL, FP, a, FP, d, 0, 0);
@@ -632,7 +658,12 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
         {
             int defining = module->values[i].definition;
             FirInstruction *in = defining < 0 ? NULL : &module->instructions[defining];
-            bits(output, in && in->op == O_I64 && !in->removed ? (uint64_t)in->big : 0, CELL);
+            bits(output,
+                 in && !in->removed ? (in->op == O_I64       ? (uint64_t)in->big
+                                       : in->op == O_BIG_NOT ? UINT64_MAX
+                                                             : 0)
+                                    : 0,
+                 CELL);
         }
     }
     string_data(output, e->plain_cells * CELL, "$Bigtable");

@@ -175,12 +175,12 @@ int source_table_load(int location);
 int source_table_len(int value);
 
 
-/* Emit typed big arithmetic on borrowed translation-local SSA values; op is +, - or *. */
+/* Emit typed big arithmetic on borrowed translation-local SSA values; op selects +, -, *, /, %, &, | or ^. */
 int source_table_binary(int left, int right, int op);
 
 
-/* Emit checked big unary +/-; negative selects negation, and false preserves a typed copy. */
-int source_table_unary(int value, int negative);
+/* Emit a big unary SSA result; op is +, - or ~, and type/operator errors are sticky. */
+int source_table_unary(int value, int op);
 
 
 /* Convert a supported borrowed SSA value explicitly to big or string; text selects string. */

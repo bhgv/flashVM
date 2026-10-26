@@ -90,7 +90,13 @@ static const char *const ops[] = {"const.i32",
                                   "big.add",
                                   "big.sub",
                                   "big.mul",
-                                  "big.neg"};
+                                  "big.neg",
+                                  "big.div",
+                                  "big.mod",
+                                  "big.and",
+                                  "big.or",
+                                  "big.xor",
+                                  "big.not"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -145,7 +151,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_BIG_NEG || (unsigned)in->type > T_TABLE_KEY || in->block < 0 ||
+        if ((unsigned)in->op > O_BIG_NOT || (unsigned)in->type > T_TABLE_KEY || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -163,10 +169,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         unary = in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE || in->op == O_TRACE ||
                 in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN ||
                 in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN || in->op == O_VALUE_TYPE || in->op == O_TO_BIG ||
-                in->op == O_TO_TEXT || in->op == O_BIG_NEG;
+                in->op == O_TO_TEXT || in->op == O_BIG_NEG || in->op == O_BIG_NOT;
         binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
-                 (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) || in->op == O_KEYS_AT || in->op == O_TABLE_STORE ||
-                 in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
+                 (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) || (in->op >= O_BIG_DIV && in->op <= O_BIG_XOR) ||
+                 in->op == O_KEYS_AT || in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
         if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
@@ -338,7 +344,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         case O_BIG_SUB:
         case O_BIG_MUL:
         case O_BIG_NEG:
-            if (a != T_I64 || (in->op != O_BIG_NEG && c != T_I64))
+        case O_BIG_DIV:
+        case O_BIG_MOD:
+        case O_BIG_AND:
+        case O_BIG_OR:
+        case O_BIG_XOR:
+        case O_BIG_NOT:
+            if (a != T_I64 || (in->op != O_BIG_NEG && in->op != O_BIG_NOT && c != T_I64))
             {
                 goto bad_type;
             }
