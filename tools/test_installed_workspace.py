@@ -123,6 +123,18 @@ def table_packages(prefix, work, environment):
         result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 6, image], work, environment)
         if "DATA 0 42\nDATA 8 0\nDATA 16 0\nDATA 24 1\nDATA 32 0\nDATA 40 0\n" not in result:
             raise RuntimeError("relocated table DAG compiler client result differs")
+    # The shift tutorial uses the same freshly linked C99 clients and actual relocated VM.
+    shift_fir = work / "table-shifts.fir"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
+         prefix / "fir/examples/tables/shifts.b", shift_fir], work, environment)
+    if run([binary, shift_fir], work, environment).strip() != "42":
+        raise RuntimeError("relocated shift reference client result differs")
+    run([compiler_host, shift_fir, image], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
+        if "DATA 0 42\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in result:
+            raise RuntimeError("relocated native shift compiler client result differs")
+
 
 
 
