@@ -149,3 +149,5 @@ Dis. [Проверки серии](../docs/releases/v0.1561.md).
 В выборке 76 проходящих проверок; runtime/editor и UBSan повторно проверяются
 на этом pin. Тест memory-parser теперь переименовывает сохранённый entry
 независимо от пробелов/переносов C. [Проверки](../docs/releases/v0.1565.md).
+
+[Hosted hybrid big tables / Гибридные таблицы big](examples/hybrid-table/README.md): scalar C core and real Dis interpreter/JIT adapter; language lowering remains pending.
