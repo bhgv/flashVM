@@ -26,3 +26,5 @@ Source-примеры содержат также ожидаемый читае�
 [Сквозной Limbo→FIR→Dis и C99 API](dis/README.ru.md).
 
 [Исходник гибридной таблицы](tables/main.b) · [Контракт](../doc/TABLES.ru.md) · [English](../doc/TABLES.md). Пример проходит наш путь Coco/R → FIR и эталонный C-исполнитель; [исполнение через Dis](../doc/TABLES_DIS.ru.md) тоже поддерживается; SWF ещё предстоит.
+
+[Сквозная реализация расширений Limbo: таблицы, проекции и any](../doc/EXTENSIONS.ru.md).

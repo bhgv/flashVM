@@ -254,7 +254,7 @@ EOF
             copy_tree "$source/include" "$destination/include"
             copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
             copy_file "$source/compiler/dis_table.c" "$destination/source/dis_table.c"
-            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md; do
+            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md; do
                 copy_file "$source/doc/$file" "$destination/docs/$file"
             done
             for file in API.md API.ru.md; do

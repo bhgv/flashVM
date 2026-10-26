@@ -2,14 +2,19 @@
 
 [Русский](TABLES.ru.md) · [Commented source](../examples/tables/main.b)
 
-`fir1_source` 0.12 adds an explicit `value(): big` source profile using our Coco/R
+`keys[i]` now returns a checked snapshot key, usable as `t[keys[i]]` for reads or writes.
+Bounds failures remain eager even for unused keys. Keys retain their immutable snapshot
+when locals or the original table are replaced; numeric/text namespaces stay distinct.
+See [Extension status](EXTENSIONS.md).
+
+`fir1_source` 0.13 adds an explicit `value(): big` source profile using our Coco/R
 parser and C99 semantic lowering. This is not the complete Limbo language or the
 Inferno bootstrap. `source_semantics limbo_tables` records the selected profile.
 
 Supported: `table of big` declarations/creation, inferred locals, `big` and string
 locals, plain/exact decimal big literals, numeric/string indices, literal dotted
 members, table aliases, explicit `[first:end]` slices, `keysof`, `len`, and a big
-return. Statements are straight-line; arithmetic, loops, branching, key indexing,
+return. Statements are straight-line; arithmetic, loops, branching,
 omitted slice bounds, other table element types and general modules remain outside
 this subset. A declaration without initialization cannot be read.
 
@@ -24,13 +29,14 @@ values, non-table receivers, invalid local assignments and non-big returns.
 | --- | --- | --- |
 | `const.i64` | exact signed decimal | `i64` |
 | `table.new` | none | `table.big` |
-| `table.index` | `table.big`, `i64` or `string` | `table.slot` |
+| `table.index` | `table.big`, `i64`, `string` or `table.key` | `table.slot` |
 | `table.load` | `table.slot` | `i64` |
 | `table.store` | `table.slot`, `i64` | void |
 | `table.len` | `table.big` | `i64` |
 | `range.big` | two `i64` bounds | `big.range` |
 | `table.slice` | `table.big`, `big.range` | `table.big` |
 | `table.keys` | `table.big` | `keys` |
+| `keys.at` | `keys`, `i64` position | `table.key` |
 | `keys.len` | `keys` | `i64` |
 
 A slot is a typed owner/key location, not a native address. Missing reads fail;

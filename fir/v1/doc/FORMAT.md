@@ -175,3 +175,14 @@ checking or an implicit conversion instruction.
 ## Typed table extension
 
 The `limbo_tables` profile, exact `i64` constants and typed table/location/range/key operations are described in [TABLES.md](TABLES.md). They are accepted by the updated parser/verifier/optimizer; the [hosted Dis table backend](TABLES_DIS.md) emits checked module calls, while AVM1 SWO rejects them explicitly.
+
+[Checked snapshot keys and exact extension status](EXTENSIONS.md).
+
+## Checked hybrid snapshot keys
+
+The implemented typed-table profile appends `table.key` and binary `keys.at` to
+its existing enum IDs. `keys.at %snapshot, %position` requires `keys` and `i64`,
+returns `table.key`, and may throw on invalid bounds even when unused. `table.index`
+accepts this key type in addition to numeric/string keys. The value owns no raw
+pointer in the IR; native layouts, effects and GC are specified in
+[the Dis table contract](TABLES_DIS.md) and [extension matrix](EXTENSIONS.md).

@@ -3,13 +3,18 @@
 [Русский](TABLES_DIS.ru.md) · [Source/FIR contract](TABLES.md) ·
 [Source example](../examples/tables/main.b) · [C99 compiler client](../examples/tables/compile.c)
 
-FIR compiler 0.12 emits the supported single-block big-table subset directly as
+`keys[i]` now returns a checked snapshot key, usable as `t[keys[i]]` for reads or writes.
+Bounds failures remain eager even for unused keys. Keys retain their immutable snapshot
+when locals or the original table are replaced; numeric/text namespaces stay distinct.
+See [Extension status](EXTENSIONS.md).
+
+FIR compiler 0.13 emits the supported single-block big-table subset directly as
 NC64 Dis. It does not call the temporary Limbo compiler, an assembler, Python or
 the reference execution library. The destination uses the existing HASLDT import
 table and existing `load`, `mframe`, `mcall`, `lea`, scalar and pointer moves.
 
 The resulting image requires the matching hosted `$Bigtable` module in runtime
-0.15 or later with this ABI. Its imported function signatures are checked by the
+0.16 or later with this ABI. Its imported function signatures are checked by the
 real Dis loader. A missing helper or mismatched signature fails before the
 generated operation can invoke another native function. This does not change
 Inferno, the Dis container or the instruction set.
@@ -31,9 +36,9 @@ available for comparison. SWO/SWF table lowering remains unsupported.
 
 All offsets are explicitly NC64 eight-byte cells, independent of host C pointer
 sizes. Scalar big values use exact MOVL payloads. A table or key snapshot is one
-rooted owner reference. A table location occupies two cells: retained owner and
+rooted owner reference. A scalar-key table location occupies two cells: retained owner and
 captured numeric/string key. Only string keys make the second cell a heap root.
-A range occupies two scalar cells. Typed copies preserve the corresponding pair.
+A range occupies two scalar cells. A snapshot key occupies two cells (rooted snapshot and scalar position); a location using it occupies three cells (table owner, snapshot owner, position). Typed copies preserve each exact layout.
 
 The entry-frame descriptor marks loaded module instances, strings, tables,
 snapshots and location owners/keys. Numeric indices, ranges, status/value pairs
@@ -51,7 +56,7 @@ subtraction against a builtin's absent program segment.
 The API borrows the module and output stream. Coverage/layout/staging failures
 write no output. A final output I/O failure may leave a prefix; the CLI stages
 before replacing an existing destination. Supported operations are deliberately
-single-block; table CFG/loops, general language modules, keyseq indexing,
+single-block; table CFG/loops, general language modules,
 typeof/any and AS/SWF adapters remain pending. FIRDBG1 source records remain
 separate; full source-to-Dis SBL/PC mapping is not claimed.
 

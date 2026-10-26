@@ -88,4 +88,6 @@ python fir/v1/view_docs.py --no-browser --port 8766
 
 [Прямая генерация NC64 Dis](doc/DIS_BACKEND.ru.md) · [Limbo/FIR/Dis и библиотечный пример](examples/dis/README.ru.md).
 
-[Типизированные таблицы → FIR](doc/TABLES.ru.md) · [English](doc/TABLES.md): компилятор 0.12, явный профиль с результатом big и эталонное исполнение на C99; [генерация Dis для таблиц](doc/TABLES_DIS.ru.md) реализована; SWF ещё предстоит.
+[Типизированные таблицы → FIR](doc/TABLES.ru.md) · [English](doc/TABLES.md): компилятор 0.13, явный профиль с результатом big и эталонное исполнение на C99; [генерация Dis для таблиц](doc/TABLES_DIS.ru.md) реализована; SWF ещё предстоит.
+
+[Сквозная реализация расширений Limbo: таблицы, проекции и any](doc/EXTENSIONS.ru.md).

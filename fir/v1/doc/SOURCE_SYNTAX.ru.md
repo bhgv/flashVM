@@ -65,3 +65,5 @@ Limbo. Новый `limbo_real` сохраняется при print/opt и дос
 
 Ошибки диапазона при чтении real-литерала также отклоняются, включая underflow,
 если host strtod выставляет errno. Это ограничение текущего числового профиля.
+
+[Checked snapshot keys and exact extension status](EXTENSIONS.ru.md).

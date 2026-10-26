@@ -24,6 +24,8 @@ value(): big
     part := t[0:2]; # New zero-based table containing only the selected numeric entries.
     part[0] = big 99; # Does not modify t[0], which remains twelve.
     alias := t; # A table assignment retains the same mutable owner.
-    alias.total = big 42; # Literal string key: equivalent to alias["total"].
-    return t.total; # Observe the aliased write through the original owner.
+    key := keys[2]; # Checked snapshot key: the two numeric keys precede literal "total".
+    keys = keysof part; # Replacing this local does not invalidate key's retained snapshot.
+    alias[key] = big 42; # Write through the original string key, without converting its namespace.
+    return t[key]; # Observe the aliased write; key retains its immutable snapshot until retirement.
 }
