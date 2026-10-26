@@ -593,40 +593,82 @@ PRODUCTIONS
     | "[" TableExpression<key> "]"
   .
 
-  /* Prefix operations preserve static container types; postfix reads and explicit slices compose.
-   * IF bounds recursive table expressions before another C stack frame; the recovery arm
-   * consumes only an identifier and records a resource diagnostic at the shared depth limit. */
+  /* Big sums associate left; products bind more tightly than addition/subtraction. */
   TableExpression<int *result> =
+    (. int right = 0;
+       int op = 0;
+       SourceMark operation;
+    .)
+    TableProduct<result>
+    {
+        ( "+" (. capture(); operation = source_mark(); op = '+'; .)
+          | "-" (. capture(); operation = source_mark(); op = '-'; .)
+        )
+        TableProduct<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, op); .)
+    }
+  .
+
+  /* Multiplication is left associative; no implicit string/real coercion is admitted. */
+  TableProduct<int *result> =
+    (. int right = 0;
+       SourceMark operation;
+    .)
+    TableUnary<result>
+    {
+        "*" (. capture(); operation = source_mark(); .)
+        TableUnary<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '*'); .)
+    }
+  .
+
+  /* Every group, prefix and nested index goes through this shared depth boundary.
+   * The recovery alternative consumes a token and records a resource diagnostic. */
+  TableUnary<int *result> =
     IF(depth < 64) (. ++depth; .)
-    TableUnary<result> (. --depth; .)
+    TablePrefix<result> (. --depth; .)
     | IF(depth >= 64) ident (. source_scope_limit(); *result = 0; .)
   .
 
   /* Numeric literals are exact big constants. Limbo big/string casts and typeof
    * retain their own operator span while recursively parsing a bounded operand. */
-  TableUnary<int *result> =
+  TablePrefix<int *result> =
     (. int name = 0;
        int key = 0;
        int end = 0;
        int slice = 0;
-       int negative = 0;
        SourceMark operation;
+       SourceMark literal;
     .)
     (
-        "len" TableExpression<result> (. *result = source_table_len(*result); .)
-        | "big" (. capture(); operation = source_mark(); .) TableExpression<result>
+        IF(Sym==MinusSym && LiteralAhead()) "-" (. capture(); operation = source_mark(); .)
+        numeral
+          (. capture();
+             literal = source_mark();
+             operation.length = (size_t)(literal.offset - operation.offset) + literal.length;
+             source_restore(operation);
+             *result = source_table_constant(1);
+          .)
+        | "-" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_unary(*result, 1); .)
+        | "+" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_unary(*result, 0); .)
+        | "len" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_len(*result); .)
+        | "big" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_convert(*result, 0); .)
-        | "string" (. capture(); operation = source_mark(); .) TableExpression<result>
+        | "string" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_convert(*result, 1); .)
-        | "typeof" (. capture(); operation = source_mark(); .) TableExpression<result>
+        | "typeof" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_typeof(*result); .)
-        | "keysof" TableExpression<result> (. *result = source_table_keys(*result); .)
+        | "keysof" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_keys(*result); .)
         | (
             Name<&name> (. *result = source_read(name); .)
             | "table" (. capture(); .) "of" "big" (. *result = source_table_new(); .)
             | textlit (. capture(); *result = source_table_text(1); .)
-            | [ "-" (. negative = 1; .) ] numeral
-              (. capture(); *result = source_table_constant(negative); .)
+            | numeral
+              (. capture(); *result = source_table_constant(0); .)
             | "(" TableExpression<result> ")"
           )
           {

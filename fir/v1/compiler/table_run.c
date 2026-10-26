@@ -18,6 +18,13 @@ typedef struct
     int64_t end;      /* Exclusive range end. */
 } RuntimeValue;
 
+/* Convert wrapped bits to a signed big without relying on implementation-defined
+ * out-of-range casts. This scalar helper allocates nothing and never blocks. */
+static int64_t big_bits(uint64_t bits)
+{
+    return bits <= INT64_MAX ? (int64_t)bits : -1 - (int64_t)(UINT64_MAX - bits);
+}
+
 /* Check coverage before allocating owners or publishing any trace; module has already verified. */
 static int coverage(FirModule *module, char *error, size_t capacity)
 {
@@ -34,7 +41,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_TO_TEXT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_BIG_NEG) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
         {
             continue;
         }
@@ -98,6 +105,18 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_BIG_ADD:
+            result->big = big_bits((uint64_t)a->big + (uint64_t)b->big);
+            break;
+        case O_BIG_SUB:
+            result->big = big_bits((uint64_t)a->big - (uint64_t)b->big);
+            break;
+        case O_BIG_MUL:
+            result->big = big_bits((uint64_t)a->big * (uint64_t)b->big);
+            break;
+        case O_BIG_NEG:
+            result->big = big_bits(0U - (uint64_t)a->big);
+            break;
         case O_I64:
             result->big = in->big;
             break;

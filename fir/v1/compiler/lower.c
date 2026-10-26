@@ -755,6 +755,28 @@ int source_table_len(int value)
     return table_operation(T_I64, table_values[value] == T_KEYS ? "keys.len" : "table.len", value, -1);
 }
 
+/* Emit arithmetic after evaluating both operands once in source order. Inputs
+ * are borrowed SSA identities; incompatible types make output publication fail. */
+int source_table_binary(int left, int right, int op)
+{
+    if (table_values[left] != T_I64 || table_values[right] != T_I64)
+    {
+        reject("big arithmetic requires two big operands");
+    }
+    return table_operation(T_I64, op == '+' ? "big.add" : op == '-' ? "big.sub" : "big.mul", left, right);
+}
+
+/* Negate modulo 2^64 or preserve a positive big without implicit string conversion.
+ * The parser has restored the unary token span before this typed operation. */
+int source_table_unary(int value, int negative)
+{
+    if (table_values[value] != T_I64)
+    {
+        reject("big unary arithmetic requires big");
+    }
+    return table_operation(T_I64, negative ? "big.neg" : "copy", value, -1);
+}
+
 /* Convert only big/text/key values in this profile; failure is sticky and the
  * runtime preserves exact decimal and snapshot semantics. No implicit owner RPC. */
 int source_table_convert(int value, int text)

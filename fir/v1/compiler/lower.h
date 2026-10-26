@@ -6,9 +6,9 @@
 /* Parser-local value: capture before RHS parsing and restore for target errors. */
 typedef struct
 {
-    int line;
-    long offset;
-    size_t length;
+    int line;      /* One-based line of the captured source token/expression. */
+    long offset;   /* Zero-based UTF-8 byte offset in the admitted source snapshot. */
+    size_t length; /* Source byte span; signed literals include the unary minus. */
 } SourceMark;
 
 /* Scalar relation selected by the authoritative Coco/R source grammar. */
@@ -173,6 +173,14 @@ int source_table_load(int location);
 
 /* Emit length using the static table or key-snapshot type of the borrowed SSA input. */
 int source_table_len(int value);
+
+
+/* Emit typed big arithmetic on borrowed translation-local SSA values; op is +, - or *. */
+int source_table_binary(int left, int right, int op);
+
+
+/* Emit checked big unary +/-; negative selects negation, and false preserves a typed copy. */
+int source_table_unary(int value, int negative);
 
 
 /* Convert a supported borrowed SSA value explicitly to big or string; text selects string. */

@@ -15,12 +15,16 @@ enum
     LEA = 39,              /* Pass a return destination by address. */
     MOVP = 41,             /* Retain/move one heap reference. */
     MOVW = 45,             /* Move native status/flag words. */
+    ADDL = 119,            /* Native exact modulo-2^64 addition. */
+    SUBL = 120,            /* Native exact modulo-2^64 subtraction. */
+    MULL = 123,            /* Native exact modulo-2^64 multiplication. */
     MOVL = 118,            /* Move an exact signed big payload. */
     MP = 0,                /* Module-relative addressing. */
     FP = 1,                /* Frame-relative addressing. */
     IMM = 2,               /* Immediate scalar operand. */
     NONE = 3,              /* Absent source/destination operand. */
     INDIRECT_FP = 5,       /* Indirect frame addressing for callee argument slots. */
+    MIDDLE_FRAME = 128,    /* Three-address arithmetic middle operand is frame relative. */
     MIDDLE_IMMEDIATE = 64, /* Module import indices are immediate middle operands. */
     HAS_IMPORTS = 64,      /* Existing HASLDT flag, no container extension. */
     MODULE_SLOT = 64,      /* [GC:] Rooted loaded Bigtable instance in the entry frame. */
@@ -162,6 +166,18 @@ static void instruction(Emitter *e,
     e->count++;
 }
 
+/* Emit an existing three-address big operation. All arguments are scalar frame
+ * offsets and remain live until execution; this has no native-call/GC ownership. */
+static void arithmetic(Emitter *e, unsigned op, unsigned left, unsigned right, unsigned destination)
+{
+    octet(e->body, op);
+    octet(e->body, MIDDLE_FRAME | (FP << 3) | FP);
+    operand(e->body, left);
+    operand(e->body, right);
+    operand(e->body, destination);
+    e->count++;
+}
+
 /* Mark one aligned genuine heap-reference cell in an initialized type bitmap. */
 static void root(unsigned char *map, unsigned offset)
 {
@@ -279,7 +295,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
             e->traces++;
         }
-        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TO_TEXT))
+        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_NEG))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -374,6 +390,14 @@ static void body(Emitter *e, FirModule *module)
         }
         switch (in->op)
         {
+        case O_BIG_ADD:
+        case O_BIG_SUB:
+        case O_BIG_MUL:
+            arithmetic(e, in->op == O_BIG_ADD ? ADDL : in->op == O_BIG_SUB ? SUBL : MULL, a, b, d);
+            break;
+        case O_BIG_NEG:
+            instruction(e, SUBL, FP, a, FP, d, 0, 0);
+            break;
         case O_I64:
             instruction(e, MOVL, MP, (2U * e->traces + (unsigned)in->result) * CELL, FP, d, 0, -1);
             break;

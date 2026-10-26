@@ -107,7 +107,11 @@ typedef enum
     O_KEYS_AT,     /* Capture one checked immutable snapshot key. */
     O_VALUE_TYPE,  /* Reflect a supported value; snapshot keys report their runtime key kind. */
     O_TO_BIG,      /* Exact explicit conversion from big/text/snapshot key. */
-    O_TO_TEXT      /* Copied explicit conversion from big/text/snapshot key. */
+    O_TO_TEXT,     /* Copied explicit conversion from big/text/snapshot key. */
+    O_BIG_ADD,     /* Exact modulo-2^64 addition. */
+    O_BIG_SUB,     /* Exact modulo-2^64 subtraction. */
+    O_BIG_MUL,     /* Exact modulo-2^64 multiplication. */
+    O_BIG_NEG      /* Exact modulo-2^64 unary negation. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

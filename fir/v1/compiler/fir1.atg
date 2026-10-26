@@ -269,6 +269,10 @@ PRODUCTIONS
     | "range.big" (. fir_build_op(O_BIG_RANGE); .) A "," B
     | "table.slice" (. fir_build_op(O_TABLE_SLICE); .) A "," B
     | "table.keys" (. fir_build_op(O_TABLE_KEYS); .) A
+    | "big.add" (. fir_build_op(O_BIG_ADD); .) A "," B
+    | "big.sub" (. fir_build_op(O_BIG_SUB); .) A "," B
+    | "big.mul" (. fir_build_op(O_BIG_MUL); .) A "," B
+    | "big.neg" (. fir_build_op(O_BIG_NEG); .) A
     | "value.big" (. fir_build_op(O_TO_BIG); .) A
     | "value.text" (. fir_build_op(O_TO_TEXT); .) A
     | "value.type" (. fir_build_op(O_VALUE_TYPE); .) A
