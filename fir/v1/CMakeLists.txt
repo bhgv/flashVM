@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.11.0 LANGUAGES C)
+project(fir1 VERSION 0.12.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -28,7 +28,7 @@ target_compile_definitions(fir1_generated PRIVATE CUSTOM_BUFF)
 target_include_directories(fir1_generated PRIVATE include src)
 target_include_directories(fir1_generated PUBLIC "${generated}")
 add_library(fir1_io src/input.c)
-add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c compiler/object.c compiler/dis.c)
+add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c compiler/object.c compiler/dis.c compiler/dis_table.c)
 # Preserve object inclusion and private generated headers on CMake 3.10.
 target_sources(fir1_ir PRIVATE $<TARGET_OBJECTS:fir1_generated>)
 target_include_directories(fir1_ir PRIVATE "${generated}")

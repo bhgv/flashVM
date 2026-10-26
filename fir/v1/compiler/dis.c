@@ -32,13 +32,11 @@ enum
     DIS_BIG_DATA = 8     /* Existing DEFL initializer, explicitly eight-byte big-endian payload. */
 };
 
-
 /* Write one format byte to borrowed output. ferror is checked by the public entry. */
 static void octet(FILE *output, unsigned value)
 {
     fputc((int)(value & 255U), output);
 }
-
 
 /* Encode a bounded nonnegative Dis operand; all callers preflight the module limits.
  * Values here fit signed 30-bit operands; no implementation-defined signed shifts are needed. */
@@ -61,7 +59,6 @@ static void operand(FILE *output, unsigned value)
         octet(output, value);
     }
 }
-
 
 /* Emit one source/destination instruction with an optional frame middle operand.
  * Every offset is in NC64 bytes. output is borrowed; this function owns no heap or parser state. */
@@ -94,13 +91,11 @@ static void instruction(FILE *output,
     }
 }
 
-
 /* Return the frame byte offset of one verifier-admitted SSA value. */
 static unsigned slot(int value)
 {
     return DIS_FRAME + (unsigned)value * DIS_CELL;
 }
-
 
 /* Write eight caller-supplied payload bits as portable big-endian DEFL bytes.
  * Both native integers and IEEE binary64 use the existing eight-byte initializer. */
@@ -112,7 +107,6 @@ static void bits64(FILE *output, uint64_t bits)
         octet(output, (unsigned)(bits >> shift));
     }
 }
-
 
 /* Preflight scalar coverage and map FIR instruction/block indices to final Dis PCs.
  * module is borrowed after verification. Output arrays/counts are caller-owned and bounded
@@ -209,6 +203,8 @@ static int supported(
     return 1;
 }
 
+/* Emit signature-checked table calls from verified IR; owned by the separate C99 table backend. */
+extern int fir_dis_table(FILE *, FirModule *, char *, size_t);
 
 /* Emit existing NC64 Dis directly from caller-owned FIR, preserving i32 wrap arithmetic.
  * output/module are borrowed; no native runtime/SDK is required. Verification or coverage errors
@@ -235,7 +231,24 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         }
         return 0;
     }
-    if (!fir_verify(module, error, capacity) || !supported(module, &count, &traces, pcs, blocks, error, capacity))
+    if (!fir_verify(module, error, capacity))
+    {
+        return 0;
+    }
+    if (strlen(module->module) >= 128)
+    {
+        snprintf(error, capacity, "Dis module name exceeds the loader's 127-byte limit");
+        return 0;
+    }
+    for (index = 0; index < module->count; index++)
+    {
+        FirInstruction *in = &module->instructions[index];
+        if (!in->removed && (in->op > O_RETURN || in->type >= T_I64))
+        {
+            return fir_dis_table(output, module, error, capacity);
+        }
+    }
+    if (!supported(module, &count, &traces, pcs, blocks, error, capacity))
     {
         return 0;
     }
@@ -360,13 +373,14 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     bits64(output, INT64_C(2147483648));
     for (index = 0; index < module->value_count; index++)
     {
-        FirInstruction *definition = &module->instructions[module->values[index].definition];
+        int defining = module->values[index].definition;
+        FirInstruction *definition = defining < 0 ? NULL : &module->instructions[defining];
         uint64_t payload = 0; /* Exact binary64 bits or defined modulo conversion of signed integer. */
-        if (definition->op == O_F64)
+        if (definition && definition->op == O_F64)
         {
             memcpy(&payload, &definition->real, sizeof(payload));
         }
-        else if (definition->op == O_I32 || definition->op == O_BOOL)
+        else if (definition && (definition->op == O_I32 || definition->op == O_BOOL))
         {
             payload = (uint64_t)(int64_t)definition->integer;
         }

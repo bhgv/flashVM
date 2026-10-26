@@ -64,7 +64,9 @@ def main():
                        if event["kind"] in ("constant", "table-operation")}
             if definitions != origins:
                 raise RuntimeError("table SSA value lost source origin")
-            for backend in ("object", "dis"):
+            # Dis emission is now supported; SWO stays an explicit unsupported target.
+            call([compiler, "dis", fir, work / "table.dis"])
+            for backend in ("object",):
                 output = work / (backend + ".output")
                 output.write_bytes(b"preserve destination")
                 call([compiler, backend, fir, output], False)

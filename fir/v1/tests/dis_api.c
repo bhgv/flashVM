@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /* Parse one constant fixture into caller-owned module storage; all streams remain private here.
  * Returns zero on input, allocation or parse failure; error receives the parser diagnostic. */
 static int parse(const char *text, FirModule *module, char *error, size_t capacity)
@@ -25,7 +24,6 @@ static int parse(const char *text, FirModule *module, char *error, size_t capaci
     return ok;
 }
 
-
 /* Check public API ownership/error recovery, including NULL diagnostics and invalid IR.
  * No arguments; all heap/stream owners are retired on both success and failure. */
 int main(void)
@@ -45,7 +43,8 @@ int main(void)
     }
     initial = ftell(output);
     if (initial != 8 || !parse(unsupported, module, error, sizeof(error)) ||
-        fir_dis(output, module, error, sizeof(error)) || !strstr(error, "Dis scalar backend") || ftell(output) != initial)
+        fir_dis(output, module, error, sizeof(error)) || !strstr(error, "Dis scalar backend") ||
+        ftell(output) != initial)
     {
         goto done;
     }
@@ -55,9 +54,27 @@ int main(void)
         goto done;
     }
     initial = ftell(output);
+    memset(module->module + 1, 'a', 127);
+    module->module[128] = 0;
+    if (fir_dis(output, module, error, sizeof(error)) || ftell(output) != initial)
+    {
+        goto done;
+    }
+    strcpy(module->module, "@M");
+    /* A valid public module may contain an unused forward symbol without a definition.
+     * Backends must zero its unused data cell, never index instruction[-1]. */
+    strcpy(module->values[module->value_count].name, "%unused");
+    module->values[module->value_count].definition = -1;
+    module->values[module->value_count].type = T_I32;
+    module->value_count++;
+    if (!fir_verify(module, error, sizeof(error)) || !fir_dis(output, module, error, sizeof(error)))
+    {
+        goto done;
+    }
+    initial = ftell(output);
     module->value_count = FIR_LIMIT + 1;
-    if (fir_dis(output, module, NULL, sizeof(error)) || ftell(output) != initial || fir_dis(NULL, module, error, sizeof(error)) ||
-        fir_dis(output, NULL, error, sizeof(error)))
+    if (fir_dis(output, module, NULL, sizeof(error)) || ftell(output) != initial ||
+        fir_dis(NULL, module, error, sizeof(error)) || fir_dis(output, NULL, error, sizeof(error)))
     {
         goto done;
     }
