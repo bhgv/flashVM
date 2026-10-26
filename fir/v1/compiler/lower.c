@@ -719,6 +719,17 @@ int source_table_text(int quoted)
     return result;
 }
 
+/* Emit a checked long shift from borrowed SSA values. left must be big, right int;
+ * direction selects '<' or '>'. Count range remains a runtime error, including unused results. */
+int source_table_shift(int left, int right, int direction)
+{
+    if (table_values[left] != T_I64 || table_values[right] != T_I32)
+    {
+        reject("big shift requires big value and explicit int count");
+    }
+    return table_operation(T_I64, direction == '<' ? "big.shl" : "big.shr", left, right);
+}
+
 /* Create a fresh mutable table owner; no source binding is acquired here. */
 int source_table_new(void)
 {
@@ -824,16 +835,24 @@ int source_table_unary(int value, int op)
     return table_operation(T_I64, op == '~' ? "big.not" : op == '-' ? "big.neg" : "copy", value, -1);
 }
 
-/* Convert only big/text/key values in this profile; failure is sticky and the
- * runtime preserves exact decimal and snapshot semantics. No implicit owner RPC. */
-int source_table_convert(int value, int text)
+/* Explicitly convert borrowed int/big/text/key SSA values. target selects big=0, text=1, int=2.
+ * Int narrowing is total modulo 2^32; decimal/key checks remain runtime errors. No implicit owner RPC. */
+int source_table_convert(int value, int target)
 {
     FirType type = table_values[value];
-    if (type != T_I64 && type != T_STRING && type != T_TABLE_KEY)
+    if (target == 2)
     {
-        reject("conversion requires big, string or snapshot key");
+        if (type != T_I32 && type != T_I64)
+        {
+            reject("int conversion requires int or big");
+        }
+        return table_operation(T_I32, "value.int", value, -1);
     }
-    return table_operation(text ? T_STRING : T_I64, text ? "value.text" : "value.big", value, -1);
+    if (type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_KEY)
+    {
+        reject("conversion requires int, big, string or snapshot key");
+    }
+    return table_operation(target ? T_STRING : T_I64, target ? "value.text" : "value.big", value, -1);
 }
 
 /* Reflect supported typed values without converting data or invoking owner methods.
@@ -841,7 +860,8 @@ int source_table_convert(int value, int text)
 int source_table_typeof(int value)
 {
     FirType type = table_values[value];
-    if (type != T_I64 && type != T_STRING && type != T_TABLE_BIG && type != T_KEYS && type != T_TABLE_KEY)
+    if (type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_BIG && type != T_KEYS &&
+        type != T_TABLE_KEY)
     {
         reject("typeof requires a supported table-profile value");
     }

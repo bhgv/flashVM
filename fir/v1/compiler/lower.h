@@ -183,8 +183,12 @@ int source_table_binary(int left, int right, int op);
 int source_table_unary(int value, int op);
 
 
-/* Convert a supported borrowed SSA value explicitly to big or string; text selects string. */
-int source_table_convert(int value, int text);
+/* Convert borrowed typed SSA explicitly: target 0=big, 1=string, 2=int. Errors are sticky. */
+int source_table_convert(int value, int target);
+
+
+/* Emit checked big shift with an int count; direction selects left (<) or arithmetic right (>). */
+int source_table_shift(int left, int right, int direction);
 
 
 /* Reflect the type of a borrowed supported SSA value; keys inspect their actual snapshot kind. */

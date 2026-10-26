@@ -608,7 +608,8 @@ PRODUCTIONS
 
   /* Table values stay big. String locals may provide keys; key snapshots use type inference. */
   TableType<int *type> =
-    "big" (. *type = T_I64; .)
+    "int" (. *type = T_I32; .)
+    | "big" (. *type = T_I64; .)
     | "string" (. *type = T_STRING; .)
     | "table" "of" "big" (. *type = T_TABLE_BIG; .)
   .
@@ -648,10 +649,26 @@ PRODUCTIONS
     (. int right = 0;
        SourceMark operation;
     .)
+    TableShift<result>
+    {
+        "&" (. capture(); operation = source_mark(); .) TableShift<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '&'); .)
+    }
+  .
+
+  /* Limbo shifts bind below sums and above bitwise AND; counts require explicit int values. */
+  TableShift<int *result> =
+    (. int right = 0;
+       int direction = 0;
+       SourceMark operation;
+    .)
     TableSum<result>
     {
-        "&" (. capture(); operation = source_mark(); .) TableSum<&right>
-        (. source_restore(operation); *result = source_table_binary(*result, right, '&'); .)
+        ( "<<" (. capture(); operation = source_mark(); direction = '<'; .)
+          | ">>" (. capture(); operation = source_mark(); direction = '>'; .)
+        )
+        TableSum<&right>
+        (. source_restore(operation); *result = source_table_shift(*result, right, direction); .)
     }
   .
 
@@ -723,6 +740,8 @@ PRODUCTIONS
           (. source_restore(operation); *result = source_table_unary(*result, '~'); .)
         | "len" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_len(*result); .)
+        | "int" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_convert(*result, 2); .)
         | "big" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_convert(*result, 0); .)
         | "string" (. capture(); operation = source_mark(); .) TableUnary<result>
