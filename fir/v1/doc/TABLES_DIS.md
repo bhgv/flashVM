@@ -8,13 +8,13 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-FIR compiler 0.15 emits the supported single-block big-table subset directly as
+FIR compiler 0.16 emits the supported single-block big-table subset directly as
 NC64 Dis. It does not call the temporary Limbo compiler, an assembler, Python or
 the reference execution library. The destination uses the existing HASLDT import
 table and existing `load`, `mframe`, `mcall`, `lea`, scalar and pointer moves.
 
 The resulting image requires the matching hosted `$Bigtable` module in runtime
-0.18 or later with this ABI. Its imported function signatures are checked by the
+0.19 or later with this ABI. Its imported function signatures are checked by the
 real Dis loader. A missing helper or mismatched signature fails before the
 generated operation can invoke another native function. This does not change
 Inferno, the Dis container or the instruction set.

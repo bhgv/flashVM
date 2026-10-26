@@ -1,3 +1,21 @@
+# Current synchronization — v0.1630
+
+Experiment: `1ae1470f6960173a2330f212ee76d32843ae2736`. 478 exact core/reference files and 174 bootstrap files.
+Imported guarded AMD64/ARM64 ICASEC paths accept empty tables or exact lower-label
+owner identity in one-row tables. Availability is 164/173 active opcodes, not
+full native string-table search. Other inputs preserve checked C behavior.
+
+Full-width counts, String headers, PC bounds and long decline branches are
+validated before REG.PC publication. There are no runtime callbacks, allocation,
+GC/refcount writes or FP changes. [Contract and evidence](upstream/libinterp/tests/README.string-case-native.md).
+
+The complete core suite passed 173/173. Native AMD64 RX and ARM64 instruction
+emulation remain separate from physical ARM64 acceptance. No new owning defect
+was identified for reverse publication. The language extension stays outside
+Inferno. Historical reports follow.
+
+---
+
 # Current synchronization — v0.1629
 
 Experiment: `5c79135244b0c2e651d200ec3caa4b589833dc60`. 474 exact core/reference files and 174 bootstrap files.

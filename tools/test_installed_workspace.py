@@ -64,18 +64,19 @@ def table_packages(prefix, work, environment):
             result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image], work, environment)
             if "DATA 0 42\nDATA 8 1\n" not in result:
                 raise RuntimeError("relocated generated table Dis result differs")
-    # The second shipped module exercises signed wrap and native big arithmetic on table reads.
-    arithmetic_source = prefix / "fir/examples/tables/arithmetic.b"
-    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", arithmetic_source, fir], work, environment)
-    run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
-    for selected in (fir, optimized):
-        if run([program(prefix, "fir", "fir1_table_run"), selected], work, environment).strip() != "42":
-            raise RuntimeError("relocated big arithmetic reference result differs")
-        run([program(prefix, "fir", "fir1"), "dis", selected, image], work, environment)
-        for mode in ("--jit", "--no-jit"):
-            result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2, image], work, environment)
-            if "DATA 0 42\nDATA 8 1\n" not in result:
-                raise RuntimeError("relocated native big arithmetic result differs")
+    # Additional modules cover native big arithmetic and checked division/bit operations.
+    for example in ("arithmetic.b", "bitwise.b"):
+        arithmetic_source = prefix / "fir/examples/tables" / example
+        run([program(prefix, "fir", "fir1_source"), "limbo", "--input", arithmetic_source, fir], work, environment)
+        run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+        for selected in (fir, optimized):
+            if run([program(prefix, "fir", "fir1_table_run"), selected], work, environment).strip() != "42":
+                raise RuntimeError("relocated big arithmetic reference result differs")
+            run([program(prefix, "fir", "fir1"), "dis", selected, image], work, environment)
+            for mode in ("--jit", "--no-jit"):
+                result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2, image], work, environment)
+                if "DATA 0 42\nDATA 8 1\n" not in result:
+                    raise RuntimeError("relocated native big arithmetic result differs")
     # Relink the public compiler API without either the bootstrap or reference-execution archive.
     compiled_client = work / "table-compile.c"
     shutil.copyfile(prefix / "fir/examples/tables/compile.c", compiled_client)

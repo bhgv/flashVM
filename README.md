@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1629**. [Русская версия](README.ru.md).
+Development version: **0.1630**. [Русская версия](README.ru.md).
 
-Current series: [v0.1629](docs/releases/v0.1629.md): native big arithmetic, exact peephole optimization and refreshed x64/ARM64 Dis JITs.
+Current series: [v0.1630](docs/releases/v0.1630.md): checked big division/remainder, full-width bit operators and guarded x64/ARM64 string-case JIT paths.
 
 ## Browse documentation
 

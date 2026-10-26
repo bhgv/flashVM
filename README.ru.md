@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1629**. [English](README.md).
+Версия разработки: **0.1630**. [English](README.md).
 
-Текущая серия: [v0.1629](docs/releases/v0.1629.md): нативная арифметика big, точные пипхол-оптимизации и обновлённые Dis JIT x64/ARM64.
+Текущая серия: [v0.1630](docs/releases/v0.1630.md): проверяемое деление/остаток big, полные побитовые операции и строковый case JIT x64/ARM64.
 
 ## Просмотр документации
 

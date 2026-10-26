@@ -63,7 +63,7 @@ unused conversions through optimization. FIRDBG1 records the exact prefix token
 rather than a nested operand's position; full source-to-Dis SBL remains pending.
 
 The NC64 backend uses existing Dis instructions and checked Bigtable imports.
-Matching runtime 0.18 and compiler 0.15 are required. String results occupy genuine
+Matching runtime 0.19 and compiler 0.16 are required. String results occupy genuine
 mapped frame roots. Snapshot owners remain rooted across String allocation; no
 native pointer crosses heaps/channels. Scalar adapters in common/table parse and
 format exact int64 values without allocation. The reference executor tracks byte

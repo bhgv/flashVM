@@ -87,10 +87,12 @@ use. Generated Coco/R code and upstream libraries are excluded.
 
 [Direct NC64 Dis generation](doc/DIS_BACKEND.md) · [Limbo/FIR/Dis and embedding tutorial](examples/dis/README.md).
 
-[Typed tables → FIR / Типизированные таблицы → FIR](doc/TABLES.md) · [Русский](doc/TABLES.ru.md): compiler 0.15, explicit big-result subset and hosted C99 reference execution; [native Dis table lowering](doc/TABLES_DIS.md) is implemented; SWF remains pending.
+[Typed tables → FIR / Типизированные таблицы → FIR](doc/TABLES.md) · [Русский](doc/TABLES.ru.md): compiler 0.16, explicit big-result subset and hosted C99 reference execution; [native Dis table lowering](doc/TABLES_DIS.md) is implemented; SWF remains pending.
 
 [Executable Limbo extension status: tables, projections and any](doc/EXTENSIONS.md).
 
 [typeof and explicit Limbo casts](doc/TYPE_REFLECTION.md).
 
 [Big arithmetic](doc/BIG_ARITHMETIC.md).
+
+[Division, remainder and 64-bit masks](doc/BIG_BITWISE.md).

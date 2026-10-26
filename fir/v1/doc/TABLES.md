@@ -7,7 +7,7 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-`fir1_source` 0.15 adds an explicit `value(): big` source profile using our Coco/R
+`fir1_source` 0.16 adds an explicit `value(): big` source profile using our Coco/R
 parser and C99 semantic lowering. This is not the complete Limbo language or the
 Inferno bootstrap. `source_semantics limbo_tables` records the selected profile.
 

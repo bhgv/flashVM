@@ -66,3 +66,5 @@ a client read followed by a client write is not an atomic implementation.
 No table-language extension from this series is exported to Inferno.
 
 [Limbo reflection/casts; AS helper distinction](TYPE_REFLECTION.md).
+
+[Checked big division and bit operations](BIG_BITWISE.md).

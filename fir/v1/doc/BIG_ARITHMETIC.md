@@ -53,7 +53,9 @@ expression does not consume recursion budget. Groups, unary operations and neste
 indices share the bounded depth of 64; input/SSA/name limits remain in force.
 Full source-to-Dis SBL is still separate work.
 
-Division, bitwise operators, comparisons in this profile, table CFG/loops,
+Shifts, comparisons in this profile, table CFG/loops,
 heterogeneous values and automatic channel any/proxy operators remain pending.
 An ordinary read-compute-write sequence is not an atomic remote owner update.
 The snapshot-key API remains explicit; no pointer crosses heaps or channels.
+
+[Division/remainder and full-width bit operations](BIG_BITWISE.md).
