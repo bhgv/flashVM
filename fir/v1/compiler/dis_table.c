@@ -13,6 +13,7 @@ enum
     MFRAME = 11,           /* Allocate a typed native call frame. */
     JMP = 13,              /* Existing direct instruction-PC branch. */
     BLTL = 130,            /* Signed big less-than branch. */
+    BEQW = 93,             /* Compare normalized bool against immediate one. */
     BEQL = 134,            /* Exact full-width big equality branch. */
     RET = 12,              /* Return from the entry harness. */
     LEA = 39,              /* Pass a return destination by address. */
@@ -89,6 +90,7 @@ typedef struct
 {
     FILE *body;                  /* Owned temporary bytecode, published only after successful preflight/emission. */
     unsigned count;              /* Emitted Dis instruction count. */
+    unsigned blocks[FIR_BLOCKS]; /* Instruction PCs measured before resolving CFG branches. */
     unsigned offsets[FIR_LIMIT]; /* Frame offsets of typed SSA values. */
     unsigned strings[FIR_LIMIT]; /* MP offsets of live copied string constants. */
     unsigned call_frame;         /* Raw prepared stack-frame pointer, not a heap/GC root. */
@@ -247,9 +249,12 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     unsigned offset = MODULE_SLOT + CELL;
     unsigned strings = 1; /* The imported module path is always the first String root. */
     int i;
-    if (module->block_count != 1 || module->channels)
+    if (module->channels || !fir_acyclic(module, error, capacity))
     {
-        snprintf(error, capacity, "Dis table backend requires one block without channels");
+        if (module->channels)
+        {
+            snprintf(error, capacity, "Dis table backend does not implement channel requirements");
+        }
         return 0;
     }
     root(e->frame_map, MODULE_SLOT);
@@ -305,7 +310,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
             e->traces++;
         }
-        else if (in->op != O_BOOL && in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_EQ))
+        else if (in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY && in->op != O_RETURN &&
+                 !(in->op >= O_I64 && in->op <= O_BIG_EQ))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -381,8 +387,9 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
 
 /* Lower one verified straight-line body using only existing Dis operations and builtin ABI calls.
  * Entry/callee root maps hold references during allocation; paired slots never encode native addresses. */
-static void body(Emitter *e, FirModule *module)
+static void body(Emitter *e, FirModule *module, int measure)
 {
+    unsigned char seen[FIR_BLOCKS] = {0};
     unsigned trace = 0;
     int i;
     instruction(e, LOAD, MP, e->plain_cells * CELL, FP, MODULE_SLOT, 0, 0);
@@ -398,8 +405,20 @@ static void body(Emitter *e, FirModule *module)
         {
             continue;
         }
+        if (measure && !seen[in->block])
+        {
+            e->blocks[in->block] = e->count;
+            seen[in->block] = 1;
+        }
         switch (in->op)
         {
+        case O_IF:
+            instruction(e, BEQW, FP, a, IMM, e->blocks[in->yes], 0, 1);
+            instruction(e, JMP, NONE, 0, IMM, e->blocks[in->no], 0, -1);
+            break;
+        case O_JUMP:
+            instruction(e, JMP, NONE, 0, IMM, e->blocks[in->yes], 0, -1);
+            break;
         case O_BIG_LT:
         case O_BIG_EQ:
         {
@@ -626,6 +645,8 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
 {
     Emitter *e = calloc(1, sizeof(*e));
     unsigned i;
+    unsigned measured_count; /* First-pass instruction count, independent of encoded operand widths. */
+    int sizing_error;
     size_t size;
     char buffer[4096];
     int ok = 0;
@@ -645,7 +666,34 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
         snprintf(error, capacity, "Dis table instruction staging failed");
         goto done;
     }
-    body(e, module);
+    /* The sizing pass uses private placeholder PCs. Instruction counts do not depend
+     * on variable-width operand bytes; the second pass resolves forward/backward edges. */
+    body(e, module, 1);
+    measured_count = e->count;
+    sizing_error = ferror(e->body);
+    if (fclose(e->body))
+    {
+        sizing_error = 1;
+    }
+    e->body = NULL;
+    if (sizing_error)
+    {
+        snprintf(error, capacity, "Dis table sizing I/O failure");
+        goto done;
+    }
+    e->body = fir_temporary();
+    if (!e->body)
+    {
+        snprintf(error, capacity, "Dis table resolved instruction staging failed");
+        goto done;
+    }
+    e->count = 0;
+    body(e, module, 0);
+    if (e->count != measured_count)
+    {
+        snprintf(error, capacity, "Dis table instruction count changed between passes");
+        goto done;
+    }
     if (ferror(e->body) || fflush(e->body) || fseek(e->body, 0, SEEK_SET))
     {
         snprintf(error, capacity, "Dis table instruction staging I/O failure");

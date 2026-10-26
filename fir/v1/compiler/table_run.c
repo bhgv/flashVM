@@ -29,9 +29,12 @@ static int64_t big_bits(uint64_t bits)
 static int coverage(FirModule *module, char *error, size_t capacity)
 {
     int i;
-    if (module->block_count != 1 || module->channels)
+    if (module->channels || !fir_acyclic(module, error, capacity))
     {
-        snprintf(error, capacity, "table reference runner requires one block without channels");
+        if (module->channels)
+        {
+            snprintf(error, capacity, "table reference runner does not implement channel requirements");
+        }
         return 0;
     }
     for (i = 0; i < module->count; i++)
@@ -42,7 +45,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
             continue;
         }
         if ((in->op >= O_I64 && in->op <= O_BIG_EQ) || in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY ||
-            in->op == O_RETURN)
+            in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
@@ -68,6 +71,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     size_t table_count = 0;
     size_t key_count = 0;
     int i;
+    int first[FIR_BLOCKS]; /* First live instruction per verified DAG block. */
     int ok = 0;
     char buffer[4096];
     size_t size;
@@ -85,6 +89,17 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     {
         return 0;
     }
+    for (i = 0; i < module->block_count; ++i)
+    {
+        first[i] = -1;
+    }
+    for (i = 0; i < module->count; ++i)
+    {
+        if (!module->instructions[i].removed && first[module->instructions[i].block] < 0)
+        {
+            first[module->instructions[i].block] = i;
+        }
+    }
     values = calloc(FIR_LIMIT, sizeof(*values));
     tables = calloc(FIR_LIMIT, sizeof(*tables));
     keys = calloc(FIR_LIMIT, sizeof(*keys));
@@ -94,8 +109,9 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         snprintf(error, capacity, "table reference runner allocation/staging failure");
         goto done;
     }
-    for (i = 0; i < module->count; i++)
+    for (i = 0; i < module->count;)
     {
+        int next = i + 1;
         FirInstruction *in = &module->instructions[i];
         RuntimeValue *result = in->result < 0 ? NULL : &values[in->result];
         RuntimeValue *a = in->a < 0 ? NULL : &values[in->a];
@@ -103,6 +119,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         FhtStatus status = FHT_OK;
         if (in->removed)
         {
+            i = next;
             continue;
         }
         switch (in->op)
@@ -308,7 +325,14 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                 fputc('\n', staged);
             }
             break;
+        case O_IF:
+            next = first[a->big ? in->yes : in->no];
+            break;
+        case O_JUMP:
+            next = first[in->yes];
+            break;
         case O_RETURN:
+            next = module->count;
             break;
         default:
             status = FHT_INVALID; /* Coverage preflight makes this unreachable for admitted input. */
@@ -327,6 +351,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                                                                   : "invalid key/range");
             goto done;
         }
+        i = next;
     }
     if (ferror(staged) || fflush(staged) || fseek(staged, 0, SEEK_SET))
     {
