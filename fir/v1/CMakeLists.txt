@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.17.0 LANGUAGES C)
+project(fir1 VERSION 0.18.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -205,4 +205,10 @@ if(FIR_TABLE_CORE_ROOT)
     target_compile_options(fir1_tables PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(fir1_table_run PRIVATE -Wall -Wextra -Wpedantic -Werror)
   endif()
+endif()
+
+# Big terminal decisions use the authoritative source grammar and direct scalar Dis backend.
+if(BUILD_TESTING)
+  add_test(NAME fir1_big_decisions COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/big_decisions.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
 endif()

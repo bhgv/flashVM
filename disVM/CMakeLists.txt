@@ -153,6 +153,7 @@ if(BUILD_TESTING)
     string-case-c
     string-bytes-layouts
     string-bytes-spans
+    string-header-spans
     string-cell-spans-c
     utf8-view-spans-c
   )

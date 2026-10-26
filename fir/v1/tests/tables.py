@@ -342,11 +342,44 @@ func @main() -> void {
         result = call([runner, fir], False)
         if result.stdout or "missing key" not in result.stderr:
             raise RuntimeError("failed execution leaked a staged earlier trace")
+        # Dynamic table reads retain exact signed comparisons and scalar bool copies.
+        comparison = """FIR 1.0
+module @Compared
+func @main() -> void {
+^entry:
+ %t: table.big = table.new
+ %key: i64 = const.i64 0
+ %slot: table.slot = table.index %t, %key
+ %left: i64 = const.i64 LEFT
+ table.store %slot, %left
+ %a: i64 = table.load %slot
+ %b: i64 = const.i64 RIGHT
+ %lt: bool = big.lt.signed %a, %b
+ %alias: bool = copy %lt
+ %eq: bool = big.eq %a, %b
+ %clt: bool = big.lt.signed %left, %b
+ %ceq: bool = big.eq %left, %b
+ trace %alias
+ trace %eq
+ trace %clt
+ trace %ceq
+ return
+}
+"""
+        for left, right in ((-(1 << 63), -1), ((1 << 63) - 1, -(1 << 63)), (9007199254740993, 9007199254740992), (7, 7)):
+            fir.write_text(comparison.replace("LEFT", str(left)).replace("RIGHT", str(right)))
+            call([compiler, "opt", fir, optimized])
+            for selected in (fir, optimized):
+                result = call([runner, selected])
+                if result.stdout != (str(int(left < right)) + "\n" + str(int(left == right)) + "\n") * 2:
+                    raise RuntimeError("reference big comparisons lost signed bits or bool copy")
         # Wrong-typed and future opcodes must fail before execution/emission.
         for malformed in (
             staged_failure.replace("table.index %t, %k", "table.index %k, %t"),
             staged_failure.replace("%v: i64 = table.load", "%v: keys = table.load"),
             staged_failure.replace("table.index", "table.future"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: bool = big.lt.signed %t, %n"),
+            staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = big.eq %n, %n"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = big.add %t, %t"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: i64 = big.neg %p"),
             staged_failure.replace("%v: i64 = table.load %p", "%v: string = value.type %p"),

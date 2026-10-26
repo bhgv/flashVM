@@ -234,7 +234,10 @@ def main():
                         raise RuntimeError("pure big arithmetic was lowered through native helper calls")
                 # Pure big expressions use the pointer-free scalar backend; actual table and
                 # conversion operations still require checked imports and both owner maps.
-                hosted = re.search(r"(?:table\.|keys\.|range\.big|value\.)", selected.read_text()) is not None
+                text = selected.read_text()
+                types_by_name = dict(re.findall(r"(%[\w.]+): ([\w.]+)", text))
+                hosted = re.search(r"(?:table\.|keys\.|range\.big|value\.(?:type|text))", text) is not None
+                hosted |= any(types_by_name.get(name) != "i64" for name in re.findall(r"value\.big (%[\w.]+)", text))
                 if header[0] != 819264 or header[1] != (64 if hosted else 0):
                     raise RuntimeError("wrong table/scalar image contract")
                 if hosted and (not types[0][1] or not types[1][1]):
@@ -343,6 +346,43 @@ func @main() -> void {
                 pc = re.search(r"module tables.dis pc (\d+):", failed.stderr)
                 if message not in failed.stderr or "DATA " in failed.stdout or not pc or int(pc[1]) >= header[3]:
                     raise RuntimeError("table error lost caller PC or published a successful snapshot\n" + failed.stderr)
+        # A loaded big must compare without narrowing; bool aliases must never use MOVP/GC roots.
+        comparison = """FIR 1.0
+module @Compared
+func @main() -> void {
+^entry:
+ %t: table.big = table.new
+ %key: i64 = const.i64 0
+ %slot: table.slot = table.index %t, %key
+ %left: i64 = const.i64 LEFT
+ table.store %slot, %left
+ %a: i64 = table.load %slot
+ %b: i64 = const.i64 RIGHT
+ %lt: bool = big.lt.signed %a, %b
+ %alias: bool = copy %lt
+ %eq: bool = big.eq %a, %b
+ %clt: bool = big.lt.signed %left, %b
+ %ceq: bool = big.eq %left, %b
+ trace %alias
+ trace %eq
+ trace %clt
+ trace %ceq
+ return
+}
+"""
+        for left, right in ((-(1 << 63), -1), ((1 << 63) - 1, -(1 << 63)), (9007199254740993, 9007199254740992), (7, 7)):
+            fir.write_text(comparison.replace("LEFT", str(left)).replace("RIGHT", str(right)))
+            invoke([compiler, "opt", fir, optimized])
+            for selected in (fir, optimized):
+                invoke([compiler, "dis", selected, image])
+                code = []
+                header, maps = descriptors(image, code)
+                if not {130, 134}.issubset(code) or header[1] != 64:
+                    raise RuntimeError("hosted big comparisons lack existing native branch instructions")
+                result = invoke([runtime, dispatch, "--quantum", 1, "--inspect-words", 0, 8, image])
+                values = [int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", result.stdout, re.MULTILINE)]
+                if values != [int(left < right), int(left == right)] * 2 + [1] * 4:
+                    raise RuntimeError("native big table comparison or bool copy changed")
         for arguments in (("--quantum", 0), ("--quantum", 65537), ("--quantum", 1, "--quantum", 2)):
             failed = invoke([runtime, *arguments, image], False)
             if failed.returncode != 2:

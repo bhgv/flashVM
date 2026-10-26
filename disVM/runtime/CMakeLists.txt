@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.20.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.21.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -379,6 +379,11 @@ if(DVM_RUNTIME_TESTS AND EXISTS "${DVM_FIR_COMPILER}" AND EXISTS "${DVM_FIR_SOUR
       "${CMAKE_CURRENT_SOURCE_DIR}/test_fir_tables.py" "${DVM_FIR_COMPILER}"
       "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_tables_${mode} PROPERTIES TIMEOUT 120
+      ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
+    add_test(NAME disvm_fir_big_decisions_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/big_decisions.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_big_decisions_${mode} PROPERTIES TIMEOUT 120
       ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
     add_test(NAME disvm_fir_big_cfg_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_fir_big_cfg.py" "${DVM_FIR_COMPILER}"
