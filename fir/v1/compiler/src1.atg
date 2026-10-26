@@ -558,9 +558,35 @@ PRODUCTIONS
 
   /* Big-result modules select a separate typed hybrid subset, never numeric-profile guessing. */
   TableBody =
-    (. int value = 0; .)
     { TableStatement }
+    TableResult
+  .
+
+  /* Every big arm terminates. No local declaration, assignment or environment join is invented.
+   * Resolver branches share the 64-level group/unary/decision budget and consume excess if tokens. */
+  TableResult =
+    (. int value = 0, choice = 0;
+       SourceCondition condition;
+       SourceMark branch;
+    .)
     "return" TableExpression<&value> ";" (. source_table_return(value); .)
+    | IF(Sym==ifSym && depth>=64) "if" (. capture(); source_scope_limit(); .)
+    | IF(Sym==ifSym && depth<64) "if" (. capture(); branch = source_mark(); .)
+      "(" TableCondition<&condition> ")"
+      (. ++depth; source_restore(branch); choice = source_branch(condition); .)
+      "{" TableResult "}" "else" (. source_else(choice); .)
+      "{" TableResult "}" (. --depth; .)
+  .
+
+  /* Both big expressions evaluate once in source order. Retain the exact relation-token span. */
+  TableCondition<SourceCondition *condition> =
+    (. int left = 0, right = 0;
+       SourceRelation relation = SOURCE_LESS;
+       SourceMark target;
+    .)
+    TableExpression<&left> Relation<&relation> (. target = source_mark(); .)
+    TableExpression<&right>
+    (. source_restore(target); *condition = source_compare(left, right, relation); .)
   .
 
   /* Locals may be explicitly typed or inferred. Writes capture the receiver/key once before RHS. */

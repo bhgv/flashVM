@@ -487,7 +487,7 @@ void source_release(void)
     destination = NULL;
 }
 
-/* Lower one admitted Limbo relation to signed i32 comparison plus edge inversion.
+/* Lower one admitted Limbo relation to signed i32/big comparison plus edge inversion.
  * Operands/relation are parser values. Return owns no storage; source errors remain sticky.
  * The current restored source mark identifies the comparison operator, not a later operand. */
 SourceCondition source_compare(int left, int right, SourceRelation relation)
@@ -498,15 +498,27 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
     condition.value = serial++;
     condition.invert =
         relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
-    if (!integer_mode || serial > 1000)
+    if ((!integer_mode && result_real != 2) || serial > 1000)
     {
-        reject("terminal comparisons require the bounded Limbo i32 profile");
+        reject("terminal comparisons require the bounded Limbo int or big profile");
+    }
+    if (result_real == 2 && !failed)
+    {
+        if (table_values[left] != T_I64 || table_values[right] != T_I64)
+        {
+            reject("terminal big comparison requires two big operands");
+        }
+        else
+        {
+            table_values[condition.value] = T_BOOL;
+        }
     }
     if (!failed)
     {
         fprintf(destination,
-                "    %%v%d: bool = i32.%s %%v%d, %%v%d\n",
+                "    %%v%d: bool = %s.%s %%v%d, %%v%d\n",
                 condition.value,
+                result_real == 2 ? "big" : "i32",
                 equality ? "eq" : "lt.signed",
                 swap ? right : left,
                 swap ? left : right);
