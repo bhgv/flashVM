@@ -2,19 +2,35 @@
 
 The production sizing emitters report 175 opcode slots. `INOP` is invalid and
 `IECLR` is unused, leaving 173 active commands. AMD64 and ARM64 now have native
-paths for 160 commands (92.5%); 13 remain on the interpreter path. RV64 profiles
+paths for 163 commands (94.2%); ten remain on the interpreter path. RV64 profiles
 retain their earlier counts. WORD32/native-pointer and legacy WORD64
 configurations have the same opcode counts at this checkpoint.
 
 | Backend/profile | Active commands | Native path | C interpreter path |
 | --- | ---: | ---: | ---: |
-| AMD64 | 173 | 160 | 13 |
-| ARM64 | 173 | 160 | 13 |
+| AMD64 | 173 | 163 | 10 |
+| ARM64 | 173 | 163 | 10 |
 | RV64 + M | 173 | 103 | 70 |
 | RV64 + Zmmul | 173 | 90 | 83 |
 | RV64I | 173 | 87 | 86 |
 
-The latest additions are INEWCB, INEWCW, INEWCL, INEWCF and INEWCP. Native
+The latest addition is ICONSMP for pointer-free mapped payloads up to 256 bytes.
+Native code resolves a checked live Type, stages the old tail across allocation,
+copies payload bytes and publishes descriptor/owner updates. Mapped and larger
+records retain the protected interpreter constructor, which now rolls back
+partially acquired head references without releasing the old tail. Duplicate
+and saturated references are checked before each increment. See
+[README.mapped-cons-native.md](README.mapped-cons-native.md).
+
+The preceding additions are INEWCM and INEWCMP. Native code captures complete
+source/capacity words, calls protected shared allocators and publishes fully
+initialized raw/mapped channel owners. Raw widths are stored natively before
+publication. Mapped construction resolves live module descriptors in the runtime
+helper. Existing-owner replacement retains C. Both buffered and unbuffered mapped
+descriptors now receive pointer-map checks before allocation. See
+[README.payload-channel-native.md](README.payload-channel-native.md).
+
+The preceding additions are INEWCB, INEWCW, INEWCL, INEWCF and INEWCP. Native
 capacity/empty-owner checks and delayed output publication surround the shared
 channel allocator; existing-owner replacements retain C. Complete WORD lengths,
 aliases, error cleanup, builtin Type references and native calling conventions

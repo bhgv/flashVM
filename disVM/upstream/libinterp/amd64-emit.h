@@ -271,6 +271,22 @@ x64caseguard(X64Buf *b, int success, int *patch, int *count)
 	x64byte(b, 0);
 }
 
+
+/* Reject null, H and wrapping spans before PC-table loads; rdx is scratch. */
+static void
+x64pcspan(X64Buf *b, int owner, int extent)
+{
+	x64byte(b, owner >= 8 ? 0x49 : 0x48);
+	x64byte(b, 0x8d); x64byte(b, 0x50 | (owner&7)); x64byte(b, 0xff);
+	x64byte(b, 0x48); x64byte(b, extent+2 <= 128 ? 0x83 : 0x81); x64byte(b, 0xfa);
+	if(extent+2 <= 128)
+		x64byte(b, -extent-2);
+	else
+		x64word(b, -extent-2);
+	x64guard(b, 0x76);
+}
+
+
 /* Search fixed-width numeric tables without helper calls or VM writes before target validation. */
 static int
 x64case(X64Buf *b, LeafLayout *abi, LeafOp *op)
@@ -286,24 +302,23 @@ x64case(X64Buf *b, LeafLayout *abi, LeafOp *op)
 	   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
 	   abi->instbytes < 1 || abi->instbytes > 2047)
 		return 0;
-	header=op->alu ? 8 : 4; stride=op->alu ? 24 : 12; count=0;
+	header=op->alu ? 2*IBY2WD : IBY2WD;
+	stride=op->alu ? 2*IBY2LG+2*IBY2WD : 3*IBY2WD; count=0;
 	/* Rejection islands cover both ends without near branches or a larger code buffer. */
 	x64byte(b, 0xeb); x64byte(b, 3); first=b->n;
 	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
 	x64caseptr(b, 0, abi->module);
-	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x40); x64byte(b, 0xff);
-	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xf8); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
+	x64pcspan(b, 8,
+		abi->linkmodule+8 > abi->linkcompiled+4 ? abi->linkmodule+8 : abi->linkcompiled+4);
 	x64casefield(b, 2, 8, abi->linkcompiled, 4);
 	x64byte(b, 0x85); x64byte(b, 0xd2); x64caseguard(b, 0x74, reject, &count);
 	x64casefield(b, 0, 8, abi->linkmodule, 8);
-	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 0xff);
-	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
+	x64pcspan(b, 0,
+		abi->moduleprog+8 > abi->modulenprog+4 ? abi->moduleprog+8 : abi->modulenprog+4);
 	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc3); /* r11=module */
-	x64caseptr(b, 0, abi->s); x64load(b, 0, op->bytes);
+	x64caseptr(b, 0, abi->s); x64pcspan(b, 8, op->bytes); x64load(b, 0, op->bytes);
 	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xc6); /* rsi=value */
-	x64caseptr(b, 2, abi->d);
-	x64byte(b, 0x49); x64byte(b, 0x8d); x64byte(b, 0x52); x64byte(b, 0xff);
-	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfb); x64caseguard(b, 0x76, reject, &count);
+	x64caseptr(b, 2, abi->d); x64pcspan(b, 10, 4);
 	x64casefield(b, 1, 10, 0, 4);
 	x64byte(b, 0x81); x64byte(b, 0xf9); x64word(b, 4095); x64caseguard(b, 0x76, reject, &count);
 	x64byte(b, 0x48); x64byte(b, 0x6b); x64byte(b, 0xc1); x64byte(b, stride);
@@ -323,10 +338,10 @@ x64case(X64Buf *b, LeafLayout *abi, LeafOp *op)
 	x64byte(b, 0x48); x64byte(b, op->alu ? 0x8b : 0x63); x64byte(b, 0x02);
 	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xc6);
 	x64byte(b, 0x7c); left=b->n; x64byte(b, 0);
-	x64byte(b, 0x48); x64byte(b, op->alu ? 0x8b : 0x63); x64byte(b, 0x42); x64byte(b, op->alu ? 8 : 4);
+	x64byte(b, 0x48); x64byte(b, op->alu ? 0x8b : 0x63); x64byte(b, 0x42); x64byte(b, op->alu ? IBY2LG : IBY2WD);
 	x64byte(b, 0x48); x64byte(b, 0x39); x64byte(b, 0xc6);
 	x64byte(b, 0x7d); right=b->n; x64byte(b, 0);
-	x64byte(b, 0x4c); x64byte(b, 0x63); x64byte(b, 0x4a); x64byte(b, op->alu ? 16 : 8);
+	x64byte(b, 0x4c); x64byte(b, 0x63); x64byte(b, 0x4a); x64byte(b, op->alu ? 2*IBY2LG : 2*IBY2WD);
 	x64byte(b, 0xeb); found=b->n; x64byte(b, 0);
 	leftlabel=b->n;
 	x64byte(b, 0x48); x64byte(b, 0xd1); x64byte(b, 0xe9);
@@ -1781,14 +1796,20 @@ x64recordobject(X64Buf *b, LeafLayout *a, int mode)
 }
 
 
-/* Capture capacity and publish a fresh channel only when the destination has no owner. */
+/* Capture scalar/raw/mapped arguments and publish a fully initialized channel into an empty slot. */
 static int
-x64scalarchannel(X64Buf *b, LeafLayout *a, int op)
+x64channel(X64Buf *b, LeafLayout *a, int op)
 {
-	int fallback, unbuffered;
+	int fallback, unbuffered, raw, mapped;
 	unsigned long long entry;
 
-	if(a->channelentry == nil || a->channelentry == (void*)-1)
+	raw = op == INEWCM;
+	mapped = op == INEWCMP;
+	entry = (unsigned long long)(raw ? a->rawchannelentry : mapped ? a->mappedchannelentry : a->channelentry);
+	if((raw && (a->channelmid < 40 || a->channelmid > 2047 || a->channelmid%8)) ||
+	   (mapped && (a->module < 0 || a->module > 2047 || a->module%8)))
+		return 0;
+	if(entry == 0 || entry == ~0ULL)
 		return 0;
 	x64byte(b, 0xeb); x64byte(b, 3);
 	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
@@ -1800,6 +1821,20 @@ x64scalarchannel(X64Buf *b, LeafLayout *a, int op)
 	x64readspan(b, 0, 8);
 	x64byte(b, 0x49); x64byte(b, 0x83); x64byte(b, 0x3a); x64byte(b, 0xff); // cmp qword ptr [r10], -1
 	x64moduleguard(b, 0x74, fallback);
+	if(raw || mapped){
+		x64caseptr(b, 0, a->s);
+		x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc0); // mov rax, r8
+		x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 0x01);
+		x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0x01);
+		x64moduleguard(b, 0x77, fallback);
+		x64readspan(b, 0, a->wordbytes);
+		x64load(b, 0, a->wordbytes);
+		if(raw){
+			x64byte(b, 0x48); x64byte(b, 0x3d); x64word(b, 0x7fffffff);
+			x64moduleguard(b, 0x76, fallback);
+		}
+		x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0xc3); // mov r11, captured width/index
+	}
 	x64caseptr(b, 0, a->m);
 	x64byte(b, 0x31); x64byte(b, 0xf6); // xor esi, esi
 	x64byte(b, 0x4d); x64byte(b, 0x39); x64byte(b, 0xd0); // cmp r8, r10
@@ -1817,12 +1852,26 @@ x64scalarchannel(X64Buf *b, LeafLayout *a, int op)
 	b->bytes[unbuffered]=b->n-unbuffered-1;
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xec); x64byte(b, 0x18); // sub rsp, 24
 	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x14); x64byte(b, 0x24); // mov [rsp], r10
-	x64byte(b, 0xbf); x64word(b, op); // mov edi, opcode
-	entry=(unsigned long long)a->channelentry;
+	if(raw || mapped){
+		x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x5c); x64byte(b, 0x24); x64byte(b, 0x08); // mov [rsp+8], r11
+		if(mapped){
+			x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xf2); // mov rdx, capacity
+			x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xde); // mov rsi, index
+			x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0xbf); x64word(b, a->module); // mov rdi, REG.M
+		}else{
+			x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xdf); // mov rdi, raw width
+		}
+	}else{
+		x64byte(b, 0xbf); x64word(b, op); // mov edi, scalar opcode
+	}
 	x64byte(b, 0x48); x64byte(b, 0xb8); x64word(b, entry); x64word(b, entry>>32);
 	x64byte(b, 0xff); x64byte(b, 0xd0); // call rax
 	x64byte(b, 0x4c); x64byte(b, 0x8b); x64byte(b, 0x14); x64byte(b, 0x24); // mov r10, [rsp]
-	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0x02); // mov [r10], rax
+	if(raw){
+		x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0x4c); x64byte(b, 0x24); x64byte(b, 0x08); // mov rcx, captured width
+		x64byte(b, a->wordbytes == 8 ? 0x48 : 0x40); x64byte(b, 0x89); x64byte(b, 0x88); x64word(b, a->channelmid); // mov Channel.mid.w, ecx/rcx
+	}
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0x02); // Publish only the initialized channel.
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xc4); x64byte(b, 0x18); // add rsp, 24
 	return 1;
 }
@@ -1850,6 +1899,93 @@ x64scalarcons(X64Buf *b, LeafLayout *a, LeafOp *p)
 	x64byte(b, 0x48); x64byte(b, 0x05); x64word(b, a->listdata); // add rax, payload offset
 	x64byte(b, p->bytes == 8 ? 0x48 : 0x40); x64byte(b, p->bytes == 1 ? 0x88 : 0x89);
 	x64byte(b, 0x08); // mov byte/dword/qword ptr [rax], cl/ecx/rcx
+	return 1;
+}
+
+
+
+
+/* Restore the private constructor frame on every post-callback guard rejection. */
+static void
+x64consguard(X64Buf *b, int success, int fallback)
+{
+	x64byte(b, success); x64byte(b, 5);
+	x64byte(b, 0xe9); x64word(b, fallback-b->n-4);
+}
+
+
+/* Validate a live descriptor, then allocate/copy/retain a bounded pointer-free list payload. */
+static int
+x64mappedcons(X64Buf *b, LeafLayout *a)
+{
+	int fallback, framed, empty, loop;
+	unsigned long long entry;
+
+	if(!leafmappedconslayout(a))return 0;
+	x64byte(b, 0xeb); x64byte(b, 3);
+	fallback=b->n; x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	x64caseptr(b, 0, a->s);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc0);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1);
+	x64moduleguard(b, 0x77, fallback); x64readspan(b, 0, 256);
+	x64caseptr(b, 2, a->d);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xd0);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1);
+	x64moduleguard(b, 0x77, fallback); x64readspan(b, 0, 8);
+	x64caseptr(b, 1, a->m);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0xc8);
+	x64byte(b, 0x48); x64byte(b, 0x8d); x64byte(b, 0x50); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 1);
+	x64moduleguard(b, 0x77, fallback); x64readspan(b, 0, a->wordbytes);
+	x64load(b, 1, a->wordbytes);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xec); x64byte(b, 56);
+	x64byte(b, 0xeb); x64byte(b, 7);
+	framed=b->n;
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xc4); x64byte(b, 56);
+	x64byte(b, 0x31); x64byte(b, 0xc0); x64byte(b, 0xc3);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x44); x64byte(b, 0x24); x64byte(b, 8);
+	x64byte(b, 0x4c); x64byte(b, 0x89); x64byte(b, 0x54); x64byte(b, 0x24); x64byte(b, 16);
+	x64byte(b, 0x49); x64byte(b, 0x8b); x64byte(b, 0x02);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x04); x64byte(b, 0x24);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xce); // mov rsi, index
+	x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0xbf); x64word(b, a->module);
+	entry=(unsigned long long)a->constypeentry;
+	x64byte(b, 0x48); x64byte(b, 0xb8); x64word(b, entry); x64word(b, entry>>32);
+	x64byte(b, 0xff); x64byte(b, 0xd0);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x44); x64byte(b, 0x24); x64byte(b, 24);
+	x64casefield(b, 1, 0, a->typenp, 4);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9); x64consguard(b, 0x74, framed);
+	x64casefield(b, 1, 0, a->typesize, 4);
+	x64byte(b, 0x48); x64byte(b, 0x81); x64byte(b, 0xf9); x64word(b, 256);
+	x64consguard(b, 0x76, framed);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x4c); x64byte(b, 0x24); x64byte(b, 32);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xcf);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0xe6);
+	entry=(unsigned long long)a->consentry;
+	x64byte(b, 0x48); x64byte(b, 0xb8); x64word(b, entry); x64word(b, entry>>32);
+	x64byte(b, 0xff); x64byte(b, 0xd0);
+	x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0x74); x64byte(b, 0x24); x64byte(b, 8);
+	x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0x4c); x64byte(b, 0x24); x64byte(b, 32);
+	x64byte(b, 0x4c); x64byte(b, 0x8d); x64byte(b, 0x90); x64word(b, a->listdata);
+	x64byte(b, 0x48); x64byte(b, 0x85); x64byte(b, 0xc9);
+	x64byte(b, 0x74); empty=b->n; x64byte(b, 0);
+	loop=b->n;
+	x64byte(b, 0x44); x64byte(b, 0x8a); x64byte(b, 0x1e);
+	x64byte(b, 0x45); x64byte(b, 0x88); x64byte(b, 0x1a);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc6);
+	x64byte(b, 0x49); x64byte(b, 0xff); x64byte(b, 0xc2);
+	x64byte(b, 0x48); x64byte(b, 0xff); x64byte(b, 0xc9);
+	x64byte(b, 0x75); x64byte(b, loop-b->n-1);
+	if(b->n>sizeof(b->bytes))return 0;
+	b->bytes[empty]=b->n-empty-1;
+	x64byte(b, 0x48); x64byte(b, 0x8b); x64byte(b, 0x54); x64byte(b, 0x24); x64byte(b, 24);
+	x64byte(b, 0x83); x64byte(b, 0x82); x64word(b, a->typeref); x64byte(b, 1);
+	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x90); x64word(b, a->listtype);
+	x64byte(b, 0x4c); x64byte(b, 0x8b); x64byte(b, 0x44); x64byte(b, 0x24); x64byte(b, 16);
+	x64byte(b, 0x49); x64byte(b, 0x89); x64byte(b, 0x00);
+	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xc4); x64byte(b, 56);
 	return 1;
 }
 
@@ -2172,12 +2308,14 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(!x64slicecopy(&b, abi)) return 0;
 	}else if(p.kind == LeafMappedCopy){
 		if(!x64mapped(&b, abi, &p)) return 0;
+	}else if(p.kind == LeafMappedCons){
+		if(!x64mappedcons(&b, abi)) return 0;
 	}else if(p.kind == LeafRawCons){
 		if(!x64rawcons(&b, abi)) return 0;
 	}else if(p.kind == LeafPointerCons){
 		if(!x64pointercons(&b, abi)) return 0;
-	}else if(p.kind == LeafScalarChannel){
-		if(!x64scalarchannel(&b, abi, p.alu)) return 0;
+	}else if(p.kind == LeafChannel){
+		if(!x64channel(&b, abi, p.alu)) return 0;
 	}else if(p.kind == LeafScalarCons){
 		if(!x64scalarcons(&b, abi, &p)) return 0;
 	}else if(p.kind == LeafArrayCreate){
@@ -2260,32 +2398,32 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		   abi->modulenprog < 0 || abi->modulenprog > 2047 || abi->modulenprog%4 ||
 		   abi->instbytes < 1 || abi->instbytes > 2047) return 0;
 		x64ptr(&b, 0, abi->module); x64byte(&b, 0x4c); x64byte(&b, 0x89); x64byte(&b, 0xc0);
-		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
-		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64pcspan(&b, 0, abi->linkmodule+8);
 		if(p.kind == LeafTableJump){
 			if(abi->linkcompiled < 0 || abi->linkcompiled > 2047 || abi->linkcompiled%4) return 0;
+			x64pcspan(&b, 0, abi->linkcompiled+4);
 			x64field(&b, 2, 0, abi->linkcompiled, 4);
 			x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x74);
 		}
 		x64field(&b, 0, 0, abi->linkmodule, 8);
-		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x75);
-		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xff); x64guard(&b, 0x75);
+		x64pcspan(&b, 0,
+		abi->moduleprog+8 > abi->modulenprog+4 ? abi->moduleprog+8 : abi->modulenprog+4);
 		x64byte(&b, 0x49); x64byte(&b, 0x89); x64byte(&b, 0xc3);
 		x64field(&b, 1, 0, abi->modulenprog, 4);
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc9); x64guard(&b, 0x79);
-		x64ptr(&b, 0, abi->s); x64load(&b, 0, abi->wordbytes);
+		x64ptr(&b, 0, abi->s); x64pcspan(&b, 8, abi->wordbytes); x64load(&b, 0, abi->wordbytes);
 		if(p.kind == LeafTableJump){
 			/* The compiler's table count and destinations are signed 32-bit Dis words. */
 			x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xc0); x64guard(&b, 0x79);
-			x64ptr(&b, 2, abi->d);
-			x64byte(&b, 0x49); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 4); x64guard(&b, 0x73);
+			x64ptr(&b, 2, abi->d); x64pcspan(&b, 10, IBY2WD);
+			x64byte(&b, 0x49); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, IBY2WD); x64guard(&b, 0x73);
 			x64byte(&b, 0x49); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
-			x64field(&b, 2, 10, -4, 4);
+			x64field(&b, 2, 10, -IBY2WD, 4);
 			x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x7f);
 			x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xd0); x64guard(&b, 0x72);
-			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, 2);
+			x64byte(&b, 0x48); x64byte(&b, 0xc1); x64byte(&b, 0xe0); x64byte(&b, IBY2WD == 8 ? 3 : 2);
 			x64byte(&b, 0x4c); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
-			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, 0xfc); x64guard(&b, 0x76);
+			x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xf8); x64byte(&b, -IBY2WD); x64guard(&b, 0x76);
 			x64byte(&b, 0x48); x64byte(&b, 0x63); x64byte(&b, 0x00);
 		}
 		x64byte(&b, 0x48); x64byte(&b, 0x39); x64byte(&b, 0xc8); x64guard(&b, 0x72);
@@ -2296,7 +2434,9 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
 		if(p.kind == LeafTableJump){
 			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->pc);
-		}else{x64ptr(&b, 2, abi->d); x64store(&b, 0, 8);}
+		}else{
+			x64ptr(&b, 2, abi->d); x64pcspan(&b, 10, 8); x64store(&b, 0, 8);
+		}
 	}else if(p.kind == LeafFixedCoefficient){
 		/* Capture frame parameters and both operands before any aliased result write. */
 		if(abi->fp < 0 || abi->fp > 2047 || abi->fp%8 || abi->fixedtmp < 0 || abi->fixedtmp > 2047 ||

@@ -424,6 +424,14 @@ extern	void*		checktype(void*, Type*, char*, int);
 extern	void		cmovw(void*, void*);
 extern	Channel*	cnewc(Type*, void (*)(void), int);
 extern	Channel*	cnewcscalar(int, int);
+
+
+/* Return an unpublished raw channel; the caller sets its width and transfers the new owner. */
+extern	Channel*	cnewcraw(int, int);
+
+
+/* Resolve a live module Type and return one mapped channel owner, unwinding VM allocation errors. */
+extern	Channel*	cnewcmapped(Modlink*, WORD, int);
 extern	int		compile(Module*, int, Modlink*);
 extern	void		cqadd(Progq**, Prog*);
 extern	void		cqdel(Progq**);
@@ -560,6 +568,10 @@ extern	int		runeslen(Rune*, int);
 extern	String*		c2string(char*, int);
 extern	char*		string2c(String*);
 extern	List*		cons(ulong, void*);
+
+
+/* Validate a live mapped-list descriptor without allocation or source/output mutation. */
+extern	Type*		cconsmappedtype(Modlink*, WORD);
 extern	String*		slicer(ulong, ulong, String*);
 extern	String*		addstring(String*, String*, int);
 extern	int		brpatch(Inst*, Module*);

@@ -32,7 +32,10 @@ struct LeafLayout {
 	void *arrayidentity; // Exact builtin Array identity required by byte-string conversion.
 	int typefree, typemark; // Callback offsets within a Type descriptor.
 	void *plainfree, *plainmark; // Exact standard freeheap/markheap callback identities.
+	void *rawchannelentry, *mappedchannelentry; // Unpublished raw and mapped channel allocators.
+	int channelmid; // Raw-width/descriptor union offset within a newly allocated Channel.
 	void *channelentry; // Shared scalar channel allocator selected by opcode and int capacity.
+	void *constypeentry; // Pure mapped-list descriptor validation before native allocation.
 	void *consentry; // Runtime list allocator; scalar capture/store remains native.
 	int listtype; // Element Type field within each mapped list node.
 	void *ptrtype; // Exact live builtin pointer Type used by CONSP.
@@ -146,6 +149,24 @@ leafscalarconslayout(LeafLayout *a, int bytes)
 }
 
 
+/* Require disjoint list metadata and int Type fields for bounded pointer-free mapped construction. */
+static int
+leafmappedconslayout(LeafLayout *a)
+{
+	if(!leafscalarconslayout(a, 8) || a->constypeentry == nil || a->constypeentry == (void*)-1 ||
+	   a->module < 0 || a->module > 2047 || a->module%8 ||
+	   a->listtail < 0 || a->listtype < 0 || a->listtype > 2047 || a->listtail > 2047 ||
+	   a->listtail%8 || a->listtype%8 || a->listtail == a->listtype ||
+	   a->listtail+8 > a->listdata || a->listtype+8 > a->listdata ||
+	   a->typeref < 0 || a->typeref > 2047 || a->typeref%4 ||
+	   a->typesize < 0 || a->typesize > 2047 || a->typesize%4 ||
+	   a->typenp < 0 || a->typenp > 2047 || a->typenp%4 ||
+	   a->typeref == a->typesize || a->typeref == a->typenp || a->typesize == a->typenp)
+		return 0;
+	return 1;
+}
+
+
 /* Validate live GC cells, descriptor references and disjoint pointer-list fields. */
 static int
 leafpointerconslayout(LeafLayout *a)
@@ -194,8 +215,9 @@ struct LeafOp {
 };
 
 enum {
+	LeafMappedCons = 131, // Resolve live descriptors and copy pointer-free mapped payloads.
 	LeafRawCons = 128, // Allocate and copy bounded raw list payloads before publication.
-	LeafScalarChannel = 130, // Allocate scalar channels after native capacity and empty-owner checks.
+	LeafChannel = 130, // Construct typed channels after native argument and empty-owner checks.
 	LeafPointerCons = 129, // Retain pointer heads and mark owners after successful allocation.
 	LeafScalarCons = 127, // Capture scalar list heads natively around the shared allocator.
 	LeafArrayCreate = 126, // Reuse unique owning pointer-free arrays for NEWA/NEWAZ.
@@ -237,8 +259,11 @@ leafop(LeafOp *p, int op, int wordbytes)
 	memset(p, 0, sizeof(*p));
 	p->bytes = wordbytes;
 	switch(op){
+	case INEWCM: case INEWCMP:
+		p->kind = LeafChannel; p->alu = op; break;
 	case INEWCB: case INEWCW: case INEWCL: case INEWCF: case INEWCP:
-		p->kind = LeafScalarChannel; p->alu = op; break;
+		p->kind = LeafChannel; p->alu = op; break;
+	case ICONSMP: p->kind = LeafMappedCons; break;
 	case ICONSM: p->kind = LeafRawCons; break;
 	case ICONSP: p->kind = LeafPointerCons; p->bytes = 8; p->input = 8; break;
 	case ICONSB: p->kind = LeafScalarCons; p->bytes = 1; p->input = 4; break;

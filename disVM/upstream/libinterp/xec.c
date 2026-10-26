@@ -41,6 +41,8 @@ OP(jmp)
 {
 	JMP(d);
 }
+
+
 /* Validate a Dis program index before turning it into a code pointer. */
 OP(movpc)
 {
@@ -50,8 +52,11 @@ OP(movpc)
 	Modlink *ml;
 
 	ml = R.M;
-	if(ml == H || ml == nil || ml->m == H || ml->m == nil)
+	if(ml == H || ml == nil || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   ml->m == H || ml->m == nil || (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))
 		error(exModule);
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(pc))
+		error(exBounds);
 	memmove(&pc, R.s, sizeof(pc));
 	if(pc < 0 || pc >= ml->m->nprog || ml->m->prog == nil || ml->m->prog == H)
 		error(exBounds);
@@ -61,6 +66,8 @@ OP(movpc)
 	if((uintptr)ml->m->prog > (uintptr)-1-offset)
 		error(exBounds);
 	target = (Inst*)((uintptr)ml->m->prog+offset);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(target))
+		error(exBounds);
 	memmove(R.d, &target, sizeof(target));
 }
 
@@ -1472,7 +1479,7 @@ Channel*
 cnewc(Type *t, void (*mover)(void), int len)
 {
 	ChannelBuild b;
-	int retains;
+	int retains, i, bit;
 
 	if(len < 0)
 		error(exNegsize);
@@ -1488,6 +1495,20 @@ cnewc(Type *t, void (*mover)(void), int len)
 			(len > 0 && t == &Tarray);
 		if(t->ref <= 0 || t->ref > 0x7fffffff-retains)
 			error(exHeap);
+	}
+	/* An unbuffered mapped channel still retains and later interprets the payload map. */
+	if(len > 0 || mover == movtmp){
+		if(t->size < 0 || t->np < 0 ||
+		   t->np > t->size/(8*sizeof(void*))+(t->size%(8*sizeof(void*)) != 0))
+			error(exHeap);
+		if(t->np != 0 && ((uintptr)t > (uintptr)-1 - offsetof(Type, map) ||
+		   (uintptr)t+offsetof(Type, map) > (uintptr)-1-(uintptr)t->np))
+			error(exHeap);
+		for(i = 0; i < t->np; i++)
+			for(bit = 0; bit < 8; bit++)
+				if((t->map[i] & (0x80>>bit)) &&
+				   ((ulong)i*8+bit >= (ulong)t->size/sizeof(void*)))
+					error(exHeap);
 	}
 	b.t = t;
 	b.mover = mover;
@@ -1606,53 +1627,71 @@ cnewcscalar(int op, int len)
 typedef struct RawChannel RawChannel;
 
 struct RawChannel {
-	Type *t; // Temporary raw payload descriptor retained during channel construction.
-	WORD size; // Full raw width captured before any aliased destination store.
+	Type *t; // Temporary descriptor retained until buffered allocation finishes.
+	int len; // Validated element capacity supplied to the common allocator.
+	Channel *c; // Fresh unpublished channel returned after successful construction.
 };
 
 
-/* Publish the captured raw width even when allocation replaces its source slot. */
+/* Allocate raw channel resources without publishing through any VM operand. */
 static int
 rawchannel(void *arg)
 {
 	RawChannel *b;
-	Channel *c;
-	b=arg;
-	c=newc(b->t,movm);
-	c->mid.w=b->size;
+
+	b = arg;
+	b->c = cnewc(b->t, movm, b->len);
 	return 1;
 }
 
 
-/* Capture raw geometry before the destination can overwrite either operand. */
-OP(newcm)
+/* Keep a temporary raw descriptor alive across protected queue and buffer allocation. */
+Channel*
+cnewcraw(int size, int len)
 {
 	RawChannel b;
-	WORD capacity;
-	Channel *old;
 	int ok;
-	uintptr address;
 
-	address = (uintptr)R.s;
-	if(R.s == nil || R.s == H || address > (uintptr)-1-sizeof(b.size))
-		error(exHeap);
-	memmove(&b.size, R.s, sizeof(b.size));
-	if(b.size < 0)
+	if(size < 0 || len < 0)
 		error(exNegsize);
-	if((uvlong)b.size > 0x7fffffff)
-		error(exHeap);
-	b.t=nil;
-	capacity = channelargs(&old);
-	if(R.m != R.d && capacity > 0) {
-		b.t=dtype(nil,b.size,nil,0);
+	b.t = nil;
+	b.len = len;
+	b.c = H;
+	if(len > 0){
+		b.t = dtype(nil, size, nil, 0);
 		if(b.t == nil)
 			error(exNomem);
 	}
-	ok=kprotect(rawchannel,&b);
+	ok = kprotect(rawchannel, &b);
 	freetype(b.t);
 	if(!ok)
 		krethrow();
+	return b.c;
 }
+
+
+/* Complete raw metadata before publishing a replacement or releasing its old source owner. */
+OP(newcm)
+{
+	WORD size, capacity;
+	Channel *channel, *old;
+	uintptr address;
+
+	address = (uintptr)R.s;
+	if(R.s == nil || R.s == H || address > (uintptr)-1-sizeof(size))
+		error(exHeap);
+	memmove(&size, R.s, sizeof(size));
+	if(size < 0)
+		error(exNegsize);
+	if((uvlong)size > 0x7fffffff)
+		error(exHeap);
+	capacity = channelargs(&old);
+	channel = cnewcraw((int)size, (int)capacity);
+	channel->mid.w = size;
+	memmove(R.d, &channel, sizeof(channel));
+	destroy(old);
+}
+
 
 /* Create a mapped channel only after validating its payload descriptor. */
 OP(newcmp)
@@ -1666,6 +1705,16 @@ OP(newcmp)
 	memmove(&index, R.s, sizeof(index));
 	newc(moduletype(R.M, index), movtmp);
 }
+
+
+/* Resolve a live mapped descriptor before allocating an unpublished channel for native callers. */
+Channel*
+cnewcmapped(Modlink *module, WORD index, int len)
+{
+	return cnewc(moduletype(module, index), movtmp, len);
+}
+
+
 /* Resolve a table target without forming an out-of-range Dis instruction pointer. */
 static Inst*
 casepc(Modlink *ml, int destination)
@@ -1685,146 +1734,181 @@ casepc(Modlink *ml, int destination)
 	return (Inst*)(program+offset);
 }
 
-/* Search compiler-emitted 12-byte integer rows using fixed-width, unaligned reads. */
+
+/* Search declared-cell integer rows using signed 32-bit fields and unaligned reads. */
 OP(icase)
 {
 	Modlink *ml;
 	WORD value;
 	uintptr table, rows, span, row;
 	int count, n, half, low, high, destination;
+	int header, stride;
 
+	header = IBY2WD;
+	stride = 3*IBY2WD;
 	ml = R.M;
-	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+	if(ml == nil || ml == H || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   (!ml->compiled && (ml->m == nil || ml->m == H ||
+	   (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))))
 		error(exModule);
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(value))
+		error(exBounds);
 	memmove(&value, R.s, sizeof(value));
 	table = (uintptr)R.d;
 	if(table == 0 || R.d == H || table > (uintptr)-1-3)
 		error(exBounds);
 	memmove(&count, R.d, sizeof(count));
-	if(count < 0 || count > (0x7fffffff-4)/12)
+	if(count < 0 || count > (0x7fffffff-header)/stride)
 		error(exBounds);
-	span = 4+(uintptr)count*12;
+	span = header+(uintptr)count*stride;
 	if(table > (uintptr)-1-span-3)
 		error(exBounds);
 	memmove(&destination, (void*)(table+span), sizeof(destination));
-	rows = table+4;
+	rows = table+header;
 	for(n = count; n > 0;){
 		half = n>>1;
-		row = rows+(uintptr)half*12;
+		row = rows+(uintptr)half*stride;
 		memmove(&low, (void*)row, sizeof(low));
-		memmove(&high, (void*)(row+4), sizeof(high));
+		memmove(&high, (void*)(row+IBY2WD), sizeof(high));
 		if(value < low)
 			n = half;
 		else if(value >= high){
-			rows = row+12;
+			rows = row+stride;
 			n -= half+1;
 		}else{
-			memmove(&destination, (void*)(row+8), sizeof(destination));
+			memmove(&destination, (void*)(row+2*IBY2WD), sizeof(destination));
 			break;
 		}
 	}
 	R.PC = casepc(ml, destination);
 }
 
-/* Search padded 24-byte big rows without treating their word fields as native pointers. */
+
+/* Search big rows using compiler padding and fixed-width bounds, independent of host WORD. */
 OP(casel)
 {
 	Modlink *ml;
 	LONG value, low, high;
 	uintptr table, rows, span, row;
 	int count, n, half, destination;
+	int header, stride;
 
+	header = 2*IBY2WD;
+	stride = 2*IBY2LG+2*IBY2WD;
 	ml = R.M;
-	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+	if(ml == nil || ml == H || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   (!ml->compiled && (ml->m == nil || ml->m == H ||
+	   (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))))
 		error(exModule);
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(value))
+		error(exBounds);
 	memmove(&value, R.s, sizeof(value));
 	table = (uintptr)R.d;
 	if(table == 0 || R.d == H || table > (uintptr)-1-3)
 		error(exBounds);
 	memmove(&count, R.d, sizeof(count));
-	if(count < 0 || count > (0x7fffffff-8)/24)
+	if(count < 0 || count > (0x7fffffff-header)/stride)
 		error(exBounds);
-	span = 8+(uintptr)count*24;
+	span = header+(uintptr)count*stride;
 	if(table > (uintptr)-1-span-3)
 		error(exBounds);
 	memmove(&destination, (void*)(table+span), sizeof(destination));
-	rows = table+8;
+	rows = table+header;
 	for(n = count; n > 0;){
 		half = n>>1;
-		row = rows+(uintptr)half*24;
+		row = rows+(uintptr)half*stride;
 		memmove(&low, (void*)row, sizeof(low));
-		memmove(&high, (void*)(row+8), sizeof(high));
+		memmove(&high, (void*)(row+IBY2LG), sizeof(high));
 		if(value < low)
 			n = half;
 		else if(value >= high){
-			rows = row+24;
+			rows = row+stride;
 			n -= half+1;
 		}else{
-			memmove(&destination, (void*)(row+16), sizeof(destination));
+			memmove(&destination, (void*)(row+2*IBY2LG), sizeof(destination));
 			break;
 		}
 	}
 	R.PC = casepc(ml, destination);
 }
+
+
+/* Read one signed Dis table cell without aligned or host-WORD loads. */
+static uvlong
+caseccell(uintptr address)
+{
+	int word;
+	vlong wide;
+
+	if(IBY2WD == 4){
+		memmove(&word, (void*)address, sizeof(word));
+		return (uvlong)(vlong)word;
+	}
+	memmove(&wide, (void*)address, sizeof(wide));
+	return (uvlong)wide;
+}
+
+
+/* Resolve a checked string table using its declared cell width and commit only the selected PC. */
 OP(casec)
 {
-	WORD *l, *t, *e, n, n2, r;
-	String *sl, *sh, *sv;
-	
-	sv = S(s);
-	t = (WORD*)((WORD)R.d + IBY2WD);
-	n = t[-1];
-	e = t + n*3;
-	if(n > 2){
-		while(n > 0){
-			n2 = n>>1;
-			l = t + n2*3;
-			sl = (String*)l[0];
-			r = stringcmp(sv, sl);
-			if(r == 0){
-				e = &l[2];
-				break;
-			}
-			if(r < 0){
-				n = n2;
+	Modlink *ml;
+	String *sv, *low, *high;
+	uintptr table, rows, row, span;
+	uvlong count, destination;
+	int n, half, comparison;
+
+	ml = R.M;
+	if(ml == nil || ml == H || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   (!ml->compiled && (ml->m == nil || ml->m == H ||
+	   (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))))
+		error(exModule);
+	if((IBY2WD != 4 && IBY2WD != 8) || R.s == nil || R.s == H ||
+	   (uintptr)R.s > (uintptr)-1-sizeof(sv))
+		error(exBounds);
+	memmove(&sv, R.s, sizeof(sv));
+	table = (uintptr)R.d;
+	if(table == 0 || R.d == H || table > (uintptr)-1-IBY2WD)
+		error(exBounds);
+	count = caseccell(table);
+	if(count > (0x7fffffff-2*IBY2WD)/(3*IBY2WD) ||
+	   (count != 0 && sizeof(low) > IBY2WD))
+		error(exBounds);
+	span = ((uintptr)count*3+2)*IBY2WD;
+	if(table > (uintptr)-1-span)
+		error(exBounds);
+	rows = table+IBY2WD;
+	destination = caseccell(table+span-IBY2WD);
+	for(n = (int)count; n > 0;){
+		half = n/2;
+		row = rows+(uintptr)half*3*IBY2WD;
+		memmove(&low, (void*)row, sizeof(low));
+		comparison = stringcmp(sv, low);
+		if(comparison < 0){
+			n = half;
+			continue;
+		}
+		if(comparison != 0){
+			memmove(&high, (void*)(row+IBY2WD), sizeof(high));
+			if(high == H || stringcmp(sv, high) > 0){
+				rows = row+3*IBY2WD;
+				n -= half+1;
 				continue;
 			}
-			sh = (String*)l[1];
-			if(sh == H || stringcmp(sv, sh) > 0){
-				t = l+3;
-				n -= n2+1;
-				continue;
-			}
-			e = &l[2];
-			break;
 		}
-		t = e;
+		destination = caseccell(row+2*IBY2WD);
+		break;
 	}
-	else{
-		while(t < e) {
-			sl = (String*)t[0];
-			sh = (String*)t[1];
-			if(sh == H) {
-				if(stringcmp(sl, sv) == 0) {
-					t = &t[2];
-					goto found;
-				}
-			}
-			else
-			if(stringcmp(sl, sv) <= 0 && stringcmp(sh, sv) >= 0) {
-				t = &t[2];
-				goto found;
-			}
-			t += 3;
-		}
-	}
-found:
-	if(R.M->compiled) {
-		R.PC = (Inst*)*t;
+	if(ml->compiled){
+		R.PC = (Inst*)(uintptr)(IBY2WD == 4 ? (u32int)destination : destination);
 		return;
 	}
-	R.PC = R.M->prog + t[0];
+	if(destination > 0x7fffffffULL)
+		error(exBounds);
+	R.PC = casepc(ml, (int)destination);
 }
+
+
 /* Read fixed-width Dis table entries and commit a validated PC without alignment assumptions. */
 OP(igoto)
 {
@@ -1834,8 +1918,12 @@ OP(igoto)
 	uintptr table, offset, program;
 
 	ml = R.M;
-	if(ml == nil || ml == H || (!ml->compiled && (ml->m == nil || ml->m == H)))
+	if(ml == nil || ml == H || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   (!ml->compiled && (ml->m == nil || ml->m == H ||
+	   (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))))
 		error(exModule);
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(index))
+		error(exBounds);
 	memmove(&index, R.s, sizeof(index));
 	table = (uintptr)R.d;
 	if(index < 0 || table < IBY2WD || R.d == H || (uvlong)index > (uintptr)-1/IBY2WD)
@@ -1938,7 +2026,8 @@ OP(mspawn)
 	Modl entry;
 
 	memmove(&ml, R.d, sizeof(ml));
-	if(ml == H || ml == nil || ml->m == H || ml->m == nil)
+	if(ml == H || ml == nil || (uintptr)ml > (uintptr)-1-sizeof(*ml) ||
+	   ml->m == H || ml->m == nil || (uintptr)ml->m > (uintptr)-1-sizeof(*ml->m))
 		error(exModule);
 	if(ml->prog == nil)
 		error(exSpawn);
@@ -2576,26 +2665,129 @@ OP(consm)
 }
 
 
-/* Copy mapped payload and acquire its references before publishing an aliased result. */
-OP(consmp)
+/* Resolve a list descriptor and reserve its payload retain before reading any map byte. */
+Type*
+cconsmappedtype(Modlink *module, WORD index)
 {
-	List *l, *result;
 	Type *t;
-	WORD index;
+	uintptr address;
+	int i, bit;
 
-	memmove(&index, R.m, sizeof(index));
-	t = moduletype(R.M, index);
-	if(t->ref <= 0 || t->ref > 0x7ffffffe - (t == &Tlist))
+	t = moduletype(module, index);
+	address = (uintptr)t;
+	if(address%sizeof(void*) != 0 ||
+	   address > (uintptr)-1-(offsetof(Type, np)+sizeof(t->np)))
 		error(exHeap);
-	memmove(&result, R.d, sizeof(result));
-	l = cons(t->size, &result);
-	incmem(R.s, t);
+	if(t->ref <= 0 || t->ref > 0x7ffffffe - (t == &Tlist) ||
+	   (ulong)t->size > 0x7fffffff-sizeof(Heap)-
+	   (sizeof(List)-sizeof(((List*)0)->data)) || t->np < 0 ||
+	   t->np > t->size/(8*sizeof(void*))+(t->size%(8*sizeof(void*)) != 0))
+		error(exHeap);
+	if(t->np != 0 && (address > (uintptr)-1 - offsetof(Type, map) ||
+	   address+offsetof(Type, map) > (uintptr)-1-(uintptr)t->np))
+		error(exHeap);
+	for(i = 0; i < t->np; i++)
+		for(bit = 0; bit < 8; bit++)
+			if((t->map[i] & (0x80>>bit)) &&
+			   ((ulong)i*8+bit >= (ulong)t->size/sizeof(void*)))
+				error(exHeap);
+	return t;
+}
+
+typedef struct ConsMapped ConsMapped;
+
+struct ConsMapped {
+	Type *type; // Live module descriptor retained by a completed node.
+	void *source; // Borrowed payload remains unchanged until output publication.
+	List *tail; // Existing output owner is transferred only after all head retains succeed.
+	List *node; // Partial owner released by the protected caller on a VM error.
+};
+
+
+/* Acquire mapped heads into an unpublished, safely destructible node one field at a time. */
+static int
+consmapped(void *arg)
+{
+	ConsMapped *b;
+	Type *t;
+	List *l, *tail;
+	Heap *h, header;
+	void *owner;
+	uintptr address;
+	ulong offset;
+	int i, bit;
+
+	b = arg;
+	t = b->type;
+	tail = b->tail;
+	l = cons(t->size, &tail);
+	b->node = l;
+	/* The output still owns the old tail; rollback must never release it. */
+	l->tail = H;
 	if(t->size != 0)
-		memmove(l->data, R.s, t->size);
+		memmove(l->data, b->source, t->size);
+	initmem(t, l->data);
 	l->t = t;
 	t->ref++;
-	memmove(R.d, &result, sizeof(result));
+	for(i = 0; i < t->np; i++){
+		for(bit = 0; bit < 8; bit++){
+			if(!(t->map[i] & (0x80>>bit)))
+				continue;
+			offset = ((ulong)i*8+bit)*sizeof(owner);
+			memmove(&owner, (uchar*)b->source+offset, sizeof(owner));
+			if(owner == H)
+				continue;
+			address = (uintptr)owner;
+			if(address <= sizeof(Heap) || address%sizeof(void*) != 0)
+				error(exHeap);
+			memmove(&header, (uchar*)owner-sizeof(Heap), sizeof(header));
+			if(header.ref == 0 || header.ref == (ulong)-1)
+				error(exHeap);
+			h = D2H(owner);
+			h->ref++;
+			Setmark(h);
+			memmove((uchar*)l->data+offset, &owner, sizeof(owner));
+		}
+	}
+	/* No fallible work remains: transfer the old slot's tail reference without retaining twice. */
+	l->tail = b->tail;
+	return 1;
 }
+
+
+/* Preserve the destination, tail and all head references if mapped construction fails. */
+OP(consmp)
+{
+	ConsMapped b;
+	WORD index;
+	uintptr address;
+	void *slot;
+
+	address = (uintptr)R.m;
+	if(R.m == nil || R.m == H || address > (uintptr)-1-sizeof(index))
+		error(exHeap);
+	memmove(&index, R.m, sizeof(index));
+	b.type = cconsmappedtype(R.M, index);
+	slot = R.d;
+	address = (uintptr)slot;
+	if(slot == nil || slot == H || address > (uintptr)-1-sizeof(b.tail))
+		error(exHeap);
+	b.source = R.s;
+	if(b.type->size != 0){
+		address = (uintptr)b.source;
+		if(b.source == nil || b.source == H || address > (uintptr)-1-(uintptr)b.type->size)
+			error(exHeap);
+	}
+	memmove(&b.tail, slot, sizeof(b.tail));
+	b.node = H;
+	if(!kprotect(consmapped, &b)){
+		destroy(b.node);
+		krethrow();
+	}
+	memmove(slot, &b.node, sizeof(b.node));
+}
+
+
 /* Capture a possibly four-byte-aligned owner before reading list storage. */
 static List*
 listhead(void)
