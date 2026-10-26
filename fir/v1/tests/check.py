@@ -116,8 +116,9 @@ with tempfile.TemporaryDirectory() as directory:
                     raise AssertionError((source.read_text(), result, expected))
 
     for folder in sorted((ROOT / "examples").iterdir()):
-        # Structural syntax and the negative diagnostic C client have separate tests.
-        if not folder.is_dir() or folder.name in ("structural", "diagnostics"):
+        # Structural/diagnostic/table examples have separate tests and target contracts.
+        # Tables deliberately reject SWO emission; tables.py covers their real C-core execution.
+        if not folder.is_dir() or folder.name in ("structural", "diagnostics", "tables"):
             continue
         if folder.name in ("as1", "as2", "as3", "limbo"):
             source = folder / ("main.b" if folder.name == "limbo" else "main.as")

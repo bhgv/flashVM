@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.10.0 LANGUAGES C)
+project(fir1 VERSION 0.11.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -183,4 +183,26 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME fir1_access_sites COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/access_sites.py" $<TARGET_FILE:fir1_source>)
+endif()
+
+# Optional reference execution takes an explicit independently supplied C99 table core.
+set(FIR_TABLE_CORE_ROOT "" CACHE PATH "Directory containing the matching table.c/table.h")
+if(FIR_TABLE_CORE_ROOT)
+  if(NOT EXISTS "${FIR_TABLE_CORE_ROOT}/table.c" OR NOT EXISTS "${FIR_TABLE_CORE_ROOT}/table.h")
+    message(FATAL_ERROR "FIR_TABLE_CORE_ROOT must contain table.c and table.h")
+  endif()
+  add_library(fir1_tables compiler/table_run.c "${FIR_TABLE_CORE_ROOT}/table.c")
+  target_include_directories(fir1_tables PUBLIC include PRIVATE "${FIR_TABLE_CORE_ROOT}")
+  target_link_libraries(fir1_tables PUBLIC fir1_ir)
+  if(BUILD_TESTING)
+    add_test(NAME fir1_typed_tables COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/tables.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  endif()
+  add_executable(fir1_table_run compiler/table_main.c)
+  target_link_libraries(fir1_table_run PRIVATE fir1_tables)
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(fir1_tables PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(fir1_table_run PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
 endif()
