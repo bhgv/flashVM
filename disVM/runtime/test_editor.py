@@ -53,7 +53,8 @@ def main():
         raise RuntimeError("dirty quit was silently accepted")
     output, _ = session(
         "complete as MovieClip.goto\nhint as MovieClip.gotoAndPlay 0\n"
-        "complete limbo Sys.pr\nhint limbo Sys.open 1\nquit\n"
+        "complete limbo Sys.pr\nhint limbo Sys.open 1\n"
+        "complete as Projection.to\nhint as Projection.tofloat 1\nquit\n"
     )
     for required in (
         "CANDIDATE MovieClip.gotoAndPlay",
@@ -61,6 +62,9 @@ def main():
         "PARAMETER 0 frame:Number|String",
         "CANDIDATE Sys.print",
         "PARAMETER 1 mode:int",
+        "CANDIDATE Projection.tofloat",
+        "CANDIDATE Projection.tobig",
+        "PARAMETER 1 completion:function",
     ):
         if required not in output:
             raise RuntimeError("AS/Limbo declaration help failed: " + output)

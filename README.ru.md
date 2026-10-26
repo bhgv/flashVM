@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1607**. [English](README.md).
+Версия разработки: **0.1608**. [English](README.md).
 
 Текущая серия: [v0.1597–v0.1604](docs/releases/v0.1604.md): актуальные JIT-правки Inferno, точные позиции обращений, диагностика брокера и канальные сервисы проекций IDE.
 

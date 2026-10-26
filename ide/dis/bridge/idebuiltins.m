@@ -33,6 +33,11 @@ Idebuiltins: module
     limbo: fn(): array of ref Idecomplete->Item;
 
 
+    # Return optional Projection.* library call tips from the loaded Idevalue type catalog.
+    # No arguments. Returns nil if the module is unavailable; never advertises new native AS globals.
+    projection: fn(): array of ref Idecomplete->Item;
+
+
     # Select exact-name overload help from a bounded completion query result.
     # candidates are borrowed; name is qualified; argument is the zero-based active argument.
     # Returns copied call tips. Negative/out-of-bound input returns nil; no source parsing occurs.

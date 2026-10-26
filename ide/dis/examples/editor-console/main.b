@@ -621,7 +621,13 @@ init()
     # Give Limbo a separate generation and namespace.
     limbocommands = completion->start();
     # Publish genuine initial AS declarations by value.
-    asready := catalog(ascommands, completion->Publish, "", builtins->actionscript());
+    asitems := builtins->actionscript();
+    projectionitems := builtins->projection();
+    combined := array[len asitems + len projectionitems] of ref Idecomplete->Item;
+    combined[0:] = asitems;
+    combined[len asitems:] = projectionitems;
+    # Optional Projection.* names describe the explicitly loaded AS client library, not native globals.
+    asready := catalog(ascommands, completion->Publish, "", combined);
     # Publish genuine language/Sys declaration metadata separately.
     limboready := catalog(limbocommands, completion->Publish, "", builtins->limbo());
     # Keep an incomplete index from masquerading as working completion.

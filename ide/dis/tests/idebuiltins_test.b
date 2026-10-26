@@ -61,6 +61,22 @@ init()
     }
     asindex := index->start();
     limboindex := index->start();
+    conversions := builtins->projection();
+    if(len conversions != 9){
+        fail("reflected projection conversion catalog");
+    }
+    floated := 0;
+    for(c := 0; c < len conversions; c++){
+        if(conversions[c].name == "Projection.tofloat"){
+            floated++;
+            if(conversions[c].documentation == "" || len conversions[c].parameters != 2){
+                fail("binary64 alias call tip");
+            }
+        }
+    }
+    if(floated != 1){
+        fail("missing unique tofloat alias");
+    }
     asitems := builtins->actionscript();
     limboitems := builtins->limbo();
     reply := exchange(asindex, index->Publish, 1, "", asitems);

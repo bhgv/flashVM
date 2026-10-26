@@ -1,6 +1,7 @@
 implement Idebuiltins;
 include "idecomplete.m";
 include "idebuiltins.m";
+include "idevalue.m";
 
 
 # Build one fresh provider item. Text/parameters are owned values; returns an independent record.
@@ -904,6 +905,49 @@ help(candidates: array of ref Idecomplete->Item, name: string,
         result[next] = ref Calltip(candidate.name, candidate.signature,
             candidate.documentation, active, selected);
         next++;
+    }
+    return result;
+}
+
+
+# Build optional library completion from the actual Limbo value module's reflected types.
+# No arguments; returns independent Items or nil when the optional module is absent.
+# Only metadata is loaded: no receiver getter, conversion or method is evaluated.
+projection(): array of ref Idecomplete->Item
+{
+    values := load Idevalue Idevalue->PATH;
+    if(values == nil){
+        return nil;
+    }
+    types := values->types();
+    count := 1; # Additional tofloat alias of reflected real, not a second floating type.
+    for(i := 0; i < len types; i++){
+        if(types[i].helper != ""){
+            count++;
+        }
+    }
+    result := array[count] of ref Idecomplete->Item;
+    next := 0;
+    for(i = 0; i < len types; i++){
+        t := types[i];
+        if(t.helper == ""){
+            continue;
+        }
+        name := "Projection." + t.helper;
+        details := "Optional owner conversion library: " + t.name + " uses " + t.base;
+        if(t.bits != 0){
+            details += " (" + string t.bits + " bits)";
+        }
+        arguments := array[] of {
+            parameter("reference", "owner reference", 0, "Opaque receiver; conversion runs at its owner."),
+            parameter("completion", "function", 0, "Receive copied value or typed conversion failure.")
+        };
+        result[next++] = item(name, Function, name + "(reference, completion)", details, arguments);
+        if(t.kind == Idevalue->Real){
+            result[next++] = item("Projection.tofloat", Function,
+                "Projection.tofloat(reference, completion)",
+                "Alias of Projection.toreal: Limbo real / binary64, not binary32.", arguments);
+        }
     }
     return result;
 }
