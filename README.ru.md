@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1631**. [English](README.md).
+Версия разработки: **0.1632**. [English](README.md).
 
-Текущая серия: [v0.1631](docs/releases/v0.1631.md): прямой полноразрядный big CFG, проверка повторных имён и обновлённые защиты CASEC x64/ARM64.
+Текущая серия: [v0.1632](docs/releases/v0.1632.md): точные исходные решения big, нативные 64-битные сравнения и защиты CASEC/строк x64/ARM64.
 
 ## Просмотр документации
 

@@ -1,3 +1,24 @@
+# Current synchronization — v0.1632
+
+Experiment: `583c3ce6ea8629aa37a1e0237a2b8d99f4a39004`. 488 exact core/reference files and 174 bootstrap files.
+AMD64/ARM64 CASEC accepts guarded lower-label identity/equal-empty matches at
+the first binary-search midpoint in tables up to 4095 rows. Other comparisons
+retain C fallback; availability stays 164/173 active native opcodes.
+
+Production C string comparison/duplication now guards wrapping String headers,
+heap-owner underflow and complete ASCII/Rune source spans before field reads,
+allocation or copying. The new string-header/source regression is selected and
+registered alongside existing native RX/emulation tests.
+[Contract](upstream/libinterp/tests/README.string-case-native.md).
+
+The complete core passes 176/176; runtime/IDE passes 117/117. AMD64 native RX
+execution and ARM64 instruction emulation remain separate from physical ARM64
+acceptance/full Inferno boot. No new upstream-owning defect was found for reverse
+publication. Our big comparison/source decision extension stays outside Inferno.
+Historical synchronization reports follow.
+
+---
+
 # Current synchronization — v0.1631
 
 Experiment: `a3fb27ec812fd0c7d544451e2a003d6a4bf84034`. 486 exact core/reference files and 174 bootstrap files.

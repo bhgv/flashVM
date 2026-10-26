@@ -59,6 +59,8 @@ all sign combinations, extrema, values above 2^53, dynamic table reads, exact
 operator source spans, unused errors and per-instruction GC before/after optimization.
 The source compiler/optimizer/reference suite also runs under UBSan.
 
-Shifts, mixed int/big typing, profile comparisons, table CFG/loops, general any and
+Shifts, mixed int/big typing,  table CFG/loops, general any and
 transparent proxy operations remain pending. These operators do not make a table
 read-compute-write sequence an atomic owner RPC. No extension is exported to Inferno.
+
+[FIR 0.18: big comparisons and terminal source if/else / Сравнения и решения исходника](BIG_DECISIONS.md) · [Русский](BIG_DECISIONS.ru.md).

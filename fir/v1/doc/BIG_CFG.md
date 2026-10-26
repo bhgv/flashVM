@@ -10,10 +10,9 @@ hosted table backend, so valid big CFG was rejected and pure big arithmetic
 unnecessarily loaded Bigtable. Dispatch now selects the table backend only for
 actual table, key, range, reflection or conversion operations.
 
-The source grammar is unchanged: this is a FIR/backend capability. The big-result
-Coco/R Limbo source profile still admits a single-block body; this does not add
-source if/for/while, big comparisons, phi values, mixed-type arithmetic, shifts,
-transparent any/proxy access or full Limbo function/module lowering.
+FIR 0.18 extends this foundation with [exact big source terminal decisions](BIG_DECISIONS.md).
+Table CFG/loops, phi values, mixed-type arithmetic, shifts, transparent any/proxy
+access and full Limbo function/module lowering remain separate work.
 
 ## Binary and ownership contract
 
@@ -64,3 +63,5 @@ zero flags/imports and empty GC maps. Selected failing arms reject inspection
 without publishing DATA; unselected failing arms succeed before/after optimization.
 These tests exercise AMD64 runtime execution. ARM64 emitter instruction-emulation
 coverage is separate and does not establish physical ARM64 execution.
+
+[FIR 0.18: big comparisons and terminal source if/else / Сравнения и решения исходника](BIG_DECISIONS.md) · [Русский](BIG_DECISIONS.ru.md).

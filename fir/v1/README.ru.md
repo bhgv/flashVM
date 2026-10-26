@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.17.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.18.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -99,3 +99,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Деление, остаток и 64-битные маски](doc/BIG_BITWISE.ru.md).
 
 [Скалярный CFG с big](doc/BIG_CFG.ru.md).
+
+[Exact big source decisions / Точные решения big](doc/BIG_DECISIONS.md) · [Русский](doc/BIG_DECISIONS.ru.md).

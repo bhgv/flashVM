@@ -155,3 +155,5 @@ arithmetic and terminal decisions. The C99 SDK client uses its original invocati
 without a third argument: type selection belongs to the grammar, not the filename.
 
 [Full-width big CFG / Полноразрядный big CFG](../../doc/BIG_CFG.md) · [FIR](big-cfg.fir).
+
+[Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).

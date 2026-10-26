@@ -86,3 +86,5 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 сериализоваться хостом; добавление real не делает парсер реентерабельным.
 
 [FIR 0.17: big scalar CFG](../doc/BIG_CFG.md) · [Русский](../doc/BIG_CFG.ru.md).
+
+[FIR 0.18: exact big comparisons/source decisions](../doc/BIG_DECISIONS.md) · [Русский](../doc/BIG_DECISIONS.ru.md).

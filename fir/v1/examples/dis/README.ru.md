@@ -155,3 +155,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 вызов без третьего аргумента: тип берётся из грамматики, не из расширения файла.
 
 [Full-width big CFG / Полноразрядный big CFG](../../doc/BIG_CFG.md) · [FIR](big-cfg.fir).
+
+[Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).
