@@ -302,3 +302,5 @@ Limbo bytecode on our Dis VM; graphics use FlashVM TextField and an optional SDL
 window. Bundled OFL Noto Sans Mono starts at size 11; no font-location prompt. [English](ide/dis/examples/graphical-editor/README.md) ·
 [Русский](ide/dis/examples/graphical-editor/README.ru.md). This first graphical
 integration does not yet execute AS workers or connect the debugger.
+
+[IDE application entry on our own DisVM](ide/dis/app/README.md) · [Запуск IDE и границы готовности](ide/dis/app/README.ru.md).

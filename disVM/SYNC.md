@@ -1,3 +1,27 @@
+# Current synchronization — v0.1638
+
+Experiment: `02b7b7f96183d30f6c75b7415197ecc986e5d411`. 531 exact core/reference
+files and 174 bootstrap files. Our reverse integer-branch/JMP preflight is
+published in experiment and imported byte-for-byte. It bounds used comparison
+and target slots, retains false-target/JMP-source nonaccess, computes the ARM64
+inverse relocation and preserves native FP/PC state on decline.
+[Owning contract](upstream/libinterp/tests/README.branch-slot.md).
+
+New countof/in/delete language operations, FIR IDs and hosted Bigtable helpers
+are FlashVM extensions and were not sent to Inferno. [Compiler contract](../fir/v1/doc/TABLE_MUTATION.md).
+The real ide.dis application entry runs Limbo policy on this DisVM and FlashVM
+rendering through typed channels. [Application guide](../ide/dis/app/README.md).
+
+Native availability remains AMD64/ARM64 164/173, with partial operand coverage.
+No native ISA/container/WORD ABI change is introduced. ARM64 checks are instruction
+emulation; hardware execution and full Inferno boot remain separate acceptance.
+
+Incoming e14f034 adds independent integer branch C/RX and JIT checkpoints.
+Incoming 02b7b7f guards nine numeric commands and accepts all normal exact
+CVTFX power scales. All four additional native/emulation drivers are registered.
+
+---
+
 # Current synchronization — v0.1637
 
 Experiment: `14c3d2c2736936eade4eadfa25e87c8ce5e404ec`. 519 exact core/reference files and 174 bootstrap

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1637**. [Русская версия](README.ru.md).
+Development version: **0.1638**. [Русская версия](README.ru.md).
 
-Current series: [v0.1637](docs/releases/v0.1637.md): checked division, real branches and scalar conversions on C/x64/ARM64, preserved native oracles and a commented Limbo division tutorial.
+Current series: [v0.1638](docs/releases/v0.1638.md): compiler 0.21 table count/in/delete, FIR and hosted Dis lowering, runtime 0.24 IDE application entry and checked integer branches.
 
 ## Browse documentation
 

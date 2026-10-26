@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1637**. [English](README.md).
+Версия разработки: **0.1638**. [English](README.md).
 
-Текущая серия: [v0.1637](docs/releases/v0.1637.md): проверки деления, real-переходов и преобразований C/x64/ARM64, исправление native-оснастки и комментированный пример Limbo.
+Текущая серия: [v0.1638](docs/releases/v0.1638.md): компилятор 0.21, countof/in/delete, FIR/Dis, runtime 0.24 с точкой входа IDE и проверки целочисленных переходов.
 
 ## Просмотр документации
 
