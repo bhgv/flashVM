@@ -26,10 +26,11 @@ parts += [function('libinterp/heap.c', 'void*\narraycpy('), function('libinterp/
 parts += [function('libinterp/link.c','Modlink*\nmklinkmod('),function('libinterp/xec.c','List*\ncons(')]
 parts += [function('libinterp/xec.c','static Type*\nmoduletype(')]
 if 'static uchar*\narrayspan(' in Path(os.environ.get('HEAP_XEC_SOURCE',root/'libinterp/xec.c')).read_text():parts += [function('libinterp/xec.c','static uchar*\narrayspan(')]
+if 'static void\nnewarray(' in Path(os.environ.get('HEAP_XEC_SOURCE',root/'libinterp/xec.c')).read_text():parts += [function('libinterp/xec.c','static void\nnewarray(')]
 parts += [function('libinterp/xec.c','OP('+n+')') for n in ['newa','newaz','slicea','slicela']]
 unit=(root/'libinterp/tests/heap-bounds.c').read_text().replace('IMPLEMENTATION','\n'.join(parts)).replace('main(int argc, char **argv)','boundsmain(int argc, char **argv)')
 unit=re.sub(r'^#include \"[^\"]+\"\n','',unit,flags=re.M)
-unit='#include \"dat.h\"\n#include \"fns.h\"\n#include \"comp-amd64.c\"\n#include \"pool.h\"\n#include \"raise.h\"\n#include \"kernel.h\"\n'+unit
+unit='#include \"dat.h\"\n#include \"fns.h\"\n#include \"comp-amd64.c\"\n#include \"tests/leaf-plain-stubs.h\"\n#include \"pool.h\"\n#include \"raise.h\"\n#include \"kernel.h\"\n'+unit
 unit+=(root/'libinterp/tests/array-view-native.c').read_text()
 with tempfile.TemporaryDirectory(prefix='heap-bounds-') as directory:
     td=Path(directory);p=td/'heap.c';p.write_text(unit)

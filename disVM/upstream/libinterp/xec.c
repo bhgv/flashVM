@@ -1095,23 +1095,44 @@ OP(movp)
 	memmove(R.d, &sv, sizeof(sv));
 	destroy(dv);
 }
-/* Resolve the full Limbo index through the owner: Loader.tnew may move its table. */
+
+
+/* Resolve live module tables through checked native spans and unaligned-safe reads. */
 static Type*
 moduletype(Modlink *ml, WORD index)
 {
 	Module *m;
-	Type *t;
+	Type **table, *type;
+	uintptr address, extent, offset;
+	int count, size;
 
-	if(ml == H || ml == nil || ml->m == nil || ml->m == H)
+	address = (uintptr)ml;
+	if(ml == nil || ml == H || address > (uintptr)-1-(offsetof(Modlink, m)+sizeof(m)))
 		error(exModule);
-	m = ml->m;
-	if(m->type == nil || m->type == H || index < 0 || index >= m->ntype)
+	memmove(&m, (uchar*)ml+offsetof(Modlink, m), sizeof(m));
+	address = (uintptr)m;
+	extent = offsetof(Module, type)+sizeof(table);
+	if(extent < offsetof(Module, ntype)+sizeof(count))
+		extent = offsetof(Module, ntype)+sizeof(count);
+	if(m == nil || m == H || address > (uintptr)-1-extent)
+		error(exModule);
+	memmove(&table, (uchar*)m+offsetof(Module, type), sizeof(table));
+	memmove(&count, (uchar*)m+offsetof(Module, ntype), sizeof(count));
+	if(table == nil || table == H || index < 0 || index >= count ||
+	   (uvlong)index > ((uintptr)-1-sizeof(type))/sizeof(type))
 		error("invalid type");
-	t = m->type[index];
-	if(t == nil || t == H || t->size < 0)
+	offset = (uintptr)index*sizeof(type);
+	if((uintptr)table > (uintptr)-1-offset-sizeof(type))
 		error("invalid type");
-	return t;
+	memmove(&type, (uchar*)table+offset, sizeof(type));
+	if(type == nil || type == H || (uintptr)type > (uintptr)-1-(offsetof(Type, size)+sizeof(size)))
+		error("invalid type");
+	memmove(&size, (uchar*)type+offsetof(Type, size), sizeof(size));
+	if(size < 0)
+		error("invalid type");
+	return type;
 }
+
 
 /* Resolve mapped metadata first; empty records neither access data nor change references. */
 OP(movmp)
@@ -1129,52 +1150,95 @@ OP(movmp)
 		freeptrs(R.d, t);
 	memmove(R.d, R.s, t->size);
 }
-/* Validate the descriptor before allocating or replacing the destination. */
+
+
+/* Resolve and retain the old owner until zero initialization or allocation is complete. */
+static void
+newrecord(Modlink *ml, WORD index, int clear)
+{
+	Type *type;
+	Heap *h, oldheap;
+	void *old, *object;
+	uintptr address, extent;
+	int size, pointers, references;
+	void (*release)(Heap*, int);
+	void (*mark)(Type*, void*);
+
+	type = moduletype(ml, index);
+	extent = offsetof(Type, np)+sizeof(type->np);
+	if((uintptr)type%sizeof(void*) != 0 || (uintptr)type > (uintptr)-1-extent)
+		error(exHeap);
+	memmove(&size, (uchar*)type+offsetof(Type, size), sizeof(size));
+	memmove(&pointers, (uchar*)type+offsetof(Type, np), sizeof(pointers));
+	memmove(&references, (uchar*)type+offsetof(Type, ref), sizeof(references));
+	if(references <= 0 || size < 0 || (ulong)size > 0x7fffffff-sizeof(Heap))
+		error(exHeap);
+	memmove(&old, R.d, sizeof(old));
+	if(old == nil)
+		error(exNilref);
+	if(old != H){
+		address = (uintptr)old;
+		if(address < sizeof(Heap))
+			error(exHeap);
+		memmove(&oldheap, (uchar*)old-sizeof(Heap), sizeof(oldheap));
+		if(oldheap.ref == 0)
+			error(exHeap);
+		memmove(&release, (uchar*)type+offsetof(Type, free), sizeof(release));
+		memmove(&mark, (uchar*)type+offsetof(Type, mark), sizeof(mark));
+		/* Custom finalizers may own native resources even when their pointer map is empty. */
+		if(oldheap.t == type && oldheap.ref == 1 && pointers == 0 && release == freeheap && mark == markheap){
+			if(size != 0){
+				if(address > (uintptr)-1-(uintptr)size)
+					error(exHeap);
+				if(clear)
+					memset(old, 0, size);
+			}
+			/* Restore a result slot overlapping the cleared payload. */
+			memmove(R.d, &old, sizeof(old));
+			return;
+		}
+	}
+	h = clear ? heapz(type) : heap(type);
+	object = H2D(void*, h);
+	memmove(R.d, &object, sizeof(object));
+	destroy(old);
+}
+
+
+/* Reuse unique plain records without reading or initializing unspecified scalar bytes. */
 OP(new)
 {
-	Heap *h;
-	WORD *t, *object;
 	WORD index;
 
 	memmove(&index, R.s, sizeof(index));
-	h = heap(moduletype(R.M, index));
-	memmove(&t, R.d, sizeof(t));
-	object = H2D(WORD*, h);
-	memmove(R.d, &object, sizeof(object));
-	destroy(t);
+	newrecord(R.M, index, 0);
 }
-/* Use the current module table for a zero-initialized object. */
+
+
+/* Capture the full type index before zeroing a possibly overlapping old payload. */
 OP(newz)
 {
-	Heap *h;
-	WORD *t, *object;
 	WORD index;
 
 	memmove(&index, R.s, sizeof(index));
-	h = heapz(moduletype(R.M, index));
-	memmove(&t, R.d, sizeof(t));
-	object = H2D(WORD*, h);
-	memmove(R.d, &object, sizeof(object));
-	destroy(t);
+	newrecord(R.M, index, 1);
 }
-/* Resolve the requested descriptor in the source module before allocation. */
+
+
+/* Resolve an imported type through its current Module table before creating an object. */
 OP(mnewz)
 {
-	Heap *h;
-	WORD *t, *object;
-	WORD index;
 	Modlink *ml;
+	WORD index;
 
 	memmove(&ml, R.s, sizeof(ml));
-	if(ml == H)
+	if(ml == nil || ml == H)
 		error(exModule);
 	memmove(&index, R.m, sizeof(index));
-	h = heapz(moduletype(ml, index));
-	memmove(&t, R.d, sizeof(t));
-	object = H2D(WORD*, h);
-	memmove(R.d, &object, sizeof(object));
-	destroy(t);
+	newrecord(ml, index, 1);
 }
+
+
 /* Resolve imports or named exports without narrowing the Limbo link index. */
 static int
 moduleentry(Modlink *ml, WORD index, Modl *entry)
@@ -1273,67 +1337,90 @@ OP(mframe)
 }
 
 
-/* Validate the current element descriptor before checking array geometry. */
+/* Validate pointer maps before allocation, then initialize scalar and pointer bytes separately. */
+static void
+newarray(int clear)
+{
+	WORD count, index;
+	Type *type;
+	Heap *h, header;
+	Array *array, *old;
+	uchar *element;
+	int i;
+	uintptr address;
+	ulong bytes;
+
+	memmove(&index, R.m, sizeof(index));
+	type = moduletype(R.M, index);
+	if((uintptr)type%sizeof(void*) != 0 ||
+	   (uintptr)type > (uintptr)-1-(offsetof(Type, np)+sizeof(type->np)))
+		error(exHeap);
+	memmove(&count, R.s, sizeof(count));
+	/* Preserve descriptor-error precedence before checking the full WORD geometry. */
+	if(type->ref <= 0 || type->ref > 0x7ffffffe - (type == &Tarray) ||
+	   Tarray.ref <= 0 || Tarray.ref == 0x7fffffff)
+		error(exHeap);
+	acheck(type->size, count);
+	memmove(&old, R.d, sizeof(old));
+	if(old == nil)
+		error(exNilref);
+	if(old != H){
+		address = (uintptr)old;
+		if(address < sizeof(Heap) || address%sizeof(void*) != 0)
+			error(exHeap);
+		memmove(&header, (uchar*)old-sizeof(Heap), sizeof(header));
+		if(header.ref == 0)
+			error(exHeap);
+		if(header.t == &Tarray && header.ref == 1 && type->np == 0){
+			if(address > (uintptr)-1-sizeof(Array))
+				error(exHeap);
+			if(old->t == type && old->len == count && old->root == H){
+				bytes = (ulong)type->size*count;
+				if(bytes != 0){
+					if((uintptr)old->data < address+sizeof(Array) ||
+					   old->data == H || (uintptr)old->data > (uintptr)-1-bytes)
+						error(exHeap);
+					if(clear)
+						memset(old->data, 0, bytes);
+				}
+				/* An output operand may overlap the reused scalar payload. */
+				memmove(R.d, &old, sizeof(old));
+				return;
+			}
+		}
+	}
+	/* heaparray checks both descriptor retains and every mapped pointer slot. */
+	h = heaparray(type, (int)count);
+	array = H2D(Array*, h);
+	if(clear && type->size != 0 && count != 0){
+		memset(array->data, 0, (ulong)type->size*count);
+		/* Restore H in mapped cells without acquiring a second element-Type retain. */
+		if(type->np != 0){
+			element = array->data;
+			for(i = 0; i < count; i++){
+				initmem(type, element);
+				element += type->size;
+			}
+		}
+	}
+	memmove(R.d, &array, sizeof(array));
+	destroy(old);
+}
+
+
+/* Construct an array with unspecified scalar bytes and initialized pointer cells. */
 OP(newa)
 {
-	WORD sz, index;
-	Type *t;
-	Heap *h;
-	Array *a, *at;
-
-	memmove(&index, R.m, sizeof(index));
-	t = moduletype(R.M, index);
-	memmove(&sz, R.s, sizeof(sz));
-	if(t->ref <= 0 || t->ref > 0x7ffffffe - (t == &Tarray) ||
-	   Tarray.ref <= 0 || Tarray.ref == 0x7fffffff)
-		error(exHeap);
-	acheck(t->size, sz);
-	h = nheap(sizeof(Array) + (t->size*sz));
-	h->t = &Tarray;
-	Tarray.ref++;
-	a = H2D(Array*, h);
-	a->t = t;
-	a->len = sz;
-	a->root = H;
-	a->data = (uchar*)a + sizeof(Array);
-	initarray(t, a);
-
-	memmove(&at, R.d, sizeof(at));
-	memmove(R.d, &a, sizeof(a));
-	destroy(at);
+	newarray(0);
 }
 
 
-/* Use current element metadata for zeroed storage and pointer initialization. */
+/* Construct an array with zero scalar bytes and initialized pointer cells. */
 OP(newaz)
 {
-	WORD sz, index;
-	Type *t;
-	Heap *h;
-	Array *a, *at;
-
-	memmove(&index, R.m, sizeof(index));
-	t = moduletype(R.M, index);
-	memmove(&sz, R.s, sizeof(sz));
-	if(t->ref <= 0 || t->ref > 0x7ffffffe - (t == &Tarray) ||
-	   Tarray.ref <= 0 || Tarray.ref == 0x7fffffff)
-		error(exHeap);
-	acheck(t->size, sz);
-	h = nheap(sizeof(Array) + (t->size*sz));
-	h->t = &Tarray;
-	Tarray.ref++;
-	a = H2D(Array*, h);
-	a->t = t;
-	a->len = sz;
-	a->root = H;
-	a->data = (uchar*)a + sizeof(Array);
-	memset(a->data, 0, t->size*sz);
-	initarray(t, a);
-
-	memmove(&at, R.d, sizeof(at));
-	memmove(R.d, &a, sizeof(a));
-	destroy(at);
+	newarray(1);
 }
+
 typedef struct ChannelBuild ChannelBuild;
 
 struct ChannelBuild {

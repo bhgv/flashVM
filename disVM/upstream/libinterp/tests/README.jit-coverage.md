@@ -2,17 +2,38 @@
 
 The production sizing emitters report 175 opcode slots. `INOP` is invalid and
 `IECLR` is unused, leaving 173 active commands. AMD64 and ARM64 now have native
-paths for 144 commands (83.2%); 29 remain on the interpreter path. RV64 profiles
+paths for 149 commands (86.1%); 24 remain on the interpreter path. RV64 profiles
 retain their earlier counts. WORD32/native-pointer and legacy WORD64
 configurations have the same opcode counts at this checkpoint.
 
 | Backend/profile | Active commands | Native path | C interpreter path |
 | --- | ---: | ---: | ---: |
-| AMD64 | 173 | 144 | 29 |
-| ARM64 | 173 | 144 | 29 |
+| AMD64 | 173 | 149 | 24 |
+| ARM64 | 173 | 149 | 24 |
 | RV64 + M | 173 | 103 | 70 |
 | RV64 + Zmmul | 173 | 90 | 83 |
 | RV64I | 173 | 87 | 86 |
+
+The latest additions are INEWA and INEWAZ on AMD64/ARM64. Unique owning arrays
+with the same requested type and length can reuse pointer-free payloads of at
+most 256 bytes (element width at most 256). NEWA leaves scalar bytes unspecified;
+NEWAZ clears them after complete owner/data-span checks. Empty and zero-width
+arrays skip data access. Shared owners, views and mapped elements retain C.
+See [README.array-constructor-native.md](README.array-constructor-native.md).
+
+The preceding addition is INEW on AMD64/ARM64, sharing checked descriptor/owner
+lookup with INEWZ/IMNEWZ. Unique standard pointer-free records of at most 256
+bytes reuse their owner without accessing unspecified scalar bytes. Mapped,
+shared and custom-finalizer cases retain ordinary allocation. NEWA/NEWAZ now
+use the checked heaparray path, validating maps before allocating and preserving
+full-WORD counts before conversion to int. See
+[README.raw-record-arrays.md](README.raw-record-arrays.md).
+
+The preceding additions are INEWZ and IMNEWZ on AMD64/ARM64. They reuse unique
+standard pointer-free objects of 0 through 256 bytes, resolving the live module
+type table and checking both finalizer identities. Custom finalizers, pointer
+maps, shared owners and larger payloads keep the C path. The interpreter reuses
+larger eligible objects as well. See [README.zero-object-native.md](README.zero-object-native.md).
 
 The earlier ISLICELA expansion covers arbitrary valid destination indexes for
 non-pointer byte copies of at most 128 elements on AMD64/ARM64. It checks the
@@ -129,12 +150,12 @@ and RX publication are covered separately by `leaf64-runtime.py`.
 
 ## Current interpreter-only commands on AMD64/ARM64
 
-The production sizing emitters report these 29 active commands for both WORD models:
+The production sizing emitters report these 24 active commands for both WORD models:
 
 ```
-IALT INBALT ISPAWN ILOAD IMSPAWN IEXIT INEW INEWA INEWCB INEWCW INEWCF INEWCP
+IALT INBALT ISPAWN ILOAD IMSPAWN IEXIT INEWCB INEWCW INEWCF INEWCP
 INEWCM INEWCMP ISEND IRECV ICONSB ICONSW ICONSP ICONSF ICONSM ICONSMP ICONSL
-INEWCL ICASEC IMNEWZ INEWZ INEWAZ IRAISE
+INEWCL ICASEC IRAISE
 ```
 
 The list excludes invalid/unused slots and is regenerated from jit-coverage.py.
