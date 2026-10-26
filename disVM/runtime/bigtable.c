@@ -241,9 +241,9 @@ static FhtKey snapshot_key(Bigtable_Keys *owner, LONG index)
  * is released after successful allocation; no application callback or conversion runs. */
 static void type_name(String **result, WORD kind)
 {
-    static const char *const names[] = {"big", "string", "table of big", "keys"};
+    static const char *const names[] = {"big", "string", "table of big", "keys", "int"};
     String *text;
-    if (kind < 0 || kind >= 4)
+    if (kind < 0 || kind >= 5)
     {
         error("invalid big table type kind");
     }

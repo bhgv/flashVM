@@ -50,7 +50,7 @@ Bigtable: module
     textfrombig: fn(value: big): string;
     keybig: fn(keys: ref Keys, index: big): big;
     keytext: fn(keys: ref Keys, index: big): string;
-    typename: fn(kind: int): string;
+    typename: fn(kind: int): string; # 0 big, 1 string, 2 table, 3 keys, 4 int; no pointer/type coercion.
     keytype: fn(keys: ref Keys, index: big): string;
 
 

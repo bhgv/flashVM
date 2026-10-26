@@ -11,7 +11,7 @@ import tempfile
 def main():
     runtime, compiler, includes = (str(Path(value).resolve()) for value in sys.argv[1:])
     cases = (
-        ("bad-type-tag", "b->typename(4);", "invalid big table type kind"),
+        ("bad-type-tag", "b->typename(5);", "invalid big table type kind"),
         ("bad-key-type", "b->keytype(ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
         ("overflow-text-big", 'b->bigfromtext("9223372036854775808");', "invalid big conversion"),
         ("binary-text-big", 'b->bigfromtext("1\\0x");', "invalid big conversion"),
