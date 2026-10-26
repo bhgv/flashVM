@@ -130,3 +130,5 @@ tree. [Contract, supported declarations and native-backend reference](INTERFACES
 [Owned tools / Инструменты](../../../tools/UPSTREAMS.md).
 
 [Function signatures / Сигнатуры функций](SIGNATURES.md)
+
+Hybrid extension syntax: `table of T`, creation `table of T`, and `keysof`. Syntax acceptance does not yet provide semantic/FIR lowering. The hosted executable module and current boundary are documented in [hybrid tables](../../../disVM/examples/hybrid-table/README.md).

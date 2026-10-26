@@ -538,6 +538,7 @@ PRODUCTIONS
             |
             (
                 "array"
+                | "table"
                 | "list"
                 | "chan"
             )
@@ -1083,6 +1084,7 @@ PRODUCTIONS
                 | "hd"
                 | "tl"
                 | "len"
+                | "keysof"
                 | "tagof"
                 | "ref"
                 | "byte"
@@ -1100,6 +1102,7 @@ PRODUCTIONS
             ]
             "of" Type
             | ArrayCreation
+            | "table" "of" Type
             | "list" "of" "{" ListElements "}"
             | Power
         )

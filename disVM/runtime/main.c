@@ -53,6 +53,9 @@ extern void loadermodinit(void);
 /* Register hosted Math exports. No arguments/result; requires initialized heap and Sys. */
 extern void mathmodinit(void);
 
+/* Register hosted scalar hybrid tables after the VM allocator is initialized. */
+extern void dvm_bigtable_initialize(void);
+
 static Pool memory;                       /* Sole pool owned by the bound runtime thread. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static Prog *ready;                       /* FIFO head for runnable Limbo processes. */
@@ -899,6 +902,7 @@ int main(int argc, char **argv)
     sysmodinit();
     loadermodinit();
     mathmodinit();
+    dvm_bigtable_initialize();
     dvm_srv_initialize();
     srvmodinit();
     entry = entry_resource(argv[1]);

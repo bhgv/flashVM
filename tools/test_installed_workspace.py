@@ -255,6 +255,16 @@ def broker_packages(prefix, work, environment):
             raise RuntimeError("relocated live document projection failed")
 
 
+    # Recompile the native hybrid example using only its relocated matching module declaration.
+    hybrid_example = work / "hybrid-table.dis"
+    run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo",
+         "-o", hybrid_example, component / "examples/hybrid-table/main.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([program(prefix, component.name, "disvm"), mode, hybrid_example], work, environment)
+        if "PASS native hybrid tables:" not in result:
+            raise RuntimeError("relocated native hybrid table failed")
+
+
     # A graphical package must render with its own shipped font/modules, without build-tree paths.
     if component.name == "disvm-editor":
         import struct

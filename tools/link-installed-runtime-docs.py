@@ -26,6 +26,13 @@ def main():
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
     # Include the portable inspector/value closure even in the headless runtime package.
+    for source in (root / "disVM/examples/hybrid-table").iterdir():
+        if source.is_file():
+            pairs[source] = package / "examples/hybrid-table" / source.name
+    for source in (root / "common/table").iterdir():
+        if source.is_file():
+            pairs[source] = package / "source/hybrid-table-core" / source.name
+    pairs[root / "disVM/module/bigtable.m"] = package / "include/limbo/bigtable.m"
     for name in ("PROJECTIONS.md", "VALUES.md", "VALUES.ru.md", "LIVE-PROJECTIONS.md", "LIVE-PROJECTIONS.ru.md", "WINDOWS-GUTTER.md", "WINDOWS-GUTTER.ru.md"):
         if (package / name).is_file():
             pairs[root / "ide/dis" / name] = package / name

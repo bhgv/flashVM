@@ -50,6 +50,15 @@ def main():
         with (args.output / "runt.h").open("a") as declarations:
             declarations.write(host[:host_at])
         (args.output / "idehostmod.h").write_text(host[host_at:])
+    # Generate the hosted-only table ABI from the same native-cell compiler.
+    table_interface = Path(__file__).resolve().parents[1] / "module/bigtable.m"
+    table = subprocess.check_output(
+        [args.compiler, "-a", "-t", "Bigtable", str(table_interface)], text=True
+    )
+    table_at = table.index(marker)
+    with (args.output / "runt.h").open("a") as declarations:
+        declarations.write(table[:table_at])
+    (args.output / "bigtablemod.h").write_text(table[table_at:])
     math = subprocess.check_output(
         [args.compiler, "-a", "-t", "Math", str(Path(args.sys).with_name("math.m"))], text=True
     )

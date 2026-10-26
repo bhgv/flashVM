@@ -355,6 +355,9 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
+            copy_tree "$ROOT/disVM/examples/hybrid-table" "$destination/examples/hybrid-table"
+            copy_tree "$ROOT/common/table" "$destination/source/hybrid-table-core"
+            copy_file "$ROOT/LICENSE" "$destination/source/hybrid-table-core/LICENSE"
             copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
             for file in "$base/native/libraries/"*.b; do
                 copy_file "$file" "$destination/source/libraries/$(basename "$file")"
@@ -367,6 +370,7 @@ EOF
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
+            copy_file "$ROOT/disVM/module/bigtable.m" "$destination/include/limbo/bigtable.m"
             copy_file "$ROOT/disVM/broker/brokerdiag.m" "$destination/include/limbo/brokerdiag.m"
             for file in broker.h codec.h flash_channel.h; do
                 copy_file "$ROOT/disVM/broker/$file" "$destination/include/disvm/$file"

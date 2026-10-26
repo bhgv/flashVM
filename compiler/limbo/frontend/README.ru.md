@@ -133,3 +133,5 @@ C99 API и отдельная утилита `limbo_tree`. Проверен та
 [Owned tools / Инструменты](../../../tools/UPSTREAMS.md).
 
 [Function signatures / Сигнатуры функций](SIGNATURES.ru.md)
+
+Синтаксис расширения: тип `table of T`, создание `table of T`, операция `keysof`. Распознавание синтаксиса ещё не реализует семантический анализ и lowering в FIR. [Исполняемый модуль и текущие границы](../../../disVM/examples/hybrid-table/README.ru.md).

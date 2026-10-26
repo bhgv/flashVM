@@ -6,6 +6,11 @@ import tempfile
 from pathlib import Path
 
 CASES = [
+    ("hybrid-table-type", "f(){ t: table of big; t = table of big; t.k = big 4; x := t[0:2]; keys := keysof t; }", True),
+    ("hybrid-table-nested", "f(){ t: table of table of big; }", True),
+    ("hybrid-table-missing-type", "f(){ t: table of; }", False),
+    ("hybrid-table-sized", "f(){ t: table[10] of big; }", False),
+    ("hybrid-table-missing-operand", "f(){ x := keysof; }", False),
     ("not-equal-ident", "f(){ if(x!=nil) return; y:=a!=b; }", True),
     ("not-equal-qualified", "f(){ x:=m->value!=nil; y:=a.field!=b.field; }", True),
     ("not-equal-index", "f(){ x:=a[i]!=b; y:=a[0:2]!=nil; }", True),

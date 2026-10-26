@@ -258,3 +258,5 @@ FIR compiler 0.9.0 selects `value(): real` through Coco/R, emits explicit f64 an
 from the installed C99 SDK. Seven supported function bodies are compared against
 independent binary64 bit oracles and the Inferno compiler in both dispatch modes.
 The reference path is only an oracle; our programs use our emitter.
+
+[Hybrid big-table builtin](../examples/hybrid-table/README.md): dynamic numeric/string keys, prefix length, copied slices and immutable key snapshots. Hosted-only extension; it is not exported to Inferno.
