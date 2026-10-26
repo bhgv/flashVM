@@ -547,6 +547,64 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     return 1;
 }
 
+/* Verify the borrowed module and perform a bounded topological walk of its live CFG.
+ * error/cap receive an optional diagnostic; no IR or parser state is changed and no heap is acquired. */
+int fir_acyclic(FirModule *module, char *error, size_t cap)
+{
+    unsigned char edges[FIR_BLOCKS][FIR_BLOCKS] = {{0}};
+    int incoming[FIR_BLOCKS] = {0};
+    int queue[FIR_BLOCKS];
+    int begin = 0;
+    int end = 0;
+    int i;
+    if (!error)
+    {
+        cap = 0;
+    }
+    if (!fir_verify(module, error, cap))
+    {
+        return 0;
+    }
+    for (i = 0; i < module->count; ++i)
+    {
+        const FirInstruction *in = &module->instructions[i];
+        int targets[2] = {in->yes, in->no};
+        int j;
+        if (in->removed)
+        {
+            continue;
+        }
+        for (j = 0; j < 2; ++j)
+        {
+            int target = targets[j];
+            if (target >= 0 && !edges[in->block][target])
+            {
+                edges[in->block][target] = 1;
+                incoming[target]++;
+            }
+        }
+    }
+    for (i = 0; i < module->block_count; ++i)
+    {
+        if (!incoming[i])
+        {
+            queue[end++] = i;
+        }
+    }
+    while (begin < end)
+    {
+        int block = queue[begin++];
+        for (i = 0; i < module->block_count; ++i)
+        {
+            if (edges[block][i] && --incoming[i] == 0)
+            {
+                queue[end++] = i;
+            }
+        }
+    }
+    return end == module->block_count ? 1 : fail(error, cap, "CFG contains a cycle");
+}
+
 /* Escape a decoded string into canonical, reparsable FIR spelling. */
 static void quoted(FILE *out, const char *text)
 {

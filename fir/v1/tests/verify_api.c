@@ -107,6 +107,19 @@ int main(void)
             return 40 + i;
         }
     }
+    /* Ordinary FIR permits cycles; owner backends must explicitly request acyclic verification. */
+    if (!fir_acyclic(base, NULL, sizeof(error)))
+    {
+        return 60;
+    }
+    memcpy(m, base, sizeof(*m));
+    m->instructions[2].op = O_JUMP;
+    m->instructions[2].yes = 0;
+    if (!fir_verify(m, error, sizeof(error)) || fir_acyclic(m, error, sizeof(error)) || !strstr(error, "cycle") ||
+        fir_acyclic(NULL, NULL, sizeof(error)))
+    {
+        return 61;
+    }
     if (fir_verify(NULL, error, sizeof(error)))
     {
         return 30;
