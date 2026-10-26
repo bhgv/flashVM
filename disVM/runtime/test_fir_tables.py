@@ -232,8 +232,15 @@ def main():
                 if body == 'return 1 + 2 * 3;' and selected == fir:
                     if not {119, 123}.issubset(code) or 9 in code or 11 in code:
                         raise RuntimeError("pure big arithmetic was lowered through native helper calls")
-                if header[0] != 819264 or header[1] != 64 or not types[0][1] or not types[1][1]:
-                    raise RuntimeError("table image missing checked imports or pointer maps")
+                # Pure big expressions use the pointer-free scalar backend; actual table and
+                # conversion operations still require checked imports and both owner maps.
+                hosted = re.search(r"(?:table\.|keys\.|range\.big|value\.)", selected.read_text()) is not None
+                if header[0] != 819264 or header[1] != (64 if hosted else 0):
+                    raise RuntimeError("wrong table/scalar image contract")
+                if hosted and (not types[0][1] or not types[1][1]):
+                    raise RuntimeError("table image missing pointer maps")
+                if not hosted and any(bitmap for _, bitmap in types.values()):
+                    raise RuntimeError("pure big arithmetic acquired spurious heap roots")
             if body.startswith(large):
                 if len(types[1][1]) <= 16 or len(types[0][1]) <= 16:
                     raise RuntimeError("large fixture did not cross inline pointer-map boundaries")

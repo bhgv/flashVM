@@ -32,6 +32,11 @@ int main(void)
                         "%x: i32 = const.i32 -2147483648\ntrace %x\nreturn\n}\n";
     const char *unsupported = "FIR 1.0\nmodule @M\nfunc @main() -> void {\n^entry:\n"
                               "%x: string = const.string \"bad\"\ntrace %x\nreturn\n}\n";
+    const char *big_cfg = "FIR 1.0\nmodule @Big\nfunc @main() -> void {\n^entry:\n"
+                          "%choice: bool = const.bool true\n%a: i64 = const.i64 -9223372036854775808\n"
+                          "%b: i64 = const.i64 -1\nif %choice, ^yes, ^no\n^yes:\n"
+                          "%q: i64 = big.div %a, %b\ntrace %q\nreturn\n^no:\n"
+                          "%n: i64 = big.not %a\ntrace %n\nreturn\n}\n";
     FirModule *module = malloc(sizeof(*module));
     FILE *output = fir_temporary();
     char error[256] = "";
@@ -50,6 +55,11 @@ int main(void)
     }
     /* Failed coverage must not poison later compilation in the same IDE process. */
     if (!parse(valid, module, error, sizeof(error)) || !fir_dis(output, module, NULL, 0) || ftell(output) <= initial)
+    {
+        goto done;
+    }
+    /* A big CFG is a scalar capture harness, so it needs neither a table SDK nor a VM here. */
+    if (!parse(big_cfg, module, error, sizeof(error)) || !fir_dis(output, module, error, sizeof(error)))
     {
         goto done;
     }
