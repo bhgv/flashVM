@@ -98,6 +98,13 @@ def table_packages(prefix, work, environment):
          client, *libraries, "-lm", "-o", binary], work, environment)
     if run([binary, fir], work, environment).strip() != "42":
         raise RuntimeError("relocated public table C99 API result differs")
+    # The multi-block big tutorial must also compile through the freshly relinked public API.
+    big_cfg = prefix / "fir/examples/dis/big-cfg.fir"
+    run([compiler_host, big_cfg, image], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
+        if "DATA 0 -9007199254740993\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in result:
+            raise RuntimeError("relocated big CFG library/example result differs")
 
 
 # Compile the shipped tutorial using only relocated SDK headers/libraries, then run it.

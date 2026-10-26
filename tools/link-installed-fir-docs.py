@@ -32,6 +32,8 @@ def main():
         "BIG_ARITHMETIC.ru.md",
         "BIG_BITWISE.md",
         "BIG_BITWISE.ru.md",
+        "BIG_CFG.md",
+        "BIG_CFG.ru.md",
     ):
         pairs[component / "doc" / name] = package / "docs" / name
     for name in ("API.md", "API.ru.md"):

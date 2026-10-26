@@ -1,3 +1,29 @@
+# Current synchronization — v0.1631
+
+Experiment: `a3fb27ec812fd0c7d544451e2a003d6a4bf84034`. 486 exact core/reference files and 174 bootstrap files.
+AMD64/ARM64 CASEC validates the complete declared count-cell span before reading
+it and rejects narrow nonempty cell4 tables before loading rows/default targets.
+Single-row dispatch now also accepts distinct empty String owners and H/empty
+pairs after checked length/capacity metadata. Availability stays 164/173 active
+opcodes: this extends guarded input coverage, not a complete native string search.
+
+The bootstrap retains exact big case assembly cell padding, NaN payloads and
+quoted data/source paths. Both production Str copies receive radix/digit and
+decimal exponent fixes. New acceptance drivers retain the production assembly
+serializer and both Str integer bodies; they are not a full assembler or a
+self-hosted Limbo module run. [Assembly](upstream/limbo/tests/README.asm-roundtrip.md) ·
+[Str](upstream/appl/lib/tests/README.string-radix-host.md) ·
+[CASEC](upstream/libinterp/tests/README.string-case-native.md).
+
+All 175 core tests have successful results. Initial assembly-driver failure was
+a missing selected g_fmt.c dependency; the final exact snapshot includes it and
+the driver passes. AMD64 RX execution and ARM64 instruction emulation are distinct
+from physical ARM64 acceptance. No new upstream-owning defect was identified for
+reverse publication. Our FIR scalar big CFG/verifier changes are local compiler
+work; no table-language extension is exported to Inferno.
+
+---
+
 # Current synchronization — v0.1630
 
 Experiment: `1ae1470f6960173a2330f212ee76d32843ae2736`. 478 exact core/reference files and 174 bootstrap files.

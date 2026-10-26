@@ -153,3 +153,5 @@ outer lexical binding. Real comparisons/decisions, mixed types, casts, function
 arguments and imports are not implemented. Existing Limbo int retains wrapping
 arithmetic and terminal decisions. The C99 SDK client uses its original invocation
 without a third argument: type selection belongs to the grammar, not the filename.
+
+[Full-width big CFG / Полноразрядный big CFG](../../doc/BIG_CFG.md) · [FIR](big-cfg.fir).

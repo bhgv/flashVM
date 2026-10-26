@@ -85,3 +85,5 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 Профиль задаёт исходная грамматика, вызов остаётся FIR_LIMBO. Несовпадение типов
 интерфейса/определения не публикует ни FIR, ни debug. Вызовы по-прежнему должны
 сериализоваться хостом; добавление real не делает парсер реентерабельным.
+
+[FIR 0.17: big scalar CFG](../doc/BIG_CFG.md) · [Русский](../doc/BIG_CFG.ru.md).

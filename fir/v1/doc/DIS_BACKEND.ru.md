@@ -1,4 +1,4 @@
-# Прямой Dis-backend, реализация FIR 0.9.0
+# Прямой Dis-backend, реализация FIR 0.17.0
 
 [Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). The scalar CFG contract below remains separate from the single-block hosted table path.
 
@@ -12,7 +12,7 @@
 LLVM или внешнюю VM для генерации кода. Парсеры исходника и FIR по-прежнему
 генерируются Coco/R в C99. Тракт SWO/SWL/SWF8 остаётся отдельной целью.
 
-Скалярная цель теперь поддерживает проверенный многоблочный CFG: i32/bool/f64
+Скалярная цель теперь поддерживает проверенный многоблочный CFG: i32/bool/f64/i64
 константы и copy, wrap-арифметику, signed less-than/equality, bool-ветвления,
 безусловные переходы, захват скалярного trace и return. Прямые и обратные рёбра
 переносятся из идентификаторов FIR-блоков в окончательные **PC инструкций Dis**,
@@ -183,3 +183,5 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
 обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
 [Комментированный пример](../examples/dis/README.ru.md#вещественный-limbo).
+
+[Big CFG: contract and example / Контракт и пример](BIG_CFG.md) · [Русский](BIG_CFG.ru.md).

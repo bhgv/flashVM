@@ -264,3 +264,5 @@ The reference path is only an oracle; our programs use our emitter.
 ## Generated table programs
 
 Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TABLES_DIS.md) using checked Bigtable imports and precise GC maps. Runtime 0.15 provides the matching eager validation helpers. `--quantum 1` exercises GC between instructions; default scheduling stays 2048. `--stats` includes collector passes/epochs and live table/key-owner counts. Scalar inspection checks the requested range's GC bits, so captures can coexist safely with mapped String data.
+
+[Direct scalar big CFG (FIR 0.17 / runtime 0.20)](../../fir/v1/doc/BIG_CFG.md) · [Русский](../../fir/v1/doc/BIG_CFG.ru.md).
