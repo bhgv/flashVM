@@ -7,6 +7,7 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_TO_INT:
     case O_BIG_LT:
     case O_BIG_EQ:
     case O_BIG_ADD:
@@ -36,6 +37,8 @@ unsigned fir_effects(FirOp op)
     case O_JUMP:
     case O_RETURN:
         return 0;
+    case O_BIG_SHL:
+    case O_BIG_SHR:
     case O_BIG_DIV:
     case O_BIG_MOD:
         return FIR_MAY_THROW;

@@ -279,6 +279,9 @@ PRODUCTIONS
     | "big.xor" (. fir_build_op(O_BIG_XOR); .) A "," B
     | "big.lt.signed" (. fir_build_op(O_BIG_LT); .) A "," B
     | "big.eq" (. fir_build_op(O_BIG_EQ); .) A "," B
+    | "value.int" (. fir_build_op(O_TO_INT); .) A
+    | "big.shl" (. fir_build_op(O_BIG_SHL); .) A "," B
+    | "big.shr" (. fir_build_op(O_BIG_SHR); .) A "," B
     | "big.not" (. fir_build_op(O_BIG_NOT); .) A
     | "big.neg" (. fir_build_op(O_BIG_NEG); .) A
     | "value.big" (. fir_build_op(O_TO_BIG); .) A

@@ -119,7 +119,10 @@ typedef enum
     O_BIG_XOR,     /* Exact full-width exclusive-or. */
     O_BIG_NOT,     /* Exact full-width complement. */
     O_BIG_LT,      /* Signed big less-than, returning bool. */
-    O_BIG_EQ       /* Full-width big equality, returning bool. */
+    O_BIG_EQ,      /* Full-width big equality, returning bool. */
+    O_TO_INT,      /* Explicit low-32-bit signed int normalization from int/big. */
+    O_BIG_SHL,     /* Checked left shift: big value, int count 0..63. */
+    O_BIG_SHR      /* Checked arithmetic right shift: big value, int count 0..63. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

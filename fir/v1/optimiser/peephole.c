@@ -117,7 +117,44 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op == O_TO_BIG && m->values[in->a].type == T_I64)
+            if (in->op == O_TO_INT && (a->op == O_I64 || a->op == O_I32))
+            {
+                in->integer = signed_bits((uint32_t)(a->op == O_I64 ? (uint64_t)a->big : (uint32_t)a->integer));
+                in->op = O_I32;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_TO_INT && m->values[in->a].type == T_I32)
+            {
+                in->op = O_COPY;
+                changed = 1;
+            }
+            else if (in->op == O_TO_BIG && a->op == O_I32)
+            {
+                in->big = a->integer;
+                in->op = O_I64;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if ((in->op == O_BIG_SHL || in->op == O_BIG_SHR) && a->op == O_I64 && b->op == O_I32 &&
+                     b->integer >= 0 && b->integer < 64)
+            {
+                unsigned count = (unsigned)b->integer;
+                uint64_t bits = (uint64_t)a->big;
+                if (in->op == O_BIG_SHL)
+                {
+                    bits <<= count;
+                }
+                else if (count)
+                {
+                    bits = (bits >> count) | (a->big < 0 ? UINT64_MAX << (64U - count) : 0);
+                }
+                in->big = signed_big_bits(bits);
+                in->op = O_I64;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_TO_BIG && m->values[in->a].type == T_I64)
             {
                 /* An explicit same-type big cast copies its scalar; text/key conversions
                  * keep their allocation/error effects and are never rewritten here. */
@@ -195,7 +232,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
             if ((in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
-                 (in->op >= O_BIG_ADD && in->op <= O_BIG_EQ)) &&
+                 (in->op >= O_BIG_ADD && in->op <= O_TO_INT)) &&
                 !fir_effects(in->op))
             {
                 for (j = 0; j < i; ++j)
