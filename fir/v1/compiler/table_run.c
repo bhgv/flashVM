@@ -11,7 +11,7 @@ typedef struct
     const char *text; /* Borrowed immutable text in the caller-owned verified module. */
     Fht *table;       /* Borrowed owner from the execution-local registry. */
     FhtKeys *keys;    /* Borrowed independent snapshot from the execution-local registry. */
-    FhtKey key;       /* Captured key; any string bytes remain rooted by the source module. */
+    FhtKey key;       /* Captured key; text bytes are borrowed from the module or registered snapshot. */
     int64_t first;    /* Range start, validated when applied to a table. */
     int64_t end;      /* Exclusive range end. */
 } RuntimeValue;
@@ -32,7 +32,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_KEYS_LEN) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_KEYS_AT) || in->op == O_STRING || in->op == O_COPY || in->op == O_RETURN)
         {
             continue;
         }
@@ -127,6 +127,10 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                     status = FHT_INVALID;
                 }
             }
+            else if (module->values[in->b].type == T_TABLE_KEY)
+            {
+                result->key = b->key;
+            }
             else
             {
                 result->key.kind = FHT_TEXT;
@@ -163,6 +167,16 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             if (status == FHT_OK)
             {
                 keys[key_count++] = result->keys;
+            }
+            break;
+        case O_KEYS_AT:
+            if (b->big < 0 || (uint64_t)b->big >= a->keys->count)
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                result->key = a->keys->items[b->big];
             }
             break;
         case O_KEYS_LEN:

@@ -606,7 +606,7 @@ PRODUCTIONS
                 (. slice = 0; .)
                 [ ":" TableExpression<&end> (. slice = 1; .) ] "]"
                 (. *result = slice ? source_table_slice(*result, key, end)
-                                  : source_table_load(source_table_index(*result, key)); .)
+                                  : source_table_subscript(*result, key); .)
           }
     )
   .

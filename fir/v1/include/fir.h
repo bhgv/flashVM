@@ -64,7 +64,8 @@ typedef enum
     T_TABLE_BIG,  /* Owner reference to a mutable big-valued hybrid table. */
     T_TABLE_SLOT, /* Checked table/key location, not a native address. */
     T_BIG_RANGE,  /* Half-open big bounds for a sequence slice. */
-    T_KEYS        /* Independent immutable key sequence snapshot. */
+    T_KEYS,       /* Independent immutable key sequence snapshot. */
+    T_TABLE_KEY   /* Snapshot owner plus checked position, preserving numeric/text identity. */
 } FirType;
 
 typedef enum
@@ -102,7 +103,8 @@ typedef enum
     O_BIG_RANGE,   /* Construct checked slice bounds. */
     O_TABLE_SLICE, /* Copy a sequence slice, reindexed from zero. */
     O_TABLE_KEYS,  /* Copy all keys in deterministic order. */
-    O_KEYS_LEN     /* Count every copied key. */
+    O_KEYS_LEN,    /* Count every copied key. */
+    O_KEYS_AT      /* Capture one checked immutable snapshot key. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

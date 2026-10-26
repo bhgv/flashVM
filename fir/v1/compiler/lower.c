@@ -644,7 +644,8 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
                                         "table.big",
                                         "table.slot",
                                         "big.range",
-                                        "keys"};
+                                        "keys",
+                                        "table.key"};
     int result = table_value(type);
     if (!failed)
     {
@@ -715,11 +716,27 @@ int source_table_new(void)
 /* Capture a typed owner/key location. Both numeric and text syntax use this single operation. */
 int source_table_index(int table, int key)
 {
-    if (table_values[table] != T_TABLE_BIG || (table_values[key] != T_I64 && table_values[key] != T_STRING))
+    if (table_values[table] != T_TABLE_BIG ||
+        (table_values[key] != T_I64 && table_values[key] != T_STRING && table_values[key] != T_TABLE_KEY))
     {
-        reject("table indexing requires table of big and a numeric/string key");
+        reject("table indexing requires table of big and a numeric/string/snapshot key");
     }
     return table_operation(T_TABLE_SLOT, "table.index", table, key);
+}
+
+/* Capture a checked immutable snapshot key, or read a table at a typed key.
+ * Inputs are translation-local SSA identities; runtime bounds remain eager effects. */
+int source_table_subscript(int receiver, int key)
+{
+    if (table_values[receiver] == T_KEYS)
+    {
+        if (table_values[key] != T_I64)
+        {
+            reject("key snapshot indexing requires big");
+        }
+        return table_operation(T_TABLE_KEY, "keys.at", receiver, key);
+    }
+    return source_table_load(source_table_index(receiver, key));
 }
 
 /* Read a captured table location as big; runtime handles an absent key explicitly. */

@@ -378,6 +378,7 @@ PRODUCTIONS
         | "table.slot"
         | "big.range"
         | "keys"
+        | "table.key"
         | "as.string"
         | "limbo.string"
         | "as3.namespace"

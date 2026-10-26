@@ -209,7 +209,8 @@ void fir_build_token(int role, const char *text, int line)
                                         "table.big",
                                         "table.slot",
                                         "big.range",
-                                        "keys"};
+                                        "keys",
+                                        "table.key"};
     int index;
     if (active->failed)
     {
@@ -259,14 +260,14 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_TYPE)
     {
-        for (index = T_I32; index <= T_KEYS; ++index)
+        for (index = T_I32; index <= T_TABLE_KEY; ++index)
         {
             if (!strcmp(types[index], text))
             {
                 break;
             }
         }
-        if (index > T_KEYS || in->result < 0)
+        if (index > T_TABLE_KEY || in->result < 0)
         {
             fir_build_error("invalid type", line);
             return;

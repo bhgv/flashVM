@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define CELL 8U /* Explicit NC64 frame/data cell size; never derived from host pointers. */
-#define MAP_BYTES ((2U * FIR_LIMIT + 32U + 7U) / 8U) /* Maximum entry-frame map for paired SSA slots. */
+#define MAP_BYTES ((3U * FIR_LIMIT + 32U + 7U) / 8U) /* Maximum entry-frame map for three-cell key locations. */
 
 enum
 {
@@ -47,6 +47,9 @@ enum
     REQUIRE_OK,  /* Raise on a failed get/set status. */
     SET_INDEX,   /* Write a numeric location. */
     SET_TEXT,    /* Write a string location. */
+    KEY_CHECK,   /* Validate a snapshot position eagerly. */
+    GET_KEY,     /* Read with a snapshot-owned key identity. */
+    SET_KEY,     /* Write with a snapshot-owned key identity. */
     SLICE        /* Copy a numeric sequence slice. */
 };
 
@@ -62,6 +65,9 @@ static const Import imports[] = {
     {"requireok", UINT32_C(0xb1f25db6)},
     {"setindex", UINT32_C(0xe420e8cf)},
     {"settext", UINT32_C(0xb244346a)},
+    {"keycheck", UINT32_C(0x6c3c4973)},
+    {"getkey", UINT32_C(0x420ebc79)},
+    {"setkey", UINT32_C(0x9ea8730a)},
     {"slice", UINT32_C(0x71c4132a)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
@@ -193,6 +199,19 @@ static const FirInstruction *location(FirModule *module, int value)
     return NULL;
 }
 
+/* Count typed cells without exposing native addresses. Verified location provenance
+ * determines whether a slot captures a scalar key or a two-cell snapshot capability. */
+static unsigned cells(FirModule *module, int value)
+{
+    FirType type = module->values[value].type;
+    if (type == T_TABLE_SLOT)
+    {
+        const FirInstruction *in = location(module, value);
+        return in && module->values[in->b].type == T_TABLE_KEY ? 3U : 2U;
+    }
+    return type == T_BIG_RANGE || type == T_TABLE_KEY ? 2U : 1U;
+}
+
 /* Check the whole supported subset and construct exact layouts before publishing any bytes.
  * module is already verified. Rejected CFG/types do not fall back to a fabricated scalar lowering. */
 static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
@@ -210,7 +229,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     {
         FirType type = module->values[i].type;
         e->offsets[i] = offset;
-        if (type == T_TABLE_BIG || type == T_KEYS || type == T_STRING)
+        if (type == T_TABLE_BIG || type == T_KEYS || type == T_STRING || type == T_TABLE_KEY)
         {
             root(e->frame_map, offset);
         }
@@ -223,7 +242,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 return 0;
             }
             root(e->frame_map, offset);
-            if (module->values[in->b].type == T_STRING)
+            if (module->values[in->b].type == T_STRING || module->values[in->b].type == T_TABLE_KEY)
             {
                 root(e->frame_map, offset + CELL);
             }
@@ -233,7 +252,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
         }
-        offset += type == T_TABLE_SLOT || type == T_BIG_RANGE ? 2U * CELL : CELL;
+        offset += cells(module, i) * CELL;
     }
     e->call_frame = offset;
     e->status = offset + CELL;
@@ -258,7 +277,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
             e->traces++;
         }
-        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_KEYS_LEN))
+        else if (in->op != O_COPY && in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_KEYS_AT))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -318,12 +337,17 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     FirType type = module->values[source].type;
     unsigned a = e->offsets[source];
     unsigned d = e->offsets[destination];
-    instruction(e, type == T_I64 || type == T_BIG_RANGE ? MOVL : MOVP, FP, a, FP, d, 0, -1);
-    if (type == T_TABLE_SLOT || type == T_BIG_RANGE)
+    unsigned index;
+    const FirInstruction *slot = type == T_TABLE_SLOT ? location(module, source) : NULL;
+    FirType key = slot ? module->values[slot->b].type : T_VOID;
+    for (index = 0; index < cells(module, source); index++)
     {
-        const FirInstruction *in = type == T_TABLE_SLOT ? location(module, source) : NULL;
-        unsigned op = in && module->values[in->b].type == T_STRING ? MOVP : MOVL;
-        instruction(e, op, FP, a + CELL, FP, d + CELL, 0, -1);
+        int pointer = index == 0 && type != T_I64 && type != T_BIG_RANGE;
+        if (type == T_TABLE_SLOT && index == 1)
+        {
+            pointer = key == T_STRING || key == T_TABLE_KEY;
+        }
+        instruction(e, pointer ? MOVP : MOVL, FP, a + index * CELL, FP, d + index * CELL, 0, -1);
     }
 }
 
@@ -369,19 +393,46 @@ static void body(Emitter *e, FirModule *module)
                 call_end(e, INDEX_CHECK, -1);
             }
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
-            instruction(e, module->values[in->b].type == T_STRING ? MOVP : MOVL, FP, b, FP, d + CELL, 0, -1);
+            instruction(e,
+                        module->values[in->b].type == T_STRING || module->values[in->b].type == T_TABLE_KEY ? MOVP
+                                                                                                            : MOVL,
+                        FP,
+                        b,
+                        FP,
+                        d + CELL,
+                        0,
+                        -1);
+            if (module->values[in->b].type == T_TABLE_KEY)
+            {
+                instruction(e, MOVL, FP, b + CELL, FP, d + 2U * CELL, 0, -1);
+            }
             break;
         case O_TABLE_LOAD:
         case O_TABLE_STORE:
             slot = location(module, in->a);
-            import = in->op == O_TABLE_LOAD ? (module->values[slot->b].type == T_STRING ? GET_TEXT : GET_INDEX)
-                                            : (module->values[slot->b].type == T_STRING ? SET_TEXT : SET_INDEX);
+            if (module->values[slot->b].type == T_TABLE_KEY)
+            {
+                import = in->op == O_TABLE_LOAD ? GET_KEY : SET_KEY;
+            }
+            else
+            {
+                import = in->op == O_TABLE_LOAD ? (module->values[slot->b].type == T_STRING ? GET_TEXT : GET_INDEX)
+                                                : (module->values[slot->b].type == T_STRING ? SET_TEXT : SET_INDEX);
+            }
             call_begin(e, import);
             argument(e, MOVP, a, 0);
-            argument(e, module->values[slot->b].type == T_STRING ? MOVP : MOVL, a + CELL, 1);
+            argument(e,
+                     module->values[slot->b].type == T_STRING || module->values[slot->b].type == T_TABLE_KEY ? MOVP
+                                                                                                             : MOVL,
+                     a + CELL,
+                     1);
+            if (module->values[slot->b].type == T_TABLE_KEY)
+            {
+                argument(e, MOVL, a + 2U * CELL, 2);
+            }
             if (in->op == O_TABLE_STORE)
             {
-                argument(e, MOVL, b, 2);
+                argument(e, MOVL, b, module->values[slot->b].type == T_TABLE_KEY ? 3 : 2);
             }
             call_end(e, import, (int)e->status);
             require_ok(e);
@@ -389,6 +440,14 @@ static void body(Emitter *e, FirModule *module)
             {
                 instruction(e, MOVL, FP, e->status + CELL, FP, d, 0, -1);
             }
+            break;
+        case O_KEYS_AT:
+            call_begin(e, KEY_CHECK);
+            argument(e, MOVP, a, 0);
+            argument(e, MOVL, b, 1);
+            call_end(e, KEY_CHECK, -1);
+            instruction(e, MOVP, FP, a, FP, d, 0, -1);
+            instruction(e, MOVL, FP, b, FP, d + CELL, 0, -1);
             break;
         case O_TABLE_LEN:
         case O_TABLE_KEYS:

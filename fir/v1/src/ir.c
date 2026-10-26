@@ -36,8 +36,19 @@ static int symbol_name(const char *text, char prefix)
     return 1;
 }
 
-static const char *const types[] = {
-    "void", "i32", "f64", "bool", "string", "any", "channel", "i64", "table.big", "table.slot", "big.range", "keys"};
+static const char *const types[] = {"void",
+                                    "i32",
+                                    "f64",
+                                    "bool",
+                                    "string",
+                                    "any",
+                                    "channel",
+                                    "i64",
+                                    "table.big",
+                                    "table.slot",
+                                    "big.range",
+                                    "keys",
+                                    "table.key"};
 static const char *const ops[] = {"const.i32",
                                   "const.f64",
                                   "const.bool",
@@ -71,7 +82,8 @@ static const char *const ops[] = {"const.i32",
                                   "range.big",
                                   "table.slice",
                                   "table.keys",
-                                  "keys.len"};
+                                  "keys.len",
+                                  "keys.at"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -115,7 +127,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     for (i = 0; i < m->value_count; ++i)
     {
         int d = m->values[i].definition;
-        if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count || (unsigned)m->values[i].type > T_KEYS ||
+        if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count ||
+            (unsigned)m->values[i].type > T_TABLE_KEY ||
             (d >= 0 && (m->instructions[d].result != i || m->instructions[d].type != m->values[i].type)))
         {
             return fail(error, cap, "invalid value definition table");
@@ -125,7 +138,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_KEYS_LEN || (unsigned)in->type > T_KEYS || in->block < 0 ||
+        if ((unsigned)in->op > O_KEYS_AT || (unsigned)in->type > T_TABLE_KEY || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -144,7 +157,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN ||
                 in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN;
         binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
-                 in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
+                 in->op == O_KEYS_AT || in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
         if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
@@ -306,11 +319,18 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             expected = T_TABLE_BIG;
             break;
         case O_TABLE_INDEX:
-            if (a != T_TABLE_BIG || (c != T_I64 && c != T_STRING))
+            if (a != T_TABLE_BIG || (c != T_I64 && c != T_STRING && c != T_TABLE_KEY))
             {
                 goto bad_type;
             }
             expected = T_TABLE_SLOT;
+            break;
+        case O_KEYS_AT:
+            if (a != T_KEYS || c != T_I64)
+            {
+                goto bad_type;
+            }
+            expected = T_TABLE_KEY;
             break;
         case O_TABLE_LOAD:
             if (a != T_TABLE_SLOT)

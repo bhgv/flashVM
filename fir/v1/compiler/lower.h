@@ -163,6 +163,10 @@ int source_table_new(void);
 int source_table_index(int table, int key);
 
 
+/* Read a table value or capture a snapshot key from borrowed typed SSA inputs. */
+int source_table_subscript(int receiver, int key);
+
+
 /* Emit a big read of a captured location; absent keys remain observable runtime errors. */
 int source_table_load(int location);
 
