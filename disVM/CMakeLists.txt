@@ -139,6 +139,10 @@ if(BUILD_TESTING)
     srv-results
     jit-unknown-kind
     mapped-copy-layouts
+    decimal-layouts
+    string-cell-layouts
+    string-cell-spans-c
+    utf8-view-spans-c
   )
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
@@ -184,7 +188,7 @@ if(BUILD_TESTING)
       RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
   endif()
   if(have_instruction_emulators EQUAL 0)
-    foreach(driver raw-copy-jit integer-format-jit list-length-jit real-format-jit append-spans-jit array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
+    foreach(driver raw-copy-jit integer-format-jit list-length-jit real-format-jit append-spans-jit decimal-spans-jit string-cell-spans-jit array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")

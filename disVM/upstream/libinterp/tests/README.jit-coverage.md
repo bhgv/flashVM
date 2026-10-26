@@ -411,3 +411,23 @@ remain within the 64-unit limit. New C reduced-address and emulated top-address
 regressions fail on the parent implementations. The core checkpoint now has
 100 host drivers. Counts remain AMD64/ARM64 142/31 and RV64 M/Zmmul/I 103/70,
 90/83 and 87/86.
+
+## Checked string cells and slices checkpoint
+
+[Checked cell and slice addresses](README.string-cell-spans.md) adds accessed-span
+checks to C INDC/INSC/slicer/SLICEC and AMD64/ARM64 leaves. Moving SLICEC expands
+from 128 to 256 characters, while unique zero-start prefixes retain their
+length-only path. Parent regressions demonstrate failures in each old native
+opcode path and in five C modes. All paths remain below 64 units without an ABI
+change. The core suite now contains 101 host drivers. Counts remain
+AMD64/ARM64 142/31 and RV64 M/Zmmul/I 103/70, 90/83 and 87/86.
+
+## Full signed decimal range checkpoint
+
+[Signed decimal ranges and UTF-8 views](README.decimal-ranges.md) expands
+AMD64/ARM64 CVTCW/CVTCL to signed extrema within 10/19-digit sequences. CVTCF
+retains its exact 15-digit domain. All three leaves check their trailing-NUL
+address span; C string2c checks ASCII termination and Rune storage before cache
+preparation. Production lib9 big parsing and libmath real parsing pass separate
+native comparisons. The core suite now contains 102 host drivers. Counts remain
+AMD64/ARM64 142/31 and RV64 M/Zmmul/I 103/70, 90/83 and 87/86.
