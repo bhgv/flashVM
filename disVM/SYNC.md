@@ -1,3 +1,25 @@
+# Current synchronization — v0.1635
+
+Experiment: `ca53cc69902388ee5b982f9d669f0d32534d9539`. 499 exact core/reference
+files and 174 bootstrap files. Incoming 808a4f6 and 70611aa repair C/AMD64/ARM64
+string predicate and owner preflight: conditional branch targets remain unread
+on false predicates; source lifetime errors precede destination-owner reads and
+reference/GC publication. SELF ignores its unused source slot.
+
+Our reverse commit ca53cc6 registers an explicit optimized-Python owner checkpoint
+in Inferno. It forces both architectures and clears interactive family filters.
+FlashVM now registers both full owner emulation and the optimized checkpoint in
+its CMake test suite; the upstream fixture was previously absent there.
+[Owner contract](upstream/libinterp/tests/README.owner-preflight.md) ·
+[String branch contract](upstream/libinterp/tests/README.string-branch-preflight.md).
+
+Native availability remains 164/173 on AMD64 and ARM64. Arithmetic pointer-span
+checks do not establish mapped allocation ownership. ARM64 instruction emulation
+is not physical ARM64 execution or a full Inferno boot. Compiler table/any/int
+extensions were not exported; the native WORD ABI remains unchanged.
+
+---
+
 # Current synchronization — v0.1634
 
 Experiment: `cd402a0ac5a8a2a8b18d3d60d6229e4bc2788a26`. 496 exact core/reference files and 174 bootstrap files.
