@@ -57,6 +57,7 @@ add_library(disvm_module_parser STATIC host/module_parse.c)
 target_include_directories(disvm_module_parser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PRIVATE ${sdk_include})
 target_link_libraries(disvm_module_parser PUBLIC disvm_module_image disvm_core)
 include(CTest)
+add_subdirectory(broker)
 if(BUILD_TESTING)
   # FindPython3 starts at CMake 3.12; retain standalone 3.10 builds.
   if(CMAKE_VERSION VERSION_LESS "3.12")
