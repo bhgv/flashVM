@@ -6,6 +6,15 @@
 enum
 {
     DIS_MAGIC = 819264,  /* Explicit experimental eight-byte native-cell target. */
+    DIS_MOVL = 118,      /* Exact full-width big move; independent of host long. */
+    DIS_ADDL = 119,      /* Modulo-2^64 addition. */
+    DIS_SUBL = 120,      /* Modulo-2^64 subtraction and negation. */
+    DIS_DIVL = 121,      /* Checked signed quotient. */
+    DIS_MODL = 122,      /* Checked signed remainder. */
+    DIS_MULL = 123,      /* Modulo-2^64 multiplication. */
+    DIS_ANDL = 124,      /* Full-width bit intersection. */
+    DIS_ORL = 125,       /* Full-width bit union. */
+    DIS_XORL = 126,      /* Full-width exclusive-or and complement. */
     DIS_MOVF = 46,       /* Existing binary64 move preserves signed zero and payload bits. */
     DIS_ADDF = 59,       /* Binary64 addition. */
     DIS_SUBF = 62,       /* Binary64 middle minus source. */
@@ -143,13 +152,24 @@ static int supported(
         case O_I32:
         case O_BOOL:
         case O_F64:
+        case O_I64:
         case O_COPY:
-            if (current->type != T_I32 && current->type != T_BOOL && current->type != T_F64)
+            if (current->type != T_I32 && current->type != T_BOOL && current->type != T_F64 && current->type != T_I64)
             {
                 goto unsupported;
             }
             (*count)++;
             break;
+        case O_BIG_ADD:
+        case O_BIG_SUB:
+        case O_BIG_MUL:
+        case O_BIG_DIV:
+        case O_BIG_MOD:
+        case O_BIG_AND:
+        case O_BIG_OR:
+        case O_BIG_XOR:
+        case O_BIG_NEG:
+        case O_BIG_NOT:
         case O_FADD:
         case O_FSUB:
         case O_FMUL:
@@ -165,7 +185,7 @@ static int supported(
             break;
         case O_TRACE:
             if (module->values[current->a].type != T_I32 && module->values[current->a].type != T_BOOL &&
-                module->values[current->a].type != T_F64)
+                module->values[current->a].type != T_F64 && module->values[current->a].type != T_I64)
             {
                 goto unsupported;
             }
@@ -243,7 +263,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     for (index = 0; index < module->count; index++)
     {
         FirInstruction *in = &module->instructions[index];
-        if (!in->removed && (in->op > O_RETURN || in->type >= T_I64))
+        if (!in->removed && ((in->op >= O_TABLE_NEW && in->op <= O_TO_TEXT) || in->type >= T_TABLE_BIG))
         {
             return fir_dis_table(output, module, error, capacity);
         }
@@ -282,8 +302,11 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         case O_I32:
         case O_BOOL:
         case O_F64:
+        case O_I64:
             instruction(output,
-                        current->type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        current->type == T_F64   ? DIS_MOVF
+                        : current->type == T_I64 ? DIS_MOVL
+                                                 : DIS_MOVW,
                         DIS_MP,
                         constants + (unsigned)current->result * DIS_CELL,
                         DIS_FP,
@@ -292,7 +315,9 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             break;
         case O_COPY:
             instruction(output,
-                        current->type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        current->type == T_F64   ? DIS_MOVF
+                        : current->type == T_I64 ? DIS_MOVL
+                                                 : DIS_MOVW,
                         DIS_FP,
                         slot(current->a),
                         DIS_FP,
@@ -309,6 +334,38 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)destination);
             instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            break;
+        case O_BIG_ADD:
+        case O_BIG_SUB:
+        case O_BIG_MUL:
+        case O_BIG_DIV:
+        case O_BIG_MOD:
+        case O_BIG_AND:
+        case O_BIG_OR:
+        case O_BIG_XOR:
+            opcode = current->op == O_BIG_ADD   ? DIS_ADDL
+                     : current->op == O_BIG_SUB ? DIS_SUBL
+                     : current->op == O_BIG_MUL ? DIS_MULL
+                     : current->op == O_BIG_DIV ? DIS_DIVL
+                     : current->op == O_BIG_MOD ? DIS_MODL
+                     : current->op == O_BIG_AND ? DIS_ANDL
+                     : current->op == O_BIG_OR  ? DIS_ORL
+                                                : DIS_XORL;
+            instruction(output, opcode, DIS_FP, slot(current->b), DIS_FP, destination, (int)slot(current->a));
+            break;
+        case O_BIG_NEG:
+            instruction(output, DIS_SUBL, DIS_FP, slot(current->a), DIS_FP, destination, (int)scratch);
+            break;
+        case O_BIG_NOT:
+            /* The existing per-result plain constant cell holds the all-ones mask.
+             * XOR is commutative, so the middle remains a normal frame operand. */
+            instruction(output,
+                        DIS_XORL,
+                        DIS_MP,
+                        constants + (unsigned)current->result * DIS_CELL,
+                        DIS_FP,
+                        destination,
+                        (int)slot(current->a));
             break;
         case O_FADD:
         case O_FSUB:
@@ -342,7 +399,9 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             break;
         case O_TRACE:
             instruction(output,
-                        module->values[current->a].type == T_F64 ? DIS_MOVF : DIS_MOVW,
+                        module->values[current->a].type == T_F64   ? DIS_MOVF
+                        : module->values[current->a].type == T_I64 ? DIS_MOVL
+                                                                   : DIS_MOVW,
                         DIS_FP,
                         slot(current->a),
                         DIS_MP,
@@ -379,6 +438,14 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         if (definition && definition->op == O_F64)
         {
             memcpy(&payload, &definition->real, sizeof(payload));
+        }
+        else if (definition && definition->op == O_I64)
+        {
+            payload = (uint64_t)definition->big;
+        }
+        else if (definition && definition->op == O_BIG_NOT)
+        {
+            payload = UINT64_MAX;
         }
         else if (definition && (definition->op == O_I32 || definition->op == O_BOOL))
         {

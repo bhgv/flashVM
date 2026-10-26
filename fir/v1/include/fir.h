@@ -187,7 +187,7 @@ typedef struct
 int fir_parse(FILE *input, FirModule *module, char *error, size_t capacity);
 
 
-/* Reject malformed control flow, invalid SSA uses and incompatible types. */
+/* Reject malformed control flow, invalid SSA uses, duplicate symbol spellings and incompatible types. */
 int fir_verify(FirModule *module, char *error, size_t capacity);
 
 
@@ -203,7 +203,7 @@ int fir_optimise(FirModule *module, char *error, size_t capacity);
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 
 
-/* Emit verified numeric CFG or the supported single-block big-table subset as NC64 Dis.
+/* Emit verified i32/bool/f64/i64 CFG or the supported single-block big-table subset as NC64 Dis.
  * Streams/module/error are caller-owned; emission needs no SDK/runtime. Coverage errors write nothing.
  * N trace values occupy the first N eight-byte cells; the next N cells mark executed slots as 0/1.
  * Numeric slots retain their latest value if revisited. Table images import the checked hosted Bigtable
