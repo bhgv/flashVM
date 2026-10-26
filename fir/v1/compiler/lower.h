@@ -70,6 +70,10 @@ void source_release(void);
 void source_debug_event(const char *, int, const char *, int, int, SourceMark);
 
 
+/* Record a copied exact read/write origin; binding is a one-based translation-local identity. */
+void source_debug_access(const char *, int, const char *, int, int, int, SourceMark);
+
+
 void source_config(FILE *, int);
 
 

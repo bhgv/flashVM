@@ -24,6 +24,7 @@ static size_t source_length;
 static int error_recorded;
 static FILE *active_debug;
 static int first_debug_event;
+static unsigned long debug_site_serial; /* Stable one-based event identity within one staged debug artifact. */
 
 
 /* Preserve the first error independently of the caller's optional text buffer.
@@ -100,7 +101,8 @@ static void debug_string(FILE *out, const unsigned char *text, size_t size)
 
 /* Append an origin event to private staging. SSA IDs refer to pre-optimization
  * FIR only; optimized/native locations need a later explicit relocation pass. */
-void source_debug_event(const char *kind, int value, const char *name, int scope, int depth, SourceMark mark)
+static void
+debug_event(const char *kind, int value, const char *name, int scope, int depth, int binding, SourceMark mark)
 {
     size_t i, line = 1, column = 1;
     if (!active_debug || error_recorded)
@@ -110,7 +112,13 @@ void source_debug_event(const char *kind, int value, const char *name, int scope
     fprintf(active_debug, "%s{\"kind\":", first_debug_event ? "" : ",");
     first_debug_event = 0;
     debug_string(active_debug, (const unsigned char *)kind, strlen(kind));
-    fprintf(active_debug, ",\"value\":%d,\"scope\":%d,\"scope_depth\":%d,\"name\":", value, scope, depth);
+    fprintf(active_debug,
+            ",\"site\":%lu,\"binding\":%d,\"value\":%d,\"scope\":%d,\"scope_depth\":%d,\"name\":",
+            ++debug_site_serial,
+            binding,
+            value,
+            scope,
+            depth);
     debug_string(active_debug, (const unsigned char *)name, strlen(name));
     if (mark.offset >= 0 && (size_t)mark.offset <= source_length && mark.length <= source_length - (size_t)mark.offset)
     {
@@ -134,6 +142,22 @@ void source_debug_event(const char *kind, int value, const char *name, int scope
                 column);
     }
     fputc('}', active_debug);
+}
+
+
+/* Append a non-binding origin. All arguments are borrowed parser values; no output escapes staging. */
+void source_debug_event(const char *kind, int value, const char *name, int scope, int depth, SourceMark mark)
+{
+    debug_event(kind, value, name, scope, depth, 0, mark);
+}
+
+
+/* Append an exact binding access. binding is one-based; scope/depth identify its lexical owner.
+ * kind/value/name/mark are copied into staged JSON. The host serializes parser calls. */
+void source_debug_access(
+    const char *kind, int value, const char *name, int scope, int depth, int binding, SourceMark mark)
+{
+    debug_event(kind, value, name, scope, depth, binding, mark);
 }
 
 
@@ -197,6 +221,7 @@ int fir_source_debug(FILE *input,
     error_recorded = 0;
     active_debug = NULL;
     first_debug_event = 1;
+    debug_site_serial = 0;
     if (error && capacity)
     {
         error[0] = 0;

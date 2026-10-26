@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1598**. [English](README.md).
+Версия разработки: **0.1599**. [English](README.md).
 
 Текущая серия: [v0.1589–v0.1595](docs/releases/v0.1595.md) — наш Limbo real через Coco/R, обновления SLICEA/self-load из Inferno и обратные исправления остальных result-слотов Loader.
 

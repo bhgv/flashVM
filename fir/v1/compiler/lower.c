@@ -291,6 +291,16 @@ int source_read(int name)
         reject("read before initialized declaration");
         return 0;
     }
+    if (!failed)
+    {
+        source_debug_access("read",
+                            bindings[name],
+                            names[name],
+                            debug_scopes[binding_scope[name]],
+                            binding_scope[name],
+                            name + 1,
+                            location);
+    }
     return bindings[name];
 }
 
@@ -330,12 +340,13 @@ void source_bind(int name, int value, int declaration)
     bindings[name] = value;
     if (!failed)
     {
-        source_debug_event(declaration ? "declare" : "assign",
-                           value,
-                           names[name],
-                           debug_scopes[binding_scope[name]],
-                           binding_scope[name],
-                           location);
+        source_debug_access(declaration ? "declare" : "assign",
+                            value,
+                            names[name],
+                            debug_scopes[binding_scope[name]],
+                            binding_scope[name],
+                            name + 1,
+                            location);
     }
 }
 

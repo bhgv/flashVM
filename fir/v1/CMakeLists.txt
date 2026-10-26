@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.9.0 LANGUAGES C)
+project(fir1 VERSION 0.10.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -178,4 +178,9 @@ if(BUILD_TESTING)
   add_executable(fir1_real_api tests/real_api.c)
   target_link_libraries(fir1_real_api PRIVATE fir1_ir fir1_source_api)
   add_test(NAME fir1_real_api COMMAND fir1_real_api)
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME fir1_access_sites COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/access_sites.py" $<TARGET_FILE:fir1_source>)
 endif()
