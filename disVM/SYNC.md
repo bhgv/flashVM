@@ -1,3 +1,32 @@
+# Current synchronization — v0.1637
+
+Experiment: `14c3d2c2736936eade4eadfa25e87c8ce5e404ec`. 519 exact core/reference files and 174 bootstrap
+files. Incoming 7254e9e checks eighteen transfer/conversion paths; 2190eea checks
+24 integer ALU/division paths. Their production implementations are retained.
+Our initially independent division repair was not published over the concurrent,
+broader 2190eea implementation.
+
+Our reverse 14c3d2c adds six real-branch source/conditional-target guards and
+independent twelve-command division/real checks. False predicates ignore targets;
+taken targets fit before PC publication. ARM64 relocates the inverse branch over
+the complete guarded sequence. The same reverse commit preserves transfercheck
+and integercheck when standalone numeric oracles are embedded in native WORD
+model diagnostics. [Arithmetic contract](upstream/libinterp/tests/README.arithmetic-slot.md).
+[Transfer](upstream/libinterp/tests/README.transfer-slot-preflight.md) ·
+[Integer ALU](upstream/libinterp/tests/README.integer-slot-preflight.md).
+
+All three independent checkpoint families are registered: 190 selected DisVM
+tests. [New commented Limbo example](../fir/v1/examples/tables/division.b) covers
+MIN/-1, signed remainder and an unselected zero-divisor arm. SDK acceptance uses
+fresh C99 compiler/reference clients, original/optimized FIR and both VM modes.
+
+Native availability stays AMD64/ARM64 164/173; operand coverage is partial. Native
+ABI/private capacity stay unchanged. Arithmetic spans do not prove arbitrary
+mapped allocation ownership. ARM64 evidence is instruction emulation. Compiler
+language extensions remain in FlashVM; no full Inferno boot/hardware claim.
+
+---
+
 # Current synchronization — v0.1636
 
 Experiment: `d899383090f6013e8be41da7e3e2c09888856b0b`. 507 exact core/reference files and 174 bootstrap
