@@ -576,7 +576,9 @@ PRODUCTIONS
     | "[" TableExpression<key> "]"
   .
 
-  /* Prefix operations preserve static container types; postfix reads and explicit slices compose. */
+  /* Prefix operations preserve static container types; postfix reads and explicit slices compose.
+   * IF bounds recursive table expressions before another C stack frame; the recovery arm
+   * consumes only an identifier and records a resource diagnostic at the shared depth limit. */
   TableExpression<int *result> =
     IF(depth < 64) (. ++depth; .)
     TableUnary<result> (. --depth; .)

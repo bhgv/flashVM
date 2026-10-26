@@ -24,3 +24,5 @@ Source-примеры содержат также ожидаемый читае�
 [structural](structural/README.ru.md) — параметры функций/блоков, только syntax-профиль.
 
 [Сквозной Limbo→FIR→Dis и C99 API](dis/README.ru.md).
+
+[Исходник гибридной таблицы](tables/main.b) · [Контракт](../doc/TABLES.ru.md) · [English](../doc/TABLES.md). Пример проходит наш путь Coco/R → FIR и эталонный C-исполнитель; это ещё не исполнение таблиц через SWF/Dis.

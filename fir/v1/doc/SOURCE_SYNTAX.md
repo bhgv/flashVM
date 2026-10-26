@@ -67,3 +67,7 @@ The new `limbo_real` provenance survives print/opt and reaches SWO/SWF or Dis.
 
 Literal range errors are rejected too, including underflow when host strtod sets
 errno. This is a limitation of the current bounded numeric profile.
+
+## Typed table extension
+
+The `limbo_tables` profile, exact `i64` constants and typed table/location/range/key operations are described in [TABLES.md](TABLES.md). They are accepted by the updated parser/verifier/optimizer; the scalar Dis and AVM1 SWO backends reject them explicitly.

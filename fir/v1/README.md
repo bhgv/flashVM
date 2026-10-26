@@ -86,3 +86,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Source compilation debug info / Debug info собственного компилятора](doc/SOURCE_DEBUG.md).
 
 [Direct NC64 Dis generation](doc/DIS_BACKEND.md) · [Limbo/FIR/Dis and embedding tutorial](examples/dis/README.md).
+
+[Typed tables → FIR / Типизированные таблицы → FIR](doc/TABLES.md) · [Русский](doc/TABLES.ru.md): compiler 0.11, explicit big-result subset and hosted C99 reference execution; table Dis/SWF lowering remains pending.

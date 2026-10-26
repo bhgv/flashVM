@@ -16,13 +16,16 @@ def main():
         component / "include/fir.h": package / "include/fir.h",
         component / "compiler/dis.c": package / "source/dis.c",
     }
-    for name in ("DIS_BACKEND.md", "DIS_BACKEND.ru.md"):
+    for name in ("DIS_BACKEND.md", "DIS_BACKEND.ru.md", "TABLES.md", "TABLES.ru.md"):
         pairs[component / "doc" / name] = package / "docs" / name
     for name in ("API.md", "API.ru.md"):
         pairs[component / "compiler" / name] = package / "docs" / name
     for source in (component / "examples/dis").iterdir():
         if source.is_file():
             pairs[source] = package / "examples/dis" / source.name
+    for source in (component / "examples/tables").iterdir():
+        if source.is_file():
+            pairs[source] = package / "examples/tables" / source.name
     for source, destination in pairs.items():
         if source.suffix != ".md":
             continue

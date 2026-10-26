@@ -26,3 +26,5 @@ index; the workspace viewer includes the same files.
 [Limbo lexical blocks / Лексические блоки](../doc/LEXICAL_SCOPES.md).
 
 [End-to-end Limbo→FIR→Dis and C99 API](dis/README.md).
+
+[Typed hybrid table source](tables/main.b) · [Contract](../doc/TABLES.md) · [Русский](../doc/TABLES.ru.md). This example uses our Coco/R → FIR pipeline and a hosted C reference runner, not SWF/Dis execution.

@@ -440,6 +440,7 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
             source=compiler
             case "$project" in as1 | as2 | as3 | limbo) source="compiler/$project" ;; esac
             [[ "$project" != fir ]] || source=fir/v1
+            [[ "$project" != fir ]] || args+=("-DFIR_TABLE_CORE_ROOT=$ROOT/common/table")
             [[ "$project" != symbols ]] || source=compiler/limbo/symbols
             args+=("-DCOCOR_ROOT=$COCOR_ROOT" "-DCOCOR_EXECUTABLE=$COCOR_EXECUTABLE")
             ;;

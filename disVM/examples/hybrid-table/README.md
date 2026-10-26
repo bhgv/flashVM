@@ -38,9 +38,10 @@ cd build/runtime
 ./disvm --stats --no-jit hybridtable-test.dis
 ```
 
-Our Coco/R syntax frontend also recognizes `table of T`, `table of T` creation,
-`keysof t`, existing indexing/slicing and dotted access syntax. It does not yet
-resolve dotted access as a table operation or lower these forms through FIR.
-For example, `t.k` is intended to mean `t["k"]`; the runnable program currently
-uses explicit module calls. Dynamic any values, typeof, keyseq syntax, pair
-iteration, AS integration and direct compiler-generated Dis calls remain pending.
+The general Coco/R Limbo frontend accepts the extension syntax. Separately, our
+fir1_source big-result subset now performs typed lowering of table creation,
+numeric/string/dotted access, slices, keysof and len into FIR. See the
+[compiler contract](../../../fir/v1/doc/TABLES.md). Its hosted C reference runner
+is distinct from this native Dis module example. Automatic compiler-generated
+native Dis/SWF table calls, keyseq indexing, pair iteration and typeof/any remain
+pending; the module example continues to use the matching bootstrap explicitly.

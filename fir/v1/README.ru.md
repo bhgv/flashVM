@@ -87,3 +87,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Source compilation debug info / Debug info собственного компилятора](doc/SOURCE_DEBUG.md).
 
 [Прямая генерация NC64 Dis](doc/DIS_BACKEND.ru.md) · [Limbo/FIR/Dis и библиотечный пример](examples/dis/README.ru.md).
+
+[Типизированные таблицы → FIR](doc/TABLES.ru.md) · [English](doc/TABLES.md): компилятор 0.11, явный профиль с результатом big и эталонное исполнение на C99; генерация Dis/SWF для таблиц ещё предстоит.

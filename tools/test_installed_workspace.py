@@ -41,6 +41,31 @@ def run(argv, work, environment, input_text=None):
     return result.stdout
 
 
+# Compile/verify/optimize the shipped hybrid source with relocated tools and reference execution.
+# This is deliberately separate from the actual Dis checks; no table JIT execution is implied.
+def table_packages(prefix, work, environment):
+    source = prefix / "fir/examples/tables/main.b"
+    fir = work / "tables.fir"
+    optimized = work / "tables.opt.fir"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", source, fir], work, environment)
+    run([program(prefix, "fir", "fir1"), "check", fir], work, environment)
+    run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+    for selected in (fir, optimized):
+        result = run([program(prefix, "fir", "fir1_table_run"), selected], work, environment)
+        if result.strip() != "42":
+            raise RuntimeError("relocated table reference result differs")
+    # Link a fresh C99 host using only the installed public table API and archives.
+    client = work / "table-client.c"
+    shutil.copyfile(prefix / "fir/examples/tables/client.c", client)
+    binary = work / "table-client"
+    libraries = [prefix / "fir/lib" / ("lib" + name + ".a")
+                 for name in ("fir1_tables", "fir1_ir", "fir1_io")]
+    run([environment.get("CC", "cc"), "-std=c99", "-I", prefix / "fir/include",
+         client, *libraries, "-lm", "-o", binary], work, environment)
+    if run([binary, fir], work, environment).strip() != "42":
+        raise RuntimeError("relocated public table C99 API result differs")
+
+
 # Compile the shipped tutorial using only relocated SDK headers/libraries, then run it.
 # prefix/work/environment are private test paths/state; failures raise with diagnostics.
 def module_packages(prefix, work, environment):
@@ -307,10 +332,12 @@ def main():
         work.mkdir()
         environment = dict(os.environ, TMPDIR=str(work), TEMP=str(work), TMP=str(work))
         if args.broker_only:
+            table_packages(prefix, work, environment)
             broker_packages(prefix, work, environment)
             print("PASS relocated broker C99 SDK, exact source sites, diagnostic channels and IDE projections, interpreter/JIT")
             return
         if args.fir_dis_only:
+            table_packages(prefix, work, environment)
             fir_dis_packages(prefix, work, environment)
             print("PASS relocated our Limbo/FIR→Dis, relinked C99 SDK, interpreter and native JIT")
             return

@@ -171,3 +171,7 @@ checking or an implicit conversion instruction.
 их числовые значения enum сохранены. Для нового варианта нужен новый reader.
 
 [Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
+
+## Typed table extension
+
+The `limbo_tables` profile, exact `i64` constants and typed table/location/range/key operations are described in [TABLES.md](TABLES.md). They are accepted by the updated parser/verifier/optimizer; the scalar Dis and AVM1 SWO backends reject them explicitly.

@@ -244,15 +244,16 @@ EOF
         fir)
             source="$ROOT/fir/v1"
             mkdir -p "$destination/examples"
-            for file in fir1 fir1_source fir1_opt; do
+            for file in fir1 fir1_source fir1_opt fir1_table_run; do
                 install_program "$base" "$file" "$destination"
             done
             install_program "$base" fir1_dis_example "$destination"
             copy_tree "$ROOT/examples/firststeps" "$destination/examples/firststeps"
             copy_tree "$source/examples/dis" "$destination/examples/dis"
+            copy_tree "$source/examples/tables" "$destination/examples/tables"
             copy_tree "$source/include" "$destination/include"
             copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
-            for file in DIS_BACKEND.md DIS_BACKEND.ru.md; do
+            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md; do
                 copy_file "$source/doc/$file" "$destination/docs/$file"
             done
             for file in API.md API.ru.md; do
