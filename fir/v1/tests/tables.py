@@ -107,6 +107,52 @@ def main():
             ('t := table of big; t.x = big 169501025086186762; t.y = big 1283950617314486; a := t.x; b := t.y; return a * b + a - b;', 8377072205232954736),
             ('t := table of big; t.x = big 181846703996297975; t.y = big 1382716049415599; a := t.x; b := t.y; return a * b + a - b;', 8890476939083081505),
             ('t := table of big; t.x = big 194192382906409188; t.y = big 1481481481516712; a := t.x; b := t.y; return a * b + a - b;', 8576105218280085468),
+            ('return 7 / 3;', 2),
+            ('return -7 / 3;', -2),
+            ('return 7 / -3;', -2),
+            ('return -7 / -3;', 2),
+            ('return -7 % 3;', -1),
+            ('return 7 % -3;', 1),
+            ('return -7 % -3;', -1),
+            ('return -9223372036854775808 / -1;', -9223372036854775808),
+            ('return -9223372036854775808 % -1;', 0),
+            ('return 25 / 4 % 3;', 0),
+            ('return 25 % 4 * 3;', 3),
+            ('return 9007199254740993 / 3;', 3002399751580331),
+            ('return 1 | 2 ^ 3 & 4;', 3),
+            ('return 1 + 2 & 2 * 3;', 2),
+            ('return ~1 & 15;', 14),
+            ('return ~(1 | 2);', -4),
+            ('return ~-1;', 0),
+            ('return ~-9223372036854775808;', 9223372036854775807),
+            ('return ~9223372036854775807;', -9223372036854775808),
+            ('return (1 | 2) * 3;', 9),
+            ('t := table of big; t[0] = big 42; ks := keysof t; return t[ks[1 % 1]];', 42),
+            ('t := table of big; t["3"] = big 17; return t[string (15 / 4)];', 17),
+            ('t := table of big; t.a = big -9223372036854775808; t.b = big -1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', -1),
+            ('t := table of big; t.a = big -7; t.b = big 3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 0; t.b = big -3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 7; t.b = big 1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775801),
+            ('t := table of big; t.a = big 9007199254740993; t.b = big 9223372036854775807; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 9223372036854775807; t.b = big -9223372036854775808; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 0),
+            ('t := table of big; t.a = big -9223372036854775808; t.b = big 5; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 7378697629483820645),
+            ('t := table of big; t.a = big -7; t.b = big -1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', -7),
+            ('t := table of big; t.a = big 0; t.b = big 3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 7; t.b = big -3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 5),
+            ('t := table of big; t.a = big 9007199254740993; t.b = big 1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9214364837600034815),
+            ('t := table of big; t.a = big 9223372036854775807; t.b = big 9223372036854775807; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big -9223372036854775808; t.b = big -9223372036854775808; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', -2),
+            ('t := table of big; t.a = big -7; t.b = big 5; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 0; t.b = big -1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 7; t.b = big 3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 9007199254740993; t.b = big -3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 12009599006321323),
+            ('t := table of big; t.a = big 9223372036854775807; t.b = big 1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 1),
+            ('t := table of big; t.a = big -9223372036854775808; t.b = big 9223372036854775807; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big -7; t.b = big -9223372036854775808; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', -9223372036854775802),
+            ('t := table of big; t.a = big 0; t.b = big 5; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775807),
+            ('t := table of big; t.a = big 7; t.b = big -1; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 7),
+            ('t := table of big; t.a = big 9007199254740993; t.b = big 3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9220369637103195477),
+            ('t := table of big; t.a = big 9223372036854775807; t.b = big -3; a := t.a; b := t.b; return ~((a / b) ^ (a % b)) & 9223372036854775807 | (a & b);', 9223372036854775805),
         )
         for body, expected in cases:
             source.write_text(program(body))
@@ -190,7 +236,23 @@ def main():
         if len(events) != 1 or events[0]["byte_offset"] != text.index("-922") or events[0]["byte_length"] != 20:
             raise RuntimeError("signed minimum literal lost its complete source span")
 
+        # Each division/bit operator retains its exact source occurrence.
+        text = program('a := big 7; return ~a & a | a ^ a / 2 % 3;')
+        source.write_text(text)
+        call([source_compiler, "limbo", "--input", source, fir, "-g", debug])
+        events = json.loads(debug.read_text())["events"]
+        for spelling, token in (("big.not", "~"), ("big.and", "&"), ("big.or", "|"),
+                                ("big.xor", "^"), ("big.div", "/"), ("big.mod", "%")):
+            selected = [event for event in events if event["kind"] == "table-operation" and event["name"] == spelling]
+            if len(selected) != 1 or selected[0]["byte_offset"] != text.index(token) or selected[0]["byte_length"] != 1:
+                raise RuntimeError("division/bit operation lost its source origin")
+
         rejected = (
+            'return "1" & 1;',
+            'return ~"1";',
+            't := table of big; return t % 2;',
+            'return 1 << 2;',
+
             'return ' + 'big ' * 80 + '1;',
             'return ' + '(' * 80 + '1' + ')' * 80 + ';',
             'return ' + '-' * 80 + 'x;',
@@ -200,7 +262,6 @@ def main():
             't := table of big; return t * 2;',
             't := table of big; ks := keysof t; return +ks;',
             'return typeof 1 + 2;',
-            'return 8 / 2;',
 
             'return tobig "7";',
             't := table of big; t.k = "wrong"; return big 0;',
@@ -247,6 +308,10 @@ def main():
             ('t := table of big; ignored := t.missing * 0; return big 0;', "missing key"),
             ('t := table of big; t[9223372036854775807 + 1] = big "bad"; return big 0;', "invalid key/range"),
             ('t := table of big; ignored := t.missing + big "bad"; return big 0;', "missing key"),
+            ('return 1 / 0;', 'zero divide'),
+            ('ignored := 1 % 0; return 0;', 'zero divide'),
+            ('ignored := (0 / 0) * 0; return 0;', 'zero divide'),
+            ('t := table of big; t[1 / 0] = big "bad"; return 0;', 'zero divide'),
             ('t := table of big; return t.missing;', "missing key"),
             ('t := table of big; ignored := t.missing; t.missing = big 4; return big 0;', "missing key"),
             ('t := table of big; t[-1] = big 3; return big 0;', "invalid key/range"),
@@ -258,7 +323,7 @@ def main():
             for selected in (fir, optimized):
                 result = call([runner, selected], False)
                 if diagnostic not in result.stderr or result.stdout:
-                    raise RuntimeError("runtime failure lost diagnostic or published partial traces")
+                    raise RuntimeError("runtime failure lost diagnostic or published partial traces: " + body + "\n" + result.stderr)
         # A manually authored trace before a failing read must remain unpublished.
         staged_failure = """FIR 1.0
 module @staging
