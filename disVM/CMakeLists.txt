@@ -74,6 +74,7 @@ if(BUILD_TESTING)
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
     integer-ops
+    shift-slot-native
     channel-queues
     channel-transfers
     dis-loader
@@ -255,6 +256,7 @@ if(BUILD_TESTING)
   if(have_instruction_emulators EQUAL 0)
     foreach(driver
       owner-jit
+      shift-slot-jit
       list-slot-jit
       owner-optimized
       payload-channel-jit
