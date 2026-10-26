@@ -53,6 +53,16 @@ void Idehost_rows(void *frame)
 }
 
 
+/* Copy the initial line-number preference into the generated native-cell result slot.
+ * frame is borrowed; application visibility is subsequently controlled only by Dis envelopes. */
+void Idehost_linenumbers(void *frame)
+{
+    F_Idehost_linenumbers *arguments = frame;
+    WORD visible = dvm_editor_line_numbers();
+    memmove(arguments->ret, &visible, sizeof(visible));
+}
+
+
 /* Return the explicit new-document flag in a matching generated native-cell slot.
  * frame borrows the builtin invocation; no heap mutation or native I/O occurs. */
 void Idehost_fresh(void *frame)

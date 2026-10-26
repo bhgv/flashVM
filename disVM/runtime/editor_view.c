@@ -11,6 +11,7 @@
 #include <math.h>
 #ifdef DVM_EDITOR_SDL
 #include <SDL.h>
+#include "editor_window_events.h"
 #endif
 
 #define EDITOR_WIDTH 960U                /* Initial viewport width in pixels. */
@@ -35,6 +36,7 @@
 #define EDITOR_WIDTH_MIN 240U            /* Bounded minimum native surface width. */
 #define EDITOR_HEIGHT_MIN 160U           /* Bounded minimum native surface height. */
 #define EDITOR_EXTENT_MAX 2048U          /* Bound each dimension and the RGBA allocation to 16 MiB. */
+#define EDITOR_GUTTER 65563UL             /* Dis-owned line-number visibility, copied per completed view. */
 #define EDITOR_QUIT 65539UL              /* Dis controller's dirty-checked close operation. */
 
 #define EDITOR_CLIP_FIELD_WRITE 65561UL  /* Copy Dis-authorized modal field bytes, excluding the label. */
@@ -81,7 +83,7 @@ static FVM_Font *layout_font;          /* Owned same-face layout for Dis selecti
 static long caret;                     /* Last Dis Unicode scalar caret, presentation only. */
 static long anchor;                    /* Last Dis Unicode scalar selection anchor. */
 static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
-static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement, 6 Go To. */
+static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement, 6 Go To, 7 read-only inspector. */
 static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
 static long panel_caret;               /* Copied Unicode field caret, excluding its native label prefix. */
 static long panel_anchor;              /* Copied Unicode field selection anchor. */
@@ -103,6 +105,10 @@ static long saved;                             /* Dis saved revision, used only 
 static unsigned long view_ticket;              /* Monotonic Dis view identity, independent of content revision. */
 static unsigned long view_revision;            /* Expected content revision for viewport metadata. */
 static unsigned long view_total;               /* Expected document Unicode scalar count. */
+static int initial_line_numbers = 1;      /* Startup preference only, read once by Dis. */
+static int line_numbers;                  /* Admitted Dis view preference; no native shortcut changes it. */
+static unsigned long gutter_revision;     /* Revision that authorizes this view's gutter state. */
+static unsigned int gutter_width;         /* Measured native pixels reserved beside source text. */
 static unsigned long view_top;                 /* Zero-based logical top line chosen by Dis. */
 static long view_first;                        /* Dis-selected source scalar at display start. */
 static long view_last;                         /* Dis-selected source scalar after display end. */
@@ -148,10 +154,25 @@ static int hexword(const char *text, unsigned long *out)
     return 1;
 }
 
+/* Return startup configuration by value; no renderer or document state is exposed. */
+int dvm_editor_line_numbers(void)
+{
+    return initial_line_numbers;
+}
+
+
 /* Store a known CLI option without copying argv; returns whether it was recognized. */
 int dvm_editor_option(const char *name, const char *value)
 {
-    if (!strcmp(name, "--font"))
+    if (!strcmp(name, "--line-numbers"))
+    {
+        if (strcmp(value, "0") && strcmp(value, "1"))
+        {
+            return 0;
+        }
+        initial_line_numbers = value[0] == '1';
+    }
+    else if (!strcmp(name, "--font"))
     {
         font_path = value;
     }
@@ -370,7 +391,13 @@ static int apply_canvas(unsigned int width, unsigned int height)
     texture = replacement;
     if (window)
     {
-        SDL_SetWindowSize(window, width, height);
+        int current_width;
+        int current_height;
+        SDL_GetWindowSize(window, &current_width, &current_height);
+        if (current_width != (int)width || current_height != (int)height)
+        {
+            SDL_SetWindowSize(window, width, height);
+        }
     }
 #endif
     free(pixels);
@@ -979,9 +1006,9 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
         {
             horizontal = floor(cursor_x);
         }
-        if (cursor_x - horizontal > canvas_width - 12)
+        if (cursor_x - horizontal > canvas_width - gutter_width - 12)
         {
-            horizontal = ceil(cursor_x - (canvas_width - 12));
+            horizontal = ceil(cursor_x - (canvas_width - gutter_width - 12));
         }
     }
     if (horizontal < 0)
@@ -1010,7 +1037,7 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
         if (glyph.shaped.cluster >= first && glyph.shaped.cluster < last)
         {
             ok = rectangle(surface,
-                           glyph.x + 2 - horizontal,
+                           glyph.x + 2 + gutter_width - horizontal,
                            glyph.y - font.ascent + 2,
                            glyph.shaped.x_advance,
                            line_step(&font),
@@ -1019,7 +1046,7 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
     }
     if (ok && cursor_visible && !panel_mode)
     {
-        ok = rectangle(surface, cursor_x + 2 - horizontal, cursor_y + 2, 1, line_step(&font), cursor);
+        ok = rectangle(surface, cursor_x + 2 + gutter_width - horizontal, cursor_y + 2, 1, line_step(&font), cursor);
     }
     if (ok)
     {
@@ -1149,7 +1176,9 @@ static int render_panel(FVM_RasterSurface *surface)
                                    "Save As [Enter/Esc]: ",
                                    "Replace needle: ",
                                    "Replacement: ",
-                                   "Go to line[:column]: "};
+                                   "Go to line[:column]: ",
+                                   "Inspect [Esc]: ",
+                                   "Unsaved [S save / D discard / Esc cancel]: "};
     char text[1100];
     size_t prefix = strlen(labels[panel_mode]);
     FVM_Value value;
@@ -1276,7 +1305,7 @@ static int render_panel(FVM_RasterSurface *surface)
         result = draw_visible(path, surface, ink);
     }
     fvm_path_destroy(path);
-    if (result == FVM_OK && panel_mode)
+    if (result == FVM_OK && panel_mode && panel_mode < 7)
     {
         FVM_RasterColor cursor = {35, 85, 170, 255};
         if (!rectangle(surface,
@@ -1291,6 +1320,122 @@ static int render_panel(FVM_RasterSurface *surface)
     }
     return result == FVM_OK;
 }
+
+/* Reserve a measured strip and update only the native source field's available width.
+ * Uses copied viewport/font/visibility data; returns zero on font/field errors, never edits source. */
+static int measure_gutter(void)
+{
+    unsigned long highest = view_top + (unsigned long)dvm_editor_rows() + 1;
+    unsigned int digits = 1;
+    unsigned int digit;
+    double widest = 0;
+    FVM_Value value;
+    gutter_width = 0;
+    if (line_numbers)
+    {
+        while (highest >= 10)
+        {
+            highest /= 10;
+            digits++;
+        }
+        for (digit = 0; digit < 10; digit++)
+        {
+            FVM_Path *path = 0;
+            double advance = 0;
+            double vertical = 0;
+            if (fvm_font_glyph(layout_font, fvm_font_char(layout_font, '0' + digit), &path, &advance, &vertical) != FVM_OK)
+            {
+                return 0;
+            }
+            fvm_path_destroy(path);
+            if (advance > widest)
+            {
+                widest = advance;
+            }
+        }
+        gutter_width = (unsigned int)ceil(widest * digits + 12);
+        if (gutter_width > canvas_width / 2)
+        {
+            gutter_width = canvas_width / 2;
+        }
+    }
+    fvm_value_number(&value, canvas_width - gutter_width);
+    return fvm_object_set(context, field, "_width", &value) == FVM_OK;
+}
+
+
+/* Paint logical numbers at the actual source layout baselines, covering scrolled source ink.
+ * surface is borrowed, layout contains only the acknowledged viewport. No source parsing/mutation. */
+static int render_gutter(FVM_RasterSurface *surface)
+{
+    FVM_RasterColor background = {242, 244, 248, 255};
+    FVM_RasterColor ink = {105, 113, 128, 255};
+    FVM_FontMetrics font;
+    FVM_TextLayoutMetrics metrics;
+    unsigned int index;
+    double bottom;
+    if (!gutter_width)
+    {
+        return 1;
+    }
+    if (fvm_font_metrics(layout_font, &font) != FVM_OK ||
+        fvm_text_layout_metrics(hit_layout, &metrics) != FVM_OK)
+    {
+        return 0;
+    }
+    bottom = canvas_height - panel_height(line_step(&font));
+    if (!rectangle(surface, 0, 0, gutter_width, bottom, background))
+    {
+        return 0;
+    }
+    for (index = 0; index < metrics.line_count; index++)
+    {
+        FVM_TextLayoutLine line;
+        FVM_TextRun *run = 0;
+        FVM_Path *path = 0;
+        FVM_Affine placement;
+        FVM_Result result;
+        double advance = 0;
+        double vertical = 0;
+        char label[32];
+        if (fvm_text_layout_line(hit_layout, index, &line) != FVM_OK)
+        {
+            return 0;
+        }
+        if (line.baseline - font.ascent + 2 >= bottom)
+        {
+            break;
+        }
+        snprintf(label, sizeof(label), "%lu", view_top + index + 1);
+        result = fvm_font_shape_configured(layout_font, label, strlen(label), FVM_TEXT_LTR, 0,
+                                          FVM_FONT_SHAPE_NO_KERNING, &run);
+        if (result == FVM_OK)
+        {
+            result = fvm_text_run_path(layout_font, run, &path, &advance, &vertical);
+        }
+        memset(&placement, 0, sizeof(placement));
+        placement.xx = 1;
+        placement.yy = 1;
+        placement.x0 = gutter_width - 6 - advance;
+        placement.y0 = line.baseline + 2;
+        if (result == FVM_OK)
+        {
+            result = fvm_path_transform(path, &placement);
+        }
+        if (result == FVM_OK)
+        {
+            result = draw_visible(path, surface, ink);
+        }
+        fvm_path_destroy(path);
+        fvm_text_run_destroy(run);
+        if (result != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 
 /* Render only a complete document through actual FlashVM contours and rasterization.
  * No parameters; returns one on success, zero on backend/file/presentation failure. */
@@ -1321,11 +1466,19 @@ static int render(void)
     surface.width = canvas_width;
     surface.height = canvas_height;
     surface.stride = canvas_width * 4U;
-    if (!selection_geometry(&surface, shown))
+    if (!measure_gutter() || !selection_geometry(&surface, shown))
     {
         return 0;
     }
     result = fvm_textfield_path(context, field, &path);
+    if (result == FVM_OK && gutter_width)
+    {
+        FVM_Affine shift;
+        memset(&shift, 0, sizeof(shift));
+        shift.xx = shift.yy = 1;
+        shift.x0 = gutter_width;
+        result = fvm_path_transform(path, &shift);
+    }
     if (result == FVM_OK)
     {
         result = draw_visible(path, &surface, ink);
@@ -1336,7 +1489,7 @@ static int render(void)
         fprintf(stderr, "editor TextField raster failed: %d\n", result);
         return 0;
     }
-    if (!render_panel(&surface))
+    if (!render_gutter(&surface) || !render_panel(&surface))
     {
         return 0;
     }
@@ -1431,6 +1584,17 @@ int dvm_editor_present(const DVM_UIMessage *message)
         canvas_revision = message->flags;
         return 1;
     }
+    if (message->code == EDITOR_GUTTER)
+    {
+        if (assembling || message->flags != style_revision || message->size || message->second ||
+            message->first < 0 || message->first > 1)
+        {
+            return 0;
+        }
+        line_numbers = message->first != 0;
+        gutter_revision = message->flags;
+        return 1;
+    }
     if (message->code == EDITOR_STYLE)
     {
         if (assembling || message->flags != canvas_revision || message->size || message->first < EDITOR_FONT_MIN ||
@@ -1444,7 +1608,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_PANEL)
     {
-        if (assembling || message->first < 0 || message->first > 6 || message->second < 0 || message->second > 1 ||
+        if (assembling || message->first < 0 || message->first > 8 || message->second < 0 || message->second > 1 ||
             message->size > sizeof(panel_text))
         {
             return 0;
@@ -1503,7 +1667,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
         if (fvm_utf8_validate(snapshot, extent, &scalars) != FVM_UTF8_OK || (unsigned long)message->first > scalars ||
             (unsigned long)message->second > scalars || scalars != view_total || revision != view_revision ||
             revision != canvas_revision || revision != style_revision || revision != panel_revision ||
-            revision != panel_selection_revision || !view_ticket)
+            revision != panel_selection_revision || revision != gutter_revision || !view_ticket)
         {
             return 0;
         }
@@ -1525,6 +1689,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
             }
             putchar('\n');
             printf("WINDOW %lu %ld %ld %lu\n", view_ticket, view_first, view_last, view_top);
+            printf("GUTTER %d %u %lu\n", line_numbers, gutter_width, view_top + 1);
             printf("STYLE %d %d\n", font_size, dvm_editor_rows());
             printf("CANVAS %u %u\n", canvas_width, canvas_height);
             printf("FIELD %ld %ld %.0f\n", panel_caret, panel_anchor, panel_horizontal);
@@ -1588,7 +1753,7 @@ static long hit_position(double x, double y)
         return -1;
     }
     y -= 2;
-    x += horizontal - 2;
+    x += horizontal - 2 - gutter_width;
     for (index = 0; index < metrics.line_count; index++)
     {
         if (fvm_text_layout_line(hit_layout, index, &line) != FVM_OK)
@@ -1905,25 +2070,21 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             return 0;
         }
-        if (event.type == SDL_QUIT)
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED &&
+            window && event.window.windowID == SDL_GetWindowID(window))
         {
-            message->kind = DVM_UI_REQUEST;
-            message->id = 1;
-            message->code = EDITOR_QUIT;
-            message->flags = (SDL_GetModState() & KMOD_SHIFT) != 0;
+            return render() ? 0 : -1; /* Restore cached presentation without asking Dis to edit/rebuild a view. */
         }
-        else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+        if (dvm_editor_window_event(&event, window, message))
         {
-            if (event.window.data1 <= 0 || event.window.data2 <= 0 ||
-                (event.window.data1 == (int)canvas_width && event.window.data2 == (int)canvas_height))
+            if (message->code == EDITOR_RESIZE)
             {
-                return 0;
+                if (message->first == (long)canvas_width && message->second == (long)canvas_height)
+                {
+                    return 0;
+                }
+                pinch_distance = 0;
             }
-            message->kind = DVM_UI_POINTER;
-            message->code = EDITOR_RESIZE;
-            message->first = event.window.data1;
-            message->second = event.window.data2;
-            pinch_distance = 0;
         }
         else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
         {

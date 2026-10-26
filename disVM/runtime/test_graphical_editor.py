@@ -24,15 +24,17 @@ def shortcut(letter):
 
 # Execute actual bytecode from a relocated cwd; collect independently decoded view snapshots.
 # Paths are explicit. Raises on timeout, failed execution or invalid mode counters.
-def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640), native_clipboard=False, field_states=None):
+def run(runtime, module, font, mode, directory, events, source, success=True, fresh=False, windows=None, styles=None, panels=None, canvases=None, dimensions=(960, 640), native_clipboard=False, field_states=None, line_numbers=False, gutters=None):
     replay = directory / "input frames.bin"
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
     command = [str(runtime), "--stats", "--jit" if mode == "jit" else "--no-jit"]
+    command += ["--line-numbers", "1" if line_numbers else "0"]
     if font is not None:
         command += ["--font", str(font)]
-    command += ["--new" if fresh else "--document", str(source),
-                "--clipboard-events" if native_clipboard else ("--window-events" if len(sys.argv) > 5 else "--events"), str(replay),
+    if source is not None:
+        command += ["--new" if fresh else "--document", str(source)]
+    command += ["--clipboard-events" if native_clipboard else ("--window-events" if len(sys.argv) > 5 else "--events"), str(replay),
                 "--capture", str(capture), str(module)]
     result = subprocess.run(command, cwd=directory, capture_output=True, text=True, timeout=40)
     if not success:
@@ -49,6 +51,8 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
         if line.startswith("VIEW "):
             words = line.split(" ", 6)
             views.append((*map(int, words[1:6]), bytes.fromhex(words[6]).decode("utf-8")))
+    if gutters is not None:
+        gutters.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("GUTTER "))
     if windows is not None:
         windows.extend(tuple(map(int, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith("WINDOW "))
     if styles is not None:
@@ -83,7 +87,7 @@ def main():
         source.write_text("seed", encoding="utf-8")
         events = [envelope(5, text="alpha\nЯ😀")]
         events += shortcut("Z") + shortcut("Y")
-        events += [envelope(1, 65539)]  # Dirty close must fail before the following save.
+        events += [envelope(1, 65539), envelope(4, 27, 1), envelope(4, 27, 0)]  # Cancel the dirty-close prompt before ordinary Save.
         events += shortcut("S")
         events += [envelope(1, 65539)]
         views = run(runtime, module, font, mode, directory, events, source)

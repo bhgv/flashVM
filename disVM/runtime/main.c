@@ -846,7 +846,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime 0.9.0: experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime " DVM_RUNTIME_VERSION ": experimental NC64, magic 819264, Linux AMD64");
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
@@ -855,7 +855,7 @@ int main(int argc, char **argv)
                 "usage: disvm [--jit|--no-jit] [--stats] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
             puts(
-                "editor options: [--font TTF] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
+                "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
             return 0;

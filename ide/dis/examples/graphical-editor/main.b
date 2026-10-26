@@ -1,7 +1,10 @@
 implement GraphicalEditor; # Execute document policy on the real Dis VM.
 include "sys.m"; # Use actual native file I/O through the common FlashVM ports.
 include "uibridge.m"; # Exchange copied, bounded envelopes with the renderer.
-include "idecore.m"; # Keep text and history in their separate channel owner.
+include "idecore.m";
+include "idevalue.m";
+include "ideprojection.m";
+include "idedocprojection.m"; # Keep text and history in their separate channel owner.
 include "ideinput.m"; # Reuse Dis keyboard, selection and revision policy.
 include "idebridge.m"; # Reuse the bounded snapshot serializer.
 include "idefileops.m"; # Reuse bounded source I/O independently of any renderer.
@@ -22,6 +25,42 @@ codec: Uibridge; # Shared value codec, never a native pointer transport.
 files: Idefileops; # Reusable checked source-file library, called only by Dis policy.
 search: Idesearch; # Reusable search/replacement library, using actual document channels.
 bridge: Idebridge; # Existing ordered Unicode-fragment serializer.
+
+
+# Read a bounded metadata snapshot from the actual document projection owner.
+# endpoint is borrowed; blocks this controller only. No renderer evaluates or reads document state.
+inspectdocument(endpoint: chan of ref Ideprojection->Request): string
+{
+    answers := chan of Ideprojection->Reply;
+    endpoint <-= ref Ideprojection->Request(1, 1, Ideprojection->ToTable, "", 0, "", 0, 0,
+                                          Idevalue->Table, nil, answers);
+    result := <-answers;
+    if (result.status != Ideprojection->Ok || result.value == nil || len result.value.names != 5) {
+        return "unavailable status=" + string result.status;
+    }
+    text := "";
+    for (i := 0; i < 4; i++) {
+        if (i != 0) {
+            text += " ";
+        }
+        text += result.value.names[i] + "=" + string result.value.values[i].integer;
+    }
+    return text;
+}
+
+
+# Retire the projection adapter before shutting down the borrowed document endpoint.
+# endpoint is borrowed; consumes its terminal acknowledgement or raises a lifecycle failure.
+releaseprojection(endpoint: chan of ref Ideprojection->Request)
+{
+    answers := chan of Ideprojection->Reply;
+    endpoint <-= ref Ideprojection->Request(2, 1, Ideprojection->Release, "", 0, "", 0, 0,
+                                          0, nil, answers);
+    result := <-answers;
+    if (result.status != Ideprojection->Ok) {
+        raise "fail: graphical document projection release";
+    }
+}
 
 
 # Send one synchronous operation to the separate document owner and receive its result.
@@ -179,7 +218,16 @@ init()
         }
         text = initial; # Publish only validated UTF-8.
     }
-    reply := call(document, core->Open, 0, text); # Establish the first saved revision.
+    reply := call(document, core->Open, 0, text);
+    values := load Idevalue Idevalue->PATH;
+    projections := load Idedocprojection Idedocprojection->PATH;
+    if (values == nil || projections == nil) {
+        raise "fail: graphical document projection modules";
+    }
+    inspector := projections->start(core, values, document, 1, "graphical-document");
+    if (inspector == nil) {
+        raise "fail: graphical document projection owner";
+    } # Establish the first saved revision.
     policy->observe(state, reply); # Synchronize the Dis selection with that revision.
     if (host->attach(input, output) != 0) { # Borrow these live stack-rooted ports.
         raise "fail: graphical editor channel registration"; # Never continue without a receiver.
@@ -187,12 +235,14 @@ init()
     window := viewport->create(); # The Dis controller exclusively owns its viewport.
     width := 960; # Initial canvas pixel width, subsequently admitted through Resize.
     height := 640; # Initial canvas pixel height; source policy never owns native storage.
+    numbers := host->linenumbers() != 0; # Configuration is copied once; visibility policy remains Dis-owned.
+    closing := 0; # Save-then-close is admitted only by explicit dirty-close confirmation.
     fontsize := 11; # Default size belongs to Dis policy, not native document logic.
     window.rows = host->rows(); # Admit actual font geometry for the initial viewport.
     state.page = window.rows; # Page navigation and visible logical lines use the same units.
     reveal := 1; # Initial presentation follows the acknowledged caret.
     ticket := 0; # Monotonic view identity also distinguishes scrolling within one revision.
-    mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 needle, 5 replacement, 6 Go To.
+    mode := 0; # 0 document, 1 Find, 2 Open, 3 Save As, 4 needle, 5 replacement, 6 Go To, 7 readonly inspector.
     inputfield := fields->create(); # [GC:] Exclusive single-line field text/selection root, never a native editor buffer.
     query := ""; # Last literal query, reused by F3 and replacement.
     dragging := 0; # Only an admitted pointer begin starts a Dis selection gesture.
@@ -201,6 +251,12 @@ init()
     transfer_stamp := 0; # A field edit/selection change retires a clipboard's captured generation.
     transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
+        if (closing && reply.revision == reply.saved) {
+            releaseprojection(inspector);
+            call(document, core->Shutdown, reply.revision, "");
+            host->detach();
+            return;
+        }
         if (transfer.action == clipboard->Paste && transfer.total >= 0 && transfer.used < transfer.total) {
             credit := ref Uibridge->Message(codec->View, 0, host->ClipboardContinue, transfer.revision,
                                            transfer.used, transfer.total, codec->hexword(transfer.ticket));
@@ -224,13 +280,25 @@ init()
             if (!styleok) { # Invalid style must fail visibly before the following snapshot.
                 raise "fail: graphical editor style"; # Never continue with mismatched hit geometry.
             }
-            output <-= stylewire; # Native geometry is committed before the matching viewport/snapshot.
+            output <-= stylewire;
+            gutter := ref Uibridge->Message(codec->View, 0, host->Gutter, reply.revision, numbers, 0, "");
+            (gutterok, gutterwire) := codec->encode(gutter);
+            if (!gutterok) {
+                raise "fail: graphical editor gutter";
+            }
+            output <-= gutterwire; # Native geometry is committed before the matching viewport/snapshot.
             paneltext := inputfield.text; # Active input fields are Dis-owned values.
             if (mode == 0) { # An inactive panel reports the selected document path.
                 paneltext = path; # Save As only changes this path after successful output.
                 if (len paneltext > 200) { # Bound the label without changing the actual file destination.
                     paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
                 }
+            }
+            if (mode == 8) {
+                paneltext = "S: save and close; D: discard; Esc: cancel";
+            }
+            if (mode == 7) {
+                paneltext = inspectdocument(inspector); # Only channel-copied fields reach the native renderer.
             }
             selected := inputfield.caret != inputfield.anchor
                 && ((inputfield.anchor == 0 && inputfield.caret == len inputfield.text)
@@ -338,11 +406,16 @@ init()
         }
         if (event.kind == codec->Request && event.code == host->Quit) { # Close works even inside a modal field.
             if (reply.revision == reply.saved || event.flags == 1) {
+                releaseprojection(inspector);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach(); # Retire borrowed channel roots before the controller stack exits.
                 return;
             }
-            reply.status = core->Conflict; # Unsaved source is still protected; the field remains editable.
+            reply.status = core->Conflict;
+            mode = 8; # Closing an unsaved window must visibly ask rather than silently do nothing.
+            closing = 0;
+            inputfield = fields->create();
+            fielddrag = 0;
             continue;
         }
         if (event.kind == codec->Request && event.code == host->Resize) {
@@ -390,6 +463,50 @@ init()
             }
             continue; # A zoom event is never also a text selection or ordinary scroll.
         }
+        if (event.kind == codec->Key && event.flags != 0 && state.control && event.code == 76) {
+            numbers = !numbers; # Ctrl+L hides/shows the gutter without a source edit or Undo entry.
+            dragging = 0;
+            fielddrag = 0;
+            continue;
+        }
+        if (mode == 7 || mode == 8) { # Read-only inspector/confirmation never forward text or paste to the source.
+            if (event.kind == codec->Key && event.flags != 0 && event.code == 27) {
+                mode = 0;
+                closing = 0;
+                inputfield = fields->create();
+                fielddrag = 0;
+                reply.status = core->Ok;
+            } else if (mode == 7 && event.kind == codec->Key && event.flags != 0
+                       && event.code == 73 && state.control) {
+                mode = 0;
+                inputfield = fields->create();
+                reply.status = core->Ok;
+            } else if (mode == 8 && event.kind == codec->Key && event.flags != 0 && event.code == 68) {
+                releaseprojection(inspector); # Explicit D confirms discard; the close button itself never does.
+                call(document, core->Shutdown, reply.revision, "");
+                host->detach();
+                return;
+            } else if (mode == 8 && event.kind == codec->Key && event.flags != 0 && event.code == 83) {
+                closing = 1;
+                if (path == "") {
+                    mode = 3; # Save As must finish successfully before the next loop can close.
+                    inputfield = fields->create();
+                } else if (writesource(path, reply.text)) {
+                    reply = call(document, core->MarkSaved, reply.revision, "");
+                    mode = 0;
+                } else {
+                    reply.status = core->Invalid; # Failed output stays in the visible confirmation.
+                    closing = 0;
+                }
+            } else if (event.kind == codec->Focus || event.kind == codec->Key && (event.code == 16 || event.code == 17)) {
+                (admitted, observed) := policy->apply(core, document, state, event);
+                if (!admitted) {
+                    raise "fail: readonly panel modifier event";
+                }
+                reply = inputreply(reply, observed.document, event);
+            }
+            continue;
+        }
         if (event.kind == codec->Request && event.code == host->FieldPlace) {
             identity := array of byte event.text;
             (known, seen) := codec->parseword(identity, 0);
@@ -412,6 +529,14 @@ init()
             continue; # Field placement cannot move source selection or change document history.
         }
         if (event.kind == codec->Key && event.flags != 0 && state.control) {
+            if (event.code == 73) { # Ctrl+I opens a real document projection, never a native model shortcut.
+                mode = 7;
+                inputfield = fields->create();
+                dragging = 0;
+                fielddrag = 0;
+                reply.status = core->Ok;
+                continue;
+            }
             if (event.code == 67 || event.code == 88 || event.code == 86) { # Ctrl+C/X/V capture the active Dis source or field domain.
                 first := state.caret;
                 last := state.anchor;
@@ -474,6 +599,7 @@ init()
             } else if (event.kind == codec->Text || (event.kind == codec->Key && event.flags != 0)) {
                 if (event.kind == codec->Key && event.code == 27) {
                     mode = 0;
+                    closing = 0;
                     fielddrag = 0;
                     inputfield = fields->create(); # Retire this field session without changing source or path.
                     reply.status = core->Ok;

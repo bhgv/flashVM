@@ -17,6 +17,10 @@ int dvm_editor_default_font(const char *directory);
 int dvm_editor_rows(void);
 
 
+/* Return the copied initial line-number preference, 0/1; no UI state is mutated. */
+int dvm_editor_line_numbers(void);
+
+
 /* Create the owner-local FlashVM field/window. Returns one or zero with a diagnostic. */
 int dvm_editor_create(void);
 
