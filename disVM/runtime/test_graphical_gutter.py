@@ -19,7 +19,7 @@ def main():
         source.write_text(text, encoding="utf-8")
         gutters = []
         views = run(runtime, module, None, mode, directory, [envelope(1, 65539)], source,
-                    line_numbers=True, gutters=gutters)
+                    line_numbers=None, gutters=gutters)
         if not gutters or gutters[-1][0] != 1 or not 10 < gutters[-1][1] < 100 or gutters[-1][2] != 1:
             raise RuntimeError("line gutter was not admitted with actual pixel width")
         width = gutters[-1][1]

@@ -78,6 +78,27 @@ int main(void)
     {
         status = 1;
     }
+    event.window.windowID = SDL_GetWindowID(window);
+    event.window.event = SDL_WINDOWEVENT_SIZE_CHANGED;
+    event.window.data1 = 0;
+    event.window.data2 = 0;
+    if (dvm_editor_window_event(&event, window, &message) || memcmp(&message, &before, sizeof(message)))
+    {
+        status = 1;
+    }
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    SDL_SetModState(KMOD_NONE);
+    if (!dvm_editor_window_event(&event, window, &message) || message.code != 65539 || message.flags)
+    {
+        status = 1;
+    }
+    SDL_SetModState(KMOD_SHIFT);
+    if (!dvm_editor_window_event(&event, window, &message) || message.flags != 1)
+    {
+        status = 1;
+    }
+    SDL_SetModState(KMOD_NONE);
     SDL_DestroyWindow(window);
     SDL_Quit();
     puts(status ? "FAIL SDL window lifecycle" : "PASS SDL queue: window close, resized, size-changed, maximize, restore, foreign filter");

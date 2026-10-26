@@ -29,7 +29,8 @@ def run(runtime, module, font, mode, directory, events, source, success=True, fr
     replay.write_bytes(b"".join(events))
     capture = directory / "view.ppm"
     command = [str(runtime), "--stats", "--jit" if mode == "jit" else "--no-jit"]
-    command += ["--line-numbers", "1" if line_numbers else "0"]
+    if line_numbers is not None:
+        command += ["--line-numbers", "1" if line_numbers else "0"]
     if font is not None:
         command += ["--font", str(font)]
     if source is not None:

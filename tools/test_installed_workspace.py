@@ -255,6 +255,19 @@ def broker_packages(prefix, work, environment):
             raise RuntimeError("relocated live document projection failed")
 
 
+    # A graphical package must render with its own shipped font/modules, without build-tree paths.
+    if component.name == "disvm-editor":
+        import struct
+        replay = work / "installed-window-events.bin"
+        frame = b"fvd1:" + "".join(format(value, "08x") for value in (1, 1, 65539, 0, 0, 0)).encode("ascii")
+        replay.write_bytes(struct.pack("<I", len(frame)) + frame)
+        capture = work / "installed-editor.ppm"
+        result = run([program(prefix, component.name, "disvm-editor"), "--jit", "--document", source,
+                      "--events", replay, "--capture", capture, component / "graphical-editor.dis"], work, environment)
+        if "GUTTER 1 " not in result or not capture.read_bytes().startswith(b"P6\n960 640\n255\n"):
+            raise RuntimeError("relocated graphical package lost default gutter/font/raster support")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():
