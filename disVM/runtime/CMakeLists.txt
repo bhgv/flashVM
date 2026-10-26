@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.10.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.11.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -75,8 +75,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
-  -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo)
+  -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -91,9 +91,10 @@ set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworksp
   "${root}/ide/dis/bridge/ideviewport.b"
   "${root}/ide/dis/bridge/idefileops.b" "${root}/ide/dis/bridge/idesearch.b"
   "${root}/disVM/examples/decimal-append/main.b" "${root}/ide/dis/bridge/ideclipboard.b" "${root}/ide/dis/bridge/idefield.b"
-  "${root}/ide/dis/examples/graphical-editor/field-demo.b")
+  "${root}/ide/dis/examples/graphical-editor/field-demo.b" "${root}/disVM/broker/brokerdiag.b" "${root}/ide/dis/bridge/ideprojection.b"
+  "${root}/ide/dis/examples/projection/main.b" "${root}/ide/dis/bridge/ideinspect.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
-  "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${u}/module/*.m")
+  "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
 math(EXPR module_last "${module_count}-1")
 set(products)
@@ -371,5 +372,15 @@ if(DVM_RUNTIME_TESTS AND EXISTS "${DVM_FIR_COMPILER}" AND EXISTS "${DVM_FIR_SOUR
       "${CMAKE_CURRENT_SOURCE_DIR}/test_limbo_reals.py" "${DVM_FIR_COMPILER}"
       "${DVM_FIR_SOURCE_COMPILER}" "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${mode}")
     set_tests_properties(disvm_limbo_reals_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Real projection owner processes; do not confuse this with a network RPC test.
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_projection_inspector_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/projection-check.dis" "${mode}")
+    set_tests_properties(disvm_projection_inspector_${mode} PROPERTIES TIMEOUT 30)
   endforeach()
 endif()

@@ -345,3 +345,20 @@ if(BUILD_TESTING AND IDE_AS_SOURCE_ROOT)
     set_tests_properties(ide_as_algorithms PROPERTIES TIMEOUT 20)
   endif()
 endif()
+
+
+# Projection services are pure modules and require no native UI SDK.
+foreach(service ideprojection ideinspect)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
+      "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl"
+    COMMAND "${LIMBO_EXECUTABLE}" -g -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
+      "${CMAKE_CURRENT_SOURCE_DIR}/bridge/${service}.b"
+    DEPENDS "bridge/${service}.b" bridge/ideprojection.m bridge/ideinspect.m
+      "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(${service} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${service}.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/${service}.sbl" DESTINATION lib/dis)
+endforeach()
+install(FILES bridge/ideprojection.m bridge/ideinspect.m DESTINATION include/limbo)

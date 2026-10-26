@@ -1,5 +1,7 @@
 # Прикладные сервисы редактора на Limbo
 
+[Projection owner and watch-row model](../PROJECTIONS.md)
+
 [Архитектура RU](../../EDITOR-CHANNELS.ru.md) · [Architecture EN](../../EDITOR-CHANNELS.md) ·
 [AS view/worker](../../as/README.md) · [Owner pump](../../../disVM/OWNER-PUMP.ru.md)
 

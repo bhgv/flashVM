@@ -37,14 +37,15 @@ copy_tree() {
 # Locate a named executable in native, CMake or multi-configuration output layouts.
 # Parameters: build directory and target basename. Returns: prints a path, or fails visibly.
 program() {
-    local base=$1 name=$2 candidate found
+    local base=$1 name=$2 candidate found scan_base
     for candidate in "$base/$CONFIG/$name.exe" "$base/$CONFIG/$name" "$base/$name.exe" "$base/$name"; do
         if [[ -f "$candidate" ]]; then
             printf '%s\n' "$candidate"
             return 0
         fi
     done
-    found=$(find "$base" -type f \( -name "$name" -o -name "$name.exe" \) ! -path '*/CMakeFiles/*' -print -quit)
+    scan_base=$(cd "$base" && pwd -P) || fail "Missing executable build directory: $base"
+    found=$(find "$scan_base" -path "$OUT" -prune -o -type f \( -name "$name" -o -name "$name.exe" \) ! -path '*/CMakeFiles/*' -print -quit)
     [[ -n "$found" ]] || fail "Executable $name was not built under $base"
     printf '%s\n' "$found"
 }
@@ -365,6 +366,13 @@ EOF
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
+            copy_file "$ROOT/disVM/broker/brokerdiag.m" "$destination/include/limbo/brokerdiag.m"
+            for file in broker.h codec.h flash_channel.h; do
+                copy_file "$ROOT/disVM/broker/$file" "$destination/include/disvm/$file"
+            done
+            copy_tree "$ROOT/disVM/broker" "$destination/examples/broker"
+            copy_tree "$ROOT/ide/dis/examples/projection" "$destination/examples/projection"
+            copy_file "$ROOT/ide/dis/PROJECTIONS.md" "$destination/PROJECTIONS.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
             copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
             for file in "$ROOT/ide/dis/bridge/"*.m; do

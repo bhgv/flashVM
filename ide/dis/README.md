@@ -1,5 +1,7 @@
 # Portable IDE document core
 
+[Channel projection inspector and admission model](PROJECTIONS.md)
+
 Version 0.5.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,

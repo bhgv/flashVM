@@ -184,12 +184,62 @@ def fir_dis_packages(prefix, work, environment):
             raise RuntimeError("relocated Limbo real execution produced the wrong result")
 
 
+# Relink the installed C99 broker example and decode its exact compiler-origin record on Dis.
+# All inputs come from the relocated package; no checkout header/library path is used.
+def broker_packages(prefix, work, environment):
+    component = prefix / "disvm-runtime"
+    if not component.is_dir():
+        component = prefix / "disvm-editor"
+    libraries = list((component / "lib").rglob("libdisvm_broker.a"))
+    if len(libraries) != 1:
+        raise RuntimeError("installed broker archive is missing or ambiguous")
+    executable = work / "broker-sdk-client"
+    run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-I" + str(component / "include/disvm"),
+         component / "examples/broker/frame_example.c", libraries[0], "-o", executable], work, environment)
+    source, fir, origins = (work / name for name in ("source.as", "program.fir", "origins.json"))
+    source.write_text("var o = 2; o = o + 5 * o;")
+    run([program(prefix, "fir", "fir1_source"), "as3", "--input", source, fir, "-g", origins], work, environment)
+    import hashlib
+    import json
+    debug = json.loads(origins.read_text())
+    reads = [event for event in debug["events"] if event["kind"] == "read"]
+    if len(reads) != 2:
+        raise RuntimeError("installed compiler lacks exact repeated-name access sites")
+    selected = reads[1]
+    frame = run([executable, source, selected["line"], selected["column"], selected["byte_offset"],
+                 selected["byte_length"], selected["binding"], hashlib.sha256(source.read_bytes()).hexdigest(),
+                 debug["module"]], work, environment)
+    (work / "diagnostic.bd1").write_text(frame, encoding="ascii")
+    shutil.copyfile(component / "brokerdiag.dis", work / "brokerdiag.dis")
+    binary = work / "diagnostic.dis"
+    run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo", "-o", binary,
+         component / "examples/broker/examples/diagnostic.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([program(prefix, component.name, "disvm"), mode, binary], work, environment)
+        if "DIAG 1 0000000000000001 " not in result or str(source) not in result:
+            raise RuntimeError("relocated typed diagnostic channel lost its source/request")
+
+
+    # Recompile the shipped inspector example using only installed headers/modules.
+    for name in ("ideprojection.dis", "ideinspect.dis"):
+        shutil.copyfile(component / name, work / name)
+    projection = work / "projection-check.dis"
+    run([program(prefix, component.name, "limbo-native"), "-I", component / "include/limbo",
+         "-o", projection, component / "examples/projection/main.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([program(prefix, component.name, "disvm"), mode, projection], work, environment)
+        if "PASS projection inspector:" not in result:
+            raise RuntimeError("relocated inspector projection/model failed")
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
     parser.add_argument("--scratch", type=Path, required=True)
+    parser.add_argument("--broker-only", action="store_true",
+                        help="Check relocated broker C99 SDK, compiler access sites and real Dis channels")
     parser.add_argument("--fir-dis-only", action="store_true",
                         help="Check relocated FIR CLIs, public C99 libraries and direct Dis execution")
     parser.add_argument(
@@ -198,7 +248,7 @@ def main():
         help="Check relocated Dis host and IDE packages without requiring other packages",
     )
     args = parser.parse_args()
-    if args.modules_only and args.fir_dis_only:
+    if sum((args.modules_only, args.fir_dis_only, args.broker_only)) > 1:
         parser.error("choose one relocated-package subset")
     args.scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -210,6 +260,10 @@ def main():
         work = base / "work"
         work.mkdir()
         environment = dict(os.environ, TMPDIR=str(work), TEMP=str(work), TMP=str(work))
+        if args.broker_only:
+            broker_packages(prefix, work, environment)
+            print("PASS relocated broker C99 SDK, exact source sites, diagnostic channels and IDE projections, interpreter/JIT")
+            return
         if args.fir_dis_only:
             fir_dis_packages(prefix, work, environment)
             print("PASS relocated our Limbo/FIR→Dis, relinked C99 SDK, interpreter and native JIT")

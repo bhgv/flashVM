@@ -130,3 +130,16 @@ Get/Set/Invoke/Apply исполняются у владельца, сохран�
 Это архитектурное решение, не готовая реализация any: FIR T_ANY, внутренний
 Inferno Tany и будущий канальный прокси различны. Реализация библиотеки/адаптеров,
 типовых преобразований, lowering и GC-карт ещё предстоит.
+
+
+## Implemented diagnostic and IDE foundation (v0.1598+)
+
+The [native broker](../../../disVM/broker/README.md) now implements deviation-only
+listeners, session fencing and exact source-origin records. Our numeric source
+compiler records distinct read/write occurrences with lexical binding IDs;
+those records do not introduce dynamic type lowering or automatic RPC emission.
+The [IDE projection services](../../../ide/dis/PROJECTIONS.md) exercise explicit
+reads/writes/method calls and stale-reply-safe watch rows on real Dis channels.
+This bounded owner example is not yet generic any, network transport or a foreign
+heap export/finalizer implementation. Global diagnostics do not emit success
+messages. Timeouts retain unfinished owner records until completion is acknowledged.
