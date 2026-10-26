@@ -90,3 +90,5 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 [FIR 0.18: exact big comparisons/source decisions](../doc/BIG_DECISIONS.md) · [Русский](../doc/BIG_DECISIONS.ru.md).
 
 [FIR 0.19: acyclic owner CFG and fir_acyclic](../doc/TABLE_CFG.md) · [Русский](../doc/TABLE_CFG.ru.md).
+
+[FIR 0.20: typed shifts and explicit int counts](../doc/BIG_SHIFTS.md) · [Русский](../doc/BIG_SHIFTS.ru.md).

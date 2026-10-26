@@ -49,3 +49,5 @@ AS-хелперы преобразований отделены от cast-син
 [bitwise.b](bitwise.b) проверяет знаковое деление/остаток и полные маски над чтениями во время исполнения. [Контракт](../../doc/BIG_BITWISE.ru.md).
 
 [Conditional owners tutorial / Пример с ветвлениями и владельцами](../../doc/TABLE_CFG.md) · [Исходник](decisions.b) · [Русский](../../doc/TABLE_CFG.ru.md).
+
+[Checked shifts and int casts / Сдвиги и int-cast](../../doc/BIG_SHIFTS.md) · [Исходник](shifts.b) · [Русский](../../doc/BIG_SHIFTS.ru.md).

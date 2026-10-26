@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1633**. [English](README.md).
+Версия разработки: **0.1634**. [English](README.md).
 
-Текущая серия: [v0.1633](docs/releases/v0.1633.md): ациклические решения таблиц, точные карты владельцев и двусторонняя синхронизация строк/JIT с Inferno.
+Текущая серия: [v0.1634](docs/releases/v0.1634.md): типизированные 64-битные сдвиги, явные int-счётчики и защиты slice/length x64/ARM64.
 
 ## Просмотр документации
 

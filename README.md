@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1633**. [Русская версия](README.ru.md).
+Development version: **0.1634**. [Русская версия](README.ru.md).
 
-Current series: [v0.1633](docs/releases/v0.1633.md): acyclic table decisions, precise owner maps and bidirectional Inferno string/JIT synchronization.
+Current series: [v0.1634](docs/releases/v0.1634.md): typed 64-bit shifts, explicit int counts and refreshed x64/ARM64 slice/length preflight.
 
 ## Browse documentation
 

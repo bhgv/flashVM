@@ -63,3 +63,5 @@ NC64 использует прежние DIVL (121), MODL (122), ANDL (124), ORL
 становится атомарным RPC владельца. Расширение в Inferno не переносится.
 
 [FIR 0.18: big comparisons and terminal source if/else / Сравнения и решения исходника](BIG_DECISIONS.md) · [Русский](BIG_DECISIONS.ru.md).
+
+[FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).

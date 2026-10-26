@@ -1,3 +1,21 @@
+# Current synchronization — v0.1634
+
+Experiment: `cd402a0ac5a8a2a8b18d3d60d6229e4bc2788a26`. 496 exact core/reference files and 174 bootstrap files.
+Imported SLICEC/LENC C/AMD64/ARM64 preflight validates decoded slots, required
+metadata and backward reference cells before access. Invalid end geometry
+rejects before owner reads; zero-start prefixes keep metadata-only behavior.
+Native decline remains write-free. [Contract](upstream/libinterp/tests/README.slice-length-preflight.md).
+
+The incoming commit explicitly integrates our previous reverse commits 9f00116
+and 826dae5. Their independent INDC and private-capacity tests remain selected.
+No new upstream-owning defect was confirmed for reverse publication. Our typed
+int/big-shift compiler extension remains outside Inferno; the native WORD ABI
+is unchanged. AMD64/ARM64 availability remains 164/173 active guarded opcodes,
+not complete operand coverage or physical ARM64/full Inferno boot acceptance.
+Historical reports follow.
+
+---
+
 # Current synchronization — v0.1633
 
 Experiment: `826dae5c387528f3120728f0bf61204b76639658`. 495 exact core/reference files and 174 bootstrap files.

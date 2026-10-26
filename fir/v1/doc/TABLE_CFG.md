@@ -74,3 +74,5 @@ shared exits, duplicate CFG edges, and branches across 8191 native instructions.
 Both dispatch modes collect between instructions and retire all table/key owners.
 UBSan covers the DAG verifier, compiler and reference execution. ARM64 instruction
 emulation remains distinct from physical ARM64 acceptance.
+
+[FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).

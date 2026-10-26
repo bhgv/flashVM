@@ -1,17 +1,18 @@
-# Limbo typeof and explicit big/string casts
+# Limbo typeof and explicit int/big/string casts
 
 [Русский](TYPE_REFLECTION.ru.md) · [Extension matrix](EXTENSIONS.md) ·
 [Complete commented module](../examples/tables/main.b) ·
 [AS projection helpers](../../../ide/as/projection-values.as)
 
-Our Coco/R big-result Limbo profile supports `typeof expression`, `big expression`
-and `string expression`. Groups may delimit their operand. These prefix operations
-bind recursively in the current straight-line subset. `tobig` and `tostring` are
+Our Coco/R big-result Limbo profile supports `typeof expression`, `big expression`,
+`string expression` and explicit `int expression`. Groups may delimit their operand. These prefix operations
+bind recursively in the current acyclic subset. `tobig` and `tostring` are
 AS helpers; they are not new Limbo keywords. This is a documented supported
 conversion subset, not a claim of implementing every standard Limbo cast.
 
 | Operand | typeof result |
 | --- | --- |
+| int (i32 profile) | `"int"` |
 | big | `"big"` |
 | string | `"string"` |
 | table of big | `"table of big"` |
@@ -51,8 +52,9 @@ becomes `"0"`. These are copied value operations; a cast never writes through th
 original table/key or performs automatic channel/proxy access.
 
 Tables, snapshots and other profile types are rejected as cast operands. The
-language-level any/proxy adapter, heterogeneous tables, real/float/int conversions
-in this profile and table CFG/loops remain separate work.
+language-level any/proxy adapter, heterogeneous tables, real/float conversions
+and cyclic table execution remain separate work. Int narrowing/extension uses the
+[fixed i32 contract](BIG_SHIFTS.md); it does not add text/real-to-int parsing.
 
 ## FIR, Dis and ownership
 
@@ -74,3 +76,5 @@ binary text at the native module boundary, failing unused operations, precise
 source occurrences, forged owners and collection between each Dis instruction.
 
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
+
+[FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).

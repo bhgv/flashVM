@@ -270,3 +270,5 @@ Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TAB
 [Big source comparisons/decisions (FIR 0.18 / runtime 0.21)](../../fir/v1/doc/BIG_DECISIONS.md) · [Русский](../../fir/v1/doc/BIG_DECISIONS.ru.md).
 
 [Acyclic table decisions (FIR 0.19 / runtime 0.22)](../../fir/v1/doc/TABLE_CFG.md) · [Русский](../../fir/v1/doc/TABLE_CFG.ru.md).
+
+[Typed 64-bit shifts and int counts (FIR 0.20 / runtime 0.23)](../../fir/v1/doc/BIG_SHIFTS.md) · [Русский](../../fir/v1/doc/BIG_SHIFTS.ru.md).

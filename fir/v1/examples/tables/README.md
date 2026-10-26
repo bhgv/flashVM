@@ -49,3 +49,5 @@ to FIR source occurrences; full source-to-Dis SBL is still separate work.
 [bitwise.b](bitwise.b) exercises signed division/remainder and full-width masks with runtime reads. [Contract](../../doc/BIG_BITWISE.md).
 
 [Conditional owners tutorial / Пример с ветвлениями и владельцами](../../doc/TABLE_CFG.md) · [Исходник](decisions.b) · [Русский](../../doc/TABLE_CFG.ru.md).
+
+[Checked shifts and int casts / Сдвиги и int-cast](../../doc/BIG_SHIFTS.md) · [Исходник](shifts.b) · [Русский](../../doc/BIG_SHIFTS.ru.md).

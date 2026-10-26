@@ -39,7 +39,7 @@ Cyclic table graphs still fail preflight without writing image bytes.
 ## Scope and limits
 
 Every arm terminates. Declarations/assignments inside arms, continuation after
-the terminal tree, joins/phi, mutable source loops, shifts, transparent any/proxy
+the terminal tree, joins/phi, mutable source loops,  transparent any/proxy
 operations, general functions and full Dis SBL remain separate work. Existing
 limits remain: shared nesting budget 64, 1000 source values, 127 decisions/255
 blocks and 64 KiB source. Rejected syntax/types/limits preserve the previous FIR
@@ -73,3 +73,5 @@ Independent Python integer comparisons and the table C reference runner verify
 results. Physical ARM64 execution is not established by instruction emulation.
 
 [FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
+
+[FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).

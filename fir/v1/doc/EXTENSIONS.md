@@ -9,12 +9,13 @@ remains a separate temporary tool for the ordinary Limbo IDE modules.
 
 | Feature | Source → typed FIR → native Dis | Current boundary |
 | --- | --- | --- |
-| `table of big` | Implemented | Straight-line `value(): big` profile |
+| `table of big` | Implemented | Acyclic terminal `value(): big` profile |
+| Checked big shifts, explicit int counts | Implemented | [64-bit/i32 contract](BIG_SHIFTS.md) |
 | Big arithmetic +, -, *, unary signs | Implemented | [Modulo-64/native contract](BIG_ARITHMETIC.md) |
 | Numeric/string keys and `t.k` | Implemented | Distinct key namespaces; big values |
 | `len`, explicit slices, `keysof` | Implemented | Independent copied snapshots/slices |
 | `keys[i]`, `t[keys[i]]` reads/writes | Implemented | Checked immutable snapshot key |
-| `typeof`, big/string casts | Implemented | [Supported profile and conversions](TYPE_REFLECTION.md) |
+| `typeof`, int/big/string casts | Implemented | [Supported profile and conversions](TYPE_REFLECTION.md) |
 | Heterogeneous tables | Pending | Values remain big |
 | Language `any` | Pending | Existing FIR `T_ANY` enum does not establish an implementation |
 | Transparent proxy locals/operators | Pending | IDE uses explicit typed request/reply APIs |
@@ -68,3 +69,5 @@ No table-language extension from this series is exported to Inferno.
 [Limbo reflection/casts; AS helper distinction](TYPE_REFLECTION.md).
 
 [Checked big division and bit operations](BIG_BITWISE.md).
+
+[FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).
