@@ -1,5 +1,7 @@
 # Channel projections in the IDE inspector
 
+[Copied values and Limbo type reflection](VALUES.md)
+
 [IDE](README.md) · [Bridge services](bridge/README.md) ·
 [Broker diagnostics](../../disVM/broker/README.md) · [Example](examples/projection/README.md)
 
@@ -77,3 +79,13 @@ our Coco/R FIR frontend still has a bounded numeric profile.
 полной остановки процесса отладчиком. Сетевой RPC, общий Flash-compatible `any`,
 автоматический GC экспортированных объектов и графическая панель остаются
 отдельными шагами; текущий пример не подменяет их симуляцией.
+
+
+## Explicit copied values and bound methods (v0.1605+)
+
+The owner/model now depend on `idevalue.m` and must rebuild together. ReadAs
+returns a typed copy or Object/Method reference. Convert accepts a value argument,
+including a constant; WriteValue stores only a copied matching scalar. ToTable
+is an explicit shallow snapshot with nested owner references. InvokeRef validates
+the bound receiver/incarnation before running its method. The model detaches both
+incoming and rendered typed records. See [the value/type contract](VALUES.md).

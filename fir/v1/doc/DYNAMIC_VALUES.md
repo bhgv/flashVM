@@ -143,3 +143,13 @@ reads/writes/method calls and stale-reply-safe watch rows on real Dis channels.
 This bounded owner example is not yet generic any, network transport or a foreign
 heap export/finalizer implementation. Global diagnostics do not emit success
 messages. Timeouts retain unfinished owner records until completion is acknowledged.
+
+
+## Explicit copied values and Limbo type reflection (v0.1605+)
+
+The [IDE value contract](../../../ide/dis/VALUES.md) now separates scalar copies,
+explicit table snapshots and Object/Method owner descriptors. `Idevalue.types()`
+reflects the compiled Limbo profile, including classic/NC64 int width; `tofloat`
+is an alias of `toreal`. Bool/Char remain explicitly marked extensions over int.
+This is implemented in pure Limbo services and the optional AS adapter library;
+it does not add native AS globals or general `any` lowering to our FIR compiler.

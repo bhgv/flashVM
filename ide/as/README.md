@@ -1,5 +1,7 @@
 # AS: подсветка, контекст ввода и представление IDE
 
+[Преобразования проекций по типам Limbo](../dis/VALUES.ru.md)
+
 [Архитектура](../EDITOR-CHANNELS.ru.md) · [Dis-сервисы](../dis/bridge/README.md) ·
 [Недостающее mixed-colour API](../TEXT-COLOR-EXTENSION.md)
 

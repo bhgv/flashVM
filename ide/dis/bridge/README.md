@@ -1,5 +1,7 @@
 # Прикладные сервисы редактора на Limbo
 
+[Explicit values and references](../VALUES.md)
+
 [Projection owner and watch-row model](../PROJECTIONS.md)
 
 [Архитектура RU](../../EDITOR-CHANNELS.ru.md) · [Architecture EN](../../EDITOR-CHANNELS.md) ·

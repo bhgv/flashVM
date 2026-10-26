@@ -35,3 +35,18 @@ The CTest wrapper checks actual native dispatch counters, not just printed text.
 This is a local Dis-process boundary. It does not claim live network RPC or a
 finished graphical inspector. Pending target operations must run in workers,
 not on the view-model owner; callers must never abandon an unconsumed rendezvous.
+
+
+## Explicit values and bound receivers
+
+The extended example includes `idevalue.m` before the projection/model interfaces.
+All `.m` clients must be rebuilt together. `ReadAs(number, Real)` returns a copied
+binary64; mutating it cannot change the target. `ToTable` copies stored fields
+but its self entry is an Object reference. `InvokeRef` calls the returned bound
+method at its receiver and rejects a different receiver or incarnation.
+
+`Convert` demonstrates an exact Big constant (9223372036854775807) sent as data
+through a real channel. `WriteValue` detaches the caller's wrapper before storing
+an exact matching typed scalar. The view model receives an actual owner's typed
+table and protects itself from changes to both sender and renderer copies.
+See [conversion rules and type reflection](../../VALUES.md).
