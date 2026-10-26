@@ -181,7 +181,7 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_source_history PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native string-append-native string-slice-native frame-native mframe-native return-native mcall-native call-return-native array-view-native raw-copy-native integer-format-native list-length-native real-format-native byte-string-native string-bytes-native array-reuse-native newzero-native scalar-cons-native payload-cons-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native string-append-native string-slice-native frame-native mframe-native return-native mcall-native call-return-native array-view-native raw-copy-native integer-format-native list-length-native real-format-native byte-string-native string-bytes-native array-reuse-native newzero-native scalar-cons-native payload-cons-native scalar-channel-native typecheck-prefix)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
@@ -211,7 +211,7 @@ if(BUILD_TESTING)
       RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
   endif()
   if(have_instruction_emulators EQUAL 0)
-    foreach(driver payload-cons-jit scalar-cons-jit array-create-jit newzero-jit string-bytes-jit byte-string-jit scalar-view-spans-jit riscv-string-window raw-copy-jit integer-format-jit list-length-jit real-format-jit append-spans-jit decimal-spans-jit string-compare-jit string-cell-spans-jit array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
+    foreach(driver scalar-channel-jit payload-cons-jit scalar-cons-jit array-create-jit newzero-jit string-bytes-jit byte-string-jit scalar-view-spans-jit riscv-string-window raw-copy-jit integer-format-jit list-length-jit real-format-jit append-spans-jit decimal-spans-jit string-compare-jit string-cell-spans-jit array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")
@@ -220,6 +220,12 @@ if(BUILD_TESTING)
       add_test(NAME disvm_string-compare-jit_${arch} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
       set_tests_properties(disvm_string-compare-jit_${arch} PROPERTIES TIMEOUT 120
         ENVIRONMENT "${emulator_environment};LEAF64_CASE=bytebranch;LEAF64_ARCH=${arch}")
+    endforeach()
+    # Verify low-owner rejection and the existing Type matrix on both priority ISAs.
+    foreach(arch amd64 arm64)
+      add_test(NAME disvm_typecheck_prefix_${arch} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
+      set_tests_properties(disvm_typecheck_prefix_${arch} PROPERTIES TIMEOUT 120
+        ENVIRONMENT "${emulator_environment};LEAF64_CASE=typecheck;LEAF64_ARCH=${arch}")
     endforeach()
     add_test(NAME disvm_string-read-jit COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/leaf64-jit.py")
     set_tests_properties(disvm_string-read-jit PROPERTIES TIMEOUT 120
