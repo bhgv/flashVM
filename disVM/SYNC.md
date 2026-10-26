@@ -1,3 +1,24 @@
+# Current synchronization — v0.1626
+
+Priority: x86-64 and ARM64. Experiment: `875d12263efa72bab84d27f0d4215713e7da9465`.
+Imported cc51c63 adds five scalar-channel constructor paths: NEWCB/NEWCW/NEWCL/
+NEWCF/NEWCP. AMD64/ARM64 availability is 160 of 173 active opcodes, not complete
+operand coverage. RV64 code is unchanged in this series.
+
+Our returned TCMP fix guards backward Type-field addresses in the C interpreter
+and both priority JITs. Small nonzero owners previously underflowed the address
+or read the Type field at nil; UBSan reproduces the defect against the parent.
+Native decline preserves the VM image and performs no ownership/GC changes.
+The generic emulation fixture also includes the new channelentry ABI field.
+
+[Scalar channels](upstream/libinterp/tests/README.scalar-channel-native.md) ·
+[TCMP contract](upstream/libinterp/tests/README.typecheck-prefix.md).
+453 exact core/reference files and 174 bootstrap files are selected. No table
+language extension was exported to Inferno. ARM64 instruction emulation does not
+establish physical hardware execution. Historical reports follow.
+
+---
+
 # Current synchronization — v0.1625
 
 Selected experiment: `b2da16226dfc5bc0e0c754ae5d95fcde6cc1afb9` (three commits after b9a569e).

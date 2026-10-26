@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1625**. [English](README.md).
+Версия разработки: **0.1626**. [English](README.md).
 
-Текущая серия: [v0.1625](docs/releases/v0.1625.md): новые JIT-пути списков Inferno, исправления истории исходников и проверки владения/свёртки компилятора.
+Текущая серия: [v0.1626](docs/releases/v0.1626.md): JIT каналов x64/ARM64 и возвращённое в Inferno исправление границ TCMP.
 
 ## Просмотр документации
 
