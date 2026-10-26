@@ -59,3 +59,5 @@ An ordinary read-compute-write sequence is not an atomic remote owner update.
 The snapshot-key API remains explicit; no pointer crosses heaps or channels.
 
 [Division/remainder and full-width bit operations](BIG_BITWISE.md).
+
+[Commented division tutorial](../examples/tables/division.b) demonstrates runtime MIN/-1, signed remainder, dividend reconstruction and an unselected zero-divisor arm. Both relocated SDKs exercise original/optimized FIR through fresh C99 API clients and both VM modes.

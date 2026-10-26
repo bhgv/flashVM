@@ -75,6 +75,9 @@ if(BUILD_TESTING)
   foreach(driver
     integer-ops
     shift-slot-native
+    arithmetic-slot-native
+    transfer-slot-native
+    integer-slot-native
     channel-queues
     channel-transfers
     dis-loader
@@ -257,6 +260,9 @@ if(BUILD_TESTING)
     foreach(driver
       owner-jit
       shift-slot-jit
+      arithmetic-slot-jit
+      transfer-slot-jit
+      integer-slot-jit
       list-slot-jit
       owner-optimized
       payload-channel-jit

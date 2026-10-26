@@ -51,3 +51,13 @@ to FIR source occurrences; full source-to-Dis SBL is still separate work.
 [Conditional owners tutorial / Пример с ветвлениями и владельцами](../../doc/TABLE_CFG.md) · [Исходник](decisions.b) · [Русский](../../doc/TABLE_CFG.ru.md).
 
 [Checked shifts and int casts / Сдвиги и int-cast](../../doc/BIG_SHIFTS.md) · [Исходник](shifts.b) · [Русский](../../doc/BIG_SHIFTS.ru.md).
+
+## Exact division and remainder
+
+[division.b](division.b) reads every operand from a mutable table: MIN/-1 wraps
+to MIN with zero remainder; -17/5 truncates to -3 and leaves remainder -2. The
+selected arm reconstructs the dividend and returns exactly 42. Its other arm
+divides by zero and must not execute. Each important source line is commented.
+The installed SDK acceptance runs original and optimized FIR in the reference
+runner, interpreter and JIT, with collection permitted at every instruction.
+[Big arithmetic contract](../../doc/BIG_ARITHMETIC.md).

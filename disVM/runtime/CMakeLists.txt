@@ -128,7 +128,9 @@ if(DVM_RUNTIME_TESTS)
     "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${binary}" "${mode}")
    set_tests_properties(disvm_application_${test}_${mode} PROPERTIES TIMEOUT 60)
    if(test STREQUAL "replaceall")
-     # This million-character matrix is CPU-heavy; serialize it without weakening its timeout.
+     # This million-character matrix is CPU-heavy; preserve its existing timeout.
+     # RUN_SERIAL covers this CTest instance only: run the separate core/JIT
+     # checkpoint before this runtime checkpoint to avoid cross-instance contention.
      set_tests_properties(disvm_application_${test}_${mode} PROPERTIES RUN_SERIAL TRUE)
    endif()
   endforeach()
