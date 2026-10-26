@@ -75,6 +75,7 @@ if(BUILD_TESTING)
   foreach(driver
     integer-ops
     shift-slot-native
+    branch-slot-native
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -261,6 +262,7 @@ if(BUILD_TESTING)
       owner-jit
       shift-slot-jit
       arithmetic-slot-jit
+      branch-slot-jit
       transfer-slot-jit
       integer-slot-jit
       list-slot-jit
