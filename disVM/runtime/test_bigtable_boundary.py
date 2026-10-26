@@ -11,6 +11,11 @@ import tempfile
 def main():
     runtime, compiler, includes = (str(Path(value).resolve()) for value in sys.argv[1:])
     cases = (
+        ("bad-type-tag", "b->typename(4);", "invalid big table type kind"),
+        ("bad-key-type", "b->keytype(ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
+        ("overflow-text-big", 'b->bigfromtext("9223372036854775808");', "invalid big conversion"),
+        ("binary-text-big", 'b->bigfromtext("1\\0x");', "invalid big conversion"),
+
         ("forged-key-read", "t := b->create(); b->getkey(t, ref Bigtable->Keys(0), big 0);", "invalid native big table keys owner"),
         ("bad-key-write", "t := b->create(); keys := b->keysof(t); b->setkey(t, keys, big 0, big 9);", "big table key index out of range"),
         ("negative-key-check", "t := b->create(); keys := b->keysof(t); b->keycheck(keys, -big 1);", "big table key index out of range"),

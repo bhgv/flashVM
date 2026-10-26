@@ -237,6 +237,101 @@ static FhtKey snapshot_key(Bigtable_Keys *owner, LONG index)
     return keys->items[index];
 }
 
+/* Publish a fresh reflected name into a borrowed typed return slot. The old String
+ * is released after successful allocation; no application callback or conversion runs. */
+static void type_name(String **result, WORD kind)
+{
+    static const char *const names[] = {"big", "string", "table of big", "keys"};
+    String *text;
+    if (kind < 0 || kind >= 4)
+    {
+        error("invalid big table type kind");
+    }
+    text = c2string((char *)names[kind], (int)strlen(names[kind]));
+    destroy(*result);
+    *result = text;
+}
+
+/* Parse a borrowed copied text key as strict signed decimal. No partial result
+ * or locale conversion is exposed; the native frame retains its source owner. */
+static LONG converted_big(FhtKey key)
+{
+    int64_t value = 0;
+    if (key.kind == FHT_INDEX)
+    {
+        return key.index;
+    }
+    if (fht_big_parse(key.text, key.size, &value) != FHT_OK)
+    {
+        error("invalid big conversion");
+    }
+    return value;
+}
+
+/* Publish copied text for a borrowed key. Numeric formatting is exact, and text
+ * keeps its byte length including embedded zeros; no native pointer escapes. */
+static void converted_text(String **result, FhtKey key)
+{
+    char digits[21];
+    String *text;
+    if (key.kind == FHT_INDEX)
+    {
+        key.size = fht_big_format(key.index, digits, sizeof(digits));
+        key.text = digits;
+    }
+    if (key.size > INT_MAX)
+    {
+        error("big table key too long");
+    }
+    text = c2string((char *)key.text, (int)key.size);
+    destroy(*result);
+    *result = text;
+}
+
+/* Convert borrowed String bytes to a copied big; invalid syntax/overflow raises. */
+void Bigtable_bigfromtext(void *frame)
+{
+    F_Bigtable_bigfromtext *call = frame;
+    *call->ret = converted_big(string_key(call->text));
+}
+
+/* Format a copied big exactly; the caller's return String is replaced on success. */
+void Bigtable_textfrombig(void *frame)
+{
+    F_Bigtable_textfrombig *call = frame;
+    converted_text(call->ret, numeric_key(call->value));
+}
+
+/* Convert the actual kind of a rooted snapshot key; bad owners/positions raise first. */
+void Bigtable_keybig(void *frame)
+{
+    F_Bigtable_keybig *call = frame;
+    *call->ret = converted_big(snapshot_key(call->keys, call->index));
+}
+
+/* Copy text from the actual snapshot key kind while its native caller frame roots it. */
+void Bigtable_keytext(void *frame)
+{
+    F_Bigtable_keytext *call = frame;
+    converted_text(call->ret, snapshot_key(call->keys, call->index));
+}
+
+/* Reflect a supported static source type; input is a stable module tag, not a VM address. */
+void Bigtable_typename(void *frame)
+{
+    F_Bigtable_typename *call = frame;
+    type_name(call->ret, call->kind);
+}
+
+/* Reflect the actual numeric/text kind of a retained snapshot key. The caller frame
+ * roots its owner across String allocation; invalid owners/positions raise first. */
+void Bigtable_keytype(void *frame)
+{
+    F_Bigtable_keytype *call = frame;
+    FhtKey key = snapshot_key(call->keys, call->index);
+    type_name(call->ret, key.kind == FHT_INDEX ? 0 : 1);
+}
+
 /* Validate eagerly even if a key value is unused. Borrowed frame/owner; no allocation. */
 void Bigtable_keycheck(void *frame)
 {

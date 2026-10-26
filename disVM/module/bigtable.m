@@ -43,6 +43,17 @@ Bigtable: module
     keyat: fn(keys: ref Keys, index: big): (int, big, string);
 
 
+    # Reflection returns Limbo type names without converting values or invoking user code.
+    BigKind, StringKind, TableKind, KeysKind: con iota; # Stable helper tags, not FIR enum IDs.
+    # Explicit copied conversions; decimal text must be complete and fit signed big.
+    bigfromtext: fn(text: string): big;
+    textfrombig: fn(value: big): string;
+    keybig: fn(keys: ref Keys, index: big): big;
+    keytext: fn(keys: ref Keys, index: big): string;
+    typename: fn(kind: int): string;
+    keytype: fn(keys: ref Keys, index: big): string;
+
+
     # Checked key capabilities retain the immutable snapshot, never a native address.
     keycheck: fn(keys: ref Keys, index: big);
     getkey: fn(tab: ref Handle, keys: ref Keys, index: big): (int, big);

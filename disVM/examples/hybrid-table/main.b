@@ -91,6 +91,16 @@ init()
     if (status != tables->Ok || value != big 66) {
         raise "fail: snapshot key lost binary text identity";
     }
+    # Reflection reports the key's data kind rather than the internal capability layout.
+    # Text copying preserves the embedded zero; numeric formatting never passes through real.
+    if (tables->keytype(keys, big 1) != "big"
+        || tables->keytype(keys, big 5) != "string"
+        || tables->typename(tables->TableKind) != "table of big"
+        || tables->keybig(keys, big 4) != big 1
+        || tables->keytext(keys, big 5) != "a\0b"
+        || tables->bigfromtext(tables->textfrombig(-big 9223372036854775808)) != -big 9223372036854775808) {
+        raise "fail: reflected types and exact copied conversions";
+    }
     # Exercise repeated native owner replacement; RC/GC invokes the C storage finalizers.
     for (i := 0; i < 2000; i++) {
         tab = tables->create();
