@@ -41,11 +41,11 @@ if(DVM_RUNTIME_EDITOR)
   set(host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
   set(host_prepare_products "${view}/idehostmod.h")
 endif()
+file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
 add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
-file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
+ DEPENDS limbo-bootstrap prepare.py ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
@@ -169,7 +169,7 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
   add_test(NAME disvm_native_generation_idempotent COMMAND "${PYTHON_EXECUTABLE}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test_generation.py" "$<TARGET_FILE:limbo-bootstrap>" "${u}/libinterp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_generation.py" "$<TARGET_FILE:limbo-bootstrap>" "${u}/libinterp" "${view}")
   set_tests_properties(disvm_native_generation_idempotent PROPERTIES TIMEOUT 30
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
 endif()

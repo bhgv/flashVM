@@ -114,8 +114,12 @@ def main():
     for name in ("string.c", "runt.c"):
         path = args.output / name
         code = path.read_text()
-        if "a->t->size != 1 || a->t->np != 0" not in code:
-            raise ValueError("upstream byte descriptor validation is missing: " + name)
+        legacy_byte_guard = "a->t->size != 1 || a->t->np != 0" in code
+        staged_byte_guard = (name == "string.c" and "if(view.t != &Tbyte)" in code
+                             and "if(size != 1 || pointers != 0)" in code
+                             and "if(owner.t != &Tarray)" in code)
+        if not legacy_byte_guard and not staged_byte_guard:
+            raise ValueError("upstream byte descriptor validation changed; review owner preflight: " + name)
         if name == "runt.c":
             code = code.replace("\tint i;\n", "\tWORD i;\n", 1)
             code = code.replace(

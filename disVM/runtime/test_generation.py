@@ -7,9 +7,10 @@ import tempfile
 
 
 # Prepare twice using the real compiler and pinned source; require byte-identical output.
-# Arguments are native compiler and libinterp source. Returns only after every file matches.
+# Arguments are native compiler, pinned libinterp source and actual compiled-source directory.
+# Returns only after idempotency and current-view freshness both match.
 def main():
-    compiler, source = sys.argv[1:]
+    compiler, source, compiled_view = sys.argv[1:]
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         command = [
@@ -30,6 +31,14 @@ def main():
         second = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         if first != second:
             raise RuntimeError("native source generation compounded a prior adaptation")
+        # Inspect actual build inputs, not only two equally fresh throwaway generations.
+        actual = Path(compiled_view)
+        critical = ("string.c", "xec.c", "comp-leaf64.h", "leaf64-ops.h",
+                    "amd64-emit.h", "arm64-emit.h", "riscv-emit.h")
+        stale = [name for name in critical if not (actual / name).is_file()
+                 or (actual / name).read_bytes() != second[name]]
+        if stale:
+            raise RuntimeError("compiled native view is stale relative to pinned source: " + ", ".join(stale))
         dispatch = second["xec.c"]
         if (dispatch.count(b"dvm_runtime_step();") != 1 or
                 dispatch.count(b"dvm_runtime_instructions++;") != 1 or
