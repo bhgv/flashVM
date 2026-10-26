@@ -117,7 +117,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op == O_TO_INT && (a->op == O_I64 || a->op == O_I32))
+            if (in->op == O_TO_INT && (a->op == O_I64 || a->op == O_I32 || a->op == O_BOOL))
             {
                 in->integer = signed_bits((uint32_t)(a->op == O_I64 ? (uint64_t)a->big : (uint32_t)a->integer));
                 in->op = O_I32;
@@ -129,7 +129,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->op = O_COPY;
                 changed = 1;
             }
-            else if (in->op == O_TO_BIG && a->op == O_I32)
+            else if (in->op == O_TO_BIG && (a->op == O_I32 || a->op == O_BOOL))
             {
                 in->big = a->integer;
                 in->op = O_I64;

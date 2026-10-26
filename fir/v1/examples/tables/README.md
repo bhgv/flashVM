@@ -61,3 +61,14 @@ divides by zero and must not execute. Each important source line is commented.
 The installed SDK acceptance runs original and optimized FIR in the reference
 runner, interpreter and JIT, with collection permitted at every instruction.
 [Big arithmetic contract](../../doc/BIG_ARITHMETIC.md).
+
+## Presence, deletion and total count
+
+[mutation.b](mutation.b) is a line-commented tutorial for the compiler's new
+countof/in/delete operations. It stores a present zero, aliases one owner, takes
+an immutable snapshot, deletes through that snapshot and repeats the deletion.
+It returns 42 while len observes a numeric hole and countof still counts both
+remaining records. The unselected arm deliberately loads a missing value.
+[Complete syntax, effects, ABI and run commands](../../doc/TABLE_MUTATION.md).
+The relocated SDK tests original/optimized FIR through fresh C99 API clients and
+both interpreter/JIT modes, checking values and branch execution flags.

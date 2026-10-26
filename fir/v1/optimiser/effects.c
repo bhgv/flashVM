@@ -37,6 +37,11 @@ unsigned fir_effects(FirOp op)
     case O_JUMP:
     case O_RETURN:
         return 0;
+    case O_TABLE_COUNT:
+    case O_TABLE_HAS:
+        return FIR_READS_MEMORY | FIR_MAY_THROW;
+    case O_TABLE_DELETE:
+        return FIR_READS_MEMORY | FIR_WRITES_MEMORY | FIR_MAY_THROW;
     case O_BIG_SHL:
     case O_BIG_SHR:
     case O_BIG_DIV:

@@ -736,6 +736,50 @@ int source_table_new(void)
     return table_operation(T_TABLE_BIG, "table.new", -1, -1);
 }
 
+/* Count all entries of a borrowed typed table; sequence length remains separate. */
+int source_table_count(int table)
+{
+    if (table_values[table] != T_TABLE_BIG)
+    {
+        reject("countof requires table of big");
+    }
+    return table_operation(T_I64, "table.count", table, -1);
+}
+
+/* Preserve the typed owner/key capture and return a normalized membership bool.
+ * Numeric bounds and snapshot capabilities remain eager runtime checks.
+ */
+int source_table_has(int table, int key)
+{
+    int slot = source_table_index(table, key);
+    return table_operation(T_BOOL, "table.has", slot, -1);
+}
+
+/* Remove the captured entry without evaluating a missing-key load or shifting indices.
+ * The bool result distinguishes a removed entry from an already absent entry.
+ */
+int source_table_delete(int slot)
+{
+    if (table_values[slot] != T_TABLE_SLOT)
+    {
+        reject("delete requires a captured table location");
+    }
+    return table_operation(T_BOOL, "table.delete", slot, -1);
+}
+
+/* Use a borrowed normalized bool as a terminal condition, without reevaluation. */
+SourceCondition source_table_truth(int value)
+{
+    SourceCondition condition;
+    condition.value = value;
+    condition.invert = 0;
+    if (table_values[value] != T_BOOL)
+    {
+        reject("table condition requires a comparison or membership bool");
+    }
+    return condition;
+}
+
 /* Capture a typed owner/key location. Both numeric and text syntax use this single operation. */
 int source_table_index(int table, int key)
 {
@@ -842,13 +886,13 @@ int source_table_convert(int value, int target)
     FirType type = table_values[value];
     if (target == 2)
     {
-        if (type != T_I32 && type != T_I64)
+        if (type != T_BOOL && type != T_I32 && type != T_I64)
         {
             reject("int conversion requires int or big");
         }
         return table_operation(T_I32, "value.int", value, -1);
     }
-    if (type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_KEY)
+    if (type != T_BOOL && type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_KEY)
     {
         reject("conversion requires int, big, string or snapshot key");
     }
@@ -860,7 +904,7 @@ int source_table_convert(int value, int target)
 int source_table_typeof(int value)
 {
     FirType type = table_values[value];
-    if (type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_BIG && type != T_KEYS &&
+    if (type != T_BOOL && type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_BIG && type != T_KEYS &&
         type != T_TABLE_KEY)
     {
         reject("typeof requires a supported table-profile value");

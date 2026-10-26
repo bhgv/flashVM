@@ -122,7 +122,10 @@ typedef enum
     O_BIG_EQ,      /* Full-width big equality, returning bool. */
     O_TO_INT,      /* Explicit low-32-bit signed int normalization from int/big. */
     O_BIG_SHL,     /* Checked left shift: big value, int count 0..63. */
-    O_BIG_SHR      /* Checked arithmetic right shift: big value, int count 0..63. */
+    O_BIG_SHR,     /* Checked arithmetic right shift: big value, int count 0..63. */
+    O_TABLE_COUNT, /* Number of all numeric and string entries, independently of sequence length. */
+    O_TABLE_HAS,   /* Test a captured location without raising for an absent key. */
+    O_TABLE_DELETE /* Delete a captured location without numeric compaction; bool reports presence. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

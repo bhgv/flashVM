@@ -158,6 +158,14 @@ int source_table_text(int quoted);
 /* Emit a fresh big-valued table owner and return its SSA identity. */
 int source_table_new(void);
 
+/* Borrow a bool SSA value as a terminal condition; reject other static types. */
+SourceCondition source_table_truth(int value);
+
+/* Emit memory-observing table count, location membership and deleting mutation. */
+int source_table_count(int table);
+int source_table_has(int table, int key);
+int source_table_delete(int slot);
+
 
 /* Capture typed owner/key SSA inputs as a location; reject incompatible static types. */
 int source_table_index(int table, int key);

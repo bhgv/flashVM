@@ -584,15 +584,18 @@ PRODUCTIONS
        SourceRelation relation = SOURCE_LESS;
        SourceMark target;
     .)
-    TableExpression<&left> Relation<&relation> (. target = source_mark(); .)
-    TableExpression<&right>
-    (. source_restore(target); *condition = source_compare(left, right, relation); .)
+    TableExpression<&left>
+    ( Relation<&relation> (. target = source_mark(); .) TableExpression<&right>
+      (. source_restore(target); *condition = source_compare(left, right, relation); .)
+      | (. *condition = source_table_truth(left); .)
+    )
   .
 
   /* Locals may be explicitly typed or inferred. Writes capture the receiver/key once before RHS. */
   TableStatement =
     (. int name = 0, value = -1, type = 0, key = 0, slot = 0, receiver = 0; SourceMark target, access; .)
-    Name<&name> (. target = source_mark(); .)
+    ( TableDelete<&value> ";"
+      | Name<&name> (. target = source_mark(); .)
     (
         ":=" TableExpression<&value> ";"
         (. source_restore(target); source_table_bind(name, value, 0, 1); .)
@@ -603,7 +606,7 @@ PRODUCTIONS
         | (. source_restore(target); receiver = source_read(name); .)
           TableKey<&key> (. access = source_mark(); slot = source_table_index(receiver, key); .)
           "=" TableExpression<&value> ";" (. source_restore(access); source_table_store(slot, value); .)
-    )
+    ) )
   .
 
   /* Table values stay big. String locals may provide keys; key snapshots use type inference. */
@@ -620,8 +623,26 @@ PRODUCTIONS
     | "[" TableExpression<key> "]"
   .
 
-  /* Bitwise OR is weakest; each level associates left and keeps source order. */
+  /* Deletion captures a receiver/key once and never reads a missing value. */
+  TableDelete<int *result> =
+    (. int name = 0, key = 0, slot = 0; SourceMark operation; .)
+    "delete" (. capture(); operation = source_mark(); .)
+    Name<&name> (. slot = source_read(name); .) TableKey<&key>
+    (. slot = source_table_index(slot, key); source_restore(operation);
+       *result = source_table_delete(slot); .)
+  .
+
+  /* Membership binds below bitwise OR and keeps left-to-right operand evaluation. */
   TableExpression<int *result> =
+    (. int table = 0; SourceMark operation; .)
+    TableBitOr<result>
+    [ "in" (. capture(); operation = source_mark(); .) TableBitOr<&table>
+      (. source_restore(operation); *result = source_table_has(table, *result); .)
+    ]
+  .
+
+  /* Bitwise OR is weakest numeric level; each level associates left. */
+  TableBitOr<int *result> =
     (. int right = 0;
        SourceMark operation;
     .)
@@ -738,6 +759,9 @@ PRODUCTIONS
           (. source_restore(operation); *result = source_table_unary(*result, '+'); .)
         | "~" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_unary(*result, '~'); .)
+        | TableDelete<result>
+        | "countof" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_count(*result); .)
         | "len" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_len(*result); .)
         | "int" (. capture(); operation = source_mark(); .) TableUnary<result>

@@ -160,7 +160,7 @@ static int supported(
         case O_COPY:
         case O_TO_BIG:
             if (current->op == O_TO_BIG && module->values[current->a].type != T_I64 &&
-                module->values[current->a].type != T_I32)
+                module->values[current->a].type != T_I32 && module->values[current->a].type != T_BOOL)
             {
                 goto unsupported;
             }
@@ -282,8 +282,9 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         FirInstruction *in = &module->instructions[index];
         if (!in->removed &&
             (((in->op >= O_TABLE_NEW && in->op <= O_TO_TEXT) &&
-              !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32))) ||
-             in->type >= T_TABLE_BIG))
+              !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
+                                       module->values[in->a].type == T_BOOL))) ||
+             (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->type >= T_TABLE_BIG))
         {
             return fir_dis_table(output, module, error, capacity);
         }

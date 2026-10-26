@@ -265,6 +265,9 @@ PRODUCTIONS
     | "table.new" (. fir_build_op(O_TABLE_NEW); .)
     | "table.index" (. fir_build_op(O_TABLE_INDEX); .) A "," B
     | "table.load" (. fir_build_op(O_TABLE_LOAD); .) A
+    | "table.count" (. fir_build_op(O_TABLE_COUNT); .) A
+    | "table.has" (. fir_build_op(O_TABLE_HAS); .) A
+    | "table.delete" (. fir_build_op(O_TABLE_DELETE); .) A
     | "table.len" (. fir_build_op(O_TABLE_LEN); .) A
     | "range.big" (. fir_build_op(O_BIG_RANGE); .) A "," B
     | "table.slice" (. fir_build_op(O_TABLE_SLICE); .) A "," B

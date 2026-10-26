@@ -44,13 +44,13 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BIG_SHR) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
-            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_TABLE_DELETE) || in->op == O_I32 || in->op == O_BOOL ||
+            in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
-        if (in->op == O_TRACE && (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64 ||
-                                  module->values[in->a].type == T_STRING || module->values[in->a].type == T_BOOL))
+        if (in->op == O_TRACE && (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
+                                  module->values[in->a].type == T_I64 || module->values[in->a].type == T_STRING))
         {
             continue;
         }
@@ -249,6 +249,28 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_TABLE_STORE:
             status = fht_set(a->table, a->key, b->big);
             break;
+        case O_TABLE_HAS:
+        {
+            int64_t ignored = 0;
+            status = fht_get(a->table, a->key, &ignored);
+            result->big = status == FHT_OK;
+            if (status == FHT_MISSING)
+            {
+                status = FHT_OK;
+            }
+            break;
+        }
+        case O_TABLE_DELETE:
+            status = fht_delete(a->table, a->key);
+            result->big = status == FHT_OK;
+            if (status == FHT_MISSING)
+            {
+                status = FHT_OK;
+            }
+            break;
+        case O_TABLE_COUNT:
+            result->big = (int64_t)fht_count(a->table);
+            break;
         case O_TABLE_LEN:
             result->big = (int64_t)fht_length(a->table);
             break;
@@ -275,7 +297,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         case O_TO_BIG:
-            if (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64)
+            if (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
+                module->values[in->a].type == T_I64)
             {
                 result->big = a->big;
             }
@@ -303,7 +326,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             else
             {
-                int64_t number = (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32)
+                int64_t number = (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I64 ||
+                                  module->values[in->a].type == T_I32)
                                      ? a->big
                                      : a->key.index;
                 result->text_size = fht_big_format(number, result->digits, sizeof(result->digits));
@@ -313,6 +337,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_VALUE_TYPE:
             switch (module->values[in->a].type)
             {
+            case T_BOOL:
             case T_I32:
                 result->text = "int";
                 break;
@@ -348,8 +373,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             result->big = (int64_t)a->keys->count;
             break;
         case O_TRACE:
-            if (module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64 ||
-                module->values[in->a].type == T_BOOL)
+            if (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
+                module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
             {
                 fprintf(staged, "%" PRId64 "\n", a->big);
             }

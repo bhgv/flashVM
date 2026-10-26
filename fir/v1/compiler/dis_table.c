@@ -75,26 +75,48 @@ enum
     KEY_TEXT,      /* Copy text from the actual snapshot key. */
     TYPE_NAME,     /* Reflect a supported static type tag. */
     KEY_TYPE,      /* Reflect the actual kind of an immutable snapshot key. */
-    SLICE          /* Copy a numeric sequence slice. */
+    SLICE,         /* Copy a numeric sequence slice. */
+    COUNT,         /* Count all table entries. */
+    DEL_INDEX,     /* Delete a numeric location. */
+    DEL_TEXT,      /* Delete a copied text location. */
+    DEL_KEY,       /* Delete through a snapshot-owned key. */
+    PRESENT        /* Convert get/delete statuses to a normalized bool. */
 };
 
-static const Import imports[] = {
-    {"create", UINT32_C(0xf9bff31f)},      {"getindex", UINT32_C(0xd03b2e8c)},
-    {"gettext", UINT32_C(0x7a1ec3e7)},     {"indexcheck", UINT32_C(0x93504811)},
-    {"keylen", UINT32_C(0x6c3299de)},      {"keysof", UINT32_C(0xa4157ed7)},
-    {"length", UINT32_C(0x6c3299de)},      {"rangecheck", UINT32_C(0xd039b06a)},
-    {"requireok", UINT32_C(0xb1f25db6)},   {"setindex", UINT32_C(0xe420e8cf)},
-    {"settext", UINT32_C(0xb244346a)},     {"keycheck", UINT32_C(0x6c3c4973)},
-    {"getkey", UINT32_C(0x420ebc79)},      {"setkey", UINT32_C(0x9ea8730a)},
-    {"bigfromtext", UINT32_C(0xbb695870)}, {"textfrombig", UINT32_C(0x72c1d264)},
-    {"keybig", UINT32_C(0xa56b6949)},      {"keytext", UINT32_C(0x85cca8a1)},
-    {"typename", UINT32_C(0xa9b8ab85)},    {"keytype", UINT32_C(0x85cca8a1)},
-    {"slice", UINT32_C(0x71c4132a)}}; /* Loader checks every signature before any generated native call can run. */
+static const Import imports[] =
+    {
+        {"create", UINT32_C(0xf9bff31f)},
+        {"getindex", UINT32_C(0xd03b2e8c)},
+        {"gettext", UINT32_C(0x7a1ec3e7)},
+        {"indexcheck", UINT32_C(0x93504811)},
+        {"keylen", UINT32_C(0x6c3299de)},
+        {"keysof", UINT32_C(0xa4157ed7)},
+        {"length", UINT32_C(0x6c3299de)},
+        {"rangecheck", UINT32_C(0xd039b06a)},
+        {"requireok", UINT32_C(0xb1f25db6)},
+        {"setindex", UINT32_C(0xe420e8cf)},
+        {"settext", UINT32_C(0xb244346a)},
+        {"keycheck", UINT32_C(0x6c3c4973)},
+        {"getkey", UINT32_C(0x420ebc79)},
+        {"setkey", UINT32_C(0x9ea8730a)},
+        {"bigfromtext", UINT32_C(0xbb695870)},
+        {"textfrombig", UINT32_C(0x72c1d264)},
+        {"keybig", UINT32_C(0xa56b6949)},
+        {"keytext", UINT32_C(0x85cca8a1)},
+        {"typename", UINT32_C(0xa9b8ab85)},
+        {"keytype", UINT32_C(0x85cca8a1)},
+        {"slice", UINT32_C(0x71c4132a)},
+        {"count", UINT32_C(0x6c3299de)},
+        {"delindex", UINT32_C(0xfff0be39)},
+        {"deltext", UINT32_C(0x9cbcf924)},
+        {"delkey", UINT32_C(0x3c90594b)},
+        {"present", UINT32_C(0xe67bf126)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
 {
     FILE *body;                  /* Owned temporary bytecode, published only after successful preflight/emission. */
     unsigned count;              /* Emitted Dis instruction count. */
+    unsigned import_count;       /* Old table programs retain the original 21-function interface. */
     unsigned blocks[FIR_BLOCKS]; /* Instruction PCs measured before resolving CFG branches. */
     unsigned offsets[FIR_LIMIT]; /* Frame offsets of typed SSA values. */
     unsigned strings[FIR_LIMIT]; /* MP offsets of live copied string constants. */
@@ -264,6 +286,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         }
         return 0;
     }
+    e->import_count = SLICE + 1U;
     root(e->frame_map, MODULE_SLOT);
     for (i = 0; i < module->value_count; i++)
     {
@@ -304,6 +327,10 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
+        if (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE)
+        {
+            e->import_count = (unsigned)(sizeof(imports) / sizeof(imports[0]));
+        }
         if (in->op == O_STRING)
         {
             strings++;
@@ -319,7 +346,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_SHR))
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TABLE_DELETE))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -526,17 +553,20 @@ static void body(Emitter *e, FirModule *module, int measure)
                 instruction(e, MOVL, FP, b + CELL, FP, d + 2U * CELL, 0, -1);
             }
             break;
+        case O_TABLE_HAS:
+        case O_TABLE_DELETE:
         case O_TABLE_LOAD:
         case O_TABLE_STORE:
             slot = location(module, in->a);
             if (module->values[slot->b].type == T_TABLE_KEY)
             {
-                import = in->op == O_TABLE_LOAD ? GET_KEY : SET_KEY;
+                import = in->op == O_TABLE_STORE ? SET_KEY : in->op == O_TABLE_DELETE ? DEL_KEY : GET_KEY;
             }
             else
             {
-                import = in->op == O_TABLE_LOAD ? (module->values[slot->b].type == T_STRING ? GET_TEXT : GET_INDEX)
-                                                : (module->values[slot->b].type == T_STRING ? SET_TEXT : SET_INDEX);
+                import = in->op == O_TABLE_STORE    ? (module->values[slot->b].type == T_STRING ? SET_TEXT : SET_INDEX)
+                         : in->op == O_TABLE_DELETE ? (module->values[slot->b].type == T_STRING ? DEL_TEXT : DEL_INDEX)
+                                                    : (module->values[slot->b].type == T_STRING ? GET_TEXT : GET_INDEX);
             }
             call_begin(e, import);
             argument(e, MOVP, a, 0);
@@ -554,7 +584,16 @@ static void body(Emitter *e, FirModule *module, int measure)
                 argument(e, MOVL, b, module->values[slot->b].type == T_TABLE_KEY ? 3 : 2);
             }
             call_end(e, import, (int)e->status);
-            require_ok(e);
+            if (in->op == O_TABLE_HAS || in->op == O_TABLE_DELETE)
+            {
+                call_begin(e, PRESENT);
+                argument(e, MOVW, e->status, 0);
+                call_end(e, PRESENT, (int)d);
+            }
+            else
+            {
+                require_ok(e);
+            }
             if (in->op == O_TABLE_LOAD)
             {
                 instruction(e, MOVL, FP, e->status + CELL, FP, d, 0, -1);
@@ -562,7 +601,8 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_TO_BIG:
         case O_TO_TEXT:
-            if ((in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32)) ||
+            if ((in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
+                                        module->values[in->a].type == T_BOOL)) ||
                 (in->op == O_TO_TEXT && module->values[in->a].type == T_STRING))
             {
                 copy_value(e, module, in->result, in->a);
@@ -573,7 +613,7 @@ static void body(Emitter *e, FirModule *module, int measure)
                 import = type == T_TABLE_KEY ? (in->op == O_TO_BIG ? KEY_BIG : KEY_TEXT)
                                              : (in->op == O_TO_BIG ? BIG_FROM_TEXT : TEXT_FROM_BIG);
                 call_begin(e, import);
-                argument(e, type == T_I64 || type == T_I32 ? MOVL : MOVP, a, 0);
+                argument(e, type == T_I64 || type == T_I32 || type == T_BOOL ? MOVL : MOVP, a, 0);
                 if (type == T_TABLE_KEY)
                 {
                     argument(e, MOVL, a + CELL, 1);
@@ -592,11 +632,11 @@ static void body(Emitter *e, FirModule *module, int measure)
             else
             {
                 FirType type = module->values[in->a].type;
-                unsigned kind = type == T_I32         ? 4U
-                                : type == T_I64       ? 0U
-                                : type == T_STRING    ? 1U
-                                : type == T_TABLE_BIG ? 2U
-                                                      : 3U;
+                unsigned kind = (type == T_I32 || type == T_BOOL) ? 4U
+                                : type == T_I64                   ? 0U
+                                : type == T_STRING                ? 1U
+                                : type == T_TABLE_BIG             ? 2U
+                                                                  : 3U;
                 call_begin(e, TYPE_NAME);
                 instruction(e, MOVW, IMM, kind, INDIRECT_FP, e->call_frame, ARGUMENTS, -1);
                 call_end(e, TYPE_NAME, (int)d);
@@ -610,10 +650,14 @@ static void body(Emitter *e, FirModule *module, int measure)
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
             instruction(e, MOVL, FP, b, FP, d + CELL, 0, -1);
             break;
+        case O_TABLE_COUNT:
         case O_TABLE_LEN:
         case O_TABLE_KEYS:
         case O_KEYS_LEN:
-            import = in->op == O_TABLE_LEN ? LENGTH : in->op == O_TABLE_KEYS ? KEYS_OF : KEY_LEN;
+            import = in->op == O_TABLE_COUNT  ? COUNT
+                     : in->op == O_TABLE_LEN  ? LENGTH
+                     : in->op == O_TABLE_KEYS ? KEYS_OF
+                                              : KEY_LEN;
             call_begin(e, import);
             argument(e, MOVP, a, 0);
             call_end(e, import, (int)d);
@@ -781,8 +825,8 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
     octet(output, 0);   /* End data initializers. */
     fwrite(module->module, 1, strlen(module->module) + 1, output);
     operand(output, 1); /* One import interface. */
-    operand(output, (unsigned)(sizeof(imports) / sizeof(imports[0])));
-    for (i = 0; i < sizeof(imports) / sizeof(imports[0]); i++)
+    operand(output, e->import_count);
+    for (i = 0; i < e->import_count; i++)
     {
         bits(output, imports[i].signature, 4);
         fwrite(imports[i].name, 1, strlen(imports[i].name) + 1, output);

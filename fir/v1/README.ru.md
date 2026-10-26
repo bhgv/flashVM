@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.20.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.21.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -105,3 +105,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Acyclic table decisions / Ациклические решения таблиц](doc/TABLE_CFG.md) · [Русский](doc/TABLE_CFG.ru.md).
 
 [Typed big shifts / Типизированные сдвиги big](doc/BIG_SHIFTS.md) · [Русский](doc/BIG_SHIFTS.ru.md).
+
+[Table count/in/delete / Подсчёт, наличие и удаление](doc/TABLE_MUTATION.md) · [Русский](doc/TABLE_MUTATION.ru.md) · [Tutorial](examples/tables/mutation.b).
