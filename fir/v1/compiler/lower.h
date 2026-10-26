@@ -3,7 +3,6 @@
 #define FIR_SOURCE_LOWER_H
 #include "fir.h"
 
-
 /* Parser-local value: capture before RHS parsing and restore for target errors. */
 typedef struct
 {
@@ -11,7 +10,6 @@ typedef struct
     long offset;
     size_t length;
 } SourceMark;
-
 
 /* Scalar relation selected by the authoritative Coco/R source grammar. */
 typedef enum
@@ -24,14 +22,12 @@ typedef enum
     SOURCE_GREATER_EQUAL /* Invert lhs < rhs. */
 } SourceRelation;
 
-
 /* Generated-parser-local condition; no heap state or reference escapes compilation. */
 typedef struct
 {
     int value;  /* Normalized FIR bool SSA index. */
     int invert; /* Reverse FIR edges to implement the source relation without bool casts. */
 } SourceCondition;
-
 
 /* Lower borrowed scalar operands/relation to a bool with the current source origin. */
 SourceCondition source_compare(int left, int right, SourceRelation relation);
@@ -111,9 +107,9 @@ void source_language(int);
 
 
 /* Select/check the homogeneous numeric return type at its source mark.
- * real selects binary64; declaration records the interface, zero checks the definition.
+ * kind selects int=0, real=1 or big/table=2; declaration selects interface versus definition.
  * No stream is acquired. Mismatch records the first semantic diagnostic. */
-void source_result_type(int real, int declaration);
+void source_result_type(int kind, int declaration);
 
 
 /* Reject an explicitly typed local that differs from the selected result profile. */
@@ -143,4 +139,54 @@ void source_enter_scope(void);
 
 
 void source_leave_scope(void);
+/* Table-profile semantic entry points. SSA indices are local to one staged translation.
+ * Inputs are borrowed; errors preserve the first exact source mark and prevent publication. */
+
+
+/* Query whether the interface selected the explicit big/table result profile. */
+int source_table_profile(void);
+
+
+/* Emit a decimal big literal from the captured token; negative applies its unary sign. */
+int source_table_constant(int negative);
+
+
+/* Emit the captured token as a copied key; quoted distinguishes a literal from dotted name. */
+int source_table_text(int quoted);
+
+
+/* Emit a fresh big-valued table owner and return its SSA identity. */
+int source_table_new(void);
+
+
+/* Capture typed owner/key SSA inputs as a location; reject incompatible static types. */
+int source_table_index(int table, int key);
+
+
+/* Emit a big read of a captured location; absent keys remain observable runtime errors. */
+int source_table_load(int location);
+
+
+/* Emit length using the static table or key-snapshot type of the borrowed SSA input. */
+int source_table_len(int value);
+
+
+/* Emit an independent all-key snapshot of the typed table SSA input. */
+int source_table_keys(int table);
+
+
+/* Emit a checked copied sequence slice from table and two big bound SSA inputs. */
+int source_table_slice(int table, int first, int end);
+
+
+/* Emit an effectful write; location is captured once and value must have big type. */
+void source_table_store(int location, int value);
+
+
+/* Bind a local name to its typed SSA value; -1 permits only a typed uninitialized declaration. */
+void source_table_bind(int name, int value, int type, int declaration);
+
+
+/* Require a big SSA result and emit the tutorial trace/return harness. */
+void source_table_return(int value);
 #endif

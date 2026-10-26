@@ -78,7 +78,13 @@ CHARACTERS
     ANY - "*" - "/" - CHR(0)
   .
 
+  /* Table keys use the existing FIR escape set; NUL strings are not silently truncated. */
+  quotedbyte = ANY - '"' - "\\" - CHR(0) - CHR(10) - CHR(13).
+  escaped = '"' + "\\nrt".
+
 TOKENS
+  /* Explicit copied UTF-8 key, validated before lowering. */
+  textlit = '"' { quotedbyte | "\\" escaped } '"'.
   /* Module name; keywords are distinguished by the generated scanner. */
   ident =
     letter
@@ -312,10 +318,10 @@ PRODUCTIONS
                                                                         .)
     ":" "module" "{" "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
     "}" ";" "value" "(" ")" ":" ResultType<0> "{"
-    {
-        LimboStatement
-    }
-    LimboResult "}"
+    (
+        IF(source_table_profile()) TableBody
+        | { LimboStatement } LimboResult
+    ) "}"
   .
 
   /* The interface records the numeric result type; the definition must match it.
@@ -323,6 +329,7 @@ PRODUCTIONS
   ResultType<int declaration> =
     "int"                                                               (. capture(); source_result_type(0, declaration); .)
     | "real"                                                            (. capture(); source_result_type(1, declaration); .)
+    | "big" (. capture(); source_result_type(2, declaration); .)
   .
 
   /* Locals stay homogeneous: explicit int/real conversions are not implemented. */
@@ -530,6 +537,76 @@ PRODUCTIONS
     Expression<result> ")"                                              (. --depth; .)
     | Name<&name>                                                       (. *result = source_read(name); .)
     | Literal<result,0>
+  .
+
+  /* Big-result modules select a separate typed hybrid subset, never numeric-profile guessing. */
+  TableBody =
+    (. int value = 0; .)
+    { TableStatement }
+    "return" TableExpression<&value> ";" (. source_table_return(value); .)
+  .
+
+  /* Locals may be explicitly typed or inferred. Writes capture the receiver/key once before RHS. */
+  TableStatement =
+    (. int name = 0, value = -1, type = 0, key = 0, slot = 0, receiver = 0; SourceMark target, access; .)
+    Name<&name> (. target = source_mark(); .)
+    (
+        ":=" TableExpression<&value> ";"
+        (. source_restore(target); source_table_bind(name, value, 0, 1); .)
+        | ":" TableType<&type> [ "=" TableExpression<&value> ] ";"
+        (. source_restore(target); source_table_bind(name, value, type, 1); .)
+        | "=" TableExpression<&value> ";"
+        (. source_restore(target); source_table_bind(name, value, 0, 0); .)
+        | (. source_restore(target); receiver = source_read(name); .)
+          TableKey<&key> (. access = source_mark(); slot = source_table_index(receiver, key); .)
+          "=" TableExpression<&value> ";" (. source_restore(access); source_table_store(slot, value); .)
+    )
+  .
+
+  /* Table values stay big. String locals may provide keys; key snapshots use type inference. */
+  TableType<int *type> =
+    "big" (. *type = T_I64; .)
+    | "string" (. *type = T_STRING; .)
+    | "table" "of" "big" (. *type = T_TABLE_BIG; .)
+  .
+
+  /* Dotted identifiers are literal string keys, not lookups of a local binding with that name. */
+  TableKey<int *key> =
+    "." ident (. capture(); *key = source_table_text(0); .)
+    | "[" TableExpression<key> "]"
+  .
+
+  /* Prefix operations preserve static container types; postfix reads and explicit slices compose. */
+  TableExpression<int *result> =
+    IF(depth < 64) (. ++depth; .)
+    TableUnary<result> (. --depth; .)
+    | IF(depth >= 64) ident (. source_scope_limit(); *result = 0; .)
+  .
+
+  /* Numeric literals in this explicit big-result subset are exact decimal big constants. */
+  TableUnary<int *result> =
+    (. int name = 0, key = 0, end = 0, slice = 0, negative = 0; .)
+    (
+        "len" TableExpression<result> (. *result = source_table_len(*result); .)
+        | "keysof" TableExpression<result> (. *result = source_table_keys(*result); .)
+        | (
+            Name<&name> (. *result = source_read(name); .)
+            | "table" (. capture(); .) "of" "big" (. *result = source_table_new(); .)
+            | textlit (. capture(); *result = source_table_text(1); .)
+            | [ "big" ] [ "-" (. negative = 1; .) ] numeral
+              (. capture(); *result = source_table_constant(negative); .)
+            | "(" TableExpression<result> ")"
+          )
+          {
+              "." ident (. capture(); key = source_table_text(0);
+                            *result = source_table_load(source_table_index(*result, key)); .)
+              | "[" TableExpression<&key>
+                (. slice = 0; .)
+                [ ":" TableExpression<&end> (. slice = 1; .) ] "]"
+                (. *result = slice ? source_table_slice(*result, key, end)
+                                  : source_table_load(source_table_index(*result, key)); .)
+          }
+    )
   .
 
 END

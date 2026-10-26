@@ -26,7 +26,6 @@ static FILE *active_debug;
 static int first_debug_event;
 static unsigned long debug_site_serial; /* Stable one-based event identity within one staged debug artifact. */
 
-
 /* Preserve the first error independently of the caller's optional text buffer.
  * Derive canonical byte columns from original bytes, never scanner tab expansion. */
 void source_error(FirSourceDiagnosticKind kind, int code, long offset, size_t length, const char *message)
@@ -73,7 +72,6 @@ void source_error(FirSourceDiagnosticKind kind, int code, long offset, size_t le
     active_diagnostic->column = column;
 }
 
-
 /* Quote a validated source snapshot/name without retaining its bytes. */
 static void debug_string(FILE *out, const unsigned char *text, size_t size)
 {
@@ -97,7 +95,6 @@ static void debug_string(FILE *out, const unsigned char *text, size_t size)
     }
     fputc('"', out);
 }
-
 
 /* Append an origin event to private staging. SSA IDs refer to pre-optimization
  * FIR only; optimized/native locations need a later explicit relocation pass. */
@@ -144,13 +141,11 @@ debug_event(const char *kind, int value, const char *name, int scope, int depth,
     fputc('}', active_debug);
 }
 
-
 /* Append a non-binding origin. All arguments are borrowed parser values; no output escapes staging. */
 void source_debug_event(const char *kind, int value, const char *name, int scope, int depth, SourceMark mark)
 {
     debug_event(kind, value, name, scope, depth, 0, mark);
 }
-
 
 /* Append an exact binding access. binding is one-based; scope/depth identify its lexical owner.
  * kind/value/name/mark are copied into staged JSON. The host serializes parser calls. */
@@ -159,7 +154,6 @@ void source_debug_access(
 {
     debug_event(kind, value, name, scope, depth, binding, mark);
 }
-
 
 /* Adapt Coco/R's callback while retaining its syntax code and legacy message. */
 static void report(int code, int line, int column, long offset)
@@ -173,7 +167,6 @@ static void report(int code, int line, int column, long offset)
     snprintf(message, sizeof(message), "source:%d:%d: syntax E%d (byte %ld)", line, column, code, offset);
     source_error(FIR_DIAG_SYNTAX, code, offset, length, message);
 }
-
 
 /* Validate a literal portable module name without changing input/output streams. */
 static int valid_name(const char *name)
@@ -194,7 +187,6 @@ static int valid_name(const char *name)
     }
     return 1;
 }
-
 
 /* Compile one bounded snapshot into a private stream before copying it out.
  * Rejected input/translation preserves output; final output I/O failure may leave
@@ -312,9 +304,10 @@ int fir_source_debug(FILE *input,
             : language == FIR_AS2 ? "as2"
             : language == FIR_AS3 ? "as3"
                                   : "limbo",
-            source_semantics() == FIR_LIMBO_I32    ? "limbo_i32"
-            : source_semantics() == FIR_LIMBO_REAL ? "limbo_real"
-                                                   : "avm1_numeric");
+            source_semantics() == FIR_LIMBO_I32      ? "limbo_i32"
+            : source_semantics() == FIR_LIMBO_TABLES ? "limbo_tables"
+            : source_semantics() == FIR_LIMBO_REAL   ? "limbo_real"
+                                                     : "avm1_numeric");
     while ((length = fread(text, 1, 65536, temporary)) != 0)
     {
         if (fwrite(text, 1, length, output) != length)
@@ -366,7 +359,6 @@ done:
     return ok;
 }
 
-
 /* Keep the structured-diagnostic API source-compatible without debug staging. */
 int fir_source_ex(FILE *input,
                   FILE *output,
@@ -378,7 +370,6 @@ int fir_source_ex(FILE *input,
 {
     return fir_source_debug(input, output, language, name, error, capacity, diagnostic, NULL);
 }
-
 
 /* Preserve source compatibility for hosts that only consume legacy text errors. */
 int fir_source(FILE *input, FILE *output, FirLanguage language, const char *name, char *error, size_t capacity)

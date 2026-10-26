@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 
 /* Borrowed output stream and copied source position; released after parsing. */
@@ -22,10 +23,11 @@ static int bindings[256], immutable[256], name_count, source_line;
 static int binding_scope[256], active[256], scope_depth;
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
-static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
-static int result_real;   /* Interface return type, checked against the definition before expressions. */
-static int terminal;      /* The last emitted arm already terminates and needs no footer return. */
-
+static int branch_serial;           /* Total terminal decisions; two new blocks per decision. */
+static int result_real;             /* Interface return type, checked against the definition before expressions. */
+static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
+static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
+static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
 
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language)
@@ -41,15 +43,15 @@ void source_config(FILE *out, int language)
     debug_scopes[0] = 0;
     branch_serial = terminal = 0;
     result_real = 0;
+    memset(table_values, 0, sizeof(table_values));
+    memset(table_bindings, 0, sizeof(table_bindings));
 }
-
 
 /* Query semantic rejection separately from generated syntax diagnostics. */
 int source_failed(void)
 {
     return failed;
 }
-
 
 /* Report the first semantic failure without producing a deliverable file. */
 static void reject(const char *message)
@@ -60,13 +62,11 @@ static void reject(const char *message)
     failed = 1;
 }
 
-
 /* Capture a complete spelling; never silently truncate a long token. */
 static void spelling(char *out)
 {
     strcpy(out, token);
 }
-
 
 /* Checked radix conversion for the i32 tutorial profile, including INT32_MIN. */
 static int32_t integer_literal(const char *text, int negative)
@@ -140,7 +140,6 @@ static int32_t integer_literal(const char *text, int negative)
     return -(int32_t)value;
 }
 
-
 /* Lower numeric spelling in the selected homogeneous profile; Limbo real requires
  * decimal fraction/exponent literals so inferred integer arithmetic cannot be silently changed. */
 int source_constant(int negative)
@@ -198,7 +197,6 @@ int source_constant(int negative)
     return result;
 }
 
-
 /* Emit a three-address instruction; source operators are left associative. */
 int source_binary(int left, int right, int op)
 {
@@ -233,7 +231,6 @@ int source_binary(int left, int right, int op)
     return result;
 }
 
-
 /* Scanner bridge rejects complete oversized tokens before any spelling copy. */
 void source_token(const char *text, int line, long offset, size_t length, int oversized)
 {
@@ -251,7 +248,6 @@ void source_token(const char *text, int line, long offset, size_t length, int ov
         strcpy(token, text);
     }
 }
-
 
 /* A source binding names its current SSA value; assignment never redefines SSA. */
 int source_name(void)
@@ -282,7 +278,6 @@ int source_name(void)
     return name_count++;
 }
 
-
 /* Resolve the nearest active binding to its current SSA definition. */
 int source_read(int name)
 {
@@ -303,7 +298,6 @@ int source_read(int name)
     }
     return bindings[name];
 }
-
 
 /* Bind declarations in their lexical owner; initialization reads the outer binding.
  * Nondeclaration writes keep targeting the nearest active outer binding. */
@@ -350,7 +344,6 @@ void source_bind(int name, int value, int declaration)
     }
 }
 
-
 /* Restrict numeric AS annotations without claiming a general type checker. */
 void source_annotation(void)
 {
@@ -364,7 +357,6 @@ void source_annotation(void)
     }
 }
 
-
 /* Emit the tutorial observable only while the translation remains valid. */
 void source_trace(int value)
 {
@@ -374,7 +366,6 @@ void source_trace(int value)
         source_debug_event("trace", value, "", debug_scopes[scope_depth], scope_depth, location);
     }
 }
-
 
 /* Require implement and module declarations to use the same spelling. */
 void source_module(int first)
@@ -389,7 +380,6 @@ void source_module(int first)
     }
 }
 
-
 /* Reject a parsed source family that disagrees with the requested profile. */
 void source_language(int limbo)
 {
@@ -398,7 +388,6 @@ void source_language(int limbo)
         reject("source does not match selected language");
     }
 }
-
 
 /* Unary minus is multiplication by -1: unlike 0-x this preserves AS -0. */
 int source_negate(int value)
@@ -420,7 +409,6 @@ int source_negate(int value)
     return source_binary(value, minus, '*');
 }
 
-
 /* Enforce AS3-only constants and retain their immutability in flat AS scope. */
 void source_declare(int name, int value, int constant)
 {
@@ -432,7 +420,6 @@ void source_declare(int name, int value, int constant)
     immutable[name] = constant;
 }
 
-
 /* Lower compound assignment before updating the visible lexical binding. */
 void source_assign(int name, int value, int op)
 {
@@ -443,7 +430,6 @@ void source_assign(int name, int value, int op)
     source_bind(name, value, 0);
 }
 
-
 /* Keep native Limbo comments from silently changing AS lexical coverage. */
 void source_hash_comment(void)
 {
@@ -453,7 +439,6 @@ void source_hash_comment(void)
     }
 }
 
-
 /* Enter a lexical Limbo owner; parser nesting independently bounds recursion. */
 void source_enter_scope(void)
 {
@@ -461,7 +446,6 @@ void source_enter_scope(void)
     debug_scopes[scope_depth] = ++debug_scope_serial;
     source_debug_event("scope-enter", -1, "", debug_scopes[scope_depth], scope_depth, location);
 }
-
 
 /* Retire only local names; values assigned to outer names remain current. */
 void source_leave_scope(void)
@@ -478,20 +462,17 @@ void source_leave_scope(void)
     --scope_depth;
 }
 
-
 /* Consume over-budget block openers without recursive descent or recovery loops. */
 void source_scope_limit(void)
 {
     reject("block/group/unary nesting limit exceeded");
 }
 
-
 /* Return a copied token span, independent of later scanner/token mutations. */
 SourceMark source_mark(void)
 {
     return location;
 }
-
 
 /* Attribute target-side errors to the identifier rather than the final RHS. */
 void source_restore(SourceMark mark)
@@ -500,13 +481,11 @@ void source_restore(SourceMark mark)
     source_line = mark.line;
 }
 
-
 /* Retire caller-owned stream roots after every translation, including failure. */
 void source_release(void)
 {
     destination = NULL;
 }
-
 
 /* Lower one admitted Limbo relation to signed i32 comparison plus edge inversion.
  * Operands/relation are parser values. Return owns no storage; source errors remain sticky.
@@ -536,7 +515,6 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
     return condition;
 }
 
-
 /* Publish the two edges and first label of a terminal decision; return its scalar identity.
  * condition is a copied bool/inversion pair. Bounds leave room for the entry plus two blocks
  * per decision. No assignment environment is merged: each accepted arm must return. */
@@ -563,7 +541,6 @@ int source_branch(SourceCondition condition)
     return choice;
 }
 
-
 /* Begin the source-false arm after a terminated true arm; choice is parser-local and borrowed.
  * It introduces no source binding scope or phi: the authoritative grammar admits terminal results only. */
 void source_else(int choice)
@@ -574,7 +551,6 @@ void source_else(int choice)
     }
     terminal = 0;
 }
-
 
 /* Return the tutorial value through its existing trace harness, then terminate this FIR arm.
  * value is a parser-owned SSA index. No caller stream or source binding is acquired. */
@@ -588,7 +564,6 @@ void source_return(int value)
     terminal = 1;
 }
 
-
 /* Finish one staged module. AS statements need a footer return; every Limbo result already has one.
  * No parameters; destination remains caller-owned until source_release retires the borrow. */
 void source_finish(void)
@@ -600,23 +575,21 @@ void source_finish(void)
     fputs("}\n", destination);
 }
 
-
 /* Select a homogeneous Limbo result profile and require interface/definition agreement.
- * real/declaration are parser booleans; diagnostics use the restored type-token mark.
+ * kind selects int=0, real=1 or big/table=2; declaration selects the interface versus definition.
  * No implicit conversion, output publication or allocation is performed. */
-void source_result_type(int real, int declaration)
+void source_result_type(int kind, int declaration)
 {
     if (declaration)
     {
-        result_real = real;
+        result_real = kind;
     }
-    else if (result_real != real)
+    else if (result_real != kind)
     {
         reject("Limbo interface and definition result types differ");
     }
-    integer_mode = !real;
+    integer_mode = !kind;
 }
-
 
 /* Validate a typed local against the already selected homogeneous Limbo profile.
  * real is a parser boolean. Mismatch is sticky and prevents all output publication. */
@@ -628,10 +601,212 @@ void source_binding_type(int real)
     }
 }
 
-
 /* Return provenance after the generated parser has selected its result type.
  * No arguments or ownership transfer; the host serializes source compiler calls. */
 FirSemantics source_semantics(void)
 {
-    return profile == FIR_LIMBO ? (integer_mode ? FIR_LIMBO_I32 : FIR_LIMBO_REAL) : FIR_AVM1_NUMERIC;
+    return profile == FIR_LIMBO ? (result_real == 2 ? FIR_LIMBO_TABLES
+                                   : integer_mode   ? FIR_LIMBO_I32
+                                                    : FIR_LIMBO_REAL)
+                                : FIR_AVM1_NUMERIC;
+}
+
+/* Query the explicit big-result profile selected by the grammar; no ownership or side effects. */
+int source_table_profile(void)
+{
+    return result_real == 2;
+}
+
+/* Allocate a bounded typed SSA identity. Failure is sticky; callers never publish failed output. */
+static int table_value(FirType type)
+{
+    int value = serial++;
+    if (serial > 1000)
+    {
+        reject("table expression size limit exceeded");
+        return 0;
+    }
+    table_values[value] = type;
+    return value;
+}
+
+/* Emit one typed unary/binary table operation with copied source provenance. */
+static int table_operation(FirType type, const char *spelling, int a, int b)
+{
+    static const char *const types[] = {"void",
+                                        "i32",
+                                        "f64",
+                                        "bool",
+                                        "string",
+                                        "any",
+                                        "channel",
+                                        "i64",
+                                        "table.big",
+                                        "table.slot",
+                                        "big.range",
+                                        "keys"};
+    int result = table_value(type);
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: %s = %s", result, types[type], spelling);
+        if (a >= 0)
+        {
+            fprintf(destination, " %%v%d", a);
+        }
+        if (b >= 0)
+        {
+            fprintf(destination, ", %%v%d", b);
+        }
+        fputc('\n', destination);
+        source_debug_event("table-operation", result, spelling, debug_scopes[scope_depth], scope_depth, location);
+    }
+    return result;
+}
+
+/* Lower an exact decimal big constant; fractions, overflow and unsupported radices fail explicitly. */
+int source_table_constant(int negative)
+{
+    char text[258];
+    char *end;
+    intmax_t number;
+    int result = table_value(T_I64);
+    snprintf(text, sizeof(text), "%s%s", negative ? "-" : "", token);
+    errno = 0;
+    number = strtoimax(text, &end, 10);
+    if (errno || *end || number < INT64_MIN || number > INT64_MAX)
+    {
+        reject("table profile requires an exact decimal big literal");
+    }
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: i64 = const.i64 %" PRId64 "\n", result, (int64_t)number);
+        source_debug_event("constant", result, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return result;
+}
+
+/* Lower a quoted string or literal dotted member name into the same FIR string-key type. */
+int source_table_text(int quoted)
+{
+    int result = table_value(T_STRING);
+    if (!quoted && strlen(token) > 252)
+    {
+        reject("dotted table key exceeds FIR text limit");
+    }
+    if (!failed)
+    {
+        fprintf(destination,
+                "    %%v%d: string = const.string %s%s%s\n",
+                result,
+                quoted ? "" : "\"",
+                token,
+                quoted ? "" : "\"");
+        source_debug_event("constant", result, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return result;
+}
+
+/* Create a fresh mutable table owner; no source binding is acquired here. */
+int source_table_new(void)
+{
+    return table_operation(T_TABLE_BIG, "table.new", -1, -1);
+}
+
+/* Capture a typed owner/key location. Both numeric and text syntax use this single operation. */
+int source_table_index(int table, int key)
+{
+    if (table_values[table] != T_TABLE_BIG || (table_values[key] != T_I64 && table_values[key] != T_STRING))
+    {
+        reject("table indexing requires table of big and a numeric/string key");
+    }
+    return table_operation(T_TABLE_SLOT, "table.index", table, key);
+}
+
+/* Read a captured table location as big; runtime handles an absent key explicitly. */
+int source_table_load(int slot)
+{
+    return table_operation(T_I64, "table.load", slot, -1);
+}
+
+/* Select sequence length or all-key snapshot length from the static container type. */
+int source_table_len(int value)
+{
+    if (table_values[value] != T_TABLE_BIG && table_values[value] != T_KEYS)
+    {
+        reject("len requires a table or key snapshot in the table profile");
+    }
+    return table_operation(T_I64, table_values[value] == T_KEYS ? "keys.len" : "table.len", value, -1);
+}
+
+/* Copy all keys without exporting the mutable table representation. */
+int source_table_keys(int table)
+{
+    if (table_values[table] != T_TABLE_BIG)
+    {
+        reject("keysof requires table of big");
+    }
+    return table_operation(T_KEYS, "table.keys", table, -1);
+}
+
+/* Build explicit half-open bounds and lower an independent sequence slice. */
+int source_table_slice(int table, int first, int end)
+{
+    int range;
+    if (table_values[table] != T_TABLE_BIG || table_values[first] != T_I64 || table_values[end] != T_I64)
+    {
+        reject("table slice requires numeric bounds");
+    }
+    range = table_operation(T_BIG_RANGE, "range.big", first, end);
+    return table_operation(T_TABLE_BIG, "table.slice", table, range);
+}
+
+/* Type-check an explicit write; do not erase or reorder its memory effect. */
+void source_table_store(int slot, int value)
+{
+    if (table_values[slot] != T_TABLE_SLOT || table_values[value] != T_I64)
+    {
+        reject("table of big rejects a non-big value");
+    }
+    if (!failed)
+    {
+        fprintf(destination, "    table.store %%v%d, %%v%d\n", slot, value);
+        source_debug_event("table-store", slot, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+}
+
+/* Declare/infer or assign a typed local, preserving uninitialized-declaration rejection on reads.
+ * type is zero for inferred declarations/assignments; value -1 means a typed declaration only. */
+void source_table_bind(int name, int value, int type, int declaration)
+{
+    FirType actual = value >= 0 ? table_values[value] : (FirType)type;
+    if (declaration && table_bindings[name])
+    {
+        reject("duplicate table-profile declaration");
+    }
+    if (!declaration && !table_bindings[name])
+    {
+        reject("table-profile assignment before declaration");
+    }
+    if ((type && actual != (FirType)type) || (!declaration && table_bindings[name] != actual))
+    {
+        reject("table-profile binding type mismatch");
+    }
+    if (!failed)
+    {
+        table_bindings[name] = actual;
+        if (value >= 0)
+        {
+            source_bind(name, value, bindings[name] < 0);
+        }
+    }
+}
+
+/* Require a big result before emitting the existing trace/return entry harness. */
+void source_table_return(int value)
+{
+    if (table_values[value] != T_I64)
+    {
+        reject("table profile value() must return big");
+    }
+    source_return(value);
 }

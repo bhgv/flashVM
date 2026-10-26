@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.10.0 (numeric tutorial profiles; diagnostic schema 1)");
+        puts("fir1_source 0.11.0 (numeric and typed-table subsets; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -79,6 +79,7 @@ int main(int argc, char **argv)
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir\n"
              "                   [--module NAME] [--diagnostics-json] [-g DEBUG.json]\n"
              "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
+             "Limbo value(): big: typed table of big, dotted/string/numeric keys, len/keysof and explicit slices.\n"
              "AS3 const; Limbo lexical blocks and terminal if/else decisions in the value(): int tutorial ABI.\n"
              "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
              "Limits: 64 KiB, 255-byte tokens, 256 names, 1000 SSA values, depth 64.\n"
