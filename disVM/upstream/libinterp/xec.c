@@ -26,12 +26,18 @@ String	snil;			/* String known to be zero length */
 #define SR(r)	*((SREAL*)(R.r))
 
 OP(runt) {}
+
+
 /* Capture possibly unaligned real bits before evaluating and publishing the result. */
 OP(negf)
 {
 	REAL source;
 	REAL result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(REAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(REAL))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = -source;
 	memmove(R.d, &result, sizeof(result));
@@ -91,129 +97,221 @@ OP(movm)
 		memmove(R.d, R.s, n);
 	}
 }
+
+
 /* Preserve the active VM word-width address representation at any slot alignment. */
 OP(lea)
 {
 	WORD address;
 
-	address = (WORD)R.s;
+	/* The source is an address value; validate only the writable WORD slot. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
+	address = (WORD)(uintptr)R.s;
 	memmove(R.d, &address, sizeof(address));
 }
+
+
 /* Preserve overlapping scalar slots without requiring host alignment. */
 OP(movb)
 {
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(BYTE) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(BYTE))
+		error(exBounds);
 	memmove(R.d, R.s, sizeof(BYTE));
 }
+
+
 /* Preserve overlapping scalar slots without requiring host alignment. */
 OP(movw)
 {
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
 	memmove(R.d, R.s, sizeof(WORD));
 }
+
+
 /* Preserve overlapping scalar slots without requiring host alignment. */
 OP(movf)
 {
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(REAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(REAL))
+		error(exBounds);
 	memmove(R.d, R.s, sizeof(REAL));
 }
+
+
 /* Preserve overlapping scalar slots without requiring host alignment. */
 OP(movl)
 {
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(LONG) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(LONG))
+		error(exBounds);
 	memmove(R.d, R.s, sizeof(LONG));
 }
+
+
 /* Capture the BYTE source before converting into a possibly overlapping WORD slot. */
 OP(cvtbw)
 {
 	BYTE source;
 	WORD result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(BYTE))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the WORD source before converting into a possibly overlapping BYTE slot. */
 OP(cvtwb)
 {
 	WORD source;
 	BYTE result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(BYTE) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture possibly unaligned real bits before evaluating and publishing the result. */
 OP(cvtrf)
 {
 	SREAL source;
 	REAL result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(REAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(SREAL))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture possibly unaligned real bits before evaluating and publishing the result. */
 OP(cvtfr)
 {
 	REAL source;
 	SREAL result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(SREAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(REAL))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the WORD source before converting into a possibly overlapping SHORT slot. */
 OP(cvtws)
 {
 	WORD source;
 	SHORT result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(SHORT) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the SHORT source before converting into a possibly overlapping WORD slot. */
 OP(cvtsw)
 {
 	SHORT source;
 	WORD result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(SHORT))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the unaligned integer before converting with the current FP environment. */
 OP(cvtwf)
 {
 	WORD source;
 	REAL result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(REAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(addb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left + right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(addw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left + right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(addl)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left + right;
@@ -229,31 +327,52 @@ OP(addf)
 	result = left + right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(subb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left - right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(subw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left - right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(subl)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left - right;
@@ -269,27 +388,43 @@ OP(subf)
 	result = left - right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Preserve the VM's divide-by-zero exception for byte operands too. */
 OP(divb)
 {
 	BYTE dividend, divisor, result;
 
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
 	memmove(&dividend, R.m, sizeof(dividend));
 	result = dividend / divisor;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Avoid both zero division and the signed minimum / -1 C overflow case. */
 OP(divw)
 {
 	WORD dividend, divisor, result;
 
-	memmove(&dividend, R.m, sizeof(dividend));
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
+	memmove(&dividend, R.m, sizeof(dividend));
 	if(dividend < 0 && divisor == -1 &&
 	   (UWORD)dividend == ((UWORD)1 << (sizeof(WORD)*8-1)))
 		result = dividend;
@@ -297,15 +432,23 @@ OP(divw)
 		result = dividend / divisor;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Apply the same overflow-safe rules to the VM's big integer type. */
 OP(divl)
 {
 	LONG dividend, divisor, result;
 
-	memmove(&dividend, R.m, sizeof(dividend));
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
+	memmove(&dividend, R.m, sizeof(dividend));
 	if(dividend < 0 && divisor == -1 &&
 	   (ULONG)dividend == ((ULONG)1 << (sizeof(LONG)*8-1)))
 		result = dividend;
@@ -323,27 +466,43 @@ OP(divf)
 	result = left / right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Byte remainder by zero must not reach the host C operator. */
 OP(modb)
 {
 	BYTE dividend, divisor, result;
 
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
 	memmove(&dividend, R.m, sizeof(dividend));
 	result = dividend % divisor;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Avoid zero division and the signed minimum % -1 C overflow case. */
 OP(modw)
 {
 	WORD dividend, divisor, result;
 
-	memmove(&dividend, R.m, sizeof(dividend));
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
+	memmove(&dividend, R.m, sizeof(dividend));
 	if(dividend < 0 && divisor == -1 &&
 	   (UWORD)dividend == ((UWORD)1 << (sizeof(WORD)*8-1)))
 		result = 0;
@@ -351,15 +510,23 @@ OP(modw)
 		result = dividend % divisor;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Apply the same overflow-safe rules to big-integer remainder. */
 OP(modl)
 {
 	LONG dividend, divisor, result;
 
-	memmove(&dividend, R.m, sizeof(dividend));
+	/* A zero divisor wins before any dividend or output access. */
+	if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(divisor))
+		error(exBounds);
 	memmove(&divisor, R.s, sizeof(divisor));
 	if(divisor == 0)
 		error(exZdiv);
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(dividend))
+		error(exBounds);
+	memmove(&dividend, R.m, sizeof(dividend));
 	if(dividend < 0 && divisor == -1 &&
 	   (ULONG)dividend == ((ULONG)1 << (sizeof(LONG)*8-1)))
 		result = 0;
@@ -367,31 +534,52 @@ OP(modl)
 		result = dividend % divisor;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(mulb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left * right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(mulw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left * right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture unaligned operands and keep arithmetic independent of signed overflow. */
 OP(mull)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left * right;
@@ -407,91 +595,154 @@ OP(mulf)
 	result = left * right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(andb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left & right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(andw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left & right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(andl)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left & right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(xorb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left ^ right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(xorw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left ^ right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(xorl)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left ^ right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(orb)
 {
 	BYTE left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left | right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(orw)
 {
 	UWORD left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left | right;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture integer operands before evaluating modular arithmetic or bit operations. */
 OP(orl)
 {
 	ULONG left, right, result;
 
+	/* Bound all decoded spans before reading either potentially aliased operand. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(result) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(right) ||
+	   R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(left))
+		error(exBounds);
 	memmove(&left, R.m, sizeof(left));
 	memmove(&right, R.s, sizeof(right));
 	result = left | right;
@@ -895,25 +1146,52 @@ OP(bgel)
 		JMP(d);
 }
 /* Compare captured real values and read a branch target only when it is taken. */
+/* condition selects EQ/NE/LT/LE/GT/GE (0..5); REG.s/m borrow REAL input slots
+ * and REG.d borrows a native target slot. No ownership transfer or blocking.
+ * Malformed used slots raise exBounds before publication; a false comparison
+ * ignores its target. Successful taken predicates alone replace REG.PC.
+ */
 static void
 branchreal(int condition)
 {
-	REAL left, right;
-	int take;
+    REAL left, right;
+    int take;
 
-	memmove(&left, R.s, sizeof(left));
-	memmove(&right, R.m, sizeof(right));
-	take = 0;
-	switch(condition){
-	case 0: take = left == right; break;
-	case 1: take = left != right; break;
-	case 2: take = left < right; break;
-	case 3: take = left <= right; break;
-	case 4: take = left > right; break;
-	case 5: take = left >= right; break;
-	}
-	if(take)
-		memmove(&R.PC, R.d, sizeof(R.PC));
+    /* Bound both source slots before either floating-point input is read. */
+    if(R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(left) ||
+       R.m == nil || R.m == H || (uintptr)R.m > (uintptr)-1-sizeof(right)){
+        error(exBounds);
+    }
+    memmove(&left, R.s, sizeof(left));
+    memmove(&right, R.m, sizeof(right));
+    take = 0;
+    switch(condition){
+    case 0:
+        take = left == right;
+        break;
+    case 1:
+        take = left != right;
+        break;
+    case 2:
+        take = left < right;
+        break;
+    case 3:
+        take = left <= right;
+        break;
+    case 4:
+        take = left > right;
+        break;
+    case 5:
+        take = left >= right;
+        break;
+    }
+    if(take){
+        /* A false predicate must not even validate its unused target slot. */
+        if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(R.PC)){
+            error(exBounds);
+        }
+        memmove(&R.PC, R.d, sizeof(R.PC));
+    }
 }
 
 /* Equality remains false for unordered real operands. */
@@ -973,42 +1251,66 @@ OP(bgtc) { branchstring(4); }
 /* Apply the captured string greater-or-equal predicate without aligned pointer casts. */
 OP(bgec) { branchstring(5); }
 OP(iexit){ error(""); }
+
+
 /* Capture the WORD source before converting into a possibly overlapping LONG slot. */
 OP(cvtwl)
 {
 	WORD source;
 	LONG result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(LONG) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(WORD))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the LONG source before converting into a possibly overlapping WORD slot. */
 OP(cvtlw)
 {
 	LONG source;
 	WORD result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(LONG))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Capture the unaligned integer before converting with the current FP environment. */
 OP(cvtlf)
 {
 	LONG source;
 	REAL result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(REAL) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(LONG))
+		error(exBounds);
 	memmove(&source, R.s, sizeof(source));
 	result = source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Round first, then reject non-finite or out-of-range big conversions. */
 OP(cvtfl)
 {
 	REAL f;
 	LONG result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(LONG) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(REAL))
+		error(exBounds);
 	memmove(&f, R.s, sizeof(f));
 	f = f < 0 ? f - .5 : f + .5;
 	if(!(f >= -9223372036854775808.0 && f < 9223372036854775808.0))
@@ -1016,12 +1318,18 @@ OP(cvtfl)
 	result = (LONG)f;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
 /* Check the active VM word width before publishing the rounded integer. */
 OP(cvtfw)
 {
 	REAL f;
 	WORD result;
 
+	/* Reject malformed slots before reading values or changing FP status. */
+	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(WORD) ||
+	   R.s == nil || R.s == H || (uintptr)R.s > (uintptr)-1-sizeof(REAL))
+		error(exBounds);
 	memmove(&f, R.s, sizeof(f));
 	f = f < 0 ? f - .5 : f + .5;
 	if(sizeof(WORD) == 4){

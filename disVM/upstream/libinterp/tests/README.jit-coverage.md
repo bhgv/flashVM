@@ -1,5 +1,9 @@
 # 64-bit JIT opcode availability checkpoint
 
+Latest 24-command integer ALU/division preflight: [README.integer-slot-preflight.md](README.integer-slot-preflight.md).
+
+Latest 18-command transfer/conversion preflight: [README.transfer-slot-preflight.md](README.transfer-slot-preflight.md).
+
 Latest eight-command decoded-slot fixes: [README.list-slot-preflight.md](README.list-slot-preflight.md).
 
 Latest ownership preflight fixes and validation: [README.owner-preflight.md](README.owner-preflight.md).

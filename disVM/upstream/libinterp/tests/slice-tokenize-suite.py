@@ -8,6 +8,8 @@ import subprocess
 import sys
 
 CORE = [
+    'libinterp/tests/integer-slot-native.py',
+    'libinterp/tests/transfer-slot-native.py',
     'libinterp/tests/list-slot-native.py',
     'libinterp/tests/indc-preflight.py',
     'libinterp/tests/mapped-cons-native.py',
@@ -120,6 +122,7 @@ CORE = [
     'libinterp/tests/fixed-coeff.py',
     'libinterp/tests/shift-div.py',
     'libinterp/tests/shift-slot-native.py',
+    'libinterp/tests/arithmetic-slot-native.py',
     'libinterp/tests/integer-real.py',
     'libinterp/tests/real-arithmetic.py',
     'libinterp/tests/vm-addresses.py',
@@ -142,6 +145,8 @@ CORE = [
     'limbo/tests/case-max.py',
 ]
 JIT = [
+    'libinterp/tests/integer-slot-jit.py',
+    'libinterp/tests/transfer-slot-jit.py',
     'libinterp/tests/list-slot-jit.py',
     'libinterp/tests/indc-preflight-jit.py',
     'libinterp/tests/string-case-jit.py',
@@ -196,6 +201,7 @@ JIT = [
     'libinterp/tests/mapped-copy-jit.py',
     'libinterp/tests/owner-jit.py',
     'libinterp/tests/shift-slot-jit.py',
+    'libinterp/tests/arithmetic-slot-jit.py',
     'libinterp/tests/owner-optimized.py',
     'libinterp/tests/386-byte-div.py',
     'libinterp/tests/386-types.py',

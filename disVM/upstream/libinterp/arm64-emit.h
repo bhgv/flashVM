@@ -2279,6 +2279,9 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(p.alu) a64put(&b, 0x9acf0d8c);
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, abi->wordbytes);
 	}else if(p.kind == LeafRealResize){
+		/* Preflight the complete result and source before loads or FP effects. */
+		a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+		a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, p.input, -1);
 		/* FPCR/FPSR supply the same conversion environment as native C. */
 		a64ptr(&b, 9, abi->s);
 		a64put(&b, p.input == 4 ? 0xbd400120 : 0xfd400120);
@@ -2286,6 +2289,9 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		a64ptr(&b, 11, abi->d);
 		a64put(&b, p.bytes == 4 ? 0xbd000160 : 0xfd000160);
 	}else if(p.kind == LeafIntegerReal){
+		/* Preflight the complete result and source before loads or FP effects. */
+		a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+		a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, p.input, -1);
 		/* SCVTF rounds every signed input with the active C FP environment. */
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, p.input);
 		if(p.input == 4)a64put(&b, 0x93407d8c);
@@ -2481,6 +2487,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		b.code[done] |= (b.n-done)<<5;
 		a64ptr(&b, 11, abi->d); a64put(&b, 0xfd000160);
 	}else if(p.kind == LeafRealInteger){
+		/* Ordinary real-to-integer casts have no scale operand. */
+		if(!p.alu){
+			a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+			a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, 8, -1);
+		}
 		/* Reject unsupported bits without FP exceptions or destination writes. */
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
 		if(p.alu){
@@ -2522,6 +2533,11 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 			p.alu == 3 ? 0x1e611800 : 0x1e610800);
 		a64ptr(&b, 11, abi->d); a64put(&b, 0xfd000160); /* str d0, [x11] */
 	}else if(p.kind == LeafMove || p.kind == LeafAddress || p.kind == LeafNegReal){
+		/* Preflight the complete result and source before loads or FP effects. */
+		a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+		if(p.kind != LeafAddress){
+			a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, p.input, -1);
+		}
 		a64ptr(&b, 9, abi->s);
 		if(p.kind != LeafAddress) a64load(&b, 12, 9, p.input);
 		else a64put(&b, 0xaa0903ec); /* mov x12, x9 */
@@ -2531,46 +2547,60 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(p.bytes == 8 && (p.input == 2 || (p.input == 4 && op == ICVTWL))) a64put(&b, 0x93407d8c); /* sxtw x12, w12 */
 		a64ptr(&b, 11, abi->d); a64store(&b, 12, p.bytes);
 	}else if(p.kind == LeafShift || p.kind == LeafDivide){
+		a64ptr(&b, 9, abi->s);
+		a64pcspan(&b, 9, p.kind == LeafShift ? abi->wordbytes : p.bytes, -1);
+		a64load(&b, 12, 9, p.kind == LeafShift ? abi->wordbytes : p.bytes);
+		if(p.kind == LeafShift){
+			/* Validate the complete count before accessing a possibly invalid value span. */
+			a64put(&b, 0xf100001fU | (p.bytes*8)<<10 | 12<<5);
+			a64put(&b, 0x54000063); /* b.lo valid */
+		}else
+			a64put(&b, 0xb500006c); /* cbnz x12, valid */
+		a64put(&b, 0x52800000); a64put(&b, 0xd65f03c0);
+		/* x4 is guard scratch; retain the count/divisor in x12 until the value read. */
+		a64ptr(&b, 10, abi->m); a64pcspan(&b, 10, p.bytes, -1);
+		a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, p.bytes);
+		width = p.bytes == 8 ? 0x80000000U : 0;
+		if(p.kind == LeafShift){
+			a64put(&b, (p.alu == 0 ? 0x1ac02000U : p.alu == 1 ? 0x1ac02400U : 0x1ac02800U) |
+				width | 12<<16 | 13<<5 | 13);
+			a64ptr(&b, 11, abi->d); a64store(&b, 13, p.bytes);
+		}else{
+			/* SDIV defines minimum/-1; MSUB gives the VM's zero remainder. */
+			a64put(&b, 0x1ac00c00U | width | 12<<16 | 13<<5 | 14);
+			if(p.alu) a64put(&b, 0x1b008000U | width | 12<<16 | 13<<10 | 14<<5 | 14);
+			a64ptr(&b, 11, abi->d); a64store(&b, 14, p.bytes);
+		}
+	}else if(p.kind == LeafRealBranch){
+        /* FCMP observes FPCR flushing and reads the target only for a true predicate. */
         a64ptr(&b, 9, abi->s);
-        if(p.kind == LeafShift){
-            a64pcspan(&b, 9, abi->wordbytes, -1);
+        a64pcspan(&b, 9, 8, -1);
+        a64ptr(&b, 10, abi->m);
+        a64pcspan(&b, 10, 8, -1);
+        a64load(&b, 12, 9, 8);
+        a64realguard(&b, 12);
+        a64load(&b, 13, 10, 8);
+        a64realguard(&b, 13);
+        a64put(&b, 0x9e670180);
+        a64put(&b, 0x9e6701a1);
+        a64put(&b, 0x1e612000);
+        other = b.n;
+        a64put(&b, 0x54000000U | inverse[p.condition]);
+        a64ptr(&b, 11, abi->d);
+        a64pcspan(&b, 11, 8, -1);
+        a64load(&b, 12, 11, 8);
+        a64put(&b, 0xf9000000U | (u32int)(abi->pc/8)<<10 | 12);
+        if(other < LeafMax){
+            b.code[other] |= (b.n-other)<<5;
         }
-        a64load(&b, 12, 9, p.kind == LeafShift ? abi->wordbytes : p.bytes);
-        if(p.kind == LeafShift){
-            /* Validate the complete count before accessing a possibly invalid value span. */
-            a64put(&b, 0xf100001fU | (p.bytes*8)<<10 | 12<<5);
-            a64put(&b, 0x54000063); /* b.lo valid */
-        }else
-            a64put(&b, 0xb500006c); /* cbnz x12, valid */
-        a64put(&b, 0x52800000); a64put(&b, 0xd65f03c0);
-        if(p.kind == LeafShift){
-            /* x4 is guard scratch; the complete count remains live in x12. */
-            a64ptr(&b, 10, abi->m);
-            a64pcspan(&b, 10, p.bytes, -1);
-            a64ptr(&b, 11, abi->d);
-            a64pcspan(&b, 11, p.bytes, -1);
-        }
-        a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, p.bytes);
-        width = p.bytes == 8 ? 0x80000000U : 0;
-        if(p.kind == LeafShift){
-            a64put(&b, (p.alu == 0 ? 0x1ac02000U : p.alu == 1 ? 0x1ac02400U : 0x1ac02800U) |
-                width | 12<<16 | 13<<5 | 13);
-            a64ptr(&b, 11, abi->d); a64store(&b, 13, p.bytes);
-        }else{
-            /* SDIV defines minimum/-1; MSUB gives the VM's zero remainder. */
-            a64put(&b, 0x1ac00c00U | width | 12<<16 | 13<<5 | 14);
-            if(p.alu) a64put(&b, 0x1b008000U | width | 12<<16 | 13<<10 | 14<<5 | 14);
-            a64ptr(&b, 11, abi->d); a64store(&b, 14, p.bytes);
-        }
-    }else if(p.kind == LeafRealBranch){
-		/* FCMP observes FPCR flushing and reads the target only for a true predicate. */
-		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8); a64realguard(&b, 12);
-		a64ptr(&b, 10, abi->m); a64load(&b, 13, 10, 8); a64realguard(&b, 13);
-		a64put(&b, 0x9e670180); a64put(&b, 0x9e6701a1); a64put(&b, 0x1e612000);
-		a64put(&b, 0x54000080U | inverse[p.condition]);
-		a64ptr(&b, 11, abi->d); a64load(&b, 12, 11, 8);
-		a64put(&b, 0xf9000000U | (u32int)(abi->pc/8)<<10 | 12);
-	}else if(p.kind == LeafAlu || p.kind == LeafBranch){
+    }else if(p.kind == LeafAlu || p.kind == LeafBranch){
+		if(p.kind == LeafAlu){
+			/* No operand read may precede complete source/result span validation. */
+			a64ptr(&b, 11, abi->d); a64pcspan(&b, 11, p.bytes, -1);
+			a64ptr(&b, 9, abi->s); a64pcspan(&b, 9, p.bytes, -1);
+			a64ptr(&b, 10, abi->m); a64pcspan(&b, 10, p.bytes, -1);
+		}
 		a64ptr(&b, 9, abi->s); a64ptr(&b, 10, abi->m);
 		a64load(&b, 12, 9, p.bytes);
 		a64load(&b, 13, 10, p.bytes);
