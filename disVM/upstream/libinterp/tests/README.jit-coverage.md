@@ -2,14 +2,14 @@
 
 The production sizing emitters report 175 opcode slots. `INOP` is invalid and
 `IECLR` is unused, leaving 173 active commands. AMD64 and ARM64 now have native
-paths for 139 commands (80.3%); 34 remain on the interpreter path. RV64 profiles
+paths for 142 commands (82.1%); 31 remain on the interpreter path. RV64 profiles
 retain their earlier counts. WORD32/native-pointer and legacy WORD64
 configurations have the same opcode counts at this checkpoint.
 
 | Backend/profile | Active commands | Native path | C interpreter path |
 | --- | ---: | ---: | ---: |
-| AMD64 | 173 | 139 | 34 |
-| ARM64 | 173 | 139 | 34 |
+| AMD64 | 173 | 142 | 31 |
+| ARM64 | 173 | 142 | 31 |
 | RV64 + M | 173 | 103 | 70 |
 | RV64 + Zmmul | 173 | 90 | 83 |
 | RV64I | 173 | 87 | 86 |
@@ -337,3 +337,77 @@ ctypes probes and publication/fallback fixtures are updated together.
 [Self-load retain checks](README.self-load-retains.md) also prevent Module/MP
 counter overflow before linking, without changing failure ownership contracts.
 RISC-V profiles remain 103/70, 90/83 and 87/86.
+
+## Unique pointer-free root checkpoint
+
+[Unique array slices](README.array-view.md) extends AMD64/ARM64 SLICEA to unique
+pointer-free roots, preserving original allocation ownership through repeated
+narrowing, copying and release. Mapped roots and shared owners retain C paths.
+[Array-copy source validation](README.array-copy-source.md) rejects dead owners
+and invalid nonempty byte spans before allocation. Counts remain 139/34 on
+AMD64/ARM64 and 103/70, 90/83, 87/86 on RV64 M/Zmmul/I. ARM64 execution is
+emulated; guarded command counts do not imply complete opcode semantics.
+
+## Signed integer formatting checkpoint
+
+[Integer-to-string formatting](README.integer-format.md) adds CVTWC and CVTLC
+on AMD64/ARM64 for unique ASCII destinations with at least 24 bytes of capacity.
+Both now provide 141 guarded commands / 32 remaining. The C paths reuse the same
+storage and reject dead owners or invalid output metadata before allocation.
+Shared/Rune/small/H destinations retain construction paths. RV64 M, Zmmul and I
+remain 103/70, 90/83 and 87/86. Both WORD models share these counts; ARM64
+instruction execution is emulated.
+
+## Exact-capacity formatting and conversion lifetime checkpoint
+
+[Integer formatting](README.integer-format.md) now counts sign/digits before
+publication on AMD64/ARM64, admitting unique ASCII destinations down to exact
+one-character capacity. ARM64 shares a rejection stub; both leaves keep the
+64-unit limit without layout/ABI changes. Counts stay 141/32 on both backends,
+and RV64 M/Zmmul/I stay 103/70, 90/83, 87/86.
+[Conversion-source preflight](README.conversion-sources.md) rejects dead
+string/array/root owners and native byte-span wrap before reading or allocating;
+the public c2string helper also validates native spans independently.
+
+## Guarded raw-copy span checkpoint
+
+[Raw-copy spans](README.raw-copy-spans.md) adds source/destination native range
+checks to C MOVM/HEADM and AMD64/ARM64/RV64 leaves, then broadens the native
+copy loops from 128 to 256 bytes. HEADM validates payload-offset formation
+before data access. Empty-copy and owner/count error precedence remain intact.
+All three backends retain the 64-unit limit without layout/ABI changes.
+Counts remain AMD64/ARM64 141/32 and RV64 M/Zmmul/I 103/70, 90/83, 87/86.
+
+## Cycle-safe bounded list-length checkpoint
+
+[Cycle-safe list lengths](README.list-length.md) adds allocation-free Brent
+cycle checks to C LENL and AMD64/ARM64/RV64 leaves. Native scans expand from
+128 to 256 nodes while preserving write-free fallback, one link read per node
+and the 64-unit bound. C also bounds the full unsigned count before publication.
+[Raise lifetime preflight](README.raise-lifetime.md) rejects dead/saturated
+exception owners and invalid message Types before preparation or publication.
+Counts stay AMD64/ARM64 141/32 and RV64 M/Zmmul/I 103/70, 90/83, 87/86.
+
+## Rune-buffer formatting checkpoint
+
+[Reusable Rune formatting](README.rune-format.md) extends AMD64/ARM64 CVTWC and
+CVTLC to unique Rune allocations with representable byte capacity. New start/end
+address guards precede converted max publication. Backwards final-position digit
+emission keeps the 64-unit bound without layout/ABI changes. C mirrors ownership
+and capacity semantics. Counts stay AMD64/ARM64 141/32 and RV64 M/Zmmul/I
+103/70, 90/83, 87/86.
+
+The real-format checkpoint adds guarded ICVTFC paths on AMD64/ARM64 for +0
+and signed powers 2^0 through 2^19. Other real values retain C formatting.
+See [README.real-format.md](README.real-format.md) for ownership, FP-state and
+failure-ordering checks. The core checkpoint now passes 99 host drivers.
+
+## Checked append spans checkpoint
+
+[Checked append spans](README.append-spans.md) adds complete native address-range
+checks to C addstring and AMD64/ARM64 ADDC, then expands matching ASCII/Rune native
+appends from 128 to 256 source characters. Adjacent and nonadjacent metadata
+remain within the 64-unit limit. New C reduced-address and emulated top-address
+regressions fail on the parent implementations. The core checkpoint now has
+100 host drivers. Counts remain AMD64/ARM64 142/31 and RV64 M/Zmmul/I 103/70,
+90/83 and 87/86.

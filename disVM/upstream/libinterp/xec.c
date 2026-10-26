@@ -63,7 +63,9 @@ OP(movpc)
 	target = (Inst*)((uintptr)ml->m->prog+offset);
 	memmove(R.d, &target, sizeof(target));
 }
-/* Capture possibly four-byte-aligned lengths before validating or copying. */
+
+
+/* Capture counts and reject invalid nonempty native spans before raw copying. */
 OP(movm)
 {
 	WORD n;
@@ -71,8 +73,14 @@ OP(movm)
 	memmove(&n, R.m, sizeof(n));
 	if(n < 0)
 		error(exBounds);
-	if(n != 0)
+	if(n != 0){
+		if(R.s == nil || R.s == H || R.d == nil || R.d == H)
+			error(exNilref);
+		if((uintptr)R.s > (uintptr)-1-(uintptr)n ||
+		   (uintptr)R.d > (uintptr)-1-(uintptr)n)
+			error(exBounds);
 		memmove(R.d, R.s, n);
+	}
 }
 /* Preserve the active VM word-width address representation at any slot alignment. */
 OP(lea)
@@ -1956,21 +1964,33 @@ OP(lena)
 		l = a->len;
 	memmove(R.d, &l, sizeof(l));
 }
-/* Validate each list link and keep operand accesses independent of alignment. */
+
+
+/* Detect cycles and bound the count before publishing an alignment-safe list length. */
 OP(lenl)
 {
-	WORD l;
-	List *a;
+	UWORD count;
+	WORD result;
+	List *a, *checkpoint;
 
 	memmove(&a, R.s, sizeof(a));
-	l = 0;
-	while(a != H) {
+	checkpoint = a;
+	count = 0;
+	while(a != H){
 		if(a == nil)
 			error(exNilref);
-		l++;
+		if(count == ((UWORD)~0>>1))
+			error(exBounds);
+		count++;
 		a = a->tail;
+		if(a == checkpoint)
+			error(exHeap);
+		/* Brent checkpoints at counts 1, 3, 7, ... require no extra link reads. */
+		if((count & (count+1)) == 0)
+			checkpoint = a;
 	}
-	memmove(R.d, &l, sizeof(l));
+	result = count;
+	memmove(R.d, &result, sizeof(result));
 }
 /* Validate and retain buffered storage before changing its ring or destination. */
 static int
@@ -2428,18 +2448,32 @@ OP(headf)
 	l = listhead();
 	memmove(R.d, l->data, sizeof(REAL));
 }
-/* Validate both the list reference and raw payload size before copying. */
+
+
+/* Validate the list, payload address and destination span before raw head copying. */
 OP(headm)
 {
 	List *l;
 	WORD n;
+	uintptr source, offset;
 
 	l = listhead();
 	memmove(&n, R.m, sizeof(n));
 	if(n < 0)
 		error(exBounds);
-	if(n != 0)
-		memmove(R.d, l->data, n);
+	if(n != 0){
+		if(R.d == nil || R.d == H)
+			error(exNilref);
+		/* Form the payload address only after checking the native header offset. */
+		source = (uintptr)l;
+		offset = offsetof(List, data);
+		if(source > (uintptr)-1-offset)
+			error(exBounds);
+		source += offset;
+		if(source > (uintptr)-1-(uintptr)n || (uintptr)R.d > (uintptr)-1-(uintptr)n)
+			error(exBounds);
+		memmove(R.d, (void*)source, n);
+	}
 }
 /* Validate and retain head storage before the destination can release its list. */
 OP(headmp)
@@ -2538,8 +2572,8 @@ OP(slicea)
 		error(exHeap);
 	if(t->ref <= 0)
 		error(exHeap);
-	/* A unique view already owns its root and Type; narrowing needs no retains. */
-	if(ds->root != H && D2H(ds)->ref == 1){
+	/* A unique view or pointer-free root can narrow without retiring elements. */
+	if(D2H(ds)->ref == 1 && (ds->root != H || t->np == 0)){
 		ds->len = n;
 		ds->data = data;
 		return;
@@ -2659,6 +2693,8 @@ OP(badop)
 {
 	error(exOp);
 }
+
+
 /* Validate the owner and prepare its message before publishing an exception value. */
 OP(iraise)
 {
@@ -2672,12 +2708,21 @@ OP(iraise)
 	if(v == H || v == nil)
 		error(exNilref);
 	h = D2H(v);
+	/* Reserve the exception owner before message preparation can allocate or write a cache. */
+	if(h->ref == 0 || h->ref == (ulong)-1)
+		error(exHeap);
 	if(h->t == &Tstring)
 		message = v;
 	else{
 		if(h->t == nil || h->t == H || h->t->size < (int)sizeof(message))
 			error(exType);
 		memmove(&message, v, sizeof(message));
+	}
+	if(message != H && message != nil){
+		if(D2H(message)->t != &Tstring)
+			error(exType);
+		if(D2H(message)->ref == 0)
+			error(exHeap);
 	}
 	text = string2c(message);
 	p = currun();

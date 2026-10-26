@@ -105,6 +105,14 @@ if(BUILD_TESTING)
     return-slots
     return-layouts
     array-view-layouts
+    array-copy-source
+    conversion-sources
+    raw-copy-layouts
+    integer-format-layouts
+    list-length-layouts
+    real-format-layouts
+    append-span-c
+    append-layouts
     raise-slots
     string-slots
     sys-print
@@ -145,7 +153,7 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   if(backend STREQUAL "amd64")
-    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native string-append-native string-slice-native frame-native mframe-native return-native mcall-native call-return-native array-view-native)
+    foreach(driver real-power-native real-to-integer-native real-branch-native goto-native owner-native mapped-copy-native decimal-native string-store-native string-append-native string-slice-native frame-native mframe-native return-native mcall-native call-return-native array-view-native raw-copy-native integer-format-native list-length-native real-format-native)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}"
         "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
@@ -175,7 +183,7 @@ if(BUILD_TESTING)
       RESULT_VARIABLE have_instruction_emulators OUTPUT_QUIET ERROR_QUIET)
   endif()
   if(have_instruction_emulators EQUAL 0)
-    foreach(driver array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
+    foreach(driver raw-copy-jit integer-format-jit list-length-jit real-format-jit append-spans-jit array-view-jit amd64-field-registers decimal-jit string-store-jit string-append-jit string-slice-jit frame-jit mframe-jit return-jit mcall-jit mapped-copy-jit)
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
         ENVIRONMENT "${emulator_environment}")

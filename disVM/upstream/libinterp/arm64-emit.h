@@ -468,7 +468,8 @@ a64stringappend(A64Buf *b, LeafLayout *a)
 
 	if(a->stringlen < 0 || a->stringlen > 2047 || a->stringlen%4 ||
 	   a->stringmax < 0 || a->stringmax > 2047 || a->stringmax%4 ||
-	   a->stringdata < 0 || a->stringdata > 2047 ||
+	   a->stringlen == a->stringmax || a->stringdata < a->stringlen+4 ||
+	   a->stringdata < a->stringmax+4 || a->stringdata > 2047 ||
 	   a->heapref <= 0 || a->heapref > 255 || a->heapref%8 || a->refbytes != 8)
 		return 0;
 	fallback = b->n+1;
@@ -485,21 +486,31 @@ a64stringappend(A64Buf *b, LeafLayout *a)
 	a64put(b, 0xf10005df); a64defer(b, 0x54000001, fallback);
 	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 13<<5 | 3);
 	a64defer(b, 0xb4000003, fallback);
-	a64wordfield(b, 14, 12, a->stringlen, 4);
+	if(a->stringmax == a->stringlen+4 && a->stringlen <= 252)
+		a64put(b, 0x69400000U | (u32int)(a->stringlen/4)<<15 | 4<<10 | 12<<5 | 14); // LDPSW x14,x4,[x12].
+	else{
+		a64wordfield(b, 14, 12, a->stringlen, 4);
+		a64wordfield(b, 4, 12, a->stringmax, 4);
+	}
 	a64put(b, 0x93400000U | 63<<16 | 63<<10 | 14<<5 | 6);
 	a64put(b, 0xf10001df);
 	a64put(b, 0xda80a400U | 14<<16 | 14<<5 | 14);
-	a64wordfield(b, 15, 13, a->stringlen, 4);
-	a64put(b, 0x93400000U | 63<<16 | 63<<10 | 15<<5 | 3);
-	a64put(b, 0xeb06007f); a64defer(b, 0x54000001, fallback);
+	if(a->stringmax == a->stringlen+4 && a->stringlen <= 252)
+		a64put(b, 0x69400000U | (u32int)(a->stringlen/4)<<15 | 3<<10 | 13<<5 | 15); // LDPSW x15,x3,[x13].
+	else{
+		a64wordfield(b, 15, 13, a->stringlen, 4);
+		a64wordfield(b, 3, 13, a->stringmax, 4);
+	}
+	a64put(b, 0xca0601e2); // EOR x2,x15,x6: representations must have equal signs.
+	a64put(b, 0xb7f80002U | ((fallback-b->n)&0x3fff)<<5); // TBNZ x2,#63,fallback.
 	a64put(b, 0xf10001ff);
 	a64put(b, 0xda80a400U | 15<<16 | 15<<5 | 15);
-	a64put(b, 0xf10201ff); a64defer(b, 0x54000008, fallback);
-	a64wordfield(b, 3, 13, a->stringmax, 4);
-	a64put(b, 0xeb0301ff); a64defer(b, 0x5400000c, fallback);
-	a64wordfield(b, 4, 12, a->stringmax, 4);
-	a64put(b, 0x8b0f01c5);
-	a64put(b, 0xeb0400bf); a64defer(b, 0x5400000c, fallback);
+	a64put(b, 0x8b0f01c5); // ADD x5,x14,x15: combined character count.
+	/* Failed predicates retain LT through NZCV=8, sharing one rejection branch. */
+	a64put(b, 0xf10401ff); // CMP x15,#256.
+	a64put(b, 0xfa4f9068); // CCMP x3,x15,#8,ls: source capacity.
+	a64put(b, 0xfa45a088); // CCMP x4,x5,#8,ge: destination capacity.
+	a64defer(b, 0x5400000b, fallback);
 	/* Preserve signed logical length before converting character offsets to bytes. */
 	a64put(b, 0xf10000df);
 	a64put(b, 0xda80a400U | 5<<16 | 5<<5 | 5);
@@ -511,14 +522,18 @@ a64stringappend(A64Buf *b, LeafLayout *a)
 	a64put(b, 0x9100018bU | (u32int)a->stringdata<<10);
 	a64put(b, 0x8b0e016b);
 	a64put(b, 0x8b0f0123);
+	/* End-to-owner comparisons cover both base-offset and extent overflow. */
+	a64put(b, 0xeb0d007f); a64defer(b, 0x54000003, fallback);
+	a64put(b, 0x8b0f0164); // ADD x4,x11,x15: destination end.
+	a64put(b, 0xeb0c009f); a64defer(b, 0x54000003, fallback);
 	a64put(b, 0xeb09017f);
 	overlap = b->n; a64put(b, 0x54000009);
 	a64put(b, 0xeb03017f); a64defer(b, 0x54000003, fallback);
 	b->code[overlap] |= (b->n-overlap)<<5;
 	empty = b->n; a64put(b, 0xb400000f);
 	loop = b->n;
-	a64load(b, 3, 9, 1); a64store(b, 3, 1);
-	a64put(b, 0x91000529); a64put(b, 0x9100056b);
+	a64put(b, 0x38401523); // LDRB w3,[x9],#1.
+	a64put(b, 0x38001563); // STRB w3,[x11],#1.
 	a64put(b, 0xf10005ef);
 	a64put(b, 0x54000001U | ((loop-b->n)&0x7ffff)<<5);
 	if(b->n > LeafMax)
@@ -633,6 +648,71 @@ a64stringstore(A64Buf *b, LeafLayout *a)
 	if(b->n > LeafMax)
 		return 0;
 	b->code[unchanged] |= (b->n-unchanged)<<5;
+	return 1;
+}
+
+
+/* Count digits, validate byte capacity, then fill unique ASCII or Rune storage backwards. */
+static int
+a64formatinteger(A64Buf *b, LeafLayout *a, LeafOp *op)
+{
+	int digits, scaled, storemax, fallback, count, decoded;
+
+	if(a->stringlen < 0 || a->stringlen > 2047 || a->stringlen%4 ||
+	   a->stringmax < 0 || a->stringmax > 2047 || a->stringmax%4 ||
+	   a->stringlen == a->stringmax || a->stringdata < a->stringlen+4 ||
+	   a->stringdata < a->stringmax+4 || a->stringdata > 2047 ||
+	   a->heapref <= 0 || a->heapref > 128 || a->heapref%8 || a->refbytes != 8) return 0;
+	/* All rejects share one return so the counting pass keeps the 64-unit bound. */
+	fallback=b->n+1;
+	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
+	a64ptr(b, 9, a->s); a64load(b, 12, 9, op->bytes);
+	if(op->bytes == 4) a64put(b, 0x93407d8c); // Sign-extend the complete WORD32 input.
+	if(op->alu){
+		decoded=b->n; a64put(b, 0xb400000c);
+		a64put(b, 0xd340cd82); a64defer(b, 0xb5000002, fallback); // Fraction bits must be zero.
+		a64put(b, 0xd374f983); a64put(b, 0xd10ffc63);
+		a64put(b, 0xf1004c7f); a64defer(b, 0x54000008, fallback); // Exponent 0..19.
+		a64put(b, 0xd2800022); a64put(b, 0x9ac32042);
+		a64put(b, 0xf241019f); a64put(b, 0xda82544c); // Apply the original sign to the magnitude.
+		b->code[decoded] |= (b->n-decoded)<<5;
+	}
+	a64ptr(b, 11, a->d); a64load(b, 14, 11, 8);
+	a64put(b, 0x910005c2); a64put(b, 0xf100045f); a64defer(b, 0x54000009, fallback);
+	a64wordfield(b, 7, 14, a->stringlen, 4);
+	a64put(b, 0xf10000ff); a64put(b, 0xda87a4e2); // x2 is absolute length; x7 preserves representation.
+	a64wordfield(b, 3, 14, a->stringmax, 4);
+	a64put(b, 0xeb02007f); a64defer(b, 0x5400000b, fallback);
+	scaled=b->n; a64put(b, 0xb6f80007);
+	a64put(b, 0xd37ef463); // Rune capacity becomes byte capacity only if representable.
+	a64put(b, 0xd35ffc62); a64defer(b, 0xb5000002, fallback);
+	b->code[scaled] |= (b->n-scaled)<<5;
+	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 14<<5 | 2);
+	a64put(b, 0xf100045f); a64defer(b, 0x54000001, fallback);
+	/* x6 counts an unsigned magnitude while x12 retains the signed input. */
+	a64put(b, 0xf100019f);
+	a64put(b, 0xda8ca586); a64put(b, 0x9a9fa7e4);
+	a64put(b, 0xd280014d);
+	count=b->n;
+	a64put(b, 0x9acd08c6); a64put(b, 0x91000484);
+	a64put(b, 0xb5000006U | ((count-b->n)&0x7ffff)<<5);
+	a64put(b, 0xeb04007f); a64defer(b, 0x5400000b, fallback);
+	/* Form the byte payload and its end before publishing converted capacity. */
+	a64put(b, 0xb10001cbU | (u32int)a->stringdata<<10); a64defer(b, 0x54000002, fallback);
+	a64put(b, 0xab040169); a64defer(b, 0x54000002, fallback);
+	storemax=b->n; a64put(b, 0xb6f80007);
+	a64put(b, 0xb9000000U | (u32int)(a->stringmax/4)<<10 | 14<<5 | 3);
+	b->code[storemax] |= (b->n-storemax)<<5;
+	a64put(b, 0x3900013f); // Terminate at the end counted without touching the payload.
+	a64put(b, 0x528005a3); a64put(b, 0x39000163); // Positive digits overwrite this temporary minus.
+	a64put(b, 0xf100019f); a64put(b, 0xda8ca58c);
+	digits=b->n;
+	a64put(b, 0x9acd0982); a64put(b, 0x9b0db043);
+	a64put(b, 0x1100c063); a64put(b, 0x381ffd23); // Store byte with pre-decrement.
+	a64put(b, 0xaa0203ec);
+	a64put(b, 0xb500000cU | ((digits-b->n)&0x7ffff)<<5);
+	if(b->n > LeafMax) return 0;
+	a64put(b, 0xb9000000U | (u32int)(a->stringlen/4)<<10 | 14<<5 | 4);
 	return 1;
 }
 
@@ -870,17 +950,17 @@ a64modulecall(A64Buf *b, LeafLayout *a)
 static int
 a64arrayslice(A64Buf *b, LeafLayout *a)
 {
-	int fields[6], i, j, fallback, empty;
+	int fields[7], i, j, fallback, empty, rootcase, rootdone;
 
 	fields[0]=a->arraylen; fields[1]=a->arraydata; fields[2]=a->arraytype;
-	fields[3]=a->arrayroot; fields[4]=a->typesize; fields[5]=a->typeref;
-	for(i=0; i<6; i++)
+	fields[3]=a->arrayroot; fields[4]=a->typesize; fields[5]=a->typeref; fields[6]=a->typenp;
+	for(i=0; i<7; i++)
 		if(fields[i]<0 || fields[i]>2047 || fields[i]%(i==0 ? a->wordbytes : i<4 ? 8 : 4))return 0;
-	/* Header fields and the two int descriptor fields must occupy distinct spans. */
+	/* Header fields and the three int descriptor fields must occupy distinct spans. */
 	for(i=0; i<4; i++)for(j=i+1; j<4; j++)
 		if(fields[i]<fields[j]+(j==0 ? a->wordbytes : 8) &&
 		   fields[j]<fields[i]+(i==0 ? a->wordbytes : 8))return 0;
-	if(a->typesize==a->typeref)return 0;
+	if(a->typesize==a->typeref || a->typenp==a->typeref || a->typenp==a->typesize)return 0;
 	if(a->heapref<=0 || a->heapref>128 || a->heapref%8 || a->refbytes!=8)return 0;
 	fallback=b->n+1;
 	a64put(b, 0x14000003); a64put(b, 0x52800000); a64put(b, 0xd65f03c0);
@@ -895,14 +975,23 @@ a64arrayslice(A64Buf *b, LeafLayout *a)
 	a64put(b, 0xeb0201bf); a64defer(b, 0x5400000c, fallback);
 	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 14<<5 | 2);
 	a64put(b, 0xf100045f); a64defer(b, 0x54000001, fallback);
-	a64field(b, 3, 14, a->arrayroot, 8);
-	a64put(b, 0x91000462); a64put(b, 0xf100045f); a64defer(b, 0x54000009, fallback);
-	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 3<<5 | 2);
-	a64defer(b, 0xb4000002, fallback);
 	a64field(b, 15, 14, a->arraytype, 8);
 	a64put(b, 0x910005e2); a64put(b, 0xf100045f); a64defer(b, 0x54000009, fallback);
 	a64wordfield(b, 2, 15, a->typeref, 4);
 	a64put(b, 0xf100005f); a64defer(b, 0x5400000d, fallback);
+	/* A view retains its backing owner; a root requires an empty pointer map. */
+	a64field(b, 3, 14, a->arrayroot, 8);
+	a64put(b, 0x91000462);
+	rootcase=b->n; a64put(b, 0xb4000002);
+	a64defer(b, 0xb4000003, fallback);
+	a64put(b, 0xf8400000U | ((u32int)-a->heapref&511)<<12 | 3<<5 | 2);
+	a64defer(b, 0xb4000002, fallback);
+	rootdone=b->n; a64put(b, 0x14000000);
+	if(b->n>LeafMax)return 0;
+	b->code[rootcase] |= (b->n-rootcase)<<5;
+	a64field(b, 2, 15, a->typenp, 4); a64defer(b, 0x35000002, fallback);
+	if(b->n>LeafMax)return 0;
+	b->code[rootdone] |= b->n-rootdone;
 	a64wordfield(b, 3, 15, a->typesize, 4);
 	a64put(b, 0xf100007f); a64defer(b, 0x5400000b, fallback);
 	a64field(b, 4, 14, a->arraydata, 8);
@@ -953,6 +1042,8 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		if(!a64return(&b, abi))return 0;
 	}else if(p.kind == LeafFrame){
 		if(!a64frame(&b, abi, p.alu))return 0;
+	}else if(p.kind == LeafFormatInteger){
+		if(!a64formatinteger(&b, abi, &p)) return 0;
 	}else if(p.kind == LeafStringSlice){
 		if(!a64stringslice(&b, abi)) return 0;
 	}else if(p.kind == LeafStringAppend){
@@ -1250,17 +1341,21 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		b.code[done] |= b.n-done;
 		a64ptr(&b, 11, abi->d); a64store(&b, 13, abi->wordbytes);
 	}else if(p.kind == LeafListLength){
-		/* Bounded scans decline without publishing a partial length. */
+		/* Bounded Brent scans preserve all state until a valid terminal owner is reached. */
 		if(abi->listtail < 0 || abi->listtail > 32760 || abi->listtail%8 != 0) return 0;
 		a64ptr(&b, 9, abi->s); a64load(&b, 12, 9, 8);
+		a64put(&b, 0xaa0c03ef); // x15 is the initial checkpoint.
 		a64put(&b, 0x5280000d);
 		loop = b.n;
 		a64put(&b, 0xb100059f);
 		done = b.n; a64put(&b, 0x54000000);
 		a64guard(&b, 0xb500006c);
-		a64put(&b, 0x710201bf); a64guard(&b, 0x54000063); /* count < 128 */
+		a64put(&b, 0x710401bf); a64guard(&b, 0x54000063); /* count < 256 */
 		a64field(&b, 12, 12, abi->listtail, 8);
 		a64put(&b, 0x110005ad);
+		a64put(&b, 0xeb0f019f); a64guard(&b, 0x54000061); // Reject a repeated checkpoint.
+		a64put(&b, 0x110005ae); a64put(&b, 0x6a0d01df); // (count+1) & count.
+		a64put(&b, 0x54000041); a64put(&b, 0xaa0c03ef);
 		a64put(&b, 0x14000000U | ((u32int)(loop-b.n)&0x3ffffff));
 		b.code[done] |= (b.n-done)<<5;
 		a64ptr(&b, 11, abi->d); a64store(&b, 13, abi->wordbytes);
@@ -1298,13 +1393,18 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		a64put(&b, (abi->wordbytes == 8 ? 0xf100019fU : 0x7100019fU));
 		a64guard(&b, 0x5400006a); /* b.ge valid */
 		empty = b.n; a64put(&b, 0xb400000c);
-		a64put(&b, 0xf102019f); /* cmp x12, #128 */
+		a64put(&b, 0xf104019f); /* cmp x12, #256 */
 		a64guard(&b, 0x54000069); /* b.ls small */
-		if(p.kind == LeafHeadCopy)
-			a64put(&b, 0x910001e9U | (u32int)abi->listdata<<10); /* add x9, x15, data */
-		else
+		if(p.kind == LeafHeadCopy){
+			a64put(&b, 0xb10001e9U | (u32int)abi->listdata<<10); // adds x9,x15,data.
+			a64guard(&b, 0x54000063); // The payload offset must not carry.
+		}else
 			a64ptr(&b, 9, abi->s);
 		a64ptr(&b, 11, abi->d);
+		/* Empty copies skipped these pointer checks; nonempty spans must not wrap. */
+		a64guard(&b, 0xb5000069); a64guard(&b, 0xb500006b);
+		a64put(&b, 0xab0c0122); a64guard(&b, 0x54000063);
+		a64put(&b, 0xab0c0162); a64guard(&b, 0x54000063);
 		a64put(&b, 0xeb09017f); /* cmp x11, x9 */
 		other = b.n; a64put(&b, 0x54000009); /* b.ls forward */
 		a64put(&b, 0x8b0c0129); a64put(&b, 0x8b0c016b);

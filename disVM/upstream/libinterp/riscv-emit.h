@@ -444,18 +444,24 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		rvptr(&b, Rvt2, abi->d); rvstore(&b, Rvt2, Rvt3, abi->wordbytes);
 		break;
 	case ILENL:
-		/* Bounded scans decline without publishing a partial length. */
+		/* Brent checkpoints reject cycles without allocating or publishing partial counts. */
 		if(abi->xlen != 64 || abi->listtail < 0 || abi->listtail > 2047 || abi->listtail%8 != 0) return 0;
 		rvptr(&b, Rvt1, abi->s); rvload(&b, Rvt0, Rvt1, 8);
 		rvi(&b, 0x13, 0, Rvt3, Rvzero, 0);
 		rvi(&b, 0x13, 0, Rvt4, Rvzero, -1);
-		rvi(&b, 0x13, 0, Rvt6, Rvzero, 128);
-		rvbranch(&b, 0, Rvt0, Rvt4, 40);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, 256);
+		rvi(&b, 0x13, 0, Rvt2, Rvt0, 0);
+		rvbranch(&b, 0, Rvt0, Rvt4, 68);
 		rvguard(&b, 1, Rvt0, Rvzero);
 		rvguard(&b, 6, Rvt3, Rvt6);
 		rvi(&b, 0x03, 3, Rvt0, Rvt0, abi->listtail);
 		rvi(&b, 0x13, 0, Rvt3, Rvt3, 1);
-		rvbranch(&b, 0, Rvzero, Rvzero, -36);
+		rvguard(&b, 1, Rvt0, Rvt2);
+		rvi(&b, 0x13, 0, Rvt1, Rvt3, 1);
+		rvr(&b, 0x33, 7, 0, Rvt1, Rvt1, Rvt3);
+		rvbranch(&b, 1, Rvt1, Rvzero, 8);
+		rvi(&b, 0x13, 0, Rvt2, Rvt0, 0);
+		rvbranch(&b, 0, Rvzero, Rvzero, -64);
 		rvptr(&b, Rvt2, abi->d); rvstore(&b, Rvt2, Rvt3, abi->wordbytes);
 		break;
 	case IHEADB: case IHEADW: case IHEADL: case IHEADF:
@@ -495,14 +501,22 @@ rvemit(u32int *out, int cap, RvLayout *abi, int op)
 		/* Keep the length in a register even if the copy overwrites its slot. */
 		rvptr(&b, Rvt1, abi->m); rvload(&b, Rvt3, Rvt1, abi->wordbytes);
 		rvguard(&b, 5, Rvt3, Rvzero);
-		rvi(&b, 0x13, 0, Rvt6, Rvzero, 128);
+		rvi(&b, 0x13, 0, Rvt6, Rvzero, 256);
 		rvguard(&b, 7, Rvt6, Rvt3);
-		rvbranch(&b, 0, Rvt3, Rvzero, 76);
-		if(op == IHEADM)
-			rvi(&b, 0x13, 0, Rvt0, Rvt0, abi->listdata);
-		else
+		/* Skip both span checks and all copy loops for a valid empty record. */
+		rvbranch(&b, 0, Rvt3, Rvzero, op == IHEADM ? 148 : 132);
+		if(op == IHEADM){
+			/* Preserve the owner until the unsigned payload-offset sum is validated. */
+			rvi(&b, 0x13, 0, Rvt4, Rvt0, abi->listdata);
+			rvguard(&b, 7, Rvt4, Rvt0);
+			rvi(&b, 0x13, 0, Rvt0, Rvt4, 0);
+		}else
 			rvptr(&b, Rvt0, abi->s);
 		rvptr(&b, Rvt2, abi->d);
+		/* Nonempty starts must be nonnil; unsigned end sums must not carry. */
+		rvguard(&b, 1, Rvt0, Rvzero); rvguard(&b, 1, Rvt2, Rvzero);
+		rvr(&b, 0x33, 0, 0, Rvt4, Rvt0, Rvt3); rvguard(&b, 7, Rvt4, Rvt0);
+		rvr(&b, 0x33, 0, 0, Rvt4, Rvt2, Rvt3); rvguard(&b, 7, Rvt4, Rvt2);
 		rvbranch(&b, 7, Rvt0, Rvt2, 40); /* source >= destination: forward */
 		rvr(&b, 0x33, 0, 0, Rvt0, Rvt0, Rvt3);
 		rvr(&b, 0x33, 0, 0, Rvt2, Rvt2, Rvt3);

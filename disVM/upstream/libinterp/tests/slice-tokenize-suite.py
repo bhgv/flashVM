@@ -8,6 +8,12 @@ import subprocess
 import sys
 
 CORE = [
+    'libinterp/tests/real-format-native.py',
+    'libinterp/tests/list-length-native.py',
+    'libinterp/tests/raw-copy-native.py',
+    'libinterp/tests/conversion-sources.py',
+    'libinterp/tests/integer-format-native.py',
+    'libinterp/tests/array-copy-source.py',
     'libinterp/tests/array-view-native.py',
     'libinterp/tests/module-data-retains.py',
     'libinterp/tests/token-retains.py',
@@ -25,6 +31,7 @@ CORE = [
     'libinterp/tests/dis-loader.py',
     'libinterp/tests/type-retains.py',
     'libinterp/tests/string-append-native.py',
+    'libinterp/tests/append-span-c.py',
     'libinterp/tests/string-store-native.py',
     'libinterp/tests/decimal-native.py',
     'libinterp/tests/module-byte-descriptors.py',
@@ -107,6 +114,14 @@ CORE = [
     'limbo/tests/case-max.py',
 ]
 JIT = [
+    'libinterp/tests/real-format-jit.py',
+    'libinterp/tests/real-format-layouts.py',
+    'libinterp/tests/list-length-layouts.py',
+    'libinterp/tests/list-length-jit.py',
+    'libinterp/tests/raw-copy-layouts.py',
+    'libinterp/tests/raw-copy-jit.py',
+    'libinterp/tests/integer-format-layouts.py',
+    'libinterp/tests/integer-format-jit.py',
     'libinterp/tests/array-view-jit.py',
     'libinterp/tests/array-view-layouts.py',
     'libinterp/tests/mcall-jit.py',
@@ -117,6 +132,8 @@ JIT = [
     'libinterp/tests/frame-jit.py',
     'libinterp/tests/string-slice-jit.py',
     'libinterp/tests/string-append-jit.py',
+    'libinterp/tests/append-spans-jit.py',
+    'libinterp/tests/append-layouts.py',
     'libinterp/tests/string-store-jit.py',
     'libinterp/tests/decimal-jit.py',
     'libinterp/tests/slice-copy-jit.py',

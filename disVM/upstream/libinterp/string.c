@@ -222,8 +222,10 @@ String*
 addstring(String *s1, String *s2, int append)
 {
 	Rune *r;
-	String *ns;
-	int l, l1, l2;
+	String *ns, *source;
+	uvlong bytes;
+	uintptr address;
+	int l, l1, l2, i;
 
 	if(s1 == nil || s2 == nil)
 		error(exNilref);
@@ -237,6 +239,19 @@ addstring(String *s1, String *s2, int append)
 	if((s1 != H && D2H(s1)->ref == 0) ||
 	   (s2 != H && D2H(s2)->ref == 0))
 		error(exHeap);
+	/* Check complete native payload spans before shortcuts, allocation or copying. */
+	for(i = 0; i < 2; i++){
+		source = i == 0 ? s1 : s2;
+		if(source == H)
+			continue;
+		bytes = source->len < 0 ? (uvlong)-source->len*sizeof(Rune) : (uvlong)source->len;
+		address = (uintptr)source;
+		if(address > (uintptr)-1-offsetof(String, data))
+			error(exHeap);
+		address += offsetof(String, data);
+		if(bytes > (uintptr)-1-address)
+			error(exHeap);
+	}
 	if(s1 == H) {
 		if(s2 == H)
 			return H;
@@ -255,6 +270,13 @@ addstring(String *s1, String *s2, int append)
 	if(l1 > 0x7fffffff-l2)
 		error(exHeap);
 	l = l1+l2;
+	/* Reuse must validate the extended destination span, not just its old payload. */
+	if(append && l <= s1->max && !(s1->len >= 0 && s2->len < 0)){
+		bytes = s1->len < 0 ? (uvlong)l*sizeof(Rune) : (uvlong)l;
+		address = (uintptr)s1+offsetof(String, data);
+		if(bytes > (uintptr)-1-address)
+			error(exHeap);
+	}
 	/* Growth allowance is needed only when replacement storage must be allocated. */
 	if(append && l > 0x7fffffff-l/4 &&
 	   (l > s1->max || (s1->len >= 0 && s2->len < 0)))
@@ -317,7 +339,7 @@ OP(addc)
 }
 
 
-/* Export UTF-8 only after validating the string representation and byte bound. */
+/* Validate source lifetime, representation and byte bounds before exporting UTF-8. */
 OP(cvtca)
 {
 	int l;
@@ -335,7 +357,7 @@ OP(cvtca)
 		error(exNilref);
 	if(D2H(ss)->t != &Tstring)
 		error(exType);
-	if(ss->len == (-0x7fffffff-1) ||
+	if(D2H(ss)->ref == 0 || ss->len == (-0x7fffffff-1) ||
 	   ss->max < (ss->len < 0 ? -ss->len : ss->len))
 		error(exHeap);
 	if(ss->len < 0) {
@@ -358,7 +380,8 @@ r:	memmove(&old, R.d, sizeof(old));
 	destroy(old);
 }
 
-/* Validate complete VM-array lengths before narrowing to the string constructor. */
+
+/* Validate array owners and native byte spans before entering the string constructor. */
 OP(cvtac)
 {
 	Array *a;
@@ -369,12 +392,25 @@ OP(cvtac)
 	if(a != H){
 		if(a == nil)
 			error(exNilref);
+		if(D2H(a)->t != &Tarray)
+			error(exType);
+		/* A dead owner must not lead us through its borrowed element descriptor. */
+		if(D2H(a)->ref == 0)
+			error(exHeap);
 		/* A compiler may emit its own pointer-free byte descriptor. */
-		if(D2H(a)->t != &Tarray ||
-		   (a->t != &Tbyte &&
-		    (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
+		if(a->t != &Tbyte &&
+		   (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0))
 			error(exType);
 		if(a->len < 0 || (uvlong)a->len > 0x7fffffff)
+			error(exHeap);
+		/* Empty arrays need no payload; nonempty native byte spans must not wrap. */
+		if(a->len != 0){
+			if(a->data == nil || a->data == H)
+				error(exNilref);
+			if((uintptr)a->data > (uintptr)-1-(uintptr)a->len)
+				error(exHeap);
+		}
+		if(a->root == nil || (a->root != H && D2H(a->root)->ref == 0))
 			error(exHeap);
 		ds = c2string((char*)a->data, (int)a->len);
 	}
@@ -428,20 +464,45 @@ OP(cvtcf)
 	memmove(R.d, &value, sizeof(value));
 }
 
+
 /* Format the complete VM word, including its sign and terminating NUL. */
 OP(cvtwc)
 {
 	String *ds, *old;
+	char digits[24];
+	int length, capacity;
 	WORD value;
 
 	memmove(&value, R.s, sizeof(value));
-	ds = newstring(24);
-	ds->len = sprint(ds->Sascii, "%lld", (vlong)value);
-
 	memmove(&old, R.d, sizeof(old));
-	memmove(R.d, &ds, sizeof(ds));
-	destroy(old);
+	if(old == nil)
+		error(exNilref);
+	if(old != H && (old->len == (-0x7fffffff-1) ||
+	   old->max < (old->len < 0 ? -old->len : old->len) || D2H(old)->ref == 0))
+		error(exHeap);
+	capacity = 0;
+	if(old != H){
+		if(old->len < 0 && old->max > 0x7fffffff/(int)sizeof(Rune))
+			error(exHeap);
+		capacity = old->len < 0 ? old->max*(int)sizeof(Rune) : old->max;
+	}
+	/* Stage the full text before checking exact logical character capacity. */
+	length = sprint(digits, "%lld", (vlong)value);
+	if(old != H && capacity >= length && D2H(old)->ref == 1)
+		ds = old;
+	else
+		ds = newstring(24);
+	/* Keep the allocation and cache while publishing byte-oriented capacity. */
+	if(ds == old && old->len < 0)
+		ds->max = capacity;
+	memmove(ds->Sascii, digits, length+1);
+	ds->len = length;
+	if(ds != old){
+		memmove(R.d, &ds, sizeof(ds));
+		destroy(old);
+	}
 }
+
 
 /*
  * Format every signed 64-bit value, including its sign and terminating NUL.
@@ -449,29 +510,94 @@ OP(cvtwc)
 OP(cvtlc)
 {
 	String *ds, *old;
+	char digits[24];
+	int length, capacity;
 	LONG value;
 
 	memmove(&value, R.s, sizeof(value));
-	ds = newstring(24);
-	ds->len = sprint(ds->Sascii, "%lld", value);
-	
 	memmove(&old, R.d, sizeof(old));
-	memmove(R.d, &ds, sizeof(ds));
-	destroy(old);
+	if(old == nil)
+		error(exNilref);
+	if(old != H && (old->len == (-0x7fffffff-1) ||
+	   old->max < (old->len < 0 ? -old->len : old->len) || D2H(old)->ref == 0))
+		error(exHeap);
+	capacity = 0;
+	if(old != H){
+		if(old->len < 0 && old->max > 0x7fffffff/(int)sizeof(Rune))
+			error(exHeap);
+		capacity = old->len < 0 ? old->max*(int)sizeof(Rune) : old->max;
+	}
+	/* Stage the full text before checking exact logical character capacity. */
+	length = sprint(digits, "%lld", (vlong)value);
+	if(old != H && capacity >= length && D2H(old)->ref == 1)
+		ds = old;
+	else
+		ds = newstring(24);
+	/* Keep the allocation and cache while publishing byte-oriented capacity. */
+	if(ds == old && old->len < 0)
+		ds->max = capacity;
+	memmove(ds->Sascii, digits, length+1);
+	ds->len = length;
+	if(ds != old){
+		memmove(R.d, &ds, sizeof(ds));
+		destroy(old);
+	}
 }
 
-/* Capture the real value before allocating or replacing its destination owner. */
+
+/* Capture real bits and prepare storage before formatting or replacing the owner. */
 OP(cvtfc)
 {
 	String *ds, *old;
 	REAL value;
+	uvlong bits;
+	vlong integer;
+	uint exponent;
+	char digits[32];
+	int length, capacity;
 
 	memmove(&value, R.s, sizeof(value));
-	ds = newstring(32);
-	ds->len = sprint(ds->Sascii, "%g", value);
+	memmove(&bits, &value, sizeof(bits));
 	memmove(&old, R.d, sizeof(old));
-	memmove(R.d, &ds, sizeof(ds));
-	destroy(old);
+	if(old == nil)
+		error(exNilref);
+	if(old != H && (old->len == (-0x7fffffff-1) ||
+	   old->max < (old->len < 0 ? -old->len : old->len) || D2H(old)->ref == 0))
+		error(exHeap);
+	capacity = 0;
+	if(old != H){
+		if(old->len < 0 && old->max > 0x7fffffff/(int)sizeof(Rune))
+			error(exHeap);
+		capacity = old->len < 0 ? old->max*(int)sizeof(Rune) : old->max;
+	}
+	/* Exact binary powers in this range have ordinary integer %g spelling.
+	 * Decode them as bits so native and C paths do not disturb FP status. */
+	exponent = (bits>>52)&2047;
+	if(bits == 0 || ((bits&0x000fffffffffffffULL) == 0 && exponent >= 1023 && exponent <= 1042)){
+		integer = bits == 0 ? 0 : (vlong)1<<(exponent-1023);
+		if(bits>>63)
+			integer = -integer;
+		length = sprint(digits, "%lld", integer);
+		if(old != H && capacity >= length && D2H(old)->ref == 1)
+			ds = old;
+		else
+			ds = newstring(32);
+	}else{
+		/* Reserve full formatter capacity before fallible allocation or FP work. */
+		if(old != H && capacity >= sizeof(digits) && D2H(old)->ref == 1)
+			ds = old;
+		else
+			ds = newstring(32);
+		length = sprint(digits, "%g", value);
+	}
+	if(ds == old && old->len < 0)
+		ds->max = capacity;
+	memmove(ds->Sascii, digits, length+1);
+	ds->len = length;
+	if(ds != old){
+		memmove(R.d, &ds, sizeof(ds));
+		destroy(old);
+	}
 }
 
 /*
@@ -547,6 +673,9 @@ c2string(char *cs, int len)
 		return newstring(0);
 	if(cs == nil || cs == H)
 		error(exNilref);
+	/* Native callers must not wrap the end pointer before UTF scanning. */
+	if((uintptr)cs > (uintptr)-1-(uintptr)len)
+		error(exHeap);
 	isrune = 0;
 	ecs = cs+len;
 	p = (uchar*)cs;
