@@ -153,6 +153,7 @@ if(BUILD_TESTING)
     string-case-c
     string-bytes-layouts
     string-bytes-spans
+    indc-preflight
     string-header-spans
     string-cell-spans-c
     utf8-view-spans-c
@@ -272,6 +273,7 @@ if(BUILD_TESTING)
       append-spans-jit
       decimal-spans-jit
       string-compare-jit
+      indc-preflight-jit
       string-cell-spans-jit
       array-view-jit
       amd64-field-registers
