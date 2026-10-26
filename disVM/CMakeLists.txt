@@ -195,6 +195,7 @@ if(BUILD_TESTING)
       real-branch-native
       goto-native
       owner-native
+      list-slot-native
       mapped-copy-native
       decimal-native
       string-store-native
@@ -254,6 +255,7 @@ if(BUILD_TESTING)
   if(have_instruction_emulators EQUAL 0)
     foreach(driver
       owner-jit
+      list-slot-jit
       owner-optimized
       payload-channel-jit
       pc-tables-jit
