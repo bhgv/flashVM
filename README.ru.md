@@ -4,7 +4,7 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1616**. [English](README.md).
+Версия разработки: **0.1617**. [English](README.md).
 
 Текущая серия: [v0.1611–v0.1616](docs/releases/v0.1616.md): исправлены кнопки окна, добавлены номера строк и живые проекции документа, исправление владения string big возвращено в Inferno.
 
