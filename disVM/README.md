@@ -1,5 +1,7 @@
 # DisVM: selected Dis interpreter and JIT core
 
+[Broker diagnostics and portable clients](broker/README.md)
+
 [Русский](README.ru.md) · [Upstream manifest](UPSTREAM.json) ·
 [Owned tools/update policy](../tools/UPSTREAMS.md) · [Architecture](ARCHITECTURE.md)
 

@@ -60,3 +60,14 @@ Tests use real Coco/R compilation, check SSA coverage, unique sibling scopes,
 outer assignments, UTF-8 positions, retained outputs, sequential API reset and
 closed-debug-stream retirement. The native bootstrap separately supports -g/.sbl;
 its output is not presented as our own complete Dis backend.
+
+
+### Occurrence identity (additive FIRDBG1 fields)
+
+Each event includes a positive `site` unique within the staged debug artifact and
+`binding` (positive lexical declaration identity, or zero when not applicable).
+`read`, `declare` and `assign` events distinguish repeated identifier occurrences
+without changing existing SSA IDs. Compound assignments record their implicit
+read separately. Coordinates remain UTF-8 byte offsets/columns. Combine site
+with artifact/build identity; it is not a final Dis/native PC or global ID.
+See the [broker contract](../../../disVM/broker/README.md).

@@ -46,3 +46,14 @@ layouts остаются задачей Limbo/backend. Явное поле stage
 Реальные Coco/R-тесты проверяют все SSA origins, разные sibling scopes, запись
 в outer binding, UTF-8, rollback, повторные API-вызовы и закрытый debug-поток.
 Legacy -g/.sbl bootstrap проверяется отдельно и не заменяет наш Dis backend.
+
+
+### Occurrence identity (additive FIRDBG1 fields)
+
+Each event includes a positive `site` unique within the staged debug artifact and
+`binding` (positive lexical declaration identity, or zero when not applicable).
+`read`, `declare` and `assign` events distinguish repeated identifier occurrences
+without changing existing SSA IDs. Compound assignments record their implicit
+read separately. Coordinates remain UTF-8 byte offsets/columns. Combine site
+with artifact/build identity; it is not a final Dis/native PC or global ID.
+See the [broker contract](../../../disVM/broker/README.md).
