@@ -253,6 +253,8 @@ if(BUILD_TESTING)
   endif()
   if(have_instruction_emulators EQUAL 0)
     foreach(driver
+      owner-jit
+      owner-optimized
       payload-channel-jit
       pc-tables-jit
       string-case-jit
