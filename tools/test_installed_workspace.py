@@ -125,7 +125,7 @@ def table_packages(prefix, work, environment):
             raise RuntimeError("relocated table DAG compiler client result differs")
     # Branching tutorials have two trace cells followed by their two execution flags.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division"):
+    for tutorial in ("shifts", "division", "mutation"):
         tutorial_fir = work / ("table-" + tutorial + ".fir")
         tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
@@ -374,10 +374,20 @@ def broker_packages(prefix, work, environment):
         frame = b"fvd1:" + "".join(format(value, "08x") for value in (1, 1, 65539, 0, 0, 0)).encode("ascii")
         replay.write_bytes(struct.pack("<I", len(frame)) + frame)
         capture = work / "installed-editor.ppm"
-        result = run([program(prefix, component.name, "disvm-editor"), "--jit", "--document", source,
-                      "--events", replay, "--capture", capture, component / "graphical-editor.dis"], work, environment)
-        if "GUTTER 1 " not in result or not capture.read_bytes().startswith(b"P6\n960 640\n255\n"):
-            raise RuntimeError("relocated graphical package lost default gutter/font/raster support")
+        for entry in ("graphical-editor.dis", "ide.dis"):
+            for mode in ("--jit", "--no-jit"):
+                result = run([program(prefix, component.name, "disvm-editor"), mode, "--document", source,
+                              "--events", replay, "--capture", capture, component / entry], work, environment)
+                if "GUTTER 1 " not in result or not capture.read_bytes().startswith(b"P6\n960 640\n255\n"):
+                    raise RuntimeError("relocated IDE application lost default gutter/font/raster support")
+        if not (component / "run-ide.sh").is_file():
+            raise RuntimeError("relocated IDE launcher is missing")
+        for mode in ("--jit", "--no-jit"):
+            result = run(["sh", component / "run-ide.sh", mode, "--document", source,
+                          "--events", replay, "--capture", capture], work, environment)
+            if "GUTTER 1 " not in result or not capture.read_bytes().startswith(b"P6\n960 640\n255\n"):
+                raise RuntimeError("relocated IDE launcher failed its actual application startup")
+
 
 
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.

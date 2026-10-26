@@ -358,7 +358,8 @@ def show_products(args, bash, interactive):
             print("Введите 1, 2, 3, 4, 5, 6, 7, 8 или Enter.")
             continue
         if value == "8":
-            script = prefix / "disvm-editor/run-graphical-editor.sh"
+            application = prefix / "disvm-editor/run-ide.sh"
+            script = application if application.is_file() else prefix / "disvm-editor/run-graphical-editor.sh"
             if not script.is_file():
                 print("Выберите disvm-editor или all в меню сборки.")
                 continue

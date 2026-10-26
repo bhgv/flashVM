@@ -254,7 +254,7 @@ EOF
             copy_tree "$source/include" "$destination/include"
             copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
             copy_file "$source/compiler/dis_table.c" "$destination/source/dis_table.c"
-            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md TYPE_REFLECTION.md TYPE_REFLECTION.ru.md BIG_ARITHMETIC.md BIG_ARITHMETIC.ru.md BIG_BITWISE.md BIG_BITWISE.ru.md BIG_CFG.md BIG_CFG.ru.md BIG_DECISIONS.md BIG_DECISIONS.ru.md TABLE_CFG.md TABLE_CFG.ru.md BIG_SHIFTS.md BIG_SHIFTS.ru.md; do
+            for file in DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md TYPE_REFLECTION.md TYPE_REFLECTION.ru.md BIG_ARITHMETIC.md BIG_ARITHMETIC.ru.md BIG_BITWISE.md BIG_BITWISE.ru.md BIG_CFG.md BIG_CFG.ru.md BIG_DECISIONS.md BIG_DECISIONS.ru.md TABLE_CFG.md TABLE_CFG.ru.md TABLE_MUTATION.md TABLE_MUTATION.ru.md BIG_SHIFTS.md BIG_SHIFTS.ru.md; do
                 copy_file "$source/doc/$file" "$destination/docs/$file"
             done
             for file in API.md API.ru.md; do
@@ -346,6 +346,7 @@ EOF
                 copy_file "$ROOT/ide/assets/fonts/OFL.txt" "$destination/LICENSES/Noto-OFL.txt"
                 copy_file "$ROOT/external/sdl2/LICENSE.txt" "$destination/LICENSES/SDL2.txt"
                 copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
+                copy_tree "$ROOT/ide/dis/app" "$destination/source/app"
                 copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"
                 copy_file "$ROOT/ide/dis/bridge/idehost.m" "$destination/include/limbo/idehost.m"
             fi
@@ -358,7 +359,12 @@ EOF
                 fi
             done
             copy_file "$ROOT/disVM/runtime/run-console.sh" "$destination/run-console.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
+            if [[ "$component" == disvm-editor ]]; then
+                copy_file "$ROOT/disVM/runtime/run-ide-window.sh" "$destination/run-ide.sh" 755
+                copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide-console.sh" 755
+            else
+                copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
+            fi
             copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"

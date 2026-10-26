@@ -56,6 +56,10 @@ def main():
     if (package / "examples/graphical-editor").is_dir():
         for name in ("README.md", "README.ru.md", "main.b", "field-demo.b"):
             pairs[root / "ide/dis/examples/graphical-editor" / name] = package / "examples/graphical-editor" / name
+    if (package / "source/app").is_dir():
+        for source in (root / "ide/dis/app").iterdir():
+            if source.is_file() and (package / "source/app" / source.name).is_file():
+                pairs[source] = package / "source/app" / source.name
     clipboard_tutorial = package / "examples/graphical-editor/clipboard-demo.b"
     if clipboard_tutorial.is_file():
         pairs[root / "ide/dis/examples/graphical-editor/clipboard-demo.b"] = clipboard_tutorial
