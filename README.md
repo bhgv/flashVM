@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1647**. [Русская версия](README.ru.md).
+Development version: **0.1648**. [Русская версия](README.ru.md).
 
-Current series: [v0.1647](docs/releases/v0.1647.md): compiler 0.30 Unicode string ordering and checked text/key-to-int conversions through FIR and Dis, plus Inferno 637d618 complete AMD64/ARM64 JIT dispatch.
+Current series: [v0.1648](docs/releases/v0.1648.md): compiler 0.31 hybrid table constructors, ordered field effects and reusable C99 service recovery.
 
 ## Browse documentation
 

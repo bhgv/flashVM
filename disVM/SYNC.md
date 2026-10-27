@@ -1,3 +1,23 @@
+# Synchronization / Синхронизация — v0.1648
+
+Checked Inferno experiment at **637d618e40fb6efb69cb0c147efb81981ee95c63**.
+No new incoming commit followed the previous series. Earlier reverse fixes are
+retained upstream. Exact snapshots: **560 core/reference + 174 bootstrap files**.
+AMD64/ARM64 availability remains **166/173 guarded fast paths** and **173/173
+complete decoded entries**; neither metric represents full operand semantics.
+
+Compiler 0.31 adds hybrid table constructors through existing FIR and hosted
+table services. Reused C99 source services recover after syntax/SSA-limit failures.
+These language changes remain FlashVM-only; no upstream opcode, helper ABI or
+container representation changes. Shared complete-dispatch, queue and readiness
+checks passed. No new shared defect requiring a reverse patch was confirmed.
+
+Новых входящих коммитов нет; прежние обратные исправления присутствуют.
+Конструкторы и работа с их исходными позициями остаются в FlashVM.
+[EN](../fir/v1/doc/TABLE_LITERALS.md) / [RU](../fir/v1/doc/TABLE_LITERALS.ru.md).
+
+---
+
 # Synchronization / Синхронизация — v0.1647
 
 Final Inferno experiment: **637d618e40fb6efb69cb0c147efb81981ee95c63**.
