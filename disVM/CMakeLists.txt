@@ -81,6 +81,7 @@ if(BUILD_TESTING)
     fixed-slot-native
     array-slot-native
     mapped-preflight-native
+    buffered-transfer-native
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -273,6 +274,7 @@ if(BUILD_TESTING)
       fixed-slot-jit
       array-slot-jit
       mapped-preflight-jit
+      buffered-transfer-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit
@@ -457,4 +459,11 @@ if(DVM_LIMBO_EXECUTABLE)
     "${CMAKE_CURRENT_BINARY_DIR}/console-check.dis" "${CMAKE_CURRENT_BINARY_DIR}/console-check.sbl")
   add_custom_target(disvm_ui_modules ALL DEPENDS
     "${CMAKE_CURRENT_BINARY_DIR}/uibridge.dis" "${CMAKE_CURRENT_BINARY_DIR}/uiecho.dis")
+endif()
+
+# The upstream per-command readiness report is reproducible and never rewritten by tests.
+if(BUILD_TESTING)
+  add_test(NAME disvm_jit_readiness COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/libinterp/tests/jit-readiness.py" --check)
+  set_tests_properties(disvm_jit_readiness PROPERTIES TIMEOUT 120)
 endif()
