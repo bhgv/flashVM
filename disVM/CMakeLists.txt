@@ -104,6 +104,8 @@ if(BUILD_TESTING)
     loader-runtime
     pointer-maps
     gc-maps
+    pc-target-boundary
+    direct-target-native
     vm-widths
     dis-layout
     array-indices
@@ -303,6 +305,7 @@ if(BUILD_TESTING)
       owner-optimized
       payload-channel-jit
       pc-tables-jit
+      direct-target-jit
       string-case-jit
       mapped-cons-jit
       scalar-channel-jit

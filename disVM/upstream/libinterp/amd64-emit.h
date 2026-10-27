@@ -452,6 +452,7 @@ x64case(X64Buf *b, LeafLayout *abi, LeafOp *op)
 	x64byte(b, 0x48); x64byte(b, 0x83); x64byte(b, 0xfa); x64byte(b, 0xfd); x64caseguard(b, 0x76, reject, &count);
 	x64byte(b, 0x4d); x64byte(b, 0x69); x64byte(b, 0xc9); x64word(b, abi->instbytes);
 	x64byte(b, 0x4c); x64byte(b, 0x01); x64byte(b, 0xc8); x64caseguard(b, 0x73, reject, &count);
+	x64pcspan(b, 0, abi->instbytes);
 	x64byte(b, 0x48); x64byte(b, 0x89); x64byte(b, 0x87); x64word(b, abi->pc);
 	if(b->n > sizeof(b->bytes)) return 0;
 	for(i = 0; i < count; i++)
@@ -2757,8 +2758,10 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		b.bytes[done]=b.n-done-1;
 		x64byte(&b, inverse[p.condition]); patch=b.n; x64byte(&b, 0);
 		/* The target slot is relevant only after the predicate is true. */
-		x64ptr(&b, 2, abi->d); x64pcspan(&b, 10, 8); x64load(&b, 2, 8);
-		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x97); x64word(&b, abi->pc);
+		x64ptr(&b, 2, abi->d); x64pcspan(&b, 10, 8);
+		x64byte(&b, 0x49); x64byte(&b, 0x8b); x64byte(&b, 0x02); // Capture [r10] in rax; rdx is validation scratch.
+		x64pcspan(&b, 0, 1);
+		x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->pc);
 		b.bytes[patch]=b.n-patch-1;
 	}else if(p.kind == LeafTypeCheck){
 		/* Capture both owners before inspecting their immutable heap types. */
@@ -2821,6 +2824,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
 		x64byte(&b, 0x48); x64byte(&b, 0x85); x64byte(&b, 0xd2); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x83); x64byte(&b, 0xfa); x64byte(&b, 0xff); x64guard(&b, 0x75);
 		x64byte(&b, 0x48); x64byte(&b, 0x01); x64byte(&b, 0xd0); x64guard(&b, 0x73);
+		x64pcspan(&b, 0, abi->instbytes);
 		if(p.kind == LeafTableJump){
 			x64byte(&b, 0x48); x64byte(&b, 0x89); x64byte(&b, 0x87); x64word(&b, abi->pc);
 		}else{
@@ -3368,6 +3372,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
         x64byte(&b, 0x49);
         x64byte(&b, 0x8b);
         x64byte(&b, 0x02);
+        x64pcspan(&b, 0, 1);
         x64byte(&b, 0x48);
         x64byte(&b, 0x89);
         x64byte(&b, 0x87);
@@ -3417,6 +3422,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
             x64byte(&b, 0x49);
         x64byte(&b, 0x8b);
         x64byte(&b, 0x02);
+            x64pcspan(&b, 0, 1);
             x64byte(&b, 0x48);
         x64byte(&b, 0x89);
         x64byte(&b, 0x87);
@@ -3429,6 +3435,7 @@ leafemit(u32int *out, int cap, LeafLayout *abi, int op)
         x64byte(&b, 0x49);
         x64byte(&b, 0x8b);
         x64byte(&b, 0x02);
+        x64pcspan(&b, 0, 1);
         x64byte(&b, 0x48);
         x64byte(&b, 0x89);
         x64byte(&b, 0x87);

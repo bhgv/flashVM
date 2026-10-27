@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 381ecd2f8162bc02d9bda6cedfde9aad9fb8bbe6. Каждый файл имеет
+Текущий снимок фиксирует 51d44da4670567c7d38820ca0b1dfd8e3e4d895d. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 

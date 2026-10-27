@@ -1,3 +1,19 @@
+# Direct target synchronization and reverse diagnostic fix
+
+Inferno experiment is pinned to **51d44da4670567c7d38820ca0b1dfd8e3e4d895d**.
+Snapshots: **617 core/reference + 206 bootstrap files**. Incoming CASE/GOTO/MOVPC
+span checks and direct-branch nil/H checks cover shared C and priority emitters.
+[PC boundaries](upstream/libinterp/tests/README.pc-target-boundaries.md) ·
+[Direct branches](upstream/libinterp/tests/README.direct-targets.md).
+
+A reproduced native diagnostic compile failure was fixed in the owning Inferno
+repository and published back as **51d44da**: leaf64-runtime borrows production
+JMP/branchpc with branchreal. Native WORD32/WORD64 UBSan matrices and the refreshed
+core build pass. The new native/guest target drivers and readiness checks pass.
+FlashVM language/FIR initialization changes remain outside Inferno.
+
+---
+
 # Packed GC map synchronization
 
 Inferno experiment is pinned to **381ecd2f8162bc02d9bda6cedfde9aad9fb8bbe6**.

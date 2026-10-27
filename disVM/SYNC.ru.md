@@ -1,3 +1,19 @@
+# Синхронизация переходов и обратное исправление диагностики
+
+Inferno experiment закреплён на **51d44da4670567c7d38820ca0b1dfd8e3e4d895d**.
+Снимки: **617 файлов ядра/эталонов + 206 bootstrap**. Получены проверки полных
+целей CASE/GOTO/MOVPC и nil/H прямых переходов в C и приоритетных эмиттерах.
+[Границы PC](upstream/libinterp/tests/README.pc-target-boundaries.md) ·
+[Прямые переходы](upstream/libinterp/tests/README.direct-targets.md).
+
+В исходном Inferno воспроизведена и исправлена ошибка сборки нативного драйвера:
+leaf64-runtime теперь берёт production JMP/branchpc вместе с branchreal. Обратный
+коммит **51d44da** опубликован в experiment; нативные WORD32/WORD64 матрицы UBSan
+и обновлённая сборка ядра проходят. Новые native/guest проверки целей и готовности
+прошли. Изменения языка/FIR FlashVM в Inferno не переносятся.
+
+---
+
 # Синхронизация упакованных карт GC
 
 Inferno experiment закреплён на **381ecd2f8162bc02d9bda6cedfde9aad9fb8bbe6**.

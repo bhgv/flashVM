@@ -21,7 +21,7 @@ String	snil;			/* String known to be zero length */
 #define P(r)	*((WORD**)(R.r))
 #define C(r)	*((Channel**)(R.r))
 #define T(r)	*((void**)(R.r))
-#define JMP(r)	memmove(&R.PC, R.r, sizeof(R.PC))
+#define JMP(r)	branchpc(R.r, exBounds) // Validate a taken target before publishing PC.
 #define SH(r)	*((SHORT*)(R.r))
 #define SR(r)	*((SREAL*)(R.r))
 
@@ -42,9 +42,26 @@ OP(negf)
 	result = -source;
 	memmove(R.d, &result, sizeof(result));
 }
+
+
+/* Capture a taken native target before rejecting sentinels or publishing PC. */
+static void
+branchpc(void *slot, char *failure)
+{
+	void *target;
+
+	if(slot == nil || slot == H || (uintptr)slot > (uintptr)-1-sizeof(target))
+		error(failure);
+	memmove(&target, slot, sizeof(target));
+	if(target == nil || target == H)
+		error(failure);
+	memmove(&R.PC, &target, sizeof(target));
+}
+
+
 /* REG.d borrows a native target slot; REG.s/m are ignored. No blocking or
- * ownership transfer occurs. Invalid target spans raise exBounds before reads
- * or PC publication. Native pointer width is independent of the VM WORD width.
+ * ownership transfer occurs. Invalid cells and nil/H targets raise exBounds before
+ * PC publication. Native pointer width is independent of the VM WORD width.
  */
 OP(jmp)
 {
@@ -55,7 +72,7 @@ OP(jmp)
 }
 
 
-/* Validate a Dis program index before turning it into a code pointer. */
+/* Validate the full Dis instruction span before publishing a program address. */
 OP(movpc)
 {
 	WORD pc;
@@ -75,7 +92,8 @@ OP(movpc)
 	if((uvlong)pc > (uintptr)-1/sizeof(Inst))
 		error(exBounds);
 	offset = (uintptr)pc*sizeof(Inst);
-	if((uintptr)ml->m->prog > (uintptr)-1-offset)
+	if(offset > (uintptr)-1-sizeof(Inst) ||
+	   (uintptr)ml->m->prog > (uintptr)-1-offset-sizeof(Inst))
 		error(exBounds);
 	target = (Inst*)((uintptr)ml->m->prog+offset);
 	if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(target))
@@ -1417,6 +1435,8 @@ OP(bgel)
         JMP(d);
     }
 }
+
+
 /* Compare captured real values and read a branch target only when it is taken. */
 /* condition selects EQ/NE/LT/LE/GT/GE (0..5); REG.s/m borrow REAL input slots
  * and REG.d borrows a native target slot. No ownership transfer or blocking.
@@ -1462,7 +1482,7 @@ branchreal(int condition)
         if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(R.PC)){
             error(exBounds);
         }
-        memmove(&R.PC, R.d, sizeof(R.PC));
+        JMP(d);
     }
 }
 
@@ -1478,6 +1498,8 @@ OP(blef) { branchreal(3); }
 OP(bgtf) { branchreal(4); }
 /* Ordered real greater-than-or-equal comparison. */
 OP(bgef) { branchreal(5); }
+
+
 /* Capture string owners and defer the target read until the predicate is true. */
 static void
 branchstring(int condition)
@@ -1506,7 +1528,7 @@ branchstring(int condition)
 		/* False predicates never inspect or validate their unused target slot. */
 		if(R.d == nil || R.d == H || (uintptr)R.d > (uintptr)-1-sizeof(R.PC))
 			error(exHeap);
-		JMP(d);
+		branchpc(R.d, exHeap);
 	}
 }
 
@@ -2626,7 +2648,7 @@ cnewcmapped(Modlink *module, WORD index, int len)
 }
 
 
-/* Resolve a table target without forming an out-of-range Dis instruction pointer. */
+/* Resolve a table target only when its complete Dis instruction span fits. */
 static Inst*
 casepc(Modlink *ml, int destination)
 {
@@ -2640,7 +2662,8 @@ casepc(Modlink *ml, int destination)
 		error(exBounds);
 	offset = (uintptr)destination*sizeof(Inst);
 	program = (uintptr)ml->m->prog;
-	if(program > (uintptr)-1-offset)
+	if(offset > (uintptr)-1-sizeof(Inst) ||
+	   program > (uintptr)-1-offset-sizeof(Inst))
 		error(exBounds);
 	return (Inst*)(program+offset);
 }
@@ -2820,7 +2843,7 @@ OP(casec)
 }
 
 
-/* Read fixed-width Dis table entries and commit a validated PC without alignment assumptions. */
+/* Read fixed-width table cells and publish only a complete Dis instruction span. */
 OP(igoto)
 {
 	Modlink *ml;
@@ -2859,7 +2882,8 @@ OP(igoto)
 		error(exBounds);
 	offset = (uintptr)destination*sizeof(Inst);
 	program = (uintptr)ml->m->prog;
-	if(program > (uintptr)-1-offset)
+	if(offset > (uintptr)-1-sizeof(Inst) ||
+	   program > (uintptr)-1-offset-sizeof(Inst))
 		error(exBounds);
 	R.PC = (Inst*)(program+offset);
 }
