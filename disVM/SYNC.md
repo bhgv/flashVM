@@ -1,3 +1,21 @@
+# Captured stack teardown roots and packed diagnostic descriptors
+
+Tested Inferno experiment pin: **92830151d9b130e6fea1f122c688165eee743fea**.
+Exact selections remain **622 core/reference + 206 bootstrap files**. Stack
+teardown captures each extension parent and root Type before mapped-owner
+destructors run. Packed Type pointer counts and diagnostic bitmap reads use
+byte-safe accesses. A destructor changing saved EX/TR cannot redirect or
+truncate the remaining cleanup or suppress root-frame owners.
+
+[Upstream contract](upstream/libinterp/tests/README.stack-frame-contract.md).
+The owning WORD32/WORD64 native cleanup matrix passed **196,608 cases** under
+ASan/UBSan, NDEBUG and strict warnings. This does not establish a general mutable
+Type/callback contract or physical ARM64 acceptance. Prior reverse fixes remain
+upstream; no new reverse defect was found. Compiler 0.46 private scalar-store
+optimization remains FlashVM-only.
+
+---
+
 # Exact JIT cache binding and code-image refresh
 
 Final tested pin: **6c468ef5ecf203c2ca4b0e7eef435a145399b3d0**.
