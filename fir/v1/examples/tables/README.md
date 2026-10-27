@@ -189,3 +189,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Retained table assignments](../../doc/TABLE_LEASES.md) cover destination capture, RHS and store/splice; see the commented [leases.b](leases.b).
+
+
+[ownership-flow.fir](ownership-flow.fir) demonstrates recursive aliases and a shared branch successor, returning 42. [Ownership-flow contract](../../doc/OWNERSHIP_FLOW.md).

@@ -89,6 +89,14 @@ def table_packages(prefix, work, environment):
     run([compiler_host, fir, image], work, environment)
     if "DATA 0 42\nDATA 8 1\n" not in run([runtime, "--jit", "--quantum", 1, "--inspect-words", 0, 2, image], work, environment):
         raise RuntimeError("relocated public Dis compiler API result differs")
+    # The relocated library must also validate and lower a retained alias/join scope.
+    flow_source = prefix / "fir/examples/tables/ownership-flow.fir"
+    run([compiler_host, flow_source, image], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image],
+                     work, environment, include_stderr=True)
+        if "DATA 0 42\nDATA 8 1\n" not in result or "tables_live=0 keys_live=0" not in result:
+            raise RuntimeError("relocated ownership flow compiler/library result differs")
     # Link a fresh C99 host using only the installed public table API and archives.
     client = work / "table-client.c"
     shutil.copyfile(prefix / "fir/examples/tables/client.c", client)

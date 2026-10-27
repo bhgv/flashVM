@@ -52,9 +52,12 @@ checks actual contention across channel waits separately. Automatic source tests
 check ordering, alias/self-splice behavior, optimizer preservation, invalid types,
 source spans, GC roots, both VM modes and quantum 1/default scheduling. The
 optional table reference runner is sequential; its scope effects are no-ops
-after FIR type verification and do not constitute concurrency validation.
+after FIR verification and do not constitute concurrency validation.
 
 This extension stays in FlashVM. General arrays, mutable string slots, proxy/any
 assignment scopes, distributed lease cancellation/timeouts and automatic recovery
 are separate pending work. Explicit AS conversions retain their AS syntax;
 Limbo still uses typed `big`, `int` and `string` casts.
+
+
+[Ownership flow](OWNERSHIP_FLOW.md) requires balanced normal FIR returns; runtime cleanup still handles exceptional exits.

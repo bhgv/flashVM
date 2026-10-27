@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <inttypes.h>
+#include <stdlib.h>
 
 
 /* Shared bounded UTF-8 validator from fir1_io; no parser or VM state is acquired. */
@@ -136,12 +137,139 @@ static const char *const ops[] = {"const.i32",
                                   "table.lock",
                                   "table.unlock"};
 
-/* All blocks must be reachable and terminated. Requiring reachability keeps
- * the initial verifier small and makes dominance precise even for cycles. */
+/* Resolve a verified table SSA copy to its original owner identity. module/value
+ * are borrowed and already passed dominance/type verification. Return the root
+ * SSA index; the bounded walk never allocates or inspects runtime heap pointers. */
+static int lease_owner(const FirModule *module, int value)
+{
+    int remaining = module->value_count;
+    while (remaining-- > 0)
+    {
+        const FirInstruction *definition = &module->instructions[module->values[value].definition];
+        if (definition->op != O_COPY)
+        {
+            break;
+        }
+        value = definition->a;
+    }
+    return value;
+}
 
 
+/* Validate retained ownership on every normal CFG path of a verified module.
+ * first/last and edge are borrowed validated block metadata. Each known block
+ * has one exact incoming owner/depth vector; disagreeing joins/backedges fail.
+ * Return zero with error/cap diagnostic on invalid flow or workspace exhaustion.
+ * Temporary vectors are private C storage, freed on every path; no VM executes. */
+static int lease_flow(const FirModule *module, const int *first, const int *last,
+                      unsigned char edge[FIR_BLOCKS][FIR_BLOCKS], char *error, size_t cap)
+{
+    unsigned *incoming;
+    unsigned depth[FIR_LIMIT] = {0}; /* Current block's canonical owner recursion counts. */
+    unsigned char known[FIR_BLOCKS] = {0}; /* Blocks enqueued exactly once. */
+    int queue[FIR_BLOCKS]; /* FIFO of validated block IDs. */
+    int head = 0;
+    int tail = 0;
+    int i;
+    int result = 0;
+    int has_leases = 0;
+    size_t width = (size_t)module->value_count;
+    for (i = 0; i < module->count; i++)
+    {
+        const FirInstruction *in = &module->instructions[i];
+        if (!in->removed && (in->op == O_TABLE_LOCK || in->op == O_TABLE_UNLOCK))
+        {
+            has_leases = 1;
+            break;
+        }
+    }
+    if (!has_leases)
+    {
+        return 1;
+    }
+    incoming = calloc((size_t)module->block_count * width, sizeof(*incoming));
+    if (!incoming)
+    {
+        return fail(error, cap, "cannot allocate table lease flow workspace");
+    }
+    queue[tail++] = module->instructions[0].block;
+    known[queue[0]] = 1;
+    while (head < tail)
+    {
+        int block = queue[head++];
+        int next;
+        memcpy(depth, incoming + (size_t)block * width, width * sizeof(*depth));
+        for (i = first[block]; i <= last[block]; i++)
+        {
+            const FirInstruction *in = &module->instructions[i];
+            if (in->removed)
+            {
+                continue;
+            }
+            if (in->op == O_TABLE_LOCK || in->op == O_TABLE_UNLOCK)
+            {
+                int owner = lease_owner(module, in->a);
+                if (in->op == O_TABLE_LOCK)
+                {
+                    depth[owner]++;
+                }
+                else if (!depth[owner])
+                {
+                    fail(error, cap, "line %d: table unlock without matching lock", in->line);
+                    goto done;
+                }
+                else
+                {
+                    depth[owner]--;
+                }
+            }
+            if (in->op == O_RETURN)
+            {
+                int owner;
+                for (owner = 0; owner < module->value_count; owner++)
+                {
+                    if (depth[owner])
+                    {
+                        fail(error, cap, "line %d: return with retained table ownership", in->line);
+                        goto done;
+                    }
+                }
+            }
+        }
+        for (next = 0; next < module->block_count; next++)
+        {
+            unsigned *state = incoming + (size_t)next * width;
+            if (!edge[block][next])
+            {
+                continue;
+            }
+            if (known[next])
+            {
+                if (memcmp(state, depth, width * sizeof(*depth)))
+                {
+                    fail(error, cap, "block %s: inconsistent table ownership at join/backedge",
+                         module->blocks[next].name);
+                    goto done;
+                }
+            }
+            else
+            {
+                memcpy(state, depth, width * sizeof(*depth));
+                known[next] = 1;
+                queue[tail++] = next;
+            }
+        }
+    }
+    result = 1;
+done:
+    free(incoming);
+    return result;
+}
 
-/* Check CFG structure, compute dominators, then validate each SSA operand/type. */
+
+/* Check reachable/terminated CFG blocks, dominance, SSA types and retained-owner
+ * flow. Borrow m without mutation; return zero with error/cap diagnostic on any
+ * invalid field/path or ownership workspace failure. No generated code executes. */
 int fir_verify(FirModule *m, char *error, size_t cap)
 {
     unsigned char edge[FIR_BLOCKS][FIR_BLOCKS] = {{0}};
@@ -733,7 +861,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     bad_type:
         return fail(error, cap, "line %d: operand/result type mismatch", in->line);
     }
-    return 1;
+    return lease_flow(m, first, last, edge, error, cap);
 }
 
 

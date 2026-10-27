@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile, dis;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.34.0 (FIR 1.0; SWO1; NC64 Dis scalar CFG and retained table scopes)");
+        puts("fir1 0.35.0 (FIR 1.0; SWO1; NC64 Dis scalar CFG and retained table scopes)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

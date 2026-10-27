@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.34.0 LANGUAGES C)
+project(fir1 VERSION 0.35.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -445,4 +445,17 @@ if(BUILD_TESTING)
   add_test(NAME fir1_table_leases COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/table_leases.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${lease_reference})
+endif()
+
+# Ownership must agree at joins/backedges before any backend publishes output.
+if(BUILD_TESTING)
+  add_test(NAME fir1_lease_flow COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/lease_flow.py" $<TARGET_FILE:fir1>)
+endif()
+
+# IDE/library callers can construct IR without using the textual parser.
+if(BUILD_TESTING)
+  add_executable(fir1_lease_flow_api tests/lease_flow_api.c)
+  target_link_libraries(fir1_lease_flow_api PRIVATE fir1_ir)
+  add_test(NAME fir1_lease_flow_api COMMAND fir1_lease_flow_api)
 endif()

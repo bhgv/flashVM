@@ -188,3 +188,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Удержание таблицы на всё присваивание](../../doc/TABLE_LEASES.ru.md): захват места, RHS и store/splice; комментированный [leases.b](leases.b).
+
+
+[ownership-flow.fir](ownership-flow.fir) показывает рекурсивные алиасы и соединение веток, возвращая 42. [Контракт баланса](../../doc/OWNERSHIP_FLOW.ru.md).
