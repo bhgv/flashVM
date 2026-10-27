@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.28.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.29.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -121,3 +121,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Int arithmetic and Unicode bounds / Int-арифметика](doc/INT_ARITHMETIC.md) · [Русский](doc/INT_ARITHMETIC.ru.md).
 
 Compiler 0.28 / Компилятор 0.28: [text expressions and int bits](doc/TEXT_BITS.md), [русское руководство](doc/TEXT_BITS.ru.md).
+
+Compiler 0.29 / Компилятор 0.29: [checked signed32 shifts](doc/INT_SHIFTS.md), [русское руководство](doc/INT_SHIFTS.ru.md).

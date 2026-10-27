@@ -55,6 +55,8 @@ unsigned fir_effects(FirOp op)
         return FIR_READS_MEMORY | FIR_MAY_THROW;
     case O_TABLE_DELETE:
         return FIR_READS_MEMORY | FIR_WRITES_MEMORY | FIR_MAY_THROW;
+    case O_I32_SHL:
+    case O_I32_SHR:
     case O_I32_DIV:
     case O_I32_MOD:
     case O_BIG_SHL:

@@ -118,7 +118,25 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op == O_STRING_EQ && a->op == O_STRING && b->op == O_STRING)
+            if ((in->op == O_I32_SHL || in->op == O_I32_SHR) && a->op == O_I32 && b->op == O_I32 && b->integer >= 0 &&
+                b->integer < 32)
+            {
+                unsigned count = (unsigned)b->integer;
+                uint32_t bits = (uint32_t)a->integer;
+                if (in->op == O_I32_SHL)
+                {
+                    bits <<= count;
+                }
+                else if (count)
+                {
+                    bits = (bits >> count) | (a->integer < 0 ? UINT32_MAX << (32U - count) : 0);
+                }
+                in->integer = signed_bits(bits);
+                in->op = O_I32;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_STRING_EQ && a->op == O_STRING && b->op == O_STRING)
             {
                 in->integer = strcmp(a->text, b->text) == 0;
                 in->op = O_BOOL;

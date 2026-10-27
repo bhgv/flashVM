@@ -27,6 +27,8 @@ enum
     MFRAME = 11,           /* Allocate a typed native call frame. */
     JMP = 13,              /* Existing direct instruction-PC branch. */
     BLTL = 130,            /* Signed big less-than branch. */
+    BLEW = 96,             /* Constant 32 <= count guard for FIR int shifts. */
+    BGTW = 97,             /* Constant zero > count guard for FIR int shifts. */
     BLTW = 95,             /* Signed normalized-int less-than branch. */
     BEQW = 93,             /* Compare normalized bool against immediate one. */
     BEQL = 134,            /* Exact full-width big equality branch. */
@@ -357,7 +359,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_EQ) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_I32_SHR) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -451,6 +453,37 @@ static void normalize_int(Emitter *e, unsigned source, unsigned destination)
     e->count++;
 }
 
+
+/* Emit a checked signed32 shift using existing NC64 big kernels. Guard branches
+ * reject both negative and >=32 counts before payload publication. Invalid counts
+ * reach a checked big shift with 64, preserving the VM's native exception path.
+ * e is the borrowed encoder; left_shift selects the direction; a/b/d are source,
+ * count and destination frame offsets. No return value, blocking or allocation;
+ * runtime errors are raised only when the emitted sequence executes. */
+static void int_shift(Emitter *e, int left_shift, unsigned a, unsigned b, unsigned d)
+{
+    unsigned start = e->count;
+    unsigned i;
+    for (i = 0; i < 2; ++i)
+    {
+        octet(e->body, i ? BLEW : BGTW);
+        octet(e->body, MIDDLE_FRAME | (IMM << 3) | IMM);
+        operand(e->body, b);
+        operand(e->body, i ? 32 : 0);
+        operand(e->body, start + 7U);
+        e->count++;
+    }
+    arithmetic(e, left_shift ? SHLL : SHRL, MIDDLE_FRAME, a, b, d);
+    normalize_int(e, d, d);
+    instruction(e, JMP, NONE, 0, IMM, start + 8U, 0, -1);
+    octet(e->body, SHLL);
+    octet(e->body, MIDDLE_FRAME | (IMM << 3) | FP);
+    operand(e->body, a);
+    operand(e->body, 64);
+    operand(e->body, d);
+    e->count++;
+}
+
 /* Lower one verified straight-line body using only existing Dis operations and builtin ABI calls.
  * Entry/callee root maps hold references during allocation; paired slots never encode native addresses. */
 static void body(Emitter *e, FirModule *module, int measure)
@@ -525,6 +558,10 @@ static void body(Emitter *e, FirModule *module, int measure)
                        b,
                        d);
             normalize_int(e, d, d);
+            break;
+        case O_I32_SHL:
+        case O_I32_SHR:
+            int_shift(e, in->op == O_I32_SHL, a, b, d);
             break;
         case O_TO_INT:
             normalize_int(e, a, d);

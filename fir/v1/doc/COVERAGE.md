@@ -58,3 +58,7 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 
 Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
 [русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.
+
+Compiler 0.29 / Компилятор 0.29: [checked int shifts](INT_SHIFTS.md),
+[проверяемые int-сдвиги](INT_SHIFTS.ru.md), big/table source profile and raw FIR.
+Live checked shifts are Dis/reference-only; homogeneous int/AS source profiles are unchanged.

@@ -136,7 +136,9 @@ typedef enum
     O_I32_DIV,       /* Signed truncating int division; zero raises, MIN/-1 wraps. */
     O_I32_MOD,       /* Signed int remainder; zero raises, MIN%-1 is zero. */
     O_STRING_CONCAT, /* Concatenate rooted UTF-8 strings; allocates, may throw. */
-    O_STRING_EQ      /* Compare string contents without implicit conversion. */
+    O_STRING_EQ,     /* Compare string contents without implicit conversion. */
+    O_I32_SHL,       /* Checked int left shift; count 0..31, result wraps to signed32. */
+    O_I32_SHR        /* Checked arithmetic int right shift; count 0..31. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

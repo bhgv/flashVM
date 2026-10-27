@@ -108,7 +108,7 @@ def main():
                         raise RuntimeError('native int zero-divisor identity changed')
 
         for body in ('return big (int 1 + 1);', 'return big (int 1 & 1);',
-                     'x := int 1; x <<= int 1; return big x;',
+                     'x := int 1; x <<= 1; return big x;',
                      't := table of big; t.x = int 42; return t.x;'):
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {' + body + '}')
             fir.write_text('PRIOR FIR')

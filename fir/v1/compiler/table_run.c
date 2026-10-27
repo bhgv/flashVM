@@ -99,7 +99,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_STRING_EQ) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_I32_SHR) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -289,6 +289,27 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             result->big = bits <= INT32_MAX ? (int64_t)bits : -1 - (int64_t)(UINT32_MAX - bits);
             break;
         }
+        case O_I32_SHL:
+        case O_I32_SHR:
+            if (b->big < 0 || b->big >= 32)
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                unsigned count = (unsigned)b->big;
+                uint32_t bits = (uint32_t)(uint64_t)a->big;
+                if (in->op == O_I32_SHL)
+                {
+                    bits <<= count;
+                }
+                else if (count)
+                {
+                    bits = (bits >> count) | (a->big < 0 ? UINT32_MAX << (32U - count) : 0);
+                }
+                result->big = int_bits(bits);
+            }
+            break;
         case O_BIG_SHL:
         case O_BIG_SHR:
             if (b->big < 0 || b->big >= 64)
@@ -562,7 +583,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                      capacity,
                      "line %d: table operation failed: %s",
                      in->line,
-                     (in->op == O_BIG_SHL || in->op == O_BIG_SHR) ? "invalid argument"
+                     (in->op == O_BIG_SHL || in->op == O_BIG_SHR || in->op == O_I32_SHL || in->op == O_I32_SHR)
+                         ? "invalid argument"
                      : (in->op == O_BIG_DIV || in->op == O_BIG_MOD || in->op == O_I32_DIV || in->op == O_I32_MOD)
                          ? "zero divide"
                      : in->op == O_TO_BIG    ? "invalid big conversion"

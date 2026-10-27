@@ -130,7 +130,7 @@ def main():
 
         for body in ('return big ("4" + 2);', 's := "4"; s += 2; return 42;',
                      'return big (int 1 | 2);', 'return big (~true);',
-                     'a := int 1; a <<= int 1; return big a;', 'return big ("a" < "b");',
+                     'a := int 1; a <<= 1; return big a;', 'return big ("a" < "b");',
                      'return big ("1" == 1);'):
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {' + body + '}')
             fir.write_text('OLD FIR')

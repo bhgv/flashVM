@@ -36,6 +36,8 @@ enum
     DIS_JMP = 13,        /* Existing Dis branch to a verified program index. */
     DIS_BEQW = 93,       /* Signed/native equality used to materialize bool. */
     DIS_BNEW = 94,       /* Branch when a normalized bool differs from scratch zero. */
+    DIS_BLEW = 96,       /* Constant 32 <= count rejection before int shifts. */
+    DIS_BGTW = 97,       /* Constant zero > count rejection before int shifts. */
     DIS_BLTW = 95,       /* Signed/native comparison of normalized i32 values. */
     DIS_IMMEDIATE = 2,   /* Immediate scalar or loader-relocated branch program index. */
     DIS_MP = 0,          /* Module-relative byte offset. */
@@ -176,6 +178,10 @@ static int supported(
         case O_BOOL_STORE:
         case O_BOOL_LOAD:
             (*count)++;
+            break;
+        case O_I32_SHL:
+        case O_I32_SHR:
+            *count += 8U;
             break;
         case O_TO_INT:
             *count += 3U;
@@ -382,6 +388,26 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)destination);
             instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
             instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            break;
+        case O_I32_SHL:
+        case O_I32_SHR:
+            /* FIR counts are 0..31 even on NC64. The error edge deliberately
+             * executes the existing checked big shift with count 64, raising
+             * the VM's normal invalid-argument exception without a new ABI. */
+            instruction(output, DIS_BGTW, DIS_IMMEDIATE, 0, DIS_IMMEDIATE, pcs[index] + 7U, (int)slot(current->b));
+            instruction(output, DIS_BLEW, DIS_IMMEDIATE, 32, DIS_IMMEDIATE, pcs[index] + 7U, (int)slot(current->b));
+            instruction(output,
+                        current->op == O_I32_SHL ? DIS_SHLL : DIS_SHRL,
+                        DIS_FP,
+                        slot(current->b),
+                        DIS_FP,
+                        destination,
+                        (int)slot(current->a));
+            instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)destination);
+            instruction(output, DIS_XORW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            instruction(output, DIS_SUBW, DIS_MP, sign, DIS_FP, destination, (int)destination);
+            instruction(output, DIS_JMP, DIS_NONE, 0, DIS_IMMEDIATE, pcs[index] + 8U, -1);
+            instruction(output, DIS_SHLL, DIS_IMMEDIATE, 64, DIS_FP, destination, (int)slot(current->a));
             break;
         case O_TO_INT:
             instruction(output, DIS_ANDW, DIS_MP, mask, DIS_FP, destination, (int)slot(current->a));

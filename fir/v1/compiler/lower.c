@@ -743,15 +743,20 @@ int source_table_text(int quoted)
     return result;
 }
 
-/* Emit a checked long shift from borrowed SSA values. left must be big, right int;
- * direction selects '<' or '>'. Count range remains a runtime error, including unused results. */
+/* Emit a checked int/big shift from borrowed SSA values. right must be int;
+ * direction selects '<' or '>'. FIR retains the source width and eager count error. */
 int source_table_shift(int left, int right, int direction)
 {
-    if (table_values[left] != T_I64 || table_values[right] != T_I32)
+    FirType kind = table_values[left];
+    if ((kind != T_I64 && kind != T_I32) || table_values[right] != T_I32)
     {
-        reject("big shift requires big value and explicit int count");
+        reject("shift requires int/big value and explicit int count");
     }
-    return table_operation(T_I64, direction == '<' ? "big.shl" : "big.shr", left, right);
+    return table_operation(kind,
+                           kind == T_I32 ? (direction == '<' ? "i32.shl.checked" : "i32.shr.checked")
+                                         : (direction == '<' ? "big.shl" : "big.shr"),
+                           left,
+                           right);
 }
 
 /* Create a fresh mutable table owner; no source binding is acquired here. */

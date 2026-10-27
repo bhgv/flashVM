@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.28.0 LANGUAGES C)
+project(fir1 VERSION 0.29.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -344,4 +344,24 @@ if(BUILD_TESTING)
   add_executable(fir1_text_api tests/text_api.c)
   target_link_libraries(fir1_text_api PRIVATE fir1_ir)
   add_test(NAME fir1_text_api COMMAND fir1_text_api)
+endif()
+
+# Checked int shifts must agree across reference and Dis execution.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    add_test(NAME fir1_int_shifts COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_shifts.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  else()
+    add_test(NAME fir1_int_shifts COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_shifts.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> -)
+  endif()
+endif()
+
+# In-process callers must obey the same int shift types/effects as textual FIR clients.
+if(BUILD_TESTING)
+  add_executable(fir1_int_shift_api tests/int_shift_api.c)
+  target_link_libraries(fir1_int_shift_api PRIVATE fir1_ir)
+  add_test(NAME fir1_int_shift_api COMMAND fir1_int_shift_api)
 endif()

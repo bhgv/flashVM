@@ -93,3 +93,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 [русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.
 
 Версия 0.28: [конкатенация/равенство строк и побитовые int](TEXT_BITS.ru.md).
+
+Версия 0.29: [проверяемые int-сдвиги и составные обновления](INT_SHIFTS.ru.md).

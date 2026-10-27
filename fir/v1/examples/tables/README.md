@@ -127,3 +127,16 @@ arm returns 0. Expected trace cells are 42/0, flags 1/0. Every step is commented
 frame roots, exact int narrowing, rejected mixtures and current SWF limits.
 Installed SDK checks compile this tutorial through freshly linked C99 APIs as
 well as CLI, before/after optimization, in interpreter and JIT modes.
+
+## Checked int shifts and packed fields (0.29)
+
+[int-shifts.b](int-shifts.b) reads the exact packed word 0x8000002a from a big
+table, explicitly narrows it to int, extracts its sign with arithmetic >>31 and
+its low-byte payload with a mask. Compound left/right shifts round-trip 42. A
+lazy terminal decision keeps an invalid count 32 unexecuted. Every step is
+commented; expected trace cells are 42/0 and execution flags 1/0.
+
+[Detailed guide](../../doc/INT_SHIFTS.md) gives commands and explains width, eager
+count errors, FIR effects, eight-instruction Dis expansion and current limits.
+Installed SDK acceptance uses freshly linked source/FIR C99 clients, original
+and optimized IR, interpreter and native JIT, with one-instruction GC quanta.
