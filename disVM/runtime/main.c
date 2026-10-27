@@ -7,6 +7,7 @@
 #include "runt.h"
 #include "pool.h"
 #include "raise.h"
+#include "exception_host.h"
 #include "disvm/native_process.h"
 #include "file_port.h"
 #include <stdio.h>
@@ -20,6 +21,7 @@
 #include "thread_port.h"
 
 
+
 /* Initialize, poll and release the UI channel boundary on this sole native owner. */
 extern int dvm_editor_start(void);
 extern int dvm_editor_poll(void);
@@ -30,29 +32,36 @@ extern void dvm_editor_stop(void);
 #define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
 #define PROCESS_MAX 128                      /* Maximum simultaneous Limbo processes. */
 
+
 /* Private allocator owner; the arena has stable metadata for production GC walks. */
 struct Pool
 {
     Bhdr *arena; /* Owned bounded arena, including collector block headers. */
 };
 
+
 /* Initialize the resolver's owned native lock. No arguments/result; raises on failure. */
 extern void dvm_srv_initialize(void);
+
 
 
 /* Register retained Srv exports for this exclusive owner. No arguments or result. */
 extern void srvmodinit(void);
 
 
+
 /* Register retained Loader exports/types. No arguments/result; requires initialized heap. */
 extern void loadermodinit(void);
+
 
 
 /* Register hosted Math exports. No arguments/result; requires initialized heap and Sys. */
 extern void mathmodinit(void);
 
+
 /* Register hosted scalar hybrid tables after the VM allocator is initialized. */
 extern void dvm_bigtable_initialize(void);
+
 /* Copy live scalar table/snapshot counts for explicit diagnostic statistics. */
 extern void dvm_bigtable_owners(unsigned long *, unsigned long *);
 extern ulong gcnruns;                     /* Collector scheduler passes maintained by the owning Dis core. */
@@ -90,6 +99,7 @@ static uchar *inspect_data;     /* [GC:] Registered native MP root; only verifie
 static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
 static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
 
+
 /* Print copied instruction/native counters only for an explicit --stats request.
  * No parameters or VM mutation; terminal success/error/test-halt paths share this exact format. */
 static void runtime_statistics(void)
@@ -109,6 +119,7 @@ static void runtime_statistics(void)
                 keys);
     }
 }
+
 
 /* Resolve a diagnostic to decoded bytecode, including the caller of a failing native builtin.
  * Outputs borrow a loaded module path and copy a checked PC index; unknown locations use -1.
@@ -145,6 +156,7 @@ static void runtime_error_location(const char **path, long *pc)
     }
 }
 
+
 /* Admit one complete instruction boundary on this native owner, before decode or C/native execution.
  * The optional total limit includes guarded fallbacks once and is never reset by UI/stdin progress.
  * A rejection leaves the current PC and registers unmodified and raises through the process guard. */
@@ -157,6 +169,7 @@ void dvm_runtime_step(void)
     }
     dvm_runtime_instructions++;
 }
+
 
 /* Parse one nonnegative decimal extent into caller storage, without signs, bases or overflow.
  * text is borrowed argv memory. Returns zero without publishing partial results on invalid input. */
@@ -185,6 +198,7 @@ static int runtime_extent(const char *text, size_t *result)
     *result = value;
     return 1;
 }
+
 
 /* Retain the actual entry-instance data before its last process can release it.
  * process is borrowed on the sole VM owner. Check every requested NC64 cell against the type map;
@@ -222,6 +236,23 @@ static void inspect_retain(Prog *process)
     inspect_data = data; /* [GC:] Native root keeps the mapped module graph alive until report/cleanup. */
 }
 
+
+/* Describe the current bound owner to exception diagnostics without a payload lock.
+ * Input registers must be current; name is borrowed writable capacity storage. */
+WORD dvm_exception_status(REG *registers, char *name, int capacity)
+{
+    const char *path;
+    long pc;
+    USED(registers);
+    runtime_error_location(&path, &pc);
+    if (capacity > 0)
+    {
+        snprint(name, capacity, "%s", path);
+    }
+    return (WORD)pc;
+}
+
+
 /* Retire the optional native inspection retain on the sole VM owner; repeated cleanup is harmless.
  * The active process may still own the same scalar data on an error path; its root is unaffected. */
 static void inspect_release(void)
@@ -233,6 +264,7 @@ static void inspect_release(void)
         inspect_data = nil;        /* [GC:] Retire exactly the extra native root, never a process-owned reference. */
     }
 }
+
 
 /* Report copied signed native words or binary64 after all processes have stopped, then release the retain.
  * No Dis stack/frame address is exposed. Returns zero on output failure; never changes module data. */
@@ -266,6 +298,7 @@ static int inspect_report(void)
     return ok;
 }
 
+
 /* Report allocator corruption and terminate instead of continuing with invalid metadata. */
 static void allocator_fault(void *address, char *reason, ulong pc)
 {
@@ -276,6 +309,7 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 }
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
+
 
 /* Create a bounded arena with stable headers for the retained cycle collector. */
 static void arena_init(void)
@@ -295,6 +329,7 @@ static void arena_init(void)
     block->magic = MAGIC_F;
     block->size = ARENA_BYTES - header;
 }
+
 
 /* First-fit allocation preserves block addresses and GC traversal metadata. */
 void *poolalloc(Pool *pool, ulong size)
@@ -326,6 +361,7 @@ void *poolalloc(Pool *pool, ulong size)
     return nil;
 }
 
+
 /* Free one heap block without moving headers observed by the cycle collector. */
 void poolfree(Pool *pool, void *value)
 {
@@ -335,11 +371,13 @@ void poolfree(Pool *pool, void *value)
     block->magic = MAGIC_F;
 }
 
+
 /* Return the stable arena chain consumed by production rungc. */
 Bhdr *poolchain(Pool *pool)
 {
     return pool->arena;
 }
+
 
 /* Report usable payload bytes for production heap bounds checks. */
 ulong poolmsize(Pool *pool, void *value)
@@ -349,6 +387,7 @@ ulong poolmsize(Pool *pool, void *value)
     D2B(block, value);
     return block->size - BHDRSIZE;
 }
+
 
 /* Allocate ordinary host metadata; the VM heap uses its separate bounded arena. */
 void *mallocz(ulong size, int clear)
@@ -361,6 +400,7 @@ void *mallocz(ulong size, int clear)
     return value;
 }
 
+
 /* Preserve the current host error and unwind through the retained Proc error frames. */
 void error(char *message)
 {
@@ -370,6 +410,7 @@ void error(char *message)
     }
     nexterror();
 }
+
 
 /* Propagate the active error to the next enclosing native owner frame. */
 void nexterror(void)
@@ -381,6 +422,7 @@ void nexterror(void)
     }
     siglongjmp(up->estack[--up->nerr], 1);
 }
+
 
 /* Run fallible construction with the real Proc jump-frame discipline. */
 int kprotect(int (*callback)(void *), void *argument)
@@ -395,11 +437,13 @@ int kprotect(int (*callback)(void *), void *argument)
     return result;
 }
 
+
 /* Re-raise after production cleanup. */
 void krethrow(void)
 {
     nexterror();
 }
+
 
 /* Save a native error for the retained module loader. */
 void kwerrstr(char *format, ...)
@@ -410,21 +454,25 @@ void kwerrstr(char *format, ...)
     va_end(arguments);
 }
 
+
 /* Preserve the exclusive VM owner across synchronous host work. */
 void release(void)
 {
 }
+
 
 /* Return from synchronous host work on the same exclusive VM owner. */
 void acquire(void)
 {
 }
 
+
 /* Locate the current runnable process for production channel operations. */
 Prog *currun(void)
 {
     return ready;
 }
+
 
 /* Append a runnable process to the scheduler FIFO. */
 void addrun(Prog *process)
@@ -442,6 +490,7 @@ void addrun(Prog *process)
     tail = process;
 }
 
+
 /* Block/remove the FIFO head while retaining it in the GC root list. */
 Prog *delrun(int state)
 {
@@ -455,6 +504,7 @@ Prog *delrun(int state)
     process->state = state;
     return process;
 }
+
 
 /* Create one Limbo process; it is scheduled above one bound native OS owner. */
 Prog *newprog(Prog *parent, Modlink *module)
@@ -483,6 +533,7 @@ Prog *newprog(Prog *parent, Modlink *module)
     addrun(process);
     return process;
 }
+
 
 /* Wake channel peers with an explicit hangup, using the production queue representation. */
 void killcomm(Progq **queue)
@@ -518,6 +569,7 @@ void killcomm(Progq **queue)
     }
 }
 
+
 /* Reuse production formatting and publish the actual stdout write result. */
 void Sys_print(void *frame)
 {
@@ -534,6 +586,7 @@ void Sys_print(void *frame)
     memmove(call->ret, &result, sizeof(result));
 }
 
+
 /* Sys string-only functions are provided by retained runt.c; FD services are unavailable. */
 static void free_fd(Heap *heap, int swept)
 {
@@ -544,6 +597,7 @@ static void free_fd(Heap *heap, int swept)
         kclose(fd->fd);
     }
 }
+
 
 /* Initialize the actual descriptor-owner finalizer used by the supported input path. */
 void sysinit(void)
@@ -559,12 +613,14 @@ void sysinit(void)
     }
 }
 
+
 /* Accept only ordinary Dis; dynamic native libraries and signatures are unavailable. */
 int dynldable(int fd)
 {
     USED(fd);
     return 0;
 }
+
 
 /* Do not require signatures for local experimental module files. */
 int mustbesigned(char *path, uchar *bytes, ulong length, Dir *metadata)
@@ -576,6 +632,7 @@ int mustbesigned(char *path, uchar *bytes, ulong length, Dir *metadata)
     return 0;
 }
 
+
 /* Signed payload verification is explicitly unsupported. */
 int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
 {
@@ -585,6 +642,7 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
     USED(size);
     return 0;
 }
+
 
 /* Open module input through the shared FlashVM file implementation. */
 static int open_file(const char *path, const char *mode)
@@ -605,6 +663,7 @@ static int open_file(const char *path, const char *mode)
     kwerrstr("file handle quota exceeded");
     return -1;
 }
+
 
 /* Map only the bundled library names from Inferno resource paths to package siblings.
  * path is borrowed. Returns the relative library name or the unchanged native path;
@@ -633,6 +692,7 @@ static const char *bundled_module_path(const char *path)
     }
     return path;
 }
+
 
 /* Open read-only module input; the full VM word is checked before this native call. */
 int kopen(char *path, int mode)
@@ -664,6 +724,7 @@ int kopen(char *path, int mode)
     }
 }
 
+
 /* Read one module fragment from its borrowed file slot. */
 long kread(int fd, void *bytes, long size)
 {
@@ -679,6 +740,7 @@ long kread(int fd, void *bytes, long size)
     return received;
 }
 
+
 /* Close exactly the module handle owned by the loader. */
 int kclose(int fd)
 {
@@ -690,6 +752,7 @@ int kclose(int fd)
     files[fd] = nil;
     return 0;
 }
+
 
 /* Determine module extent without reading beyond its framed contents. */
 Dir *kdirfstat(int fd)
@@ -712,6 +775,7 @@ Dir *kdirfstat(int fd)
     return metadata;
 }
 
+
 /* Module dynamic seeks are not required by ordinary Dis input. */
 vlong kseek(int fd, vlong position, int origin)
 {
@@ -722,12 +786,14 @@ vlong kseek(int fd, vlong position, int origin)
     return -1;
 }
 
+
 /* Return a diagnostic for the interpreter's %r conversion. */
 char *syserr(char *start, char *end, Prog *process)
 {
     USED(process);
     return seprint(start, end, "%s", failure);
 }
+
 
 /* Reserve the complete native-cell entry frame before publishing its process. */
 static Prog *start_module(Module *module)
@@ -763,6 +829,7 @@ static Prog *start_module(Module *module)
     return process;
 }
 
+
 /* Bind relative imports to the entry module's directory without changing caller cwd.
  * path is borrowed argv storage. Returns its basename for the initial logical module load. */
 static char *entry_resource(char *path)
@@ -796,6 +863,7 @@ static char *entry_resource(char *path)
     module_directory[length] = 0;
     return separator + 1;
 }
+
 
 /* Execute a bounded experimental application using real decoding, JIT and channels.
  * argc/argv select the NC64 module and runtime options. Returns zero on completion,
@@ -935,6 +1003,7 @@ int main(int argc, char **argv)
     loadermodinit();
     mathmodinit();
     dvm_bigtable_initialize();
+    excinit();
     dvm_srv_initialize();
     srvmodinit();
     entry = entry_resource(argv[1]);
@@ -993,6 +1062,11 @@ int main(int argc, char **argv)
         if (waserror())
         {
             process->R = DVM_R;
+            if (failure[0] && !instruction_boundary_error && handler(failure))
+            {
+                failure[0] = 0;
+                continue;
+            }
             if (failure[0])
             {
                 const char *path;
@@ -1015,6 +1089,8 @@ int main(int argc, char **argv)
             destroy(process->R.M);
             dvm_native_context_set_process(context, nil);
             up->prog = nil;
+            destroy(process->exval);
+            free(process->exstr);
             free(process);
             live--;
         }
@@ -1051,6 +1127,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
+
 /* Preserve formatted VM errors before unwinding their current owner. */
 void errorf(char *format, ...)
 {
@@ -1062,6 +1139,7 @@ void errorf(char *format, ...)
     error(text);
 }
 
+
 /* Dynamic native code is excluded; ordinary Dis never enters this boundary. */
 Module *newdyncode(int fd, char *path, Dir *metadata)
 {
@@ -1072,6 +1150,7 @@ Module *newdyncode(int fd, char *path, Dir *metadata)
     return nil;
 }
 
+
 /* Reject native data attachment rather than manufacturing a successful import. */
 void newdyndata(Modlink *module)
 {
@@ -1079,11 +1158,13 @@ void newdyndata(Modlink *module)
     error("native data loading unsupported");
 }
 
+
 /* There are no native dynamic-code allocations in this host. */
 void freedyncode(Module *module)
 {
     USED(module);
 }
+
 
 /* There are no native dynamic-data allocations in this host. */
 void freedyndata(Modlink *module)
@@ -1091,12 +1172,14 @@ void freedyndata(Modlink *module)
     USED(module);
 }
 
+
 /* Ask the host allocator about metadata storage; VM blocks use poolmsize instead. */
 ulong msize(void *value)
 {
     extern size_t malloc_usable_size(void *);
     return malloc_usable_size(value);
 }
+
 
 /* Validate language path contents before converting to a native NUL-terminated name.
  * name is borrowed; returns the UTF-8 path or NULL with a visible error. */
@@ -1132,6 +1215,7 @@ static char *file_path(String *name)
     }
     return string2c(name);
 }
+
 
 /* Open ordinary read-only input, or the explicitly enabled isolated-test control node. */
 void Sys_open(void *frame)
@@ -1180,8 +1264,10 @@ void Sys_open(void *frame)
     destroy(old);
 }
 
+
 /* Validate one live native descriptor/byte-array request; input storage stays caller-owned. */
 static int io_span(Sys_FD *descriptor, Array *bytes, WORD count);
+
 
 /* Write to actual native files/standard output, or consume the explicit test halt capability. */
 void Sys_write(void *frame)
@@ -1225,8 +1311,10 @@ void Sys_write(void *frame)
     }
 }
 
+
 /* Share the NC64 leaf policy with complete JIT tails and its standalone check. */
 #include "native_leaf.c"
+
 
 /* Validate a typed byte-array I/O and keep its native count within the C port range.
  * descriptor/bytes borrow a live FD and mutable array; count is clamped to its extent.
@@ -1254,6 +1342,7 @@ static int io_span(Sys_FD *descriptor, Array *bytes, WORD count)
     }
     return count;
 }
+
 
 /* Read one genuine fragment through the shared FlashVM file port.
  * frame supplies a borrowed descriptor/array; result is the byte count or -1. */
@@ -1285,6 +1374,7 @@ void Sys_read(void *frame)
     }
     memmove(call->ret, &result, sizeof(result));
 }
+
 
 /* Read until the requested extent, EOF or an actual port error.
  * frame is borrowed; partial reads return their exact count and leave trailing bytes unread. */
@@ -1336,6 +1426,7 @@ void Sys_readn(void *frame)
     memmove(call->ret, &result, sizeof(result));
 }
 
+
 /* Publish a new descriptor while preserving the previous result owner until construction completes. */
 static void publish_descriptor(void *slot, Sys_FD *result)
 {
@@ -1344,6 +1435,7 @@ static void publish_descriptor(void *slot, Sys_FD *result)
     memmove(slot, &result, sizeof(result));
     destroy(old);
 }
+
 
 /* Borrow standard descriptors 0/1/2 without taking ownership of their OS handles. */
 void Sys_fildes(void *frame)
@@ -1361,6 +1453,7 @@ void Sys_fildes(void *frame)
     }
     publish_descriptor(call->ret, result);
 }
+
 
 /* Create/truncate a file only after validating flags and allocating its result owner.
  * The supported permission value is 0666 filtered by the platform umask. */
@@ -1401,6 +1494,7 @@ void Sys_create(void *frame)
     publish_descriptor(call->ret, result);
 }
 
+
 /* Position an ordinary native file; standard streams and test capabilities fail.
  * frame borrows a typed FD and signed big offset. The big result is the new
  * position, or -1 with a native error. Checked narrowing precedes the port call. */
@@ -1432,6 +1526,7 @@ void Sys_seek(void *frame)
     }
     memmove(call->ret, &result, sizeof(result));
 }
+
 
 /* Format and write an actual FD message through the shared file/stdio port.
  * frame borrows a typed descriptor and variadic VM slots. Returns actual bytes

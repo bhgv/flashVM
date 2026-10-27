@@ -26,6 +26,10 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--idehost", type=Path)
     args = parser.parse_args()
+    subprocess.run(
+        [sys.executable, str(Path(__file__).with_name("prepare_exception.py")),
+         "--source", str(args.source.parent / "emu/port/exception.c"),
+         "--output", str(args.output / "exception.c")], check=True)
     # Always start from pinned source, making repeated preparation byte-identical.
     subprocess.run(
         [

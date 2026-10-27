@@ -77,6 +77,8 @@ Bigtable: module
 
     # Normalize presence/deletion statuses: Ok -> 1, Missing -> 0; other errors raise.
     present: fn(status: int): int;
+    # Read owner/depth/waiters without acquiring the payload guard; diagnostic only.
+    guardstate: fn(tab: ref Handle): (big, int, int);
     # Delete through an immutable snapshot key; return status without compacting indices.
     delkey: fn(tab: ref Handle, keys: ref Keys, index: big): int;
 };

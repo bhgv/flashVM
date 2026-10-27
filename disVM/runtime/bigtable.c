@@ -7,13 +7,16 @@
 #include <limits.h>
 #include "bigtablemod.h"
 #include "table.h"
+#include "table_request.h"
+#include <errno.h>
 #include "relative.h"
 #include <stdint.h>
 
 typedef struct
 {
-    WORD reserved; /* Public ADT prefix; never trusted or interpreted as a native pointer. */
-    Fht *table;    /* [GC:] Private scalar-only C owner, released by the matching heap finalizer. */
+    WORD reserved;       /* Public ADT prefix; never trusted or interpreted as a native pointer. */
+    FvmTableOwner owned; /* [GC:] Scalar payload plus operation guard; private, stable nonmoving owner. */
+    int ready;           /* Guard and payload initialized; finalization retires them exactly once. */
 } TableOwner;
 
 typedef struct
@@ -33,12 +36,15 @@ static void free_table(Heap *heap, int swept)
 {
     TableOwner *owner = H2D(TableOwner *, heap);
     USED(swept);
-    if (owner->table)
+    if (owner->ready)
     {
+        if (fvm_table_owner_destroy(&owner->owned))
+        {
+            sysfatal("finalizing an active native table owner");
+        }
         table_owners--;
-        fht_destroy(owner->table);
+        owner->ready = 0;
     }
-    owner->table = nil;
 }
 
 
@@ -57,13 +63,54 @@ static void free_keys(Heap *heap, int swept)
 
 
 /* Validate a borrowed table reference by exact private descriptor, rejecting forged public ADTs. */
-static Fht *table_value(Bigtable_Handle *handle)
+static FvmTableOwner *table_owner(Bigtable_Handle *handle)
 {
-    if (handle == H || handle == nil || D2H(handle)->t != table_type || !((TableOwner *)handle)->table)
+    TableOwner *owner = (TableOwner *)handle;
+    if (handle == H || handle == nil || D2H(handle)->t != table_type || !owner->ready)
     {
         error("invalid native big table owner");
     }
-    return ((TableOwner *)handle)->table;
+    return &owner->owned;
+}
+
+
+/* Execute a complete scalar request on the VM owner thread. Native cancellation
+ * stays disabled while guards are live; runtime errors occur only after release.
+ * Requests borrow frame-rooted owners/keys and return scalar/native snapshots. */
+static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
+{
+    FvmTableOwner *owner = table_owner(handle);
+    uint64_t token;
+    int previous;
+    int failure = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &previous);
+    if (failure)
+    {
+        error("native table cancellation state failure");
+    }
+    failure = fvm_owned_token(&token);
+    if (!failure)
+    {
+        failure = fvm_table_request(owner, token, request);
+    }
+    pthread_setcancelstate(previous, NULL);
+    if (failure)
+    {
+        error("native table guard failure");
+    }
+}
+
+
+/* Initialize an unpublished private owner; finalization can retire partial
+ * construction after a VM exception. No heap reference escapes into C storage. */
+static void initialize_table(TableOwner *owner)
+{
+    int failure = fvm_table_owner_init(&owner->owned, NULL);
+    if (failure)
+    {
+        error(failure == ENOMEM ? exNomem : "native table guard initialization failure");
+    }
+    owner->ready = 1;
+    table_owners++;
 }
 
 
@@ -78,7 +125,7 @@ static FhtKeys *keys_value(Bigtable_Keys *handle)
 }
 
 
-/* Build a numeric borrowed key; the C core rejects negatives before touching table storage. */
+/* Build a numeric borrowed key; relative positions resolve under its payload guard. */
 static FhtKey numeric_key(LONG number)
 {
     FhtKey key = {FHT_INDEX, (int64_t)number, NULL, 0};
@@ -120,12 +167,7 @@ void Bigtable_create(void *frame)
     TableOwner *owner = H2D(TableOwner *, heapz(table_type));
     destroy(*call->ret);
     *call->ret = (Bigtable_Handle *)owner;
-    owner->table = fht_create(NULL);
-    if (!owner->table)
-    {
-        error(exNomem);
-    }
-    table_owners++;
+    initialize_table(owner);
 }
 
 
@@ -133,9 +175,12 @@ void Bigtable_create(void *frame)
 void Bigtable_getindex(void *frame)
 {
     F_Bigtable_getindex *call = frame;
-    int64_t value = 0;
-    call->ret->t0 = fht_get(table_value(call->tab), numeric_key(call->key), &value);
-    call->ret->t1 = value;
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_GET;
+    request.key = numeric_key(call->key);
+    table_apply(call->tab, &request);
+    call->ret->t0 = request.status;
+    call->ret->t1 = request.status == FHT_OK ? request.value : 0;
 }
 
 
@@ -143,9 +188,12 @@ void Bigtable_getindex(void *frame)
 void Bigtable_gettext(void *frame)
 {
     F_Bigtable_gettext *call = frame;
-    int64_t value = 0;
-    call->ret->t0 = fht_get(table_value(call->tab), string_key(call->key), &value);
-    call->ret->t1 = value;
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_GET;
+    request.key = string_key(call->key);
+    table_apply(call->tab, &request);
+    call->ret->t0 = request.status;
+    call->ret->t1 = request.status == FHT_OK ? request.value : 0;
 }
 
 
@@ -153,7 +201,12 @@ void Bigtable_gettext(void *frame)
 void Bigtable_setindex(void *frame)
 {
     F_Bigtable_setindex *call = frame;
-    *call->ret = fht_set(table_value(call->tab), numeric_key(call->key), call->value);
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_SET;
+    request.key = numeric_key(call->key);
+    request.value = call->value;
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -161,7 +214,12 @@ void Bigtable_setindex(void *frame)
 void Bigtable_settext(void *frame)
 {
     F_Bigtable_settext *call = frame;
-    *call->ret = fht_set(table_value(call->tab), string_key(call->key), call->value);
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_SET;
+    request.key = string_key(call->key);
+    request.value = call->value;
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -169,7 +227,11 @@ void Bigtable_settext(void *frame)
 void Bigtable_delindex(void *frame)
 {
     F_Bigtable_delindex *call = frame;
-    *call->ret = fht_delete(table_value(call->tab), numeric_key(call->key));
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_DELETE;
+    request.key = numeric_key(call->key);
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -177,7 +239,11 @@ void Bigtable_delindex(void *frame)
 void Bigtable_deltext(void *frame)
 {
     F_Bigtable_deltext *call = frame;
-    *call->ret = fht_delete(table_value(call->tab), string_key(call->key));
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_DELETE;
+    request.key = string_key(call->key);
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -185,7 +251,10 @@ void Bigtable_deltext(void *frame)
 void Bigtable_length(void *frame)
 {
     F_Bigtable_length *call = frame;
-    *call->ret = (LONG)fht_length(table_value(call->tab));
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_LENGTH;
+    table_apply(call->tab, &request);
+    *call->ret = request.value;
 }
 
 
@@ -193,7 +262,10 @@ void Bigtable_length(void *frame)
 void Bigtable_count(void *frame)
 {
     F_Bigtable_count *call = frame;
-    *call->ret = (LONG)fht_count(table_value(call->tab));
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_COUNT;
+    table_apply(call->tab, &request);
+    *call->ret = request.value;
 }
 
 
@@ -202,18 +274,23 @@ void Bigtable_count(void *frame)
 void Bigtable_slice(void *frame)
 {
     F_Bigtable_slice *call = frame;
-    Fht *source = table_value(call->tab);
-    TableOwner *owner;
-    FhtStatus status;
-    owner = H2D(TableOwner *, heapz(table_type));
+    FvmTableRequest request = {0};
+    TableOwner *owner = H2D(TableOwner *, heapz(table_type));
     destroy(*call->ret);
     *call->ret = (Bigtable_Handle *)owner;
-    status = fht_slice_relative(source, call->first, call->end, &owner->table);
-    if (status != FHT_OK)
+    initialize_table(owner);
+    request.operation = FVM_TABLE_SLICE;
+    request.first = call->first;
+    request.end = call->end;
+    table_apply(call->tab, &request);
+    if (request.status != FHT_OK)
     {
-        error(status == FHT_NOMEM ? exNomem : "invalid big table slice");
+        error(request.status == FHT_NOMEM ? exNomem : "invalid big table slice");
     }
-    table_owners++;
+    /* This destination is private to the current builtin; no other task can
+     * observe it before return. Adopt the independently allocated source copy. */
+    fht_destroy(owner->owned.payload);
+    owner->owned.payload = request.table;
 }
 
 
@@ -222,14 +299,17 @@ void Bigtable_slice(void *frame)
 void Bigtable_slicerange(void *frame)
 {
     F_Bigtable_slicerange *call = frame;
-    uint64_t first;
-    uint64_t end;
-    if (!fvm_relative_range(fht_length(table_value(call->tab)), call->first, call->end, &first, &end))
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_RANGE;
+    request.first = call->first;
+    request.end = call->end;
+    table_apply(call->tab, &request);
+    if (request.status != FHT_OK)
     {
         error("invalid key/range");
     }
-    call->ret->t0 = (LONG)first;
-    call->ret->t1 = (LONG)end;
+    call->ret->t0 = request.first;
+    call->ret->t1 = request.end;
 }
 
 
@@ -239,7 +319,13 @@ void Bigtable_slicerange(void *frame)
 void Bigtable_splice(void *frame)
 {
     F_Bigtable_splice *call = frame;
-    *call->ret = fht_splice(table_value(call->tab), call->first, call->end, table_value(call->replacement));
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_SPLICE;
+    request.first = call->first;
+    request.end = call->end;
+    request.replacement = table_owner(call->replacement);
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -381,14 +467,17 @@ void Bigtable_runetext(void *frame)
 void Bigtable_keysof(void *frame)
 {
     F_Bigtable_keysof *call = frame;
-    Fht *source = table_value(call->tab);
+    FvmTableRequest request = {0};
     KeysOwner *owner = H2D(KeysOwner *, heapz(keys_type));
     destroy(*call->ret);
     *call->ret = (Bigtable_Keys *)owner;
-    if (fht_keys(source, &owner->keys) != FHT_OK)
+    request.operation = FVM_TABLE_KEYS;
+    table_apply(call->tab, &request);
+    if (request.status != FHT_OK)
     {
         error(exNomem);
     }
+    owner->keys = request.keys;
     key_owners++;
 }
 
@@ -531,10 +620,12 @@ void Bigtable_keycheck(void *frame)
 void Bigtable_getkey(void *frame)
 {
     F_Bigtable_getkey *call = frame;
-    int64_t value = 0;
-    FhtKey key = snapshot_key(call->keys, call->index);
-    call->ret->t0 = fht_get(table_value(call->tab), key, &value);
-    call->ret->t1 = value;
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_GET;
+    request.key = snapshot_key(call->keys, call->index);
+    table_apply(call->tab, &request);
+    call->ret->t0 = request.status;
+    call->ret->t1 = request.status == FHT_OK ? request.value : 0;
 }
 
 
@@ -543,8 +634,12 @@ void Bigtable_getkey(void *frame)
 void Bigtable_setkey(void *frame)
 {
     F_Bigtable_setkey *call = frame;
-    FhtKey key = snapshot_key(call->keys, call->index);
-    *call->ret = fht_set(table_value(call->tab), key, call->value);
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_SET;
+    request.key = snapshot_key(call->keys, call->index);
+    request.value = call->value;
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
 }
 
 
@@ -595,12 +690,15 @@ void Bigtable_requireok(void *frame)
 void Bigtable_resolveindex(void *frame)
 {
     F_Bigtable_resolveindex *call = frame;
-    FhtKey resolved;
-    if (fht_resolve(table_value(call->tab), numeric_key(call->key), &resolved) != FHT_OK)
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_RESOLVE;
+    request.key = numeric_key(call->key);
+    table_apply(call->tab, &request);
+    if (request.status != FHT_OK)
     {
         error("invalid key/range");
     }
-    *call->ret = resolved.index;
+    *call->ret = request.key.index;
 }
 
 
@@ -670,6 +768,28 @@ void Bigtable_present(void *frame)
 void Bigtable_delkey(void *frame)
 {
     F_Bigtable_delkey *call = frame;
-    FhtKey key = snapshot_key(call->keys, call->index);
-    *call->ret = fht_delete(table_value(call->tab), key);
+    FvmTableRequest request = {0};
+    request.operation = FVM_TABLE_DELETE;
+    request.key = snapshot_key(call->keys, call->index);
+    table_apply(call->tab, &request);
+    *call->ret = request.status;
+}
+
+
+/* Inspect only guard metadata, without waiting for payload ownership. The
+ * caller frame roots this owner. State IDs are diagnostics, not remote authority. */
+void Bigtable_guardstate(void *frame)
+{
+    F_Bigtable_guardstate *call = frame;
+    FvmTableOwner *owner = table_owner(call->tab);
+    uint64_t token;
+    unsigned depth;
+    unsigned waiters;
+    if (fvm_owned_inspect(&owner->guard, &token, &depth, &waiters))
+    {
+        error("native table guard inspection failure");
+    }
+    memmove(&call->ret->t0, &token, sizeof(token));
+    call->ret->t1 = depth;
+    call->ret->t2 = waiters;
 }

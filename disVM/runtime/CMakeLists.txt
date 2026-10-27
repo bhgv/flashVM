@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.24.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.25.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -15,6 +15,7 @@ set(LIMBO_BOOTSTRAP_CELL_BYTES 8 CACHE STRING "Native-cell experimental compiler
 set(BUILD_TESTING OFF CACHE BOOL "Build focused runtime checks separately" FORCE)
 add_subdirectory("${root}/tools/limbo-bootstrap" bootstrap)
 add_subdirectory("${root}/disVM/host" host)
+add_subdirectory("${root}/common/owned" owned)
 set(u "${root}/disVM/upstream")
 set(view "${CMAKE_CURRENT_BINARY_DIR}/native")
 file(MAKE_DIRECTORY "${view}")
@@ -42,25 +43,25 @@ if(DVM_RUNTIME_EDITOR)
   set(host_prepare_products "${view}/idehostmod.h")
 endif()
 file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
-add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
+add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
-set(core alt conv dec disc gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
+set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
 set(sources)
 foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
-add_executable(disvm main.c srv_adapter.c bigtable.c "${root}/common/table/table.c" "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
 target_compile_options(disvm PRIVATE -fno-strict-aliasing)
-target_include_directories(disvm PRIVATE "${root}/common/table" "${view}" "${root}/disVM/host/include" "${u}/Linux/arm/include"
+target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${root}/common/table" "${view}" "${root}/disVM/host/include" "${u}/Linux/arm/include"
  "${u}/include" "${u}/emu/port" "${root}/disVM/include")
-target_link_libraries(disvm PRIVATE disvm_flashvm_host limbo_bootstrap_lib9 limbo_bootstrap_support limbo_bootstrap_lib9 m)
+target_link_libraries(disvm PRIVATE fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9 limbo_bootstrap_support limbo_bootstrap_lib9 m)
 
 
 
@@ -110,10 +111,13 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
+  endif()
+  if(test STREQUAL "tableguards")
+    set(source "${root}/disVM/examples/table-guards/main.b")
   endif()
   if(test STREQUAL "hybridtable")
     set(source "${root}/disVM/examples/hybrid-table/main.b")
@@ -268,7 +272,7 @@ if(DVM_RUNTIME_EDITOR)
   target_include_directories(disvm-editor PRIVATE ${runtime_includes} "${DVM_FLASHVM_SOURCE_ROOT}/ports")
   target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
   target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)
-  target_link_libraries(disvm-editor PRIVATE disvm_flashvm_host limbo_bootstrap_lib9
+  target_link_libraries(disvm-editor PRIVATE fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9
     limbo_bootstrap_support limbo_bootstrap_lib9 flashvm m)
   if(DVM_EDITOR_SDL)
     find_package(SDL2 2.0.9 CONFIG REQUIRED)
@@ -642,4 +646,13 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_table_splice_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
+endif()
+
+# A handled application error may resume, but policy budgets remain terminal.
+if(DVM_RUNTIME_TESTS)
+  add_test(NAME disvm_hosted_exception_boundary COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_exception_boundary.py" "$<TARGET_FILE:disvm>"
+    "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+  set_tests_properties(disvm_hosted_exception_boundary PROPERTIES TIMEOUT 60
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
 endif()
