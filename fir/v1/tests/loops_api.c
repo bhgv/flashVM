@@ -17,12 +17,14 @@ static int compile_loop(FirModule *module, int invalid)
     char error[256] = "private stream allocation failed";
     int ok = 0;
     int compiled;
+    long body_offset; /* UTF-8 offset before the staged body, used to verify deferred diagnostics. */
     if (!input || !fir || !debug || !image)
     {
         goto done;
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
-    fputs(invalid == 4   ? "x: string; for (i := int 0; i < int 2; x = \"42\") {return big x;} return 42;"
+    body_offset = ftell(input);
+    fputs(invalid == 4   ? "x: string; for (i := int 0; i < int 2; x = x+\"2\") {i++;} return 42;"
           : invalid == 3 ? "x: big; if (1 == 1) {x = 42;} return x;"
           : invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
           : invalid == 2
@@ -32,6 +34,7 @@ static int compile_loop(FirModule *module, int invalid)
                 "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
                 "i = int 0; while (i < int 1) {key = keys[0]; i++;} "
                 "scratch: string; for (j := int 0; j < int 3; j++) {scratch = \"42\"; t[key] = big scratch;} "
+                "for (j := int 0; j < int 1; scratch = scratch+\"x\") {scratch = \"22\"; j++;} "
                 "scratch = \"22\"; t[key] = big scratch; return old[0]+t[key];",
           input);
     fputs("}", input);
@@ -50,6 +53,13 @@ static int compile_loop(FirModule *module, int invalid)
               : invalid == 3 ? strstr(error, "initialized") != NULL
                              : diagnostic.kind == FIR_DIAG_SYNTAX) &&
              ftell(fir) == 3 && ftell(debug) == 3;
+        if (invalid == 4)
+        {
+            ok =
+                ok && diagnostic.kind == FIR_DIAG_SEMANTIC && diagnostic.has_location &&
+                diagnostic.byte_offset == (size_t)body_offset + strlen("x: string; for (i := int 0; i < int 2; x = ") &&
+                diagnostic.byte_length == 1;
+        }
     }
     else
     {

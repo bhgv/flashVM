@@ -51,6 +51,7 @@ static int conditional_depth;       /* Active loop-if lexical join contexts. */
 static int conditional_scope[65];   /* Outer lexical scope of each structured join. */
 static unsigned char loop_initialized[65][256]; /* Entry initialization facts for outer bindings. */
 static int loop_entry_cells[65][256];           /* Entry cell IDs; body-only cells cannot escape. */
+static int loop_for_context[65];                /* Counted-for step context, -1 for while/snapshot loops. */
 static int loop_names[65];                      /* Binding prefix present before each active loop body. */
 static int terminal; /* The last emitted arm already terminates and needs no footer return. */
 
@@ -67,11 +68,17 @@ typedef struct
 
 static SourceChoiceState choices[FIR_BLOCKS / 2]; /* Bounded request-local snapshots, slot zero unused. */
 
+
 /* One staged classic-for header step. Streams are owned until end/release. */
 typedef struct
 {
-    FILE *step;   /* Owned temporary FIR step body, NULL when the slot is free. */
-    FILE *parent; /* Borrowed original FIR destination, never closed here. */
+    FILE *step;                  /* Owned temporary FIR step body, NULL when the slot is free. */
+    FILE *parent;                /* Borrowed original FIR destination, never closed here. */
+    int names;                   /* Header binding prefix; declarations are forbidden in the step. */
+    int incoming[256];           /* Source facts before staging; restored before the first body. */
+    unsigned char required[256]; /* Uninitialized header reads requiring proof at every step edge. */
+    unsigned char ready[256];    /* Intersection of initialization facts at incoming step edges. */
+    SourceMark origin[256];      /* First deferred read span for a failing proof, never a runtime pointer. */
 } SourceForContext;
 
 static SourceForContext for_contexts[64]; /* Active nested header/body contexts. */
@@ -371,14 +378,28 @@ static FirType source_reference_cell(FirType type)
 
 /* Resolve borrowed binding name to its current SSA value or promoted typed-cell
  * load. Return zero on a sticky initialization/resource error. This emits staged
- * FIR/debug records only; it never reads runtime variables or acquires owners. */
+ * FIR/debug records only; it never reads runtime variables or acquires owners.
+ * An unreadable counted-for step operand records a deferred all-edge obligation;
+ * the staged load is published only when every incoming body/continue path proves it. */
 int source_read(int name)
 {
     int value;
     if (bindings[name] < 0)
     {
-        reject("read before initialized declaration");
-        return 0;
+        if (for_step_context >= 0 && name < for_contexts[for_step_context].names && table_cells[name] >= 0)
+        {
+            SourceForContext *context = &for_contexts[for_step_context];
+            if (!context->required[name])
+            {
+                context->origin[name] = location;
+            }
+            context->required[name] = 1;
+        }
+        else
+        {
+            reject("read before initialized declaration");
+            return 0;
+        }
     }
     value = bindings[name];
     if (!failed && table_cells[name] >= 0)
@@ -1509,13 +1530,6 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
-    /* The step is parsed before the body but executes after it. Never let a
-     * staged first write make an unreadable body binding appear initialized. */
-    if (!declaration && for_step_context >= 0 && loop_depth && name < loop_names[loop_depth - 1] &&
-        !loop_initialized[loop_depth - 1][name])
-    {
-        reject("for step assignment requires an initialized local at loop entry");
-    }
     if (!failed)
     {
         table_bindings[name] = actual;
@@ -1670,6 +1684,7 @@ int source_loop_begin(void)
     }
     source_promote_locals(1);
     loop_id[loop_depth] = loop;
+    loop_for_context[loop_depth] = -1;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
     {
         int name;
@@ -1886,7 +1901,16 @@ void source_loop_transfer(int is_continue)
     target = is_continue ? (loop_iteration[active_loop] ? "step" : "test") : "end";
     if (is_continue)
     {
+        int context = loop_for_context[active_loop];
+        int name;
         loop_continues[active_loop] = 1;
+        if (context >= 0)
+        {
+            for (name = 0; name < for_contexts[context].names; name++)
+            {
+                for_contexts[context].ready[name] &= bindings[name] >= 0;
+            }
+        }
     }
     fprintf(destination, "    jump ^loop%d_%s\n", loop_id[active_loop], target);
     source_debug_event(is_continue ? "continue" : "break", -1, "", debug_scopes[scope_depth], scope_depth, location);
@@ -2102,6 +2126,10 @@ SourceFor source_for_begin(void)
         return control;
     }
     control.context = context;
+    loop_for_context[loop_depth - 1] = context;
+    for_contexts[context].names = name_count;
+    memset(for_contexts[context].required, 0, sizeof(for_contexts[context].required));
+    memset(for_contexts[context].ready, 1, sizeof(for_contexts[context].ready));
     loop_iteration[loop_depth - 1] = 1;
     blocks_used++;
     return control;
@@ -2133,6 +2161,9 @@ void source_for_step_begin(SourceFor control)
         reject("nested for header capture is unsupported");
         return;
     }
+    memcpy(for_contexts[control.context].incoming,
+           bindings,
+           (size_t)for_contexts[control.context].names * sizeof(bindings[0]));
     for_step_context = control.context;
     source_debug_defer_begin(control.context);
     destination = for_contexts[control.context].step;
@@ -2140,12 +2171,15 @@ void source_for_step_begin(SourceFor control)
 
 
 /* Restore emission after a parsed header even when semantic validation failed.
- * control is parser-owned; do not close the retained stream until end/release. */
+ * control is parser-owned; do not close the retained stream until end/release.
+ * Restore header-entry facts so staged writes cannot initialize the first body. */
 void source_for_step_end(SourceFor control)
 {
     if (control.context >= 0)
     {
-        destination = for_contexts[control.context].parent;
+        SourceForContext *context = &for_contexts[control.context];
+        destination = context->parent;
+        memcpy(bindings, context->incoming, (size_t)context->names * sizeof(bindings[0]));
     }
     for_step_context = -1;
     source_debug_defer_end();
@@ -2154,8 +2188,11 @@ void source_for_step_end(SourceFor control)
 
 /* Emit the buffered step only when normal fallthrough or continue reaches it.
  * control is a copied parser continuation. Release its owned stream on every
- * path, never close the borrowed parent. Read/write/close failures are sticky
- * source errors; the outer API discards staged FIR/debug output atomically. */
+ * path, never close the borrowed parent. Intersect ordinary fallthrough with
+ * captured continue facts before admitting deferred header reads. Missing proofs
+ * report the original read mark; unreachable steps need no proof or debug sites.
+ * Read/write/close failures are sticky source errors; the outer API discards
+ * staged FIR/debug output atomically. */
 void source_for_end(SourceFor control)
 {
     SourceForContext *context;
@@ -2170,6 +2207,22 @@ void source_for_end(SourceFor control)
     destination = context->parent;
     reachable = !failed && (!path_closed || loop_continues[loop_depth - 1]);
     if (reachable)
+    {
+        int name;
+        for (name = 0; name < context->names && !failed; name++)
+        {
+            if (!path_closed)
+            {
+                context->ready[name] &= bindings[name] >= 0;
+            }
+            if (context->required[name] && !context->ready[name])
+            {
+                source_restore(context->origin[name]);
+                reject("for step read requires initialization on every incoming path");
+            }
+        }
+    }
+    if (reachable && !failed)
     {
         if (!path_closed)
         {

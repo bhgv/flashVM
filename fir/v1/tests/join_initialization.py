@@ -141,9 +141,41 @@ def main():
         'x: string; n := big 0; for (i := int 0; i < int 3; i++) {'
         'for (j := int 0; j < int 2; j++) {x = "7"; n += big x;}} return n;',
     ])
+    # Deferred reads require all real step predecessors, not parse-time writes.
+    cases.extend([
+        'part: big; total := big 0; for (i := int 0; i < int 3; total += part) {part = 14; i++;} return total;',
+        'part: int; total := big 0; for (i := int 0; i < int 3; total += big part) {part = int 14; i++;} return total;',
+        'text: string; total := big 0; for (i := int 0; i < int 3; total += big text) {text = "14"; i++;} return total;',
+        'part: table of big; total := big 0; for (i := int 0; i < int 3; total += part.value) {'
+        'part = table of big {value=14}; i++;} return total;',
+        'part: big; total := big 0; for (i := int 0; i < int 3; total += part) {'
+        'i++; if (i == int 2) {part = 14; continue;} part = 14;} return total;',
+        'text: string; total := big 0; for (i := int 0; i < int 3; total += big text) {'
+        'i++; if (i == int 2) {text = "14"; continue;} else {text = "14"; continue;}} return total;',
+        'text: string; total := big 0; for (i := int 0; i < int 4; total += big text) {'
+        'i++; if (i == int 4) {break;} text = "14";} return total;',
+        'text: string; for (i := int 0; i < int 3; text = text+"x") {break;} return 42;',
+        'text: string; for (i := int 0; i < int 3; text = text+"x") {return 42;} return 0;',
+        'text: string; for (i := int 0; i < int 3; text = "unused") {i++;} return 42;',
+        'part: big; total := big 0; for (i := int 0; i < int 3; total += part) {'
+        'part = 14; for (j := int 0; j < int 1; j++) {continue;} i++;} return total;',
+        'text: string; for (i := int 0; i < int 0; text = "unused") {} text = "42"; return big text;',
+        'text: string; total := big 0; for (i := int 0; i < int 3; text = "ignored") {'
+        'text = "14"; total += big text; i++;} return total;',
+    ])
+    cases.extend([
+        'outer: big; inner: big; total := big 0; for (i := int 0; i < int 2; total += outer) {'
+        'outer = 7; for (j := int 0; j < int 2; total += inner) {inner = 7; j++;} i++;} return total;',
+        'part: table of big; total := table of big {value=0}; '
+        'for (i := int 0; i < int 3; total.value += part.value) {part = table of big {value=14}; i++;} return total.value;',
+        'text: string; for (i := int 0; i < int 2; text = text+"unused") {'
+        'if (i == int 0) {break;} else {return 0;}} return 42;',
+    ])
     tutorial = Path(__file__).resolve().parents[1] / 'examples/tables/join-initialization.b'
     cases.append(tutorial.read_text().split('value(): big\n{', 1)[1].rsplit('}', 1)[0])
     tutorial = tutorial.with_name('loop-initialization.b')
+    cases.append(tutorial.read_text().split('value(): big\n{', 1)[1].rsplit('}', 1)[0])
+    tutorial = tutorial.with_name('deferred-step.b')
     cases.append(tutorial.read_text().split('value(): big\n{', 1)[1].rsplit('}', 1)[0])
     with tempfile.TemporaryDirectory(prefix='join initialization ') as temporary:
         work = Path(temporary)
@@ -217,8 +249,20 @@ def main():
             ('x: big; for (i := int 0; i < int 2; i++) {x += 1;} return 42;', 'initialized'),
             ('x: string; for (i := int 0; i < int 2; i++) {'
              'for (j := int 0; j < int 2; j++) {x = "42";} return big x;} return 42;', 'initialized'),
-            ('x: string; for (i := int 0; i < int 2; x = "42") {return big x;} return 42;', 'for step'),
+            ('x: string; for (i := int 0; i < int 2; x = "42") {return big x;} return 42;', 'initialized'),
             ('x: string; while (1 == 1) {if (1 == 1) {x = "42";} return big x;} return 42;', 'initialized'),
+        ])
+        invalid.extend([
+            ('text: string; for (i := int 0; i < int 2; text = text+"x") {i++;} return 42;', 'for step read'),
+            ('part: big; total := big 0; for (i := int 0; i < int 2; total += part) {'
+             'i++; if (i == int 1) {continue;} part = 21;} return 42;', 'for step read'),
+            ('text: string; for (i := int 0; i < int 2; text = text+"x") {'
+             'i++; if (i == int 1) {text = "ok";} } return 42;', 'for step read'),
+            ('text: string; for (i := int 0; i < int 2; text = text+"x") {'
+             'for (j := int 0; j < int 1; j++) {text = "ok";} i++;} return 42;', 'for step read'),
+            ('text: string; for (i := int 0; i < int 0; text = text+"x") {} return 42;', 'for step read'),
+            ('text: string; for (i := int 0; i < int 2; text = "ok") {text += "x"; i++;} return 42;', 'initialized'),
+            ('text: string; for (i := int 0; i < int 2; text = "ok") {i++;} return big text;', 'initialized'),
         ])
         for body, diagnostic in invalid:
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {' + body + '}')

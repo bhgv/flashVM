@@ -44,8 +44,8 @@ value(): big
         amount = int text;
     }
 
-    # Do not initialize an unreadable outer local in a counted-for header step:
-    # the step executes after the body and cannot establish its initial facts.
-    # Use body assignments as above, or initialize before the whole loop.
+    # A counted-for step executes after the body and cannot establish its initial
+    # facts. Since compiler 0.44, step reads may instead use values proved written
+    # on every body/continue path. See deferred-step.b for that separate example.
     return big text;
 }

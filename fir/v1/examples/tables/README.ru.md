@@ -214,3 +214,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 [Пример инициализации через ветви](join-initialization.b): объявление скаляров/ссылок, присваивание в обеих ветвях и безопасное чтение. [Руководство](../../doc/JOIN_INITIALIZATION.ru.md).
 
 [Первое присваивание в цикле — 0.43](../../doc/LOOP_INITIALIZATION.ru.md): типизированные внешние переменные, безопасное чтение в теле и границы фактов на выходе. [Комментированный пример](loop-initialization.b).
+
+[Шаг for в порядке исполнения — 0.44](../../doc/DEFERRED_STEP.ru.md): доказательство инициализации по всем входящим путям, включая continue. [Пример](deferred-step.b).

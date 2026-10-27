@@ -56,17 +56,11 @@ loop safely reuses the dominating cell.
 
 ## Counted-for header order
 
-The parser encounters the header step before the body, but the generated step
-executes after the body or a `continue`. A first assignment to an uninitialized
-outer declaration in that step is therefore rejected with `for step assignment
-requires an initialized local at loop entry`. It must not create a false fact
-while parsing the body.
-
-Initialize the variable before the loop or move the first write into the body.
-This release does not infer that all paths reaching a deferred step initialize
-its operands. Reads in a step likewise require facts available when its header
-is checked. Existing initialized loop counters and reference rebindings in a
-step retain their previous behavior.
+The parser encounters the header step before the body, but execution happens
+later. Since [0.44](DEFERRED_STEP.md), incoming facts are restored before parsing
+the body and step reads are proved against every real fallthrough/continue edge.
+A first step write is allowed, but initializes neither the first body nor the
+post-loop continuation. Unreachable steps and their debug records are discarded.
 
 ## FIR, native execution and ownership
 
@@ -106,6 +100,6 @@ The reference prints `42`; native captures are `DATA 0 42` and `DATA 8 1`.
 types, both quanta, original and optimized FIR, nested loops, skipped iterations,
 joined writes, continue/break, post-loop reinitialization and forbidden reads.
 Negative cases preserve the caller's old FIR/debug outputs. The reusable C99
-service alternates successful body initialization with a rejected deferred first
-write and syntax/join failures. Both installed SDK paths compile the tutorial
+service alternates successful body initialization with a rejected deferred
+read and syntax/join failures. Both installed SDK paths compile the tutorial
 through newly linked clients and execute the emitted module in both modes.

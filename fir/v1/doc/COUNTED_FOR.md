@@ -85,3 +85,5 @@ Installed SDK acceptance compiles the same source through a freshly linked C99 c
 
 
 Compiler 0.40 adds retained reference cells. [Guide / Руководство](RETAINED_LOOPS.md).
+
+[Version 0.44](DEFERRED_STEP.md) proves deferred step reads across all fallthrough/continue predecessors and preserves the authored diagnostic span.
