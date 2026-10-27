@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1645**. [English](README.md).
+Версия разработки: **0.1646**. [English](README.md).
 
-Текущая серия: [v0.1645](docs/releases/v0.1645.md): компилятор 0.28, конкатенация/равенство строк, побитовые int и обратное исправление описания JIT Inferno.
+Текущая серия: [v0.1646](docs/releases/v0.1646.md): компилятор 0.29, проверяемые signed32-сдвиги через Coco/R, FIR, оба Dis-бэкенда и C99 API.
 
 ## Просмотр документации
 

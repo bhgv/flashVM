@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1645**. [Русская версия](README.ru.md).
+Development version: **0.1646**. [Русская версия](README.ru.md).
 
-Current series: [v0.1645](docs/releases/v0.1645.md): compiler 0.28 string concatenation/equality, exact int bit operations and an Inferno emitter-layout fix.
+Current series: [v0.1646](docs/releases/v0.1646.md): compiler 0.29 checked signed32 shifts through Coco/R, FIR, both Dis emitters and C99 services.
 
 ## Browse documentation
 

@@ -1,3 +1,22 @@
+# Synchronization / Синхронизация — v0.1646
+
+Checked Inferno experiment at **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
+No incoming commit followed the previous series. Its reverse LeafLayout fix
+remains published upstream. Exact snapshots: **554 core/reference + 174 bootstrap**.
+Native availability remains AMD64/ARM64 166/173 with partial operand coverage.
+
+Compiler 0.29 adds checked signed32 shifts in FlashVM-only Coco/R/FIR lowering,
+reference execution and both direct Dis emitters. It uses existing branch/shift
+kernels and their exception path; there is no upstream VM opcode or ABI change.
+Selected shared shift-slot, native WORD32/64 and readiness checks passed.
+No new shared defect requiring another reverse patch was confirmed.
+
+Входящих изменений нет; прежнее обратное исправление остаётся в experiment.
+Новые операции FIR и расширение исходного Limbo остаются в FlashVM.
+[EN](../fir/v1/doc/INT_SHIFTS.md) / [RU](../fir/v1/doc/INT_SHIFTS.ru.md).
+
+---
+
 # Synchronization / Синхронизация — v0.1645
 
 Inferno experiment: **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
