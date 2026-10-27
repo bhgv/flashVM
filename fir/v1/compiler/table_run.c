@@ -44,8 +44,8 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_TABLE_DELETE) || in->op == O_I32 || in->op == O_BOOL ||
-            in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_BOOL_LOAD) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
+            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
@@ -124,6 +124,15 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_BOOL_LOCAL:
+            result->big = 0;
+            break;
+        case O_BOOL_STORE:
+            a->big = b->big;
+            break;
+        case O_BOOL_LOAD:
+            result->big = a->big;
+            break;
         case O_TO_INT:
         {
             uint32_t bits = (uint32_t)(uint64_t)a->big;

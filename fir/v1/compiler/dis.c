@@ -170,6 +170,11 @@ static int supported(
             }
             (*count)++;
             break;
+        case O_BOOL_LOCAL:
+        case O_BOOL_STORE:
+        case O_BOOL_LOAD:
+            (*count)++;
+            break;
         case O_TO_INT:
             *count += 3U;
             break;
@@ -284,7 +289,8 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
             (((in->op >= O_TABLE_NEW && in->op <= O_TO_TEXT) &&
               !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
                                        module->values[in->a].type == T_BOOL))) ||
-             (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->type >= T_TABLE_BIG))
+             (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) ||
+             (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT)))
         {
             return fir_dis_table(output, module, error, capacity);
         }
@@ -320,6 +326,15 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         }
         switch (current->op)
         {
+        case O_BOOL_LOCAL:
+            instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
+            break;
+        case O_BOOL_STORE:
+            instruction(output, DIS_MOVW, DIS_FP, slot(current->b), DIS_FP, slot(current->a), -1);
+            break;
+        case O_BOOL_LOAD:
+            instruction(output, DIS_MOVW, DIS_FP, slot(current->a), DIS_FP, destination, -1);
+            break;
         case O_I32:
         case O_BOOL:
         case O_F64:

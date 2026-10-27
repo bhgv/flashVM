@@ -255,13 +255,16 @@ PRODUCTIONS
         | "big.range"
         | "keys"
         | "table.key"
+        | "bool.slot"
     )
                                                                         (. capture(B_TYPE); .)
   .
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "const.i64" (. fir_build_op(O_I64); .) number (. capture(B_LITERAL); .)
+    "bool.local" (. fir_build_op(O_BOOL_LOCAL); .)
+    | "bool.load" (. fir_build_op(O_BOOL_LOAD); .) A
+    | "const.i64" (. fir_build_op(O_I64); .) number (. capture(B_LITERAL); .)
     | "table.new" (. fir_build_op(O_TABLE_NEW); .)
     | "table.index" (. fir_build_op(O_TABLE_INDEX); .) A "," B
     | "table.load" (. fir_build_op(O_TABLE_LOAD); .) A
@@ -354,7 +357,8 @@ PRODUCTIONS
 
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
-    "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B
+    "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B
+    | "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B
     | "trace"                                                             (. fir_build_op(O_TRACE); .)
     A
     | "limbo.chan_send"                                                 (. fir_build_op(O_SEND); .)

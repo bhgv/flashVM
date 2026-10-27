@@ -310,7 +310,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 root(e->frame_map, offset + CELL);
             }
         }
-        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BIG_RANGE)
+        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT && type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -346,7 +346,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TABLE_DELETE))
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BOOL_LOAD))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -414,7 +414,8 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     FirType key = slot ? module->values[slot->b].type : T_VOID;
     for (index = 0; index < cells(module, source); index++)
     {
-        int pointer = index == 0 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BIG_RANGE;
+        int pointer = index == 0 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT &&
+                      type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
@@ -456,6 +457,15 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_JUMP:
             instruction(e, JMP, NONE, 0, IMM, e->blocks[in->yes], 0, -1);
+            break;
+        case O_BOOL_LOCAL:
+            instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
+            break;
+        case O_BOOL_STORE:
+            instruction(e, MOVW, FP, b, FP, a, 0, -1);
+            break;
+        case O_BOOL_LOAD:
+            instruction(e, MOVW, FP, a, FP, d, 0, -1);
             break;
         case O_TO_INT:
             arithmetic(e, ANDW, MIDDLE_MODULE, e->int_mask, a, d);
