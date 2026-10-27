@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1644**. [Русская версия](README.ru.md).
+Development version: **0.1645**. [Русская версия](README.ru.md).
 
-Current series: [v0.1644](docs/releases/v0.1644.md): compiler 0.27 int arithmetic, native buffered SEND/RECV and two fixes returned to Inferno.
+Current series: [v0.1645](docs/releases/v0.1645.md): compiler 0.28 string concatenation/equality, exact int bit operations and an Inferno emitter-layout fix.
 
 ## Browse documentation
 

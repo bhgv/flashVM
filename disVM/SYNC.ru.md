@@ -1,3 +1,24 @@
+# Synchronization / Синхронизация — v0.1645
+
+Inferno experiment: **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
+No new incoming commit followed 6945acaf before this series. Expanded string JIT
+checks found a shared fixture ABI drift: Python LeafLayout lacked the buffered
+channeltransferentry callback present in C. The strict C size/offset checks
+correctly stopped execution before code generation.
+
+[Reverse fix 5b9bdcf](https://github.com/bhgv/Inferno-OS-bhgv/commit/5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5)
+adds the missing field in its exact position. Size/offset checks remain enabled;
+no production opcode, ABI or acceptance guard was weakened. The fix was tested
+in its owning Inferno checkout before publication and imported back unchanged.
+
+В Inferno отправлено исправление описания структуры ctypes; производственный
+код JIT не изменён. Снимки: 554 core/reference + 174 bootstrap файла.
+Availability remains 166/173 per AMD64/ARM64, with partial operand coverage.
+Compiler 0.28 string expressions and int bit operations remain FlashVM-only.
+[EN](../fir/v1/doc/TEXT_BITS.md) / [RU](../fir/v1/doc/TEXT_BITS.ru.md).
+
+---
+
 # Synchronization / Синхронизация — v0.1644
 
 Inferno experiment: **6945acafa0df51c7ee3e591b1665ddb40d9a27bb**.
