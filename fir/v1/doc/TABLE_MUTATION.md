@@ -101,3 +101,5 @@ a table alias, a snapshot-owned deletion, a repeated deletion and a sparse prefi
 Installed SDK acceptance relinks fresh C99 compiler/reference clients and tests
 both original/optimized FIR and both VM modes. table_mutation.py also checks wrong
 types and output rollback, unused eager errors and boundary-owner rejection.
+
+[Compiler 0.23: comparison values / Сравнения как значения](COMPARISON_VALUES.md).

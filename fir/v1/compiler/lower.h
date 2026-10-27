@@ -158,6 +158,16 @@ int source_table_text(int quoted);
 /* Emit a fresh big-valued table owner and return its SSA identity. */
 int source_table_new(void);
 
+
+/* Compare borrowed same-typed operands and return a normalized bool SSA value.
+ * relation selects a source comparator; unsupported kinds make errors sticky. */
+int source_table_relation(int left, int right, SourceRelation relation);
+
+
+/* Negate a borrowed bool SSA value without truthiness or reevaluation. */
+int source_table_not(int value);
+
+
 /* Borrow a bool SSA value as a terminal condition; reject other static types. */
 SourceCondition source_table_truth(int value);
 

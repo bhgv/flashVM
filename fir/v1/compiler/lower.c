@@ -301,7 +301,6 @@ int source_read(int name)
     return bindings[name];
 }
 
-
 /* Allocate a local shadow after its initializer has resolved the outer binding.
  * name is a translation-local identity. Return the local identity, or the original
  * on a sticky resource error. Names and static types remain compiler-owned. */
@@ -324,7 +323,6 @@ static int local_declaration(int name)
     }
     return name;
 }
-
 
 /* Bind declarations in their lexical owner; initialization reads the outer binding.
  * Nondeclaration writes keep targeting the nearest active outer binding. */
@@ -570,7 +568,6 @@ int source_branch(SourceCondition condition)
     return choice;
 }
 
-
 /* Begin the source-false arm with the decision's original SSA environment.
  * choice is parser-local. The true arm has terminated and retired its lexical
  * locals. Restore outer scalar/owner bindings, not mutable table contents: effects
@@ -786,6 +783,64 @@ int source_table_delete(int slot)
         reject("delete requires a captured table location");
     }
     return table_operation(T_BOOL, "table.delete", slot, -1);
+}
+
+
+/* Negate a borrowed bool with existing scalar FIR operations. The zero is a
+ * compiler-owned big literal, not a parsed token or runtime owner. Return a new
+ * normalized bool identity; invalid operands prevent staged output publication. */
+int source_table_not(int value)
+{
+    int number;
+    int zero;
+    if (failed)
+    {
+        return 0;
+    }
+    if (table_values[value] != T_BOOL)
+    {
+        reject("logical negation requires bool; use an explicit comparison");
+    }
+    number = source_table_convert(value, 0);
+    zero = table_value(T_I64);
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: i64 = const.i64 0\n", zero);
+        source_debug_event("constant", zero, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return table_operation(T_BOOL, "big.eq", number, zero);
+}
+
+
+/* Materialize a source comparison with Inferno precedence and exact operand types.
+ * left/right are evaluated SSA values, relation is a copied parser enum. Same-type
+ * int operands widen exactly; bool admits equality only. Inverted relations use
+ * normalized scalar negation, never extra owner reads or duplicate expressions. */
+int source_table_relation(int left, int right, SourceRelation relation)
+{
+    FirType kind;
+    SourceCondition condition;
+    int equality = relation == SOURCE_EQUAL || relation == SOURCE_NOT_EQUAL;
+    if (failed)
+    {
+        return 0;
+    }
+    kind = table_values[left];
+    if (kind != table_values[right] || (kind != T_I64 && kind != T_I32 && !(kind == T_BOOL && equality)))
+    {
+        reject("comparison requires same-type big/int operands or bool equality");
+    }
+    if (!failed && kind != T_I64)
+    {
+        left = source_table_convert(left, 0);
+        right = source_table_convert(right, 0);
+    }
+    condition = source_compare(left, right, relation);
+    if (failed)
+    {
+        return 0;
+    }
+    return condition.invert ? source_table_not(condition.value) : condition.value;
 }
 
 /* Use a borrowed normalized bool as a terminal condition, without reevaluation. */

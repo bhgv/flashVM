@@ -79,3 +79,10 @@ both interpreter/JIT modes, checking values and branch execution flags.
 lookup before shadowing, deferred typed initialization, local table aliases and
 outer owner reassignment. Both branches terminate; no SSA join is implied.
 [Step-by-step semantics and run commands](../../doc/TERMINAL_ARMS.md).
+
+## Comparison values
+
+[comparisons.b](comparisons.b) returns 42 using exact table-loaded integers above
+2^53, stored bool comparisons, logical negation, typed int comparison and a local
+terminal arm. Compare the live original and optimized captures in both VM modes.
+[Detailed semantics, precedence and commands](../../doc/COMPARISON_VALUES.md).

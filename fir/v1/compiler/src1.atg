@@ -596,17 +596,10 @@ PRODUCTIONS
     "}" (. capture(); source_leave_scope(); .)
   .
 
-  /* Both big expressions evaluate once in source order. Retain the exact relation-token span. */
+  /* Conditions borrow an already normalized expression result; no implicit truthiness. */
   TableCondition<SourceCondition *condition> =
-    (. int left = 0, right = 0;
-       SourceRelation relation = SOURCE_LESS;
-       SourceMark target;
-    .)
-    TableExpression<&left>
-    ( Relation<&relation> (. target = source_mark(); .) TableExpression<&right>
-      (. source_restore(target); *condition = source_compare(left, right, relation); .)
-      | (. *condition = source_table_truth(left); .)
-    )
+    (. int value = 0; .)
+    TableExpression<&value> (. *condition = source_table_truth(value); .)
   .
 
   /* Locals may be explicitly typed or inferred. Writes capture the receiver/key once before RHS. */
@@ -688,10 +681,48 @@ PRODUCTIONS
     (. int right = 0;
        SourceMark operation;
     .)
+    TableEquality<result>
+    {
+        "&" (. capture(); operation = source_mark(); .) TableEquality<&right>
+        (. source_restore(operation); *result = source_table_binary(*result, right, '&'); .)
+    }
+  .
+
+  /* Inferno limbo.y places equality below ordering and above bitwise AND.
+   * Comparisons are values, evaluated once left-to-right. Static types reject
+   * mixed numeric operands and ordered bools rather than inventing coercions. */
+  TableEquality<int *result> =
+    (.
+        int right = 0;
+        SourceRelation relation = SOURCE_EQUAL;
+        SourceMark operation;
+    .)
+    TableOrdering<result>
+    {
+        ( "==" (. relation = SOURCE_EQUAL; .)
+          | "!=" (. relation = SOURCE_NOT_EQUAL; .)
+        ) (. capture(); operation = source_mark(); .)
+        TableOrdering<&right>
+        (. source_restore(operation); *result = source_table_relation(*result, right, relation); .)
+    }
+  .
+
+  /* Ordering binds below shifts and above equality, matching the owning Limbo grammar. */
+  TableOrdering<int *result> =
+    (.
+        int right = 0;
+        SourceRelation relation = SOURCE_EQUAL;
+        SourceMark operation;
+    .)
     TableShift<result>
     {
-        "&" (. capture(); operation = source_mark(); .) TableShift<&right>
-        (. source_restore(operation); *result = source_table_binary(*result, right, '&'); .)
+        ( "<" (. relation = SOURCE_LESS; .)
+          | ">" (. relation = SOURCE_GREATER; .)
+          | "<=" (. relation = SOURCE_LESS_EQUAL; .)
+          | ">=" (. relation = SOURCE_GREATER_EQUAL; .)
+        ) (. capture(); operation = source_mark(); .)
+        TableShift<&right>
+        (. source_restore(operation); *result = source_table_relation(*result, right, relation); .)
     }
   .
 
@@ -777,6 +808,8 @@ PRODUCTIONS
           (. source_restore(operation); *result = source_table_unary(*result, '+'); .)
         | "~" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_unary(*result, '~'); .)
+        | "!" (. capture(); operation = source_mark(); .) TableUnary<result>
+          (. source_restore(operation); *result = source_table_not(*result); .)
         | TableDelete<result>
         | "countof" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_count(*result); .)

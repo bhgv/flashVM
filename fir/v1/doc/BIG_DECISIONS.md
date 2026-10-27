@@ -6,15 +6,16 @@
 Our Coco/R Limbo big-result profile now accepts a terminal decision tree after
 its ordinary declaration/assignment prelude. Each arm is either `return expr;`
 or a nested braced `if (left relation right) { result } else { result }`.
-All six relations `<`, `==`, `>`, `!=`, `<=`, `>=` require two exact big operands.
+The original six relations `<`, `==`, `>`, `!=`, `<=`, `>=` compare exact big operands.
+Compiler 0.23 additionally supports int/int and bool equality; see [comparison values](COMPARISON_VALUES.md).
 There is no conversion through binary64 or narrowing to i32. Conditions remain
 internal bool values; this does not add bool declarations, implicit truthiness,
 comparison-valued table elements or mixed-type comparisons.
 
 `big.lt.signed` and `big.eq` append two FIR operation IDs, preserving old IDs.
 Both consume i64/i64 and produce bool. The other four source relations use
-operand reversal and/or branch-edge inversion without evaluating either source
-operand twice. Operand expressions evaluate in authored left-to-right order.
+operand reversal and/or normalized scalar negation without evaluating either source
+operand twice. Compiler 0.23 makes these comparisons [expression values](COMPARISON_VALUES.md). Operand expressions evaluate in authored left-to-right order.
 The comparison event points at the exact authored operator bytes, including
 UTF-8 comments earlier in the source; the branch event points at `if`.
 

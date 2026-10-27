@@ -1,4 +1,4 @@
-# FIR 0.22.0 compiler and C API
+# FIR 0.23.0 compiler and C API
 
 The compiler produces `.swo` objects, never SWF containers. Linking belongs to
 independent [SWL](../../../linker/README.md). Optimization runs separately or
