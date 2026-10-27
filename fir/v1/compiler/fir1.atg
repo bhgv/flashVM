@@ -264,6 +264,8 @@ PRODUCTIONS
   ValueOperation =
     "i32.div.signed" (. fir_build_op(O_I32_DIV); .) A "," B
     | "i32.mod.signed" (. fir_build_op(O_I32_MOD); .) A "," B
+    | "string.eq" (. fir_build_op(O_STRING_EQ); .) A "," B
+    | "string.concat" (. fir_build_op(O_STRING_CONCAT); .) A "," B
     | "string.len" (. fir_build_op(O_STRING_LEN); .) A
     | "string.at" (. fir_build_op(O_STRING_AT); .) A "," B
     | "string.slice" (. fir_build_op(O_STRING_SLICE); .) A "," B

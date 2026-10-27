@@ -114,3 +114,16 @@ and indexes are int; table/key lengths stay big. Combining marks count separatel
 arithmetic operators and parses the resulting slice as 42. Every result wraps
 to signed int32 on the NC64 target; literals require explicit int in this profile.
 [Semantics and commands](../../doc/INT_ARITHMETIC.md).
+
+## Status labels and exact int masks (0.28)
+
+[text-bits.b](text-bits.b) builds an editor-style Unicode status label. It applies
+three typed int compound bit operations, converts 42 explicitly to text, appends
+an emoji and verifies that the old alias still reads `line 42`. String equality
+and lazy bool expressions guard a scalar-indexed slice returning 42. The false
+arm returns 0. Expected trace cells are 42/0, flags 1/0. Every step is commented.
+
+[Detailed guide and commands](../../doc/TEXT_BITS.md) explains allocation effects,
+frame roots, exact int narrowing, rejected mixtures and current SWF limits.
+Installed SDK checks compile this tutorial through freshly linked C99 APIs as
+well as CLI, before/after optimization, in interpreter and JIT modes.

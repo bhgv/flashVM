@@ -8,6 +8,8 @@
 
 enum
 {
+    BEQC = 105,            /* Compare rooted string contents, including byte/rune representations. */
+    ADDC = 83,             /* Allocate a concatenated string with both source roots live. */
     LENC = 84,             /* Native Unicode string scalar count. */
     INDC = 82,             /* Native string scalar indexing. */
     SLICEC = 113,          /* Native half-open string slice, replacing a retained destination. */
@@ -214,8 +216,9 @@ static void instruction(Emitter *e,
     e->count++;
 }
 
-/* Emit an existing three-address big operation. left is a scalar offset selected by middle_mode,
- * right/destination are frame offsets that remain live until execution; this has no native-call/GC ownership. */
+/* Encode an existing three-address operation. left uses middle_mode; right and
+ * destination are frame offsets. Pointer operands are rooted by the frame map,
+ * including allocating string instructions; this encoder owns no VM references. */
 static void
 arithmetic(Emitter *e, unsigned op, unsigned middle_mode, unsigned left, unsigned right, unsigned destination)
 {
@@ -354,7 +357,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_I32_MOD) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_EQ) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -482,6 +485,9 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_JUMP:
             instruction(e, JMP, NONE, 0, IMM, e->blocks[in->yes], 0, -1);
             break;
+        case O_STRING_CONCAT:
+            arithmetic(e, ADDC, MIDDLE_FRAME, a, b, d);
+            break;
         case O_STRING_LEN:
             instruction(e, LENC, FP, a, FP, d, 0, -1);
             break;
@@ -531,12 +537,18 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
+        case O_STRING_EQ:
         {
             unsigned start = e->count;
             instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
-            /* Read both big cells before writing the bool. Middle mode is FP; the
+            /* Compare rooted strings or signed scalars before publishing true. Middle mode is FP; the
              * branch destination is an instruction PC rather than an address/byte offset. */
-            octet(e->body, in->op == O_BIG_LT ? BLTL : in->op == O_BIG_EQ ? BEQL : in->op == O_LT ? BLTW : BEQW);
+            octet(e->body,
+                  in->op == O_STRING_EQ ? BEQC
+                  : in->op == O_BIG_LT  ? BLTL
+                  : in->op == O_BIG_EQ  ? BEQL
+                  : in->op == O_LT      ? BLTW
+                                        : BEQW);
             octet(e->body, MIDDLE_FRAME | (FP << 3) | IMM);
             operand(e->body, b);
             operand(e->body, a);

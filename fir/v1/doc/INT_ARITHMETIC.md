@@ -7,7 +7,7 @@ The Coco/R big/table profile accepts same-type int `+`, `-`, `*`, `/`, `%` and
 unary `+`/`-`. Numeric literals still default to big: write `index + int 1`, not
 `index + 1`. Mixed int/big operands fail statically. Table values remain big;
 cast an int explicitly before storing it. Int compound `+=`, `-=`, `*=`, `/=`, `%=` forms require same-type RHS int.
-Int bitwise/shift operators remain outside this profile; big versions are unchanged.
+Compiler 0.28 adds int bitwise operators; int shifts remain outside this profile. [Details](TEXT_BITS.md).
 
 Homogeneous `value(): int` source additionally supports signed division/remainder,
 including /= and %=. Real/AS division keeps its previous behavior; real/AS
@@ -81,3 +81,5 @@ build/runtime/disvm --no-jit --quantum 1 --inspect-words 0 4 build/int.dis
 Values: `42, 0`; executed flags: `1, 0`. Relocated SDK acceptance relinks fresh
 in-process source+FIR C99 clients and runs original/optimized tutorials in both
 VM modes. Physical ARM64 execution and full Inferno boot remain separate acceptance.
+
+Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).

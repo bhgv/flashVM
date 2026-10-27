@@ -92,3 +92,5 @@ IDE compiler/debugger integration remain separate acceptance work.
 
 Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
 [русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.
+
+Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).

@@ -3,6 +3,7 @@
  * i32 wrap without signed overflow in the compiler itself. */
 #include "fir.h"
 #include <stdint.h>
+#include <string.h>
 
 /* Interpret a modulo-2^32 result without implementation-defined unsigned casts. */
 static int32_t signed_bits(uint32_t bits)
@@ -117,7 +118,14 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (in->op == O_TO_INT && (a->op == O_I64 || a->op == O_I32 || a->op == O_BOOL))
+            if (in->op == O_STRING_EQ && a->op == O_STRING && b->op == O_STRING)
+            {
+                in->integer = strcmp(a->text, b->text) == 0;
+                in->op = O_BOOL;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_TO_INT && (a->op == O_I64 || a->op == O_I32 || a->op == O_BOOL))
             {
                 in->integer = signed_bits((uint32_t)(a->op == O_I64 ? (uint64_t)a->big : (uint32_t)a->integer));
                 in->op = O_I32;

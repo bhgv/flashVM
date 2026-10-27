@@ -891,7 +891,7 @@ int source_table_not(int value)
 
 /* Materialize a source comparison with Inferno precedence and exact operand types.
  * left/right are evaluated SSA values, relation is a copied parser enum. Same-type
- * int operands widen exactly; bool admits equality only. Inverted relations use
+ * int operands widen exactly; bool/string admit equality only. Inverted relations use
  * normalized scalar negation, never extra owner reads or duplicate expressions. */
 int source_table_relation(int left, int right, SourceRelation relation)
 {
@@ -903,6 +903,11 @@ int source_table_relation(int left, int right, SourceRelation relation)
         return 0;
     }
     kind = table_values[left];
+    if (kind == T_STRING && table_values[right] == T_STRING && equality)
+    {
+        int same = table_operation(T_BOOL, "string.eq", left, right);
+        return relation == SOURCE_NOT_EQUAL ? source_table_not(same) : same;
+    }
     if (kind != table_values[right] || (kind != T_I64 && kind != T_I32 && !(kind == T_BOOL && equality)))
     {
         reject("comparison requires same-type big/int operands or bool equality");
@@ -991,9 +996,10 @@ int source_table_len(int value)
 
 
 /* Lower one compound update after capturing its old value and evaluating RHS.
- * current/right are borrowed SSA identities; op selects an existing big operation
- * or checked shift. Return a new same-type int/big identity. No owner is reacquired, expression
- * reevaluated or store published here; the parser commits only after success. */
+ * current/right are borrowed SSA identities; op selects an existing typed operation
+ * or checked shift. Return a same-type int/big/string identity. No owner is
+ * reacquired, expression reevaluated or store published here; the parser commits
+ * only after success. */
 int source_table_update(int current, int right, int op)
 {
     if (failed)
@@ -1016,8 +1022,21 @@ int source_table_binary(int left, int right, int op)
     {
         return 0;
     }
+    if (table_values[left] == T_STRING && table_values[right] == T_STRING && op == '+')
+    {
+        return table_operation(T_STRING, "string.concat", left, right);
+    }
     if (table_values[left] == T_I32 && table_values[right] == T_I32)
     {
+        /* Widen signed ints exactly, reuse pure full-width bit operations,
+         * then narrow modulo 2^32. Inputs are evaluated only once by the parser. */
+        if (op == '&' || op == '|' || op == '^')
+        {
+            int wide_left = source_table_convert(left, 0);
+            int wide_right = source_table_convert(right, 0);
+            int wide_result = source_table_binary(wide_left, wide_right, op);
+            return source_table_convert(wide_result, 2);
+        }
         switch (op)
         {
         case '+':
@@ -1036,7 +1055,7 @@ int source_table_binary(int left, int right, int op)
             spelling = "i32.mod.signed";
             break;
         default:
-            reject("int arithmetic supports only +, -, *, / and % in this profile");
+            reject("int arithmetic supports +, -, *, /, %, &, | and ^ in this profile");
             return 0;
         }
         return table_operation(T_I32, spelling, left, right);
@@ -1078,7 +1097,7 @@ int source_table_binary(int left, int right, int op)
     return table_operation(T_I64, spelling, left, right);
 }
 
-/* Emit typed unary +/-/~ on a borrowed big SSA input. The parser has restored
+/* Emit typed unary +/-/~ on a borrowed int/big SSA input. The parser has restored
  * the exact token span; no implicit string conversion or owner call occurs. */
 int source_table_unary(int value, int op)
 {
@@ -1093,9 +1112,15 @@ int source_table_unary(int value, int op)
         {
             return table_operation(T_I32, "copy", value, -1);
         }
+        if (op == '~')
+        {
+            int wide = source_table_convert(value, 0);
+            int complemented = table_operation(T_I64, "big.not", wide, -1);
+            return source_table_convert(complemented, 2);
+        }
         if (op != '-')
         {
-            reject("int unary arithmetic supports only + and -");
+            reject("int unary arithmetic supports +, - and ~");
             return 0;
         }
         zero = table_value(T_I32);

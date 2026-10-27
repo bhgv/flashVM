@@ -1,4 +1,4 @@
-# FIR 0.27.0 compiler and C API
+# FIR 0.28.0 compiler and C API
 
 The compiler produces `.swo` objects, never SWF containers. Linking belongs to
 independent [SWL](../../../linker/README.md). Optimization runs separately or
@@ -41,3 +41,5 @@ write failures may leave a partial file.
 [Native big arithmetic and exact optimizer semantics](../doc/BIG_ARITHMETIC.md).
 
 [New table operations: source, FIR, runtime and C99 API tutorial](../doc/TABLE_MUTATION.md) · [Русский](../doc/TABLE_MUTATION.ru.md).
+
+Compiler 0.28 / Компилятор 0.28: [text expressions and int bits](../doc/TEXT_BITS.md), [русское руководство](../doc/TEXT_BITS.ru.md).

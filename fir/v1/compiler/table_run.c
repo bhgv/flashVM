@@ -99,7 +99,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_I32_MOD) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_STRING_EQ) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -121,6 +121,8 @@ static int coverage(FirModule *module, char *error, size_t capacity)
 int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
 {
     RuntimeValue *values = NULL;
+    char **texts = NULL; /* Own concatenations once; RuntimeValue copies/slices only borrow. */
+    size_t text_count = 0;
     Fht **tables = NULL;
     FhtKeys **keys = NULL;
     FILE *staged = NULL;
@@ -156,11 +158,12 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             first[module->instructions[i].block] = i;
         }
     }
+    texts = calloc(FIR_LIMIT, sizeof(*texts));
     values = calloc(FIR_LIMIT, sizeof(*values));
     tables = calloc(FIR_LIMIT, sizeof(*tables));
     keys = calloc(FIR_LIMIT, sizeof(*keys));
     staged = fir_temporary();
-    if (!values || !tables || !keys || !staged)
+    if (!texts || !values || !tables || !keys || !staged)
     {
         snprintf(error, capacity, "table reference runner allocation/staging failure");
         goto done;
@@ -207,6 +210,35 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_EQ:
             result->big = a->big == b->big;
             break;
+        case O_STRING_EQ:
+            result->big = a->text_size == b->text_size && !memcmp(a->text, b->text, a->text_size);
+            break;
+        case O_STRING_CONCAT:
+        {
+            /* Inputs may be non-terminated slices. Copy exact byte extents and
+             * register the owner separately so aliases never double-free it. */
+            char *text;
+            size_t length;
+            if (b->text_size == SIZE_MAX || a->text_size > SIZE_MAX - b->text_size - 1)
+            {
+                status = FHT_NOMEM;
+                break;
+            }
+            length = a->text_size + b->text_size;
+            text = malloc(length + 1);
+            if (!text)
+            {
+                status = FHT_NOMEM;
+                break;
+            }
+            memcpy(text, a->text, a->text_size);
+            memcpy(text + a->text_size, b->text, b->text_size);
+            text[length] = 0;
+            texts[text_count++] = text;
+            result->text = text;
+            result->text_size = length;
+            break;
+        }
         case O_STRING_LEN:
         case O_STRING_AT:
         {
@@ -556,6 +588,11 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     }
     ok = !ferror(staged) && !ferror(output);
 done:
+    while (text_count)
+    {
+        free(texts[--text_count]);
+    }
+    free(texts);
     while (key_count)
     {
         fht_keys_destroy(keys[--key_count]);

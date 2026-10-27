@@ -95,3 +95,5 @@ build/runtime/disvm --no-jit --quantum 1 --inspect-words 0 4 build/unicode.dis
 Value cells are `42, 0`, followed by executed flags `1, 0`. Relocated C99 clients
 compile original source in process and verify original/optimized FIR on both VM
 modes. Host execution is not physical ARM64 or full Inferno boot evidence.
+
+Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).

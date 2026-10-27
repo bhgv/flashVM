@@ -104,8 +104,8 @@ def main():
                     call([runtime, mode, image], work, False)
 
         # Precedence follows Inferno: ordering above equality, both above bitwise AND.
-        # Mixed kinds, ordered bools, string equality and numeric truthiness remain errors.
-        for expression in ('!1', '1 == int 1', '"1" == "1"', '(1 < 2) < (3 < 4)',
+        # Mixed kinds, ordered bools, ordered strings and numeric truthiness remain errors.
+        for expression in ('!1', '1 == int 1', '"1" < "1"', '(1 < 2) < (3 < 4)',
                            '1 & 3 < 4', '1 < 2 < 3', 'table of big == table of big'):
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {'
                               'return big (' + expression + ');}')
