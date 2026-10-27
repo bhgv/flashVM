@@ -1225,22 +1225,8 @@ void Sys_write(void *frame)
     }
 }
 
-/* Count only a successfully accepted native leaf; guarded rejection retains the C handler. */
-int dvm_runtime_leaf(Jit *jit, int operation, REG *registers)
-{
-    int accepted;
-    /* Classic native table leaves read four-byte fields; NC64 uses its checked C adapters. */
-    if (operation == ICASE || operation == ICASEL || operation == IGOTO)
-    {
-        return 0;
-    }
-    accepted = jit->entry[operation](registers);
-    if (accepted)
-    {
-        native_instructions++;
-    }
-    return accepted;
-}
+/* Share the NC64 leaf policy with complete JIT tails and its standalone check. */
+#include "native_leaf.c"
 
 /* Validate a typed byte-array I/O and keep its native count within the C port range.
  * descriptor/bytes borrow a live FD and mutable array; count is clamped to its extent.

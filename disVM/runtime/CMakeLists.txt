@@ -31,7 +31,7 @@ file(WRITE "${view}/isa.h" "${isa}")
 file(READ "${u}/include/interp.h" native_interp)
 string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}")
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
-file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
+file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern int dvm_runtime_fast(int, int (*)(REG *), REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
 file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
 
@@ -581,4 +581,11 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_text_values_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
+endif()
+
+# Complete JIT tails and the direct hot route must share NC64 table/counter policy.
+if(DVM_RUNTIME_TESTS)
+  add_executable(disvm_native_leaf_test test_native_leaf.c)
+  target_include_directories(disvm_native_leaf_test PRIVATE "${u}/include")
+  add_test(NAME disvm_complete_tail_nc64_policy COMMAND disvm_native_leaf_test)
 endif()

@@ -142,6 +142,11 @@ def main():
     path = args.output / "xec.c"
     code = path.read_text()
     code = code.replace("if(!j->entry[op](&DVM_R))", "if(!dvm_runtime_leaf(j, op, &DVM_R))")
+    # Complete entries must retain the same NC64 table policy and fast-only counts.
+    fast_boundary = "if(fast != nil && fast(r))"
+    if code.count(fast_boundary) != 1:
+        raise ValueError("complete JIT executor changed; review NC64 fast policy")
+    code = code.replace(fast_boundary, "if(fast != nil && dvm_runtime_fast(op, fast, r))")
     boundary = "\t\t/* A C-translated step consumes the same single scheduler instruction. */"
     if code.count(boundary) != 1:
         raise ValueError("instruction boundary changed; review runtime quota/count placement")

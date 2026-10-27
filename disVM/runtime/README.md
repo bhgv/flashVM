@@ -285,3 +285,28 @@ Build/Run/Debug GUI integration and full Dis debugger wiring remain unfinished.
 Compiler 0.21/runtime 0.24 table helpers are documented in
 [TABLE_MUTATION](../../fir/v1/doc/TABLE_MUTATION.md) ·
 [Русский](../../fir/v1/doc/TABLE_MUTATION.ru.md).
+
+## Complete JIT entries and NC64 policy (v0.1647)
+
+Inferno 637d618 adds `Jit.dispatch` beside guarded `Jit.entry`. AMD64/ARM64 have
+complete decoded entries for 173 active opcode IDs; 166 retain guarded native
+fast paths and seven enter the shared C executor through a tail bridge. These
+are separate availability metrics. Original Dis PCs, scheduler behavior, GC
+metadata and C exception frames remain in use. See the
+[upstream contract](../upstream/libinterp/tests/README.complete-dispatch.md).
+
+The hosted NC64 runtime sends direct and complete fast callbacks through the
+same `native_leaf.c` policy. Classic CASE/CASEL/GOTO native leaves use four-byte
+table cells and therefore decline to the checked NC64 C adapters. Only a
+nonzero native fast completion increments `native` statistics; C-only complete
+entries do not become native fast successes merely because a tail stub ran.
+No Jit pointer is reread after a callback. The prepared source transformation
+checks its exact executor anchor rather than silently dropping this adaptation.
+`disvm_complete_tail_nc64_policy` checks both routes, callback counts and zero/
+positive/negative completion under the same production policy implementation.
+
+Входящие complete JIT-входы импортированы без правок снимка. Обе ветки исполнения
+сохраняют нашу NC64-политику таблиц и счётчиков. Это не блоковый JIT и не обещание
+полной нативной реализации всех состояний opcode. C-обработчики сохраняют своё
+владение, выделение памяти, блокировки и исключения. Расширения языка компилятора
+и адаптация хоста остаются в FlashVM.
