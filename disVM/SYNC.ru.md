@@ -1,3 +1,22 @@
+# Текущая синхронизация — v0.1640
+
+Experiment `b10f81fa764403adc1321a77136ecfe06e07cb8a`: 541 точный core/reference-файл и 174 файла bootstrap.
+Входящий b10f81f защищает INDB/INDW/INDL/INDF/INDX/LENA и объединяет qword/byte
+ядра копирования MOVM/HEADM/MOVMP/HEADMP для AMD64/ARM64. Проверки descriptor/map,
+pointer-free native-диапазон 0..256 и C fallback больших записей сохранены.
+[Контракт Inferno](upstream/libinterp/tests/README.array-slots-copy-kernel.md).
+Три новых native/emulation-драйвера включены в CTest. Прежние обратные исправления
+переходов/JMP уже находятся в истории experiment. Нового подтверждённого общего
+native-дефекта для обратного коммита при этой синхронизации не найдено.
+
+Сравнения-значения и ! компилятора 0.23 остаются во FlashVM. Приоритеты сверены
+с limbo/limbo.y Inferno; новых opcode, helper ABI и тегов контейнера нет.
+[Руководство](../fir/v1/doc/COMPARISON_VALUES.ru.md).
+Доступность AMD64/ARM64 остаётся 164/173 с частичным покрытием операндов.
+Эмуляция ARM64 не подтверждает аппаратное исполнение/полную загрузку Inferno.
+
+---
+
 # Текущая синхронизация — v0.1639
 
 Из experiment `80f859e` перенесены точные проверки операндов/кадров fixed-команд

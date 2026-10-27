@@ -1,3 +1,23 @@
+# Current synchronization — v0.1640
+
+Experiment `b10f81fa764403adc1321a77136ecfe06e07cb8a`. 541 exact core/reference files and 174 bootstrap files.
+Incoming b10f81f guards INDB/INDW/INDL/INDF/INDX/LENA and shares overlap-safe
+qword/byte copy kernels across MOVM/HEADM/MOVMP/HEADMP on AMD64/ARM64. Descriptor,
+map and pointer-free 0..256-byte native limits remain; larger records use C.
+[Owning contract](upstream/libinterp/tests/README.array-slots-copy-kernel.md).
+Three new native/emulation drivers are registered. Earlier reverse branch/JMP
+repairs are present in this experiment history. No additional shared native
+fault requiring a new reverse commit was confirmed during this synchronization.
+
+Compiler 0.23 comparisons-as-values and logical negation remain FlashVM-only.
+Their precedence was checked against Inferno limbo/limbo.y; there is no new
+native opcode, module helper ABI or file-container tag.
+[Compiler guide](../fir/v1/doc/COMPARISON_VALUES.md).
+Native availability remains AMD64/ARM64 164/173 with partial operand coverage.
+ARM64 instruction emulation does not establish hardware execution/full OS boot.
+
+---
+
 # Current synchronization — v0.1639
 
 Experiment `80f859e`: exact fixed operand/frame guards and AMD64/ARM64 qword
