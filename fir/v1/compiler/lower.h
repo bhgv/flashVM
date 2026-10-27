@@ -399,4 +399,47 @@ void source_loop_if_end(SourceLoopChoice choice);
 /* Type-check a big function result and close this loop path with return. */
 void source_loop_return(int value);
 
+/* Parser-owned counted-for continuation; no native/runtime pointer escapes. */
+typedef struct
+{
+    int loop;    /* Shared innermost-loop label identity. */
+    int context; /* Private staged-step stream slot, -1 after a resource failure. */
+} SourceFor;
+
+/* Begin a classic for after its initializer; own one staged step until end/release. */
+SourceFor source_for_begin(void);
+
+
+/* Produce the checked constant-true condition of an omitted middle clause. */
+SourceCondition source_for_true(void);
+
+
+/* Redirect only FIR emission into the owned header-step stream. */
+void source_for_step_begin(SourceFor control);
+
+
+/* Restore the borrowed destination after parsing the header step. */
+void source_for_step_end(SourceFor control);
+
+
+/* Emit a reachable body/continue step and backedge, or discard an unused step. */
+void source_for_end(SourceFor control);
+
+
+/* Return one exact signed-big update, rejecting non-big operands. */
+int source_table_increment(int value, int direction);
+
+
+/* Defer step origins by private context ID, then resume ordinary debug emission. */
+void source_debug_defer_begin(int context);
+void source_debug_defer_end(void);
+
+
+/* Publish a reachable step's origins or discard them; always free captured nodes. */
+void source_debug_defer_flush(int context, int emit);
+
+
+/* Release all pending origin captures after successful or failed parsing. */
+void source_debug_defer_release(void);
+
 #endif

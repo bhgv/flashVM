@@ -33,8 +33,8 @@ line source before the first loop keeps its existing SSA lowering.
 Conditions use the existing typed comparison/membership and lazy boolean rules.
 Bodies contain assignments, declarations, deletion and nested loops. Compiler
 0.37 adds [if/else, break/continue and return](LOOP_CONTROL.md) inside them.
-Classic three-clause for and loop-carried int/bool/string/table reference
-rebindings remain separate work.
+Compiler 0.38 adds [classic three-clause for and postfix updates](COUNTED_FOR.md).
+Loop-carried int/bool/string/table reference rebindings remain separate work.
 An outer uninitialized declaration cannot become definitely initialized merely
 because an assignment appeared in a possibly zero-iteration body. Such cases
 are rejected rather than silently using a body-only SSA definition after exit.

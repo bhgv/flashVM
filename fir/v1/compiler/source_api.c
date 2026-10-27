@@ -96,10 +96,30 @@ static void debug_string(FILE *out, const unsigned char *text, size_t size)
     fputc('"', out);
 }
 
+
+/* Copied origin retained while a classic-for step has not been placed in FIR. */
+typedef struct DeferredOrigin DeferredOrigin;
+
+struct DeferredOrigin
+{
+    char kind[64];        /* Copied stable event kind, never truncated. */
+    char name[256];       /* Copied binding/operation spelling. */
+    int value;            /* Pre-optimization FIR value ID or -1. */
+    int scope;            /* Unique lexical owner ID. */
+    int depth;            /* Authored lexical depth. */
+    int binding;          /* Stable translation-local binding ID. */
+    SourceMark mark;      /* Copied authored byte/line occurrence. */
+    DeferredOrigin *next; /* Owned next deferred event. */
+};
+
+static DeferredOrigin *deferred_head[64]; /* Owned per-step origin lists. */
+static DeferredOrigin *deferred_tail[64]; /* Borrowed final list nodes. */
+static int deferred_context = -1;         /* One active header capture, -1 for normal emission. */
+
 /* Append an origin event to private staging. SSA IDs refer to pre-optimization
  * FIR only; optimized/native locations need a later explicit relocation pass. */
 static void
-debug_event(const char *kind, int value, const char *name, int scope, int depth, int binding, SourceMark mark)
+debug_write(const char *kind, int value, const char *name, int scope, int depth, int binding, SourceMark mark)
 {
     size_t i, line = 1, column = 1;
     if (!active_debug || error_recorded)
@@ -139,6 +159,111 @@ debug_event(const char *kind, int value, const char *name, int scope, int depth,
                 column);
     }
     fputc('}', active_debug);
+}
+
+
+/* Copy an event into an active step capture or serialize it immediately.
+ * Arguments are borrowed; copies own no scanner/VM pointers. Allocation/spelling
+ * errors become staged compiler diagnostics, never partially published JSON. */
+static void
+debug_event(const char *kind, int value, const char *name, int scope, int depth, int binding, SourceMark mark)
+{
+    DeferredOrigin *event;
+    if (!active_debug || error_recorded)
+    {
+        return;
+    }
+    if (deferred_context < 0)
+    {
+        debug_write(kind, value, name, scope, depth, binding, mark);
+        return;
+    }
+    if (strlen(kind) >= sizeof(event->kind) || strlen(name) >= sizeof(event->name))
+    {
+        source_error(FIR_DIAG_RESOURCE, 0, mark.offset, mark.length, "deferred debug spelling limit exceeded");
+        return;
+    }
+    event = malloc(sizeof(*event));
+    if (!event)
+    {
+        source_error(FIR_DIAG_RESOURCE, 0, mark.offset, mark.length, "deferred debug allocation failure");
+        return;
+    }
+    strcpy(event->kind, kind);
+    strcpy(event->name, name);
+    event->value = value;
+    event->scope = scope;
+    event->depth = depth;
+    event->binding = binding;
+    event->mark = mark;
+    event->next = NULL;
+    if (deferred_tail[deferred_context])
+    {
+        deferred_tail[deferred_context]->next = event;
+    }
+    else
+    {
+        deferred_head[deferred_context] = event;
+    }
+    deferred_tail[deferred_context] = event;
+}
+
+
+/* Begin a private header capture. context is the checked parser slot; no stream
+ * ownership changes. Invalid internal IDs fail before indexing either list. */
+void source_debug_defer_begin(int context)
+{
+    if (context < 0 || context >= 64 || deferred_context >= 0)
+    {
+        source_error(FIR_DIAG_RESOURCE, 0, -1, 0, "invalid deferred debug context");
+        return;
+    }
+    deferred_context = context;
+}
+
+
+/* Restore immediate origin emission after a header. Captured nodes remain owned
+ * by their step until placement or the enclosing compiler-request cleanup. */
+void source_debug_defer_end(void)
+{
+    deferred_context = -1;
+}
+
+
+/* Emit a reachable context in final FIR order, assigning consecutive site IDs.
+ * Otherwise discard it. Free all copied origins even on an earlier parse error;
+ * the borrowed root debug stream is never closed by this routine. */
+void source_debug_defer_flush(int context, int emit)
+{
+    DeferredOrigin *event;
+    if (context < 0 || context >= 64)
+    {
+        return;
+    }
+    while ((event = deferred_head[context]) != NULL)
+    {
+        deferred_head[context] = event->next;
+        if (emit)
+        {
+            debug_write(
+                event->kind, event->value, event->name, event->scope, event->depth, event->binding, event->mark);
+        }
+        free(event);
+    }
+    deferred_tail[context] = NULL;
+}
+
+
+/* Discard every pending step after success/failure; no borrowed stream is closed
+ * and the next serialized source request starts without deferred origins. */
+void source_debug_defer_release(void)
+{
+    int context;
+    deferred_context = -1;
+    for (context = 0; context < 64; context++)
+    {
+        source_debug_defer_flush(context, 0);
+    }
 }
 
 /* Append a non-binding origin. All arguments are borrowed parser values; no output escapes staging. */

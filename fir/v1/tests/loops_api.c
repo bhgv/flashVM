@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-/* Compile one valid loop or one unsupported loop-carried reference rebind.
+/* Compile one valid loop or one invalid staged header step.
  * Borrow reusable module storage; own streams and diagnostics. Return one only
  * when parsing, cyclic verification and staged publication meet their contracts. */
 static int compile_loop(FirModule *module, int invalid)
@@ -22,11 +21,11 @@ static int compile_loop(FirModule *module, int invalid)
         goto done;
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
-    fputs(
-        invalid
-            ? "t := table of big; while (len t < 1) {t = table of big {42};} return 42;"
-            : "t := table of big {20,22}; sum := big 0; for (key,value in t) {if (value == 20) {sum += value; continue;} else {sum += value; return sum;}} return 0;",
-        input);
+    fputs(invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
+          : invalid == 2
+              ? "sum := big 0; for (i := big 0; i < 3; i++"
+              : "sum := big 0; for (i := big 0; i < 7; i++) {sum += i; if (i == 6) {return sum*2;}} return 0;",
+          input);
     fputs("}", input);
     rewind(input);
     if (invalid)
@@ -37,7 +36,9 @@ static int compile_loop(FirModule *module, int invalid)
     compiled = fir_source_debug(input, fir, FIR_LIMBO, "loop_service", error, sizeof(error), &diagnostic, debug);
     if (invalid)
     {
-        ok = !compiled && strstr(error, "loop-carried") && ftell(fir) == 3 && ftell(debug) == 3;
+        ok = !compiled &&
+             (invalid == 1 ? strstr(error, "step cannot declare") != NULL : diagnostic.kind == FIR_DIAG_SYNTAX) &&
+             ftell(fir) == 3 && ftell(debug) == 3;
     }
     else
     {
@@ -70,8 +71,7 @@ done:
     return ok;
 }
 
-
-/* Alternate valid/error/valid library requests without generated-parser state
+/* Alternate valid/semantic-error/valid/syntax-error/valid requests without generated-parser state
  * leaking between calls. Own the module; return nonzero with explicit failures. */
 int main(void)
 {
@@ -81,9 +81,9 @@ int main(void)
     {
         return 1;
     }
-    for (round = 0; round < 3; round++)
+    for (round = 0; round < 5; round++)
     {
-        if (!compile_loop(module, round == 1))
+        if (!compile_loop(module, round == 1 ? 1 : round == 3 ? 2 : 0))
         {
             free(module);
             return 1;

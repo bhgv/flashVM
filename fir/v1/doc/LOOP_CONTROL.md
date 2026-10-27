@@ -84,4 +84,5 @@ scopes, keyword positions, bounded parsing and preservation of existing outputs
 on source errors. Installed SDK acceptance recompiles the same example through
 a newly linked C99 client. No new FIR type, Dis opcode or container tag is needed.
 Outside loops the existing terminal function-decision grammar remains in effect;
-general nonterminal function if, classic for and labeled transfers are not added.
+general nonterminal function if and labeled transfers remain separate work.
+[Compiler 0.38](COUNTED_FOR.md) adds the classic three-clause for.

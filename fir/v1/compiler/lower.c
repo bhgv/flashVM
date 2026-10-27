@@ -48,8 +48,18 @@ static int path_closed;             /* Current loop statement path already ends 
 static int conditional_serial;      /* Unique structured loop-if labels. */
 static int conditional_depth;       /* Active loop-if lexical join contexts. */
 static int conditional_scope[65];   /* Outer lexical scope of each structured join. */
-static int loop_scope[65];          /* Lexical depth just outside each active loop. */
+static int loop_names[65];          /* Binding prefix present before each active loop body. */
 static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
+
+/* One staged classic-for header step. Streams are owned until end/release. */
+typedef struct
+{
+    FILE *step;   /* Owned temporary FIR step body, NULL when the slot is free. */
+    FILE *parent; /* Borrowed original FIR destination, never closed here. */
+} SourceForContext;
+
+static SourceForContext for_contexts[64]; /* Active nested header/body contexts. */
+static int for_step_context = -1;         /* Current captured step, -1 in ordinary source code. */
 
 
 /* Emit a typed operation after sticky source errors have been checked. */
@@ -59,6 +69,7 @@ static int table_operation(FirType type, const char *spelling, int a, int b);
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language)
 {
+    source_release();
     location.line = 0;
     location.offset = -1;
     location.length = 0;
@@ -74,6 +85,8 @@ void source_config(FILE *out, int language)
     loop_serial = loop_depth = 0;
     path_closed = conditional_serial = conditional_depth = 0;
     memset(table_cells, -1, sizeof(table_cells));
+    memset(for_contexts, 0, sizeof(for_contexts));
+    for_step_context = -1;
     memset(table_values, 0, sizeof(table_values));
     memset(table_bindings, 0, sizeof(table_bindings));
 }
@@ -552,10 +565,21 @@ void source_restore(SourceMark mark)
     source_line = mark.line;
 }
 
-
-/* Retire caller-owned stream roots after every translation, including failure. */
+/* Release owned step streams/deferred origins after every translation, including
+ * failure; retire the borrowed root output without closing the caller stream. */
 void source_release(void)
 {
+    int context;
+    for (context = 0; context < 64; context++)
+    {
+        if (for_contexts[context].step)
+        {
+            fclose(for_contexts[context].step);
+            for_contexts[context].step = NULL;
+        }
+    }
+    for_step_context = -1;
+    source_debug_defer_release();
     destination = NULL;
 }
 
@@ -1408,6 +1432,11 @@ void source_table_store(int slot, int value)
 void source_table_bind(int name, int value, int type, int declaration)
 {
     FirType actual = value >= 0 ? table_values[value] : (FirType)type;
+    if (declaration && for_step_context >= 0)
+    {
+        reject("for step cannot declare bindings");
+        return;
+    }
     if (declaration)
     {
         name = local_declaration(name);
@@ -1424,8 +1453,7 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
-    if (!declaration && loop_depth && binding_scope[name] <= loop_scope[loop_depth - 1] &&
-        (actual != T_I64 || table_cells[name] < 0))
+    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && (actual != T_I64 || table_cells[name] < 0))
     {
         reject("loop-carried assignment requires an initialized big local");
     }
@@ -1546,7 +1574,7 @@ int source_loop_begin(void)
     source_promote_bigs();
     loop_id[loop_depth] = loop;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
-    loop_scope[loop_depth++] = scope_depth;
+    loop_names[loop_depth++] = name_count;
     path_closed = 0;
     blocks_used += 3;
     if (!failed)
@@ -1825,4 +1853,172 @@ void source_loop_return(int value)
         source_debug_event("loop-return", value, "", debug_scopes[scope_depth], scope_depth, location);
     }
     path_closed = 1;
+}
+
+
+/* Allocate a compiler-private step stream after initializer emission. Return a
+ * copied parser continuation; failures keep context=-1 and prevent publication.
+ * The enclosing source_release closes any stream left by syntax-error recovery. */
+SourceFor source_for_begin(void)
+{
+    SourceFor control;
+    int context;
+    control.loop = 0;
+    control.context = -1;
+    if (failed)
+    {
+        return control;
+    }
+    control.loop = source_loop_begin();
+    if (failed)
+    {
+        return control;
+    }
+    if (blocks_used + 1 > FIR_BLOCKS)
+    {
+        reject("for step block limit exceeded");
+        return control;
+    }
+    for (context = 0; context < 64 && for_contexts[context].step; context++)
+    {
+    }
+    if (context == 64)
+    {
+        reject("for step context limit exceeded");
+        return control;
+    }
+    for_contexts[context].parent = destination;
+    for_contexts[context].step = fir_temporary();
+    if (!for_contexts[context].step)
+    {
+        reject("cannot allocate staged for step");
+        return control;
+    }
+    control.context = context;
+    loop_iteration[loop_depth - 1] = 1;
+    blocks_used++;
+    return control;
+}
+
+
+/* Emit a constant bool for an omitted for condition. Return a copied typed
+ * parser condition; no runtime allocation or implicit numeric truthiness occurs. */
+SourceCondition source_for_true(void)
+{
+    SourceCondition condition;
+    condition.value = table_operation(T_BOOL, "const.bool true", -1, -1);
+    condition.invert = 0;
+    return condition;
+}
+
+
+/* Capture a borrowed continuation's header step rather than executing it before
+ * the body. Only one header can be captured at a time; nested bodies own separate
+ * retained streams. Debug records keep authored source marks in their own stream. */
+void source_for_step_begin(SourceFor control)
+{
+    if (failed || control.context < 0)
+    {
+        return;
+    }
+    if (for_step_context >= 0)
+    {
+        reject("nested for header capture is unsupported");
+        return;
+    }
+    for_step_context = control.context;
+    source_debug_defer_begin(control.context);
+    destination = for_contexts[control.context].step;
+}
+
+
+/* Restore emission after a parsed header even when semantic validation failed.
+ * control is parser-owned; do not close the retained stream until end/release. */
+void source_for_step_end(SourceFor control)
+{
+    if (control.context >= 0)
+    {
+        destination = for_contexts[control.context].parent;
+    }
+    for_step_context = -1;
+    source_debug_defer_end();
+}
+
+
+/* Emit the buffered step only when normal fallthrough or continue reaches it.
+ * control is a copied parser continuation. Release its owned stream on every
+ * path, never close the borrowed parent. Read/write/close failures are sticky
+ * source errors; the outer API discards staged FIR/debug output atomically. */
+void source_for_end(SourceFor control)
+{
+    SourceForContext *context;
+    char buffer[4096];
+    size_t count;
+    int reachable;
+    if (control.context < 0)
+    {
+        return;
+    }
+    context = &for_contexts[control.context];
+    destination = context->parent;
+    reachable = !failed && (!path_closed || loop_continues[loop_depth - 1]);
+    if (reachable)
+    {
+        if (!path_closed)
+        {
+            fprintf(destination, "    jump ^loop%d_step\n", control.loop);
+        }
+        fprintf(destination, "^loop%d_step:\n", control.loop);
+        if (fflush(context->step) || fseek(context->step, 0, SEEK_SET))
+        {
+            reject("cannot rewind staged for step");
+        }
+        while (!failed && (count = fread(buffer, 1, sizeof(buffer), context->step)) != 0)
+        {
+            if (fwrite(buffer, 1, count, destination) != count)
+            {
+                reject("cannot emit staged for step");
+            }
+        }
+        if (ferror(context->step))
+        {
+            reject("cannot read staged for step");
+        }
+        if (!failed)
+        {
+            fprintf(destination, "    jump ^loop%d_test\n", control.loop);
+        }
+    }
+    source_debug_defer_flush(control.context, reachable && !failed);
+    if (!failed)
+    {
+        fprintf(destination, "^loop%d_end:\n", control.loop);
+        source_debug_event("for-end", -1, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    if (fclose(context->step))
+    {
+        reject("cannot close staged for step");
+    }
+    context->step = NULL;
+    if (loop_depth)
+    {
+        loop_depth--;
+    }
+    path_closed = 0;
+}
+
+
+/* Compute a statement-only postfix big update from borrowed SSA value/direction.
+ * Return a new big SSA value, preserving modular arithmetic and source marks.
+ * No value is returned to a source expression and no runtime owner is acquired. */
+int source_table_increment(int value, int direction)
+{
+    int one;
+    if (table_values[value] != T_I64)
+    {
+        reject("increment/decrement requires big local or table entry");
+        return 0;
+    }
+    one = source_table_position(1);
+    return source_table_update(value, one, direction > 0 ? '+' : '-');
 }

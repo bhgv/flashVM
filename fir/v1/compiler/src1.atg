@@ -61,6 +61,15 @@ static long AfterToken(void)
 }
 
 
+/* Select snapshot for-in only when the first header name is followed by a comma.
+ * Scanner trivia/bytes are borrowed; Coco/R parses every actual header token. */
+static int ForInAhead(int token)
+{
+    return (token == identSym || token == valueSym || token == realSym) &&
+           S_CurrentCh(AfterToken()) == ',';
+}
+
+
 /* Recognize a numeric operand after a sign without consuming scanner input.
  * Return boolean; ordinary unary expressions keep the shared recursion bound. */
 static int LiteralAhead(void)
@@ -642,6 +651,22 @@ PRODUCTIONS
    * before a compound RHS. Plain assignment remains insertion-capable and does
    * not read a missing/uninitialized destination. Arithmetic retains its op span. */
   TableStatement =
+    (. int value = 0; .)
+    LoopTransfer
+    | TableFor
+    | TableWhile
+    | TableDelete<&value> ";"
+    | TableBindingStatement ";"
+  .
+
+  /* Reusable header clause; the enclosing grammar owns its delimiter. */
+  TableForClause =
+    (. int value = 0; .)
+    TableDelete<&value>
+    | TableBindingStatement
+  .
+
+  TableBindingStatement =
     (.
         int name = 0;
         int value = -1;
@@ -653,26 +678,33 @@ PRODUCTIONS
         int slice = 0;
         int old = 0;
         int op = 0;
+        int direction = 0;
         SourceMark target;
         SourceMark access;
         SourceMark operation;
     .)
     (
-        LoopTransfer
-        | TableForIn
-        | TableWhile
-        | TableDelete<&value> ";"
-        | Name<&name> (. target = source_mark(); .)
+        Name<&name> (. target = source_mark(); .)
         (
-            ":=" TableExpression<&value> ";"
+            ":=" TableExpression<&value>
             (.
                 source_restore(target);
                 source_table_bind(name, value, 0, 1);
             .)
-            | ":" TableType<&type> [ "=" TableExpression<&value> ] ";"
+            | ":" TableType<&type> [ "=" TableExpression<&value> ]
             (.
                 source_restore(target);
                 source_table_bind(name, value, type, 1);
+            .)
+            | TableIncrementOperator<&direction>
+            (.
+                operation = source_mark();
+                source_restore(target);
+                old = source_read(name);
+                source_restore(operation);
+                value = source_table_increment(old, direction);
+                source_restore(target);
+                source_table_bind(name, value, 0, 0);
             .)
             | TableAssignmentOperator<&op>
             (.
@@ -683,7 +715,7 @@ PRODUCTIONS
                     old = source_read(name);
                 }
             .)
-            TableExpression<&value> ";"
+            TableExpression<&value>
             (.
                 source_restore(operation);
                 if (op)
@@ -712,49 +744,67 @@ PRODUCTIONS
                     slot = slice ? source_table_range(receiver, key, end) : source_table_index(receiver, key);
                 }
             .)
-            TableAssignmentOperator<&op>
-            (.
-                operation = source_mark();
-                if (op)
-                {
+            (
+                TableIncrementOperator<&direction>
+                (.
+                    operation = source_mark();
                     if (slice)
                     {
                         source_table_slice_compound();
                     }
+                    old = source_table_load(slot);
+                    source_restore(operation);
+                    value = source_table_increment(old, direction);
+                    source_restore(access);
+                    source_table_store(slot, value);
+                .)
+                |
+                TableAssignmentOperator<&op>
+                (.
+                    operation = source_mark();
+                    if (op)
+                    {
+                        if (slice)
+                        {
+                            source_table_slice_compound();
+                        }
+                        else
+                        {
+                            old = source_table_load(slot);
+                        }
+                    }
+                .)
+                TableExpression<&value>
+                (.
+                    source_restore(operation);
+                    if (op)
+                    {
+                        value = source_table_update(old, value, op);
+                    }
                     else
                     {
-                        old = source_table_load(slot);
+                        source_restore(access);
                     }
-                }
-            .)
-            TableExpression<&value> ";"
+                    if (slice)
+                    {
+                        if (slice == 2)
+                        {
+                            value = source_string_rune(value);
+                        }
+                        value = source_table_splice(slot, value);
+                        if (value >= 0)
+                        {
+                            source_restore(target);
+                            source_table_bind(name, value, 0, 0);
+                        }
+                    }
+                    else
+                    {
+                        source_table_store(slot, value);
+                    }
+                .)
+            )
             (.
-                source_restore(operation);
-                if (op)
-                {
-                    value = source_table_update(old, value, op);
-                }
-                else
-                {
-                    source_restore(access);
-                }
-                if (slice)
-                {
-                    if (slice == 2)
-                    {
-                        value = source_string_rune(value);
-                    }
-                    value = source_table_splice(slot, value);
-                    if (value >= 0)
-                    {
-                        source_restore(target);
-                        source_table_bind(name, value, 0, 0);
-                    }
-                }
-                else
-                {
-                    source_table_store(slot, value);
-                }
                 source_restore(target);
                 source_table_lease(receiver, 0);
             .)
@@ -797,24 +847,30 @@ PRODUCTIONS
 
   /* FlashVM extension: one immutable key snapshot, live typed values per pass.
    * Bindings shadow only after the receiver has evaluated in the outer scope. */
-  TableForIn =
+  TableFor =
     IF(Sym==forSym && depth>=64) "for" (. capture(); source_scope_limit(); .)
     | IF(Sym==forSym && depth<64)
-    (.
-        int key = 0;
-        int value = 0;
-        int table = 0;
-        SourceIteration iteration;
-        SourceMark operation;
-        SourceMark keymark;
-        SourceMark valuemark;
-    .)
+    (. SourceMark operation; .)
     "for"
     (.
         capture();
         operation = source_mark();
     .)
-    "(" Name<&key> (. keymark = source_mark(); .)
+    "("
+    ( IF(ForInAhead(Sym)) TableForIn<operation> | TableCountedFor<operation> )
+  .
+
+  /* Snapshot form retains its existing key/value lexical body scope. */
+  TableForIn<SourceMark operation> =
+    (.
+        int key = 0;
+        int value = 0;
+        int table = 0;
+        SourceIteration iteration;
+        SourceMark keymark;
+        SourceMark valuemark;
+    .)
+    Name<&key> (. keymark = source_mark(); .)
     "," Name<&value> (. valuemark = source_mark(); .)
     "in" TableExpression<&table> ")"
     (.
@@ -833,6 +889,42 @@ PRODUCTIONS
         source_leave_scope();
         source_restore(operation);
         source_iteration_end(iteration);
+        --depth;
+    .)
+  .
+
+
+  /* Header and body share one loop-local scope; the step is staged, not run early. */
+  TableCountedFor<SourceMark operation> =
+    (.
+        SourceFor control;
+        SourceCondition condition;
+        int has_condition = 0;
+    .)
+    (. source_enter_scope(); .)
+    [ TableForClause ] ";"
+    (.
+        source_restore(operation);
+        control = source_for_begin();
+    .)
+    [ TableCondition<&condition> (. has_condition = 1; .) ] ";"
+    (.
+        source_restore(operation);
+        if (!has_condition)
+        {
+            condition = source_for_true();
+        }
+        ++depth;
+        source_loop_condition(control.loop, condition);
+        source_for_step_begin(control);
+    .)
+    [ TableForClause ] ")"
+    (. source_for_step_end(control); .)
+    "{" LoopBody "}"
+    (.
+        source_restore(operation);
+        source_for_end(control);
+        source_leave_scope();
         --depth;
     .)
   .
@@ -923,6 +1015,20 @@ PRODUCTIONS
     .)
   .
 
+  /* Statement-only postfix updates share the captured assignment destination. */
+  TableIncrementOperator<int *direction> =
+    "++"
+    (.
+        capture();
+        *direction = 1;
+    .)
+    | "--"
+    (.
+        capture();
+        *direction = -1;
+    .)
+  .
+
   /* Operator spellings match Inferno compound arithmetic. The bounded table
    * profile keeps big arithmetic and explicit int shift counts, without **=. */
   TableAssignmentOperator<int *op> =
@@ -953,7 +1059,7 @@ PRODUCTIONS
   TableWriteKey<int *key, int *end, int *slice, SourceMark *access> =
     (. *slice = 0; .)
     (
-        "." ident (. capture(); *access = source_mark(); *key = source_table_text(0); .)
+        "." (ident | "value") (. capture(); *access = source_mark(); *key = source_table_text(0); .)
         | "[" (. capture(); *access = source_mark(); .) TableExpression<key>
           [ ":" TableExpression<end> (. *slice = 1; .) ] "]"
     )
@@ -961,7 +1067,7 @@ PRODUCTIONS
 
   /* Dotted identifiers are literal string keys, not lookups of a local binding with that name. */
   TableKey<int *key> =
-    "." ident (. capture(); *key = source_table_text(0); .)
+    "." (ident | "value") (. capture(); *key = source_table_text(0); .)
     | "[" TableExpression<key> "]"
   .
 
@@ -1171,15 +1277,15 @@ PRODUCTIONS
         SourceMark origin;
     .)
     (
-        IF(Sym==identSym && NamedFieldAhead())
-        ident (. capture(); origin = source_mark(); key = source_table_text(0);
+        IF((Sym==identSym || Sym==valueSym) && NamedFieldAhead())
+        (ident | "value") (. capture(); origin = source_mark(); key = source_table_text(0);
                  slot = source_table_index(owner, key); .)
         "=" TableExpression<&value>
         | "[" (. capture(); origin = source_mark(); .)
           TableExpression<&key> "]"
           (. source_restore(origin); slot = source_table_index(owner, key); .)
           "=" TableExpression<&value>
-        | IF(!(Sym==identSym && NamedFieldAhead()))
+        | IF(!((Sym==identSym || Sym==valueSym) && NamedFieldAhead()))
           (.
               source_token("", S_NextLine, S_NextPos, (size_t)S_NextLen, 0);
               origin = source_mark();
@@ -1243,7 +1349,7 @@ PRODUCTIONS
             | "(" TableExpression<result> ")"
           )
           {
-              "." ident (. capture(); key = source_table_text(0);
+              "." (ident | "value") (. capture(); key = source_table_text(0);
                             *result = source_table_load(source_table_index(*result, key)); .)
               | "[" (. capture(); access = source_mark(); .) TableExpression<&key>
                 (. slice = 0; .)

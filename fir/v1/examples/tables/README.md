@@ -198,3 +198,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Loop if/else, break, continue and early return](../../doc/LOOP_CONTROL.md).
+
+
+[Counted for and postfix big updates](../../doc/COUNTED_FOR.md).

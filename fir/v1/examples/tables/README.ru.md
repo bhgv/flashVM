@@ -197,3 +197,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [If/else, break, continue и ранний return в циклах](../../doc/LOOP_CONTROL.ru.md).
+
+
+[Трёхчастный for и постфиксные обновления big](../../doc/COUNTED_FOR.ru.md).
