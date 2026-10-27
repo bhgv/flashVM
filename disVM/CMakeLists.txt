@@ -79,6 +79,7 @@ if(BUILD_TESTING)
     integer-branch-native
     numeric-slot-native
     fixed-slot-native
+    array-slot-native
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -269,6 +270,8 @@ if(BUILD_TESTING)
       integer-branch-jit
       numeric-slot-jit
       fixed-slot-jit
+      array-slot-jit
+      mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit
       integer-slot-jit
