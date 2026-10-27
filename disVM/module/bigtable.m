@@ -79,6 +79,9 @@ Bigtable: module
     present: fn(status: int): int;
     # Read owner/depth/waiters without acquiring the payload guard; diagnostic only.
     guardstate: fn(tab: ref Handle): (big, int, int);
+    # Retain an operation lease across instructions; contention parks the Dis process.
+    acquire: fn(tab: ref Handle);
+    release: fn(tab: ref Handle); # Only the owning process may leave; exceptions abort its leases.
     # Delete through an immutable snapshot key; return status without compacting indices.
     delkey: fn(tab: ref Handle, keys: ref Keys, index: big): int;
 };

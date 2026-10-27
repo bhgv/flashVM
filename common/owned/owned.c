@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <limits.h>
 
-
 /* Initialize borrowed guard; roll back metadata if condition allocation fails. */
 int fvm_owned_init(FvmOwned *guard)
 {
@@ -27,7 +26,6 @@ int fvm_owned_init(FvmOwned *guard)
     guard->waiters = 0;
     return 0;
 }
-
 
 /* Park competitors on a condition; the same sequential operation may reenter.
  * Caller must disable native cancellation for the entire operation lifetime. */
@@ -84,6 +82,48 @@ int fvm_owned_enter(FvmOwned *guard, uint64_t token)
     return error;
 }
 
+/* Attempt one recursive entry without parking a native thread on payload work.
+ * Caller retains guard lifetime and cancellation discipline. Busy/overflow leave
+ * every metadata field unchanged; successful entries require one normal leave. */
+int fvm_owned_try_enter(FvmOwned *guard, uint64_t token)
+{
+    int error;
+    int cancellation;
+    if (!guard || !token)
+    {
+        return EINVAL;
+    }
+    error = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancellation);
+    if (error)
+    {
+        return error;
+    }
+    if (cancellation != PTHREAD_CANCEL_DISABLE)
+    {
+        pthread_setcancelstate(cancellation, NULL);
+        return EINVAL;
+    }
+    error = pthread_mutex_lock(&guard->metadata);
+    if (error)
+    {
+        return error;
+    }
+    if (guard->owner && guard->owner != token)
+    {
+        error = EBUSY;
+    }
+    else if (guard->depth == UINT_MAX)
+    {
+        error = EOVERFLOW;
+    }
+    else
+    {
+        guard->owner = token;
+        guard->depth++;
+    }
+    pthread_mutex_unlock(&guard->metadata);
+    return error;
+}
 
 /* Release one owner level; notify all competitors only after final publication. */
 int fvm_owned_leave(FvmOwned *guard, uint64_t token)
@@ -115,7 +155,6 @@ int fvm_owned_leave(FvmOwned *guard, uint64_t token)
     return error;
 }
 
-
 /* Copy borrowed diagnostic scalars under the short metadata mutex only. */
 int fvm_owned_inspect(FvmOwned *guard, uint64_t *owner, unsigned *depth, unsigned *waiters)
 {
@@ -134,7 +173,6 @@ int fvm_owned_inspect(FvmOwned *guard, uint64_t *owner, unsigned *depth, unsigne
     *waiters = guard->waiters;
     return pthread_mutex_unlock(&guard->metadata);
 }
-
 
 /* Destroy only externally quiescent storage; failed busy checks preserve it. */
 int fvm_owned_destroy(FvmOwned *guard)

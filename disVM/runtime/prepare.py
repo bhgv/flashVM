@@ -208,6 +208,19 @@ def main():
     path.write_text(code)
     path = args.output / "xec.c"
     code = path.read_text()
+    code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "table_leases.h"')
+    start = code.index('OP(mcall)')
+    stop = code.index('\nOP(', start + len('OP(mcall)'))
+    body = code[start:stop]
+    body = relative_replace(body,
+        '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));',
+        '\t/* Host lease gate runs before call-frame/module publication. */\n'
+        '\tif(program == nil && !dvm_bigtable_call_ready(entry.u.runt, f)){\n'
+        '\t\treturn;\n'
+        '\t}\n'
+        '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));')
+    code = code[:start] + body + code[stop:]
+
     code = code.replace("if(!j->entry[op](&DVM_R))", "if(!dvm_runtime_leaf(j, op, &DVM_R))")
     # Complete entries must retain the same NC64 table policy and fast-only counts.
     fast_boundary = "if(fast != nil && fast(r))"

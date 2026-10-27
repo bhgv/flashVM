@@ -46,7 +46,7 @@ file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include
 add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
@@ -111,10 +111,13 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards)
+ foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
+  endif()
+  if(test STREQUAL "tableleases")
+    set(source "${root}/disVM/examples/table-leases/main.b")
   endif()
   if(test STREQUAL "tableguards")
     set(source "${root}/disVM/examples/table-guards/main.b")
@@ -138,6 +141,16 @@ if(DVM_RUNTIME_TESTS)
    add_test(NAME disvm_application_${test}_${mode} COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${binary}" "${mode}" "${application_budget}")
    set_tests_properties(disvm_application_${test}_${mode} PROPERTIES TIMEOUT ${application_outer_budget})
+   if(test STREQUAL "tableleases")
+     set(lease_mode --no-jit)
+     if(mode STREQUAL "jit")
+       set(lease_mode --jit)
+     endif()
+     add_test(NAME disvm_tableleases_gc_${mode} COMMAND "$<TARGET_FILE:disvm>"
+       ${lease_mode} --quantum 1 --stats --max-instructions 20000 "${binary}")
+     set_tests_properties(disvm_tableleases_gc_${mode} PROPERTIES TIMEOUT 15
+       PASS_REGULAR_EXPRESSION "tables_live=0 keys_live=0")
+   endif()
    if(test STREQUAL "replaceall")
      # This million-character matrix is CPU-heavy; preserve all functional checks.
      # RUN_SERIAL covers this CTest instance only: run the separate core/JIT

@@ -13,11 +13,9 @@ typedef struct
     unsigned waiters;         /* Diagnostic count; not a cancellation mechanism. */
 } FvmOwned;
 
-
 /* Initialize caller-owned, unpublished storage. Returns POSIX error or zero.
  * No payload is owned. The caller must not copy an initialized guard. */
 int fvm_owned_init(FvmOwned *guard);
-
 
 
 /* Enter with nonzero operation token; block until idle or recursively owned.
@@ -28,17 +26,20 @@ int fvm_owned_init(FvmOwned *guard);
 int fvm_owned_enter(FvmOwned *guard, uint64_t token);
 
 
+/* Enter immediately or return EBUSY without changing ownership/waiter counts.
+ * Borrowed initialized guard, nonzero token and disabled cancellation required.
+ * Only the short metadata mutex may wait; no payload wait or spin occurs. */
+int fvm_owned_try_enter(FvmOwned *guard, uint64_t token);
+
 
 /* Leave exactly one entry. Wrong/zero token returns EPERM without mutation.
  * Payload writes must finish before the final leave; timeout is not completion. */
 int fvm_owned_leave(FvmOwned *guard, uint64_t token);
 
 
-
 /* Snapshot metadata into nonnull caller outputs. Never acquires the payload.
  * Returns POSIX error or zero; diagnostics remain available while owner pauses. */
 int fvm_owned_inspect(FvmOwned *guard, uint64_t *owner, unsigned *depth, unsigned *waiters);
-
 
 
 /* Destroy a quiescent, externally unpublished guard. EBUSY if owned or awaited.

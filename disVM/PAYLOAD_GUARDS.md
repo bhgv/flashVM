@@ -48,3 +48,10 @@ heap, but raw GC owners must never be passed to a foreign executor thread. A
 scheduler-aware queue/pinning/cancellation protocol is needed before async work
 can hold these VM owners across requests. The original broker metadata lock stays
 independent and is not substituted for the payload guard.
+
+
+## Retained cooperative ownership
+
+See the [concurrent Limbo tutorial](examples/table-leases/README.md) for explicit
+`Bigtable.acquire/release` leases across channel waits, exception cleanup and
+the exact local-only scope. Individual primitive guards remain the default.

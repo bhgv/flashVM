@@ -18,7 +18,6 @@ typedef struct
     int failed;       /* Written only by worker, read after join. */
 } Worker;
 
-
 /* Reenter during each payload mutation; report errors through joined worker. */
 static void *increment(void *argument)
 {
@@ -49,7 +48,6 @@ static void *increment(void *argument)
     return NULL;
 }
 
-
 /* Exercise real parking, recursive depth, diagnostics and wrong-owner rejection.
  * Fail explicitly; CTest timeout bounds any unexpected deadlock. */
 int main(void)
@@ -71,6 +69,13 @@ int main(void)
     if (fvm_owned_destroy(&fixture.guard) != EBUSY || fvm_owned_leave(&fixture.guard, 98) != EPERM)
     {
         return 2;
+    }
+    /* A failed cooperative probe must neither enqueue nor change ownership. */
+    if (fvm_owned_try_enter(&fixture.guard, 98) != EBUSY ||
+        fvm_owned_inspect(&fixture.guard, &owner, &depth, &waiters) || owner != 99 || depth != 2 || waiters != 0 ||
+        fvm_owned_try_enter(&fixture.guard, 99) || fvm_owned_leave(&fixture.guard, 99))
+    {
+        return 9;
     }
     for (i = 0; i < 4; i++)
     {

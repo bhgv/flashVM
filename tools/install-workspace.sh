@@ -372,6 +372,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/relative-sequences" "$destination/examples/relative-sequences"
             copy_tree "$ROOT/disVM/examples/hybrid-table" "$destination/examples/hybrid-table"
             copy_tree "$ROOT/disVM/examples/table-guards" "$destination/examples/table-guards"
+            copy_tree "$ROOT/disVM/examples/table-leases" "$destination/examples/table-leases"
             copy_tree "$ROOT/common/owned" "$destination/source/owned"
             copy_tree "$ROOT/common/table" "$destination/source/table"
             copy_file "$ROOT/LICENSE" "$destination/source/owned/LICENSE"

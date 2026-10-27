@@ -8,6 +8,8 @@
 #include "pool.h"
 #include "raise.h"
 #include "exception_host.h"
+#include "table_leases.h"
+#include "owned.h"
 #include "disvm/native_process.h"
 #include "file_port.h"
 #include <stdio.h>
@@ -988,6 +990,11 @@ int main(int argc, char **argv)
     {
         return 1;
     }
+    if (pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL))
+    {
+        fprintf(stderr, "cannot initialize cooperative VM cancellation discipline\n");
+        return 1;
+    }
     up->env = &environment;
     environment.errstr = failure;
     if (waserror())
@@ -1062,6 +1069,7 @@ int main(int argc, char **argv)
         if (waserror())
         {
             process->R = DVM_R;
+            dvm_bigtable_abort(process);
             if (failure[0] && !instruction_boundary_error && handler(failure))
             {
                 failure[0] = 0;
