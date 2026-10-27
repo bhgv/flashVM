@@ -1,3 +1,25 @@
+# Synchronization / Синхронизация — v0.1647
+
+Checked Inferno experiment at **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
+No incoming commit followed the previous series. Its earlier reverse LeafLayout
+fix remains published. Snapshots retain **554 core/reference + 174 bootstrap**.
+The shared stringcmp/BLTC implementation was checked for scalar ordering; native
+CVTCW still uses its original strtol contract and is unchanged.
+
+Compiler 0.30 adds FlashVM-only string ordering and strict text/key-to-int
+composition through existing checked big parsing and signed32 narrowing.
+No new native opcode, helper ABI, builtin module or fast path was introduced.
+Native availability remains AMD64/ARM64 166/173 with partial operand coverage.
+Shared string/readiness/type-prefix tests passed; no new shared defect requiring
+a reverse patch was confirmed.
+
+Новых входящих коммитов нет; прежние обратные исправления остаются в experiment.
+Расширения компилятора не переносятся в Inferno. Строгий cast нашего ограниченного
+профиля не меняет CVTCW/strtol нативной VM.
+[EN](../fir/v1/doc/TEXT_VALUES.md) / [RU](../fir/v1/doc/TEXT_VALUES.ru.md).
+
+---
+
 # Synchronization / Синхронизация — v0.1646
 
 Checked Inferno experiment at **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
