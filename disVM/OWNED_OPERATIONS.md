@@ -43,3 +43,5 @@ operations and real thread contention tests remains required implementation work
 POSIX implementation / реализация POSIX: [common/owned](../common/owned/README.md).
 This implements the guard primitive, not VM payload integration.
 Реализован примитив блокировки; интеграция с объектами VM ещё требуется.
+
+[Synchronization and implementation status](OWNED_SYNC.md)

@@ -75,6 +75,7 @@ if(BUILD_TESTING)
   foreach(driver
     integer-ops
     control-transfer-native
+    frame-allocation-native
     arm64-dispatch-compiler
     shift-slot-native
     branch-slot-native
@@ -281,6 +282,7 @@ if(BUILD_TESTING)
       buffered-transfer-jit
       jit-dispatch-jit
       control-transfer-jit
+      frame-allocation-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit

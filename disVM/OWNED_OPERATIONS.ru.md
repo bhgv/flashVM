@@ -41,3 +41,5 @@ Debug-пауза не снимает защиту незавершённой о�
 POSIX implementation / реализация POSIX: [common/owned](../common/owned/README.md).
 This implements the guard primitive, not VM payload integration.
 Реализован примитив блокировки; интеграция с объектами VM ещё требуется.
+
+[Синхронизация и готовность реализации](OWNED_SYNC.ru.md)
