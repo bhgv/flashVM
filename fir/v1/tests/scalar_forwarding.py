@@ -8,9 +8,11 @@ from table_mutation import call
 
 
 # Borrow tool paths, mode and private work directory. Own every staged module.
-# Require exact results, load counts and a stable second optimization. Native
+# counts/stores optionally require load/store shape; a source without explicit
+# shape requires load reduction, and stores="reduced" requires store reduction.
+# Require exact results and a stable second optimization. Native
 # traces must carry their executed flags; fail on retained table/key owner leaks.
-def check_case(tools, work, name, body, expected, counts, runtime, mode):
+def check_case(tools, work, name, body, expected, counts, runtime, mode, stores=None):
     source_compiler, compiler, reference = tools
     fir, optimized, twice, image = (work / (name + suffix) for suffix in
                                     ('.fir', '.opt.fir', '.twice.fir', '.dis'))
@@ -31,11 +33,20 @@ def check_case(tools, work, name, body, expected, counts, runtime, mode):
                    ('big.load', 'bool.load', 'ref.load'))
     if counts is not None and actual != counts:
         raise RuntimeError(name + ': load counts ' + str(actual) + ' != ' + str(counts) + '\n' + text)
-    if counts is None:
+    if counts is None and isinstance(body, Path) and stores is None:
         original = sum(len(re.findall(r' = ' + re.escape(op) + r'\b', fir.read_text()))
                        for op in ('big.load', 'bool.load'))
         if actual[0] + actual[1] >= original:
             raise RuntimeError(name + ': source tutorial did not reduce scalar loads')
+    if stores is not None:
+        actual_stores = tuple(len(re.findall(r'^\s*' + re.escape(op) + r' ', text, re.M))
+                              for op in ('big.store', 'bool.store', 'ref.store'))
+        if stores == 'reduced':
+            original_stores = len(re.findall(r'^\s*(?:big|bool)\.store ', fir.read_text(), re.M))
+            if actual_stores[0] + actual_stores[1] >= original_stores:
+                raise RuntimeError(name + ': source tutorial did not reduce scalar stores')
+        elif actual_stores != stores:
+            raise RuntimeError(name + ': store counts ' + str(actual_stores) + ' != ' + str(stores))
     for selected in (fir, optimized):
         if reference:
             result = call([reference, selected], work)

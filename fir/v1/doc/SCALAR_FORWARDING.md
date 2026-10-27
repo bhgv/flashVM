@@ -106,3 +106,5 @@ overwrite ordering, distinct cells, true/false bool, INT64_MIN wrap, CFG joins,
 loop backedges, trace/table-write/lease barriers and retained-reference loads.
 Native cases use quanta 1 and 2048 and require table/key owners to return to zero.
 The source tutorial also requires a strict reduction in scalar load count.
+
+[Version 0.46](SCALAR_STORES.md) adds a separate overwritten-store pass. Load forwarding itself still retains stores; the composed optimizer may now remove proved unobserved intermediate scalar writes.

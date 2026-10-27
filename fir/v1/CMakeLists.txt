@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.45.0 LANGUAGES C)
+project(fir1 VERSION 0.46.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -533,5 +533,12 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME fir1_scalar_forwarding COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar_forwarding.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+endif()
+
+# Overwritten scalar stores must retain observations, traps and owner publication.
+if(BUILD_TESTING)
+  add_test(NAME fir1_scalar_stores COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar_stores.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${counted_for_reference})
 endif()

@@ -205,6 +205,57 @@ static int forward_scalar_loads(FirModule *module)
 }
 
 
+/* Remove scalar writes overwritten before observation in the same block.
+ * module is borrowed and verified; scalar cell handles cannot alias or escape.
+ * Return whether stores were retired. Walk backward, tracking the next write
+ * to each exact cell. Loads/constructors end that cell's proof, and unrelated
+ * writes, suspension or possible exceptions end all proofs. Never remove the
+ * final store, reference publication or a payload's own side effects. No runtime
+ * memory, ownership, wait or cross-block inference is involved. */
+static int remove_overwritten_scalar_stores(FirModule *module)
+{
+    unsigned char overwritten[FIR_LIMIT]; /* A later unobserved write exists for this cell. */
+    int block = -1;                       /* Facts are confined to one basic block. */
+    int changed = 0;
+    int index;
+    for (index = module->count - 1; index >= 0; index--)
+    {
+        FirInstruction *in = &module->instructions[index];
+        if (in->removed)
+        {
+            continue;
+        }
+        if (in->block != block)
+        {
+            memset(overwritten, 0, sizeof(overwritten));
+            block = in->block;
+        }
+        if (in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
+        {
+            if (overwritten[in->a])
+            {
+                in->removed = 1;
+                changed = 1;
+            }
+            overwritten[in->a] = 1;
+        }
+        else if (in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
+        {
+            overwritten[in->a] = 0;
+        }
+        else if (in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
+        {
+            overwritten[in->result] = 0;
+        }
+        else if (fir_effects(in->op) & (FIR_WRITES_MEMORY | FIR_MAY_SUSPEND | FIR_MAY_THROW))
+        {
+            memset(overwritten, 0, sizeof(overwritten));
+        }
+    }
+    return changed;
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -217,6 +268,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
     {
         changed = fold_constant_cell_loads(m);
         changed |= forward_scalar_loads(m);
+        changed |= remove_overwritten_scalar_stores(m);
         for (i = 0; i < m->count; ++i)
         {
             FirInstruction *in = &m->instructions[i];

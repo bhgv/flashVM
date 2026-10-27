@@ -768,3 +768,13 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_scalar_forwarding_${mode} PROPERTIES TIMEOUT 90)
   endforeach()
 endif()
+
+# Check original/optimized scalar writes at both dispatch modes and quanta.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_scalar_stores_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/scalar_stores.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_scalar_stores_${mode} PROPERTIES TIMEOUT 90)
+  endforeach()
+endif()

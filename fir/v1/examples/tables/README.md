@@ -219,3 +219,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 [Deferred for steps — 0.44](../../doc/DEFERRED_STEP.md): initialization proof over every incoming path, including continue. [Tutorial](deferred-step.b).
 
 [Private scalar forwarding — 0.45](../../doc/SCALAR_FORWARDING.md): block-local cells, preserved stores, CFG boundaries and effect barriers.
+
+[Overwritten scalar stores — 0.46](../../doc/SCALAR_STORES.md): remove unobserved private writes while preserving final state and exception/ownership boundaries.
