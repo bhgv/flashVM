@@ -99,7 +99,7 @@ the compiler uses checked scalar frame cells and ordinary Dis MOVW.
 [compound.b](compound.b) demonstrates all ten compound operators on a shared
 table alias, a captured snapshot key and a big local, returning 42. Shift counts
 are explicit int. Locations and old values are captured before RHS evaluation;
-updates are not atomic transactions. [Contract and commands](../../doc/COMPOUND_UPDATES.md).
+the table remains exclusively owned until the store, without transaction rollback. [Contract and commands](../../doc/COMPOUND_UPDATES.md).
 
 ## Unicode string primitives
 
@@ -186,3 +186,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Resized assignments / присваивание срезам](../../doc/SLICE_ASSIGNMENT.md): `splice.b`, expected / результат `42`.
+
+
+[Retained table assignments](../../doc/TABLE_LEASES.md) cover destination capture, RHS and store/splice; see the commented [leases.b](leases.b).

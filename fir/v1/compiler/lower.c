@@ -1457,3 +1457,18 @@ int source_string_rune(int value)
     }
     return table_operation(T_STRING, "rune.text", value, -1);
 }
+
+
+/* Emit one retained table ownership boundary for a borrowed typed SSA receiver.
+ * receiver is evaluated once; acquire selects entry rather than leave. Strings
+ * retain value semantics and emit nothing. No runtime wait occurs in this C
+ * compiler; generated acquisition may suspend or throw in the owning Dis VM. */
+void source_table_lease(int receiver, int acquire)
+{
+    if (!failed && table_values[receiver] == T_TABLE_BIG)
+    {
+        fprintf(destination, "    table.%s %%v%d\n", acquire ? "lock" : "unlock", receiver);
+        source_debug_event(
+            acquire ? "table-lock" : "table-unlock", receiver, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+}

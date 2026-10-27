@@ -669,3 +669,13 @@ if(DVM_RUNTIME_TESTS)
   set_tests_properties(disvm_hosted_exception_boundary PROPERTIES TIMEOUT 60
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
 endif()
+
+# Source scopes survive optimization and execute with both scheduler quanta.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_table_leases_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/table_leases.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_table_leases_${mode} PROPERTIES TIMEOUT 60)
+  endforeach()
+endif()

@@ -28,7 +28,8 @@ exponent assignment, increments/decrements or assignment-valued expressions.
 Big addition/subtraction/multiplication/bitwise operations wrap modulo 2^64.
 Division truncates toward zero; MIN/-1 wraps to MIN and MIN%-1 is zero. Zero
 raises. Right shift is arithmetic. There is no conversion through binary64.
-No new FIR IDs, types, Dis opcodes, Bigtable imports or file tags are needed.
+Arithmetic retains the existing operations and types. Automatic ownership now adds
+FIR table.lock/unlock and checked Bigtable imports; Dis opcodes/file tags stay unchanged.
 
 ## Capture and publication order
 
@@ -49,10 +50,11 @@ or reevaluated. Existing checked root maps retain owners/key snapshots across
 RHS allocation and one-instruction scheduler/GC slices. Runtime errors do not
 execute the final store; prior independent RHS effects are not rolled back.
 
-These are ordinary read/compute/write statements, not atomic owner operations.
-There is no mutex, remote compare/exchange, transaction or general projection
-update protocol. Concurrent writers still need an explicit synchronization
-contract. This syntax must not be advertised as solving lost updates.
+Table destinations now retain [exclusive local ownership](TABLE_LEASES.md)
+across key capture, old-value reads, RHS evaluation and the final store. Competing
+payload operations cannot interleave in that scope. Already completed effects
+are not rolled back. Remote compare/exchange, multi-object transactions and
+general projection update protocols remain separate work.
 
 ## FIR, optimization and source origins
 
@@ -98,3 +100,6 @@ Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.
 Compiler 0.29: [checked int shifts and compound updates](INT_SHIFTS.md).
 
 Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).
+
+
+[Retained assignment ownership / Удержание на всё присваивание](TABLE_LEASES.md) supersedes the earlier per-primitive ownership boundary.

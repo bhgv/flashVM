@@ -100,7 +100,9 @@ enum
     STRING_RANGE,  /* Capture normalized Unicode rune bounds. */
     STRING_SPLICE, /* Build a resized independent string. */
     STRING_INDEX,  /* Capture a scalar index as a one-rune range. */
-    RUNE_TEXT      /* Validate and allocate one Unicode scalar. */
+    RUNE_TEXT,     /* Validate and allocate one Unicode scalar. */
+    ACQUIRE,       /* Retain this process's recursive table ownership. */
+    RELEASE        /* Leave one retained level after publishing the store. */
 };
 
 static const Import imports[] = {
@@ -120,7 +122,8 @@ static const Import imports[] = {
     {"resolveindex", UINT32_C(0xa56b6949)}, {"slicerange", UINT32_C(0xf9209958)},
     {"splice", UINT32_C(0x85a03aad)},       {"stringrange", UINT32_C(0xeb01387b)},
     {"stringsplice", UINT32_C(0xe98bc080)}, {"stringindex", UINT32_C(0x8341f3aa)},
-    {"runetext", UINT32_C(0xa9b8ab85)}}; /* Loader checks every signature before any generated native call can run. */
+    {"runetext", UINT32_C(0xa9b8ab85)},     {"acquire", UINT32_C(0xd5819364)},
+    {"release", UINT32_C(0xd5819364)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
 {
@@ -352,8 +355,12 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX ||
-            (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT))
+        if (((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX ||
+             (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT)) && e->import_count < RUNE_TEXT + 1U)
+        {
+            e->import_count = RUNE_TEXT + 1U;
+        }
+        if (in->op == O_TABLE_LOCK || in->op == O_TABLE_UNLOCK)
         {
             e->import_count = (unsigned)(sizeof(imports) / sizeof(imports[0]));
         }
@@ -372,7 +379,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_RUNE_TEXT) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TABLE_UNLOCK) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -531,6 +538,13 @@ static void body(Emitter *e, FirModule *module, int measure)
         }
         switch (in->op)
         {
+        case O_TABLE_LOCK:
+        case O_TABLE_UNLOCK:
+            import = in->op == O_TABLE_LOCK ? ACQUIRE : RELEASE;
+            call_begin(e, import);
+            argument(e, MOVP, a, 0);
+            call_end(e, import, -1);
+            break;
         case O_IF:
             instruction(e, BEQW, FP, a, IMM, e->blocks[in->yes], 0, 1);
             instruction(e, JMP, NONE, 0, IMM, e->blocks[in->no], 0, -1);

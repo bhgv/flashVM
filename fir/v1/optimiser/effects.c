@@ -7,6 +7,10 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_TABLE_LOCK:
+        return FIR_READS_MEMORY | FIR_WRITES_MEMORY | FIR_MAY_THROW | FIR_MAY_SUSPEND;
+    case O_TABLE_UNLOCK:
+        return FIR_READS_MEMORY | FIR_WRITES_MEMORY | FIR_MAY_THROW;
     case O_STRING_CHAR_RANGE:
     case O_STRING_RANGE:
     case O_TABLE_RANGE:

@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.32.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.34.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -129,3 +129,6 @@ Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int cast
 Compiler 0.31 / Компилятор 0.31: [hybrid table constructors](doc/TABLE_LITERALS.md), [русское руководство](doc/TABLE_LITERALS.ru.md).
 
 Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](doc/RELATIVE_SEQUENCES.md), [русское руководство](doc/RELATIVE_SEQUENCES.ru.md).
+
+
+[Удержание таблицы на всё присваивание](doc/TABLE_LEASES.ru.md): захват места, RHS и store/splice; комментированный [leases.b](examples/tables/leases.b).

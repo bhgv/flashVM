@@ -11,7 +11,8 @@ self-splice locks one owner. Aliased handles reference the same payload guard.
 Private construction adopts a complete snapshot before returning to any program.
 
 Native request execution uses ordinary scalar C storage allocation and returns
-Fht statuses. It never calls VM error/GC/application code while a guard is held.
+Fht statuses. It never calls VM error/GC/application code inside its primitive request.
+An outer retained scope may remain held; process exception cleanup retires it.
 Validation and String/snapshot-key conversion happen before entry; VM exceptions
 are raised after leave. The frame retains live heap handles throughout. GC retires
 a guard only after its owner is quiescent, then frees scalar storage. Retiring an
@@ -39,15 +40,14 @@ loader's native ulong width instead of selecting an invalid default target. Both
 regression. Sources remain byte-exact; only TLS registers, root registration and
 host diagnostic services are adapted in the generated runtime view.
 
-These guards cover individual table primitives. They do not yet cover a whole
-compound source expression across RHS evaluation, network/channel waits, arrays,
-mutable VM String slots, or general remote projection leases. Strings currently
-use independent value replacements. The host still has one VM executor thread;
-trusted native users may exercise scalar owner requests without entering its GC
-heap, but raw GC owners must never be passed to a foreign executor thread. A
-scheduler-aware queue/pinning/cancellation protocol is needed before async work
-can hold these VM owners across requests. The original broker metadata lock stays
-independent and is not substituted for the payload guard.
+Primitive guards are supplemented by [automatic source assignment scopes](../fir/v1/doc/TABLE_LEASES.md).
+General network/proxy scopes, arrays and mutable VM String slots remain pending.
+Strings currently use independent value replacements. The host still has one VM
+executor thread; trusted native clients may use scalar owner requests outside its
+GC heap, but raw GC owners never pass to a foreign executor. Local retained leases
+have scheduler queues and root pins; distributed work additionally needs explicit
+cancellation acknowledgement and lifetime management. The broker metadata lock
+remains independent and does not replace payload ownership.
 
 
 ## Retained cooperative ownership

@@ -374,7 +374,9 @@ PRODUCTIONS
 
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
-    "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B
+    "table.lock" (. fir_build_op(O_TABLE_LOCK); .) A
+    | "table.unlock" (. fir_build_op(O_TABLE_UNLOCK); .) A
+    | "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B
     | "table.splice" (. fir_build_op(O_TABLE_SPLICE); .) A "," B
     | "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B
     | "trace"                                                             (. fir_build_op(O_TRACE); .)

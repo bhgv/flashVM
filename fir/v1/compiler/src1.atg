@@ -693,6 +693,7 @@ PRODUCTIONS
             (.
                 source_restore(target);
                 receiver = source_read(name);
+                source_table_lease(receiver, 1);
             .)
             TableWriteKey<&key,&end,&slice,&access>
             (.
@@ -750,6 +751,8 @@ PRODUCTIONS
                 {
                     source_table_store(slot, value);
                 }
+                source_restore(target);
+                source_table_lease(receiver, 0);
             .)
         )
     )

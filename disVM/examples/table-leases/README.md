@@ -34,8 +34,8 @@ conflicting wait raises `table lease order violation` instead of deadlocking.
 Applications should normally retain one destination at a time. These addresses
 are internal ordering keys, never portable capabilities or network identities.
 
-This API protects local native Bigtable payloads. It does not yet insert leases
-automatically around source expressions, protect arrays/mutable string slots,
+This API protects local native Bigtable payloads. [Automatic source assignments](../../../fir/v1/doc/TABLE_LEASES.md) now use it.
+It does not yet protect arrays/mutable string slots,
 or implement distributed leases, timeouts or reconnection. A program can still
 deadlock at the application level by waiting on a channel whose peer needs its
 leased table. Metadata inspection cannot repair that protocol.

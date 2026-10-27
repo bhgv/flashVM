@@ -11,7 +11,8 @@ CompoundTables: module
 # Return 42 after typed compound updates through a table alias and a key snapshot.
 # No arguments. The table/key owners remain local to this VM and retire through GC.
 # Updates capture the location and old value before the RHS, then commit once.
-# They are not transactions or atomic operations on remote projections.
+# Source table writes now retain local ownership through the whole RHS.
+# They do not implement transaction rollback or distributed projection scopes.
 value(): big
 {
     document := table of big;

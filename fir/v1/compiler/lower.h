@@ -331,4 +331,9 @@ int source_string_char_range(int receiver, int index);
 /* Convert a borrowed int SSA scalar to validated one-rune replacement text. */
 int source_string_rune(int value);
 
+
+/* Emit lock/unlock for a typed table SSA receiver, selected by acquire.
+ * Borrowed strings emit nothing; generated entry may suspend or throw. */
+void source_table_lease(int receiver, int acquire);
+
 #endif

@@ -152,7 +152,9 @@ typedef enum
     O_STRING_RANGE,      /* Capture immutable source and normalize rune bounds before RHS. */
     O_STRING_SPLICE,     /* Build an independent resized string from a captured range. */
     O_STRING_CHAR_RANGE, /* Capture one checked rune index as an absolute range. */
-    O_RUNE_TEXT          /* Convert a valid int Unicode scalar to a one-rune string. */
+    O_RUNE_TEXT,         /* Convert a valid int Unicode scalar to a one-rune string. */
+    O_TABLE_LOCK,        /* Retain process ownership across destination/RHS evaluation. */
+    O_TABLE_UNLOCK       /* Release one process-owned retained table level. */
 } FirOp;
 
 
