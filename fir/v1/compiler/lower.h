@@ -211,6 +211,12 @@ int source_table_load(int location);
 int source_table_len(int value);
 
 
+/* Combine a captured old big value with an evaluated RHS using one compound op.
+ * op is a copied arithmetic/bitwise symbol or '<'/'>' shift direction. Errors
+ * remain sticky; this is not a lock, transaction or remote owner update. */
+int source_table_update(int current, int right, int op);
+
+
 /* Emit typed big arithmetic on borrowed translation-local SSA values; op selects +, -, *, /, %, &, | or ^. */
 int source_table_binary(int left, int right, int op);
 

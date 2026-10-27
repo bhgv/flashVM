@@ -72,3 +72,5 @@ Limbo. Новый `limbo_real` сохраняется при print/opt и дос
 [Checked snapshot keys and exact extension status](EXTENSIONS.ru.md).
 
 [Отражение и стандартный синтаксис cast big/string в Limbo](TYPE_REFLECTION.ru.md).
+
+[Compiler 0.25: captured compound updates / Составные обновления](COMPOUND_UPDATES.ru.md).

@@ -83,3 +83,5 @@ VM. table_mutation.py отдельно проверяет типы, rollback в�
 ошибочные операции; native boundary-тесты проверяют владельцев и статусы.
 
 [Compiler 0.23: comparison values / Сравнения как значения](COMPARISON_VALUES.ru.md).
+
+[Compiler 0.25: captured compound updates / Составные обновления](COMPOUND_UPDATES.ru.md).

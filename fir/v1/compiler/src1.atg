@@ -602,22 +602,106 @@ PRODUCTIONS
     TableExpression<&value> (. *condition = source_table_truth(value); .)
   .
 
-  /* Locals may be explicitly typed or inferred. Writes capture the receiver/key once before RHS. */
+  /* Capture local bindings or table receiver/key once, then read the old value
+   * before a compound RHS. Plain assignment remains insertion-capable and does
+   * not read a missing/uninitialized destination. Arithmetic retains its op span. */
   TableStatement =
-    (. int name = 0, value = -1, type = 0, key = 0, slot = 0, receiver = 0; SourceMark target, access; .)
-    ( TableDelete<&value> ";"
-      | Name<&name> (. target = source_mark(); .)
+    (.
+        int name = 0;
+        int value = -1;
+        int type = 0;
+        int key = 0;
+        int slot = 0;
+        int receiver = 0;
+        int old = 0;
+        int op = 0;
+        SourceMark target;
+        SourceMark access;
+        SourceMark operation;
+    .)
     (
-        ":=" TableExpression<&value> ";"
-        (. source_restore(target); source_table_bind(name, value, 0, 1); .)
-        | ":" TableType<&type> [ "=" TableExpression<&value> ] ";"
-        (. source_restore(target); source_table_bind(name, value, type, 1); .)
-        | "=" TableExpression<&value> ";"
-        (. source_restore(target); source_table_bind(name, value, 0, 0); .)
-        | (. source_restore(target); receiver = source_read(name); .)
-          TableKey<&key> (. access = source_mark(); slot = source_table_index(receiver, key); .)
-          "=" TableExpression<&value> ";" (. source_restore(access); source_table_store(slot, value); .)
-    ) )
+        TableDelete<&value> ";"
+        | Name<&name> (. target = source_mark(); .)
+        (
+            ":=" TableExpression<&value> ";"
+            (.
+                source_restore(target);
+                source_table_bind(name, value, 0, 1);
+            .)
+            | ":" TableType<&type> [ "=" TableExpression<&value> ] ";"
+            (.
+                source_restore(target);
+                source_table_bind(name, value, type, 1);
+            .)
+            | TableAssignmentOperator<&op>
+            (.
+                operation = source_mark();
+                source_restore(target);
+                if (op)
+                {
+                    old = source_read(name);
+                }
+            .)
+            TableExpression<&value> ";"
+            (.
+                source_restore(operation);
+                if (op)
+                {
+                    value = source_table_update(old, value, op);
+                }
+                source_restore(target);
+                source_table_bind(name, value, 0, 0);
+            .)
+            |
+            (.
+                source_restore(target);
+                receiver = source_read(name);
+            .)
+            TableKey<&key>
+            (.
+                access = source_mark();
+                slot = source_table_index(receiver, key);
+            .)
+            TableAssignmentOperator<&op>
+            (.
+                operation = source_mark();
+                if (op)
+                {
+                    old = source_table_load(slot);
+                }
+            .)
+            TableExpression<&value> ";"
+            (.
+                source_restore(operation);
+                if (op)
+                {
+                    value = source_table_update(old, value, op);
+                }
+                else
+                {
+                    source_restore(access);
+                }
+                source_table_store(slot, value);
+            .)
+        )
+    )
+  .
+
+  /* Operator spellings match Inferno compound arithmetic. The bounded table
+   * profile keeps big arithmetic and explicit int shift counts, without **=. */
+  TableAssignmentOperator<int *op> =
+    ( "=" (. *op = 0; .)
+      | "+=" (. *op = '+'; .)
+      | "-=" (. *op = '-'; .)
+      | "*=" (. *op = '*'; .)
+      | "/=" (. *op = '/'; .)
+      | "%=" (. *op = '%'; .)
+      | "&=" (. *op = '&'; .)
+      | "|=" (. *op = '|'; .)
+      | "^=" (. *op = '^'; .)
+      | "<<=" (. *op = '<'; .)
+      | ">>=" (. *op = '>'; .)
+    ) (. capture(); .)
   .
 
   /* Table values stay big. String locals may provide keys; key snapshots use type inference. */

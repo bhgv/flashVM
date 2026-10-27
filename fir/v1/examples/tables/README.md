@@ -93,3 +93,10 @@ terminal arm. Compare the live original and optimized captures in both VM modes.
 and skipping a deleting RHS. No temporary table implements the logical join;
 the compiler uses checked scalar frame cells and ordinary Dis MOVW.
 [Semantics, FIR cells and commands](../../doc/SHORT_CIRCUIT.md).
+
+## Captured compound updates
+
+[compound.b](compound.b) demonstrates all ten compound operators on a shared
+table alias, a captured snapshot key and a big local, returning 42. Shift counts
+are explicit int. Locations and old values are captured before RHS evaluation;
+updates are not atomic transactions. [Contract and commands](../../doc/COMPOUND_UPDATES.md).

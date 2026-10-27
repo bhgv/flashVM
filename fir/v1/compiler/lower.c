@@ -974,6 +974,24 @@ int source_table_len(int value)
     return table_operation(T_I64, table_values[value] == T_KEYS ? "keys.len" : "table.len", value, -1);
 }
 
+
+/* Lower one compound update after capturing its old value and evaluating RHS.
+ * current/right are borrowed SSA identities; op selects an existing big operation
+ * or checked shift. Return a new big identity. No owner is reacquired, expression
+ * reevaluated or store published here; the parser commits only after success. */
+int source_table_update(int current, int right, int op)
+{
+    if (failed)
+    {
+        return 0;
+    }
+    if (op == '<' || op == '>')
+    {
+        return source_table_shift(current, right, op);
+    }
+    return source_table_binary(current, right, op);
+}
+
 /* Emit arithmetic after evaluating both operands once in source order. Inputs
  * are borrowed SSA identities; incompatible types make output publication fail. */
 int source_table_binary(int left, int right, int op)
