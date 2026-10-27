@@ -229,3 +229,11 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_big_constant_pool PROPERTIES TIMEOUT 30
     ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Exercise production optimizer range guards in both bytecode cell models.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_optimizer_ranges COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/optimizer-ranges.py")
+  set_tests_properties(limbo_bootstrap_optimizer_ranges PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()

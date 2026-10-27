@@ -280,6 +280,7 @@ if(BUILD_TESTING)
       mapped-preflight-jit
       buffered-transfer-jit
       jit-dispatch-jit
+      control-transfer-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit
