@@ -572,3 +572,13 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_int_shifts_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# Ordered strings and checked int casts survive one-instruction GC quanta.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_text_values_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/text_values.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_text_values_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
