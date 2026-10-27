@@ -80,6 +80,7 @@ if(BUILD_TESTING)
     record-slots-native
     array-spans-native
     string-capture-native
+    dis-numeric-literals
     frame-allocation-native
     arm64-dispatch-compiler
     shift-slot-native
@@ -482,4 +483,14 @@ if(BUILD_TESTING)
   add_test(NAME disvm_jit_readiness COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/upstream/libinterp/tests/jit-readiness.py" --check)
   set_tests_properties(disvm_jit_readiness PROPERTIES TIMEOUT 120)
+endif()
+
+
+# The shared leaf compiler must reject truncated fast spans for ARM64 too.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND AND
+   CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+  add_test(NAME disvm_arm64_cached_fast_spans COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/libinterp/tests/jit-dispatch-native.py")
+  set_tests_properties(disvm_arm64_cached_fast_spans PROPERTIES TIMEOUT 120
+    ENVIRONMENT "BRIDGE_BACKEND=arm64;BRIDGE_PREFLIGHT_ONLY=1;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
