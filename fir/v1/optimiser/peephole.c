@@ -97,6 +97,57 @@ static int simplify_cfg(FirModule *m)
     return changed;
 }
 
+
+/* Fold loads of private scalar cells with one dominating constant store.
+ * module is borrowed and already verified. Return whether copied instructions
+ * changed. The unique store must share the cell definition's block; same-block
+ * reads before it keep zero-initialization semantics. Other blocks inherit that
+ * store by cell dominance. Only immutable literal payloads qualify, so cycles
+ * cannot expose a later reuse of a mutable SSA slot. Reference cells stay intact. */
+static int fold_constant_cell_loads(FirModule *module)
+{
+    int changed = 0;
+    int index;
+    for (index = 0; index < module->count; index++)
+    {
+        FirInstruction *load = &module->instructions[index];
+        FirInstruction *definition;
+        FirInstruction *store = NULL;
+        int store_index = -1;
+        int stores = 0;
+        int scan;
+        FirOp operation;
+        if (load->removed || (load->op != O_BIG_LOAD && load->op != O_BOOL_LOAD))
+        {
+            continue;
+        }
+        definition = &module->instructions[module->values[load->a].definition];
+        operation = load->op == O_BIG_LOAD ? O_BIG_STORE : O_BOOL_STORE;
+        for (scan = 0; scan < module->count; scan++)
+        {
+            FirInstruction *candidate = &module->instructions[scan];
+            if (!candidate->removed && candidate->op == operation && candidate->a == load->a)
+            {
+                store = candidate;
+                store_index = scan;
+                stores++;
+            }
+        }
+        if (stores == 1 && store->block == definition->block && (load->block != store->block || index > store_index))
+        {
+            FirInstruction *value = &module->instructions[module->values[store->b].definition];
+            if (value->op == (load->op == O_BIG_LOAD ? O_I64 : O_BOOL))
+            {
+                load->op = O_COPY;
+                load->a = store->b;
+                load->b = -1;
+                changed = 1;
+            }
+        }
+    }
+    return changed;
+}
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -107,7 +158,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
     }
     do
     {
-        changed = 0;
+        changed = fold_constant_cell_loads(m);
         for (i = 0; i < m->count; ++i)
         {
             FirInstruction *in = &m->instructions[i];

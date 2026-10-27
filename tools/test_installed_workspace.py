@@ -22,6 +22,21 @@ def program(prefix, component, name):
     raise RuntimeError("missing installed product: " + str(path))
 
 
+# Validate a tutorial's scalar result cells and their executed flags. text is
+# borrowed runtime output including stats; traces is the emitted site count and
+# name labels failures. Raise unless exactly one return publishes 42 and all
+# other cells/flags remain zero, with no retained table/key owners at teardown.
+def check_table_capture(text, traces, name):
+    values = [int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", text, re.MULTILINE)]
+    flags = values[traces:]
+    correct = len(values) == 2 * traces and flags.count(1) == 1 and flags.count(0) == traces - 1
+    if correct:
+        executed = flags.index(1)
+        correct = all(value == (42 if site == executed else 0) for site, value in enumerate(values[:traces]))
+    if not correct or "tables_live=0 keys_live=0" not in text:
+        raise RuntimeError("relocated " + name + " result/flag/owner mismatch: " + text)
+
+
 # Execute argv literally in a private writable directory, with explicit package/temporary roots.
 # input_text supplies optional stdin; include_stderr requests merged diagnostic text.
 # Returns stdout by default; nonzero status always includes captured diagnostics.
@@ -138,30 +153,31 @@ def table_packages(prefix, work, environment):
                        for name in ("fir1_ir", "fir1_source_api", "fir1_io")]
     run([environment.get("CC", "cc"), "-std=c99", "-I", prefix / "fir/include",
          prefix / "fir/examples/dis/main.c", *source_archives, "-lm", "-o", source_host], work, environment)
-    # Branching tutorials have two trace cells followed by their two execution flags.
+    # Tutorials may have several early returns; count emitted result/flag sites.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops", "function-flow"):
         tutorial_source = prefix / "fir/examples/tables" / (tutorial + ".b")
+        tutorial_fir = work / ("table-" + tutorial + ".fir")
+        tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
+        run([program(prefix, "fir", "fir1_source"), "limbo", "--input", tutorial_source, tutorial_fir], work, environment)
+        traces = len(re.findall(r"^\s*trace ", tutorial_fir.read_text(), re.MULTILINE))
         if image.exists():
             image.unlink()
         run([source_host, tutorial_source, image], work, environment)
         for mode in ("--jit", "--no-jit"):
-            direct = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
-            if "DATA 0 42\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in direct:
-                raise RuntimeError("relocated " + tutorial + " source-library client result differs")
-        tutorial_fir = work / ("table-" + tutorial + ".fir")
-        tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
-        run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
-             prefix / "fir/examples/tables" / (tutorial + ".b"), tutorial_fir], work, environment)
+            direct = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2 * traces, image],
+                         work, environment, include_stderr=True)
+            check_table_capture(direct, traces, tutorial)
         run([program(prefix, "fir", "fir1"), "opt", tutorial_fir, tutorial_opt], work, environment)
         for selected in (tutorial_fir, tutorial_opt):
             if run([binary, selected], work, environment).strip() != "42":
                 raise RuntimeError("relocated " + tutorial + " reference client result differs")
             run([compiler_host, selected, image], work, environment)
+            traces = len(re.findall(r"^\s*trace ", selected.read_text(), re.MULTILINE))
             for mode in ("--jit", "--no-jit"):
-                result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
-                if "DATA 0 42\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in result:
-                    raise RuntimeError("relocated " + tutorial + " compiler client result differs")
+                result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2 * traces, image],
+                             work, environment, include_stderr=True)
+                check_table_capture(result, traces, tutorial)
 
     # Relink the exact guarded scalar request layer shipped with both VM variants.
     # These pthread clients use C owners only; no VM heap pointer crosses threads.

@@ -191,3 +191,6 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 [Big CFG: contract and example / Контракт и пример](BIG_CFG.md) · [Русский](BIG_CFG.ru.md).
 
 [FIR 0.18: big comparisons and terminal source if/else / Сравнения и решения исходника](BIG_DECISIONS.md) · [Русский](BIG_DECISIONS.ru.md).
+
+
+[Компилятор 0.41](FUNCTION_FLOW.ru.md) распространяет структурированные условия и блоки на уровень функции.

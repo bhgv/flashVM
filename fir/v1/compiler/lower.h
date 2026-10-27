@@ -366,38 +366,39 @@ void source_iteration_end(SourceIteration iteration);
 /* Declare distinct iteration bindings at their authored marks in the body scope. */
 void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark);
 
-/* Parser-owned structured loop conditional, separate from terminal decisions. */
+
+/* Parser-owned function/loop conditional, separate from the numeric terminal profile. */
 typedef struct
 {
     int choice;     /* Unique yes/no/join label identity. */
-    int yes_closed; /* True arm ended in break/continue on all its paths. */
-} SourceLoopChoice;
+    int yes_closed; /* True arm ended in return or loop transfer on every path. */
+} SourceChoice;
 
-/* Reject a statement after a path-closing loop transfer; no runtime work. */
-void source_loop_statement(void);
+/* Reject a statement after a path-closing transfer; no runtime work. */
+void source_statement(void);
 
 
 /* Emit an innermost-loop transfer; is_continue selects cursor/test versus exit. */
 void source_loop_transfer(int is_continue);
 
 
-/* Promote join-carried typed locals before parsing a loop-if condition. */
-SourceLoopChoice source_loop_if_begin(void);
+/* Promote join-carried typed locals before parsing a structured condition. */
+SourceChoice source_choice_begin(void);
 
 
 /* Emit checked bool condition edges for a borrowed structured choice. */
-void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition);
+void source_choice_test(SourceChoice choice, SourceCondition condition);
 
 
 /* Finish the true arm, record its closure, and begin the false arm. */
-void source_loop_if_else(SourceLoopChoice *choice);
+void source_choice_else(SourceChoice *choice);
 
 
 /* Merge only normal paths; omit a join if both arms transfer out. */
-void source_loop_if_end(SourceLoopChoice choice);
+void source_choice_end(SourceChoice choice);
 
-/* Type-check a big function result and close this loop path with return. */
-void source_loop_return(int value);
+/* Type-check a big function result and close the current path with return. */
+void source_flow_return(int value);
 
 /* Parser-owned counted-for continuation; no native/runtime pointer escapes. */
 typedef struct
@@ -442,5 +443,9 @@ void source_debug_defer_flush(int context, int emit);
 
 /* Release all pending origin captures after successful or failed parsing. */
 void source_debug_defer_release(void);
+
+
+/* Require a closed big-result path at the end of the structured function body. */
+void source_flow_finish(void);
 
 #endif

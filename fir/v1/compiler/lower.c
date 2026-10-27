@@ -51,6 +51,20 @@ static int conditional_scope[65];   /* Outer lexical scope of each structured jo
 static int loop_names[65];          /* Binding prefix present before each active loop body. */
 static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
 
+
+/* Saved incoming/true-arm environments for a structured choice. No runtime
+ * owners are held here: IDs name private SSA payloads/cells in staged FIR. */
+typedef struct
+{
+    int names;               /* Binding prefix visible before either arm. */
+    int incoming[256];       /* Incoming initialized-value IDs or -1. */
+    int incoming_cells[256]; /* Dominating typed cells or -1. */
+    int yes[256];            /* True-arm exit value IDs. */
+    int yes_cells[256];      /* True-arm exit cell identities. */
+} SourceChoiceState;
+
+static SourceChoiceState choices[FIR_BLOCKS / 2]; /* Bounded request-local snapshots, slot zero unused. */
+
 /* One staged classic-for header step. Streams are owned until end/release. */
 typedef struct
 {
@@ -434,7 +448,7 @@ void source_bind(int name, int value, int declaration)
     {
         reject("assignment to const binding");
     }
-    if (!declaration && bindings[name] < 0)
+    if (!declaration && bindings[name] < 0 && table_bindings[name] == T_VOID)
     {
         reject("assignment before declaration");
     }
@@ -1497,17 +1511,22 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("loop-carried assignment requires an initialized local");
     }
-    if (!declaration && conditional_depth && binding_scope[name] <= conditional_scope[conditional_depth - 1] &&
-        table_cells[name] < 0)
+    if (!declaration && loop_depth && conditional_depth &&
+        binding_scope[name] <= conditional_scope[conditional_depth - 1] && table_cells[name] < 0)
     {
         reject("conditional assignment requires an initialized local");
     }
     if (!failed)
     {
         table_bindings[name] = actual;
+        if (declaration && value < 0)
+        {
+            source_debug_access(
+                "declare", -1, names[name], debug_scopes[binding_scope[name]], binding_scope[name], name + 1, location);
+        }
         if (value >= 0)
         {
-            source_bind(name, value, bindings[name] < 0);
+            source_bind(name, value, declaration);
             if (table_cells[name] >= 0)
             {
                 const char *operation = "big.store";
@@ -1809,14 +1828,13 @@ void source_iteration_bind(SourceIteration iteration, int key, int value, Source
     source_table_bind(value, iteration.value, 0, 1);
 }
 
-
-/* Admit one new loop-body statement on a still-open compiler CFG path. This
+/* Admit one new function/block/loop statement on a still-open compiler CFG path. This
  * translation-only check preserves the first error; it emits no runtime code. */
-void source_loop_statement(void)
+void source_statement(void)
 {
     if (!failed && path_closed)
     {
-        reject("unreachable statement after loop transfer");
+        reject("unreachable statement after path-closing transfer");
     }
 }
 
@@ -1828,7 +1846,7 @@ void source_loop_transfer(int is_continue)
 {
     int active_loop;
     const char *target;
-    source_loop_statement();
+    source_statement();
     if (!loop_depth)
     {
         reject("break/continue requires an enclosing loop");
@@ -1849,30 +1867,39 @@ void source_loop_transfer(int is_continue)
 }
 
 
-/* Prepare a loop-body conditional before its condition executes. Capture the
- * current lexical join scope, promote typed locals, and return a parser-owned
- * label/closure record. Bounds/type errors remain sticky; no VM is executed. */
-SourceLoopChoice source_loop_if_begin(void)
+/* Prepare one structured conditional before its condition executes. Promote
+ * initialized locals, snapshot incoming IDs and reserve true/false blocks.
+ * Return a copied parser choice. Limits/errors are sticky; no VM/GC runs here. */
+SourceChoice source_choice_begin(void)
 {
-    SourceLoopChoice choice;
+    SourceChoice choice;
+    SourceChoiceState *state;
     choice.choice = ++conditional_serial;
     choice.yes_closed = 0;
-    if (!loop_depth || conditional_depth >= 64 || blocks_used + 3 > FIR_BLOCKS)
+    if (failed)
     {
-        reject("loop conditional nesting/block limit exceeded");
+        return choice;
+    }
+    if (conditional_depth >= 64 || choice.choice >= FIR_BLOCKS / 2 || blocks_used + 2 > FIR_BLOCKS)
+    {
+        reject("conditional nesting/block limit exceeded");
         return choice;
     }
     source_promote_locals();
+    state = &choices[choice.choice];
+    state->names = name_count;
+    memcpy(state->incoming, bindings, (size_t)name_count * sizeof(bindings[0]));
+    memcpy(state->incoming_cells, table_cells, (size_t)name_count * sizeof(table_cells[0]));
     conditional_scope[conditional_depth++] = scope_depth;
-    blocks_used += 3;
+    blocks_used += 2;
     return choice;
 }
 
 
-/* Emit a checked conditional's true/false edges and true block. choice and
- * condition are borrowed parser values. No binding is rebound by this emitter;
- * shared typed cells carry runtime state across whichever arm actually executes. */
-void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition)
+/* Emit normalized condition edges and open the true arm of a copied choice.
+ * condition and choice are parser values. Initialized outer cells carry branch
+ * writes; authored if spans remain stable. No runtime value is evaluated here. */
+void source_choice_test(SourceChoice choice, SourceCondition condition)
 {
     if (!failed)
     {
@@ -1884,19 +1911,27 @@ void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition)
                 choice.choice,
                 condition.invert ? "yes" : "no",
                 choice.choice);
-        source_debug_event("loop-if", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
+        source_debug_event(
+            loop_depth ? "loop-if" : "branch", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
     }
     path_closed = 0;
 }
 
 
-/* Finish a borrowed parser choice's true arm and begin its false arm. Closed
- * true paths already have terminators and need no synthetic edge to the join. */
-void source_loop_if_else(SourceLoopChoice *choice)
+/* Finish a borrowed choice's true arm, save its exit and restore incoming IDs
+ * before opening the false arm. Closed paths need no edge to the eventual join.
+ * Only compiler arrays are copied; actual payload mutation happens in the VM. */
+void source_choice_else(SourceChoice *choice)
 {
     choice->yes_closed = path_closed;
     if (!failed)
     {
+        SourceChoiceState *state = &choices[choice->choice];
+        size_t bytes = (size_t)state->names * sizeof(bindings[0]);
+        memcpy(state->yes, bindings, bytes);
+        memcpy(state->yes_cells, table_cells, bytes);
+        memcpy(bindings, state->incoming, bytes);
+        memcpy(table_cells, state->incoming_cells, bytes);
         if (!path_closed)
         {
             fprintf(destination, "    jump ^loopif%d_join\n", choice->choice);
@@ -1907,19 +1942,61 @@ void source_loop_if_else(SourceLoopChoice *choice)
 }
 
 
-/* Merge normal paths of one copied parser choice after false-arm scope exit.
- * If both arms transferred, retain closed state and emit no unreachable join.
- * Pop the lexical mutation restriction; no native resource or mutex is owned. */
-void source_loop_if_end(SourceLoopChoice choice)
+/* Merge open exits of a copied choice and reserve a join only when reachable.
+ * One surviving arm may contribute initialized SSA/cells because it dominates
+ * that join. Two open arms require previously initialized outer locals; no phi
+ * or implicit initialization is invented. Terminal sibling environments stay
+ * independent. Errors discard the entire staged request, including debug data. */
+void source_choice_end(SourceChoice choice)
 {
     int both_closed = choice.yes_closed && path_closed;
     if (!failed)
     {
-        if (!path_closed)
+        SourceChoiceState *state = &choices[choice.choice];
+        size_t bytes = (size_t)state->names * sizeof(bindings[0]);
+        int name;
+        if (!choice.yes_closed && !path_closed)
+        {
+            for (name = 0; name < state->names; name++)
+            {
+                if (state->incoming_cells[name] < 0 &&
+                    (state->yes[name] != state->incoming[name] || bindings[name] != state->incoming[name] ||
+                     state->yes_cells[name] != state->incoming_cells[name] ||
+                     table_cells[name] != state->incoming_cells[name]))
+                {
+                    reject("conditional assignment requires an initialized local on joined paths");
+                    break;
+                }
+            }
+            memcpy(bindings, state->incoming, bytes);
+            memcpy(table_cells, state->incoming_cells, bytes);
+        }
+        else if (!choice.yes_closed)
+        {
+            memcpy(bindings, state->yes, bytes);
+            memcpy(table_cells, state->yes_cells, bytes);
+        }
+        else if (both_closed)
+        {
+            memcpy(bindings, state->incoming, bytes);
+            memcpy(table_cells, state->incoming_cells, bytes);
+        }
+        if (!both_closed)
+        {
+            if (blocks_used + 1 > FIR_BLOCKS)
+            {
+                reject("conditional join block limit exceeded");
+            }
+            else
+            {
+                blocks_used++;
+            }
+        }
+        if (!failed && !path_closed)
         {
             fprintf(destination, "    jump ^loopif%d_join\n", choice.choice);
         }
-        if (!both_closed)
+        if (!failed && !both_closed)
         {
             fprintf(destination, "^loopif%d_join:\n", choice.choice);
         }
@@ -1932,20 +2009,36 @@ void source_loop_if_end(SourceLoopChoice choice)
 }
 
 
-/* Return a borrowed big SSA result from inside a loop. The ordinary function
+/* Return a borrowed big SSA result from any structured function path. The ordinary function
  * return emitter owns trace/type rules; mark this path closed so loop/if cleanup
  * emits no trailing edge. No native owner escapes and no partial statement runs. */
-void source_loop_return(int value)
+void source_flow_return(int value)
 {
-    source_loop_statement();
+    source_statement();
     source_table_return(value);
     if (!failed)
     {
-        source_debug_event("loop-return", value, "", debug_scopes[scope_depth], scope_depth, location);
+        source_debug_event(
+            loop_depth ? "loop-return" : "return", value, "", debug_scopes[scope_depth], scope_depth, location);
     }
     path_closed = 1;
 }
 
+
+/* Require every reachable function exit to return a big value. No parameters,
+ * owners or runtime calls. A potentially zero-iteration loop never proves total
+ * return by itself; a missing return rejects staged FIR/debug publication. */
+void source_flow_finish(void)
+{
+    if (!failed && !path_closed)
+    {
+        reject("function may finish without returning big");
+    }
+    if (!failed)
+    {
+        terminal = 1;
+    }
+}
 
 /* Allocate a compiler-private step stream after initializer emission. Return a
  * copied parser continuation; failures keep context=-1 and prevent publication.

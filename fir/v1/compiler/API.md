@@ -92,3 +92,8 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 [FIR 0.19: acyclic owner CFG and fir_acyclic](../doc/TABLE_CFG.md) · [Русский](../doc/TABLE_CFG.ru.md).
 
 [FIR 0.20: typed shifts and explicit int counts](../doc/BIG_SHIFTS.md) · [Русский](../doc/BIG_SHIFTS.ru.md).
+
+
+Compiler 0.41 keeps these API signatures and serial-request rules while adding
+[scoped function flow](../doc/FUNCTION_FLOW.md) to the Limbo big/table profile.
+The reused C99 service also verifies recovery after a joined-path initialization error.

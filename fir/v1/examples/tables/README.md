@@ -207,3 +207,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Retained-loop tutorial](retained-loops.b): reference rebinding, stable aliases and captured traversal. [Guide](../../doc/RETAINED_LOOPS.md).
+
+
+[Function-flow tutorial](function-flow.b): conditional updates, lexical blocks, early guards and nested loop transfers. [Guide](../../doc/FUNCTION_FLOW.md).

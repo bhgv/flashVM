@@ -86,3 +86,6 @@ a newly linked C99 client. No new FIR type, Dis opcode or container tag is neede
 Outside loops the existing terminal function-decision grammar remains in effect;
 general nonterminal function if and labeled transfers remain separate work.
 [Compiler 0.38](COUNTED_FOR.md) adds the classic three-clause for.
+
+
+[Compiler 0.41](FUNCTION_FLOW.md) extends structured conditions and blocks to function scope.

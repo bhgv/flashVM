@@ -93,3 +93,9 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 [FIR 0.19: acyclic owner CFG and fir_acyclic](../doc/TABLE_CFG.md) · [Русский](../doc/TABLE_CFG.ru.md).
 
 [FIR 0.20: typed shifts and explicit int counts](../doc/BIG_SHIFTS.md) · [Русский](../doc/BIG_SHIFTS.ru.md).
+
+
+Компилятор 0.41 сохраняет сигнатуры API и последовательное обслуживание запросов,
+добавляя [операторы и области функции](../doc/FUNCTION_FLOW.ru.md) в профиль Limbo
+big/table. Повторные запросы C99 проверяют восстановление после ошибки
+инициализации на сходящихся путях.

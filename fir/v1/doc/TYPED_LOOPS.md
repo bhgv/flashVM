@@ -107,3 +107,6 @@ semantically invalid staged for headers to check request isolation.
 This source-profile extension stays in FlashVM; it is not copied into Inferno.
 General reference rebinding, arbitrary arrays/tuples, a full general Limbo
 frontend and final source-to-Dis SBL relocation remain separate work.
+
+
+[Compiler 0.41](FUNCTION_FLOW.md) extends structured conditions and blocks to function scope.

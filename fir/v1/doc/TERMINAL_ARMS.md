@@ -81,3 +81,7 @@ and optimized tutorials are compiled by relocated C99 SDK clients and executed
 in both VM modes. CLI and library APIs share these grammar and semantic actions.
 Scalar int arm programs also pass SWF object emission; this series does not claim
 physical ARM64 execution or a new complete language implementation.
+
+
+The int/real profile retains this terminal grammar. The big/table profile now
+also accepts [ordinary function statements and joins](FUNCTION_FLOW.md) in 0.41.

@@ -379,6 +379,13 @@ PRODUCTIONS
         IF(source_table_profile()) TableBody
         | { LimboStatement } LimboResult
     ) "}"
+    (.
+        if (source_table_profile())
+        {
+            capture();
+            source_flow_finish();
+        }
+    .)
   .
 
   /* The interface records the numeric result type; the definition must match it.
@@ -609,36 +616,9 @@ PRODUCTIONS
     | Literal<result,0>
   .
 
-  /* Big-result modules select a separate typed hybrid subset, never numeric-profile guessing. */
+  /* The big-result profile shares function/loop statements and checks total return. */
   TableBody =
-    { TableStatement }
-    TableResult
-  .
-
-  /* Every arm has its own lexical prelude and terminates. The false arm restores
-   * incoming SSA bindings; no join or continuation is invented. Resolver branches
-   * share the 64-level group/unary/decision budget and consume excess if tokens. */
-  TableResult =
-    (. int value = 0, choice = 0;
-       SourceCondition condition;
-       SourceMark branch;
-    .)
-    "return" TableExpression<&value> ";" (. source_table_return(value); .)
-    | IF(Sym==ifSym && depth>=64) "if" (. capture(); source_scope_limit(); .)
-    | IF(Sym==ifSym && depth<64) "if" (. capture(); branch = source_mark(); .)
-      "(" TableCondition<&condition> ")"
-      (. ++depth; source_restore(branch); choice = source_branch(condition); .)
-      TableArm "else" (. source_else(choice); .)
-      TableArm (. --depth; .)
-  .
-
-  /* Declare arm-local names after parsing initializers against the outer scope.
-   * Retire locals before the sibling is parsed; runtime table owners remain rooted
-   * by the backend's checked CFG maps until their selected arm has terminated. */
-  TableArm =
-    "{" (. capture(); source_enter_scope(); .)
-    TableBody
-    "}" (. capture(); source_leave_scope(); .)
+    FlowBody
   .
 
   /* Conditions borrow an already normalized expression result; no implicit truthiness. */
@@ -657,6 +637,7 @@ PRODUCTIONS
     | TableWhile
     | TableDelete<&value> ";"
     | TableBindingStatement ";"
+    | FlowBlock
   .
 
   /* Reusable header clause; the enclosing grammar owns its delimiter. */
@@ -834,9 +815,13 @@ PRODUCTIONS
         ++depth;
         source_loop_condition(loop, condition);
     .)
-    "{" (. source_enter_scope(); .)
-    LoopBody
-    "}"
+    "{"
+    (.
+        capture();
+        source_enter_scope();
+    .)
+    FlowBody
+    "}" (. capture(); .)
     (.
         source_leave_scope();
         source_restore(operation);
@@ -880,12 +865,14 @@ PRODUCTIONS
     .)
     "{"
     (.
+        capture();
         source_enter_scope();
         source_iteration_bind(iteration, key, value, keymark, valuemark);
     .)
-    LoopBody
+    FlowBody
     "}"
     (.
+        capture();
         source_leave_scope();
         source_restore(operation);
         source_iteration_end(iteration);
@@ -920,7 +907,7 @@ PRODUCTIONS
     .)
     [ TableForClause ] ")"
     (. source_for_step_end(control); .)
-    "{" LoopBody "}"
+    "{" FlowBody "}"
     (.
         source_restore(operation);
         source_for_end(control);
@@ -929,16 +916,38 @@ PRODUCTIONS
     .)
   .
 
+  /* Ordinary lexical blocks share the parser's nesting budget and path state. */
+  FlowBlock =
+    IF(Sym==LbraceSym && depth>=64) "{"
+    (.
+        capture();
+        source_scope_limit();
+    .)
+    | IF(Sym==LbraceSym && depth<64) "{"
+    (.
+        capture();
+        ++depth;
+        source_enter_scope();
+    .)
+    FlowBody
+    "}"
+    (.
+        capture();
+        source_leave_scope();
+        --depth;
+    .)
+  .
+
   /* A transfer closes its path. No unreachable block is fabricated for suffixes. */
-  LoopBody =
+  FlowBody =
     {
-        (. source_loop_statement(); .)
-        ( LoopIf | LoopReturn | TableStatement )
+        (. source_statement(); .)
+        ( FlowIf | FlowReturn | TableStatement )
     }
   .
 
   /* A source return exits the function; it is not a jump to a loop continuation. */
-  LoopReturn =
+  FlowReturn =
     (.
         int value = 0;
         SourceMark operation;
@@ -951,7 +960,7 @@ PRODUCTIONS
     TableExpression<&value> ";"
     (.
         source_restore(operation);
-        source_loop_return(value);
+        source_flow_return(value);
     .)
   .
 
@@ -971,13 +980,17 @@ PRODUCTIONS
     ";"
   .
 
-  /* Statement conditionals are scoped to loop bodies; function decisions still
-   * use the existing terminal-arm grammar. Empty false arms join normally. */
-  LoopIf =
-    IF(Sym==ifSym && depth>=64) "if" (. capture(); source_scope_limit(); .)
+  /* Structured conditionals work at function/block/loop scope. Empty false arms
+   * join normally; all-terminal choices keep their original two-block budget. */
+  FlowIf =
+    IF(Sym==ifSym && depth>=64) "if"
+    (.
+        capture();
+        source_scope_limit();
+    .)
     | IF(Sym==ifSym && depth<64)
     (.
-        SourceLoopChoice choice;
+        SourceChoice choice;
         SourceCondition condition;
         SourceMark operation;
     .)
@@ -985,32 +998,46 @@ PRODUCTIONS
     (.
         capture();
         operation = source_mark();
-        choice = source_loop_if_begin();
+        choice = source_choice_begin();
     .)
     "(" TableCondition<&condition> ")"
     (.
         source_restore(operation);
         ++depth;
-        source_loop_if_test(choice, condition);
+        source_choice_test(choice, condition);
     .)
-    "{" (. source_enter_scope(); .)
-    LoopBody
+    "{"
+    (.
+        capture();
+        source_enter_scope();
+    .)
+    FlowBody
     "}"
     (.
+        capture();
         source_leave_scope();
         source_restore(operation);
-        source_loop_if_else(&choice);
+        source_choice_else(&choice);
     .)
     [ "else"
-      ( LoopIf
-        | "{" (. source_enter_scope(); .)
-          LoopBody
-          "}" (. source_leave_scope(); .)
+      (
+          FlowIf
+          | "{"
+            (.
+                capture();
+                source_enter_scope();
+            .)
+            FlowBody
+            "}"
+            (.
+                capture();
+                source_leave_scope();
+            .)
       )
     ]
     (.
         source_restore(operation);
-        source_loop_if_end(choice);
+        source_choice_end(choice);
         --depth;
     .)
   .

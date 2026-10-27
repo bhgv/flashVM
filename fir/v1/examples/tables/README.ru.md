@@ -206,3 +206,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Пример ссылочных циклов](retained-loops.b): переназначение ссылок, сохранение алиасов и захват получателя обхода. [Руководство](../../doc/RETAINED_LOOPS.ru.md).
+
+
+[Пример операторов функции](function-flow.b): условные обновления, лексические блоки, ранние возвраты и переходы цикла. [Руководство](../../doc/FUNCTION_FLOW.ru.md).

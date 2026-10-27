@@ -146,3 +146,6 @@ The source extension stays in FlashVM. General ADTs, arrays/tuples, dynamic `any
 payloads, escaping reference cells and general-purpose Limbo/AS compilation remain
 outside this profile. The NC64 Dis backend supports these cells; SWF lowering
 rejects them before replacing a caller's output.
+
+
+[Compiler 0.41](FUNCTION_FLOW.md) extends structured conditions and blocks to function scope.
