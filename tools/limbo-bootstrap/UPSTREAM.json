@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "637d618e40fb6efb69cb0c147efb81981ee95c63",
+  "revision": "47b49548fadae9b2a3e768dc46906005c9573042",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -53,8 +53,8 @@
     "lib9/getcallerpc-*.c",
     "lib9/setfcr-*.c",
     "lib9/tests/*",
-    "limbo/tests/*",
-    "frames/cplus2/*"
+    "frames/cplus2/*",
+    "limbo/tests/*"
   ],
   "files": {
     "upstream/Linux/arm/include/lib9.h": "d50391ec45a5167cbf2e4ca43c35bfdd75ea02073519de627a7dbb348d62addb",
@@ -215,7 +215,7 @@
     "upstream/limbo/limbo.y": "18f4955c38b2f6ee902f4c56e8ed0184883481e1a430d416e5f282c3d4c219a8",
     "upstream/limbo/nodes.c": "5dcda3dc4f0d395af53c391fdbf1c881ec503253a5148dcfc000a3703d35a163",
     "upstream/limbo/optab.c": "3d31a907813b5663f591ccb9446813ba5503e379b182ef76395ad98447be2475",
-    "upstream/limbo/optim.c": "6e7a7bfcf54088c01e107bc42e402df7a9d4a5bbf522d14593427dab16bf0673",
+    "upstream/limbo/optim.c": "5a1576a9ce3d8a0c9cd60de6ff41f45b829fc8308719b5f31af464a677bee781",
     "upstream/limbo/sbl.c": "c6394b9d1a20b692525990447e96ab3badc356d95e75c4830faa7c6c3e28ee64",
     "upstream/limbo/stubs.c": "a31bed1aabb5017bc6f7a55437a93c30a99b5994eb635804829aa34aea131ef4",
     "upstream/limbo/typecheck.c": "4887db09fbcd189eff769dad8924f00ac61ddd1078df284a1b20315807f1f2ea",
