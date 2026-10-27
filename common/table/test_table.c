@@ -7,6 +7,7 @@
 
 
 #ifdef FHT_SANITIZED
+
 /* This restricted host cannot run LSan /proc scans; allocator accounting still covers every block. */
 int __lsan_is_turned_off(void)
 {
@@ -21,6 +22,7 @@ typedef struct
     size_t fail;  /* Fail exactly this ordinal; zero disables injection. */
     size_t live;  /* Outstanding successful allocations. */
 } Allocation;
+
 
 /* Fail one requested allocation while accounting every successful ownership transfer. */
 static void *allocate(void *context, size_t size)
@@ -40,6 +42,7 @@ static void *allocate(void *context, size_t size)
     return memory;
 }
 
+
 /* Release a tracked block; null is allowed and does not affect live accounting. */
 static void release(void *context, void *memory)
 {
@@ -51,6 +54,7 @@ static void release(void *context, void *memory)
     }
 }
 
+
 /* Construct one borrowed numeric key for tests; negative values exercise rejection. */
 static FhtKey index_key(int64_t index)
 {
@@ -58,12 +62,14 @@ static FhtKey index_key(int64_t index)
     return key;
 }
 
+
 /* Construct a borrowed byte-counted key; tests mutate backing storage after insertion. */
 static FhtKey text_key(const char *text, size_t size)
 {
     FhtKey key = {FHT_TEXT, 0, text, size};
     return key;
 }
+
 
 /* Print a semantic failure and terminate this test process without disabled assertions. */
 static void check(int condition, const char *message)
@@ -74,6 +80,7 @@ static void check(int condition, const char *message)
         exit(1);
     }
 }
+
 
 /* Check deterministic behavior against a separate fixed numeric reference model. */
 static void numeric_model(void)
@@ -127,6 +134,7 @@ static void numeric_model(void)
     fht_destroy(table);
 }
 
+
 /* Exercise independent key ownership, string ordering and snapshots surviving source destruction. */
 static void mixed_keys(void)
 {
@@ -164,6 +172,7 @@ static void mixed_keys(void)
     check(keys->items[4].text[0] == 'k', "snapshot survives source retirement");
     fht_keys_destroy(keys);
 }
+
 
 /* Sweep each allocation boundary through writes, snapshots and slices; detect leaks and rollback. */
 static void allocation_failures(void)
@@ -215,6 +224,7 @@ static void allocation_failures(void)
     }
 }
 
+
 /* Verify exact decimal adapters independently of VM ABI and allocator behavior.
  * Outputs remain caller-owned; failed parsing/short formatting must not publish. */
 static void scalar_conversions(void)
@@ -252,6 +262,7 @@ static void scalar_conversions(void)
     check(fht_big_parse(NULL, 1, &result) == FHT_INVALID, "null text accepted");
 }
 
+
 /* Relative keys resolve against the dense prefix, not dictionary/sparse entries.
  * No arguments; caller-owned tables/slices are retired after all invariants. */
 static void relative_sequences(void)
@@ -275,9 +286,89 @@ static void relative_sequences(void)
     fht_destroy(table);
 }
 
+
+/* Check resized prefix replacement, self-aliasing and dictionary preservation.
+ * All owners are local, released before return; checks terminate on failure. */
+static void splice_sequences(void)
+{
+    Fht *table = fht_create(NULL);
+    Fht *replacement = fht_create(NULL);
+    Fht *empty = fht_create(NULL);
+    FhtKey text = {FHT_TEXT, 0, "label", 5};
+    int64_t value;
+    int i;
+    check(table && replacement && empty, "splice owners");
+    for (i = 0; i < 4; i++)
+    {
+        check(fht_set(table, index_key(i), i + 1) == FHT_OK, "splice prefix");
+    }
+    check(fht_set(table, text, 42) == FHT_OK, "splice dictionary");
+    check(fht_set(replacement, index_key(0), 9) == FHT_OK, "replacement value");
+    check(fht_splice(table, 1, 3, replacement) == FHT_OK && fht_length(table) == 3, "splice contracts");
+    check(fht_get(table, index_key(1), &value) == FHT_OK && value == 9 &&
+              fht_get(table, index_key(-1), &value) == FHT_OK && value == 4,
+          "splice shifts tail");
+    check(fht_splice(table, 1, 1, table) == FHT_OK && fht_length(table) == 6, "self insertion grows");
+    check(fht_get(table, index_key(4), &value) == FHT_OK && value == 9, "self insertion captures original");
+    check(fht_get(table, text, &value) == FHT_OK && value == 42, "dictionary retained");
+    check(fht_set(table, index_key(7), 77) == FHT_OK, "sparse conflict setup");
+    check(fht_splice(table, 0, 0, table) == FHT_INVALID && fht_length(table) == 6,
+          "sparse collision rejects transaction");
+    check(fht_splice(table, 0, -1, empty) == FHT_OK && fht_length(table) == 0, "delete complete prefix");
+    check(fht_get(table, index_key(7), &value) == FHT_OK && value == 77, "sparse key remains absolute");
+    fht_destroy(empty);
+    fht_destroy(replacement);
+    fht_destroy(table);
+}
+
+
+/* Inject every allocation ordinal into a self-splice; require exact rollback
+ * and allocator balance. A final uninjected run proves the success path too. */
+static void splice_allocation_failures(void)
+{
+    size_t ordinal;
+    for (ordinal = 1; ordinal < 40; ordinal++)
+    {
+        Allocation state = {0, 0, 0};
+        FhtAllocator allocator = {&state, allocate, release};
+        Fht *table = fht_create(&allocator);
+        FhtStatus status;
+        int64_t value;
+        int i;
+        check(table != NULL, "splice fault owner");
+        for (i = 0; i < 12; i++)
+        {
+            check(fht_set(table, index_key(i), i) == FHT_OK, "splice fault setup");
+        }
+        check(fht_set(table, text_key("label", 5), 42) == FHT_OK, "splice fault text");
+        state.fail = state.calls + ordinal;
+        status = fht_splice(table, 2, 4, table);
+        check(status == FHT_OK || status == FHT_NOMEM, "splice fault status");
+        if (status == FHT_NOMEM)
+        {
+            check(fht_length(table) == 12 && fht_count(table) == 13, "splice fault shape rollback");
+            for (i = 0; i < 12; i++)
+            {
+                check(fht_get(table, index_key(i), &value) == FHT_OK && value == i, "splice fault value rollback");
+            }
+        }
+        else
+        {
+            check(fht_length(table) == 22 && fht_count(table) == 23, "splice fault success");
+        }
+        check(fht_get(table, text_key("label", 5), &value) == FHT_OK && value == 42,
+              "splice fault dictionary retained");
+        fht_destroy(table);
+        check(state.live == 0, "splice fault leaked storage");
+    }
+}
+
+
 /* Run independent semantic/reference and allocator-failure acceptance suites. */
 int main(void)
 {
+    splice_allocation_failures();
+    splice_sequences();
     relative_sequences();
     scalar_conversions();
     numeric_model();

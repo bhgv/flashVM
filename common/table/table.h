@@ -48,9 +48,11 @@ typedef struct
     FhtAllocator allocator; /* Private matching allocator; callers must not modify. */
 } FhtKeys;
 
+
 /* Create an empty big-valued table. allocator is copied, or null selects malloc/free.
  * Returns null on invalid allocator/OOM. The caller owns the result; no locks or callbacks to VMs. */
 Fht *fht_create(const FhtAllocator *allocator);
+
 
 
 /* Release a table and all copied keys; null is allowed. Requires exclusive owner access. */
@@ -63,8 +65,10 @@ void fht_destroy(Fht *table);
 FhtStatus fht_resolve(const Fht *table, FhtKey key, FhtKey *result);
 
 
+
 /* Read one key into value only on success. Arguments are borrowed; never allocates or blocks. */
 FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value);
+
 
 
 /* Insert/replace a scalar and copy a new text key. Borrowed inputs remain caller-owned.
@@ -72,16 +76,20 @@ FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value);
 FhtStatus fht_set(Fht *table, FhtKey key, int64_t value);
 
 
+
 /* Delete an existing key without allocation. Missing/invalid keys leave the table unchanged. */
 FhtStatus fht_delete(Fht *table, FhtKey key);
+
 
 
 /* Return the first absent nonnegative index, or zero for null. String/sparse keys do not add length. */
 uint64_t fht_length(const Fht *table);
 
 
+
 /* Return the number of stored pairs, or zero for null; distinct from sequence length. */
 size_t fht_count(const Fht *table);
+
 
 
 /* Copy all keys: numeric ascending, then strings in insertion order. No table storage escapes.
@@ -89,8 +97,10 @@ size_t fht_count(const Fht *table);
 FhtStatus fht_keys(const Fht *table, FhtKeys **result);
 
 
+
 /* Release an independently owned key snapshot; null is allowed. */
 void fht_keys_destroy(FhtKeys *keys);
+
 
 
 /* Copy [first,end) within sequence length into a new zero-based table with the same allocator.
@@ -98,14 +108,26 @@ void fht_keys_destroy(FhtKeys *keys);
 FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result);
 
 
+
 /* Copy a signed/relative sequence range. Negative end is inclusive; [0:-1]
  * copies the full prefix, including an empty prefix. Ownership matches fht_slice. */
 FhtStatus fht_slice_relative(const Fht *table, int64_t first, int64_t end, Fht **result);
 
 
+
+/* Replace a relative dense-prefix range with the entire replacement prefix.
+ * Both tables are borrowed and externally serialized, including readers.
+ * Self replacement uses the pre-mutation source. Sparse keys keep absolute
+ * positions; growth colliding with an existing sparse key returns FHT_INVALID.
+ * Text keys retain insertion order. All failures leave logical contents intact. */
+FhtStatus fht_splice(Fht *table, int64_t first, int64_t end, const Fht *replacement);
+
+
+
 /* Parse exact signed decimal text. Borrowed byte span/output; output is unchanged
  * on invalid syntax/overflow. Optional +/-, no whitespace/prefixes; never allocates. */
 FhtStatus fht_big_parse(const char *text, size_t size, int64_t *result);
+
 
 
 /* Format canonical decimal in borrowed storage (capacity >=21), returning bytes

@@ -55,3 +55,27 @@ Build with `cmake -S common/owned -B build/owned`, then
 The test parks four native contenders behind a twice-entered owner, inspects the
 live guard, checks wrong-token release and busy destruction, then performs 40,000
 protected mutations with nested entries. CTest bounds unexpected deadlock to 20s.
+
+## Guarded scalar table owner
+
+`table_owner.h` adds `FvmTableOwner`: an Fht table and its operation guard share
+one explicit native lifetime. `fvm_table_owner_apply` protects the complete
+callback transaction, including reads, length checks and writes. Nested helpers
+reenter with the same token. Callback application errors are separate from
+native guard errors; normal error returns release ownership. Callbacks must not
+raise VM exceptions or longjmp past cleanup. This host API is not yet used by
+DisVM's native Bigtable module, nor by array/string storage.
+
+`fht_splice(table, first, end, replacement)` replaces a dense-prefix range by the
+replacement table's complete prefix. It supports self insertion, growth,
+contraction and deletion. Build a source slice first to insert just part of a
+replacement. Text keys retain insertion order; sparse numeric keys remain at
+absolute positions. Growth colliding with an existing sparse numeric key fails
+with FHT_INVALID, leaving the table unchanged. All storage is prepared before
+commit; allocation failures also preserve original contents. Serialize both
+owners for a cross-table splice, in stable runtime-defined order. A self splice
+needs only its own recursive guard.
+
+The additional native contention test runs 40,000 read-modify-write transactions
+on a real table through nested owner callbacks. Core table tests additionally
+inject allocation failures into self-splice and check contents and live blocks.
