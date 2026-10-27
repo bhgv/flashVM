@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.36.0 LANGUAGES C)
+project(fir1 VERSION 0.37.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -476,4 +476,16 @@ if(BUILD_TESTING)
   add_executable(fir1_loops_api tests/loops_api.c)
   target_link_libraries(fir1_loops_api PRIVATE fir1_source_api fir1_ir)
   add_test(NAME fir1_loops_api COMMAND fir1_loops_api)
+endif()
+
+# Structured loop branches preserve mutable locals and cursor transfer semantics.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    set(control_reference $<TARGET_FILE:fir1_table_run>)
+  else()
+    set(control_reference -)
+  endif()
+  add_test(NAME fir1_loop_control COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/loop_control.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${control_reference})
 endif()

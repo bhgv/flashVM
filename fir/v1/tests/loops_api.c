@@ -22,9 +22,11 @@ static int compile_loop(FirModule *module, int invalid)
         goto done;
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
-    fputs(invalid ? "t := table of big; while (len t < 1) {t = table of big {42};} return 42;"
-                  : "t := table of big {20,22}; sum := big 0; for (key,value in t) {sum += value;} return sum;",
-          input);
+    fputs(
+        invalid
+            ? "t := table of big; while (len t < 1) {t = table of big {42};} return 42;"
+            : "t := table of big {20,22}; sum := big 0; for (key,value in t) {if (value == 20) {sum += value; continue;} else {sum += value; return sum;}} return 0;",
+        input);
     fputs("}", input);
     rewind(input);
     if (invalid)

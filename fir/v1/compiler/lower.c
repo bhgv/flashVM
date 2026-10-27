@@ -33,6 +33,7 @@ static int logic_serial;  /* Logical expression label identities, reset per tran
 static int blocks_used;   /* Entry plus all terminal/logical CFG blocks, bounded by FIR_BLOCKS. */
 static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
 static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isolated per decision. */
+static int branch_cells[FIR_BLOCKS / 2][256];    /* Incoming big-cell identities isolated per terminal arm. */
 static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
@@ -40,8 +41,15 @@ static FirType table_bindings[256]; /* Declared/inferred local types, reset for 
 static int table_cells[256];        /* Per-binding big.slot identities, -1 until loop promotion. */
 static int loop_serial;             /* Unique loop labels in the translation. */
 static int loop_depth;              /* Active loop count, bounded with parser nesting. */
+static int loop_id[65];             /* Active innermost transfer target IDs. */
+static int loop_iteration[65];      /* Whether continue must pass through a cursor step. */
+static int loop_continues[65];      /* At least one reachable continue edge to the cursor step. */
+static int path_closed;             /* Current loop statement path already ends in a transfer. */
+static int conditional_serial;      /* Unique structured loop-if labels. */
+static int conditional_depth;       /* Active loop-if lexical join contexts. */
+static int conditional_scope[65];   /* Outer lexical scope of each structured join. */
 static int loop_scope[65];          /* Lexical depth just outside each active loop. */
-static int terminal;               /* The last emitted arm already terminates and needs no footer return. */
+static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
 
 
 /* Emit a typed operation after sticky source errors have been checked. */
@@ -64,6 +72,7 @@ void source_config(FILE *out, int language)
     blocks_used = 1;
     result_real = 0;
     loop_serial = loop_depth = 0;
+    path_closed = conditional_serial = conditional_depth = 0;
     memset(table_cells, -1, sizeof(table_cells));
     memset(table_values, 0, sizeof(table_values));
     memset(table_bindings, 0, sizeof(table_bindings));
@@ -607,6 +616,7 @@ int source_branch(SourceCondition condition)
         blocks_used += 2;
         branch_names[choice] = name_count;
         memcpy(branch_bindings[choice], bindings, (size_t)name_count * sizeof(bindings[0]));
+        memcpy(branch_cells[choice], table_cells, (size_t)name_count * sizeof(table_cells[0]));
         fprintf(destination,
                 "    if %%v%d, ^choose%d_%s, ^choose%d_%s\n^choose%d_yes:\n",
                 condition.value,
@@ -631,6 +641,7 @@ void source_else(int choice)
     if (!failed)
     {
         memcpy(bindings, branch_bindings[choice], (size_t)branch_names[choice] * sizeof(bindings[0]));
+        memcpy(table_cells, branch_cells[choice], (size_t)branch_names[choice] * sizeof(table_cells[0]));
         fprintf(destination, "^choose%d_no:\n", choice);
     }
     terminal = 0;
@@ -1418,6 +1429,11 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("loop-carried assignment requires an initialized big local");
     }
+    if (!declaration && conditional_depth && binding_scope[name] <= conditional_scope[conditional_depth - 1] &&
+        (actual != T_I64 || table_cells[name] < 0))
+    {
+        reject("conditional assignment requires an initialized big local");
+    }
     if (!failed)
     {
         table_bindings[name] = actual;
@@ -1498,19 +1514,12 @@ void source_table_lease(int receiver, int acquire)
 }
 
 
-/* Begin a while continuation before parsing its condition. Promote initialized
- * active big bindings into dominating frame cells so each iteration reads the
- * current values. Return the unique loop ID. Sticky limits prevent publication;
- * no runtime storage is allocated by this compiler function. */
-int source_loop_begin(void)
+/* Promote active initialized big bindings into private dominating cells.
+ * This translation-only operation has no arguments/result or runtime allocation;
+ * errors remain sticky and prevent staged FIR/debug publication. */
+static void source_promote_bigs(void)
 {
-    int loop = ++loop_serial;
     int name;
-    if (loop_depth >= 64 || blocks_used + 3 > FIR_BLOCKS)
-    {
-        reject("loop nesting/block limit exceeded");
-        return loop;
-    }
     for (name = 0; name < name_count && !failed; name++)
     {
         if (active[name] && table_bindings[name] == T_I64 && bindings[name] >= 0 && table_cells[name] < 0)
@@ -1520,7 +1529,25 @@ int source_loop_begin(void)
             fprintf(destination, "    big.store %%v%d, %%v%d\n", cell, bindings[name]);
         }
     }
+}
+
+/* Begin a while continuation before parsing its condition. Promote initialized
+ * active big bindings into dominating frame cells so each iteration reads the
+ * current values. Return the unique loop ID. Sticky limits prevent publication;
+ * no runtime storage is allocated by this compiler function. */
+int source_loop_begin(void)
+{
+    int loop = ++loop_serial;
+    if (loop_depth >= 64 || blocks_used + 3 > FIR_BLOCKS)
+    {
+        reject("loop nesting/block limit exceeded");
+        return loop;
+    }
+    source_promote_bigs();
+    loop_id[loop_depth] = loop;
+    loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
     loop_scope[loop_depth++] = scope_depth;
+    path_closed = 0;
     blocks_used += 3;
     if (!failed)
     {
@@ -1558,13 +1585,18 @@ void source_loop_end(int loop)
 {
     if (!failed)
     {
-        fprintf(destination, "    jump ^loop%d_test\n^loop%d_end:\n", loop, loop);
+        if (!path_closed)
+        {
+            fprintf(destination, "    jump ^loop%d_test\n", loop);
+        }
+        fprintf(destination, "^loop%d_end:\n", loop);
         source_debug_event("while-end", -1, "", debug_scopes[scope_depth], scope_depth, location);
     }
     if (loop_depth)
     {
         loop_depth--;
     }
+    path_closed = 0;
 }
 
 
@@ -1592,6 +1624,18 @@ SourceIteration source_iteration_begin(int table)
         fprintf(destination, "    big.store %%v%d, %%v%d\n", iteration.cell, zero);
     }
     iteration.loop = source_loop_begin();
+    if (!failed)
+    {
+        if (blocks_used + 1 > FIR_BLOCKS)
+        {
+            reject("for-in cursor block limit exceeded");
+        }
+        else
+        {
+            blocks_used++;
+            loop_iteration[loop_depth - 1] = 1;
+        }
+    }
     index = table_operation(T_I64, "big.load", iteration.cell, -1);
     length = table_operation(T_I64, "keys.len", keys, -1);
     condition.value = table_operation(T_BOOL, "big.lt.signed", index, length);
@@ -1608,12 +1652,24 @@ SourceIteration source_iteration_begin(int table)
  * operations; the finite snapshot length bounds all reachable cursor values. */
 void source_iteration_end(SourceIteration iteration)
 {
-    int index = table_operation(T_I64, "big.load", iteration.cell, -1);
-    int one = source_table_position(1);
-    int next = table_operation(T_I64, "big.add", index, one);
-    if (!failed)
+    if (!failed && (!path_closed || loop_continues[loop_depth - 1]))
     {
-        fprintf(destination, "    big.store %%v%d, %%v%d\n", iteration.cell, next);
+        int index;
+        int one;
+        int next;
+        if (!path_closed)
+        {
+            fprintf(destination, "    jump ^loop%d_step\n", iteration.loop);
+        }
+        fprintf(destination, "^loop%d_step:\n", iteration.loop);
+        path_closed = 0;
+        index = table_operation(T_I64, "big.load", iteration.cell, -1);
+        one = source_table_position(1);
+        next = table_operation(T_I64, "big.add", index, one);
+        if (!failed)
+        {
+            fprintf(destination, "    big.store %%v%d, %%v%d\n", iteration.cell, next);
+        }
     }
     source_loop_end(iteration.loop);
 }
@@ -1632,4 +1688,141 @@ void source_iteration_bind(SourceIteration iteration, int key, int value, Source
     source_table_bind(key, iteration.key, 0, 1);
     source_restore(valuemark);
     source_table_bind(value, iteration.value, 0, 1);
+}
+
+
+/* Admit one new loop-body statement on a still-open compiler CFG path. This
+ * translation-only check preserves the first error; it emits no runtime code. */
+void source_loop_statement(void)
+{
+    if (!failed && path_closed)
+    {
+        reject("unreachable statement after loop transfer");
+    }
+}
+
+
+/* Close the current path with an innermost-loop jump. is_continue selects the
+ * test (while) or cursor step (for-in); otherwise jump to loop exit. IDs remain
+ * compiler-owned. Invalid context/closed path is a sticky source error. */
+void source_loop_transfer(int is_continue)
+{
+    int active_loop;
+    const char *target;
+    source_loop_statement();
+    if (!loop_depth)
+    {
+        reject("break/continue requires an enclosing loop");
+    }
+    if (failed)
+    {
+        return;
+    }
+    active_loop = loop_depth - 1;
+    target = is_continue ? (loop_iteration[active_loop] ? "step" : "test") : "end";
+    if (is_continue)
+    {
+        loop_continues[active_loop] = 1;
+    }
+    fprintf(destination, "    jump ^loop%d_%s\n", loop_id[active_loop], target);
+    source_debug_event(is_continue ? "continue" : "break", -1, "", debug_scopes[scope_depth], scope_depth, location);
+    path_closed = 1;
+}
+
+
+/* Prepare a loop-body conditional before its condition executes. Capture the
+ * current lexical join scope, promote big locals, and return a parser-owned
+ * label/closure record. Bounds/type errors remain sticky; no VM is executed. */
+SourceLoopChoice source_loop_if_begin(void)
+{
+    SourceLoopChoice choice;
+    choice.choice = ++conditional_serial;
+    choice.yes_closed = 0;
+    if (!loop_depth || conditional_depth >= 64 || blocks_used + 3 > FIR_BLOCKS)
+    {
+        reject("loop conditional nesting/block limit exceeded");
+        return choice;
+    }
+    source_promote_bigs();
+    conditional_scope[conditional_depth++] = scope_depth;
+    blocks_used += 3;
+    return choice;
+}
+
+
+/* Emit a checked conditional's true/false edges and true block. choice and
+ * condition are borrowed parser values. No binding is rebound by this emitter;
+ * shared big cells carry runtime state across whichever arm actually executes. */
+void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition)
+{
+    if (!failed)
+    {
+        fprintf(destination,
+                "    if %%v%d, ^loopif%d_%s, ^loopif%d_%s\n^loopif%d_yes:\n",
+                condition.value,
+                choice.choice,
+                condition.invert ? "no" : "yes",
+                choice.choice,
+                condition.invert ? "yes" : "no",
+                choice.choice);
+        source_debug_event("loop-if", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    path_closed = 0;
+}
+
+
+/* Finish a borrowed parser choice's true arm and begin its false arm. Closed
+ * true paths already have terminators and need no synthetic edge to the join. */
+void source_loop_if_else(SourceLoopChoice *choice)
+{
+    choice->yes_closed = path_closed;
+    if (!failed)
+    {
+        if (!path_closed)
+        {
+            fprintf(destination, "    jump ^loopif%d_join\n", choice->choice);
+        }
+        fprintf(destination, "^loopif%d_no:\n", choice->choice);
+    }
+    path_closed = 0;
+}
+
+
+/* Merge normal paths of one copied parser choice after false-arm scope exit.
+ * If both arms transferred, retain closed state and emit no unreachable join.
+ * Pop the lexical mutation restriction; no native resource or mutex is owned. */
+void source_loop_if_end(SourceLoopChoice choice)
+{
+    int both_closed = choice.yes_closed && path_closed;
+    if (!failed)
+    {
+        if (!path_closed)
+        {
+            fprintf(destination, "    jump ^loopif%d_join\n", choice.choice);
+        }
+        if (!both_closed)
+        {
+            fprintf(destination, "^loopif%d_join:\n", choice.choice);
+        }
+    }
+    path_closed = both_closed;
+    if (conditional_depth)
+    {
+        conditional_depth--;
+    }
+}
+
+
+/* Return a borrowed big SSA result from inside a loop. The ordinary function
+ * return emitter owns trace/type rules; mark this path closed so loop/if cleanup
+ * emits no trailing edge. No native owner escapes and no partial statement runs. */
+void source_loop_return(int value)
+{
+    source_loop_statement();
+    source_table_return(value);
+    if (!failed)
+    {
+        source_debug_event("loop-return", value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    path_closed = 1;
 }

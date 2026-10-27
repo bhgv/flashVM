@@ -195,3 +195,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [While and table for-in](../../doc/LOOPS.md) — executable loops, mutable big locals and a commented tutorial.
+
+
+[Loop if/else, break, continue and early return](../../doc/LOOP_CONTROL.md).

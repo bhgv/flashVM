@@ -194,3 +194,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [While и for-in по таблицам](../../doc/LOOPS.ru.md) — исполняемые циклы, изменяемые big-локальные и подробный пример.
+
+
+[If/else, break, continue и ранний return в циклах](../../doc/LOOP_CONTROL.ru.md).

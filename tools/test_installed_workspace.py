@@ -140,7 +140,7 @@ def table_packages(prefix, work, environment):
          prefix / "fir/examples/dis/main.c", *source_archives, "-lm", "-o", source_host], work, environment)
     # Branching tutorials have two trace cells followed by their two execution flags.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control"):
         tutorial_source = prefix / "fir/examples/tables" / (tutorial + ".b")
         if image.exists():
             image.unlink()

@@ -658,7 +658,8 @@ PRODUCTIONS
         SourceMark operation;
     .)
     (
-        TableForIn
+        LoopTransfer
+        | TableForIn
         | TableWhile
         | TableDelete<&value> ";"
         | Name<&name> (. target = source_mark(); .)
@@ -764,6 +765,8 @@ PRODUCTIONS
   /* Loops re-evaluate conditions and carry initialized big locals through cells.
    * Body-local declarations are retired before continuation. No implicit return. */
   TableWhile =
+    IF(Sym==whileSym && depth>=64) "while" (. capture(); source_scope_limit(); .)
+    | IF(Sym==whileSym && depth<64)
     (.
         int loop = 0;
         SourceCondition condition;
@@ -778,21 +781,25 @@ PRODUCTIONS
     "(" TableCondition<&condition> ")"
     (.
         source_restore(operation);
+        ++depth;
         source_loop_condition(loop, condition);
     .)
     "{" (. source_enter_scope(); .)
-    { TableStatement }
+    LoopBody
     "}"
     (.
         source_leave_scope();
         source_restore(operation);
         source_loop_end(loop);
+        --depth;
     .)
   .
 
   /* FlashVM extension: one immutable key snapshot, live typed values per pass.
    * Bindings shadow only after the receiver has evaluated in the outer scope. */
   TableForIn =
+    IF(Sym==forSym && depth>=64) "for" (. capture(); source_scope_limit(); .)
+    | IF(Sym==forSym && depth<64)
     (.
         int key = 0;
         int value = 0;
@@ -812,6 +819,7 @@ PRODUCTIONS
     "in" TableExpression<&table> ")"
     (.
         source_restore(operation);
+        ++depth;
         iteration = source_iteration_begin(table);
     .)
     "{"
@@ -819,12 +827,99 @@ PRODUCTIONS
         source_enter_scope();
         source_iteration_bind(iteration, key, value, keymark, valuemark);
     .)
-    { TableStatement }
+    LoopBody
     "}"
     (.
         source_leave_scope();
         source_restore(operation);
         source_iteration_end(iteration);
+        --depth;
+    .)
+  .
+
+  /* A transfer closes its path. No unreachable block is fabricated for suffixes. */
+  LoopBody =
+    {
+        (. source_loop_statement(); .)
+        ( LoopIf | LoopReturn | TableStatement )
+    }
+  .
+
+  /* A source return exits the function; it is not a jump to a loop continuation. */
+  LoopReturn =
+    (.
+        int value = 0;
+        SourceMark operation;
+    .)
+    "return"
+    (.
+        capture();
+        operation = source_mark();
+    .)
+    TableExpression<&value> ";"
+    (.
+        source_restore(operation);
+        source_loop_return(value);
+    .)
+  .
+
+  /* Only the innermost active loop is targeted; named transfers are not added. */
+  LoopTransfer =
+    "break"
+    (.
+        capture();
+        source_loop_transfer(0);
+    .)
+    ";"
+    | "continue"
+    (.
+        capture();
+        source_loop_transfer(1);
+    .)
+    ";"
+  .
+
+  /* Statement conditionals are scoped to loop bodies; function decisions still
+   * use the existing terminal-arm grammar. Empty false arms join normally. */
+  LoopIf =
+    IF(Sym==ifSym && depth>=64) "if" (. capture(); source_scope_limit(); .)
+    | IF(Sym==ifSym && depth<64)
+    (.
+        SourceLoopChoice choice;
+        SourceCondition condition;
+        SourceMark operation;
+    .)
+    "if"
+    (.
+        capture();
+        operation = source_mark();
+        choice = source_loop_if_begin();
+    .)
+    "(" TableCondition<&condition> ")"
+    (.
+        source_restore(operation);
+        ++depth;
+        source_loop_if_test(choice, condition);
+    .)
+    "{" (. source_enter_scope(); .)
+    LoopBody
+    "}"
+    (.
+        source_leave_scope();
+        source_restore(operation);
+        source_loop_if_else(&choice);
+    .)
+    [ "else"
+      ( LoopIf
+        | "{" (. source_enter_scope(); .)
+          LoopBody
+          "}" (. source_leave_scope(); .)
+      )
+    ]
+    (.
+        source_restore(operation);
+        source_loop_if_end(choice);
+        --depth;
     .)
   .
 

@@ -366,4 +366,37 @@ void source_iteration_end(SourceIteration iteration);
 /* Declare distinct iteration bindings at their authored marks in the body scope. */
 void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark);
 
+/* Parser-owned structured loop conditional, separate from terminal decisions. */
+typedef struct
+{
+    int choice;     /* Unique yes/no/join label identity. */
+    int yes_closed; /* True arm ended in break/continue on all its paths. */
+} SourceLoopChoice;
+
+/* Reject a statement after a path-closing loop transfer; no runtime work. */
+void source_loop_statement(void);
+
+
+/* Emit an innermost-loop transfer; is_continue selects cursor/test versus exit. */
+void source_loop_transfer(int is_continue);
+
+
+/* Promote join-carried big locals before parsing a loop-if condition. */
+SourceLoopChoice source_loop_if_begin(void);
+
+
+/* Emit checked bool condition edges for a borrowed structured choice. */
+void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition);
+
+
+/* Finish the true arm, record its closure, and begin the false arm. */
+void source_loop_if_else(SourceLoopChoice *choice);
+
+
+/* Merge only normal paths; omit a join if both arms transfer out. */
+void source_loop_if_end(SourceLoopChoice choice);
+
+/* Type-check a big function result and close this loop path with return. */
+void source_loop_return(int value);
+
 #endif
