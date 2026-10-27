@@ -99,7 +99,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_I32_SHR) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_STRING_LT) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -210,6 +210,15 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_EQ:
             result->big = a->big == b->big;
             break;
+        case O_STRING_LT:
+        {
+            /* Slices borrow exact byte extents and need not end in NUL.
+             * Canonical UTF-8 preserves scalar order; memcmp uses unsigned bytes. */
+            size_t common = a->text_size < b->text_size ? a->text_size : b->text_size;
+            int compared = memcmp(a->text, b->text, common);
+            result->big = compared < 0 || (compared == 0 && a->text_size < b->text_size);
+            break;
+        }
         case O_STRING_EQ:
             result->big = a->text_size == b->text_size && !memcmp(a->text, b->text, a->text_size);
             break;

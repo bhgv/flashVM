@@ -136,9 +136,12 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->a = in->b = -1;
                 changed = 1;
             }
-            else if (in->op == O_STRING_EQ && a->op == O_STRING && b->op == O_STRING)
+            else if ((in->op == O_STRING_EQ || in->op == O_STRING_LT) && a->op == O_STRING && b->op == O_STRING)
             {
-                in->integer = strcmp(a->text, b->text) == 0;
+                /* Valid UTF-8 byte ordering matches Unicode scalar ordering. No locale,
+                 * case folding or normalization participates in either comparison. */
+                int compared = strcmp(a->text, b->text);
+                in->integer = in->op == O_STRING_LT ? compared < 0 : compared == 0;
                 in->op = O_BOOL;
                 in->a = in->b = -1;
                 changed = 1;

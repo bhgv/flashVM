@@ -120,7 +120,8 @@ static const char *const ops[] = {"const.i32",
                                   "string.concat",
                                   "string.eq",
                                   "i32.shl.checked",
-                                  "i32.shr.checked"};
+                                  "i32.shr.checked",
+                                  "string.lt"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -189,7 +190,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_I32_SHR || (unsigned)in->type > T_BOOL_SLOT || in->block < 0 ||
+        if ((unsigned)in->op > O_STRING_LT || (unsigned)in->type > T_BOOL_SLOT || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -214,10 +215,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN || in->op == O_VALUE_TYPE ||
                 in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT || in->op == O_BIG_NEG ||
                 in->op == O_BIG_NOT;
-        binary = in->op == O_I32_SHL || in->op == O_I32_SHR || in->op == O_STRING_EQ || in->op == O_STRING_CONCAT ||
-                 in->op == O_I32_DIV || in->op == O_I32_MOD || in->op == O_STRING_AT || in->op == O_STRING_SLICE ||
-                 in->op == O_BOOL_STORE || (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND ||
-                 in->op == O_TABLE_INDEX || (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) ||
+        binary = in->op == O_STRING_LT || in->op == O_I32_SHL || in->op == O_I32_SHR || in->op == O_STRING_EQ ||
+                 in->op == O_STRING_CONCAT || in->op == O_I32_DIV || in->op == O_I32_MOD || in->op == O_STRING_AT ||
+                 in->op == O_STRING_SLICE || in->op == O_BOOL_STORE || (in->op >= O_ADD && in->op <= O_ASADD) ||
+                 in->op == O_SEND || in->op == O_TABLE_INDEX || (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) ||
                  (in->op >= O_BIG_DIV && in->op <= O_BIG_XOR) || in->op == O_BIG_SHL || in->op == O_BIG_SHR ||
                  in->op == O_BIG_LT || in->op == O_BIG_EQ || in->op == O_KEYS_AT || in->op == O_TABLE_STORE ||
                  in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
@@ -480,6 +481,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             }
             expected = T_I32;
             break;
+        case O_STRING_LT:
         case O_STRING_EQ:
             if (a != T_STRING || c != T_STRING)
             {

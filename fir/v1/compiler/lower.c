@@ -896,8 +896,9 @@ int source_table_not(int value)
 
 /* Materialize a source comparison with Inferno precedence and exact operand types.
  * left/right are evaluated SSA values, relation is a copied parser enum. Same-type
- * int operands widen exactly; bool/string admit equality only. Inverted relations use
- * normalized scalar negation, never extra owner reads or duplicate expressions. */
+ * int operands widen exactly; strings admit scalar ordering, bool equality only.
+ * Inverted relations use normalized scalar negation, never extra owner reads
+ * or duplicate expressions. */
 int source_table_relation(int left, int right, SourceRelation relation)
 {
     FirType kind;
@@ -908,10 +909,13 @@ int source_table_relation(int left, int right, SourceRelation relation)
         return 0;
     }
     kind = table_values[left];
-    if (kind == T_STRING && table_values[right] == T_STRING && equality)
+    if (kind == T_STRING && table_values[right] == T_STRING)
     {
-        int same = table_operation(T_BOOL, "string.eq", left, right);
-        return relation == SOURCE_NOT_EQUAL ? source_table_not(same) : same;
+        int swap = relation == SOURCE_GREATER || relation == SOURCE_LESS_EQUAL;
+        int invert = relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
+        int compared =
+            table_operation(T_BOOL, equality ? "string.eq" : "string.lt", swap ? right : left, swap ? left : right);
+        return invert ? source_table_not(compared) : compared;
     }
     if (kind != table_values[right] || (kind != T_I64 && kind != T_I32 && !(kind == T_BOOL && equality)))
     {
@@ -1154,9 +1158,16 @@ int source_table_convert(int value, int target)
     FirType type = table_values[value];
     if (target == 2)
     {
+        if (type == T_STRING || type == T_TABLE_KEY)
+        {
+            /* Parse the complete signed64 decimal/key value once, before total
+             * signed32 narrowing. Existing conversion errors remain observable. */
+            value = source_table_convert(value, 0);
+            return table_operation(T_I32, "value.int", value, -1);
+        }
         if (type != T_BOOL && type != T_I32 && type != T_I64)
         {
-            reject("int conversion requires int or big");
+            reject("int conversion requires int, big, string or snapshot key");
         }
         return table_operation(T_I32, "value.int", value, -1);
     }

@@ -84,3 +84,5 @@ build/runtime/disvm --no-jit --quantum 1 --inspect-words 0 4 build/int.dis
 Версия 0.28: [конкатенация/равенство строк и побитовые int](TEXT_BITS.ru.md).
 
 Версия 0.29: [проверяемые int-сдвиги и составные обновления](INT_SHIFTS.ru.md).
+
+Версия 0.30: [порядок Unicode и проверяемые int-cast строк/ключей](TEXT_VALUES.ru.md).

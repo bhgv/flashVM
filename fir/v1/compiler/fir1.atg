@@ -266,6 +266,7 @@ PRODUCTIONS
     | "i32.mod.signed" (. fir_build_op(O_I32_MOD); .) A "," B
     | "i32.shl.checked" (. fir_build_op(O_I32_SHL); .) A "," B
     | "i32.shr.checked" (. fir_build_op(O_I32_SHR); .) A "," B
+    | "string.lt" (. fir_build_op(O_STRING_LT); .) A "," B
     | "string.eq" (. fir_build_op(O_STRING_EQ); .) A "," B
     | "string.concat" (. fir_build_op(O_STRING_CONCAT); .) A "," B
     | "string.len" (. fir_build_op(O_STRING_LEN); .) A

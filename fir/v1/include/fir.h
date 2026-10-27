@@ -138,7 +138,8 @@ typedef enum
     O_STRING_CONCAT, /* Concatenate rooted UTF-8 strings; allocates, may throw. */
     O_STRING_EQ,     /* Compare string contents without implicit conversion. */
     O_I32_SHL,       /* Checked int left shift; count 0..31, result wraps to signed32. */
-    O_I32_SHR        /* Checked arithmetic int right shift; count 0..31. */
+    O_I32_SHR,       /* Checked arithmetic int right shift; count 0..31. */
+    O_STRING_LT      /* Unicode scalar lexicographic ordering without normalization. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */

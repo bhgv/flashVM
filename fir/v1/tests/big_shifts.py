@@ -172,7 +172,7 @@ def main():
             if image.read_bytes() != prior_image:
                 raise RuntimeError('rejected public FIR shift changed the output image')
         # Reject wrong static kinds before publication, including an implicit big count.
-        for bad in ['return 1 << 1;', 'return (int 1) << 1;', 'return int "1";',
+        for bad in ['return 1 << 1;', 'return (int 1) << 1;', 'return int (table of big);',
                     't := table of big; t.x = int 1; return t.x;', 'return int 1;']:
             source.write_text('implement S; S: module {value: fn(): big;}; value(): big {'+bad+'}')
             fir.write_bytes(b'prior FIR')

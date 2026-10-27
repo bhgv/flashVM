@@ -8,6 +8,7 @@
 
 enum
 {
+    BLTC = 107,            /* Unicode scalar lexicographic string comparison. */
     BEQC = 105,            /* Compare rooted string contents, including byte/rune representations. */
     ADDC = 83,             /* Allocate a concatenated string with both source roots live. */
     LENC = 84,             /* Native Unicode string scalar count. */
@@ -359,7 +360,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_I32_SHR) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_LT) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -452,7 +453,6 @@ static void normalize_int(Emitter *e, unsigned source, unsigned destination)
     operand(e->body, destination);
     e->count++;
 }
-
 
 /* Emit a checked signed32 shift using existing NC64 big kernels. Guard branches
  * reject both negative and >=32 counts before payload publication. Invalid counts
@@ -574,6 +574,7 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
+        case O_STRING_LT:
         case O_STRING_EQ:
         {
             unsigned start = e->count;
@@ -581,11 +582,12 @@ static void body(Emitter *e, FirModule *module, int measure)
             /* Compare rooted strings or signed scalars before publishing true. Middle mode is FP; the
              * branch destination is an instruction PC rather than an address/byte offset. */
             octet(e->body,
-                  in->op == O_STRING_EQ ? BEQC
-                  : in->op == O_BIG_LT  ? BLTL
-                  : in->op == O_BIG_EQ  ? BEQL
-                  : in->op == O_LT      ? BLTW
-                                        : BEQW);
+                  in->op == O_STRING_LT   ? BLTC
+                  : in->op == O_STRING_EQ ? BEQC
+                  : in->op == O_BIG_LT    ? BLTL
+                  : in->op == O_BIG_EQ    ? BEQL
+                  : in->op == O_LT        ? BLTW
+                                          : BEQW);
             octet(e->body, MIDDLE_FRAME | (FP << 3) | IMM);
             operand(e->body, b);
             operand(e->body, a);

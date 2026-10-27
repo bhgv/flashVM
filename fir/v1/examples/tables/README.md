@@ -140,3 +140,16 @@ commented; expected trace cells are 42/0 and execution flags 1/0.
 count errors, FIR effects, eight-instruction Dis expansion and current limits.
 Installed SDK acceptance uses freshly linked source/FIR C99 clients, original
 and optimized IR, interpreter and native JIT, with one-instruction GC quanta.
+
+## Ordered text and parsed editor fields (0.30)
+
+[text-values.b](text-values.b) snapshots a decimal settings key, deletes the
+original and converts the retained key to int. A Unicode scalar slice yields
+42 independently. Filename comparison demonstrates lexicographic rather than
+natural sorting. A lazy bool condition checks the result and unchanged key kind.
+Each step is commented. Expected traces: 42/0; execution flags: 1/0.
+
+[Detailed guide and commands](../../doc/TEXT_VALUES.md) explains all six string
+relations, strict decimal big parsing before signed32 narrowing, ownership,
+errors and limits. Relocated SDK acceptance relinks fresh source/FIR C99 clients
+and executes original/optimized IR in interpreter and JIT modes.

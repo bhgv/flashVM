@@ -62,3 +62,6 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 Compiler 0.29 / Компилятор 0.29: [checked int shifts](INT_SHIFTS.md),
 [проверяемые int-сдвиги](INT_SHIFTS.ru.md), big/table source profile and raw FIR.
 Live checked shifts are Dis/reference-only; homogeneous int/AS source profiles are unchanged.
+
+Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int casts](TEXT_VALUES.md),
+[порядок строк и проверяемые int-cast](TEXT_VALUES.ru.md), in the typed big/table source profile.

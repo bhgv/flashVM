@@ -7,6 +7,7 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_STRING_LT:
     case O_STRING_EQ:
     case O_STRING_LEN:
         return FIR_READS_MEMORY;

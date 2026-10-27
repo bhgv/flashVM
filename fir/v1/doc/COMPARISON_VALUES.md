@@ -25,7 +25,7 @@ extensions; this source change is not sent to Inferno.
 | int / int | `<`, `>`, `<=`, `>=`, `==`, `!=` | bool |
 | bool / bool | `==`, `!=` | bool |
 
-Mixed kinds, ordered bools, ordered strings/table equality and implicit truthiness fail
+Mixed kinds, ordered bools, table equality and implicit truthiness fail
 statically. `!` accepts bool only. Use explicit casts for mixed numeric inputs.
 There is still no bool declaration keyword in this bounded Limbo profile;
 comparison/membership/deletion results may be inferred, copied or explicitly
@@ -100,3 +100,5 @@ UTF-8 source spans. ARM64 instruction-emulation evidence remains separate from
 hardware execution and full IDE/debugger acceptance.
 
 Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).
+
+Compiler 0.30: [Unicode ordering and checked text/key-to-int casts](TEXT_VALUES.md).

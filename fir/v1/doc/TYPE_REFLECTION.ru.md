@@ -79,3 +79,5 @@ Unicode, бинарный текст на границе нативного мо
 [Точная арифметика big и приоритет префиксов](BIG_ARITHMETIC.ru.md).
 
 [FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).
+
+Версия 0.30: [порядок Unicode и проверяемые int-cast строк/ключей](TEXT_VALUES.ru.md).

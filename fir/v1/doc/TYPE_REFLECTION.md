@@ -78,3 +78,5 @@ source occurrences, forged owners and collection between each Dis instruction.
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
 
 [FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).
+
+Compiler 0.30: [Unicode ordering and checked text/key-to-int casts](TEXT_VALUES.md).

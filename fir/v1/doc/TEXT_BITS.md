@@ -29,7 +29,7 @@ valid := (old == "line 42") && (label != old);
 Operands evaluate once, left to right. Compound updates capture the old value,
 evaluate the RHS, then rebind the local after success. They are not remote atomic
 transactions. Numeric/text or int/big mixtures require explicit conversions.
-String ordering and table equality remain rejected. Compiler 0.29 adds checked int shifts;
+Compiler 0.30 adds string ordering; table equality remains rejected. Compiler 0.29 adds checked int shifts;
 the existing checked big shifts are unchanged. This does not extend the separate
 homogeneous int or AS numeric source profiles. AS tobig/tostring extensions retain
 their own syntax; the examples above use Limbo casts.
@@ -94,3 +94,5 @@ tutorial and checks both VM modes. ARM64 hardware acceptance is separate from
 existing instruction-emulation checks.
 
 Compiler 0.29: [checked int shifts and compound updates](INT_SHIFTS.md).
+
+Compiler 0.30: [Unicode ordering and checked text/key-to-int casts](TEXT_VALUES.md).

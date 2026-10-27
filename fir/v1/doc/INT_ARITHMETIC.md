@@ -85,3 +85,5 @@ VM modes. Physical ARM64 execution and full Inferno boot remain separate accepta
 Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).
 
 Compiler 0.29: [checked int shifts and compound updates](INT_SHIFTS.md).
+
+Compiler 0.30: [Unicode ordering and checked text/key-to-int casts](TEXT_VALUES.md).
