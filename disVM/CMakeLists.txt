@@ -503,3 +503,12 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND AND
   set_tests_properties(disvm_arm64_cached_fast_spans PROPERTIES TIMEOUT 120
     ENVIRONMENT "BRIDGE_BACKEND=arm64;BRIDGE_PREFLIGHT_ONLY=1;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# ALT/NBALT complete native tails must clean owned registrations after C errors.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND AND
+   CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64|aarch64|arm64|ARM64)$")
+  add_test(NAME disvm_channel_queues_complete_jit COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/upstream/libinterp/tests/channel-queues.py")
+  set_tests_properties(disvm_channel_queues_complete_jit PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;QUEUE_JIT_ROUTE=1")
+endif()

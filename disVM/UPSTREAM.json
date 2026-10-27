@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "92830151d9b130e6fea1f122c688165eee743fea",
+  "revision": "1bd39b084006caabda0b712d3b011975c5241814",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -587,7 +587,8 @@
     "libinterp/tests/raise-native.c",
     "libinterp/tests/raise-native.py",
     "libinterp/tests/README.exception-frames.md",
-    "libinterp/tests/README.cache-bindings.md"
+    "libinterp/tests/README.cache-bindings.md",
+    "libinterp/tests/README.alt-power.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -663,7 +664,7 @@
     "upstream/lib9/vsnprint.c": "bfbdb5a641f5b54eecd02f673a0c59d3ca1006e4c2e2d97d4b663ec1379894d1",
     "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
     "upstream/libinterp/NOTICE": "435c62d6c5f5a58b1aeb1683e5b69e172f37336f8e227d67f3fdbfc7668d7663",
-    "upstream/libinterp/alt.c": "964d7cb4e544aeb6d30bbf36848b73a13fcadb89871835d3d6ae2dfd7fe6164d",
+    "upstream/libinterp/alt.c": "2eb707d8f7e430353d870297c1a520257e367010fa78d69af0bd3dbaa74f4dd2",
     "upstream/libinterp/amd64-emit.h": "18d60a88f54c24ac4e66f148f58560543bb6b11ba985ab8df12a96356254a71c",
     "upstream/libinterp/arm64-emit.h": "60cfb53b15713be0249a19074f4b03dbca6175b994cdc3a850d60d33fdf29e18",
     "upstream/libinterp/comp-386.c": "bcccc6b6c374e9a2d28013f653562a40b465811272778b4581ba2c3fd0aaea76",
@@ -699,6 +700,7 @@
     "upstream/libinterp/string.c": "99c655d15682589ba0c583b72ac8adecc78dc756cf659f9852b0ec6bcfd8c67b",
     "upstream/libinterp/sysmod.h": "1735a5fd3ed92c71a4e0143465908f2988025849e0a858826f416136720bf044",
     "upstream/libinterp/tab.h": "2fae3d5b43ed61d560c09c96fa52d379c3e9fea8ff9ad0e5ebf953354c982f0e",
+    "upstream/libinterp/tests/README.alt-power.md": "b873ebef5ce13eb75a2b658785d8218e3ba0adc901e86094e6747c32c484f029",
     "upstream/libinterp/tests/README.append-preflight.md": "1855fbed2b3820392fcc80590de949ed0c03207e3ba552d6488e548a5490c74f",
     "upstream/libinterp/tests/README.append-spans.md": "7fb311af2aec203a4b3e1103a244e4fa0636091b736f8c2ea525dcb24967d005",
     "upstream/libinterp/tests/README.arithmetic-slot.md": "94efff6dab3c2cc00904e645a5e9b15bb9bcaa84e23b9078311bbe484c8f5473",
@@ -860,12 +862,12 @@
     "upstream/libinterp/tests/call-slots.py": "f655dcf26511d60879fa461fd57eb1dc1efa02d7090e916f11e72ed8feded9ba",
     "upstream/libinterp/tests/channel-capture-native.c": "7ea89172056fa0eb0addc2bfb454ded96c95b12fcd4acb8fcd2a36e70466c734",
     "upstream/libinterp/tests/channel-capture-native.py": "00ed7fdbb3b5baa5b2c0064b9d622c56c0137fa833a2df8dd60d91d42d6a4c22",
-    "upstream/libinterp/tests/channel-queues.c": "b1b39088b521f034a47ed2f3c697a146443151315aa7bc96d6f2b77b8a68181c",
-    "upstream/libinterp/tests/channel-queues.py": "38914074c2466e40a29d94bdb198ea0c63a1d42ddb0194632867582eb3db1847",
+    "upstream/libinterp/tests/channel-queues.c": "14d898803b1b2017c52a122556ccd76a623f1b24e4e662d194e1d5d226359dad",
+    "upstream/libinterp/tests/channel-queues.py": "174beee9d842eb1a92d9a2398e42a0f1156f372956cf98abbd8e77e4b9101d1e",
     "upstream/libinterp/tests/channel-retains.c": "6f7d3227560745eabdd38edd10f1153c490d00f94e314a73b47d789e7099e9c4",
     "upstream/libinterp/tests/channel-retains.py": "a2ec54b0ebecd757de6749b2229ccea24e4f5eb296fe466fe9d2c987dd2c5ad0",
-    "upstream/libinterp/tests/channel-transfers.c": "8865a7ca3f1cc24e12f0e3f51dc4b40e77dba18bdaf2d00735512e611c603f91",
-    "upstream/libinterp/tests/channel-transfers.py": "97ebf528d9bed5fb4c5732fc333a02420ccaf71730d974bf9a729d118e4f14c3",
+    "upstream/libinterp/tests/channel-transfers.c": "7d4ddbb7b26174ad899da241ed614fa2f39891f17391e3ccd9b7f0f2ab1d1176",
+    "upstream/libinterp/tests/channel-transfers.py": "d353c14d8f27dd7eb6e617ffdca8f5444894fa747c9a1f775f76dda51ee28d0e",
     "upstream/libinterp/tests/channels.c": "bbee3ed27f8a994daf8203ba9aaedfc2c334811cddb9fb55933acb3c73be7165",
     "upstream/libinterp/tests/channels.py": "52aff0bbc9985d109bbbd44ea2f54bffc5b85ef7c4c66214232c9bea08de56aa",
     "upstream/libinterp/tests/clone-owners.c": "ac2c029b16f97548244b04ec77c082996dff1774f1b3e8c4be723fdbb2a3da0c",

@@ -1,3 +1,24 @@
+# ALT bounds and communication-error registration cleanup
+
+Final pin: **1bd39b084006caabda0b712d3b011975c5241814**.
+Exact selections: **623 core/reference + 206 bootstrap files**. ALT/NBALT reject
+wrapping fixed headers and incomplete result WORD spans before registration.
+A protected selected transfer cancels this alt's registrations on error before
+rethrowing, preserving unrelated waiters and FIFO order. Already performed
+payload operations, peer wakeups and selection/index stores are not rolled back.
+[Upstream contract](upstream/libinterp/tests/README.alt-power.md).
+
+Owning ASan/UBSan NDEBUG matrices passed **243,860 direct-C + 243,860 complete-JIT
+queue cases**, plus **599,408 payload transfer cases**. A registered core test
+now repeats the complete ALT/NBALT native-tail route on AMD64/ARM64 hosts.
+The full 183-test runtime pass used 9283015 with compiler 0.46; this late import
+is rebuilt and tested separately for channels, errors, scalar compilation and
+generation freshness. Prior reverse fixes remain upstream; no new reverse defect
+was found. The optimizer change stays FlashVM-only. Native host testing is
+AMD64; physical ARM64 and the full native ABI remain separate work.
+
+---
+
 # Captured stack teardown roots and packed diagnostic descriptors
 
 Tested Inferno experiment pin: **92830151d9b130e6fea1f122c688165eee743fea**.
