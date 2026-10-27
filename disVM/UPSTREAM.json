@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "c2a08e302b766b9299a79395ce6e67302de41146",
+  "revision": "6c468ef5ecf203c2ca4b0e7eef435a145399b3d0",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -586,7 +586,8 @@
     "libinterp/tests/README.exception-publication.md",
     "libinterp/tests/raise-native.c",
     "libinterp/tests/raise-native.py",
-    "libinterp/tests/README.exception-frames.md"
+    "libinterp/tests/README.exception-frames.md",
+    "libinterp/tests/README.cache-bindings.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -668,7 +669,7 @@
     "upstream/libinterp/comp-386.c": "bcccc6b6c374e9a2d28013f653562a40b465811272778b4581ba2c3fd0aaea76",
     "upstream/libinterp/comp-amd64.c": "c0e301955fc750c415ef1a0f558eeb453e9e100ce17f55d870a1ab844366567b",
     "upstream/libinterp/comp-arm64.c": "9709aeb2e1d32d264bf21f48735d822f4e70817c969a220443d7de848c054662",
-    "upstream/libinterp/comp-leaf64.h": "806357bfcf0a5ba3a2868534bd8a76043fd9288b379bc4d2b246f285f2aa9edf",
+    "upstream/libinterp/comp-leaf64.h": "053fab599840e8a783a4b0362edad02e25421248611d41089bdf44deeae1c0c6",
     "upstream/libinterp/comp-riscv.c": "0d07498c440893696eec72c3d5f3da515bfd3aee40187bcfd48bc41a5733b19c",
     "upstream/libinterp/comp-riscv64.c": "04ef751c39044fe7e32a4f5082bf8e411f67f72b4f2707be9f90d6e9df861c3e",
     "upstream/libinterp/conv.c": "dbba6f322e1bfa7473122880deed7901f3b687d4e266dcefedef2d45d53b20ae",
@@ -710,6 +711,7 @@
     "upstream/libinterp/tests/README.branch-slot.md": "bf5af3deb46fa14011a70b17aab89bde7ca1e2d15d6b8f094365ac11e4629360",
     "upstream/libinterp/tests/README.buffered-transfer.md": "c685e66a4da3803ee71be68762dac2c684b1d5b57f21d868b7429164f93109b8",
     "upstream/libinterp/tests/README.byte-string-native.md": "85d4af642453703dfc00b4d715b5e7fa5f6032dab4c25908c7481496ab6342df",
+    "upstream/libinterp/tests/README.cache-bindings.md": "505edecf6220bf1b8a60c56d37912b2ce5dac97f81899d78d66fb068948565f8",
     "upstream/libinterp/tests/README.call-targets.md": "6c1fdec7c48f3be06a25fb37374101ad92f002b4b7c5e15a2b5c57de8c149987",
     "upstream/libinterp/tests/README.cast-ranges-stat-slots.md": "25ebb4045c36e1c6352da2768ea45d90f86bfbd6ef71210bc014d8fbf93a7df7",
     "upstream/libinterp/tests/README.clone-owners.md": "f721cdd7e66d026a3619077252100412a148907780d726b1f004abc230125b49",
@@ -741,7 +743,7 @@
     "upstream/libinterp/tests/README.integer-branch-preflight.md": "a037d907292475473bdaf113b5bafc35f32cc7d995fd828900a5a4f8f08180f2",
     "upstream/libinterp/tests/README.integer-format.md": "2d1b25850b89cb29e346ab0532e734d19fbfb976dac5144f15d7988a89ea431f",
     "upstream/libinterp/tests/README.integer-slot-preflight.md": "1efd6c318d0776695a1731ac622dc76a153db6b23023bcd980a77aa0c8244e6d",
-    "upstream/libinterp/tests/README.jit-coverage.md": "fd90e4d7287b123b90b7cab670055532c535d16b3e26943066deab4d06f64de1",
+    "upstream/libinterp/tests/README.jit-coverage.md": "49fc6df56a01911fa5c28a2a772ab583e528bc64d84f33fac7512662ba030c0e",
     "upstream/libinterp/tests/README.jit-readiness.md": "b8dd74b5d8c847c267425beaf8cd82c0cec237ccf10c62850dbd1c88830f9a5c",
     "upstream/libinterp/tests/README.leaf-layout-fixture.md": "edc11f04231f9f0e888b7a8fbd0a6d8b66fbfb5cfae57d6b0f72b95693eb43d6",
     "upstream/libinterp/tests/README.list-length.md": "790627f5a08f1e3dfd8a7d650c2701a977cdecd876d033ad3d179750860f254e",
@@ -938,7 +940,7 @@
     "upstream/libinterp/tests/jit-coverage.py": "c915b7140daf17701d606e30c4d09b1853110d25c46a67aef0c521ccb70a8b69",
     "upstream/libinterp/tests/jit-dispatch-coverage.py": "e0ca932bcbeda8c4a3724148ec2f2a3282c544a8772a4bceb61933e74441f640",
     "upstream/libinterp/tests/jit-dispatch-jit.py": "e01821a4300c55b9a1cc33fdac2b083ece1ee3157b6bf87b6a5ce5c688e00bc4",
-    "upstream/libinterp/tests/jit-dispatch-native.c": "e19a69643513e21676e51f8fedc66ff53f09bbb64c5fedc6c0a3df9be6105f99",
+    "upstream/libinterp/tests/jit-dispatch-native.c": "b849169e27b341b9f307d599a61d2f3feb783666aff2db38dd85132ac8f67f6a",
     "upstream/libinterp/tests/jit-dispatch-native.py": "3af10827d244b6f1ae9272f0c9c93a64e54639dd00d228d7b74d78d8b4524a0c",
     "upstream/libinterp/tests/jit-readiness.csv": "483b608fc85e6b53bb69b3ee97677902d6ab0a6af509106ce2fd9352e70e2ad8",
     "upstream/libinterp/tests/jit-readiness.py": "302517c0ab71a5a6a98fcaf0623f61010a5e2c2ea639530bfd70037f92c2061a",

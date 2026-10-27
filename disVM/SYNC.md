@@ -1,3 +1,22 @@
+# Exact JIT cache binding and code-image refresh
+
+Final tested pin: **6c468ef5ecf203c2ca4b0e7eef435a145399b3d0**.
+Exact snapshots: **622 core/reference + 206 bootstrap files**. Reused decoded-leaf
+caches must retain canonical opcode entry/tail order, exact emitted bytes, size
+and compiler callback identities. An in-range entry for the wrong opcode no
+longer passes reuse. Validation uses bounded private staging on cache reuse,
+not on each executed instruction.
+[Upstream contract](upstream/libinterp/tests/README.cache-bindings.md).
+
+Owning ASan/UBSan native WORD32/64 dispatch/cache/integration and ARM64 host-side
+compiler matrices pass. The full 179-test runtime pass used the preceding
+aligned-owner snapshot c2a08e3 with compiler 0.44; after this late import the
+runtime is rebuilt and targeted dispatch/ownership/compiler checks are rerun.
+Prior reverse fixes remain upstream; no new reverse defect was found. The
+FlashVM source extension remains outside Inferno.
+
+---
+
 # Heap identity alignment and priority owner JIT guards
 
 Inferno experiment pin: **c2a08e302b766b9299a79395ce6e67302de41146**.
