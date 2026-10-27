@@ -71,3 +71,6 @@ No table-language extension from this series is exported to Inferno.
 [Checked big division and bit operations](BIG_BITWISE.md).
 
 [FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).
+
+
+[Resized assignments / присваивание срезам](SLICE_ASSIGNMENT.md).

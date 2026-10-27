@@ -17,31 +17,12 @@ def main():
         component / "compiler/dis.c": package / "source/dis.c",
         component / "compiler/dis_table.c": package / "source/dis_table.c",
     }
-    for name in (
-        "DIS_BACKEND.md",
-        "DIS_BACKEND.ru.md",
-        "TABLES.md",
-        "TABLES.ru.md",
-        "TABLES_DIS.md",
-        "TABLES_DIS.ru.md",
-        "EXTENSIONS.md",
-        "EXTENSIONS.ru.md",
-        "TYPE_REFLECTION.md",
-        "TYPE_REFLECTION.ru.md",
-        "BIG_ARITHMETIC.md",
-        "BIG_ARITHMETIC.ru.md",
-        "BIG_BITWISE.md",
-        "BIG_BITWISE.ru.md",
-        "BIG_CFG.md",
-        "BIG_CFG.ru.md",
-        "BIG_DECISIONS.md",
-        "BIG_DECISIONS.ru.md",
-        "TABLE_CFG.md",
-        "TABLE_CFG.ru.md",
-        "BIG_SHIFTS.md",
-        "BIG_SHIFTS.ru.md",
-    ):
-        pairs[component / "doc" / name] = package / "docs" / name
+    # Register every guide actually copied by the installer. Keeping a second
+    # manual filename list let newer guides retain broken source-relative links.
+    for source in sorted((component / "doc").glob("*.md")):
+        destination = package / "docs" / source.name
+        if destination.is_file():
+            pairs[source] = destination
     for name in ("API.md", "API.ru.md"):
         pairs[component / "compiler" / name] = package / "docs" / name
     for source in (component / "examples/dis").iterdir():

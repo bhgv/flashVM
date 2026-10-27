@@ -71,3 +71,6 @@ C-ядро хранит скопированные ключи и big, но не 
 [Проверяемое деление big и побитовые операции](BIG_BITWISE.ru.md).
 
 [FIR 0.20: typed big shifts and int / Типизированные сдвиги и int](BIG_SHIFTS.md) · [Русский](BIG_SHIFTS.ru.md).
+
+
+[Resized assignments / присваивание срезам](SLICE_ASSIGNMENT.ru.md).

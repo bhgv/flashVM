@@ -25,7 +25,9 @@ accounting; sparse-key collisions are rejected without destroying dictionary dat
 
 These additions do not yet provide per-object locking inside DisVM array/string
 storage, remote operation lifetime integration, scheduler-aware native waits,
-Limbo/FIR resized slice assignment, or regexp slices/capture replacement. Plain
+resized native array assignment, or regexp slices/capture replacement.
+[Limbo/FIR table and rune-string assignments](../fir/v1/doc/SLICE_ASSIGNMENT.md)
+are now implemented through the checked builtin interface. Plain
 Fht clients still serialize their own access. Existing native Dis array views
 continue sharing storage under their established rules. Do not treat a host guard
 library as completed VM integration or a new language opcode.

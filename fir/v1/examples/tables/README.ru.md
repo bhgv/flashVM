@@ -181,3 +181,6 @@ positions. Every step is commented; expected trace cells: 42/0, flags: 1/0.
 [RU: руководство и команды](../../doc/RELATIVE_SEQUENCES.ru.md).
 Installed SDK checks use fresh C99 source/FIR clients, original/optimized IR
 and both actual VM modes. The native array tutorial is linked from the guide.
+
+
+[Resized assignments / присваивание срезам](../../doc/SLICE_ASSIGNMENT.ru.md): `splice.b`, expected / результат `42`.

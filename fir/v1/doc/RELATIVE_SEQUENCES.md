@@ -91,3 +91,6 @@ build/runtime/disvm --jit --quantum 1 build/runtime/relative-test.dis
 Expected source tutorial cells: 42,0; execution flags: 1,0. The native module prints
 PASS after ownership checks. Invalid bounds are tested in separate processes in
 both dispatch modes, including a runtime-produced minimum signed WORD.
+
+
+[Resized assignments / присваивание срезам](SLICE_ASSIGNMENT.md).

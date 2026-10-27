@@ -5,8 +5,8 @@
 `fht_splice(destination, first, end, replacement)` replaces a signed range with
 all dense values of replacement. Negative bounds follow relative sequence rules:
 negative end is inclusive, so `[0:-1]` replaces the entire prefix. Positive end
-is exclusive. The API is available to C clients; Limbo/FIR slice assignment is
-not yet wired to it. This does not change native Dis array slice-store behavior.
+is exclusive. The API is available to C clients and to the
+[Coco/R Limbo/FIR slice-assignment path](../../fir/v1/doc/SLICE_ASSIGNMENT.md). This does not change native Dis array slice-store behavior.
 
 For example, values `[1, 2, 3, 4]` replaced at `[1:3]` by `[9]` become
 `[1, 9, 4]`. Inserting that result into itself at `[1:1]` becomes
