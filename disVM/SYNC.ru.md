@@ -1,3 +1,17 @@
+# Host extensions / Расширения хоста — v0.1649
+
+Pinned Inferno remains **637d618e40fb6efb69cb0c147efb81981ee95c63**, unchanged.
+Relative indexes and inclusive negative-end slices are FlashVM host/compiler
+extensions. Source transformations retain exact checked anchors; upstream files
+remain byte-exact. Snapshots: 560 core/reference + 174 bootstrap files.
+[EN](../fir/v1/doc/RELATIVE_SEQUENCES.md) / [RU](../fir/v1/doc/RELATIVE_SEQUENCES.ru.md).
+
+Broker metadata synchronization is not payload synchronization. The requested
+same-operation reentrant lock is specified in [the contract](OWNED_OPERATIONS.md),
+but is not claimed as implemented. Current VM ownership serializes C operations.
+
+---
+
 # Synchronization / Синхронизация — v0.1648
 
 Checked Inferno experiment at **637d618e40fb6efb69cb0c147efb81981ee95c63**.

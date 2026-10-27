@@ -102,3 +102,5 @@ broker, and exercise timeout ownership, generation fencing and queue saturation.
 ASan/UBSan are supported. `DVM_BROKER_SANDBOX_LSAN=ON` disables only test-process
 LSan inspection where `/proc` task scanning is unavailable; it does not establish
 leak-sanitizer acceptance on that host. Production code has no sanitizer hooks.
+
+[Owned long-operation lock contract](../OWNED_OPERATIONS.md): broker metadata locking is separate from payload protection.
