@@ -1,3 +1,21 @@
+# Heap identity alignment and priority owner JIT guards
+
+Inferno experiment pin: **c2a08e302b766b9299a79395ce6e67302de41146**.
+Exact selections: **621 core/reference + 206 bootstrap files**. MOVP, SELF,
+HEADP and TAIL reject misaligned Heap identities before touching owner metadata;
+packed operand slots remain supported. AMD64/ARM64 source-owner fast paths now
+check alignment before retaining, marking or publishing an owner. Distinct old
+destination owners still decline safely to C.
+
+[Upstream contract and matrices](upstream/libinterp/tests/README.owner-preflight.md).
+Owning native ASan/UBSan WORD32/64 and AMD64/ARM64 guest matrices pass, including
+complete JIT entries and actual C fallback. No new reverse defect was found;
+prior reverse fix 51d44da remains included. FlashVM compiler 0.44 deferred-step
+source semantics remain outside Inferno. This does not claim completion of the
+64-bit compiler/frame ABI or a physical ARM64 host run.
+
+---
+
 # Exception destination validation refresh
 
 Tested Inferno experiment pin: **d229914a31f9d92bc7fb114033bcce6a869cd898**.
