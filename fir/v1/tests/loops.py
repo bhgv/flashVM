@@ -73,7 +73,7 @@ def main():
             ('x: big; i := big 0; while (i < 1) {x = 42; i += 1;} return x;', 'loop-carried'),
             ('t := table of big; for (k,k in t) {} return 42;', 'distinct'),
             ('t := table of big; for (k,v in t) {} return v;', 'initialized'),
-            ('for (k,v in "abc") {} return 42;', 'requires table'),
+            ('for (k,v in big 42) {} return 42;', 'requires table'),
         ]
         for body, message in invalid:
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {\n'+body+'\n}')

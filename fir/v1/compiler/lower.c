@@ -33,12 +33,12 @@ static int logic_serial;  /* Logical expression label identities, reset per tran
 static int blocks_used;   /* Entry plus all terminal/logical CFG blocks, bounded by FIR_BLOCKS. */
 static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
 static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isolated per decision. */
-static int branch_cells[FIR_BLOCKS / 2][256];    /* Incoming big-cell identities isolated per terminal arm. */
+static int branch_cells[FIR_BLOCKS / 2][256];    /* Incoming scalar-cell identities isolated per terminal arm. */
 static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
-static int table_cells[256];        /* Per-binding big.slot identities, -1 until loop promotion. */
+static int table_cells[256];        /* Per-binding scalar cell identities, -1 until loop promotion. */
 static int loop_serial;             /* Unique loop labels in the translation. */
 static int loop_depth;              /* Active loop count, bounded with parser nesting. */
 static int loop_id[65];             /* Active innermost transfer target IDs. */
@@ -332,7 +332,7 @@ int source_name(void)
 }
 
 
-/* Resolve borrowed binding name to its current SSA value or promoted big-cell
+/* Resolve borrowed binding name to its current SSA value or promoted scalar-cell
  * load. Return zero on a sticky initialization/resource error. This emits staged
  * FIR/debug records only; it never reads runtime variables or acquires owners. */
 int source_read(int name)
@@ -346,7 +346,18 @@ int source_read(int name)
     value = bindings[name];
     if (!failed && table_cells[name] >= 0)
     {
-        value = table_operation(T_I64, "big.load", table_cells[name], -1);
+        if (table_bindings[name] == T_BOOL)
+        {
+            value = table_operation(T_BOOL, "bool.load", table_cells[name], -1);
+        }
+        else
+        {
+            value = table_operation(T_I64, "big.load", table_cells[name], -1);
+            if (table_bindings[name] == T_I32)
+            {
+                value = source_table_convert(value, 2);
+            }
+        }
     }
     if (!failed)
     {
@@ -1453,14 +1464,14 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
-    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && (actual != T_I64 || table_cells[name] < 0))
+    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && table_cells[name] < 0)
     {
-        reject("loop-carried assignment requires an initialized big local");
+        reject("loop-carried assignment requires an initialized scalar local");
     }
     if (!declaration && conditional_depth && binding_scope[name] <= conditional_scope[conditional_depth - 1] &&
-        (actual != T_I64 || table_cells[name] < 0))
+        table_cells[name] < 0)
     {
-        reject("conditional assignment requires an initialized big local");
+        reject("conditional assignment requires an initialized scalar local");
     }
     if (!failed)
     {
@@ -1470,7 +1481,16 @@ void source_table_bind(int name, int value, int type, int declaration)
             source_bind(name, value, bindings[name] < 0);
             if (table_cells[name] >= 0)
             {
-                fprintf(destination, "    big.store %%v%d, %%v%d\n", table_cells[name], value);
+                const char *operation = "big.store";
+                if (actual == T_BOOL)
+                {
+                    operation = "bool.store";
+                }
+                else if (actual == T_I32)
+                {
+                    value = source_table_convert(value, 0);
+                }
+                fprintf(destination, "    %s %%v%d, %%v%d\n", operation, table_cells[name], value);
             }
         }
     }
@@ -1542,25 +1562,39 @@ void source_table_lease(int receiver, int acquire)
 }
 
 
-/* Promote active initialized big bindings into private dominating cells.
- * This translation-only operation has no arguments/result or runtime allocation;
- * errors remain sticky and prevent staged FIR/debug publication. */
-static void source_promote_bigs(void)
+/* Promote active initialized big/int/bool bindings into dominating scalar cells.
+ * No source value changes type: int storage sign-extends to an existing big cell
+ * and narrows on load; bool uses its native cell. Names and cells remain private
+ * to this serial compiler request. Unsupported reference bindings stay SSA. */
+static void source_promote_scalars(void)
 {
     int name;
     for (name = 0; name < name_count && !failed; name++)
     {
-        if (active[name] && table_bindings[name] == T_I64 && bindings[name] >= 0 && table_cells[name] < 0)
+        FirType type = table_bindings[name];
+        if (active[name] && (type == T_I64 || type == T_I32 || type == T_BOOL) &&
+            bindings[name] >= 0 && table_cells[name] < 0)
         {
-            int cell = table_operation(T_BIG_SLOT, "big.local", -1, -1);
+            int cell = table_operation(type == T_BOOL ? T_BOOL_SLOT : T_BIG_SLOT,
+                                       type == T_BOOL ? "bool.local" : "big.local", -1, -1);
+            int value = bindings[name];
             table_cells[name] = cell;
-            fprintf(destination, "    big.store %%v%d, %%v%d\n", cell, bindings[name]);
+            if (type == T_I32)
+            {
+                value = source_table_convert(value, 0);
+            }
+            if (!failed)
+            {
+                fprintf(destination, "    %s %%v%d, %%v%d\n",
+                        type == T_BOOL ? "bool.store" : "big.store", cell, value);
+            }
         }
     }
 }
 
+
 /* Begin a while continuation before parsing its condition. Promote initialized
- * active big bindings into dominating frame cells so each iteration reads the
+ * active scalar bindings into dominating frame cells so each iteration reads the
  * current values. Return the unique loop ID. Sticky limits prevent publication;
  * no runtime storage is allocated by this compiler function. */
 int source_loop_begin(void)
@@ -1571,7 +1605,7 @@ int source_loop_begin(void)
         reject("loop nesting/block limit exceeded");
         return loop;
     }
-    source_promote_bigs();
+    source_promote_scalars();
     loop_id[loop_depth] = loop;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
     loop_names[loop_depth++] = name_count;
@@ -1588,7 +1622,7 @@ int source_loop_begin(void)
 
 /* Branch from a while test to its statement body or continuation. loop is the
  * parser-owned ID; condition is a checked bool/inversion pair. No bindings are
- * merged: loop-carried big values reside in their dominating scalar cells. */
+ * merged: loop-carried scalar values reside in their dominating scalar cells. */
 void source_loop_condition(int loop, SourceCondition condition)
 {
     if (!failed)
@@ -1628,10 +1662,11 @@ void source_loop_end(int loop)
 }
 
 
-/* Capture a borrowed table once and traverse its immutable key snapshot.
- * Return compiler-owned loop/cursor/key/value IDs. Each iteration reads the live
- * big payload through a snapshot key; deletion before that read raises normally.
- * Allocation/type/nesting failures remain sticky and prevent publication. */
+/* Capture one borrowed table/string/key sequence and traverse its stable extent.
+ * Tables snapshot keys and read live big payloads; immutable strings yield int
+ * rune indexes/values; key sequences yield big indexes and retained key values.
+ * Return compiler-owned loop/cursor IDs. Type, allocation and nesting errors are
+ * sticky. VM roots retain captured owners without exposing their addresses. */
 SourceIteration source_iteration_begin(int table)
 {
     SourceIteration iteration;
@@ -1640,11 +1675,18 @@ SourceIteration source_iteration_begin(int table)
     int length;
     int index;
     int zero;
-    if (table_values[table] != T_TABLE_BIG)
+    FirType type = table_values[table];
+    if (type != T_TABLE_BIG && type != T_STRING && type != T_KEYS)
     {
-        reject("for-in requires table of big");
+        reject("for-in requires table of big, string or key snapshot");
     }
-    keys = table_operation(T_KEYS, "table.keys", table, -1);
+    keys = type == T_TABLE_BIG ? table_operation(T_KEYS, "table.keys", table, -1) : table;
+    /* Captured strings/key sequences are immutable: compute their extent once. */
+    length = source_table_len(keys);
+    if (type == T_STRING)
+    {
+        length = source_table_convert(length, 0);
+    }
     zero = source_table_position(0);
     iteration.cell = table_operation(T_BIG_SLOT, "big.local", -1, -1);
     if (!failed)
@@ -1665,12 +1707,19 @@ SourceIteration source_iteration_begin(int table)
         }
     }
     index = table_operation(T_I64, "big.load", iteration.cell, -1);
-    length = table_operation(T_I64, "keys.len", keys, -1);
     condition.value = table_operation(T_BOOL, "big.lt.signed", index, length);
     condition.invert = 0;
     source_loop_condition(iteration.loop, condition);
-    iteration.key = table_operation(T_TABLE_KEY, "keys.at", keys, index);
-    iteration.value = source_table_load(source_table_index(table, iteration.key));
+    if (type == T_TABLE_BIG)
+    {
+        iteration.key = table_operation(T_TABLE_KEY, "keys.at", keys, index);
+        iteration.value = source_table_load(source_table_index(table, iteration.key));
+    }
+    else
+    {
+        iteration.key = type == T_STRING ? source_table_convert(index, 2) : index;
+        iteration.value = source_table_subscript(keys, iteration.key);
+    }
     return iteration;
 }
 
@@ -1759,7 +1808,7 @@ void source_loop_transfer(int is_continue)
 
 
 /* Prepare a loop-body conditional before its condition executes. Capture the
- * current lexical join scope, promote big locals, and return a parser-owned
+ * current lexical join scope, promote scalar locals, and return a parser-owned
  * label/closure record. Bounds/type errors remain sticky; no VM is executed. */
 SourceLoopChoice source_loop_if_begin(void)
 {
@@ -1771,7 +1820,7 @@ SourceLoopChoice source_loop_if_begin(void)
         reject("loop conditional nesting/block limit exceeded");
         return choice;
     }
-    source_promote_bigs();
+    source_promote_scalars();
     conditional_scope[conditional_depth++] = scope_depth;
     blocks_used += 3;
     return choice;
@@ -1780,7 +1829,7 @@ SourceLoopChoice source_loop_if_begin(void)
 
 /* Emit a checked conditional's true/false edges and true block. choice and
  * condition are borrowed parser values. No binding is rebound by this emitter;
- * shared big cells carry runtime state across whichever arm actually executes. */
+ * shared scalar cells carry runtime state across whichever arm actually executes. */
 void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition)
 {
     if (!failed)
@@ -2008,17 +2057,21 @@ void source_for_end(SourceFor control)
 }
 
 
-/* Compute a statement-only postfix big update from borrowed SSA value/direction.
- * Return a new big SSA value, preserving modular arithmetic and source marks.
+/* Compute a statement-only postfix big/int update from borrowed SSA value/direction.
+ * Return a new same-type SSA value, preserving modular arithmetic and source marks.
  * No value is returned to a source expression and no runtime owner is acquired. */
 int source_table_increment(int value, int direction)
 {
     int one;
-    if (table_values[value] != T_I64)
+    if (table_values[value] != T_I64 && table_values[value] != T_I32)
     {
-        reject("increment/decrement requires big local or table entry");
+        reject("increment/decrement requires big or int local or table entry");
         return 0;
     }
     one = source_table_position(1);
+    if (table_values[value] == T_I32)
+    {
+        one = source_table_convert(one, 2);
+    }
     return source_table_update(value, one, direction > 0 ? '+' : '-');
 }

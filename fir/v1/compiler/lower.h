@@ -336,7 +336,7 @@ int source_string_rune(int value);
  * Borrowed strings emit nothing; generated entry may suspend or throw. */
 void source_table_lease(int receiver, int acquire);
 
-/* Start a bounded while CFG, promoting initialized big locals; return its ID. */
+/* Start a bounded while CFG, promoting initialized scalar locals; return its ID. */
 int source_loop_begin(void);
 
 
@@ -347,16 +347,16 @@ void source_loop_condition(int loop, SourceCondition condition);
 /* Emit a loop backedge/continuation after lexical body cleanup. */
 void source_loop_end(int loop);
 
-/* Parser-owned snapshot traversal. All fields are compiler SSA IDs, not pointers. */
+/* Parser-owned captured sequence traversal. All fields are compiler SSA IDs, not pointers. */
 typedef struct
 {
     int loop;  /* Enclosing while-style CFG identity. */
     int cell;  /* Private mutable traversal position. */
-    int key;   /* Current snapshot-owned key capability. */
-    int value; /* Current copied big payload. */
+    int key;   /* Current table key or string/snapshot position. */
+    int value; /* Current big payload, rune int or snapshot key. */
 } SourceIteration;
 
-/* Capture one typed table's keys, build a bounded CFG and produce per-pass key/value. */
+/* Capture a table/string/key sequence, build its CFG and produce typed per-pass values. */
 SourceIteration source_iteration_begin(int table);
 
 
@@ -381,7 +381,7 @@ void source_loop_statement(void);
 void source_loop_transfer(int is_continue);
 
 
-/* Promote join-carried big locals before parsing a loop-if condition. */
+/* Promote join-carried scalar locals before parsing a loop-if condition. */
 SourceLoopChoice source_loop_if_begin(void);
 
 
@@ -426,7 +426,8 @@ void source_for_step_end(SourceFor control);
 void source_for_end(SourceFor control);
 
 
-/* Return one exact signed-big update, rejecting non-big operands. */
+/* Return one modular same-type big/int update; direction selects +/- one.
+ * Borrow the SSA input, reject other types and preserve statement-only semantics. */
 int source_table_increment(int value, int direction);
 
 

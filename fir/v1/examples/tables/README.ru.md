@@ -200,3 +200,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Трёхчастный for и постфиксные обновления big](../../doc/COUNTED_FOR.ru.md).
+
+
+[Пример типизированных циклов](typed-loops.b): счётчики int, флаги bool, Unicode-руны и независимые снимки ключей. [Руководство](../../doc/TYPED_LOOPS.ru.md).

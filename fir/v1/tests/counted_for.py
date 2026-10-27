@@ -79,7 +79,7 @@ def main():
             ('sum := big 0; for (i := big 0; i < 3; j := 42) {sum += i;} return sum;', 'step cannot declare'),
             ('for (i := big 0; i < 1; i++) {} return i;', 'initialized'),
             ('for (i := big 0; i < 1; i++) {i := 42;} return 42;', 'duplicate'),
-            ('x := int 1; x++; return 42;', 'requires big'),
+            ('x := 1 == 1; x++; return 42;', 'requires big or int'),
             ('t := table of big {1}; t[0:1]++; return 42;', 'slice'),
             ('x := big 42; return x++;', 'syntax'),
             ('sum := big 0; for (i := big 0; i < 3; i++', 'syntax'),

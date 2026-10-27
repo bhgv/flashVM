@@ -201,3 +201,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Counted for and postfix big updates](../../doc/COUNTED_FOR.md).
+
+
+[Typed loop tutorial](typed-loops.b): int counters, bool stop flags, Unicode runes and independent key snapshots. [Guide](../../doc/TYPED_LOOPS.md).

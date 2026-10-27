@@ -30,13 +30,14 @@ shadow an outer name; that inner name disappears after the loop and cannot be
 redeclared in its body. An assignment to an already declared outer big variable
 continues to update that variable. Body-local declarations may be reassigned
 normally; loop-carried initialized big locals keep their existing frame cells.
-Reference/int/bool rebindings across loop iterations still need future typed cells.
+[Compiler 0.39](TYPED_LOOPS.md) adds int/bool cells and int postfix updates;
+reference rebindings across loop iterations still need future retained cells.
 
 Statement-only postfix `name++`, `name--`, `table[index]++` and dotted/snapshot-key
 forms now work for big payloads. Receiver and key are captured once. Table updates
 retain the assignment lease across old-value read, exact modular arithmetic and
 store. They do not return the old/new value into an expression. Prefix forms,
-string/range updates and non-big operands are not introduced. Limbo casts retain
+string/range updates are not introduced. Int postfix updates arrive in 0.39. Limbo casts retain
 `big`/`int`/`string` syntax; AS `to...` helpers are separate extensions.
 
 ## Deferred step generation and debug data
