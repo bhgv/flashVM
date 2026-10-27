@@ -1,3 +1,22 @@
+# Current synchronization — v0.1641
+
+Experiment was checked in both directions at b10f81fa764403adc1321a77136ecfe06e07cb8a.
+There are no new incoming commits after the previous series. The 541 core/reference
+and 174 bootstrap files remain exact. Earlier reverse branch/JMP fixes are already
+in experiment history; no new common native defect was confirmed in this series.
+No duplicate synchronization commit is created in Inferno.
+
+Compiler 0.24 adds lazy logical expressions with three append-only FIR operations
+and a function-local scalar bool-cell type. Dis lowering uses existing MOVW;
+there is no new VM opcode, module helper, GC pointer or heap-crossing ABI.
+These language/FIR extensions remain FlashVM-only.
+[Contract and tutorial](../fir/v1/doc/SHORT_CIRCUIT.md).
+Native availability remains AMD64/ARM64 164/173 with partial operand coverage.
+This series validates compiler-generated Dis on the host, not a physical ARM64
+port or a full Inferno boot.
+
+---
+
 # Current synchronization — v0.1640
 
 Experiment `b10f81fa764403adc1321a77136ecfe06e07cb8a`. 541 exact core/reference files and 174 bootstrap files.

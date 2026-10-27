@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1640**. [English](README.md).
+Версия разработки: **0.1641**. [English](README.md).
 
-Текущая серия: [v0.1640](docs/releases/v0.1640.md): компилятор 0.23, сравнения-значения и логическое отрицание, проверки массивов и mapped-copy JIT из Inferno.
+Текущая серия: [v0.1641](docs/releases/v0.1641.md): компилятор 0.24, ленивые &&/||, проверяемые скалярные ячейки FIR и прямое Dis-lowering; сверка Inferno.
 
 ## Просмотр документации
 

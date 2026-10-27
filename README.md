@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1640**. [Русская версия](README.ru.md).
+Development version: **0.1641**. [Русская версия](README.ru.md).
 
-Current series: [v0.1640](docs/releases/v0.1640.md): compiler 0.23 comparison values and logical negation, with Inferno array guards and shared mapped-copy JIT kernels.
+Current series: [v0.1641](docs/releases/v0.1641.md): compiler 0.24 lazy &&/||, verified scalar FIR cells and direct Dis lowering; Inferno synchronization checked.
 
 ## Browse documentation
 
