@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.25.0 LANGUAGES C)
+project(fir1 VERSION 0.26.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -291,4 +291,24 @@ if(BUILD_TESTING)
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/compound_tables.py" $<TARGET_FILE:fir1_source>
       $<TARGET_FILE:fir1> -)
   endif()
+endif()
+
+# String primitives must count Unicode scalars and preserve aliases/checked bounds.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    add_test(NAME fir1_unicode_strings COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/unicode_strings.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  else()
+    add_test(NAME fir1_unicode_strings COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/unicode_strings.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> -)
+  endif()
+endif()
+
+# Public IR constructors must preserve the same UTF-8 invariant as textual parsing.
+if(BUILD_TESTING)
+  add_executable(fir1_string_api tests/string_api.c)
+  target_link_libraries(fir1_string_api PRIVATE fir1_ir)
+  add_test(NAME fir1_string_api COMMAND fir1_string_api)
 endif()

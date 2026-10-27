@@ -943,10 +943,19 @@ int source_table_index(int table, int key)
     return table_operation(T_TABLE_SLOT, "table.index", table, key);
 }
 
-/* Capture a checked immutable snapshot key, or read a table at a typed key.
- * Inputs are translation-local SSA identities; runtime bounds remain eager effects. */
+/* Capture a snapshot key, table value or Unicode scalar from typed SSA operands.
+ * String indexes require int; table/snapshot numeric keys remain big. Runtime
+ * bounds remain eager effects, and all results retain the restored access span. */
 int source_table_subscript(int receiver, int key)
 {
+    if (table_values[receiver] == T_STRING)
+    {
+        if (table_values[key] != T_I32)
+        {
+            reject("string index requires explicit int");
+        }
+        return table_operation(T_I32, "string.at", receiver, key);
+    }
     if (table_values[receiver] == T_KEYS)
     {
         if (table_values[key] != T_I64)
@@ -964,12 +973,17 @@ int source_table_load(int slot)
     return table_operation(T_I64, "table.load", slot, -1);
 }
 
-/* Select sequence length or all-key snapshot length from the static container type. */
+/* Return native string int length or big table/snapshot length from the static type.
+ * Strings count Unicode scalars, not bytes; no owner content is mutated. */
 int source_table_len(int value)
 {
+    if (table_values[value] == T_STRING)
+    {
+        return table_operation(T_I32, "string.len", value, -1);
+    }
     if (table_values[value] != T_TABLE_BIG && table_values[value] != T_KEYS)
     {
-        reject("len requires a table or key snapshot in the table profile");
+        reject("len requires string, table or key snapshot in this profile");
     }
     return table_operation(T_I64, table_values[value] == T_KEYS ? "keys.len" : "table.len", value, -1);
 }
@@ -1092,10 +1106,23 @@ int source_table_keys(int table)
     return table_operation(T_KEYS, "table.keys", table, -1);
 }
 
-/* Build explicit half-open bounds and lower an independent sequence slice. */
+/* Build checked half-open bounds for a table copy or immutable Unicode string slice.
+ * String bounds are int and widen exactly into the existing range representation. */
 int source_table_slice(int table, int first, int end)
 {
     int range;
+    if (table_values[table] == T_STRING)
+    {
+        if (table_values[first] != T_I32 || table_values[end] != T_I32)
+        {
+            reject("string slice requires explicit int bounds");
+            return 0;
+        }
+        first = source_table_convert(first, 0);
+        end = source_table_convert(end, 0);
+        range = table_operation(T_BIG_RANGE, "range.big", first, end);
+        return table_operation(T_STRING, "string.slice", table, range);
+    }
     if (table_values[table] != T_TABLE_BIG || table_values[first] != T_I64 || table_values[end] != T_I64)
     {
         reject("table slice requires numeric bounds");

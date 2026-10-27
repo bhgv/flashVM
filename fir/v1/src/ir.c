@@ -6,6 +6,9 @@
 #include <math.h>
 #include <inttypes.h>
 
+/* Shared bounded UTF-8 validator from fir1_io; no parser or VM state is acquired. */
+extern int fir_utf8(const unsigned char *, size_t);
+
 /* Format a bounded verifier diagnostic and return failure. */
 static int fail(char *error, size_t cap, const char *format, ...)
 {
@@ -108,7 +111,10 @@ static const char *const ops[] = {"const.i32",
                                   "table.delete",
                                   "bool.local",
                                   "bool.store",
-                                  "bool.load"};
+                                  "bool.load",
+                                  "string.len",
+                                  "string.at",
+                                  "string.slice"};
 
 /* All blocks must be reachable and terminated. Requiring reachability keeps
  * the initial verifier small and makes dominance precise even for cycles. */
@@ -177,7 +183,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_BOOL_LOAD || (unsigned)in->type > T_BOOL_SLOT || in->block < 0 ||
+        if ((unsigned)in->op > O_STRING_SLICE || (unsigned)in->type > T_BOOL_SLOT || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -188,20 +194,25 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             continue;
         }
+        if (in->op == O_STRING && !fir_utf8((const unsigned char *)in->text, strlen(in->text)))
+        {
+            return fail(error, cap, "invalid UTF-8 string constant");
+        }
         if ((in->op == O_BOOL && in->integer != 0 && in->integer != 1) || (in->op == O_F64 && !isfinite(in->real)))
         {
             return fail(error, cap, "invalid constant payload");
         }
-        unary = in->op == O_BOOL_LOAD || in->op == O_TABLE_COUNT || in->op == O_TABLE_HAS || in->op == O_TABLE_DELETE ||
-                in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE || in->op == O_TRACE ||
-                in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN ||
-                in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN || in->op == O_VALUE_TYPE || in->op == O_TO_BIG ||
-                in->op == O_TO_INT || in->op == O_TO_TEXT || in->op == O_BIG_NEG || in->op == O_BIG_NOT;
-        binary = in->op == O_BOOL_STORE || (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND ||
-                 in->op == O_TABLE_INDEX || (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) ||
-                 (in->op >= O_BIG_DIV && in->op <= O_BIG_XOR) || in->op == O_BIG_SHL || in->op == O_BIG_SHR ||
-                 in->op == O_BIG_LT || in->op == O_BIG_EQ || in->op == O_KEYS_AT || in->op == O_TABLE_STORE ||
-                 in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
+        unary = in->op == O_STRING_LEN || in->op == O_BOOL_LOAD || in->op == O_TABLE_COUNT || in->op == O_TABLE_HAS ||
+                in->op == O_TABLE_DELETE || in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE ||
+                in->op == O_TRACE || in->op == O_CLOSE || in->op == O_IF || in->op == O_TABLE_LOAD ||
+                in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN || in->op == O_VALUE_TYPE ||
+                in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT || in->op == O_BIG_NEG ||
+                in->op == O_BIG_NOT;
+        binary = in->op == O_STRING_AT || in->op == O_STRING_SLICE || in->op == O_BOOL_STORE ||
+                 (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
+                 (in->op >= O_BIG_ADD && in->op <= O_BIG_MUL) || (in->op >= O_BIG_DIV && in->op <= O_BIG_XOR) ||
+                 in->op == O_BIG_SHL || in->op == O_BIG_SHR || in->op == O_BIG_LT || in->op == O_BIG_EQ ||
+                 in->op == O_KEYS_AT || in->op == O_TABLE_STORE || in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE;
         if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
@@ -446,6 +457,27 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 goto bad_type;
             }
             expected = T_BOOL;
+            break;
+        case O_STRING_LEN:
+            if (a != T_STRING)
+            {
+                goto bad_type;
+            }
+            expected = T_I32;
+            break;
+        case O_STRING_AT:
+            if (a != T_STRING || c != T_I32)
+            {
+                goto bad_type;
+            }
+            expected = T_I32;
+            break;
+        case O_STRING_SLICE:
+            if (a != T_STRING || c != T_BIG_RANGE)
+            {
+                goto bad_type;
+            }
+            expected = T_STRING;
             break;
         case O_BOOL_LOCAL:
             expected = T_BOOL_SLOT;

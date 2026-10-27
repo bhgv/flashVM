@@ -907,6 +907,7 @@ PRODUCTIONS
        int slice = 0;
        SourceMark operation;
        SourceMark literal;
+       SourceMark access;
     .)
     (
         IF(Sym==MinusSym && LiteralAhead()) "-" (. capture(); operation = source_mark(); .)
@@ -951,10 +952,11 @@ PRODUCTIONS
           {
               "." ident (. capture(); key = source_table_text(0);
                             *result = source_table_load(source_table_index(*result, key)); .)
-              | "[" TableExpression<&key>
+              | "[" (. capture(); access = source_mark(); .) TableExpression<&key>
                 (. slice = 0; .)
                 [ ":" TableExpression<&end> (. slice = 1; .) ] "]"
-                (. *result = slice ? source_table_slice(*result, key, end)
+                (. source_restore(access);
+                   *result = slice ? source_table_slice(*result, key, end)
                                   : source_table_subscript(*result, key); .)
           }
     )

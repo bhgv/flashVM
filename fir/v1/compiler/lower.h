@@ -30,6 +30,7 @@ typedef struct
 } SourceCondition;
 
 
+
 /* Parser-owned short-circuit continuation; cells are frame-local scalar identities. */
 typedef struct
 {
@@ -199,7 +200,7 @@ int source_table_delete(int slot);
 int source_table_index(int table, int key);
 
 
-/* Read a table value or capture a snapshot key from borrowed typed SSA inputs. */
+/* Read a table, snapshot key or Unicode scalar from borrowed typed SSA inputs. */
 int source_table_subscript(int receiver, int key);
 
 
@@ -207,7 +208,7 @@ int source_table_subscript(int receiver, int key);
 int source_table_load(int location);
 
 
-/* Emit length using the static table or key-snapshot type of the borrowed SSA input. */
+/* Emit int string length or big table/key-snapshot length from a borrowed SSA input. */
 int source_table_len(int value);
 
 
@@ -241,7 +242,7 @@ int source_table_typeof(int value);
 int source_table_keys(int table);
 
 
-/* Emit a checked copied sequence slice from table and two big bound SSA inputs. */
+/* Emit a checked table/string slice; borrowed bounds are big for tables and int for strings. */
 int source_table_slice(int table, int first, int end);
 
 

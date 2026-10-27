@@ -290,6 +290,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
               !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
                                        module->values[in->a].type == T_BOOL))) ||
              (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) ||
+             (in->op >= O_STRING_LEN && in->op <= O_STRING_SLICE) ||
              (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT)))
         {
             return fir_dis_table(output, module, error, capacity);

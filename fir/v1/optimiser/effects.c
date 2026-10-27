@@ -7,6 +7,12 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_STRING_LEN:
+        return FIR_READS_MEMORY;
+    case O_STRING_AT:
+        return FIR_READS_MEMORY | FIR_MAY_THROW;
+    case O_STRING_SLICE:
+        return FIR_READS_MEMORY | FIR_ALLOCATES | FIR_MAY_THROW;
     case O_BOOL_LOCAL:
     case O_BOOL_STORE:
         return FIR_WRITES_MEMORY;

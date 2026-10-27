@@ -262,7 +262,10 @@ PRODUCTIONS
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "bool.local" (. fir_build_op(O_BOOL_LOCAL); .)
+    "string.len" (. fir_build_op(O_STRING_LEN); .) A
+    | "string.at" (. fir_build_op(O_STRING_AT); .) A "," B
+    | "string.slice" (. fir_build_op(O_STRING_SLICE); .) A "," B
+    | "bool.local" (. fir_build_op(O_BOOL_LOCAL); .)
     | "bool.load" (. fir_build_op(O_BOOL_LOAD); .) A
     | "const.i64" (. fir_build_op(O_I64); .) number (. capture(B_LITERAL); .)
     | "table.new" (. fir_build_op(O_TABLE_NEW); .)

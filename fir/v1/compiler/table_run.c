@@ -4,6 +4,10 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+
+/* Borrow the shared strict validator; no VM representation is used by this oracle. */
+extern int fir_utf8(const unsigned char *, size_t);
 
 typedef struct
 {
@@ -17,6 +21,51 @@ typedef struct
     int64_t first;    /* Range start, validated when applied to a table. */
     int64_t end;      /* Exclusive range end. */
 } RuntimeValue;
+
+/* Decode borrowed UTF-8 independently of Dis's Rune representation.
+ * wanted is a nonnegative scalar position, including the one-past-end position.
+ * offset/scalar/length receive byte position, scalar (-1 at end) and total count.
+ * Returns false for malformed bytes/bounds/int overflow; allocates nothing. */
+static int text_position(const RuntimeValue *value, int64_t wanted, size_t *offset, int64_t *scalar, int64_t *length)
+{
+    size_t at = 0;
+    int64_t count = 0;
+    if (wanted < 0 || !fir_utf8((const unsigned char *)value->text, value->text_size))
+    {
+        return 0;
+    }
+    *offset = 0;
+    *scalar = -1;
+    while (at < value->text_size)
+    {
+        unsigned char first = (unsigned char)value->text[at];
+        unsigned width = first < 0x80 ? 1U : first < 0xe0 ? 2U : first < 0xf0 ? 3U : 4U;
+        uint32_t rune = first & (width == 1 ? 0x7fU : width == 2 ? 0x1fU : width == 3 ? 0x0fU : 0x07U);
+        unsigned i;
+        if (width > value->text_size - at || count == INT32_MAX)
+        {
+            return 0;
+        }
+        for (i = 1; i < width; ++i)
+        {
+            rune = (rune << 6) | ((unsigned char)value->text[at + i] & 0x3fU);
+        }
+        if (count == wanted)
+        {
+            *offset = at;
+            *scalar = rune;
+        }
+        at += width;
+        ++count;
+    }
+    if (wanted == count)
+    {
+        *offset = value->text_size;
+        *scalar = -1;
+    }
+    *length = count;
+    return wanted <= count;
+}
 
 /* Convert wrapped bits to a signed big without relying on implementation-defined
  * out-of-range casts. This scalar helper allocates nothing and never blocks. */
@@ -44,8 +93,8 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BOOL_LOAD) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
-            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_STRING_SLICE) || in->op == O_I32 || in->op == O_BOOL ||
+            in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
@@ -124,6 +173,41 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_STRING_LEN:
+        case O_STRING_AT:
+        {
+            size_t offset;
+            int64_t scalar;
+            int64_t length;
+            if (!text_position(a, in->op == O_STRING_LEN ? 0 : b->big, &offset, &scalar, &length) ||
+                (in->op == O_STRING_AT && scalar < 0))
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                result->big = in->op == O_STRING_LEN ? length : scalar;
+            }
+            break;
+        }
+        case O_STRING_SLICE:
+        {
+            size_t first;
+            size_t end;
+            int64_t scalar;
+            int64_t length;
+            if (b->end < b->first || !text_position(a, b->first, &first, &scalar, &length) ||
+                !text_position(a, b->end, &end, &scalar, &length))
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                result->text_size = end - first;
+                result->text = result->text_size ? a->text + first : "";
+            }
+            break;
+        }
         case O_BOOL_LOCAL:
             result->big = 0;
             break;

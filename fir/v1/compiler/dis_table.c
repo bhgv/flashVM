@@ -8,6 +8,9 @@
 
 enum
 {
+    LENC = 84,             /* Native Unicode string scalar count. */
+    INDC = 82,             /* Native string scalar indexing. */
+    SLICEC = 113,          /* Native half-open string slice, replacing a retained destination. */
     SHLL = 127,            /* Checked big left shift by an int count. */
     SHRL = 128,            /* Checked arithmetic big right shift. */
     ANDW = 72,             /* Low-32-bit normalization mask operation. */
@@ -346,7 +349,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BOOL_LOAD))
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_SLICE))
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -457,6 +460,18 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_JUMP:
             instruction(e, JMP, NONE, 0, IMM, e->blocks[in->yes], 0, -1);
+            break;
+        case O_STRING_LEN:
+            instruction(e, LENC, FP, a, FP, d, 0, -1);
+            break;
+        case O_STRING_AT:
+            arithmetic(e, INDC, MIDDLE_FRAME, b, a, d);
+            break;
+        case O_STRING_SLICE:
+            /* [GC:] Retain the source in a distinct rooted destination. SLICEC
+             * can replace only that root, preserving all original string aliases. */
+            instruction(e, MOVP, FP, a, FP, d, 0, -1);
+            arithmetic(e, SLICEC, MIDDLE_FRAME, b + CELL, b, d);
             break;
         case O_BOOL_LOCAL:
             instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
