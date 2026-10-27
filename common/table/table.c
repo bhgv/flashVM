@@ -1,5 +1,6 @@
 /* Dense scalar slots plus chained hash storage. Keys and values stay at a single owner. */
 #include "table.h"
+#include "relative.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -258,11 +259,38 @@ void fht_destroy(Fht *table)
     allocator.release(allocator.context, table);
 }
 
+
+/* Resolve numeric negatives once against the current dense prefix. Strings and
+ * nonnegative sparse keys retain their identity. Borrowed output changes only
+ * on success; callers serialize access to the owner. No allocation or blocking. */
+FhtStatus fht_resolve(const Fht *table, FhtKey key, FhtKey *result)
+{
+    uint64_t normalized;
+    if (!table || !result)
+    {
+        return FHT_INVALID;
+    }
+    if (key.kind == FHT_INDEX && key.index < 0)
+    {
+        if (!fvm_relative_index(table->length, key.index, &normalized))
+        {
+            return FHT_INVALID;
+        }
+        key.index = (int64_t)normalized;
+    }
+    if (!valid_key(key))
+    {
+        return FHT_INVALID;
+    }
+    *result = key;
+    return FHT_OK;
+}
+
 /* Read a borrowed key without allocation; publish the output only when present. */
 FhtStatus fht_get(const Fht *table, FhtKey key, int64_t *value)
 {
     Entry **link;
-    if (!table || !value || !valid_key(key))
+    if (!value || fht_resolve(table, key, &key) != FHT_OK)
     {
         return FHT_INVALID;
     }
@@ -292,7 +320,7 @@ FhtStatus fht_set(Fht *table, FhtKey key, int64_t value)
     Entry *entry;
     uint64_t hash;
     int64_t ignored;
-    if (!table || !valid_key(key))
+    if (fht_resolve(table, key, &key) != FHT_OK)
     {
         return FHT_INVALID;
     }
@@ -380,7 +408,7 @@ FhtStatus fht_delete(Fht *table, FhtKey key)
 {
     Entry **link;
     Entry *entry;
-    if (!table || !valid_key(key))
+    if (fht_resolve(table, key, &key) != FHT_OK)
     {
         return FHT_INVALID;
     }
@@ -571,6 +599,20 @@ FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result
     }
     *result = copy;
     return FHT_OK;
+}
+
+
+/* Copy signed/relative bounds using the dense prefix length, omitting dictionary
+ * and sparse keys. result is caller-owned on success and untouched on failure. */
+FhtStatus fht_slice_relative(const Fht *table, int64_t first, int64_t end, Fht **result)
+{
+    uint64_t a;
+    uint64_t b;
+    if (!table || !result || !fvm_relative_range(table->length, first, end, &a, &b))
+    {
+        return FHT_INVALID;
+    }
+    return fht_slice(table, a, b, result);
 }
 
 /* Parse borrowed byte-counted decimal text into an exact signed big. Optional +/-,

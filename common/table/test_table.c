@@ -156,7 +156,7 @@ static void mixed_keys(void)
           "numeric then insertion order");
     check(fht_delete(table, index_key(0)) == FHT_OK && fht_length(table) == 0, "deletion creates hole");
     check(fht_delete(table, text_key("k\0x", 3)) == FHT_OK, "string unlink");
-    check(fht_set(table, index_key(-1), 0) == FHT_INVALID, "negative index rejected");
+    check(fht_set(table, index_key(INT64_MIN), 0) == FHT_INVALID, "relative index below prefix rejected");
     value = 123;
     check(fht_get(table, index_key(73), &value) == FHT_MISSING && value == 123, "missing preserves output");
     fht_destroy(slice);
@@ -252,9 +252,33 @@ static void scalar_conversions(void)
     check(fht_big_parse(NULL, 1, &result) == FHT_INVALID, "null text accepted");
 }
 
+/* Relative keys resolve against the dense prefix, not dictionary/sparse entries.
+ * No arguments; caller-owned tables/slices are retired after all invariants. */
+static void relative_sequences(void)
+{
+    Fht *table = fht_create(NULL);
+    Fht *copy = NULL;
+    FhtKey captured;
+    int64_t value = 0;
+    check(table != NULL, "relative owner");
+    check(fht_set(table, index_key(0), 40) == FHT_OK && fht_set(table, index_key(1), 2) == FHT_OK, "relative prefix");
+    check(fht_set(table, index_key(100), 99) == FHT_OK, "relative sparse tail");
+    check(fht_get(table, index_key(-1), &value) == FHT_OK && value == 2, "relative last ignores sparse");
+    check(fht_slice_relative(table, 0, -1, &copy) == FHT_OK && fht_count(copy) == 2, "relative full prefix copy");
+    check(fht_resolve(table, index_key(-1), &captured) == FHT_OK && captured.index == 1, "capture canonical key");
+    check(fht_delete(table, index_key(0)) == FHT_OK, "change prefix after capture");
+    check(fht_set(table, captured, 7) == FHT_OK && fht_get(table, index_key(-1), &value) == FHT_INVALID,
+          "captured identity survives prefix change");
+    check(fht_get(copy, index_key(-1), &value) == FHT_OK && value == 2, "relative copy independent");
+    check(fht_get(copy, index_key(INT64_MIN), &value) == FHT_INVALID, "relative minimum does not overflow");
+    fht_destroy(copy);
+    fht_destroy(table);
+}
+
 /* Run independent semantic/reference and allocator-failure acceptance suites. */
 int main(void)
 {
+    relative_sequences();
     scalar_conversions();
     numeric_model();
     mixed_keys();

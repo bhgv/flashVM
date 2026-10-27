@@ -22,14 +22,14 @@ typedef enum
 
 typedef enum
 {
-    FHT_INDEX, /* Nonnegative signed-64 numeric key. */
+    FHT_INDEX, /* Numeric key; negatives address the dense prefix from its end. */
     FHT_TEXT   /* Byte-counted string; embedded zero bytes are supported. */
 } FhtKeyKind;
 
 typedef struct
 {
     FhtKeyKind kind;  /* Numeric or string namespace; 1 and "1" are distinct. */
-    int64_t index;    /* FHT_INDEX payload; negatives are invalid. */
+    int64_t index;    /* Numeric payload; negatives resolve from the current dense prefix. */
     const char *text; /* Borrowed FHT_TEXT bytes; may be null only for empty text. */
     size_t size;      /* Exact text length; never inferred with strlen. */
 } FhtKey;
@@ -55,6 +55,12 @@ Fht *fht_create(const FhtAllocator *allocator);
 
 /* Release a table and all copied keys; null is allowed. Requires exclusive owner access. */
 void fht_destroy(Fht *table);
+
+
+
+/* Capture a canonical key before evaluating an assignment RHS. Negative numeric
+ * keys resolve against the current prefix. Borrowed result changes only on success. */
+FhtStatus fht_resolve(const Fht *table, FhtKey key, FhtKey *result);
 
 
 /* Read one key into value only on success. Arguments are borrowed; never allocates or blocks. */
@@ -90,6 +96,12 @@ void fht_keys_destroy(FhtKeys *keys);
 /* Copy [first,end) within sequence length into a new zero-based table with the same allocator.
  * Strings/sparse keys are omitted; result is assigned only on success. No source mutation occurs. */
 FhtStatus fht_slice(const Fht *table, uint64_t first, uint64_t end, Fht **result);
+
+
+/* Copy a signed/relative sequence range. Negative end is inclusive; [0:-1]
+ * copies the full prefix, including an empty prefix. Ownership matches fht_slice. */
+FhtStatus fht_slice_relative(const Fht *table, int64_t first, int64_t end, Fht **result);
+
 
 /* Parse exact signed decimal text. Borrowed byte span/output; output is unchanged
  * on invalid syntax/overflow. Optional +/-, no whitespace/prefixes; never allocates. */
