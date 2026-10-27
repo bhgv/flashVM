@@ -123,9 +123,23 @@ def table_packages(prefix, work, environment):
         result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 6, image], work, environment)
         if "DATA 0 42\nDATA 8 0\nDATA 16 0\nDATA 24 1\nDATA 32 0\nDATA 40 0\n" not in result:
             raise RuntimeError("relocated table DAG compiler client result differs")
+    # Relink source+FIR APIs too: the source-to-Dis client runs no compiler subprocess.
+    source_host = work / "table-source-compile"
+    source_archives = [prefix / "fir/lib" / ("lib" + name + ".a")
+                       for name in ("fir1_ir", "fir1_source_api", "fir1_io")]
+    run([environment.get("CC", "cc"), "-std=c99", "-I", prefix / "fir/include",
+         prefix / "fir/examples/dis/main.c", *source_archives, "-lm", "-o", source_host], work, environment)
     # Branching tutorials have two trace cells followed by their two execution flags.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound"):
+        tutorial_source = prefix / "fir/examples/tables" / (tutorial + ".b")
+        if image.exists():
+            image.unlink()
+        run([source_host, tutorial_source, image], work, environment)
+        for mode in ("--jit", "--no-jit"):
+            direct = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
+            if "DATA 0 42\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in direct:
+                raise RuntimeError("relocated " + tutorial + " source-library client result differs")
         tutorial_fir = work / ("table-" + tutorial + ".fir")
         tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
