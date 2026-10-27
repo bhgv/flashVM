@@ -7,6 +7,7 @@
 #include <limits.h>
 #include "bigtablemod.h"
 #include "table.h"
+#include "relative.h"
 #include <stdint.h>
 
 typedef struct
@@ -26,6 +27,7 @@ static Type *keys_type;            /* [GC:] Runtime-lifetime exact descriptor fo
 static unsigned long table_owners; /* [GC:] Live native scalar table owners, for explicit runtime statistics. */
 static unsigned long key_owners;   /* [GC:] Live independent key snapshots, not references to table owners. */
 
+
 /* Release private C storage during RC destruction or cycle sweep. No VM pointers are contained. */
 static void free_table(Heap *heap, int swept)
 {
@@ -38,6 +40,7 @@ static void free_table(Heap *heap, int swept)
     }
     owner->table = nil;
 }
+
 
 /* Release snapshot storage exactly once when Dis retires its native owner. No user code runs. */
 static void free_keys(Heap *heap, int swept)
@@ -52,6 +55,7 @@ static void free_keys(Heap *heap, int swept)
     owner->keys = nil;
 }
 
+
 /* Validate a borrowed table reference by exact private descriptor, rejecting forged public ADTs. */
 static Fht *table_value(Bigtable_Handle *handle)
 {
@@ -61,6 +65,7 @@ static Fht *table_value(Bigtable_Handle *handle)
     }
     return ((TableOwner *)handle)->table;
 }
+
 
 /* Validate a borrowed snapshot reference before reading private metadata. */
 static FhtKeys *keys_value(Bigtable_Keys *handle)
@@ -72,12 +77,14 @@ static FhtKeys *keys_value(Bigtable_Keys *handle)
     return ((KeysOwner *)handle)->keys;
 }
 
+
 /* Build a numeric borrowed key; the C core rejects negatives before touching table storage. */
 static FhtKey numeric_key(LONG number)
 {
     FhtKey key = {FHT_INDEX, (int64_t)number, NULL, 0};
     return key;
 }
+
 
 /* Borrow the runtime UTF-8 cache and its explicit byte length, including embedded NUL.
  * Callers use/copy it before another conversion; no native table retains a Dis String pointer. */
@@ -104,6 +111,7 @@ static FhtKey string_key(String *text)
     return key;
 }
 
+
 /* Publish a new rooted native table owner before allocating any C storage; frame owns the result.
  * [GC:] An allocation exception leaves either no owner or an owner with a null private pointer. */
 void Bigtable_create(void *frame)
@@ -120,6 +128,7 @@ void Bigtable_create(void *frame)
     table_owners++;
 }
 
+
 /* Read a numeric key from the borrowed owner; failed reads return status plus an unusable zero. */
 void Bigtable_getindex(void *frame)
 {
@@ -128,6 +137,7 @@ void Bigtable_getindex(void *frame)
     call->ret->t0 = fht_get(table_value(call->tab), numeric_key(call->key), &value);
     call->ret->t1 = value;
 }
+
 
 /* Read a copied string key; no method/metatable dispatch or application callback is performed. */
 void Bigtable_gettext(void *frame)
@@ -138,12 +148,14 @@ void Bigtable_gettext(void *frame)
     call->ret->t1 = value;
 }
 
+
 /* Insert a numeric big value at the sole scheduler owner; status reports allocation failure. */
 void Bigtable_setindex(void *frame)
 {
     F_Bigtable_setindex *call = frame;
     *call->ret = fht_set(table_value(call->tab), numeric_key(call->key), call->value);
 }
+
 
 /* Insert/copy a string key and scalar value without retaining a String heap pointer. */
 void Bigtable_settext(void *frame)
@@ -152,12 +164,14 @@ void Bigtable_settext(void *frame)
     *call->ret = fht_set(table_value(call->tab), string_key(call->key), call->value);
 }
 
+
 /* Delete a numeric key without allocating or moving any other logical key. */
 void Bigtable_delindex(void *frame)
 {
     F_Bigtable_delindex *call = frame;
     *call->ret = fht_delete(table_value(call->tab), numeric_key(call->key));
 }
+
 
 /* Delete one string key and retire its copied native bytes. */
 void Bigtable_deltext(void *frame)
@@ -166,6 +180,7 @@ void Bigtable_deltext(void *frame)
     *call->ret = fht_delete(table_value(call->tab), string_key(call->key));
 }
 
+
 /* Return sequence length in the generated exact big return slot. */
 void Bigtable_length(void *frame)
 {
@@ -173,12 +188,14 @@ void Bigtable_length(void *frame)
     *call->ret = (LONG)fht_length(table_value(call->tab));
 }
 
+
 /* Return all stored pairs, including dictionary keys and sparse numeric keys. */
 void Bigtable_count(void *frame)
 {
     F_Bigtable_count *call = frame;
     *call->ret = (LONG)fht_count(table_value(call->tab));
 }
+
 
 /* Root an empty destination owner first, then build a checked independent native slice.
  * Bounds or OOM raise explicitly. The source and old result remain GC-managed throughout. */
@@ -199,6 +216,167 @@ void Bigtable_slice(void *frame)
     table_owners++;
 }
 
+
+/* Resolve signed relative bounds against a validated live owner before RHS.
+ * Return only absolute scalar positions; invalid ranges raise without mutation. */
+void Bigtable_slicerange(void *frame)
+{
+    F_Bigtable_slicerange *call = frame;
+    uint64_t first;
+    uint64_t end;
+    if (!fvm_relative_range(fht_length(table_value(call->tab)), call->first, call->end, &first, &end))
+    {
+        error("invalid key/range");
+    }
+    call->ret->t0 = (LONG)first;
+    call->ret->t1 = (LONG)end;
+}
+
+
+/* Replace a captured absolute range using the native rollback-safe table core.
+ * Both owners remain rooted by the builtin frame. This host executes one C
+ * instruction at a time; external cross-thread payload access is not admitted. */
+void Bigtable_splice(void *frame)
+{
+    F_Bigtable_splice *call = frame;
+    *call->ret = fht_splice(table_value(call->tab), call->first, call->end, table_value(call->replacement));
+}
+
+
+/* Return scalar count for a borrowed exact String owner, including nil-as-empty H.
+ * Reject invalid descriptors/representations before a rune read or allocation. */
+static unsigned splice_string_length(String *text)
+{
+    unsigned length;
+    if (text == H)
+    {
+        return 0;
+    }
+    if (text == nil || D2H(text)->t != &Tstring || text->len == INT_MIN)
+    {
+        error(exHeap);
+    }
+    length = text->len < 0 ? (unsigned)-text->len : (unsigned)text->len;
+    if (text->max < 0 || length > (unsigned)text->max)
+    {
+        error(exHeap);
+    }
+    return length;
+}
+
+
+/* Copy a checked rune span into independently allocated destination storage.
+ * Count/offsets are rune positions. Widen ASCII only when needed; otherwise
+ * use a contiguous copy. No allocation, callbacks or scheduler switch occurs. */
+static void splice_string_copy(String *destination, unsigned offset, String *source, unsigned first, unsigned count)
+{
+    unsigned i;
+    if (!count)
+    {
+        return;
+    }
+    if (destination->len < 0)
+    {
+        if (source->len < 0)
+        {
+            memmove(destination->Srune + offset, source->Srune + first, (size_t)count * sizeof(Rune));
+        }
+        else
+        {
+            for (i = 0; i < count; i++)
+            {
+                destination->Srune[offset + i] = (uchar)source->Sascii[first + i];
+            }
+        }
+    }
+    else
+    {
+        /* Caller selects narrow output only when both inputs are narrow. */
+        memmove(destination->Sascii + offset, source->Sascii + first, count);
+    }
+}
+
+
+/* Capture normalized absolute exclusive rune positions before source RHS.
+ * The builtin frame roots the immutable source until the caller retains it. */
+void Bigtable_stringrange(void *frame)
+{
+    F_Bigtable_stringrange *call = frame;
+    uint64_t first;
+    uint64_t end;
+    if (!fvm_relative_range(splice_string_length(call->text), call->first, call->end, &first, &end))
+    {
+        error("invalid key/range");
+    }
+    call->ret->t0 = (LONG)first;
+    call->ret->t1 = (LONG)end;
+}
+
+
+/* Build a complete independent rune string before replacing the rooted result.
+ * All inputs are borrowed frame roots; self replacement/overlap is safe. Bounds
+ * are captured absolute positions. Oversized results or OOM raise before commit. */
+void Bigtable_stringsplice(void *frame)
+{
+    F_Bigtable_stringsplice *call = frame;
+    unsigned length = splice_string_length(call->text);
+    unsigned replacement = splice_string_length(call->replacement);
+    uint64_t total;
+    int wide;
+    String *result;
+    if (call->first < 0 || call->end < call->first || (uint64_t)call->end > length)
+    {
+        error("invalid key/range");
+    }
+    total = length - ((uint64_t)call->end - (uint64_t)call->first) + replacement;
+    if (total > INT_MAX)
+    {
+        error(exNomem);
+    }
+    wide = (call->text != H && call->text->len < 0) || (call->replacement != H && call->replacement->len < 0);
+    result = wide ? newrunes((int)total) : newstring((int)total);
+    splice_string_copy(result, 0, call->text, 0, (unsigned)call->first);
+    splice_string_copy(result, (unsigned)call->first, call->replacement, 0, replacement);
+    splice_string_copy(
+        result, (unsigned)call->first + replacement, call->text, (unsigned)call->end, length - (unsigned)call->end);
+    destroy(*call->ret);
+    *call->ret = result;
+}
+
+
+/* Capture one existing Unicode rune, including negative indexes from the end.
+ * Return absolute exclusive bounds; invalid positions raise before RHS runs. */
+void Bigtable_stringindex(void *frame)
+{
+    F_Bigtable_stringindex *call = frame;
+    unsigned length = splice_string_length(call->text);
+    uint64_t index;
+    if (!fvm_relative_index(length, call->index, &index) || index >= length)
+    {
+        error("invalid key/range");
+    }
+    call->ret->t0 = (LONG)index;
+    call->ret->t1 = (LONG)index + 1;
+}
+
+
+/* Allocate one valid Unicode scalar, including U+0000; reject surrogate values.
+ * Result publication follows allocation and initialization; old aliases survive. */
+void Bigtable_runetext(void *frame)
+{
+    F_Bigtable_runetext *call = frame;
+    String *result;
+    if (call->value < 0 || call->value > 0x10ffff || (call->value >= 0xd800 && call->value <= 0xdfff))
+    {
+        error("invalid key/range");
+    }
+    result = newrunes(1);
+    result->Srune[0] = (Rune)call->value;
+    destroy(*call->ret);
+    *call->ret = result;
+}
+
+
 /* Root an independent immutable snapshot owner before copying native keys; no source alias escapes. */
 void Bigtable_keysof(void *frame)
 {
@@ -214,12 +392,14 @@ void Bigtable_keysof(void *frame)
     key_owners++;
 }
 
+
 /* Return the complete key count of a validated immutable owner. */
 void Bigtable_keylen(void *frame)
 {
     F_Bigtable_keylen *call = frame;
     *call->ret = (LONG)keys_value(call->keys)->count;
 }
+
 
 /* Borrow a checked key until the native call returns. The caller frame roots its
  * immutable snapshot; no VM pointer is stored in C table/key storage. */
@@ -232,6 +412,7 @@ static FhtKey snapshot_key(Bigtable_Keys *owner, LONG index)
     }
     return keys->items[index];
 }
+
 
 /* Publish a fresh reflected name into a borrowed typed return slot. The old String
  * is released after successful allocation; no application callback or conversion runs. */
@@ -248,6 +429,7 @@ static void type_name(String **result, WORD kind)
     *result = text;
 }
 
+
 /* Parse a borrowed copied text key as strict signed decimal. No partial result
  * or locale conversion is exposed; the native frame retains its source owner. */
 static LONG converted_big(FhtKey key)
@@ -263,6 +445,7 @@ static LONG converted_big(FhtKey key)
     }
     return value;
 }
+
 
 /* Publish copied text for a borrowed key. Numeric formatting is exact, and text
  * keeps its byte length including embedded zeros; no native pointer escapes. */
@@ -284,12 +467,14 @@ static void converted_text(String **result, FhtKey key)
     *result = text;
 }
 
+
 /* Convert borrowed String bytes to a copied big; invalid syntax/overflow raises. */
 void Bigtable_bigfromtext(void *frame)
 {
     F_Bigtable_bigfromtext *call = frame;
     *call->ret = converted_big(string_key(call->text));
 }
+
 
 /* Format a copied big exactly; the caller's return String is replaced on success. */
 void Bigtable_textfrombig(void *frame)
@@ -298,12 +483,14 @@ void Bigtable_textfrombig(void *frame)
     converted_text(call->ret, numeric_key(call->value));
 }
 
+
 /* Convert the actual kind of a rooted snapshot key; bad owners/positions raise first. */
 void Bigtable_keybig(void *frame)
 {
     F_Bigtable_keybig *call = frame;
     *call->ret = converted_big(snapshot_key(call->keys, call->index));
 }
+
 
 /* Copy text from the actual snapshot key kind while its native caller frame roots it. */
 void Bigtable_keytext(void *frame)
@@ -312,12 +499,14 @@ void Bigtable_keytext(void *frame)
     converted_text(call->ret, snapshot_key(call->keys, call->index));
 }
 
+
 /* Reflect a supported static source type; input is a stable module tag, not a VM address. */
 void Bigtable_typename(void *frame)
 {
     F_Bigtable_typename *call = frame;
     type_name(call->ret, call->kind);
 }
+
 
 /* Reflect the actual numeric/text kind of a retained snapshot key. The caller frame
  * roots its owner across String allocation; invalid owners/positions raise first. */
@@ -328,12 +517,14 @@ void Bigtable_keytype(void *frame)
     type_name(call->ret, key.kind == FHT_INDEX ? 0 : 1);
 }
 
+
 /* Validate eagerly even if a key value is unused. Borrowed frame/owner; no allocation. */
 void Bigtable_keycheck(void *frame)
 {
     F_Bigtable_keycheck *call = frame;
     (void)snapshot_key(call->keys, call->index);
 }
+
 
 /* Read using an immutable key capability. Both frame-owned native owners remain
  * rooted for this call; status/value follow the existing checked get contract. */
@@ -346,6 +537,7 @@ void Bigtable_getkey(void *frame)
     call->ret->t1 = value;
 }
 
+
 /* Write a scalar through a copied key capability; fht_set copies any new text bytes.
  * Borrowed owners never cross heaps, and allocation failure preserves logical contents. */
 void Bigtable_setkey(void *frame)
@@ -354,6 +546,7 @@ void Bigtable_setkey(void *frame)
     FhtKey key = snapshot_key(call->keys, call->index);
     *call->ret = fht_set(table_value(call->tab), key, call->value);
 }
+
 
 /* Copy one snapshot key into a tagged tuple, preserving string bytes and numeric identity.
  * Existing result String is replaced only after successful conversion; invalid indices raise. */
@@ -382,6 +575,7 @@ void Bigtable_keyat(void *frame)
     call->ret->t2 = text;
 }
 
+
 /* Check a borrowed status word after a generated get/set call; no allocation or user code runs.
  * Missing, invalid and allocation failure raise explicitly; success emits no diagnostic traffic. */
 void Bigtable_requireok(void *frame)
@@ -394,6 +588,7 @@ void Bigtable_requireok(void *frame)
                                           : "invalid key/range");
     }
 }
+
 
 /* Capture a canonical numeric key before RHS effects can change prefix length.
  * frame is borrowed; invalid relative bounds raise without result publication. */
@@ -408,6 +603,7 @@ void Bigtable_resolveindex(void *frame)
     *call->ret = resolved.index;
 }
 
+
 /* Validate a borrowed numeric key before capturing a FIR location; return normally for nonnegative keys. */
 void Bigtable_indexcheck(void *frame)
 {
@@ -417,6 +613,7 @@ void Bigtable_indexcheck(void *frame)
         error("invalid key/range");
     }
 }
+
 
 /* Validate copied half-open bounds before capturing a FIR range; source length is checked by slice. */
 void Bigtable_rangecheck(void *frame)
@@ -428,6 +625,7 @@ void Bigtable_rangecheck(void *frame)
     }
 }
 
+
 /* Copy owner counts on the sole scheduler thread. Output pointers are borrowed/non-null;
  * no native addresses, keys or application values are exposed, and no allocation occurs. */
 void dvm_bigtable_owners(unsigned long *tables, unsigned long *keys)
@@ -435,6 +633,7 @@ void dvm_bigtable_owners(unsigned long *tables, unsigned long *keys)
     *tables = table_owners;
     *keys = key_owners;
 }
+
 
 /* Register private scalar-only finalizers and generated typed exports after VM heap initialization.
  * Called once per experimental runtime process; this does not modify the owning Inferno sources. */
@@ -449,6 +648,7 @@ void dvm_bigtable_initialize(void)
     builtinmod("$Bigtable", Bigtablemodtab, Bigtablemodlen);
 }
 
+
 /* Convert a borrowed get/delete status to a normalized bool. Missing is ordinary
  * absence; invalid/OOM statuses raise before returning. No allocation or blocking.
  */
@@ -461,6 +661,7 @@ void Bigtable_present(void *frame)
     }
     *call->ret = call->status == FHT_OK;
 }
+
 
 /* Delete a snapshot-owned key from a borrowed table. Both owners are rooted by
  * the native call frame; no reference/address crosses heaps and no key is moved.

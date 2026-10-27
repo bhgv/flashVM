@@ -633,3 +633,13 @@ if(DVM_RUNTIME_TESTS)
     set_tests_properties(disvm_relative_native_bounds_${mode} PROPERTIES TIMEOUT 90)
   endforeach()
 endif()
+
+# Real source-to-Dis resized writes, including rune strings and one-instruction GC quanta.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_table_splice_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/table_splice.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_table_splice_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()

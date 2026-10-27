@@ -49,11 +49,13 @@ enum
     DIS_BIG_DATA = 8     /* Existing DEFL initializer, explicitly eight-byte big-endian payload. */
 };
 
+
 /* Write one format byte to borrowed output. ferror is checked by the public entry. */
 static void octet(FILE *output, unsigned value)
 {
     fputc((int)(value & 255U), output);
 }
+
 
 /* Encode a bounded nonnegative Dis operand; all callers preflight the module limits.
  * Values here fit signed 30-bit operands; no implementation-defined signed shifts are needed. */
@@ -76,6 +78,7 @@ static void operand(FILE *output, unsigned value)
         octet(output, value);
     }
 }
+
 
 /* Emit one source/destination instruction with an optional frame middle operand.
  * Every offset is in NC64 bytes. output is borrowed; this function owns no heap or parser state. */
@@ -108,11 +111,13 @@ static void instruction(FILE *output,
     }
 }
 
+
 /* Return the frame byte offset of one verifier-admitted SSA value. */
 static unsigned slot(int value)
 {
     return DIS_FRAME + (unsigned)value * DIS_CELL;
 }
+
 
 /* Write eight caller-supplied payload bits as portable big-endian DEFL bytes.
  * Both native integers and IEEE binary64 use the existing eight-byte initializer. */
@@ -124,6 +129,7 @@ static void bits64(FILE *output, uint64_t bits)
         octet(output, (unsigned)(bits >> shift));
     }
 }
+
 
 /* Preflight scalar coverage and map FIR instruction/block indices to final Dis PCs.
  * module is borrowed after verification. Output arrays/counts are caller-owned and bounded
@@ -255,8 +261,10 @@ static int supported(
     return 1;
 }
 
+
 /* Emit signature-checked table calls from verified IR; owned by the separate C99 table backend. */
 extern int fir_dis_table(FILE *, FirModule *, char *, size_t);
+
 
 /* Emit existing NC64 Dis directly from caller-owned FIR, preserving i32 wrap arithmetic.
  * output/module are borrowed; no native runtime/SDK is required. Verification or coverage errors
@@ -300,6 +308,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
               !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
                                        module->values[in->a].type == T_BOOL))) ||
              (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) ||
+             (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT) ||
              (in->op >= O_STRING_LEN && in->op <= O_STRING_SLICE) || in->op == O_STRING_CONCAT ||
              in->op == O_STRING_EQ || in->op == O_STRING_LT || (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT)))
         {

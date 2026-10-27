@@ -256,6 +256,8 @@ PRODUCTIONS
         | "keys"
         | "table.key"
         | "bool.slot"
+        | "table.range"
+        | "string.range"
     )
                                                                         (. capture(B_TYPE); .)
   .
@@ -283,6 +285,11 @@ PRODUCTIONS
     | "table.delete" (. fir_build_op(O_TABLE_DELETE); .) A
     | "table.len" (. fir_build_op(O_TABLE_LEN); .) A
     | "range.big" (. fir_build_op(O_BIG_RANGE); .) A "," B
+    | "string.char.range" (. fir_build_op(O_STRING_CHAR_RANGE); .) A "," B
+    | "rune.text" (. fir_build_op(O_RUNE_TEXT); .) A
+    | "string.range" (. fir_build_op(O_STRING_RANGE); .) A "," B
+    | "string.splice" (. fir_build_op(O_STRING_SPLICE); .) A "," B
+    | "table.range" (. fir_build_op(O_TABLE_RANGE); .) A "," B
     | "table.slice" (. fir_build_op(O_TABLE_SLICE); .) A "," B
     | "table.keys" (. fir_build_op(O_TABLE_KEYS); .) A
     | "big.add" (. fir_build_op(O_BIG_ADD); .) A "," B
@@ -368,6 +375,7 @@ PRODUCTIONS
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
     "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B
+    | "table.splice" (. fir_build_op(O_TABLE_SPLICE); .) A "," B
     | "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B
     | "trace"                                                             (. fir_build_op(O_TRACE); .)
     A

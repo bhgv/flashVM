@@ -1,6 +1,7 @@
 /* FIR 1.0: standalone C99, no FlashVM headers or private ABI dependency. */
 #ifndef FIR_H
 #define FIR_H
+
 /* SWO is an octet format. Numeric lowering stores i32 in a normal C int and
  * the object backend writes IEEE binary64 bits; reject incompatible targets. */
 #include <limits.h>
@@ -12,6 +13,7 @@
 #if FLT_RADIX != 2 || DBL_MANT_DIG != 53 || DBL_MAX_EXP != 1024
 #error "FIR SWO requires an IEEE binary64 double target"
 #endif
+
 /* Reject known mixed-word-order targets: memcpy into uint64_t would swap words. */
 #if defined(__FLOAT_WORD_ORDER__) && defined(__BYTE_ORDER__)
 #if __FLOAT_WORD_ORDER__ != __BYTE_ORDER__
@@ -21,16 +23,19 @@
 #include <stdio.h>
 #include <stdint.h>
 
+
 /* C99 compile-time assertion: binary64 payload copying must read exactly 8 bytes. */
 typedef char FirDoubleMustBeEightBytes[(sizeof(double) == 8) ? 1 : -1];
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
 /* Initial hard bounds; exceeding them is a diagnostic, never truncation. */
 #define FIR_LIMIT 4096
 #define FIR_BLOCKS 256
 #define FIR_TEXT 256
+
 
 /* Optional source provenance; this is not a claim of complete language support. */
 typedef enum
@@ -60,13 +65,15 @@ typedef enum
     T_STRING,
     T_ANY,
     T_CHANNEL,
-    T_I64,        /* Exact signed Limbo big. */
-    T_TABLE_BIG,  /* Owner reference to a mutable big-valued hybrid table. */
-    T_TABLE_SLOT, /* Checked table/key location, not a native address. */
-    T_BIG_RANGE,  /* Half-open big bounds for a sequence slice. */
-    T_KEYS,       /* Independent immutable key sequence snapshot. */
-    T_TABLE_KEY,  /* Snapshot owner plus checked position, preserving numeric/text identity. */
-    T_BOOL_SLOT   /* Function-local scalar bool cell; no pointer, copy or escape. */
+    T_I64,         /* Exact signed Limbo big. */
+    T_TABLE_BIG,   /* Owner reference to a mutable big-valued hybrid table. */
+    T_TABLE_SLOT,  /* Checked table/key location, not a native address. */
+    T_BIG_RANGE,   /* Half-open big bounds for a sequence slice. */
+    T_KEYS,        /* Independent immutable key sequence snapshot. */
+    T_TABLE_KEY,   /* Snapshot owner plus checked position, preserving numeric/text identity. */
+    T_BOOL_SLOT,   /* Function-local scalar bool cell; no pointer, copy or escape. */
+    T_TABLE_RANGE, /* Captured table owner and absolute exclusive slice bounds. */
+    T_STRING_RANGE /* Captured immutable string and absolute rune bounds. */
 } FirType;
 
 typedef enum
@@ -95,52 +102,59 @@ typedef enum
     O_IF,
     O_JUMP,
     O_RETURN,
-    O_I64,           /* Exact big constant. */
-    O_TABLE_NEW,     /* Allocate an empty table. */
-    O_TABLE_INDEX,   /* Capture table plus numeric/string key without loading. */
-    O_TABLE_LOAD,    /* Read a captured location; missing raises. */
-    O_TABLE_STORE,   /* Store big at a captured location. */
-    O_TABLE_LEN,     /* Contiguous numeric prefix length. */
-    O_BIG_RANGE,     /* Construct checked slice bounds. */
-    O_TABLE_SLICE,   /* Copy a sequence slice, reindexed from zero. */
-    O_TABLE_KEYS,    /* Copy all keys in deterministic order. */
-    O_KEYS_LEN,      /* Count every copied key. */
-    O_KEYS_AT,       /* Capture one checked immutable snapshot key. */
-    O_VALUE_TYPE,    /* Reflect a supported value; snapshot keys report their runtime key kind. */
-    O_TO_BIG,        /* Exact explicit conversion from big/text/snapshot key. */
-    O_TO_TEXT,       /* Copied explicit conversion from big/text/snapshot key. */
-    O_BIG_ADD,       /* Exact modulo-2^64 addition. */
-    O_BIG_SUB,       /* Exact modulo-2^64 subtraction. */
-    O_BIG_MUL,       /* Exact modulo-2^64 multiplication. */
-    O_BIG_NEG,       /* Exact modulo-2^64 unary negation. */
-    O_BIG_DIV,       /* Signed truncating division; zero raises, MIN/-1 wraps. */
-    O_BIG_MOD,       /* Signed remainder; zero raises, MIN%-1 is zero. */
-    O_BIG_AND,       /* Exact full-width bit intersection. */
-    O_BIG_OR,        /* Exact full-width bit union. */
-    O_BIG_XOR,       /* Exact full-width exclusive-or. */
-    O_BIG_NOT,       /* Exact full-width complement. */
-    O_BIG_LT,        /* Signed big less-than, returning bool. */
-    O_BIG_EQ,        /* Full-width big equality, returning bool. */
-    O_TO_INT,        /* Explicit low-32-bit signed int normalization from int/big. */
-    O_BIG_SHL,       /* Checked left shift: big value, int count 0..63. */
-    O_BIG_SHR,       /* Checked arithmetic right shift: big value, int count 0..63. */
-    O_TABLE_COUNT,   /* Number of all numeric and string entries, independently of sequence length. */
-    O_TABLE_HAS,     /* Test a captured location without raising for an absent key. */
-    O_TABLE_DELETE,  /* Delete a captured location without numeric compaction; bool reports presence. */
-    O_BOOL_LOCAL,    /* Define a zero-initialized function-frame bool cell. */
-    O_BOOL_STORE,    /* Store a normalized bool in a dominating local cell. */
-    O_BOOL_LOAD,     /* Read a local cell into a new immutable bool SSA value. */
-    O_STRING_LEN,    /* Count Unicode scalars in a string, returning int. */
-    O_STRING_AT,     /* Read one Unicode scalar at an int index, returning int. */
-    O_STRING_SLICE,  /* Copy a half-open string range without changing the source. */
-    O_I32_DIV,       /* Signed truncating int division; zero raises, MIN/-1 wraps. */
-    O_I32_MOD,       /* Signed int remainder; zero raises, MIN%-1 is zero. */
-    O_STRING_CONCAT, /* Concatenate rooted UTF-8 strings; allocates, may throw. */
-    O_STRING_EQ,     /* Compare string contents without implicit conversion. */
-    O_I32_SHL,       /* Checked int left shift; count 0..31, result wraps to signed32. */
-    O_I32_SHR,       /* Checked arithmetic int right shift; count 0..31. */
-    O_STRING_LT      /* Unicode scalar lexicographic ordering without normalization. */
+    O_I64,               /* Exact big constant. */
+    O_TABLE_NEW,         /* Allocate an empty table. */
+    O_TABLE_INDEX,       /* Capture table plus numeric/string key without loading. */
+    O_TABLE_LOAD,        /* Read a captured location; missing raises. */
+    O_TABLE_STORE,       /* Store big at a captured location. */
+    O_TABLE_LEN,         /* Contiguous numeric prefix length. */
+    O_BIG_RANGE,         /* Construct checked slice bounds. */
+    O_TABLE_SLICE,       /* Copy a sequence slice, reindexed from zero. */
+    O_TABLE_KEYS,        /* Copy all keys in deterministic order. */
+    O_KEYS_LEN,          /* Count every copied key. */
+    O_KEYS_AT,           /* Capture one checked immutable snapshot key. */
+    O_VALUE_TYPE,        /* Reflect a supported value; snapshot keys report their runtime key kind. */
+    O_TO_BIG,            /* Exact explicit conversion from big/text/snapshot key. */
+    O_TO_TEXT,           /* Copied explicit conversion from big/text/snapshot key. */
+    O_BIG_ADD,           /* Exact modulo-2^64 addition. */
+    O_BIG_SUB,           /* Exact modulo-2^64 subtraction. */
+    O_BIG_MUL,           /* Exact modulo-2^64 multiplication. */
+    O_BIG_NEG,           /* Exact modulo-2^64 unary negation. */
+    O_BIG_DIV,           /* Signed truncating division; zero raises, MIN/-1 wraps. */
+    O_BIG_MOD,           /* Signed remainder; zero raises, MIN%-1 is zero. */
+    O_BIG_AND,           /* Exact full-width bit intersection. */
+    O_BIG_OR,            /* Exact full-width bit union. */
+    O_BIG_XOR,           /* Exact full-width exclusive-or. */
+    O_BIG_NOT,           /* Exact full-width complement. */
+    O_BIG_LT,            /* Signed big less-than, returning bool. */
+    O_BIG_EQ,            /* Full-width big equality, returning bool. */
+    O_TO_INT,            /* Explicit low-32-bit signed int normalization from int/big. */
+    O_BIG_SHL,           /* Checked left shift: big value, int count 0..63. */
+    O_BIG_SHR,           /* Checked arithmetic right shift: big value, int count 0..63. */
+    O_TABLE_COUNT,       /* Number of all numeric and string entries, independently of sequence length. */
+    O_TABLE_HAS,         /* Test a captured location without raising for an absent key. */
+    O_TABLE_DELETE,      /* Delete a captured location without numeric compaction; bool reports presence. */
+    O_BOOL_LOCAL,        /* Define a zero-initialized function-frame bool cell. */
+    O_BOOL_STORE,        /* Store a normalized bool in a dominating local cell. */
+    O_BOOL_LOAD,         /* Read a local cell into a new immutable bool SSA value. */
+    O_STRING_LEN,        /* Count Unicode scalars in a string, returning int. */
+    O_STRING_AT,         /* Read one Unicode scalar at an int index, returning int. */
+    O_STRING_SLICE,      /* Copy a half-open string range without changing the source. */
+    O_I32_DIV,           /* Signed truncating int division; zero raises, MIN/-1 wraps. */
+    O_I32_MOD,           /* Signed int remainder; zero raises, MIN%-1 is zero. */
+    O_STRING_CONCAT,     /* Concatenate rooted UTF-8 strings; allocates, may throw. */
+    O_STRING_EQ,         /* Compare string contents without implicit conversion. */
+    O_I32_SHL,           /* Checked int left shift; count 0..31, result wraps to signed32. */
+    O_I32_SHR,           /* Checked arithmetic int right shift; count 0..31. */
+    O_STRING_LT,         /* Unicode scalar lexicographic ordering without normalization. */
+    O_TABLE_RANGE,       /* Capture owner and normalize a range before evaluating RHS. */
+    O_TABLE_SPLICE,      /* Transactional resized replacement through a captured range. */
+    O_STRING_RANGE,      /* Capture immutable source and normalize rune bounds before RHS. */
+    O_STRING_SPLICE,     /* Build an independent resized string from a captured range. */
+    O_STRING_CHAR_RANGE, /* Capture one checked rune index as an absolute range. */
+    O_RUNE_TEXT          /* Convert a valid int Unicode scalar to a one-rune string. */
 } FirOp;
+
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */
 enum
@@ -155,6 +169,7 @@ enum
 };
 
 unsigned fir_effects(FirOp op);
+
 
 /* Operands are symbol-table indices; -1 means absent. Source lines survive
      * optimisation. Strings are UTF-8 bytes without embedded NUL. */
@@ -174,6 +189,7 @@ typedef struct
     char text[FIR_TEXT];
 } FirInstruction;
 
+
 /* Symbol-table entry: printable spelling, defining instruction index and type. */
 typedef struct
 {
@@ -181,6 +197,7 @@ typedef struct
     int definition;
     FirType type;
 } FirValue;
+
 
 /* Label entry: forward references are resolved before verification. */
 typedef struct
@@ -200,17 +217,21 @@ typedef struct
     char module[FIR_TEXT];
 } FirModule;
 
+
 /* All functions return 1 on success and 0 with a diagnostic on failure.
      * The caller owns the module, streams and diagnostic buffer. The generated
      * parser has global state: sequential calls reset state; parsing is not thread-safe. */
+
 
 
 /* Read and construct one FIR translation unit from a binary input stream. */
 int fir_parse(FILE *input, FirModule *module, char *error, size_t capacity);
 
 
+
 /* Reject malformed control flow, invalid SSA uses, duplicate symbol spellings and incompatible types. */
 int fir_verify(FirModule *module, char *error, size_t capacity);
+
 
 
 /* Verify caller-owned IR and reject cyclic CFG. No module mutation, allocation or parser state.
@@ -218,16 +239,20 @@ int fir_verify(FirModule *module, char *error, size_t capacity);
 int fir_acyclic(FirModule *module, char *error, size_t capacity);
 
 
+
 /* Print canonical, reparsable FIR text; keep diagnostic line annotations. */
 int fir_print(FILE *output, const FirModule *module);
+
 
 
 /* Apply conservative rewrites in place and verify the result. */
 int fir_optimise(FirModule *module, char *error, size_t capacity);
 
 
+
 /* Compile verified FIR into a versioned SWO1 object, never a SWF container. */
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
+
 
 
 /* Emit verified i32/bool/f64/i64 CFG or the supported acyclic big-table CFG as NC64 Dis.
@@ -239,8 +264,10 @@ int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity);
 
 
+
 /* Optional caller-owned temporary stream; honors TMPDIR on POSIX. */
 FILE *fir_temporary(void);
+
 
 /* Non-console entry points; caller owns every stream and diagnostic buffer.
      * Parser calls must be serialized; sequential calls reset state after errors. */
@@ -263,6 +290,7 @@ typedef struct
     FirSnapshot snapshot;
     void *user;
 } FirRunOptions;
+
 
 /* First source failure, copied into caller storage. Locations use original
      * UTF-8 bytes: zero-based offset/length, one-based physical line/byte column.
@@ -291,10 +319,12 @@ typedef struct
     size_t column;
 } FirSourceDiagnostic;
 
+
 /* Additive source API: diagnostic may be NULL, cleared on every call.
      * No borrowed source/error/stream pointer survives return. Parser calls must
      * be serialized, including calls through the legacy wrapper below. */
 int fir_source_ex(FILE *, FILE *, FirLanguage, const char *module_name, char *, size_t, FirSourceDiagnostic *);
+
 
 
 /* Compile with an optional FIRDBG1 source snapshot/value/binding sidecar.

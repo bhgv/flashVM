@@ -648,6 +648,8 @@ PRODUCTIONS
         int key = 0;
         int slot = 0;
         int receiver = 0;
+        int end = 0;
+        int slice = 0;
         int old = 0;
         int op = 0;
         SourceMark target;
@@ -692,17 +694,32 @@ PRODUCTIONS
                 source_restore(target);
                 receiver = source_read(name);
             .)
-            TableKey<&key>
+            TableWriteKey<&key,&end,&slice,&access>
             (.
-                access = source_mark();
-                slot = source_table_index(receiver, key);
+                source_restore(access);
+                if (!slice && source_string_receiver(receiver))
+                {
+                    slot = source_string_char_range(receiver, key);
+                    slice = 2;
+                }
+                else
+                {
+                    slot = slice ? source_table_range(receiver, key, end) : source_table_index(receiver, key);
+                }
             .)
             TableAssignmentOperator<&op>
             (.
                 operation = source_mark();
                 if (op)
                 {
-                    old = source_table_load(slot);
+                    if (slice)
+                    {
+                        source_table_slice_compound();
+                    }
+                    else
+                    {
+                        old = source_table_load(slot);
+                    }
                 }
             .)
             TableExpression<&value> ";"
@@ -716,7 +733,23 @@ PRODUCTIONS
                 {
                     source_restore(access);
                 }
-                source_table_store(slot, value);
+                if (slice)
+                {
+                    if (slice == 2)
+                    {
+                        value = source_string_rune(value);
+                    }
+                    value = source_table_splice(slot, value);
+                    if (value >= 0)
+                    {
+                        source_restore(target);
+                        source_table_bind(name, value, 0, 0);
+                    }
+                }
+                else
+                {
+                    source_table_store(slot, value);
+                }
             .)
         )
     )
@@ -745,6 +778,17 @@ PRODUCTIONS
     | "big" (. *type = T_I64; .)
     | "string" (. *type = T_STRING; .)
     | "table" "of" "big" (. *type = T_TABLE_BIG; .)
+  .
+
+  /* Assignment-only selector. Range bounds run once and are captured before RHS.
+   * Both bounds are explicit in this initial executable profile. */
+  TableWriteKey<int *key, int *end, int *slice, SourceMark *access> =
+    (. *slice = 0; .)
+    (
+        "." ident (. capture(); *access = source_mark(); *key = source_table_text(0); .)
+        | "[" (. capture(); *access = source_mark(); .) TableExpression<key>
+          [ ":" TableExpression<end> (. *slice = 1; .) ] "]"
+    )
   .
 
   /* Dotted identifiers are literal string keys, not lookups of a local binding with that name. */

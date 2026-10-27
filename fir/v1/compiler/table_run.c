@@ -7,6 +7,7 @@
 #include <string.h>
 #include <limits.h>
 
+
 /* Borrow the shared strict validator; no VM representation is used by this oracle. */
 extern int fir_utf8(const unsigned char *, size_t);
 
@@ -23,6 +24,37 @@ typedef struct
     int64_t end;      /* Exclusive range end. */
 } RuntimeValue;
 
+
+/* Validate counted runtime UTF-8 while admitting U+0000 as an ordinary scalar.
+ * Source text still uses the stricter input validator, which rejects NUL bytes.
+ * Split only at ASCII NUL boundaries; malformed multibyte sequences still fail. */
+static int runtime_utf8(const char *text, size_t size)
+{
+    size_t first = 0;
+    size_t i;
+    if (!size)
+    {
+        return 1;
+    }
+    if (!text)
+    {
+        return 0;
+    }
+    for (i = 0; i < size; i++)
+    {
+        if (!text[i])
+        {
+            if (!fir_utf8((const unsigned char *)text + first, i - first))
+            {
+                return 0;
+            }
+            first = i + 1;
+        }
+    }
+    return fir_utf8((const unsigned char *)text + first, size - first);
+}
+
+
 /* Decode borrowed UTF-8 independently of Dis's Rune representation.
  * wanted is a nonnegative scalar position, including the one-past-end position.
  * offset/scalar/length receive byte position, scalar (-1 at end) and total count.
@@ -31,7 +63,7 @@ static int text_position(const RuntimeValue *value, int64_t wanted, size_t *offs
 {
     size_t at = 0;
     int64_t count = 0;
-    if (wanted < 0 || !fir_utf8((const unsigned char *)value->text, value->text_size))
+    if (wanted < 0 || !runtime_utf8(value->text, value->text_size))
     {
         return 0;
     }
@@ -68,11 +100,13 @@ static int text_position(const RuntimeValue *value, int64_t wanted, size_t *offs
     return wanted <= count;
 }
 
+
 /* Interpret low 32 bits as signed int while retaining int64 storage for reference values. */
 static int64_t int_bits(uint32_t bits)
 {
     return bits <= INT32_MAX ? (int64_t)bits : -1 - (int64_t)(UINT32_MAX - bits);
 }
+
 
 /* Convert wrapped bits to a signed big without relying on implementation-defined
  * out-of-range casts. This scalar helper allocates nothing and never blocks. */
@@ -80,6 +114,7 @@ static int64_t big_bits(uint64_t bits)
 {
     return bits <= INT64_MAX ? (int64_t)bits : -1 - (int64_t)(UINT64_MAX - bits);
 }
+
 
 /* Check coverage before allocating owners or publishing any trace; module has already verified. */
 static int coverage(FirModule *module, char *error, size_t capacity)
@@ -100,7 +135,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_STRING_LT) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_RUNE_TEXT) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -116,6 +151,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
     }
     return 1;
 }
+
 
 /* Execute only verifier/coverage-admitted instructions. Every allocated owner is registered once,
  * while SSA aliases/locations merely borrow it until this invocation finishes. No C pointer escapes. */
@@ -474,6 +510,124 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             {
                 status = FHT_INVALID;
             }
+            break;
+        case O_RUNE_TEXT:
+        {
+            uint32_t rune = (uint32_t)(uint64_t)a->big;
+            unsigned width;
+            unsigned i;
+            char *text;
+            if (a->big < 0 || rune > 0x10ffffU || (rune >= 0xd800U && rune <= 0xdfffU))
+            {
+                status = FHT_INVALID;
+                break;
+            }
+            width = rune < 0x80U ? 1U : rune < 0x800U ? 2U : rune < 0x10000U ? 3U : 4U;
+            text = malloc(width + 1U);
+            if (!text)
+            {
+                status = FHT_NOMEM;
+                break;
+            }
+            for (i = width; i > 1; i--)
+            {
+                text[i - 1] = (char)(0x80U | (rune & 0x3fU));
+                rune >>= 6;
+            }
+            text[0] = (char)(rune | (width == 1 ? 0 : width == 2 ? 0xc0U : width == 3 ? 0xe0U : 0xf0U));
+            text[width] = 0;
+            texts[text_count++] = text;
+            result->text = text;
+            result->text_size = width;
+            break;
+        }
+        case O_STRING_CHAR_RANGE:
+        {
+            size_t offset;
+            int64_t scalar;
+            int64_t length;
+            uint64_t index;
+            if (!text_position(a, 0, &offset, &scalar, &length) ||
+                !fvm_relative_index((uint64_t)length, b->big, &index) || index >= (uint64_t)length)
+            {
+                status = FHT_INVALID;
+                break;
+            }
+            *result = *a;
+            result->first = (int64_t)index;
+            result->end = (int64_t)index + 1;
+            break;
+        }
+        case O_STRING_RANGE:
+        {
+            size_t offset;
+            int64_t scalar;
+            int64_t length;
+            uint64_t first;
+            uint64_t end;
+            if (!text_position(a, 0, &offset, &scalar, &length) ||
+                !fvm_relative_range((uint64_t)length, b->first, b->end, &first, &end))
+            {
+                status = FHT_INVALID;
+                break;
+            }
+            *result = *a;
+            result->first = (int64_t)first;
+            result->end = (int64_t)end;
+            break;
+        }
+        case O_STRING_SPLICE:
+        {
+            size_t first;
+            size_t end;
+            size_t length;
+            int64_t scalar;
+            int64_t runes;
+            char *text;
+            if (!text_position(a, a->first, &first, &scalar, &runes) ||
+                !text_position(a, a->end, &end, &scalar, &runes) || first > end)
+            {
+                status = FHT_INVALID;
+                break;
+            }
+            length = a->text_size - (end - first);
+            if (b->text_size == SIZE_MAX || length > SIZE_MAX - b->text_size - 1)
+            {
+                status = FHT_NOMEM;
+                break;
+            }
+            length += b->text_size;
+            text = malloc(length + 1);
+            if (!text)
+            {
+                status = FHT_NOMEM;
+                break;
+            }
+            memcpy(text, a->text, first);
+            memcpy(text + first, b->text, b->text_size);
+            memcpy(text + first + b->text_size, a->text + end, a->text_size - end);
+            text[length] = 0;
+            texts[text_count++] = text;
+            result->text = text;
+            result->text_size = length;
+            break;
+        }
+        case O_TABLE_RANGE:
+        {
+            uint64_t first;
+            uint64_t end;
+            if (!fvm_relative_range(fht_length(a->table), b->first, b->end, &first, &end))
+            {
+                status = FHT_INVALID;
+                break;
+            }
+            result->table = a->table;
+            result->first = (int64_t)first;
+            result->end = (int64_t)end;
+            break;
+        }
+        case O_TABLE_SPLICE:
+            status = fht_splice(a->table, a->first, a->end, b->table);
             break;
         case O_TABLE_SLICE:
             status = fht_slice_relative(a->table, b->first, b->end, &result->table);

@@ -7,12 +7,20 @@ unsigned fir_effects(FirOp op)
 {
     switch (op)
     {
+    case O_STRING_CHAR_RANGE:
+    case O_STRING_RANGE:
+    case O_TABLE_RANGE:
+        return FIR_READS_MEMORY | FIR_MAY_THROW;
+    case O_TABLE_SPLICE:
+        return FIR_READS_MEMORY | FIR_WRITES_MEMORY | FIR_ALLOCATES | FIR_MAY_THROW;
     case O_STRING_LT:
     case O_STRING_EQ:
     case O_STRING_LEN:
         return FIR_READS_MEMORY;
     case O_STRING_AT:
         return FIR_READS_MEMORY | FIR_MAY_THROW;
+    case O_RUNE_TEXT:
+    case O_STRING_SPLICE:
     case O_STRING_CONCAT:
     case O_STRING_SLICE:
         return FIR_READS_MEMORY | FIR_ALLOCATES | FIR_MAY_THROW;

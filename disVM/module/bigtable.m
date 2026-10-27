@@ -36,6 +36,15 @@ Bigtable: module
     count: fn(tab: ref Handle): big;
     # Copy a checked half-open sequence slice, reindexed from zero; raises on invalid bounds/OOM.
     slice: fn(tab: ref Handle, first: big, end: big): ref Handle;
+    # Normalize relative bounds before RHS; returns absolute exclusive bounds.
+    slicerange: fn(tab: ref Handle, first: big, end: big): (big, big);
+    # Replace a captured range transactionally with replacement's dense prefix.
+    splice: fn(tab: ref Handle, first: big, end: big, replacement: ref Handle): int;
+    # String bounds count Unicode runes; replacement returns independent storage.
+    stringrange: fn(text: string, first: big, end: big): (big, big);
+    stringsplice: fn(text: string, first: big, end: big, replacement: string): string;
+    stringindex: fn(text: string, index: int): (big, big); # One checked rune destination.
+    runetext: fn(value: int): string; # Reject non-scalars, including surrogate code points.
     # Copy all keys in deterministic order; allocation failure raises, never returns a partial list.
     keysof: fn(tab: ref Handle): ref Keys;
     # Return snapshot length and an indexed key; keyat raises on invalid bounds/foreign owners.

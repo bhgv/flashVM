@@ -8,19 +8,25 @@
 #include <inttypes.h>
 
 
+
 /* Borrowed output stream and copied source position; released after parsing. */
 static FILE *destination;
 static SourceMark location;
+
 /* Complete consumed spelling; overlong input is rejected before copying. */
 static char token[256];
+
 /* Numeric mode, next SSA number, sticky first-error state and selected language. */
 static int integer_mode, serial, failed, profile;
 static char module_name[256];
+
 /* Flat translation-unit bindings. source_config resets the live prefix. */
 static char names[256][256];
 static int bindings[256], immutable[256], name_count, source_line;
+
 /* Retired lexical bindings are never reused during one bounded translation unit. */
 static int binding_scope[256], active[256], scope_depth;
+
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
 static int logic_serial;  /* Logical expression label identities, reset per translation. */
@@ -32,6 +38,7 @@ static int result_real;             /* Interface return type, checked against th
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
 static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
+
 
 /* Configure one translation unit; each process owns one generated parser. */
 void source_config(FILE *out, int language)
@@ -52,11 +59,13 @@ void source_config(FILE *out, int language)
     memset(table_bindings, 0, sizeof(table_bindings));
 }
 
+
 /* Query semantic rejection separately from generated syntax diagnostics. */
 int source_failed(void)
 {
     return failed;
 }
+
 
 /* Report the first semantic failure without producing a deliverable file. */
 static void reject(const char *message)
@@ -67,11 +76,13 @@ static void reject(const char *message)
     failed = 1;
 }
 
+
 /* Capture a complete spelling; never silently truncate a long token. */
 static void spelling(char *out)
 {
     strcpy(out, token);
 }
+
 
 /* Checked radix conversion for the i32 tutorial profile, including INT32_MIN. */
 static int32_t integer_literal(const char *text, int negative)
@@ -145,6 +156,7 @@ static int32_t integer_literal(const char *text, int negative)
     return -(int32_t)value;
 }
 
+
 /* Lower numeric spelling in the selected homogeneous profile; Limbo real requires
  * decimal fraction/exponent literals so inferred integer arithmetic cannot be silently changed. */
 int source_constant(int negative)
@@ -202,6 +214,7 @@ int source_constant(int negative)
     return result;
 }
 
+
 /* Emit a three-address instruction; source operators are left associative. */
 int source_binary(int left, int right, int op)
 {
@@ -237,6 +250,7 @@ int source_binary(int left, int right, int op)
     return result;
 }
 
+
 /* Scanner bridge rejects complete oversized tokens before any spelling copy. */
 void source_token(const char *text, int line, long offset, size_t length, int oversized)
 {
@@ -254,6 +268,7 @@ void source_token(const char *text, int line, long offset, size_t length, int ov
         strcpy(token, text);
     }
 }
+
 
 /* A source binding names its current SSA value; assignment never redefines SSA. */
 int source_name(void)
@@ -284,6 +299,7 @@ int source_name(void)
     return name_count++;
 }
 
+
 /* Resolve the nearest active binding to its current SSA definition. */
 int source_read(int name)
 {
@@ -304,6 +320,7 @@ int source_read(int name)
     }
     return bindings[name];
 }
+
 
 /* Allocate a local shadow after its initializer has resolved the outer binding.
  * name is a translation-local identity. Return the local identity, or the original
@@ -327,6 +344,7 @@ static int local_declaration(int name)
     }
     return name;
 }
+
 
 /* Bind declarations in their lexical owner; initialization reads the outer binding.
  * Nondeclaration writes keep targeting the nearest active outer binding. */
@@ -361,6 +379,7 @@ void source_bind(int name, int value, int declaration)
     }
 }
 
+
 /* Restrict numeric AS annotations without claiming a general type checker. */
 void source_annotation(void)
 {
@@ -374,6 +393,7 @@ void source_annotation(void)
     }
 }
 
+
 /* Emit the tutorial observable only while the translation remains valid. */
 void source_trace(int value)
 {
@@ -383,6 +403,7 @@ void source_trace(int value)
         source_debug_event("trace", value, "", debug_scopes[scope_depth], scope_depth, location);
     }
 }
+
 
 /* Require implement and module declarations to use the same spelling. */
 void source_module(int first)
@@ -397,6 +418,7 @@ void source_module(int first)
     }
 }
 
+
 /* Reject a parsed source family that disagrees with the requested profile. */
 void source_language(int limbo)
 {
@@ -405,6 +427,7 @@ void source_language(int limbo)
         reject("source does not match selected language");
     }
 }
+
 
 /* Unary minus is multiplication by -1: unlike 0-x this preserves AS -0. */
 int source_negate(int value)
@@ -426,6 +449,7 @@ int source_negate(int value)
     return source_binary(value, minus, '*');
 }
 
+
 /* Enforce AS3-only constants and retain their immutability in flat AS scope. */
 void source_declare(int name, int value, int constant)
 {
@@ -437,6 +461,7 @@ void source_declare(int name, int value, int constant)
     immutable[name] = constant;
 }
 
+
 /* Lower compound assignment before updating the visible lexical binding. */
 void source_assign(int name, int value, int op)
 {
@@ -447,6 +472,7 @@ void source_assign(int name, int value, int op)
     source_bind(name, value, 0);
 }
 
+
 /* Keep native Limbo comments from silently changing AS lexical coverage. */
 void source_hash_comment(void)
 {
@@ -456,6 +482,7 @@ void source_hash_comment(void)
     }
 }
 
+
 /* Enter a lexical Limbo owner; parser nesting independently bounds recursion. */
 void source_enter_scope(void)
 {
@@ -463,6 +490,7 @@ void source_enter_scope(void)
     debug_scopes[scope_depth] = ++debug_scope_serial;
     source_debug_event("scope-enter", -1, "", debug_scopes[scope_depth], scope_depth, location);
 }
+
 
 /* Retire only local names; values assigned to outer names remain current. */
 void source_leave_scope(void)
@@ -479,17 +507,20 @@ void source_leave_scope(void)
     --scope_depth;
 }
 
+
 /* Consume over-budget block openers without recursive descent or recovery loops. */
 void source_scope_limit(void)
 {
     reject("block/group/unary nesting limit exceeded");
 }
 
+
 /* Return a copied token span, independent of later scanner/token mutations. */
 SourceMark source_mark(void)
 {
     return location;
 }
+
 
 /* Attribute target-side errors to the identifier rather than the final RHS. */
 void source_restore(SourceMark mark)
@@ -498,11 +529,13 @@ void source_restore(SourceMark mark)
     source_line = mark.line;
 }
 
+
 /* Retire caller-owned stream roots after every translation, including failure. */
 void source_release(void)
 {
     destination = NULL;
 }
+
 
 /* Lower one admitted Limbo relation to signed i32/big comparison plus edge inversion.
  * Operands/relation are parser values. Return owns no storage; source errors remain sticky.
@@ -544,6 +577,7 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
     return condition;
 }
 
+
 /* Publish the two edges and first label of a terminal decision; return its scalar identity.
  * condition is a copied bool/inversion pair. Bounds leave room for the entry plus two blocks
  * per decision. No assignment environment is merged: each accepted arm must return. */
@@ -573,6 +607,7 @@ int source_branch(SourceCondition condition)
     return choice;
 }
 
+
 /* Begin the source-false arm with the decision's original SSA environment.
  * choice is parser-local. The true arm has terminated and retired its lexical
  * locals. Restore outer scalar/owner bindings, not mutable table contents: effects
@@ -587,6 +622,7 @@ void source_else(int choice)
     terminal = 0;
 }
 
+
 /* Return the tutorial value through its existing trace harness, then terminate this FIR arm.
  * value is a parser-owned SSA index. No caller stream or source binding is acquired. */
 void source_return(int value)
@@ -599,6 +635,7 @@ void source_return(int value)
     terminal = 1;
 }
 
+
 /* Finish one staged module. AS statements need a footer return; every Limbo result already has one.
  * No parameters; destination remains caller-owned until source_release retires the borrow. */
 void source_finish(void)
@@ -609,6 +646,7 @@ void source_finish(void)
     }
     fputs("}\n", destination);
 }
+
 
 /* Select a homogeneous Limbo result profile and require interface/definition agreement.
  * kind selects int=0, real=1 or big/table=2; declaration selects the interface versus definition.
@@ -626,6 +664,7 @@ void source_result_type(int kind, int declaration)
     integer_mode = !kind;
 }
 
+
 /* Validate a typed local against the already selected homogeneous Limbo profile.
  * real is a parser boolean. Mismatch is sticky and prevents all output publication. */
 void source_binding_type(int real)
@@ -635,6 +674,7 @@ void source_binding_type(int real)
         reject("mixed int/real bindings require explicit conversion support");
     }
 }
+
 
 /* Return provenance after the generated parser has selected its result type.
  * No arguments or ownership transfer; the host serializes source compiler calls. */
@@ -646,11 +686,13 @@ FirSemantics source_semantics(void)
                                 : FIR_AVM1_NUMERIC;
 }
 
+
 /* Query the explicit big-result profile selected by the grammar; no ownership or side effects. */
 int source_table_profile(void)
 {
     return result_real == 2;
 }
+
 
 /* Allocate a bounded typed SSA identity. Failure is sticky; callers never publish failed output. */
 static int table_value(FirType type)
@@ -664,6 +706,7 @@ static int table_value(FirType type)
     table_values[value] = type;
     return value;
 }
+
 
 /* Emit one typed unary/binary table operation with copied source provenance. */
 static int table_operation(FirType type, const char *spelling, int a, int b)
@@ -681,7 +724,9 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
                                         "big.range",
                                         "keys",
                                         "table.key",
-                                        "bool.slot"};
+                                        "bool.slot",
+                                        "table.range",
+                                        "string.range"};
     int result = table_value(type);
     if (!failed)
     {
@@ -699,6 +744,7 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
     }
     return result;
 }
+
 
 /* Lower an exact decimal big constant; fractions, overflow and unsupported radices fail explicitly. */
 int source_table_constant(int negative)
@@ -722,6 +768,7 @@ int source_table_constant(int negative)
     return result;
 }
 
+
 /* Lower a quoted string or literal dotted member name into the same FIR string-key type. */
 int source_table_text(int quoted)
 {
@@ -743,6 +790,7 @@ int source_table_text(int quoted)
     return result;
 }
 
+
 /* Emit a checked int/big shift from borrowed SSA values. right must be int;
  * direction selects '<' or '>'. FIR retains the source width and eager count error. */
 int source_table_shift(int left, int right, int direction)
@@ -758,6 +806,7 @@ int source_table_shift(int left, int right, int direction)
                            left,
                            right);
 }
+
 
 /* Create a fresh mutable table owner; no source binding is acquired here. */
 int source_table_new(void)
@@ -792,6 +841,7 @@ int source_table_count(int table)
     return table_operation(T_I64, "table.count", table, -1);
 }
 
+
 /* Preserve the typed owner/key capture and return a normalized membership bool.
  * Numeric bounds and snapshot capabilities remain eager runtime checks.
  */
@@ -800,6 +850,7 @@ int source_table_has(int table, int key)
     int slot = source_table_index(table, key);
     return table_operation(T_BOOL, "table.has", slot, -1);
 }
+
 
 /* Remove the captured entry without evaluating a missing-key load or shifting indices.
  * The bool result distinguishes a removed entry from an already absent entry.
@@ -886,6 +937,7 @@ int source_logic_end(SourceLogic logic, int right)
     return table_operation(T_BOOL, "bool.load", logic.cell, -1);
 }
 
+
 /* Negate a borrowed bool with existing scalar FIR operations. The zero is a
  * compiler-owned big literal, not a parsed token or runtime owner. Return a new
  * normalized bool identity; invalid operands prevent staged output publication. */
@@ -910,6 +962,7 @@ int source_table_not(int value)
     }
     return table_operation(T_BOOL, "big.eq", number, zero);
 }
+
 
 /* Materialize a source comparison with Inferno precedence and exact operand types.
  * left/right are evaluated SSA values, relation is a copied parser enum. Same-type
@@ -951,6 +1004,7 @@ int source_table_relation(int left, int right, SourceRelation relation)
     return condition.invert ? source_table_not(condition.value) : condition.value;
 }
 
+
 /* Use a borrowed normalized bool as a terminal condition, without reevaluation. */
 SourceCondition source_table_truth(int value)
 {
@@ -964,6 +1018,7 @@ SourceCondition source_table_truth(int value)
     return condition;
 }
 
+
 /* Capture a typed owner/key location. Both numeric and text syntax use this single operation. */
 int source_table_index(int table, int key)
 {
@@ -974,6 +1029,7 @@ int source_table_index(int table, int key)
     }
     return table_operation(T_TABLE_SLOT, "table.index", table, key);
 }
+
 
 /* Capture a snapshot key, table value or Unicode scalar from typed SSA operands.
  * String indexes require int; table/snapshot numeric keys remain big. Runtime
@@ -999,11 +1055,13 @@ int source_table_subscript(int receiver, int key)
     return source_table_load(source_table_index(receiver, key));
 }
 
+
 /* Read a captured table location as big; runtime handles an absent key explicitly. */
 int source_table_load(int slot)
 {
     return table_operation(T_I64, "table.load", slot, -1);
 }
+
 
 /* Return native string int length or big table/snapshot length from the static type.
  * Strings count Unicode scalars, not bytes; no owner content is mutated. */
@@ -1038,6 +1096,7 @@ int source_table_update(int current, int right, int op)
     }
     return source_table_binary(current, right, op);
 }
+
 
 /* Emit arithmetic after evaluating both operands once in source order. Inputs
  * are borrowed SSA identities; incompatible types make output publication fail. */
@@ -1123,6 +1182,7 @@ int source_table_binary(int left, int right, int op)
     return table_operation(T_I64, spelling, left, right);
 }
 
+
 /* Emit typed unary +/-/~ on a borrowed int/big SSA input. The parser has restored
  * the exact token span; no implicit string conversion or owner call occurs. */
 int source_table_unary(int value, int op)
@@ -1168,6 +1228,7 @@ int source_table_unary(int value, int op)
     return table_operation(T_I64, op == '~' ? "big.not" : op == '-' ? "big.neg" : "copy", value, -1);
 }
 
+
 /* Explicitly convert borrowed int/big/text/key SSA values. target selects big=0, text=1, int=2.
  * Int narrowing is total modulo 2^32; decimal/key checks remain runtime errors. No implicit owner RPC. */
 int source_table_convert(int value, int target)
@@ -1195,6 +1256,7 @@ int source_table_convert(int value, int target)
     return table_operation(target ? T_STRING : T_I64, target ? "value.text" : "value.big", value, -1);
 }
 
+
 /* Reflect supported typed values without converting data or invoking owner methods.
  * A snapshot key remains dynamic: the VM must inspect its retained immutable owner. */
 int source_table_typeof(int value)
@@ -1208,6 +1270,7 @@ int source_table_typeof(int value)
     return table_operation(T_STRING, "value.type", value, -1);
 }
 
+
 /* Copy all keys without exporting the mutable table representation. */
 int source_table_keys(int table)
 {
@@ -1217,6 +1280,7 @@ int source_table_keys(int table)
     }
     return table_operation(T_KEYS, "table.keys", table, -1);
 }
+
 
 /* Build checked half-open bounds for a table copy or immutable Unicode string slice.
  * String bounds are int and widen exactly into the existing range representation. */
@@ -1243,6 +1307,61 @@ int source_table_slice(int table, int first, int end)
     return table_operation(T_TABLE_BIG, "table.slice", table, range);
 }
 
+
+/* Capture a borrowed table/string and signed bounds before evaluating assignment RHS.
+ * The runtime resolves relative positions eagerly; no raw address escapes. */
+int source_table_range(int table, int first, int end)
+{
+    int range;
+    if (table_values[table] == T_STRING)
+    {
+        if (table_values[first] != T_I32 || table_values[end] != T_I32)
+        {
+            reject("string slice assignment requires int rune bounds");
+            return 0;
+        }
+        first = source_table_convert(first, 0);
+        end = source_table_convert(end, 0);
+        range = table_operation(T_BIG_RANGE, "range.big", first, end);
+        return table_operation(T_STRING_RANGE, "string.range", table, range);
+    }
+    if (table_values[table] != T_TABLE_BIG || table_values[first] != T_I64 || table_values[end] != T_I64)
+    {
+        reject("slice assignment requires table of big and big bounds");
+        return 0;
+    }
+    range = table_operation(T_BIG_RANGE, "range.big", first, end);
+    return table_operation(T_TABLE_RANGE, "table.range", table, range);
+}
+
+
+/* Replace a captured table/string range with a borrowed same-kind RHS.
+ * Return -1 after table mutation or a fresh string SSA identity for local rebind.
+ * Native storage handles self aliasing; source type errors publish no operation. */
+int source_table_splice(int slot, int value)
+{
+    if (table_values[slot] == T_STRING_RANGE)
+    {
+        if (table_values[value] != T_STRING)
+        {
+            reject("string slice replacement requires string");
+            return -1;
+        }
+        return table_operation(T_STRING, "string.splice", slot, value);
+    }
+    if (table_values[slot] != T_TABLE_RANGE || table_values[value] != T_TABLE_BIG)
+    {
+        reject("slice replacement requires table of big");
+    }
+    if (!failed)
+    {
+        fprintf(destination, "    table.splice %%v%d, %%v%d\n", slot, value);
+        source_debug_event("table-splice", slot, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return -1;
+}
+
+
 /* Type-check an explicit write; do not erase or reorder its memory effect. */
 void source_table_store(int slot, int value)
 {
@@ -1256,6 +1375,7 @@ void source_table_store(int slot, int value)
         source_debug_event("table-store", slot, "", debug_scopes[scope_depth], scope_depth, location);
     }
 }
+
 
 /* Declare/infer or assign a typed local, preserving uninitialized-declaration rejection on reads.
  * type is zero for inferred declarations/assignments; value -1 means a typed declaration only. */
@@ -1288,6 +1408,7 @@ void source_table_bind(int name, int value, int type, int declaration)
     }
 }
 
+
 /* Require a big result before emitting the existing trace/return entry harness. */
 void source_table_return(int value)
 {
@@ -1296,4 +1417,43 @@ void source_table_return(int value)
         reject("table profile value() must return big");
     }
     source_return(value);
+}
+
+
+/* Diagnose unsupported compound range writes; never generate a scalar read. */
+void source_table_slice_compound(void)
+{
+    reject("compound assignment to slice is unsupported");
+}
+
+
+/* Test a borrowed receiver's static type; no runtime effect or ownership change. */
+int source_string_receiver(int receiver)
+{
+    return table_values[receiver] == T_STRING;
+}
+
+
+/* Capture a string scalar write destination before evaluating its int RHS.
+ * Negative indexes resolve against the current immutable string snapshot. */
+int source_string_char_range(int receiver, int index)
+{
+    if (table_values[receiver] != T_STRING || table_values[index] != T_I32)
+    {
+        reject("string scalar assignment requires int rune index");
+        return 0;
+    }
+    return table_operation(T_STRING_RANGE, "string.char.range", receiver, index);
+}
+
+
+/* Validate an int Unicode scalar and allocate replacement text; errors are eager. */
+int source_string_rune(int value)
+{
+    if (table_values[value] != T_I32)
+    {
+        reject("string scalar replacement requires int Unicode scalar");
+        return 0;
+    }
+    return table_operation(T_STRING, "rune.text", value, -1);
 }

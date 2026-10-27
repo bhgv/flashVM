@@ -94,24 +94,33 @@ enum
     DEL_TEXT,      /* Delete a copied text location. */
     DEL_KEY,       /* Delete through a snapshot-owned key. */
     PRESENT,       /* Convert get/delete statuses to a normalized bool. */
-    RESOLVE_INDEX  /* Capture negative numeric indexes against prefix length. */
+    RESOLVE_INDEX, /* Capture negative numeric indexes against prefix length. */
+    SLICE_RANGE,   /* Normalize and capture absolute bounds at the receiver. */
+    SPLICE,        /* Replace a captured range, preserving owner identity. */
+    STRING_RANGE,  /* Capture normalized Unicode rune bounds. */
+    STRING_SPLICE, /* Build a resized independent string. */
+    STRING_INDEX,  /* Capture a scalar index as a one-rune range. */
+    RUNE_TEXT      /* Validate and allocate one Unicode scalar. */
 };
 
 static const Import imports[] = {
-    {"create", UINT32_C(0xf9bff31f)},      {"getindex", UINT32_C(0xd03b2e8c)},
-    {"gettext", UINT32_C(0x7a1ec3e7)},     {"indexcheck", UINT32_C(0x93504811)},
-    {"keylen", UINT32_C(0x6c3299de)},      {"keysof", UINT32_C(0xa4157ed7)},
-    {"length", UINT32_C(0x6c3299de)},      {"rangecheck", UINT32_C(0xd039b06a)},
-    {"requireok", UINT32_C(0xb1f25db6)},   {"setindex", UINT32_C(0xe420e8cf)},
-    {"settext", UINT32_C(0xb244346a)},     {"keycheck", UINT32_C(0x6c3c4973)},
-    {"getkey", UINT32_C(0x420ebc79)},      {"setkey", UINT32_C(0x9ea8730a)},
-    {"bigfromtext", UINT32_C(0xbb695870)}, {"textfrombig", UINT32_C(0x72c1d264)},
-    {"keybig", UINT32_C(0xa56b6949)},      {"keytext", UINT32_C(0x85cca8a1)},
-    {"typename", UINT32_C(0xa9b8ab85)},    {"keytype", UINT32_C(0x85cca8a1)},
-    {"slice", UINT32_C(0x71c4132a)},       {"count", UINT32_C(0x6c3299de)},
-    {"delindex", UINT32_C(0xfff0be39)},    {"deltext", UINT32_C(0x9cbcf924)},
-    {"delkey", UINT32_C(0x3c90594b)},      {"present", UINT32_C(0xe67bf126)},
-    {"resolveindex", UINT32_C(0xa56b6949)}}; /* Loader checks every signature before any generated native call can run. */
+    {"create", UINT32_C(0xf9bff31f)},       {"getindex", UINT32_C(0xd03b2e8c)},
+    {"gettext", UINT32_C(0x7a1ec3e7)},      {"indexcheck", UINT32_C(0x93504811)},
+    {"keylen", UINT32_C(0x6c3299de)},       {"keysof", UINT32_C(0xa4157ed7)},
+    {"length", UINT32_C(0x6c3299de)},       {"rangecheck", UINT32_C(0xd039b06a)},
+    {"requireok", UINT32_C(0xb1f25db6)},    {"setindex", UINT32_C(0xe420e8cf)},
+    {"settext", UINT32_C(0xb244346a)},      {"keycheck", UINT32_C(0x6c3c4973)},
+    {"getkey", UINT32_C(0x420ebc79)},       {"setkey", UINT32_C(0x9ea8730a)},
+    {"bigfromtext", UINT32_C(0xbb695870)},  {"textfrombig", UINT32_C(0x72c1d264)},
+    {"keybig", UINT32_C(0xa56b6949)},       {"keytext", UINT32_C(0x85cca8a1)},
+    {"typename", UINT32_C(0xa9b8ab85)},     {"keytype", UINT32_C(0x85cca8a1)},
+    {"slice", UINT32_C(0x71c4132a)},        {"count", UINT32_C(0x6c3299de)},
+    {"delindex", UINT32_C(0xfff0be39)},     {"deltext", UINT32_C(0x9cbcf924)},
+    {"delkey", UINT32_C(0x3c90594b)},       {"present", UINT32_C(0xe67bf126)},
+    {"resolveindex", UINT32_C(0xa56b6949)}, {"slicerange", UINT32_C(0xf9209958)},
+    {"splice", UINT32_C(0x85a03aad)},       {"stringrange", UINT32_C(0xeb01387b)},
+    {"stringsplice", UINT32_C(0xe98bc080)}, {"stringindex", UINT32_C(0x8341f3aa)},
+    {"runetext", UINT32_C(0xa9b8ab85)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
 {
@@ -133,11 +142,13 @@ typedef struct
     unsigned char data_map[2U * MAP_BYTES]; /* [GC:] Module path and live constant String roots. */
 } Emitter;
 
+
 /* Write a bounded format byte to a borrowed stream; callers check ferror before publication. */
 static void octet(FILE *output, unsigned value)
 {
     fputc((int)(value & 255U), output);
 }
+
 
 /* Encode a nonnegative existing Dis operand. All generated offsets fit signed 30-bit bounds. */
 static void operand(FILE *output, unsigned value)
@@ -160,6 +171,7 @@ static void operand(FILE *output, unsigned value)
     }
 }
 
+
 /* Write exact big-endian payload bits for numeric initializers or import signatures. */
 static void bits(FILE *output, uint64_t value, unsigned bytes)
 {
@@ -169,6 +181,7 @@ static void bits(FILE *output, uint64_t value, unsigned bytes)
         octet(output, (unsigned)(value >> (bytes * 8U)));
     }
 }
+
 
 /* Emit a normal source/destination instruction with optional immediate middle and indirect target.
  * The indirect target is a prepared callee frame at destination, plus the explicit byte offset. */
@@ -207,6 +220,7 @@ static void instruction(Emitter *e,
     e->count++;
 }
 
+
 /* Encode an existing three-address operation. left uses middle_mode; right and
  * destination are frame offsets. Pointer operands are rooted by the frame map,
  * including allocating string instructions; this encoder owns no VM references. */
@@ -221,12 +235,14 @@ arithmetic(Emitter *e, unsigned op, unsigned middle_mode, unsigned left, unsigne
     e->count++;
 }
 
+
 /* Mark one aligned genuine heap-reference cell in an initialized type bitmap. */
 static void root(unsigned char *map, unsigned offset)
 {
     unsigned cell = offset / CELL;
     map[cell / 8U] |= (unsigned char)(128U >> (cell % 8U));
 }
+
 
 /* Resolve a slot's defining index through typed copies; verifier guarantees dominance/no cycles.
  * Returns the borrowed index instruction or null if the public IR violates supported provenance. */
@@ -260,11 +276,16 @@ static const FirInstruction *location(FirModule *module, int value)
     return NULL;
 }
 
+
 /* Count typed cells without exposing native addresses. Verified location provenance
  * determines whether a slot captures a scalar key or a two-cell snapshot capability. */
 static unsigned cells(FirModule *module, int value)
 {
     FirType type = module->values[value].type;
+    if (type == T_TABLE_RANGE || type == T_STRING_RANGE)
+    {
+        return 3U;
+    }
     if (type == T_TABLE_SLOT)
     {
         const FirInstruction *in = location(module, value);
@@ -272,6 +293,7 @@ static unsigned cells(FirModule *module, int value)
     }
     return type == T_BIG_RANGE || type == T_TABLE_KEY ? 2U : 1U;
 }
+
 
 /* Check the whole supported subset and construct exact layouts before publishing any bytes.
  * module is already verified. Rejected CFG/types do not fall back to a fabricated scalar lowering. */
@@ -294,7 +316,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     {
         FirType type = module->values[i].type;
         e->offsets[i] = offset;
-        if (type == T_TABLE_BIG || type == T_KEYS || type == T_STRING || type == T_TABLE_KEY)
+        if (type == T_TABLE_BIG || type == T_KEYS || type == T_STRING || type == T_TABLE_KEY || type == T_TABLE_RANGE ||
+            type == T_STRING_RANGE)
         {
             root(e->frame_map, offset);
         }
@@ -329,7 +352,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX)
+        if ((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX ||
+            (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT))
         {
             e->import_count = (unsigned)(sizeof(imports) / sizeof(imports[0]));
         }
@@ -348,7 +372,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_LT) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_RUNE_TEXT) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -376,17 +400,20 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     return 1;
 }
 
+
 /* Prepare a signature-checked native frame. Arguments/results are filled before call_end. */
 static void call_begin(Emitter *e, unsigned import)
 {
     instruction(e, MFRAME, FP, MODULE_SLOT, FP, e->call_frame, 0, (int)import);
 }
 
+
 /* Copy a borrowed caller value into one generated native argument cell, retaining pointer owners. */
 static void argument(Emitter *e, unsigned op, unsigned source, unsigned index)
 {
     instruction(e, op, FP, source, INDIRECT_FP, e->call_frame, ARGUMENTS + index * CELL, -1);
 }
+
 
 /* Bind an optional caller return destination by address, then invoke the prepared native frame. */
 static void call_end(Emitter *e, unsigned import, int destination)
@@ -398,6 +425,7 @@ static void call_end(Emitter *e, unsigned import, int destination)
     instruction(e, MCALL, FP, e->call_frame, FP, MODULE_SLOT, 0, (int)import);
 }
 
+
 /* Raise on a failed native read/write status. Success stays silent and does not allocate a VM value. */
 static void require_ok(Emitter *e)
 {
@@ -405,6 +433,7 @@ static void require_ok(Emitter *e)
     argument(e, MOVW, e->status, 0);
     call_end(e, REQUIRE_OK, -1);
 }
+
 
 /* Emit paired/scalar typed copies; only genuine heap cells use retaining MOVP. */
 static void copy_value(Emitter *e, FirModule *module, int destination, int source)
@@ -427,6 +456,7 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     }
 }
 
+
 /* Normalize one native-word result to exact signed i32 without signed C overflow.
  * source/destination are scalar frame offsets; constants are unmapped module cells.
  * This emits no helper/owner calls and never changes a pointer root. */
@@ -441,6 +471,7 @@ static void normalize_int(Emitter *e, unsigned source, unsigned destination)
     operand(e->body, destination);
     e->count++;
 }
+
 
 /* Emit a checked signed32 shift using existing NC64 big kernels. Guard branches
  * reject both negative and >=32 counts before payload publication. Invalid counts
@@ -471,6 +502,7 @@ static void int_shift(Emitter *e, int left_shift, unsigned a, unsigned b, unsign
     operand(e->body, d);
     e->count++;
 }
+
 
 /* Lower one verified straight-line body using only existing Dis operations and builtin ABI calls.
  * Entry/callee root maps hold references during allocation; paired slots never encode native addresses. */
@@ -770,6 +802,45 @@ static void body(Emitter *e, FirModule *module, int measure)
             instruction(e, MOVL, FP, a, FP, d, 0, -1);
             instruction(e, MOVL, FP, b, FP, d + CELL, 0, -1);
             break;
+        case O_RUNE_TEXT:
+            call_begin(e, RUNE_TEXT);
+            argument(e, MOVW, a, 0);
+            call_end(e, RUNE_TEXT, (int)d);
+            break;
+        case O_STRING_CHAR_RANGE:
+            call_begin(e, STRING_INDEX);
+            argument(e, MOVP, a, 0);
+            argument(e, MOVW, b, 1);
+            call_end(e, STRING_INDEX, (int)(d + CELL));
+            instruction(e, MOVP, FP, a, FP, d, 0, -1);
+            break;
+        case O_STRING_RANGE:
+        case O_TABLE_RANGE:
+            import = in->op == O_STRING_RANGE ? STRING_RANGE : SLICE_RANGE;
+            call_begin(e, import);
+            argument(e, MOVP, a, 0);
+            argument(e, MOVL, b, 1);
+            argument(e, MOVL, b + CELL, 2);
+            call_end(e, import, (int)(d + CELL));
+            instruction(e, MOVP, FP, a, FP, d, 0, -1);
+            break;
+        case O_STRING_SPLICE:
+        case O_TABLE_SPLICE:
+            import = in->op == O_STRING_SPLICE ? STRING_SPLICE : SPLICE;
+            call_begin(e, import);
+            argument(e, MOVP, a, 0);
+            argument(e, MOVL, a + CELL, 1);
+            argument(e, MOVL, a + 2U * CELL, 2);
+            argument(e, MOVP, b, 3);
+            call_end(e, import, in->op == O_STRING_SPLICE ? (int)d : (int)e->status);
+            if (in->op == O_STRING_SPLICE)
+            {
+                break;
+            }
+            call_begin(e, REQUIRE_OK);
+            argument(e, MOVW, e->status, 0);
+            call_end(e, REQUIRE_OK, -1);
+            break;
         case O_TABLE_SLICE:
             call_begin(e, SLICE);
             argument(e, MOVP, a, 0);
@@ -789,6 +860,7 @@ static void body(Emitter *e, FirModule *module, int measure)
     }
 }
 
+
 /* Emit one initialized UTF-8 String at a mapped module cell; text is borrowed and NUL-free by FIR. */
 static void string_data(FILE *output, unsigned offset, const char *text)
 {
@@ -798,6 +870,7 @@ static void string_data(FILE *output, unsigned offset, const char *text)
     operand(output, offset);
     fwrite(text, 1, size, output);
 }
+
 
 /* Emit descriptor index/size and exact root bitmap; trailing zero bytes need not be stored. */
 static void descriptor(FILE *output, unsigned index, unsigned size, const unsigned char *map)
@@ -812,6 +885,7 @@ static void descriptor(FILE *output, unsigned index, unsigned size, const unsign
     operand(output, bytes);
     fwrite(map, 1, bytes, output);
 }
+
 
 /* Emit table-capable NC64 Dis from an already verified caller-owned module.
  * Preflight/body failures leave output untouched. I/O failure can publish a prefix; CLI staging

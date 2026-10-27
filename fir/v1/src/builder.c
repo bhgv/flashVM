@@ -29,6 +29,7 @@ extern Error_Func Custom_Error;
 
 extern int fir_parser_run(unsigned char *, int);
 
+
 /* Keep the first semantic failure; later recovery actions cannot overwrite it. */
 void fir_build_error(const char *message, int line)
 {
@@ -38,6 +39,7 @@ void fir_build_error(const char *message, int line)
     }
     active->failed = 1;
 }
+
 
 /* Translate the generated parser callback into the same bounded diagnostic. */
 static void syntax_error(int code, int line, int column, long offset)
@@ -50,6 +52,7 @@ static void syntax_error(int code, int line, int column, long offset)
     }
     active->failed = 1;
 }
+
 
 /* Insert forward references now; the verifier later requires definitions. */
 static int symbol(const char *text, int block)
@@ -82,6 +85,7 @@ static int symbol(const char *text, int block)
     return n;
 }
 
+
 /* Reset the next instruction before any of its semantic actions execute. */
 void fir_build_begin(int line)
 {
@@ -91,6 +95,7 @@ void fir_build_begin(int line)
     in->block = active->block;
     in->line = line;
 }
+
 
 /* Commit a complete instruction only while semantic construction is valid. */
 void fir_build_end(void)
@@ -108,17 +113,20 @@ void fir_build_end(void)
     m->instructions[m->count++] = active->instruction;
 }
 
+
 /* Record the exact opcode selected by the grammar alternative. */
 void fir_build_op(FirOp op)
 {
     active->instruction.op = op;
 }
 
+
 /* Record the explicit requirement for the existing FlashVM channel extension. */
 void fir_build_channels(void)
 {
     active->module->channels = 1;
 }
+
 
 /* Decimal parsing is independent of host long width. String escapes are
  * decoded after Coco/R has recognised a complete, bounded quoted token. */
@@ -193,6 +201,7 @@ static void literal(const char *text, int line)
     }
 }
 
+
 /* Dispatch a captured grammar token by its semantic role. */
 void fir_build_token(int role, const char *text, int line)
 {
@@ -211,7 +220,9 @@ void fir_build_token(int role, const char *text, int line)
                                         "big.range",
                                         "keys",
                                         "table.key",
-                                        "bool.slot"};
+                                        "bool.slot",
+                                        "table.range",
+                                        "string.range"};
     int index;
     if (active->failed)
     {
@@ -261,14 +272,14 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_TYPE)
     {
-        for (index = T_I32; index <= T_BOOL_SLOT; ++index)
+        for (index = T_I32; index <= T_STRING_RANGE; ++index)
         {
             if (!strcmp(types[index], text))
             {
                 break;
             }
         }
-        if (index > T_BOOL_SLOT || in->result < 0)
+        if (index > T_STRING_RANGE || in->result < 0)
         {
             fir_build_error("invalid type", line);
             return;
@@ -322,6 +333,7 @@ void fir_build_token(int role, const char *text, int line)
         break;
     }
 }
+
 
 /* Read and validate bounded input before invoking the generated Coco/R parser. */
 int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
