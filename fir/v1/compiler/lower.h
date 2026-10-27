@@ -29,6 +29,24 @@ typedef struct
     int invert; /* Reverse FIR edges to implement the source relation without bool casts. */
 } SourceCondition;
 
+
+/* Parser-owned short-circuit continuation; cells are frame-local scalar identities. */
+typedef struct
+{
+    int cell;   /* Dominating bool.slot SSA identity; never a heap/native pointer. */
+    int choice; /* Private logical CFG label number, independent of terminal decisions. */
+} SourceLogic;
+
+/* Begin a lazy bool operation after left has evaluated; disjunction selects ||.
+ * Return a copied continuation. Sticky type/block errors prevent publication. */
+SourceLogic source_logic_begin(int left, int disjunction);
+
+
+/* Complete a lazy operation after parsing its guarded RHS; return a bool SSA value.
+ * The caller restores the original operator span before calling this function. */
+int source_logic_end(SourceLogic logic, int right);
+
+
 /* Lower borrowed scalar operands/relation to a bool with the current source origin. */
 SourceCondition source_compare(int left, int right, SourceRelation relation);
 

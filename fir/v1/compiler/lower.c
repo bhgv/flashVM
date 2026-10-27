@@ -23,7 +23,9 @@ static int bindings[256], immutable[256], name_count, source_line;
 static int binding_scope[256], active[256], scope_depth;
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
-static int branch_serial;                        /* Total terminal decisions; two new blocks per decision. */
+static int logic_serial;  /* Logical expression label identities, reset per translation. */
+static int blocks_used;   /* Entry plus all terminal/logical CFG blocks, bounded by FIR_BLOCKS. */
+static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
 static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isolated per decision. */
 static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
@@ -43,7 +45,8 @@ void source_config(FILE *out, int language)
     integer_mode = language == 4;
     serial = failed = name_count = scope_depth = debug_scope_serial = 0;
     debug_scopes[0] = 0;
-    branch_serial = terminal = 0;
+    branch_serial = terminal = logic_serial = 0;
+    blocks_used = 1;
     result_real = 0;
     memset(table_values, 0, sizeof(table_values));
     memset(table_bindings, 0, sizeof(table_bindings));
@@ -546,12 +549,13 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
 int source_branch(SourceCondition condition)
 {
     int choice = ++branch_serial;
-    if (branch_serial > (FIR_BLOCKS - 1) / 2)
+    if (branch_serial > (FIR_BLOCKS - 1) / 2 || blocks_used + 2 > FIR_BLOCKS)
     {
         reject("terminal decision block limit exceeded");
     }
     if (!failed)
     {
+        blocks_used += 2;
         branch_names[choice] = name_count;
         memcpy(branch_bindings[choice], bindings, (size_t)name_count * sizeof(bindings[0]));
         fprintf(destination,
@@ -675,7 +679,8 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
                                         "table.slot",
                                         "big.range",
                                         "keys",
-                                        "table.key"};
+                                        "table.key",
+                                        "bool.slot"};
     int result = table_value(type);
     if (!failed)
     {
@@ -786,6 +791,78 @@ int source_table_delete(int slot)
 }
 
 
+/* Begin a lazy logical expression using a private scalar merge cell.
+ * left is an evaluated bool; disjunction selects || rather than &&. No owner,
+ * heap allocation or source binding escapes. The skipped arm keeps left, while
+ * only the RHS arm can overwrite it. All labels share the global block budget. */
+SourceLogic source_logic_begin(int left, int disjunction)
+{
+    SourceLogic logic;
+    logic.cell = 0;
+    logic.choice = ++logic_serial;
+    if (failed)
+    {
+        return logic;
+    }
+    if (table_values[left] != T_BOOL)
+    {
+        reject("logical operator requires bool operands");
+    }
+    if (blocks_used + 3 > FIR_BLOCKS)
+    {
+        reject("logical expression block limit exceeded");
+    }
+    if (!failed)
+    {
+        blocks_used += 3;
+        logic.cell = table_operation(T_BOOL_SLOT, "bool.local", -1, -1);
+        if (failed)
+        {
+            return logic;
+        }
+        fprintf(destination, "    bool.store %%v%d, %%v%d\n", logic.cell, left);
+        fprintf(destination,
+                "    if %%v%d, ^logic%d_%s, ^logic%d_%s\n"
+                "^logic%d_skip:\n    jump ^logic%d_join\n^logic%d_rhs:\n",
+                left,
+                logic.choice,
+                disjunction ? "skip" : "rhs",
+                logic.choice,
+                disjunction ? "rhs" : "skip",
+                logic.choice,
+                logic.choice,
+                logic.choice);
+        source_debug_event("logical-branch", left, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return logic;
+}
+
+
+/* Merge the executed RHS or skipped left into a fresh immutable bool SSA result.
+ * logic is the parser's copied continuation; right has evaluated only in its
+ * guarded block. Synthetic stores/loads keep the authored operator provenance.
+ * Errors preserve staged outputs and never index an invalid cell identity. */
+int source_logic_end(SourceLogic logic, int right)
+{
+    if (failed)
+    {
+        return 0;
+    }
+    if (table_values[right] != T_BOOL)
+    {
+        reject("logical operator requires bool operands");
+        return 0;
+    }
+    fprintf(destination,
+            "    bool.store %%v%d, %%v%d\n    jump ^logic%d_join\n^logic%d_join:\n",
+            logic.cell,
+            right,
+            logic.choice,
+            logic.choice);
+    source_debug_event("logical-store", right, "", debug_scopes[scope_depth], scope_depth, location);
+    return table_operation(T_BOOL, "bool.load", logic.cell, -1);
+}
+
 /* Negate a borrowed bool with existing scalar FIR operations. The zero is a
  * compiler-owned big literal, not a parsed token or runtime owner. Return a new
  * normalized bool identity; invalid operands prevent staged output publication. */
@@ -810,7 +887,6 @@ int source_table_not(int value)
     }
     return table_operation(T_BOOL, "big.eq", number, zero);
 }
-
 
 /* Materialize a source comparison with Inferno precedence and exact operand types.
  * left/right are evaluated SSA values, relation is a copied parser enum. Same-type

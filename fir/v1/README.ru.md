@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.23.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.24.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -111,3 +111,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 [Compiler 0.22: terminal lexical arms / Лексические ветви](doc/TERMINAL_ARMS.md) · [Русский](doc/TERMINAL_ARMS.ru.md).
 
 [Comparison values / Сравнения как значения](doc/COMPARISON_VALUES.md) · [Русский](doc/COMPARISON_VALUES.ru.md).
+
+[Lazy logic / Короткое замыкание](doc/SHORT_CIRCUIT.md) · [Русский](doc/SHORT_CIRCUIT.ru.md).

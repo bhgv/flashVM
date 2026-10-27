@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.23.0 LANGUAGES C)
+project(fir1 VERSION 0.24.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -263,6 +263,19 @@ if(BUILD_TESTING)
   else()
     add_test(NAME fir1_table_comparisons COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/table_comparisons.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> -)
+  endif()
+endif()
+
+# Lazy operands must never execute in the skipped CFG arm; cells have no owner ABI.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    add_test(NAME fir1_short_circuit COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/short_circuit.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  else()
+    add_test(NAME fir1_short_circuit COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/short_circuit.py" $<TARGET_FILE:fir1_source>
       $<TARGET_FILE:fir1> -)
   endif()
 endif()

@@ -47,8 +47,9 @@ Exactly one zero-argument `@main() -> void` is implemented. The first written
 block is entry. Each block has a unique label and ends in `if`, `jump` or
 `return`; nothing may follow a terminator before the next label. All blocks
 must be reachable. `if` requires bool and exactly two labels. Loops can jump
-backward, but there are no block arguments, phi, mutable slots or function calls
-in this version, so general induction-variable loops cannot yet be expressed.
+backward. Compiler 0.24 adds restricted [frame-local bool cells](SHORT_CIRCUIT.md),
+but not general mutable numeric locals, block arguments, phi or function calls;
+general induction-variable source loops remain unimplemented.
 
 Symbols: `%` values, `^` blocks, `@` module/function. Names start with an ASCII
 letter or underscore; following bytes may also be digits or dots. Names are

@@ -58,8 +58,8 @@ ordering binds before `&`; write an explicit numeric cast or parentheses for the
 intended operation. Membership retains its documented low-precedence extension
 level: negate it as `!(key in table)`. Equality associates left; chained ordered
 comparisons fail once they attempt to compare bool with a numeric operand.
-Short-circuit `&&`/`||`, general mixed-type comparisons and source loops remain
-unimplemented. This is not full Limbo or AS expression coverage.
+Compiler 0.24 adds [short-circuit `&&`/`||`](SHORT_CIRCUIT.md).
+General mixed-type comparisons and source loops remain unimplemented. This is not full Limbo or AS expression coverage.
 
 ## FIR, Dis, optimization and diagnostics
 

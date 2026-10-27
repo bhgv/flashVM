@@ -86,3 +86,10 @@ outer owner reassignment. Both branches terminate; no SSA join is implied.
 2^53, stored bool comparisons, logical negation, typed int comparison and a local
 terminal arm. Compare the live original and optimized captures in both VM modes.
 [Detailed semantics, precedence and commands](../../doc/COMPARISON_VALUES.md).
+
+## Lazy logical expressions
+
+[short-circuit.b](short-circuit.b) returns 42 while guarding an absent-key read
+and skipping a deleting RHS. No temporary table implements the logical join;
+the compiler uses checked scalar frame cells and ordinary Dis MOVW.
+[Semantics, FIR cells and commands](../../doc/SHORT_CIRCUIT.md).

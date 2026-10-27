@@ -48,9 +48,10 @@ where each result is another terminal result. Both numeric operands are evaluate
 once; relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Compiler 0.22 admits lexical declarations/assignments inside int and big/table arms;
 [terminal-arm rules](TERMINAL_ARMS.md) retain the ban on continuation after the decision.
 The big/table profile now supports [comparison values and !](COMPARISON_VALUES.md);
-short-circuit boolean operators remain unsupported;
+compiler 0.24 additionally supports [lazy &&/||](SHORT_CIRCUIT.md);
 no phi or merged environment is invented. Limits are shared depth 64 and at most
-127 decisions/255 blocks within the existing 1000 SSA values. Coco/R productions
+127 terminal decisions within 1000 SSA values. All terminal/logical blocks
+share the 256-block budget including entry. Coco/R productions
 LimboResult/LimboCondition/Relation in [src1.atg](../compiler/src1.atg) call
 [lower.c](../compiler/lower.c). [Example and both backends](../examples/dis/README.md).
 

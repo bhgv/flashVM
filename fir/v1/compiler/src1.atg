@@ -643,8 +643,39 @@ PRODUCTIONS
        *result = source_table_delete(slot); .)
   .
 
-  /* Membership binds below bitwise OR and keeps left-to-right operand evaluation. */
+  /* Logical operators match Inferno: && binds more tightly than ||. RHS code
+   * is emitted only inside its guarded CFG arm, never eagerly before a branch. */
   TableExpression<int *result> =
+    (.
+        int right = 0;
+        SourceLogic logic;
+        SourceMark operation;
+    .)
+    TableLogicalAnd<result>
+    {
+        "||" (. capture(); operation = source_mark(); logic = source_logic_begin(*result, 1); .)
+        TableLogicalAnd<&right>
+        (. source_restore(operation); *result = source_logic_end(logic, right); .)
+    }
+  .
+
+  /* Every && RHS begins after its own control-flow edge and shares the block budget. */
+  TableLogicalAnd<int *result> =
+    (.
+        int right = 0;
+        SourceLogic logic;
+        SourceMark operation;
+    .)
+    TableMembership<result>
+    {
+        "&&" (. capture(); operation = source_mark(); logic = source_logic_begin(*result, 0); .)
+        TableMembership<&right>
+        (. source_restore(operation); *result = source_logic_end(logic, right); .)
+    }
+  .
+
+  /* Membership binds below bitwise OR and above the logical operators. */
+  TableMembership<int *result> =
     (. int table = 0; SourceMark operation; .)
     TableBitOr<result>
     [ "in" (. capture(); operation = source_mark(); .) TableBitOr<&table>
