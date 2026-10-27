@@ -69,7 +69,7 @@ def main():
 
         # Outer uninitialized bindings and invalid traversal remain rejected.
         invalid=[
-            ('x: big; i := big 0; while (i < 1) {x = 42; i += 1;} return x;', 'loop-carried'),
+            ('x: big; i := big 0; while (i < 1) {x = 42; i += 1;} return x;', 'initialized'),
             ('t := table of big; for (k,k in t) {} return 42;', 'distinct'),
             ('t := table of big; for (k,v in t) {} return v;', 'initialized'),
             ('for (k,v in big 42) {} return 42;', 'requires table'),

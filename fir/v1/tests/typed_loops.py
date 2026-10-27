@@ -91,7 +91,7 @@ def main():
                         if not correct or 'tables_live=0 keys_live=0' not in result.stdout + result.stderr:
                             raise RuntimeError('for/native step or owner mismatch: ' + body + '\n' + result.stdout + result.stderr)
         invalid = [
-            ('x: int; i := big 0; while (i < 1) {x = int 1; i++;} return big x;', 'loop-carried'),
+            ('x: int; i := big 0; while (i < 1) {x = int 1; i++;} return big x;', 'initialized'),
             ('flag := 1 == 1; while (flag) {flag = int 0;} return 42;', 'type mismatch'),
             ('i := int 0; while (i < int 1) {i = big 1;} return 42;', 'type mismatch'),
             ('x := 1 == 1; x++; return 42;', 'requires big or int'),

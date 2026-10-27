@@ -42,12 +42,11 @@ path; the sole surviving arm keeps its own facts. Nested choices use the same
 rules. Source reads continue to reject an uninitialized variable even when its
 physical scalar slot contains zero or its reference slot contains nil.
 
-Outer first initialization in a possibly empty loop remains rejected. Body-local
-variables may be initialized by joined inner conditions and read later in that
-iteration. On loop exit the compiler restores uninitialized entry facts and their
-entry cell IDs, so a body-only cell never becomes an outer dominating definition.
-This includes while, counted for and snapshot traversal. A later ordinary
-initialization outside the loop is valid and does not store into a body-only cell.
+Since [compiler 0.43](LOOP_INITIALIZATION.md), outer first initialization in
+a body is allowed. Reads after a possibly empty loop still require new writes.
+Loop entry reserves dominating typed storage and loop exit restores entry facts.
+Body-local variables may be initialized by joined inner conditions and read later
+in that iteration. This applies to while, counted for and snapshot traversal.
 
 ```limbo
 for (index := int 0; index < int 2; index++) {

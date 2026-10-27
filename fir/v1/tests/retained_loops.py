@@ -167,8 +167,8 @@ def main():
                         if not correct or 'tables_live=0 keys_live=0' not in result.stdout + result.stderr:
                             raise RuntimeError('for/native step or owner mismatch: ' + body + '\n' + result.stdout + result.stderr)
         invalid = [
-            ('s: string; i := big 0; while (i < 1) {s = "x"; i++;} return 42;', 'loop-carried'),
-            ('t: table of big; i := big 0; while (i < 1) {t = table of big; i++;} return 42;', 'loop-carried'),
+            ('s: string; i := big 0; while (i < 1) {s = "x"; i++;} return big len s;', 'initialized'),
+            ('t: table of big; i := big 0; while (i < 1) {t = table of big; i++;} return len t;', 'initialized'),
             ('s := "x"; i := big 0; while (i < 1) {s = table of big; i++;} return 42;', 'type mismatch'),
             ('keys := keysof table of big; i := big 0; while (i < 1) {keys = table of big; i++;} return 42;', 'type mismatch'),
             ('for (i,r in "abc") {r = "x";} return 42;', 'type mismatch'),

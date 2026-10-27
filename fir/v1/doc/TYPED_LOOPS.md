@@ -113,3 +113,5 @@ frontend and final source-to-Dis SBL relocation remain separate work.
 
 
 [Compiler 0.42](JOIN_INITIALIZATION.md) adds all-path initialization and independently verified `ref.nil` storage.
+
+[Compiler 0.43](LOOP_INITIALIZATION.md) permits first writes inside loop bodies while preserving read checks and conservative exit facts.

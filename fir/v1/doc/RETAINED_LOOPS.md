@@ -72,7 +72,7 @@ optimized module and compare their independent values.
 ## Ownership, loops and GC
 
 Before a loop test or structured loop-if, the source compiler promotes active
-initialized locals into typed cells. A nested loop reuses a dominating cell.
+locals into typed cells; unreadable declarations reserve zero/nil storage. A nested loop reuses a dominating cell.
 Body-local cells initialize on every entry; sibling terminal arms restore their
 incoming cell identities. Uninitialized outer declarations still cannot become
 definitely initialized merely because a possibly empty body writes them.
@@ -152,3 +152,5 @@ rejects them before replacing a caller's output.
 
 
 [Compiler 0.42](JOIN_INITIALIZATION.md) adds all-path initialization and independently verified `ref.nil` storage.
+
+[Compiler 0.43](LOOP_INITIALIZATION.md) permits first writes inside loop bodies while preserving read checks and conservative exit facts.

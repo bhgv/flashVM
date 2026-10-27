@@ -115,3 +115,5 @@ build/runtime/disvm --no-jit --quantum 2048 --stats --inspect-words 0 4 typed.di
 
 
 [Компилятор 0.42](JOIN_INITIALIZATION.ru.md) добавляет инициализацию на всех путях и независимо проверяемое `ref.nil`.
+
+[Компилятор 0.43](LOOP_INITIALIZATION.ru.md) разрешает первые записи в теле цикла, сохраняя проверку чтений и входные факты на выходе.

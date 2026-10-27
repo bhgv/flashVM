@@ -37,8 +37,9 @@ Compiler 0.38 adds [classic three-clause for and postfix updates](COUNTED_FOR.md
 Compiler 0.39 adds [int/bool loop cells and string/key traversal](TYPED_LOOPS.md).
 Compiler 0.40 adds [retained reference cells](RETAINED_LOOPS.md).
 An outer uninitialized declaration cannot become definitely initialized merely
-because an assignment appeared in a possibly zero-iteration body. Such cases
-are rejected rather than silently using a body-only SSA definition after exit.
+because an assignment appeared in a possibly zero-iteration body. Since
+[0.43](LOOP_INITIALIZATION.md), the body write itself is valid; only an unproved
+read after exit is rejected. Typed storage dominates the loop test.
 Both mutating table elements and rebinding initialized table handles are supported.
 
 ## Snapshot table traversal

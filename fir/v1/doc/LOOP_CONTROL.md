@@ -29,9 +29,9 @@ Conditions retain typed comparison/membership and short-circuit semantics. Each
 arm has its own lexical scope. Initialized big locals visible before an if are
 promoted to dominating frame cells; whichever arm runs updates those cells, and
 reads after the join observe current values. Body-local declarations in one arm
-do not escape it. Uninitialized locals or reference/int/bool rebindings across
-a shared join remain rejected until their typed-cell/definite-initialization
-contracts are implemented. Table-element mutation uses the existing assignment
+do not escape it. Later versions add [typed retained cells](RETAINED_LOOPS.md),
+[all-path initialization](JOIN_INITIALIZATION.md) and [first writes in loop
+bodies](LOOP_INITIALIZATION.md). Unproved reads still fail. Table-element mutation uses the existing assignment
 leases and is supported in either arm.
 
 Break exits the innermost loop. Continue restarts the innermost while test, or

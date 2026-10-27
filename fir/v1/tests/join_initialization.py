@@ -117,7 +117,33 @@ def main():
         'x := big 42; {x: string; if (1 == 1) {x = "inner";} else {x = "other";}} return x;',
         'x: string; if (1 == 1) {x = "4"; x = x+"2";} else {x = "0";} return big x;',
     ]
+    # First writes in a body are valid, but their facts never escape a possibly
+    # empty loop. Each subsequent read in the same iteration is initialized.
+    cases.extend([
+        'x: big; n := big 0; for (i := int 0; i < int 3; i++) {x = 14; n += x;} return n;',
+        'x: int; n := big 0; for (i := int 0; i < int 3; i++) {x = int 14; n += big x;} return n;',
+        'x: string; n := big 0; for (i := int 0; i < int 3; i++) {x = "14"; n += big x;} return n;',
+        'x: table of big; n := big 0; for (i := int 0; i < int 3; i++) {'
+        'x = table of big {14}; n += x[0];} return n;',
+        'x: string; n := big 0; i := big 0; while (i < 3) {x = "14"; n += big x; i++;} return n;',
+        'x: string; n := big 0; for (k,v in table of big {14,14,14}) {x = string v; n += big x;} return n;',
+        'x: string; i := big 0; while (i < 2) {x = "unused"; i++;} x = "42"; return big x;',
+        'x: string; for (i := int 0; i < int 0; i++) {x = "unused";} x = "42"; return big x;',
+        'x: string; for (k,v in table of big) {x = "unused";} x = "42"; return big x;',
+        'x: table of big; for (i := int 0; i < int 3; i++) {'
+        'if (i == int 0) {x = table of big {14};} else {x = table of big {14};} '
+        'x[0] += 1;} x = table of big {42}; return x[0];',
+        'x: string; n := big 0; for (i := int 0; i < int 3; i++) {'
+        'if (i == int 0) {continue;} x = "21"; n += big x;} return n;',
+        'x: string; while (1 == 1) {x = "ignored"; break;} x = "42"; return big x;',
+        'x: string; n := big 0; for (i := int 0; i < int 3; i++) {x = "7"; '
+        'for (j := int 0; j < int 2; j++) {n += big x;}} return n;',
+        'x: string; n := big 0; for (i := int 0; i < int 3; i++) {'
+        'for (j := int 0; j < int 2; j++) {x = "7"; n += big x;}} return n;',
+    ])
     tutorial = Path(__file__).resolve().parents[1] / 'examples/tables/join-initialization.b'
+    cases.append(tutorial.read_text().split('value(): big\n{', 1)[1].rsplit('}', 1)[0])
+    tutorial = tutorial.with_name('loop-initialization.b')
     cases.append(tutorial.read_text().split('value(): big\n{', 1)[1].rsplit('}', 1)[0])
     with tempfile.TemporaryDirectory(prefix='join initialization ') as temporary:
         work = Path(temporary)
@@ -178,10 +204,22 @@ def main():
             ('x: table of big; if (1 == 0) {x = table of big {42};} return x[0];', 'initialized'),
             ('x: big; if (1 == 1) {x = 42;} else {x := big 7;} return x;', 'initialized'),
             ('x: string; if (1 == 1) {x = x+"2";} else {x = "0";} return big x;', 'initialized'),
-            ('x: string; if (1 == 1) {} i := big 0; while (i < 1) {x = "42"; i++;} return big x;', 'loop-carried'),
-            ('x: string; i := big 0; while (i < 1) {x = "42"; i++;} return big x;', 'loop-carried'),
+            ('x: string; if (1 == 1) {} i := big 0; while (i < 1) {x = "42"; i++;} return big x;', 'initialized'),
+            ('x: string; i := big 0; while (i < 1) {x = "42"; i++;} return big x;', 'initialized'),
             ('x: string; if (1 == 1) {x = "42";} else {x = big 42;} return big x;', 'type mismatch'),
         ]
+        invalid.extend([
+            ('x: string; i := int 0; while (i < int 2) {i++; if (i == int 1) {x = \"42\";} return big x;} return 42;', 'initialized'),
+            ('x: string; while (1 == 0) {x = "42";} return big x;', 'initialized'),
+            ('x: string; for (i := int 0; i < int 2; i++) {x = "42";} return big x;', 'initialized'),
+            ('x: string; for (k,v in table of big {42}) {x = "42";} return big x;', 'initialized'),
+            ('x: string; for (i := int 0; i < int 2; i++) {x = x+"2";} return 42;', 'initialized'),
+            ('x: big; for (i := int 0; i < int 2; i++) {x += 1;} return 42;', 'initialized'),
+            ('x: string; for (i := int 0; i < int 2; i++) {'
+             'for (j := int 0; j < int 2; j++) {x = "42";} return big x;} return 42;', 'initialized'),
+            ('x: string; for (i := int 0; i < int 2; x = "42") {return big x;} return 42;', 'for step'),
+            ('x: string; while (1 == 1) {if (1 == 1) {x = "42";} return big x;} return 42;', 'initialized'),
+        ])
         for body, diagnostic in invalid:
             source.write_text('implement M; M: module {value: fn(): big;}; value(): big {' + body + '}')
             fir.write_bytes(b'KEEP')

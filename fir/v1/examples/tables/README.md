@@ -213,3 +213,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Join-initialization tutorial](join-initialization.b): initialize scalar/reference declarations in both arms, then use them safely. [Guide](../../doc/JOIN_INITIALIZATION.md).
+
+[First initialization inside loops — 0.43](../../doc/LOOP_INITIALIZATION.md): typed outer declarations, safe body reads and conservative exit facts. [Commented tutorial](loop-initialization.b).

@@ -1509,9 +1509,12 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
-    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && !loop_initialized[loop_depth - 1][name])
+    /* The step is parsed before the body but executes after it. Never let a
+     * staged first write make an unreadable body binding appear initialized. */
+    if (!declaration && for_step_context >= 0 && loop_depth && name < loop_names[loop_depth - 1] &&
+        !loop_initialized[loop_depth - 1][name])
     {
-        reject("loop-carried assignment requires an initialized local");
+        reject("for step assignment requires an initialized local at loop entry");
     }
     if (!failed)
     {
@@ -1652,9 +1655,10 @@ static void source_promote_locals(int include_uninitialized)
 }
 
 
-/* Begin a while continuation before parsing its condition. Promote initialized
- * active initialized bindings into dominating frame cells so each iteration reads the
- * current values. Return the unique loop ID. Sticky limits prevent publication;
+/* Begin a while continuation before parsing its condition. Reserve typed cells
+ * for all active declarations, including unreadable zero/nil storage. Body writes
+ * then dominate later reads within that iteration without exporting exit facts.
+ * Return the unique loop ID. Sticky limits prevent publication;
  * no runtime storage is allocated by this compiler function. */
 int source_loop_begin(void)
 {
@@ -1664,7 +1668,7 @@ int source_loop_begin(void)
         reject("loop nesting/block limit exceeded");
         return loop;
     }
-    source_promote_locals(0);
+    source_promote_locals(1);
     loop_id[loop_depth] = loop;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
     {

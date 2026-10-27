@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /* Compile valid scoped function flow or invalid staged header/join initialization.
  * Borrow reusable module storage; own streams and diagnostics. Return one only
  * when parsing, cyclic verification and staged publication meet their contracts. */
@@ -21,13 +22,17 @@ static int compile_loop(FirModule *module, int invalid)
         goto done;
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
-    fputs(invalid == 3   ? "x: big; if (1 == 1) {x = 42;} return x;"
+    fputs(invalid == 4   ? "x: string; for (i := int 0; i < int 2; x = \"42\") {return big x;} return 42;"
+          : invalid == 3 ? "x: big; if (1 == 1) {x = 42;} return x;"
           : invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
-          : invalid == 2 ? "sum := big 0; for (i := big 0; i < 3; i++"
-                         : "t: table of big; old := table of big {20}; i := int 0; "
-                           "if (i == int 0) {t = table of big {22};} else {t = table of big {7};} "
-                           "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
-                           "i = int 0; while (i < int 1) {key = keys[0]; i++;} return old[0]+t[key];",
+          : invalid == 2
+              ? "sum := big 0; for (i := big 0; i < 3; i++"
+              : "t: table of big; old := table of big {20}; i := int 0; "
+                "if (i == int 0) {t = table of big {22};} else {t = table of big {7};} "
+                "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
+                "i = int 0; while (i < int 1) {key = keys[0]; i++;} "
+                "scratch: string; for (j := int 0; j < int 3; j++) {scratch = \"42\"; t[key] = big scratch;} "
+                "scratch = \"22\"; t[key] = big scratch; return old[0]+t[key];",
           input);
     fputs("}", input);
     rewind(input);
@@ -40,7 +45,8 @@ static int compile_loop(FirModule *module, int invalid)
     if (invalid)
     {
         ok = !compiled &&
-             (invalid == 1   ? strstr(error, "step cannot declare") != NULL
+             (invalid == 4   ? strstr(error, "for step") != NULL
+              : invalid == 1 ? strstr(error, "step cannot declare") != NULL
               : invalid == 3 ? strstr(error, "initialized") != NULL
                              : diagnostic.kind == FIR_DIAG_SYNTAX) &&
              ftell(fir) == 3 && ftell(debug) == 3;
@@ -76,6 +82,7 @@ done:
     return ok;
 }
 
+
 /* Alternate valid requests with header semantic/syntax errors and a joined-path error without parser state
  * leaking between calls. Own the module; return nonzero with explicit failures. */
 int main(void)
@@ -86,9 +93,9 @@ int main(void)
     {
         return 1;
     }
-    for (round = 0; round < 7; round++)
+    for (round = 0; round < 9; round++)
     {
-        if (!compile_loop(module, round == 1 ? 1 : round == 3 ? 2 : round == 5 ? 3 : 0))
+        if (!compile_loop(module, round == 1 ? 1 : round == 3 ? 2 : round == 5 ? 3 : round == 7 ? 4 : 0))
         {
             free(module);
             return 1;
