@@ -1,22 +1,27 @@
 # Synchronization / Синхронизация — v0.1647
 
-Checked Inferno experiment at **5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5**.
-No incoming commit followed the previous series. Its earlier reverse LeafLayout
-fix remains published. Snapshots retain **554 core/reference + 174 bootstrap**.
-The shared stringcmp/BLTC implementation was checked for scalar ordering; native
-CVTCW still uses its original strtol contract and is unchanged.
+Final Inferno experiment: **637d618e40fb6efb69cb0c147efb81981ee95c63**.
+The branch initially remained at 5b9bdcf; a final head check found 637d618 during
+publication. It was imported and tested before completing this series.
+Snapshots now retain **560 core/reference + 174 bootstrap files**.
 
-Compiler 0.30 adds FlashVM-only string ordering and strict text/key-to-int
-composition through existing checked big parsing and signed32 narrowing.
-No new native opcode, helper ABI, builtin module or fast path was introduced.
-Native availability remains AMD64/ARM64 166/173 with partial operand coverage.
-Shared string/readiness/type-prefix tests passed; no new shared defect requiring
-a reverse patch was confirmed.
+AMD64/ARM64 retain **166/173 guarded native fast paths** and now provide
+**173/173 complete decoded entries** through safe C tail bridges. These are
+separate availability metrics, not complete semantic coverage or block JIT.
+The imported shared executor, compiler span/cache checks and W^X publication
+remain byte-exact upstream. Earlier reverse fixes are retained in experiment.
 
-Новых входящих коммитов нет; прежние обратные исправления остаются в experiment.
-Расширения компилятора не переносятся в Inferno. Строгий cast нашего ограниченного
-профиля не меняет CVTCW/strtol нативной VM.
-[EN](../fir/v1/doc/TEXT_VALUES.md) / [RU](../fir/v1/doc/TEXT_VALUES.ru.md).
+Our NC64 host routes both direct and complete fast callbacks through one policy:
+classic CASE/CASEL/GOTO leaves decline into the NC64 C adapters, and only actual
+fast successes increment native statistics. No Jit pointer is reread after a
+callback. A standalone policy check covers both routes and negative nonzero
+completion. This host-only adaptation is not sent to Inferno.
+
+Входящий 637d618 импортирован; прежние обратные исправления сохранены.
+Расширения языка и NC64-политика хоста остаются в FlashVM. Нового общего дефекта
+для обратной правки не подтверждено. CVTCW/strtol Inferno не меняется.
+[Compiler EN](../fir/v1/doc/TEXT_VALUES.md) / [RU](../fir/v1/doc/TEXT_VALUES.ru.md).
+[Complete dispatch contract](upstream/libinterp/tests/README.complete-dispatch.md).
 
 ---
 

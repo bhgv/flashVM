@@ -6,7 +6,7 @@
 
 Development version: **0.1647**. [Русская версия](README.ru.md).
 
-Current series: [v0.1647](docs/releases/v0.1647.md): compiler 0.30 Unicode string ordering and checked text/key-to-int conversions through FIR and Dis.
+Current series: [v0.1647](docs/releases/v0.1647.md): compiler 0.30 Unicode string ordering and checked text/key-to-int conversions through FIR and Dis, plus Inferno 637d618 complete AMD64/ARM64 JIT dispatch.
 
 ## Browse documentation
 
