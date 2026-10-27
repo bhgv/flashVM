@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1641**. [Русская версия](README.ru.md).
+Development version: **0.1642**. [Русская версия](README.ru.md).
 
-Current series: [v0.1641](docs/releases/v0.1641.md): compiler 0.24 lazy &&/||, verified scalar FIR cells and direct Dis lowering; Inferno synchronization checked.
+Current series: [v0.1642](docs/releases/v0.1642.md): compiler 0.25 captured compound big/table updates and Inferno mapped VM/channel copy preflight.
 
 ## Browse documentation
 

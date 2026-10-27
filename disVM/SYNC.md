@@ -1,3 +1,25 @@
+# Current synchronization — v0.1642
+
+Experiment dd0f5d6440de8364a182c8c8eca0976d63e7d485 is imported byte-for-byte:
+545 core/reference and 174 bootstrap files. Incoming mapped VM/channel copy
+preflight validates operand slots, complete metadata/maps and payload spans
+before ownership changes or publication. Zero-size records retain nonaccess;
+AMD64/ARM64 retain the pointer-free 0..256 native domain and C fallback.
+[Owning contract](upstream/libinterp/tests/README.mapped-preflight.md).
+Two new native/emulation drivers are registered. Earlier reverse fixes remain
+in experiment history; no new shared native defect was confirmed during import.
+
+Compiler 0.25 compound hybrid-table updates remain FlashVM-only. There are no
+new FIR IDs/types, native opcodes or helper/container changes in this frontend
+extension. Locations and old values are captured once before RHS evaluation.
+[Contract](../fir/v1/doc/COMPOUND_UPDATES.md).
+Fresh relocated SDK acceptance now also relinks an in-process source+FIR C99
+client and runs every branching tutorial through it, without compiler subprocesses.
+Native availability remains AMD64/ARM64 164/173 with partial operand coverage;
+instruction emulation is not hardware/full Inferno boot evidence.
+
+---
+
 # Current synchronization — v0.1641
 
 Experiment was checked in both directions at b10f81fa764403adc1321a77136ecfe06e07cb8a.
