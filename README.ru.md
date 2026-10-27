@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1643**. [English](README.md).
+Версия разработки: **0.1644**. [English](README.md).
 
-Текущая серия: [v0.1643](docs/releases/v0.1643.md): компилятор 0.26, Unicode-длины/индексы/срезы строк, проверка UTF-8 C99 IR и сверка Inferno.
+Текущая серия: [v0.1644](docs/releases/v0.1644.md): компилятор 0.27, int-арифметика, нативные буферизованные SEND/RECV и два обратных исправления Inferno.
 
 ## Просмотр документации
 

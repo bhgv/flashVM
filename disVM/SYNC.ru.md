@@ -1,3 +1,21 @@
+# Synchronization / Синхронизация — v0.1644
+
+Inferno experiment: **6945acafa0df51c7ee3e591b1665ddb40d9a27bb**.
+Imported 87785ec: native buffered SEND/RECV for AMD64 and ARM64 with guarded
+fallbacks. Exact snapshots: **554 core/reference + 174 bootstrap files**.
+Native availability: **166/173** per architecture; this is partial operand
+coverage, not a semantic coverage percentage.
+
+Two fixes returned upstream / Два исправления отправлены обратно:
+- [046bb1f](https://github.com/bhgv/Inferno-OS-bhgv/commit/046bb1f7e90619e421a7c23e95025500d343521c): readiness checks no longer write fixture bytecode caches.
+- [6945acaf](https://github.com/bhgv/Inferno-OS-bhgv/commit/6945acafa0df51c7ee3e591b1665ddb40d9a27bb): queue tests extract the real channel span/peer guards.
+
+Compiler 0.27 int arithmetic remains FlashVM-only, including table-profile
+extensions. Расширения языка в Inferno не переносятся.
+[EN](../fir/v1/doc/INT_ARITHMETIC.md) / [RU](../fir/v1/doc/INT_ARITHMETIC.ru.md).
+
+---
+
 # Текущая синхронизация — v0.1643
 
 Experiment остаётся dd0f5d6440de8364a182c8c8eca0976d63e7d485. Проверены обе
