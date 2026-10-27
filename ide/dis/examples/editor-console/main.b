@@ -23,6 +23,8 @@ ascommands: chan of Idecomplete->Request;                # Independent AS catalo
 limbocommands: chan of Idecomplete->Request;              # Independent Limbo catalog owner.
 files: Idefiles;                                         # Loaded read-only resource inspector.
 filecommands: chan of Idefiles->Request;                  # File-window owner request endpoint.
+directorycommands: chan of Idefiles->DirectoryRequest; # Private directory service endpoint.
+directorycursor := big 0; # Active endpoint-local cursor; zero means no directory.
 nextid := 1;                                             # Monotonic correlation ID for synchronous requests.
 valuecodec: Idevalue; # Loaded reflected copy/conversion library.
 docprojection: Idedocprojection; # Adapter to this editor's actual document, not a demonstration object.
@@ -561,6 +563,116 @@ inspect(path: string)
 }
 
 
+# Exchange one correlated directory message. operation/cursor/path are borrowed
+# until the reply is consumed; returned arrays belong to this frontend.
+directorycall(operation: int, cursor: big, path: string): Idefiles->DirectoryReply # Consume one correlated response before the next request.
+{ # Begin this local scope/interface.
+    answers := chan of Idefiles->DirectoryReply; # Keep this value local; no native handle is exported.
+    identity := nextid; # Keep this value local; no native handle is exported.
+    nextid++; # Advance the bounded count or copied presentation value.
+    directorycommands <-= Idefiles->DirectoryRequest(identity, operation, cursor, path, answers); # Transfer a typed request/reply through the blocking channel.
+    result := <-answers; # Keep this value local; no native handle is exported.
+    if (result.id != identity) { # Choose behavior from the actual validated result.
+        raise "fail: directory reply correlation"; # Complete this checked declaration, expression or ownership step.
+    } # Finish this scope and its temporary values.
+    return result; # Return the independently owned result or finish this helper.
+} # Finish this scope and its temporary values.
+
+
+# Display one copied metadata record without allowing filename control sequences.
+# record is borrowed; output uses bounded chunks so long UTF-8 names are complete.
+# This affects terminal presentation only, never the native name or document.
+directoryrecord(record: Sys->Dir) # Complete this checked declaration, expression or ownership step.
+{ # Begin this local scope/interface.
+    kind := "file"; # Keep this value local; no native handle is exported.
+    if ((record.mode & Sys->DMDIR) != 0) { # Choose behavior from the actual validated result.
+        kind = "directory"; # Complete this checked declaration, expression or ownership step.
+    } # Finish this scope and its temporary values.
+    sys->print("ENTRY %s size=%bd name=\"", kind, record.length); # Present bounded plain text through actual Sys output.
+    for (first := 0; first < len record.name; first += 128) { # Repeat only within this explicit test or output bound.
+        last := first + 128; # Keep this value local; no native handle is exported.
+        if (last > len record.name) { # Choose behavior from the actual validated result.
+            last = len record.name; # Complete this checked declaration, expression or ownership step.
+        } # Finish this scope and its temporary values.
+        shown := ""; # Keep this value local; no native handle is exported.
+        for (index := first; index < last; index++) { # Repeat only within this explicit test or output bound.
+            rune := record.name[index]; # Keep this value local; no native handle is exported.
+            if (rune < 32 || (rune >= 127 && rune < 160)) { # Choose behavior from the actual validated result.
+                shown += sys->sprint("\\u%4.4x", rune); # Advance the bounded count or copied presentation value.
+            } else if (rune == '\\' || rune == '"') { # Choose behavior from the actual validated result.
+                shown += "\\" + record.name[index:index+1]; # Advance the bounded count or copied presentation value.
+            } else { # Choose behavior from the actual validated result.
+                shown += record.name[index:index+1]; # Advance the bounded count or copied presentation value.
+            } # Finish this scope and its temporary values.
+        } # Finish this scope and its temporary values.
+        sys->print("%s", shown); # Present bounded plain text through actual Sys output.
+    } # Finish this scope and its temporary values.
+    sys->print("\"\n"); # Present bounded plain text through actual Sys output.
+} # Finish this scope and its temporary values.
+
+
+# Execute one read-only browser command. verb/path are copied terminal input.
+# Keep one cursor, transfer at most one batch per command and preserve the document.
+# A failed replacement open leaves the previous cursor available for dirnext.
+directorycommand(verb, path: string) # Complete this checked declaration, expression or ownership step.
+{ # Begin this local scope/interface.
+    if (verb == "stat") { # Choose behavior from the actual validated result.
+        result := directorycall(files->StatPath, big 0, path); # Consume one correlated response before the next request.
+        if (result.status != files->Ok) { # Choose behavior from the actual validated result.
+            sys->print("ERROR stat: %s\n", result.message); # Present bounded plain text through actual Sys output.
+            return; # Return the independently owned result or finish this helper.
+        } # Finish this scope and its temporary values.
+        directoryrecord(result.metadata); # Complete this checked declaration, expression or ownership step.
+        return; # Return the independently owned result or finish this helper.
+    } # Finish this scope and its temporary values.
+    if (verb == "dir") { # Choose behavior from the actual validated result.
+        opened := directorycall(files->OpenDir, big 0, path); # Consume one correlated response before the next request.
+        if (opened.status != files->Ok) { # Choose behavior from the actual validated result.
+            sys->print("ERROR dir: %s\n", opened.message); # Present bounded plain text through actual Sys output.
+            return; # Return the independently owned result or finish this helper.
+        } # Finish this scope and its temporary values.
+        if (directorycursor != big 0) { # Choose behavior from the actual validated result.
+            closed := directorycall(files->CloseDir, directorycursor, ""); # Consume one correlated response before the next request.
+            if (closed.status != files->Ok) { # Choose behavior from the actual validated result.
+                raise "fail: previous directory cursor retirement"; # Complete this checked declaration, expression or ownership step.
+            } # Finish this scope and its temporary values.
+        } # Finish this scope and its temporary values.
+        directorycursor = opened.cursor; # Complete this checked declaration, expression or ownership step.
+        sys->print("DIRECTORY cursor=%bd\n", directorycursor); # Present bounded plain text through actual Sys output.
+    } # Finish this scope and its temporary values.
+    if (verb == "dirclose") { # Choose behavior from the actual validated result.
+        if (directorycursor != big 0) { # Choose behavior from the actual validated result.
+            closed := directorycall(files->CloseDir, directorycursor, ""); # Consume one correlated response before the next request.
+            if (closed.status != files->Ok) { # Choose behavior from the actual validated result.
+                raise "fail: directory close acknowledgement"; # Complete this checked declaration, expression or ownership step.
+            } # Finish this scope and its temporary values.
+            directorycursor = big 0; # Complete this checked declaration, expression or ownership step.
+        } # Finish this scope and its temporary values.
+        sys->print("DIRECTORY CLOSED\n"); # Present bounded plain text through actual Sys output.
+        return; # Return the independently owned result or finish this helper.
+    } # Finish this scope and its temporary values.
+    if (directorycursor == big 0) { # Choose behavior from the actual validated result.
+        sys->print("ERROR dirnext: no open directory\n"); # Present bounded plain text through actual Sys output.
+        return; # Return the independently owned result or finish this helper.
+    } # Finish this scope and its temporary values.
+    result := directorycall(files->NextDir, directorycursor, ""); # Consume one correlated response before the next request.
+    if (result.status == files->End) { # Choose behavior from the actual validated result.
+        sys->print("DIRECTORY END\n"); # Present bounded plain text through actual Sys output.
+        return; # Return the independently owned result or finish this helper.
+    } # Finish this scope and its temporary values.
+    if (result.status != files->Ok) { # Choose behavior from the actual validated result.
+        directorycursor = big 0; # Complete this checked declaration, expression or ownership step.
+        sys->print("ERROR dirnext: %s\n", result.message); # Present bounded plain text through actual Sys output.
+        return; # Return the independently owned result or finish this helper.
+    } # Finish this scope and its temporary values.
+    sys->print("DIRECTORY BATCH %d\n", len result.entries); # Present bounded plain text through actual Sys output.
+    for (index := 0; index < len result.entries; index++) { # Repeat only within this explicit test or output bound.
+        directoryrecord(result.entries[index]); # Complete this checked declaration, expression or ownership step.
+    } # Finish this scope and its temporary values.
+} # Finish this scope and its temporary values.
+
+
+
 # Display complete source using bounded writes rather than the native formatter's message limit.
 # text is immutable document data. Returns after the terminal has received every chunk.
 # Supply the documented display arguments or interface definition.
@@ -687,6 +799,7 @@ help()
     sys->print("find TEXT; replaceall OLD|NEW; undo; redo; load PATH; load! PATH; save PATH\n");
     # Show this bounded result or prompt on real standard output.
     sys->print("inspect PATH (read-only binary resource header)\n");
+    sys->print("dir PATH; dirnext; dirclose; stat PATH (read-only directory batches/metadata)\n");
     sys->print("watch MEMBER TYPE; watchtable; callref METHOD EXPECTED_REVISION; setref EXPECTED_REVISION TEXT\n");
     # List language-aware catalog and parameter help.
     sys->print("complete LANGUAGE PREFIX; hint LANGUAGE NAME ARGUMENT (LANGUAGE: as or limbo)\n");
@@ -752,6 +865,7 @@ init()
     }
     # Start a separate Dis process owning bounded file-window requests.
     filecommands = files->start(sys);
+    directorycommands = files->startdirs(sys); # Directory state has an independent serialized owner.
     # Keep the borrowed standard-input descriptor alive throughout the command loop.
     input := sys->fildes(0);
     # Check this init boundary before consuming or publishing data.
@@ -829,6 +943,8 @@ init()
         } else if (verb == "watch" || verb == "watchtable" || verb == "callref" || verb == "setref") {
             watchcommand(verb, rest);
             state = call(core->Snapshot, 0, 0, 0, "", "");
+        } else if (verb == "dir" || verb == "dirnext" || verb == "dirclose" || verb == "stat") {
+            directorycommand(verb, rest); # Native I/O stays behind typed Dis requests and OS ports.
         } else if (verb == "inspect") {
             # Inspect literal bytes without loading them into the editable source document.
             inspect(rest);
@@ -1053,6 +1169,11 @@ init()
         # Expose a real lifecycle failure instead of claiming a completed shutdown.
         raise "fail: file-window shutdown";
     }
+    directorystopped := directorycall(files->Shutdown, big 0, "");
+    if (directorystopped.status != files->Ok) {
+        raise "fail: directory owner shutdown";
+    }
+    directorycursor = big 0;
     retired := projectioncall(Ideprojection->Release, "", 0, 0, 0, nil);
     if (retired.status != Ideprojection->Ok) {
         raise "fail: document projection shutdown";

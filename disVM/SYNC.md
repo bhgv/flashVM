@@ -1,3 +1,31 @@
+# Directory owners and Sys format guards — v0.1651
+
+Current pin: **73a6b5a972ea8854fa8b593569c97a68da0b0748**.
+Exact selections: **646 core/reference/library files + 207 bootstrap files**.
+Incoming 55be356 bounds formatter output, arguments and borrowed String metadata,
+and preserves native Heap reference-counter width. Its sys-print-spans fixtures
+are selected and registered; original upstream files remain byte-for-byte.
+
+The final fence also imports 64b8855 and e9b187d: packed String UTF views and
+comparisons use byte-safe reads; mutable string owners and expansion are checked
+before side effects. AMD64/ARM64 append/store/slice leaves reject unaligned
+owners before touching their metadata. Their new C and emitted-code regressions
+are retained, including explicit ownership/cache-failure probes.
+
+Bidirectional review: the final revision includes preceding reverse ff21d3c fixes.
+Reverse **73a6b5a** repairs two older reduced-address string test adapters: they
+retain 16-bit overflow geometry but use native payload pointers for actual data
+access. All original extent/cache/ownership oracles remain. The 7260 cell and
+420 UTF-view cases per WORD model pass ASan/UBSan. Production string handlers
+are unchanged by this reverse patch.
+
+The explicit quota correction belongs to this hosted runner; directory ownership
+and console policy belong to FlashVM IDE, so these adapters are not copied into
+Inferno.
+[EN directory contract](../ide/dis/DIRECTORIES.md) / [RU](../ide/dis/DIRECTORIES.ru.md).
+
+## Previous checkpoint
+
 # Filesystem ports and incoming heap validation — v0.1650
 
 Current pin: **ff21d3ceaa3a0d19aa9d1359bb2d1a71a89678ef**.

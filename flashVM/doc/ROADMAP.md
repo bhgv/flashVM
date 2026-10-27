@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1651: Limbo directory owners support bounded IDE browsing through typed channels and OS ports. Explicit instruction limits supersede the legacy slice budget at quantum 1. [EN](../../ide/dis/DIRECTORIES.md) / [RU](../../ide/dis/DIRECTORIES.ru.md). This adds no graphical file-tree or completed debugger milestone and closes no Flash compatibility stage.
+
 Checkpoint v0.1650: native filesystem metadata and bounded directory cursors live in OS-selected ports. DisVM maps stat/fstat/dirread without OS headers; [EN](../../disVM/runtime/FILESYSTEM.md) / [RU](../../disVM/runtime/FILESYSTEM.ru.md). Windows/macOS/Android native acceptance remains open; no Flash compatibility stage closes.
 
 Workspace checkpoint v0.1565: reviewed Inferno Rune/Type guards and channel-owned Unicode source clipboard run in the experimental matched Dis/FlashVM host. Path transaction growth preserves public semantics. [Clipboard contract](../../ide/dis/CLIPBOARD.md). This does not close any of the nine Flash compatibility stages or physical/platform acceptance.

@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.26.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.27.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -818,4 +818,15 @@ if(DVM_RUNTIME_TESTS)
   add_test(NAME disvm_shared_filesystem COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_filesystem_port.py" "$<TARGET_FILE:disvm_filesystem_port_test>")
   set_tests_properties(disvm_shared_filesystem PROPERTIES TIMEOUT 60)
+endif()
+
+# Actual typed directory ownership and terminal-browser policy, no mocked Sys I/O.
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_directory_browser_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_directory_browser.py" "$<TARGET_FILE:disvm>"
+      "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${root}/ide/dis/bridge"
+      "${root}/ide/dis/examples/directory-browser/main.b" "${CMAKE_CURRENT_BINARY_DIR}" "${mode}")
+    set_tests_properties(disvm_directory_browser_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
 endif()

@@ -86,7 +86,7 @@ Type *TFileIO;                            /* Unavailable file-to-channel host ty
 unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
 unsigned long
-    dvm_runtime_instruction_limit;      /* Optional total dispatch limit; zero leaves the existing policy unchanged. */
+    dvm_runtime_instruction_limit;      /* Explicit total quota; zero retains the legacy slice policy. */
 static int instruction_boundary_error;  /* A budget rejection happens before fetching/advancing the current PC. */
 static int show_stats;                  /* Emit actual instruction counts on explicit request. */
 static int scheduler_quantum = PQUANTA; /* Instructions per scheduler turn; adjustable for GC/boundary testing. */
@@ -1069,7 +1069,9 @@ int main(int argc, char **argv)
             continue;
         }
 #endif
-        if (++execution_slices > 100000)
+        /* An explicit instruction budget must remain independent of quantum.
+         * Otherwise quantum=1 silently stops at 100000 despite a larger limit. */
+        if (!dvm_runtime_instruction_limit && ++execution_slices > 100000)
         {
             error("execution budget exceeded");
         }

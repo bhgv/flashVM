@@ -1,10 +1,12 @@
 # Backend сборки для IDE
 
-Версия **0.5.0**. [English](README.md).
+Версия **0.6.0**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
 Это независимый host-backend сборки на Python 3.9+ для редактора, а не графическая IDE. Явно выбранные C99-компилятор, FIR tools и SWL остаются отдельными проектами. Сейчас доступны их численные профили AS1/AS2/AS3/Limbo; AS3 создаёт совместимый AVM1, а не ABC. Полный компилятор AS2 не заявляется.
+
+[Channel-owned directory browser](dis/DIRECTORIES.md) / [Каталоги через каналы](dis/DIRECTORIES.ru.md).
 
 ## Запуск
 

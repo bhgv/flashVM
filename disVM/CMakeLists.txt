@@ -146,6 +146,9 @@ if(BUILD_TESTING)
     raise-native
     string-slots
     sys-print
+    sys-print-spans
+    string-owner-preflight
+    string-view-native
     sys-tokenize
     sys-utf
     vm-addresses
@@ -284,6 +287,7 @@ if(BUILD_TESTING)
   if(have_instruction_emulators EQUAL 0)
     foreach(driver
       owner-jit
+      string-owner-jit
       shift-slot-jit
       arithmetic-slot-jit
       branch-slot-jit

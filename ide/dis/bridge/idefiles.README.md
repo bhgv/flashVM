@@ -1,4 +1,7 @@
-# Idefiles: bounded binary resource windows
+# Idefiles: binary windows and channel-owned directory browsing
+
+[Directory protocol EN](../DIRECTORIES.md) / [RU](../DIRECTORIES.ru.md).
+`startdirs` adds an independent typed owner; the byte-window contract below remains valid.
 
 [Protocol](idefiles.m) · [Limbo implementation](idefiles.b) ·
 [terminal IDE](../examples/editor-console/README.md) ·

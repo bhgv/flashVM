@@ -369,6 +369,10 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
+            copy_tree "$ROOT/ide/dis/examples/directory-browser" "$destination/examples/directory-browser"
+            copy_file "$ROOT/disVM/runtime/test_directory_browser.py" "$destination/examples/directory-browser/run.py"
+            copy_file "$ROOT/ide/dis/DIRECTORIES.md" "$destination/DIRECTORIES.md"
+            copy_file "$ROOT/ide/dis/DIRECTORIES.ru.md" "$destination/DIRECTORIES.ru.md"
             copy_tree "$ROOT/disVM/examples/filesystem" "$destination/examples/filesystem"
             copy_file "$ROOT/disVM/runtime/test_filesystem.py" "$destination/examples/filesystem/run.py"
             copy_file "$ROOT/disVM/runtime/FILESYSTEM.md" "$destination/FILESYSTEM.md"

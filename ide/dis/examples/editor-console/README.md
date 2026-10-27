@@ -94,3 +94,13 @@ Missing paths report `ERROR inspect`; no file is created or changed.
 Путь может содержать пробелы. Команда не заменяет открытый текст и не изменяет
 историю Undo/Redo; файловый дескриптор закрывается перед ответом. Это просмотр
 байтов, а не декодер форматов SWF/Dis и не подключённая графическая панель.
+
+## Directory browser
+
+`dir PATH` opens a read-only stream and displays one batch of at most 32 entries.
+Use `dirnext` to advance, `dirclose` to retire it, and `stat PATH` for copied
+metadata. A failed replacement keeps the previous cursor. These commands leave
+document/history state unchanged. Shutdown also closes an active cursor.
+Names are escaped and emitted in bounded chunks.
+[Full EN contract](../../DIRECTORIES.md) / [RU](../../DIRECTORIES.ru.md) ·
+[Executable tutorial](../directory-browser/README.md).

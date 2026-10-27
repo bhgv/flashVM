@@ -1,6 +1,6 @@
 # Experimental runnable Dis and IDE services (NC64)
 
-Runtime **0.26.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+Runtime **0.27.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
 
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for
@@ -229,6 +229,9 @@ C/native execution; a declined native leaf is still one attempt. Completion
 at the exact count succeeds. Failure reports the current unexecuted PC and
 `--stats` counters, releases inspection ownership and prints no incomplete DATA.
 This is not a wall-clock limit; stdin/UI progress does not reset it.
+Runtime 0.27.0 makes an explicit instruction quota supersede the legacy slice
+budget, so quantum 1 no longer fails prematurely at 100000 slices. Without an
+explicit quota the previous busy-work slice policy remains in force.
 
 Our [Coco/R terminal Limbo decisions and Dis CFG](../../fir/v1/doc/DIS_BACKEND.md)
 now execute without bootstrap emission. For N static traces, N captured words
@@ -318,3 +321,5 @@ positive/negative completion under the same production policy implementation.
 [English contract](FILESYSTEM.md) · [Русский контракт](FILESYSTEM.ru.md) · [Executable tutorial](../examples/filesystem/README.md).
 
 Sys stat/fstat/dirread and actual Readdir now run through selected platform ports.
+
+[Channel-owned directory browsing, console commands and lifecycle](../../ide/dis/DIRECTORIES.md) / [RU](../../ide/dis/DIRECTORIES.ru.md).

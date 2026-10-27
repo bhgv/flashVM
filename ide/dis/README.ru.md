@@ -8,7 +8,7 @@
 
 [Канальные проекции и модель инспектора](PROJECTIONS.md)
 
-Версия 0.10.0. [English](README.md).
+Версия 0.11.0. [English](README.md).
 
 **Реализован** Limbo-модуль `idecore.dis` с `idecore.sbl`: владелец состояния одного
 документа, управляемый типизированными каналами. Это первая исполняемая часть IDE,
@@ -142,3 +142,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Clipboard / буфер обмена](CLIPBOARD.ru.md).
 
 [Поля графической IDE](FIELDS.ru.md) имеют отдельную политику Idefield; исходное ядро документа 0.5.0 описано выше.
+
+[Directory owner and console browser](DIRECTORIES.md) / [Каталоги через каналы](DIRECTORIES.ru.md).

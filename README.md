@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1650**. [Русская версия](README.ru.md).
+Development version: **0.1651**. [Русская версия](README.ru.md).
 
-Current series: [v0.1650](docs/releases/v0.1650.md): OS filesystem ports, real stat/fstat/dirread, Readdir and incoming Inferno heap validation.
+Current series: [v0.1651](docs/releases/v0.1651.md): channel-owned IDE directory browsing, exact execution quotas and incoming Inferno Sys guards.
 
 ## Browse documentation
 

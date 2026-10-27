@@ -14,6 +14,11 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "ide/dis/DIRECTORIES.md": package / "DIRECTORIES.md",
+        root / "ide/dis/DIRECTORIES.ru.md": package / "DIRECTORIES.ru.md",
+        root / "ide/dis/examples/directory-browser/README.md": package / "examples/directory-browser/README.md",
+        root / "ide/dis/examples/directory-browser/README.ru.md": package / "examples/directory-browser/README.ru.md",
+        root / "ide/dis/examples/directory-browser/main.b": package / "examples/directory-browser/main.b",
         root / "disVM/runtime/FILESYSTEM.md": package / "FILESYSTEM.md",
         root / "disVM/runtime/FILESYSTEM.ru.md": package / "FILESYSTEM.ru.md",
         root / "disVM/examples/filesystem/README.md": package / "examples/filesystem/README.md",

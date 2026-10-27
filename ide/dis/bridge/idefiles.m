@@ -9,6 +9,15 @@ Idefiles: module
     Ok: con 0;                # Complete result, including a short read or EOF.
     Invalid: con 1;           # Bad protocol values; no native file was opened.
     Failed: con 2;            # Open, seek or read failed; no bytes are published.
+    OpenDir: con 2;           # Open one bounded directory cursor; metadata comes from fstat.
+    NextDir: con 3;           # Transfer the next native directory batch, at most 32 records.
+    CloseDir: con 4;          # Retire one live cursor identity, including an exhausted cursor.
+    StatPath: con 5;          # Copy path metadata without consuming a directory slot.
+    End: con 3;               # Cursor is exhausted; NextDir remains stable until CloseDir.
+    Stale: con 4;             # Cursor identity is absent or was retired; no native operation occurs.
+    Full: con 5;              # This owner already holds MaxDirectories live cursor identities.
+    MaxDirectories: con 8;    # Per-owner directory quota, independent of the native global FD limit.
+    MaxBatch: con 32;         # Sys.dirread port bound; the service never assembles a whole directory.
 
 
     # Caller retains immutable input until the single reply is consumed.
@@ -40,4 +49,35 @@ Idefiles: module
     # or nil for a nil module. Native I/O may block the hosting scheduler owner.
     # Every admitted request requires a drained reply; acknowledged Shutdown is terminal.
     start: fn(sys: Sys): chan of Request;
+
+
+    # Metadata and directory requests use a distinct endpoint from byte windows.
+    # The caller must drain reply; a nil reply is ignored without changing state.
+    DirectoryRequest: adt
+    {
+        id: int;                         # Nonnegative correlation identity, echoed without reinterpretation.
+        operation: int;                  # OpenDir, NextDir, CloseDir, StatPath or terminal Shutdown.
+        cursor: big;                     # Owner-local identity for NextDir/CloseDir; zero for OpenDir/StatPath.
+        path: string;                    # Borrowed immutable native path for OpenDir/StatPath only.
+        reply: chan of DirectoryReply;   # Private blocking response endpoint; must be consumed.
+    };
+
+
+    # Records/arrays are independent VM values; no FD or native cursor is exported.
+    DirectoryReply: adt
+    {
+        id: int;                         # Original correlation identity, including invalid requests.
+        status: int;                     # Ok, Invalid, Failed, End, Stale or Full.
+        cursor: big;                     # Open identity or echoed lookup identity; never a native descriptor.
+        metadata: Sys->Dir;              # OpenDir/StatPath metadata; zerodir for other replies.
+        entries: array of Sys->Dir;       # Transferred batch, never retained by the service; nil otherwise.
+        message: string;                 # Failure-only diagnostic; successful exchange emits no log event.
+    };
+
+
+    # Start one serialized directory owner, or return nil for a nil Sys module.
+    # Cursor IDs are scoped to this returned endpoint and never reused by it.
+    # Shutdown closes every native FD before acknowledgement. Native I/O may
+    # block the VM scheduler owner; this is not asynchronous OS I/O or cancellation.
+    startdirs: fn(sys: Sys): chan of DirectoryRequest;
 };

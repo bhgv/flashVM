@@ -230,6 +230,15 @@ def table_packages(prefix, work, environment):
         if "PASS hosted Sys filesystem" not in result:
             raise RuntimeError("relocated filesystem example differs")
 
+    # Real directory lifecycle and terminal commands must work outside the checkout.
+    for mode in ("jit", "interpreter"):
+        result = run([sys.executable, native / "examples/directory-browser/run.py",
+                      runtime, native / "limbo-native", native / "include/limbo",
+                      native / "include/limbo", native / "examples/directory-browser/main.b",
+                      native, mode], work, environment)
+        if "PASS directory service and IDE browser" not in result:
+            raise RuntimeError("relocated directory browser differs")
+
 
 
 
