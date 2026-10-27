@@ -162,3 +162,7 @@ is repeated at this pin. The local memory-parser fixture now renames its retaine
 entry independently of C whitespace. [Evidence](../docs/releases/v0.1565.md).
 
 [Hosted hybrid big tables / Гибридные таблицы big](examples/hybrid-table/README.md): scalar C core and real Dis interpreter/JIT adapter; language lowering remains pending.
+
+
+[Native table guards and exception recovery](PAYLOAD_GUARDS.md) ·
+[Блокировки таблиц и обработка исключений](PAYLOAD_GUARDS.ru.md).

@@ -371,6 +371,13 @@ EOF
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
             copy_tree "$ROOT/disVM/examples/relative-sequences" "$destination/examples/relative-sequences"
             copy_tree "$ROOT/disVM/examples/hybrid-table" "$destination/examples/hybrid-table"
+            copy_tree "$ROOT/disVM/examples/table-guards" "$destination/examples/table-guards"
+            copy_tree "$ROOT/common/owned" "$destination/source/owned"
+            copy_tree "$ROOT/common/table" "$destination/source/table"
+            copy_file "$ROOT/LICENSE" "$destination/source/owned/LICENSE"
+            copy_file "$ROOT/LICENSE" "$destination/source/table/LICENSE"
+            copy_file "$ROOT/disVM/PAYLOAD_GUARDS.md" "$destination/PAYLOAD_GUARDS.md"
+            copy_file "$ROOT/disVM/PAYLOAD_GUARDS.ru.md" "$destination/PAYLOAD_GUARDS.ru.md"
             copy_tree "$ROOT/common/table" "$destination/source/hybrid-table-core"
             copy_file "$ROOT/LICENSE" "$destination/source/hybrid-table-core/LICENSE"
             copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
@@ -379,6 +386,7 @@ EOF
             done
             copy_tree "$ROOT/ide/dis/examples/editor-console" "$destination/examples/editor-console"
             copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
+            "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination" --runtime
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"

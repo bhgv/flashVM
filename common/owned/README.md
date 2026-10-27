@@ -5,7 +5,8 @@
 This C99/POSIX library implements an exclusive recursive guard keyed by a nonzero
 operation token, rather than by native thread identity. Contenders sleep on a
 condition variable; the metadata mutex is never held while accessing payloads.
-It is a host building block, **not yet wired into Dis arrays, strings or tables**.
+Hosted DisVM now uses it for native Bigtable payloads; arrays, mutable String
+slots and cross-request projection leases are not yet integrated.
 Windows requires a native backend before this library can be used there.
 
 The owner allocates stable guard storage alongside a payload/storage owner.
@@ -63,8 +64,8 @@ one explicit native lifetime. `fvm_table_owner_apply` protects the complete
 callback transaction, including reads, length checks and writes. Nested helpers
 reenter with the same token. Callback application errors are separate from
 native guard errors; normal error returns release ownership. Callbacks must not
-raise VM exceptions or longjmp past cleanup. This host API is not yet used by
-DisVM's native Bigtable module, nor by array/string storage.
+raise VM exceptions or longjmp past cleanup. DisVM's native Bigtable module now uses the guarded owner and request layer;
+array/String storage integration remains pending.
 
 `fht_splice(table, first, end, replacement)` replaces a dense-prefix range by the
 replacement table's complete prefix. It supports self insertion, growth,
@@ -88,3 +89,6 @@ under one operation, inserts the original prefix into itself under another, and
 checks `[1, 1, 9, 4, 9, 4]`. Both callbacks release the guard on ordinary error
 returns. Native cancellation is restored only after retiring the table. The
 example is also run by CTest; it demonstrates the C host API, not Limbo syntax.
+
+
+[Guarded request operations and native VM integration](REQUESTS.md).

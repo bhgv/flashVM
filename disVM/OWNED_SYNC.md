@@ -4,7 +4,7 @@
 [Transactional table splice](../common/table/SPLICE.md)
 
 The selected interpreter and bootstrap snapshots are pinned to Inferno experiment
-`152ab5ae4f315d1479d3a508796a8b56d5048c66`. This includes bounded priority-architecture
+`1ef1417f459910084f05be1605a4f03533d6bcbd`. This includes bounded priority-architecture
 CALL/MCALL/RET and FRAME/MFRAME handling, captured frame publication, descriptor
 map preflights and checked optimizer use/def byte ranges. Imported sources remain
 byte-exact, including their license notices. The frame/control guest matrices
@@ -31,3 +31,6 @@ are now implemented through the checked builtin interface. Plain
 Fht clients still serialize their own access. Existing native Dis array views
 continue sharing storage under their established rules. Do not treat a host guard
 library as completed VM integration or a new language opcode.
+
+
+[Native table guards and exception recovery / guards таблиц и исключения](PAYLOAD_GUARDS.md).

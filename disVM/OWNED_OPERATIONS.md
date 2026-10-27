@@ -3,7 +3,9 @@
 [Русский](OWNED_OPERATIONS.ru.md) · [Broker](broker/README.md) ·
 [Relative sequences](../fir/v1/doc/RELATIVE_SEQUENCES.md)
 
-Status: **design contract, not a completed per-object mutex implementation**.
+Status: **native Bigtable primitives now implement per-object guards**.
+[Implementation and remaining limits](PAYLOAD_GUARDS.md). Arrays, mutable String
+slots and leases spanning source RHS/network waits remain design work.
 The current Dis host has one VM owner thread and no application process switch
 inside a C array/table copy. The C99 table API explicitly requires serialized
 owner access. Broker locks protect diagnostic metadata only.
@@ -36,12 +38,12 @@ be chunked, but retain their operation lease and publish only consistent states.
 The broker's independent metadata mutex must never be taken as the payload guard.
 Diagnostics/debugger queries can report waiting-for-lock or paused-owner state
 without acquiring the target lock. Debug pause does not forcibly release a live
-operation's guard. Integrating these owner tokens into array/table/projection
-operations and real thread contention tests remains required implementation work.
+operation's guard. Native table requests now use these tokens and real pthread contention tests.
+Array/storage integration and scheduler-aware projection leases remain required.
 
 
 POSIX implementation / реализация POSIX: [common/owned](../common/owned/README.md).
-This implements the guard primitive, not VM payload integration.
-Реализован примитив блокировки; интеграция с объектами VM ещё требуется.
+This implements the guard primitive and native table payload integration.
+Реализованы примитив и native-таблицы; остальные объекты VM ещё требуют интеграции.
 
 [Synchronization and implementation status](OWNED_SYNC.md)

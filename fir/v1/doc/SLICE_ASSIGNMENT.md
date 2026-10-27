@@ -57,8 +57,8 @@ retired table/snapshot owners, plus an independent Unicode/sequence oracle.
 Malformed C API types are rejected before either backend writes output.
 
 This extends tables and strings, not general source arrays: resized native Dis
-array assignment is still pending. Operation-owned mutex integration with VM
-payload storage and remote projections is also pending. The current host serializes
+array assignment is still pending. Native table primitives now hold operation-owned guards; array/String-slot
+integration and remote projection leases remain pending. The current host serializes
 individual C builtin operations on its VM owner thread; no cross-thread or
 cross-request atomicity is claimed for the entire source expression. Regex slice
 syntax and replacement captures remain separate work. None of these language

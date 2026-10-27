@@ -23,8 +23,9 @@ def program(prefix, component, name):
 
 
 # Execute argv literally in a private writable directory, with explicit package/temporary roots.
-# input_text supplies optional stdin. Returns stdout; nonzero status includes captured diagnostics.
-def run(argv, work, environment, input_text=None):
+# input_text supplies optional stdin; include_stderr requests merged diagnostic text.
+# Returns stdout by default; nonzero status always includes captured diagnostics.
+def run(argv, work, environment, input_text=None, include_stderr=False):
     result = subprocess.run(
         [str(value) for value in argv],
         cwd=work,
@@ -38,7 +39,7 @@ def run(argv, work, environment, input_text=None):
         raise RuntimeError(
             "installed command failed: " + repr(argv) + "\n" + result.stdout + "\n" + result.stderr
         )
-    return result.stdout
+    return result.stdout + (result.stderr if include_stderr else "")
 
 
 # Compile/verify/optimize the shipped hybrid source with relocated tools and reference execution.
@@ -153,6 +154,27 @@ def table_packages(prefix, work, environment):
                 result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 4, image], work, environment)
                 if "DATA 0 42\nDATA 8 0\nDATA 16 1\nDATA 24 0\n" not in result:
                     raise RuntimeError("relocated " + tutorial + " compiler client result differs")
+
+    # Relink the exact guarded scalar request layer shipped with both VM variants.
+    # These pthread clients use C owners only; no VM heap pointer crosses threads.
+    native = prefix / component
+    owner_client = work / "guarded-table-client"
+    run([environment.get("CC", "cc"), "-std=c99", "-pthread",
+         "-I", native / "source/owned", "-I", native / "source/table",
+         native / "source/owned/test_table_request.c",
+         native / "lib/owned/libfvm_owned_table.a", native / "lib/owned/libfvm_owned.a",
+         "-o", owner_client], work, environment)
+    if "PASS: ordered owner pairs" not in run([owner_client], work, environment):
+        raise RuntimeError("relocated guarded request client differs")
+    # The installed native interface/compiler must include guard diagnostics and
+    # exception recovery, independent of source-checkout module lookup paths.
+    guard_image = work / "guarded-tables.dis"
+    run([native / "limbo-native", "-I", native / "include/limbo", "-o", guard_image,
+         native / "examples/table-guards/main.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        result = run([runtime, mode, "--quantum", 1, "--stats", guard_image], work, environment, include_stderr=True)
+        if "PASS table guards" not in result or "tables_live=0 keys_live=0" not in result:
+            raise RuntimeError("relocated guarded table exception recovery differs")
 
 
 
