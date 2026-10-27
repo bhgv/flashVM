@@ -120,7 +120,7 @@ static int64_t big_bits(uint64_t bits)
 static int coverage(FirModule *module, char *error, size_t capacity)
 {
     int i;
-    if (module->channels || !fir_acyclic(module, error, capacity))
+    if (module->channels || !fir_verify(module, error, capacity))
     {
         if (module->channels)
         {
@@ -135,7 +135,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_TABLE_UNLOCK) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_BIG_STORE) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -166,7 +166,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     size_t table_count = 0;
     size_t key_count = 0;
     int i;
-    int first[FIR_BLOCKS]; /* First live instruction per verified DAG block. */
+    int first[FIR_BLOCKS]; /* First live instruction per verified CFG block. */
+    unsigned steps = 0;    /* Bound cyclic reference execution, independently of native VM budgets. */
     int ok = 0;
     char buffer[4096];
     size_t size;
@@ -208,6 +209,11 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     for (i = 0; i < module->count;)
     {
         int next = i + 1;
+        if (++steps > 1000000U)
+        {
+            snprintf(error, capacity, "table reference instruction budget exceeded");
+            goto done;
+        }
         FirInstruction *in = &module->instructions[i];
         RuntimeValue *result = in->result < 0 ? NULL : &values[in->result];
         RuntimeValue *a = in->a < 0 ? NULL : &values[in->a];
@@ -217,6 +223,14 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         {
             i = next;
             continue;
+        }
+        if (((in->op == O_TABLE_NEW || in->op == O_TABLE_SLICE) && table_count == FIR_LIMIT) ||
+            (in->op == O_TABLE_KEYS && key_count == FIR_LIMIT) ||
+            ((in->op == O_STRING_CONCAT || in->op == O_RUNE_TEXT || in->op == O_STRING_SPLICE) &&
+             text_count == FIR_LIMIT))
+        {
+            snprintf(error, capacity, "table reference owner budget exceeded");
+            goto done;
         }
         switch (in->op)
         {
@@ -326,12 +340,15 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         }
+        case O_BIG_LOCAL:
         case O_BOOL_LOCAL:
             result->big = 0;
             break;
+        case O_BIG_STORE:
         case O_BOOL_STORE:
             a->big = b->big;
             break;
+        case O_BIG_LOAD:
         case O_BOOL_LOAD:
             result->big = a->big;
             break;

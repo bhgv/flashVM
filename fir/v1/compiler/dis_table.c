@@ -305,7 +305,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     unsigned offset = MODULE_SLOT + CELL;
     unsigned strings = 1; /* The imported module path is always the first String root. */
     int i;
-    if (module->channels || !fir_acyclic(module, error, capacity))
+    if (module->channels || !fir_verify(module, error, capacity))
     {
         if (module->channels)
         {
@@ -338,7 +338,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 root(e->frame_map, offset + CELL);
             }
         }
-        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT && type != T_BIG_RANGE)
+        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT && type != T_BIG_SLOT &&
+                 type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -356,7 +357,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             continue;
         }
         if (((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX ||
-             (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT)) && e->import_count < RUNE_TEXT + 1U)
+             (in->op >= O_TABLE_RANGE && in->op <= O_RUNE_TEXT)) &&
+            e->import_count < RUNE_TEXT + 1U)
         {
             e->import_count = RUNE_TEXT + 1U;
         }
@@ -379,7 +381,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_TABLE_UNLOCK) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_STORE) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -454,7 +456,7 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     for (index = 0; index < cells(module, source); index++)
     {
         int pointer = index == 0 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT &&
-                      type != T_BIG_RANGE;
+                      type != T_BIG_SLOT && type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
@@ -566,6 +568,15 @@ static void body(Emitter *e, FirModule *module, int measure)
              * can replace only that root, preserving all original string aliases. */
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
             arithmetic(e, SLICEC, MIDDLE_FRAME, b + CELL, b, d);
+            break;
+        case O_BIG_LOCAL:
+            instruction(e, MOVL, IMM, 0, FP, d, 0, -1);
+            break;
+        case O_BIG_STORE:
+            instruction(e, MOVL, FP, b, FP, a, 0, -1);
+            break;
+        case O_BIG_LOAD:
+            instruction(e, MOVL, FP, a, FP, d, 0, -1);
             break;
         case O_BOOL_LOCAL:
             instruction(e, MOVW, IMM, 0, FP, d, 0, -1);

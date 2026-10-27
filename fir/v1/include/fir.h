@@ -65,15 +65,16 @@ typedef enum
     T_STRING,
     T_ANY,
     T_CHANNEL,
-    T_I64,         /* Exact signed Limbo big. */
-    T_TABLE_BIG,   /* Owner reference to a mutable big-valued hybrid table. */
-    T_TABLE_SLOT,  /* Checked table/key location, not a native address. */
-    T_BIG_RANGE,   /* Half-open big bounds for a sequence slice. */
-    T_KEYS,        /* Independent immutable key sequence snapshot. */
-    T_TABLE_KEY,   /* Snapshot owner plus checked position, preserving numeric/text identity. */
-    T_BOOL_SLOT,   /* Function-local scalar bool cell; no pointer, copy or escape. */
-    T_TABLE_RANGE, /* Captured table owner and absolute exclusive slice bounds. */
-    T_STRING_RANGE /* Captured immutable string and absolute rune bounds. */
+    T_I64,          /* Exact signed Limbo big. */
+    T_TABLE_BIG,    /* Owner reference to a mutable big-valued hybrid table. */
+    T_TABLE_SLOT,   /* Checked table/key location, not a native address. */
+    T_BIG_RANGE,    /* Half-open big bounds for a sequence slice. */
+    T_KEYS,         /* Independent immutable key sequence snapshot. */
+    T_TABLE_KEY,    /* Snapshot owner plus checked position, preserving numeric/text identity. */
+    T_BOOL_SLOT,    /* Function-local scalar bool cell; no pointer, copy or escape. */
+    T_TABLE_RANGE,  /* Captured table owner and absolute exclusive slice bounds. */
+    T_STRING_RANGE, /* Captured immutable string and absolute rune bounds. */
+    T_BIG_SLOT      /* Function-local mutable signed-big cell; no copy or escape. */
 } FirType;
 
 typedef enum
@@ -154,7 +155,10 @@ typedef enum
     O_STRING_CHAR_RANGE, /* Capture one checked rune index as an absolute range. */
     O_RUNE_TEXT,         /* Convert a valid int Unicode scalar to a one-rune string. */
     O_TABLE_LOCK,        /* Retain process ownership across destination/RHS evaluation. */
-    O_TABLE_UNLOCK       /* Release one process-owned retained table level. */
+    O_TABLE_UNLOCK,      /* Release one process-owned retained table level. */
+    O_BIG_LOCAL,         /* Create a zero-initialized function-local big cell. */
+    O_BIG_LOAD,          /* Read a function-local big cell. */
+    O_BIG_STORE          /* Write a function-local big cell. */
 } FirOp;
 
 

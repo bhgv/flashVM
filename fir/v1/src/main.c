@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile, dis;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.35.0 (FIR 1.0; SWO1; NC64 Dis scalar CFG and retained table scopes)");
+        puts("fir1 0.36.0 (FIR 1.0; SWO1; NC64 Dis loops, typed big cells and retained tables)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
              "print: canonical FIR; opt: conservative FIR peephole\n"
              "object: SWO1 object; use swl to link SWF\n"
              "dis: direct NC64 Dis, scalar CFG, i32/bool/copy/comparison/wrap arithmetic, value+executed captures\n"
-             "tables: direct single-block big-table Dis with checked hosted Bigtable imports and GC maps.\n"
+             "tables: direct cyclic big-table Dis with checked hosted Bigtable imports and GC maps.\n"
              "No implicit optimization. Use opt output explicitly.\n"
              "Required header: FIR 1.0; conditional: if %c, ^yes, ^no\n"
              "Comments: // and /* ... */. Channels require FlashVM extensions.\n"

@@ -37,7 +37,15 @@ static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; siblin
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
-static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
+static int table_cells[256];        /* Per-binding big.slot identities, -1 until loop promotion. */
+static int loop_serial;             /* Unique loop labels in the translation. */
+static int loop_depth;              /* Active loop count, bounded with parser nesting. */
+static int loop_scope[65];          /* Lexical depth just outside each active loop. */
+static int terminal;               /* The last emitted arm already terminates and needs no footer return. */
+
+
+/* Emit a typed operation after sticky source errors have been checked. */
+static int table_operation(FirType type, const char *spelling, int a, int b);
 
 
 /* Configure one translation unit; each process owns one generated parser. */
@@ -55,6 +63,8 @@ void source_config(FILE *out, int language)
     branch_serial = terminal = logic_serial = 0;
     blocks_used = 1;
     result_real = 0;
+    loop_serial = loop_depth = 0;
+    memset(table_cells, -1, sizeof(table_cells));
     memset(table_values, 0, sizeof(table_values));
     memset(table_bindings, 0, sizeof(table_bindings));
 }
@@ -300,25 +310,28 @@ int source_name(void)
 }
 
 
-/* Resolve the nearest active binding to its current SSA definition. */
+/* Resolve borrowed binding name to its current SSA value or promoted big-cell
+ * load. Return zero on a sticky initialization/resource error. This emits staged
+ * FIR/debug records only; it never reads runtime variables or acquires owners. */
 int source_read(int name)
 {
+    int value;
     if (bindings[name] < 0)
     {
         reject("read before initialized declaration");
         return 0;
     }
+    value = bindings[name];
+    if (!failed && table_cells[name] >= 0)
+    {
+        value = table_operation(T_I64, "big.load", table_cells[name], -1);
+    }
     if (!failed)
     {
-        source_debug_access("read",
-                            bindings[name],
-                            names[name],
-                            debug_scopes[binding_scope[name]],
-                            binding_scope[name],
-                            name + 1,
-                            location);
+        source_debug_access(
+            "read", value, names[name], debug_scopes[binding_scope[name]], binding_scope[name], name + 1, location);
     }
-    return bindings[name];
+    return value;
 }
 
 
@@ -339,6 +352,7 @@ static int local_declaration(int name)
         bindings[name] = -1;
         immutable[name] = 0;
         table_bindings[name] = T_VOID;
+        table_cells[name] = -1;
         binding_scope[name] = scope_depth;
         active[name] = 1;
     }
@@ -726,7 +740,8 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
                                         "table.key",
                                         "bool.slot",
                                         "table.range",
-                                        "string.range"};
+                                        "string.range",
+                                        "i64.slot"};
     int result = table_value(type);
     if (!failed)
     {
@@ -1398,12 +1413,21 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
+    if (!declaration && loop_depth && binding_scope[name] <= loop_scope[loop_depth - 1] &&
+        (actual != T_I64 || table_cells[name] < 0))
+    {
+        reject("loop-carried assignment requires an initialized big local");
+    }
     if (!failed)
     {
         table_bindings[name] = actual;
         if (value >= 0)
         {
             source_bind(name, value, bindings[name] < 0);
+            if (table_cells[name] >= 0)
+            {
+                fprintf(destination, "    big.store %%v%d, %%v%d\n", table_cells[name], value);
+            }
         }
     }
 }
@@ -1471,4 +1495,141 @@ void source_table_lease(int receiver, int acquire)
         source_debug_event(
             acquire ? "table-lock" : "table-unlock", receiver, "", debug_scopes[scope_depth], scope_depth, location);
     }
+}
+
+
+/* Begin a while continuation before parsing its condition. Promote initialized
+ * active big bindings into dominating frame cells so each iteration reads the
+ * current values. Return the unique loop ID. Sticky limits prevent publication;
+ * no runtime storage is allocated by this compiler function. */
+int source_loop_begin(void)
+{
+    int loop = ++loop_serial;
+    int name;
+    if (loop_depth >= 64 || blocks_used + 3 > FIR_BLOCKS)
+    {
+        reject("loop nesting/block limit exceeded");
+        return loop;
+    }
+    for (name = 0; name < name_count && !failed; name++)
+    {
+        if (active[name] && table_bindings[name] == T_I64 && bindings[name] >= 0 && table_cells[name] < 0)
+        {
+            int cell = table_operation(T_BIG_SLOT, "big.local", -1, -1);
+            table_cells[name] = cell;
+            fprintf(destination, "    big.store %%v%d, %%v%d\n", cell, bindings[name]);
+        }
+    }
+    loop_scope[loop_depth++] = scope_depth;
+    blocks_used += 3;
+    if (!failed)
+    {
+        fprintf(destination, "    jump ^loop%d_test\n^loop%d_test:\n", loop, loop);
+        source_debug_event("while-test", -1, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return loop;
+}
+
+
+/* Branch from a while test to its statement body or continuation. loop is the
+ * parser-owned ID; condition is a checked bool/inversion pair. No bindings are
+ * merged: loop-carried big values reside in their dominating scalar cells. */
+void source_loop_condition(int loop, SourceCondition condition)
+{
+    if (!failed)
+    {
+        fprintf(destination,
+                "    if %%v%d, ^loop%d_%s, ^loop%d_%s\n^loop%d_body:\n",
+                condition.value,
+                loop,
+                condition.invert ? "end" : "body",
+                loop,
+                condition.invert ? "body" : "end",
+                loop);
+        source_debug_event("while-branch", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+}
+
+
+/* Close a while body after its lexical locals have retired. Emit the backedge
+ * and continuation for loop, then pop one parser loop context. No native mutex
+ * spans the backedge unless explicit FIR ownership has been balanced there. */
+void source_loop_end(int loop)
+{
+    if (!failed)
+    {
+        fprintf(destination, "    jump ^loop%d_test\n^loop%d_end:\n", loop, loop);
+        source_debug_event("while-end", -1, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    if (loop_depth)
+    {
+        loop_depth--;
+    }
+}
+
+
+/* Capture a borrowed table once and traverse its immutable key snapshot.
+ * Return compiler-owned loop/cursor/key/value IDs. Each iteration reads the live
+ * big payload through a snapshot key; deletion before that read raises normally.
+ * Allocation/type/nesting failures remain sticky and prevent publication. */
+SourceIteration source_iteration_begin(int table)
+{
+    SourceIteration iteration;
+    SourceCondition condition;
+    int keys;
+    int length;
+    int index;
+    int zero;
+    if (table_values[table] != T_TABLE_BIG)
+    {
+        reject("for-in requires table of big");
+    }
+    keys = table_operation(T_KEYS, "table.keys", table, -1);
+    zero = source_table_position(0);
+    iteration.cell = table_operation(T_BIG_SLOT, "big.local", -1, -1);
+    if (!failed)
+    {
+        fprintf(destination, "    big.store %%v%d, %%v%d\n", iteration.cell, zero);
+    }
+    iteration.loop = source_loop_begin();
+    index = table_operation(T_I64, "big.load", iteration.cell, -1);
+    length = table_operation(T_I64, "keys.len", keys, -1);
+    condition.value = table_operation(T_BOOL, "big.lt.signed", index, length);
+    condition.invert = 0;
+    source_loop_condition(iteration.loop, condition);
+    iteration.key = table_operation(T_TABLE_KEY, "keys.at", keys, index);
+    iteration.value = source_table_load(source_table_index(table, iteration.key));
+    return iteration;
+}
+
+
+/* Finish one snapshot iteration after lexical bindings have retired. iteration
+ * is a copied compiler continuation. Cursor arithmetic uses exact modulo-64 big
+ * operations; the finite snapshot length bounds all reachable cursor values. */
+void source_iteration_end(SourceIteration iteration)
+{
+    int index = table_operation(T_I64, "big.load", iteration.cell, -1);
+    int one = source_table_position(1);
+    int next = table_operation(T_I64, "big.add", index, one);
+    if (!failed)
+    {
+        fprintf(destination, "    big.store %%v%d, %%v%d\n", iteration.cell, next);
+    }
+    source_loop_end(iteration.loop);
+}
+
+
+/* Bind this iteration's key capability and copied value after scope entry.
+ * iteration/key/value are compiler IDs; marks identify their authored names.
+ * Reject duplicate names before emitting declarations. No runtime work occurs. */
+void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark)
+{
+    if (key == value)
+    {
+        reject("for-in requires distinct key and value names");
+    }
+    source_restore(keymark);
+    source_table_bind(key, iteration.key, 0, 1);
+    source_restore(valuemark);
+    source_table_bind(value, iteration.value, 0, 1);
 }

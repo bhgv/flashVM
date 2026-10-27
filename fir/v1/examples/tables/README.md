@@ -40,7 +40,7 @@ changes the namespace to "7". typeof does not perform that conversion. Decimal
 casts preserve all signed-64 bits and reject malformed or overflowing text.
 
 These files do not implement automatic channel any/proxy locals, general Limbo
-modules, arbitrary table element types, table CFG/loops or SWF table generation.
+modules, arbitrary table element types, SWF table generation.
 AS conversion helpers remain separate from Limbo cast syntax. The debug JSON maps
 to FIR source occurrences; full source-to-Dis SBL is still separate work.
 
@@ -192,3 +192,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [ownership-flow.fir](ownership-flow.fir) demonstrates recursive aliases and a shared branch successor, returning 42. [Ownership-flow contract](../../doc/OWNERSHIP_FLOW.md).
+
+
+[While and table for-in](../../doc/LOOPS.md) — executable loops, mutable big locals and a commented tutorial.

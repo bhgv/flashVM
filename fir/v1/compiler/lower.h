@@ -336,4 +336,34 @@ int source_string_rune(int value);
  * Borrowed strings emit nothing; generated entry may suspend or throw. */
 void source_table_lease(int receiver, int acquire);
 
+/* Start a bounded while CFG, promoting initialized big locals; return its ID. */
+int source_loop_begin(void);
+
+
+/* Emit the checked bool test for a borrowed parser loop ID and condition. */
+void source_loop_condition(int loop, SourceCondition condition);
+
+
+/* Emit a loop backedge/continuation after lexical body cleanup. */
+void source_loop_end(int loop);
+
+/* Parser-owned snapshot traversal. All fields are compiler SSA IDs, not pointers. */
+typedef struct
+{
+    int loop;  /* Enclosing while-style CFG identity. */
+    int cell;  /* Private mutable traversal position. */
+    int key;   /* Current snapshot-owned key capability. */
+    int value; /* Current copied big payload. */
+} SourceIteration;
+
+/* Capture one typed table's keys, build a bounded CFG and produce per-pass key/value. */
+SourceIteration source_iteration_begin(int table);
+
+
+/* Advance the private cursor and emit its backedge after retiring body locals. */
+void source_iteration_end(SourceIteration iteration);
+
+/* Declare distinct iteration bindings at their authored marks in the body scope. */
+void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark);
+
 #endif

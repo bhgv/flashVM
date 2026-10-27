@@ -342,6 +342,7 @@ PRODUCTIONS
     (
         ident
         | "real"
+        | "value"
     )
                                                                         (.
                                                                             capture();
@@ -657,7 +658,9 @@ PRODUCTIONS
         SourceMark operation;
     .)
     (
-        TableDelete<&value> ";"
+        TableForIn
+        | TableWhile
+        | TableDelete<&value> ";"
         | Name<&name> (. target = source_mark(); .)
         (
             ":=" TableExpression<&value> ";"
@@ -756,6 +759,73 @@ PRODUCTIONS
             .)
         )
     )
+  .
+
+  /* Loops re-evaluate conditions and carry initialized big locals through cells.
+   * Body-local declarations are retired before continuation. No implicit return. */
+  TableWhile =
+    (.
+        int loop = 0;
+        SourceCondition condition;
+        SourceMark operation;
+    .)
+    "while"
+    (.
+        capture();
+        operation = source_mark();
+        loop = source_loop_begin();
+    .)
+    "(" TableCondition<&condition> ")"
+    (.
+        source_restore(operation);
+        source_loop_condition(loop, condition);
+    .)
+    "{" (. source_enter_scope(); .)
+    { TableStatement }
+    "}"
+    (.
+        source_leave_scope();
+        source_restore(operation);
+        source_loop_end(loop);
+    .)
+  .
+
+  /* FlashVM extension: one immutable key snapshot, live typed values per pass.
+   * Bindings shadow only after the receiver has evaluated in the outer scope. */
+  TableForIn =
+    (.
+        int key = 0;
+        int value = 0;
+        int table = 0;
+        SourceIteration iteration;
+        SourceMark operation;
+        SourceMark keymark;
+        SourceMark valuemark;
+    .)
+    "for"
+    (.
+        capture();
+        operation = source_mark();
+    .)
+    "(" Name<&key> (. keymark = source_mark(); .)
+    "," Name<&value> (. valuemark = source_mark(); .)
+    "in" TableExpression<&table> ")"
+    (.
+        source_restore(operation);
+        iteration = source_iteration_begin(table);
+    .)
+    "{"
+    (.
+        source_enter_scope();
+        source_iteration_bind(iteration, key, value, keymark, valuemark);
+    .)
+    { TableStatement }
+    "}"
+    (.
+        source_leave_scope();
+        source_restore(operation);
+        source_iteration_end(iteration);
+    .)
   .
 
   /* Operator spellings match Inferno compound arithmetic. The bounded table

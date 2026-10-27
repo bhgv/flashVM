@@ -8,7 +8,7 @@ Bounds failures remain eager even for unused keys. Keys retain their immutable s
 when locals or the original table are replaced; numeric/text namespaces stay distinct.
 See [Extension status](EXTENSIONS.md).
 
-FIR compiler 0.19 emits the supported acyclic big-table CFG directly as
+FIR compiler 0.36 emits the supported big-table CFG, including loops, directly as
 NC64 Dis. It does not call the temporary Limbo compiler, an assembler, Python or
 the reference execution library. The destination uses the existing HASLDT import
 table and existing `load`, `mframe`, `mcall`, `lea`, scalar and pointer moves.
@@ -55,9 +55,8 @@ subtraction against a builtin's absent program segment.
 
 The API borrows the module and output stream. Coverage/layout/staging failures
 write no output. A final output I/O failure may leave a prefix; the CLI stages
-before replacing an existing destination. Supported operations use verified acyclic CFG;
-cyclic table execution, general language modules,
-any and AS/SWF adapters remain pending. FIRDBG1 source records remain
+before replacing an existing destination. Supported operations use verified CFG, including bounded reference execution of cycles.
+General language modules, any and AS/SWF adapters remain pending. FIRDBG1 source records remain
 separate; full source-to-Dis SBL/PC mapping is not claimed.
 
 ## Collector and inspection acceptance
@@ -87,3 +86,6 @@ C table functions remain ordinary compiled runtime services.
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
 
 [FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
+
+
+[Compiler 0.36 loops / Циклы компилятора 0.36](LOOPS.md) supersedes the historical acyclic-only backend restriction.

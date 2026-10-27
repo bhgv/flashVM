@@ -164,8 +164,7 @@ PADDING
                 failed = call([runtime, '--'+mode, '--inspect-words', 0, 4, image], work, False)
                 if 'DATA ' in failed.stdout or 'missing key' not in failed.stderr:
                     raise RuntimeError('selected failing native arm published inspection data')
-        # Cycles are explicitly unsupported: repeated owner creation must not escape the registry bounds.
-        prior = image.read_bytes()
+        # Cyclic Dis is now supported; reference owners and VM instructions stay bounded.
         fir.write_text('''FIR 1.0
 module @Cycle
 func @main() -> void {
@@ -177,11 +176,16 @@ func @main() -> void {
  jump ^loop
 }
 ''')
-        for tool in ([compiler, 'dis', fir, image], *([[reference, fir]] if reference else [])):
-            result = call(tool, work, False)
-            if 'cycle' not in result.stderr or image.read_bytes() != prior or result.stdout:
-                raise RuntimeError('table cycle admitted or preflight changed output')
-    print('PASS acyclic table CFG: source decisions, imports, backward/far PCs, GC roots and cycle rejection'+
+        call([compiler, 'dis', fir, image], work)
+        if reference:
+            result = call([reference, fir], work, False)
+            if 'budget' not in result.stderr or result.stdout:
+                raise RuntimeError('cyclic reference escaped owner/instruction limits')
+        if runtime:
+            result = call([runtime, '--'+mode, '--max-instructions', 20000, image], work, False)
+            if not any(message in result.stderr for message in ('execution budget exceeded', 'instruction limit exceeded')) or 'DATA ' in result.stdout:
+                raise RuntimeError('cyclic VM escaped execution limit')
+    print('PASS table CFG: source decisions, imports, backward/far PCs, GC roots and bounded cycle execution'+
           (', actual '+mode if runtime else ''))
 
 
